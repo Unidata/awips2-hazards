@@ -10,30 +10,33 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 /**
- * Resize listener, an interface that describes the methods that must be
- * implemented by any class that wishes to be notified when a
- * {@link MegawidgetManager} experiences a resize of a component megawidget.
+ * Description: Interface describing the methods that must be implemented by
+ * megawidgets that hold one or more {@link TimeDeltaComboComponent} objects.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
- * Jun 24, 2014    4010    Chris.Golden Initial creation.
+ * Jun 27, 2014    3512    Chris.Golden Initial creation.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface IManagerResizeListener {
+public interface ITimeDeltaComboComponentHolder {
 
     // Public Methods
 
     /**
-     * Receive notification that the manager has experienced a size change.
+     * Receive notification that the value of the specified time delta component
+     * has been changed as a result of GUI manipulation.
      * 
      * @param identifier
-     *            Identifier of the megawidget that precipitated the change.
+     *            Identifier of the time delta component for which the value has
+     *            changed.
+     * @param value
+     *            New delta value of the date-time component.
      */
-    public void sizeChanged(String identifier);
+    public void valueChanged(String identifier, long value);
 }

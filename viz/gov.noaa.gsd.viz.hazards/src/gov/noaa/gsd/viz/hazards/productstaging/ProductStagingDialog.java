@@ -11,8 +11,10 @@ import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo.Product;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
+import gov.noaa.gsd.viz.megawidgets.IMegawidgetManagerListener;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
@@ -70,6 +72,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * May 08, 2014   2925     Chris G.    Changed to work with MVP framework changes.
  * Jun 23, 2014   4010     Chris G.    Changed to work with megawidget manager
  *                                     changes.
+ * Jun 30, 2014   3512     Chris G.    Changed to work with more megawidget manager
+ *                                     changes, and with changes to ICommandInvoker.
  * </pre>
  * 
  * @author shouming.wei
@@ -135,7 +139,7 @@ class ProductStagingDialog extends BasicDialog {
         }
 
         @Override
-        public void setCommandInvocationHandler(String identifier,
+        public void setCommandInvocationHandler(
                 ICommandInvocationHandler<String> handler) {
             commandHandler = handler;
         }
@@ -149,8 +153,6 @@ class ProductStagingDialog extends BasicDialog {
     private class DialogMegawidgetManager extends MegawidgetManager {
 
         // Public Constructors
-
-        private final Product stagingProduct;
 
         /**
          * Construct a standard instance.
@@ -170,38 +172,72 @@ class ProductStagingDialog extends BasicDialog {
          *            dictionary, mapping the specifier's identifier to the
          *            value that the megawidget will take on.
          * @param stagingProduct
+         *            Product being staged.
          * @throws MegawidgetException
          *             If one of the megawidget specifiers is invalid, or if an
          *             error occurs while creating or initializing one of the
          *             megawidgets.
          */
         public DialogMegawidgetManager(Composite parent, List<Dict> specifiers,
-                Dict state, Product stagingProduct) throws MegawidgetException {
-            super(parent, specifiers, state, 0L, 0L, null);
-            this.stagingProduct = stagingProduct;
-        }
+                Dict state, final Product stagingProduct)
+                throws MegawidgetException {
+            super(parent, specifiers, state, new IMegawidgetManagerListener() {
 
-        // Protected Methods
+                @Override
+                public void commandInvoked(MegawidgetManager manager,
+                        String identifier) {
 
-        @Override
-        protected final void commandInvoked(String identifier) {
+                    /*
+                     * No action.
+                     */
+                }
 
-            /*
-             * No action.
-             */
-        }
-
-        @Override
-        protected final void stateElementChanged(String identifier, Object state) {
-            if (identifier.equals(HazardConstants.HAZARD_EVENT_IDS)) {
                 @SuppressWarnings("unchecked")
-                List<String> selectedEventIDs = (ArrayList<String>) state;
-                stagingProduct.setSelectedEventIDs(selectedEventIDs);
-            } else {
-                Map<String, Serializable> dialogSelections = stagingProduct
-                        .getDialogSelections();
-                dialogSelections.put(identifier, (String) state);
-            }
+                @Override
+                public void stateElementChanged(MegawidgetManager manager,
+                        String identifier, Object state) {
+                    if (identifier.equals(HazardConstants.HAZARD_EVENT_IDS)) {
+                        List<String> selectedEventIDs = (ArrayList<String>) state;
+                        stagingProduct.setSelectedEventIDs(selectedEventIDs);
+                    } else {
+                        Map<String, Serializable> dialogSelections = stagingProduct
+                                .getDialogSelections();
+                        dialogSelections.put(identifier, (String) state);
+                    }
+                }
+
+                @Override
+                public void stateElementsChanged(MegawidgetManager manager,
+                        Map<String, Object> statesForIdentifiers) {
+                    for (Map.Entry<String, Object> entry : statesForIdentifiers
+                            .entrySet()) {
+                        stateElementChanged(manager, entry.getKey(),
+                                entry.getValue());
+                    }
+                }
+
+                @Override
+                public void sizeChanged(MegawidgetManager manager,
+                        String identifier) {
+
+                    /*
+                     * TODO: When scrollbars are added to the product staging
+                     * dialog's megawidget panel as an option, this should
+                     * result in a recalculation of the scrollable area.
+                     */
+                    throw new UnsupportedOperationException();
+                }
+
+                @Override
+                public void sideEffectMutablePropertyChangeErrorOccurred(
+                        MegawidgetManager manager,
+                        MegawidgetPropertyException exception) {
+                    statusHandler
+                            .error("ProductStagingDialog.MegawidgetManager error occurred "
+                                    + "while attempting to apply megawidget interdependencies.",
+                                    exception);
+                }
+            }, 0L, 0L, null);
         }
     }
 

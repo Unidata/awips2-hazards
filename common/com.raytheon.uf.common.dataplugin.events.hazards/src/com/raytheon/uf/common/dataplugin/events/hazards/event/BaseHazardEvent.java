@@ -52,6 +52,7 @@ import com.vividsolutions.jts.io.WKTReader;
  * Apr 23, 2014 2925       Chris.Golden Augmented with additional methods to
  *                                      set the type components atomically, or
  *                                      the start and end time atomically.
+ * Jun 30, 2014 3512       Chris.Golden Added addHazardAttributes() method.
  * </pre>
  * 
  * @author mnash
@@ -286,6 +287,11 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     @Override
+    public void addHazardAttributes(Map<String, Serializable> attributes) {
+        this.attributes.putAll(attributes);
+    }
+
+    @Override
     public void removeHazardAttribute(String key) {
         attributes.remove(key);
     }
@@ -426,10 +432,5 @@ public class BaseHazardEvent implements IHazardEvent {
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
-    }
-
-    @Override
-    public void addHazardAttributes(Map<String, Serializable> attributes) {
-        this.attributes.putAll(attributes);
     }
 }

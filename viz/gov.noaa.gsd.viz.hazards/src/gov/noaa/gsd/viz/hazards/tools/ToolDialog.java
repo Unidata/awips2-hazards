@@ -15,6 +15,7 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
+import gov.noaa.gsd.viz.megawidgets.IMegawidgetManagerListener;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
@@ -94,6 +95,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jun 17, 2014   3982     Chris.Golden      Changed megawidget "side effects" to
  *                                           "interdependencies".
  * Jun 23, 2014   4010     Chris.Golden      Changed to work with megawidget manager
+ *                                           changes.
+ * Jun 30, 2014   3512     Chris Golden      Changed to work with more megawidget manager
  *                                           changes.
  * </pre>
  * 
@@ -359,41 +362,72 @@ class ToolDialog extends BasicDialog {
         try {
             PythonSideEffectsApplier sideEffectsApplier = (pythonSideEffectsScript == null ? null
                     : new PythonSideEffectsApplier(pythonSideEffectsScript));
-            megawidgetManager = new MegawidgetManager(top,
-                    megawidgetSpecifiersList, valuesDict, minVisibleTime,
-                    maxVisibleTime, currentTimeProvider, sideEffectsApplier) {
-                @Override
-                protected void commandInvoked(String identifier) {
+            megawidgetManager = new MegawidgetManager(
+                    top,
+                    megawidgetSpecifiersList,
+                    valuesDict,
+                    new IMegawidgetManagerListener() {
 
-                    /*
-                     * Fire off the action if the invoked megawidget is a
-                     * tool-running trigger.
-                     */
-                    if (runToolTriggerIdentifiers.contains(identifier)) {
-                        fireAction(new ToolAction(
-                                ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
-                                identifier, ToolDialog.this.getState()));
-                    }
-                }
+                        @Override
+                        public void commandInvoked(MegawidgetManager manager,
+                                String identifier) {
 
-                @Override
-                protected void stateElementChanged(String identifier,
-                        Object state) {
+                            /*
+                             * Fire off the action if the invoked megawidget is
+                             * a tool-running trigger.
+                             */
+                            if (runToolTriggerIdentifiers.contains(identifier)) {
+                                fireAction(new ToolAction(
+                                        ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
+                                        identifier, ToolDialog.this.getState()));
+                            }
+                        }
 
-                    /*
-                     * No action.
-                     */
-                }
+                        @Override
+                        public void stateElementChanged(
+                                MegawidgetManager manager, String identifier,
+                                Object state) {
 
-                @Override
-                protected void sideEffectMutablePropertyChangeErrorOccurred(
-                        MegawidgetPropertyException e) {
-                    statusHandler
-                            .error("ToolDialog.MegawidgetManager error occurred "
-                                    + "while attempting to apply megawidget side effects",
-                                    e);
-                }
-            };
+                            /*
+                             * No action.
+                             */
+                        }
+
+                        @Override
+                        public void stateElementsChanged(
+                                MegawidgetManager manager,
+                                Map<String, Object> statesForIdentifiers) {
+
+                            /*
+                             * No action.
+                             */
+                        }
+
+                        @Override
+                        public void sizeChanged(MegawidgetManager manager,
+                                String identifier) {
+
+                            /*
+                             * TODO: When scrollbars are added to the tool
+                             * dialog's megawidget panel as an option, this
+                             * should result in a recalculation of the
+                             * scrollable area.
+                             */
+                            throw new UnsupportedOperationException();
+                        }
+
+                        @Override
+                        public void sideEffectMutablePropertyChangeErrorOccurred(
+                                MegawidgetManager manager,
+                                MegawidgetPropertyException exception) {
+                            statusHandler
+                                    .error("ToolDialog.MegawidgetManager error occurred "
+                                            + "while attempting to apply megawidget interdependencies",
+                                            exception);
+                        }
+
+                    }, minVisibleTime, maxVisibleTime, currentTimeProvider,
+                    sideEffectsApplier);
         } catch (MegawidgetException e) {
             statusHandler
                     .error("ToolDialog.createDialogArea(): Unable to create megawidget "

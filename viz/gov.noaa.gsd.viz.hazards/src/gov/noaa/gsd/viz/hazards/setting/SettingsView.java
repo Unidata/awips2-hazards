@@ -19,8 +19,10 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 import gov.noaa.gsd.viz.hazards.utilities.MegawidgetSettingsConversionUtils;
 import gov.noaa.gsd.viz.megawidgets.HierarchicalBoundedChoicesMegawidgetSpecifier;
+import gov.noaa.gsd.viz.megawidgets.IMegawidgetManagerListener;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
 import java.util.ArrayList;
@@ -75,6 +77,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  *                                           within the UI thread.
  * Jun 23, 2014    4010    Chris.Golden      Changed to work with megawidget manager
  *                                           changes.
+ * Jun 30, 2014    3512    Chris.Golden      Changed to work with more megawidget
+ *                                           manager changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -308,47 +312,68 @@ public class SettingsView implements
                     megawidgetManager = new MegawidgetManager(menu,
                             filterMapList,
                             MegawidgetSettingsConversionUtils
-                                    .settingsPOJOToMap(currentSettings)) {
-                        @Override
-                        protected void commandInvoked(String identifier) {
+                                    .settingsPOJOToMap(currentSettings),
+                            new IMegawidgetManagerListener() {
 
-                            /*
-                             * No action.
-                             */
-                        }
+                                @Override
+                                public void commandInvoked(
+                                        MegawidgetManager manager,
+                                        String identifier) {
+                                    throw new UnsupportedOperationException();
+                                }
 
-                        @Override
-                        protected void stateElementChanged(String identifier,
-                                Object state) {
+                                @Override
+                                public void stateElementChanged(
+                                        MegawidgetManager manager,
+                                        String identifier, Object state) {
+                                    currentSettings = MegawidgetSettingsConversionUtils
+                                            .updateSettingsUsingMap(
+                                                    currentSettings,
+                                                    manager.getState());
 
-                            currentSettings = MegawidgetSettingsConversionUtils
-                                    .updateSettingsUsingMap(currentSettings,
-                                            this.getState());
+                                    /*
+                                     * Forward the current setting change to the
+                                     * presenter.
+                                     */
+                                    try {
+                                        presenter
+                                                .fireAction(new CurrentSettingsAction(
+                                                        currentSettings));
+                                    } catch (Exception e) {
+                                        statusHandler.error(
+                                                "Could not serialize JSON.", e);
+                                    }
+                                }
 
-                            /*
-                             * Forward the current setting change to the
-                             * presenter.
-                             */
-                            try {
-                                presenter.fireAction(new CurrentSettingsAction(
-                                        currentSettings));
-                            } catch (Exception e) {
-                                statusHandler
-                                        .error("SettingsView.FiltersPulldownAction.MegawidgetManager."
-                                                + "stateElementChanged(): Error: Could not serialize JSON.",
-                                                e);
-                            }
-                        }
+                                @Override
+                                public void stateElementsChanged(
+                                        MegawidgetManager manager,
+                                        Map<String, Object> statesForIdentifiers) {
+                                    throw new UnsupportedOperationException();
+                                }
 
-                    };
+                                @Override
+                                public void sizeChanged(
+                                        MegawidgetManager manager,
+                                        String identifier) {
+                                    throw new UnsupportedOperationException();
+                                }
+
+                                @Override
+                                public void sideEffectMutablePropertyChangeErrorOccurred(
+                                        MegawidgetManager manager,
+                                        MegawidgetPropertyException exception) {
+                                    throw new UnsupportedOperationException();
+                                }
+
+                            });
                 } catch (MegawidgetException e) {
-                    statusHandler
-                            .error("SettingsView.FiltersPulldownAction.doGetMenu(): Unable to create "
-                                    + "megawidget manager due to megawidget construction problem.",
-                                    e);
+                    statusHandler.error(
+                            "Unable to create megawidget manager due to "
+                                    + "megawidget construction problem.", e);
                 } catch (Exception e) {
                     statusHandler
-                            .error("Failed to convert the Current Settings to a Java Map!",
+                            .error("Failed to convert the Current Settings to Java map.",
                                     e);
                 }
             }

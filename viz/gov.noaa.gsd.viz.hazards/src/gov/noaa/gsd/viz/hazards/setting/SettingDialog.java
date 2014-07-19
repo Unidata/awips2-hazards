@@ -13,8 +13,10 @@ import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
 import gov.noaa.gsd.viz.hazards.utilities.MegawidgetSettingsConversionUtils;
+import gov.noaa.gsd.viz.megawidgets.IMegawidgetManagerListener;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
 import java.util.ArrayList;
@@ -60,6 +62,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  *                                         framework changes.
  * Jun 23, 2014   4010     Chris.Golden    Changed to work with megawidget manager
  *                                         changes.
+ * Jun 30, 2014   3512     Chris.Golden    Changed to work with more megawidget
+ *                                         manager changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -325,26 +329,46 @@ class SettingDialog extends BasicDialog {
 
             megawidgetManager = new MegawidgetManager(top, listForMegawidget,
                     MegawidgetSettingsConversionUtils
-                            .settingsPOJOToMap(this.values), 0L, 0L,
-                    currentTimeProvider) {
-                @Override
-                protected void commandInvoked(String identifier) {
+                            .settingsPOJOToMap(this.values),
+                    new IMegawidgetManagerListener() {
 
-                    // No action.
-                }
+                        @Override
+                        public void commandInvoked(MegawidgetManager manager,
+                                String identifier) {
 
-                @Override
-                protected void stateElementChanged(String identifier,
-                        Object state) {
+                            /*
+                             * No action.
+                             */
+                        }
 
-                    values = MegawidgetSettingsConversionUtils
-                            .updateSettingsUsingMap(values, this.getState());
+                        @Override
+                        public void stateElementChanged(
+                                MegawidgetManager manager, String identifier,
+                                Object state) {
+                            settingChanged();
+                        }
 
-                    fireAction(new StaticSettingsAction(
-                            StaticSettingsAction.ActionType.SETTINGS_MODIFIED,
-                            values));
-                }
-            };
+                        @Override
+                        public void stateElementsChanged(
+                                MegawidgetManager manager,
+                                Map<String, Object> statesForIdentifiers) {
+                            settingChanged();
+                        }
+
+                        @Override
+                        public void sizeChanged(MegawidgetManager manager,
+                                String identifier) {
+                            throw new UnsupportedOperationException();
+                        }
+
+                        @Override
+                        public void sideEffectMutablePropertyChangeErrorOccurred(
+                                MegawidgetManager manager,
+                                MegawidgetPropertyException exception) {
+                            throw new UnsupportedOperationException();
+                        }
+
+                    }, 0L, 0L, currentTimeProvider);
         } catch (MegawidgetException e) {
             statusHandler
                     .error("SettingDialog.createDialogArea(): Unable to create "
@@ -382,6 +406,16 @@ class SettingDialog extends BasicDialog {
      */
     private void setDialogName(Shell shell) {
         shell.setText(DIALOG_TITLE_PREFIX + this.values.getDisplayName());
+    }
+
+    /**
+     * Respond to the setting being changed.
+     */
+    private void settingChanged() {
+        values = MegawidgetSettingsConversionUtils.updateSettingsUsingMap(
+                values, megawidgetManager.getState());
+        fireAction(new StaticSettingsAction(
+                StaticSettingsAction.ActionType.SETTINGS_MODIFIED, values));
     }
 
     /**

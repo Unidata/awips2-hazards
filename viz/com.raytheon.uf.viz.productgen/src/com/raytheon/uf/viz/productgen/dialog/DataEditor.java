@@ -60,6 +60,8 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Jun 13, 2014 3519       jsanchez     Initial creation
  * Jun 24, 2014 4010       Chris.Golden Changed to work with parameters
  *                                      editor changes.
+ * Jun 30, 2014 3512       Chris.Golden Changed to work with more
+ *                                      parameters editor changes.
  * </pre>
  * 
  * @author jsanchez
@@ -162,7 +164,31 @@ public class DataEditor {
                             productEditor.getSaveButton().setEnabled(true);
                             productEditor.getRevertButton().setEnabled(true);
                         }
-                    }, null);
+
+                        @Override
+                        public void parameterValuesChanged(
+                                Map<KeyInfo, Object> valuesForLabels) {
+                            for (Map.Entry<KeyInfo, Object> entry : valuesForLabels
+                                    .entrySet()) {
+                                parameterValueChanged(entry.getKey(),
+                                        entry.getValue());
+                            }
+                        }
+
+                        @Override
+                        public void sizeChanged(KeyInfo parameter) {
+
+                            /*
+                             * TODO: If resizable megawidgets are to be used
+                             * (i.e. if any parameter types are to be registered
+                             * as expandable with the parameters editor
+                             * factory), respond to this notification by
+                             * resizing the scrollable area as appropriate.
+                             */
+                            throw new UnsupportedOperationException(
+                                    "not yet implemented");
+                        }
+                    });
 
             // Disables 'displayable'
             // TODO Check if the megawidget for a list handled editable
@@ -211,6 +237,7 @@ public class DataEditor {
         return new ArrayList<>(editableKeyInfoMap.keySet());
     }
 
+    @SuppressWarnings("unchecked")
     private void update(EditableKeyInfo editableKeyInfo, KeyInfo keyInfo,
             Serializable newValue) {
         // get path in the dict
@@ -424,6 +451,7 @@ public class DataEditor {
         return path;
     }
 
+    @SuppressWarnings("unchecked")
     private void determineEditableKeyPaths(List<KeyInfo> parentPath,
             List<Serializable> list) {
         for (int index = 0; index < list.size(); index++) {

@@ -27,8 +27,10 @@ import org.eclipse.swt.widgets.Widget;
 import com.google.common.collect.Lists;
 
 /**
+ * <p>
  * Megawidget manager class, used to instantiate megawidgets based upon
  * specifiers and to manage their state changes.
+ * </p>
  * <p>
  * The manager is instantiated using parameters that include a list of maps,
  * each defining a megawidget specifier (or optionally, a
@@ -38,6 +40,7 @@ import com.google.common.collect.Lists;
  * elements are known as <i>state elements</i>, as distinguished from
  * <i>megawidget states</i>. The two are often identical, but see below for
  * cases where conversion must be performed.
+ * </p>
  * <p>
  * Each of the megawidget state identifiers is of the form <code>
  * (idElementN&gt;)*idElement</code>, that is, an identifier string <code>
@@ -50,6 +53,7 @@ import com.google.common.collect.Lists;
  * megawidget that is <code>geoParams&gt;lat</code> indicates that the state map
  * should associate the string <code>geoParams</code> with a nested map, and
  * that the latter should associate <code>lat</code> with a value.
+ * </p>
  * <p>
  * Subclasses that require that their megawidgets use modified (converted) forms
  * of state elements for their states must override the methods
@@ -59,6 +63,7 @@ import com.google.common.collect.Lists;
  * and/or manipulation of the state element takes a string as its megawidget
  * state, these methods would be overridden to perform these conversions in both
  * directions.
+ * </p>
  * <p>
  * When constructed, the manager may be provided a side effects applier if
  * desired. The latter has a method invoked to apply any side effects it deems
@@ -69,6 +74,7 @@ import com.google.common.collect.Lists;
  * and is allowed to change these properties as it sees fit. If no side effects
  * applier is supplied, the manager assumes no side effects are desired when
  * megawidgets are invoked.
+ * </p>
  * 
  * <pre>
  * 
@@ -122,6 +128,11 @@ import com.google.common.collect.Lists;
  *                                           prompted the side effects to be applied
  *                                           so that they go out before the application
  *                                           of the side effects.
+ * Jun 30, 2014    3512     Chris.Golden     Changed to use a listener to send out
+ *                                           notifications of megawidget events instead
+ *                                           of being an abstract class that forces the
+ *                                           creation of subclasses to receive such
+ *                                           notifications.
  * </pre>
  * 
  * @author Chris.Golden
@@ -131,8 +142,9 @@ import com.google.common.collect.Lists;
  * @see IStateful
  * @see IStatefulSpecifier
  * @see ISideEffectsApplier
+ * @see IMegawidgetManagerListener
  */
-public abstract class MegawidgetManager {
+public class MegawidgetManager {
 
     // Private Variables
 
@@ -143,9 +155,9 @@ public abstract class MegawidgetManager {
     private MegawidgetSpecifierManager specifierManager;
 
     /**
-     * Manager resize listener.
+     * Listener.
      */
-    private IManagerResizeListener managerResizeListener;
+    private IMegawidgetManagerListener managerListener;
 
     /**
      * Parent widget of the megawidgets being managed.
@@ -203,19 +215,22 @@ public abstract class MegawidgetManager {
      * Notification listener.
      */
     private final INotificationListener notificationListener = new INotificationListener() {
+
         @Override
         public void megawidgetInvoked(INotifier megawidget) {
 
             /*
              * Send out notification of the invocation.
              */
-            commandInvoked(megawidget.getSpecifier().getIdentifier());
+            if (managerListener != null) {
+                managerListener.commandInvoked(MegawidgetManager.this,
+                        megawidget.getSpecifier().getIdentifier());
+            }
 
             /*
              * If a side effects applier is available and the invoked megawidget
-             * is not stateful, apply side effects before sending along the
-             * notification of the invocation. Stateful megawidgets do not get
-             * side effects applied here because the latter has already been
+             * is not stateful, apply side effects. Stateful megawidgets do not
+             * get side effects applied here because the latter has already been
              * done when they experienced the state change that preceded this
              * notification.
              */
@@ -231,6 +246,7 @@ public abstract class MegawidgetManager {
      * State change listener.
      */
     private final IStateChangeListener stateChangeListener = new IStateChangeListener() {
+
         @Override
         public void megawidgetStateChanged(IStateful megawidget,
                 String identifier, Object state) {
@@ -248,7 +264,49 @@ public abstract class MegawidgetManager {
             /*
              * Send out notification of the state change.
              */
-            stateElementChanged(identifier, state);
+            if (managerListener != null) {
+                managerListener.stateElementChanged(MegawidgetManager.this,
+                        identifier, state);
+            }
+
+            /*
+             * If a side effects applier is available, apply side effects.
+             */
+            if (sideEffectsApplier != null) {
+                applySideEffects(Lists.newArrayList(megawidget.getSpecifier()
+                        .getIdentifier()), true);
+            }
+        }
+
+        @Override
+        public void megawidgetStatesChanged(IStateful megawidget,
+                Map<String, Object> statesForIdentifiers) {
+
+            /*
+             * Process the changed states within this manager.
+             */
+            for (Map.Entry<String, Object> entry : statesForIdentifiers
+                    .entrySet()) {
+
+                /*
+                 * Do any preprocessing of the state required by a subclass.
+                 */
+                entry.setValue(convertMegawidgetStateToStateElement(
+                        entry.getKey(), entry.getValue()));
+
+                /*
+                 * Remember the new state.
+                 */
+                commitStateElementChange(entry.getKey(), entry.getValue());
+            }
+
+            /*
+             * Send out notification of the state changes.
+             */
+            if (managerListener != null) {
+                managerListener.stateElementsChanged(MegawidgetManager.this,
+                        statesForIdentifiers);
+            }
 
             /*
              * If a side effects applier is available, apply side effects before
@@ -268,9 +326,9 @@ public abstract class MegawidgetManager {
 
         @Override
         public void sizeChanged(IResizer megawidget) {
-            if (managerResizeListener != null) {
-                managerResizeListener.sizeChanged(megawidget.getSpecifier()
-                        .getIdentifier());
+            if (managerListener != null) {
+                managerListener.sizeChanged(MegawidgetManager.this, megawidget
+                        .getSpecifier().getIdentifier());
             }
         }
     };
@@ -298,6 +356,9 @@ public abstract class MegawidgetManager {
      *            and
      *            {@link #convertMegawidgetStateToStateElement(String, Object)}
      *            ).
+     * @param managerListener
+     *            Listener to be notified of events that occur within this
+     *            manager.
      * @throws MegawidgetException
      *             If one of the megawidget specifiers is invalid, or if an
      *             error occurs while creating or initializing one of the
@@ -305,8 +366,10 @@ public abstract class MegawidgetManager {
      */
     public MegawidgetManager(Menu parent,
             List<? extends Map<String, Object>> specifiers,
-            Map<String, Object> state) throws MegawidgetException {
-        this(parent, specifiers, state, null);
+            Map<String, Object> state,
+            IMegawidgetManagerListener managerListener)
+            throws MegawidgetException {
+        this(parent, specifiers, state, managerListener, null);
     }
 
     /**
@@ -330,6 +393,9 @@ public abstract class MegawidgetManager {
      *            and
      *            {@link #convertMegawidgetStateToStateElement(String, Object)}
      *            ).
+     * @param managerListener
+     *            Listener to be notified of events that occur within this
+     *            manager.
      * @param sideEffectsApplier
      *            Side effects applier to be used, or <code>null</code> if no
      *            side effects application is to be done by the manager.
@@ -340,11 +406,12 @@ public abstract class MegawidgetManager {
      */
     public MegawidgetManager(Menu parent,
             List<? extends Map<String, Object>> specifiers,
-            Map<String, Object> state, ISideEffectsApplier sideEffectsApplier)
-            throws MegawidgetException {
-        construct(parent, IMenu.class, new MegawidgetSpecifierManager(
-                specifiers, IMenuSpecifier.class, null, sideEffectsApplier),
-                state, 0L, 0L, null);
+            Map<String, Object> state,
+            IMegawidgetManagerListener managerListener,
+            ISideEffectsApplier sideEffectsApplier) throws MegawidgetException {
+        this(parent, new MegawidgetSpecifierManager(specifiers,
+                IMenuSpecifier.class, null, sideEffectsApplier), state,
+                managerListener);
     }
 
     /**
@@ -367,6 +434,9 @@ public abstract class MegawidgetManager {
      *            and
      *            {@link #convertMegawidgetStateToStateElement(String, Object)}
      *            ).
+     * @param managerListener
+     *            Listener to be notified of events that occur within this
+     *            manager.
      * @throws MegawidgetException
      *             If one of the megawidget specifiers is invalid, or if an
      *             error occurs while creating or initializing one of the
@@ -374,8 +444,11 @@ public abstract class MegawidgetManager {
      */
     public MegawidgetManager(Menu parent,
             MegawidgetSpecifierManager specifierManager,
-            Map<String, Object> state) throws MegawidgetException {
-        construct(parent, IMenu.class, specifierManager, state, 0L, 0L, null);
+            Map<String, Object> state,
+            IMegawidgetManagerListener managerListener)
+            throws MegawidgetException {
+        construct(parent, IMenu.class, specifierManager, state,
+                managerListener, 0L, 0L);
     }
 
     /**
@@ -399,6 +472,9 @@ public abstract class MegawidgetManager {
      *            and
      *            {@link #convertMegawidgetStateToStateElement(String, Object)}
      *            ).
+     * @param managerListener
+     *            Listener to be notified of events that occur within this
+     *            manager.
      * @param minVisibleTime
      *            Minimum visible time for any time scale megawidgets specified
      *            within <code>specifiers</code>. If no time scale megawidgets
@@ -419,16 +495,17 @@ public abstract class MegawidgetManager {
      */
     public MegawidgetManager(Composite parent,
             List<? extends Map<String, Object>> specifiers,
-            Map<String, Object> state, long minVisibleTime,
+            Map<String, Object> state,
+            IMegawidgetManagerListener managerListener, long minVisibleTime,
             long maxVisibleTime, ICurrentTimeProvider currentTimeProvider)
             throws MegawidgetException {
-        this(parent, specifiers, state, minVisibleTime, maxVisibleTime,
-                currentTimeProvider, null, null);
+        this(parent, specifiers, state, managerListener, minVisibleTime,
+                maxVisibleTime, currentTimeProvider, null);
     }
 
     /**
      * Construct a standard instance for managing megawidgets that exist within
-     * a composite widget with no side effects applier.
+     * a composite widget.
      * 
      * @param parent
      *            Parent composite in which the megawidgets are to be created.
@@ -447,59 +524,9 @@ public abstract class MegawidgetManager {
      *            and
      *            {@link #convertMegawidgetStateToStateElement(String, Object)}
      *            ).
-     * @param minVisibleTime
-     *            Minimum visible time for any time scale megawidgets specified
-     *            within <code>specifiers</code>. If no time scale megawidgets
-     *            are included in <code>specifiers</code>, this is ignored.
-     * @param maxVisibleTime
-     *            Maximum visible time for any time scale megawidgets specified
-     *            within <code>specifiers</code>. If no time scale megawidgets
-     *            are included in <code>specifiers</code>, this is ignored.
-     * @param currentTimeProvider
-     *            Current time provider for any time megawidgets specified
-     *            within <code>specifiers</code>. If <code>null</code>, a
-     *            default current time provider is used. If no time megawidgets
-     *            are included in <code>specifiers</code>, this is ignored.
-     * @param managerResizeListener
-     *            Resize listener to be notified if the manager experiences a
-     *            size change. If <code>null</code>, no such notifications are
-     *            posted.
-     * @throws MegawidgetException
-     *             If one of the megawidget specifiers is invalid, or if an
-     *             error occurs while creating or initializing one of the
-     *             megawidgets.
-     */
-    public MegawidgetManager(Composite parent,
-            List<? extends Map<String, Object>> specifiers,
-            Map<String, Object> state, long minVisibleTime,
-            long maxVisibleTime, ICurrentTimeProvider currentTimeProvider,
-            IManagerResizeListener managerResizeListener)
-            throws MegawidgetException {
-        this(parent, specifiers, state, minVisibleTime, maxVisibleTime,
-                currentTimeProvider, null, managerResizeListener);
-    }
-
-    /**
-     * Construct a standard instance for managing megawidgets that exist within
-     * a composite widget with no resize listener.
-     * 
-     * @param parent
-     *            Parent composite in which the megawidgets are to be created.
-     * @param specifiers
-     *            List of maps, each of the latter holding the parameters of a
-     *            megawidget specifier. Each megawidget specifier must have an
-     *            identifier that is unique within this list.
-     * @param state
-     *            State to be viewed and/or modified via the megawidgets that
-     *            are constructed. Each megawidget specifier defined by <code>
-     *            specifiers</code> should have an entry in this map, mapping
-     *            the specifier's identifier to the value that the megawidget
-     *            will take on (with conversions between megawidget state and
-     *            state element being performed by
-     *            {@link #convertStateElementToMegawidgetState(String, Object)}
-     *            and
-     *            {@link #convertMegawidgetStateToStateElement(String, Object)}
-     *            ).
+     * @param managerListener
+     *            Listener to be notified of events that occur within this
+     *            manager.
      * @param minVisibleTime
      *            Minimum visible time for any time scale megawidgets specified
      *            within <code>specifiers</code>. If no time scale megawidgets
@@ -523,72 +550,14 @@ public abstract class MegawidgetManager {
      */
     public MegawidgetManager(Composite parent,
             List<? extends Map<String, Object>> specifiers,
-            Map<String, Object> state, long minVisibleTime,
+            Map<String, Object> state,
+            IMegawidgetManagerListener managerListener, long minVisibleTime,
             long maxVisibleTime, ICurrentTimeProvider currentTimeProvider,
             ISideEffectsApplier sideEffectsApplier) throws MegawidgetException {
         this(parent, new MegawidgetSpecifierManager(specifiers,
                 IControlSpecifier.class, currentTimeProvider,
-                sideEffectsApplier), state, minVisibleTime, maxVisibleTime,
-                null);
-    }
-
-    /**
-     * Construct a standard instance for managing megawidgets that exist within
-     * a composite widget.
-     * 
-     * @param parent
-     *            Parent composite in which the megawidgets are to be created.
-     * @param specifiers
-     *            List of maps, each of the latter holding the parameters of a
-     *            megawidget specifier. Each megawidget specifier must have an
-     *            identifier that is unique within this list.
-     * @param state
-     *            State to be viewed and/or modified via the megawidgets that
-     *            are constructed. Each megawidget specifier defined by <code>
-     *            specifiers</code> should have an entry in this map, mapping
-     *            the specifier's identifier to the value that the megawidget
-     *            will take on (with conversions between megawidget state and
-     *            state element being performed by
-     *            {@link #convertStateElementToMegawidgetState(String, Object)}
-     *            and
-     *            {@link #convertMegawidgetStateToStateElement(String, Object)}
-     *            ).
-     * @param minVisibleTime
-     *            Minimum visible time for any time scale megawidgets specified
-     *            within <code>specifiers</code>. If no time scale megawidgets
-     *            are included in <code>specifiers</code>, this is ignored.
-     * @param maxVisibleTime
-     *            Maximum visible time for any time scale megawidgets specified
-     *            within <code>specifiers</code>. If no time scale megawidgets
-     *            are included in <code>specifiers</code>, this is ignored.
-     * @param currentTimeProvider
-     *            Current time provider for any time megawidgets specified
-     *            within <code>specifiers</code>. If <code>null</code>, a
-     *            default current time provider is used. If no time megawidgets
-     *            are included in <code>specifiers</code>, this is ignored.
-     * @param sideEffectsApplier
-     *            Side effects applier to be used, or <code>null</code> if no
-     *            side effects application is to be done by the manager.
-     * @param managerResizeListener
-     *            Resize listener to be notified if the manager experiences a
-     *            size change. If <code>null</code>, no such notifications are
-     *            posted.
-     * @throws MegawidgetException
-     *             If one of the megawidget specifiers is invalid, or if an
-     *             error occurs while creating or initializing one of the
-     *             megawidgets.
-     */
-    public MegawidgetManager(Composite parent,
-            List<? extends Map<String, Object>> specifiers,
-            Map<String, Object> state, long minVisibleTime,
-            long maxVisibleTime, ICurrentTimeProvider currentTimeProvider,
-            ISideEffectsApplier sideEffectsApplier,
-            IManagerResizeListener managerResizeListener)
-            throws MegawidgetException {
-        this(parent, new MegawidgetSpecifierManager(specifiers,
-                IControlSpecifier.class, currentTimeProvider,
-                sideEffectsApplier), state, minVisibleTime, maxVisibleTime,
-                managerResizeListener);
+                sideEffectsApplier), state, managerListener, minVisibleTime,
+                maxVisibleTime);
     }
 
     /**
@@ -611,6 +580,9 @@ public abstract class MegawidgetManager {
      *            and
      *            {@link #convertMegawidgetStateToStateElement(String, Object)}
      *            ).
+     * @param managerListener
+     *            Listener to be notified of events that occur within this
+     *            manager.
      * @param minVisibleTime
      *            Minimum visible time for any time scale megawidgets specified
      *            within <code>specifiers</code>. If no time scale megawidgets
@@ -626,54 +598,9 @@ public abstract class MegawidgetManager {
      */
     public MegawidgetManager(Composite parent,
             MegawidgetSpecifierManager specifierManager,
-            Map<String, Object> state, long minVisibleTime, long maxVisibleTime)
-            throws MegawidgetException {
-        this(parent, specifierManager, state, minVisibleTime, maxVisibleTime,
-                null);
-    }
-
-    /**
-     * Construct a standard instance for managing megawidgets that exist within
-     * a composite widget.
-     * 
-     * @param parent
-     *            Parent composite in which the megawidgets are to be created.
-     * @param specifierManager
-     *            Megawidget specifier manager holding the specifiers that are
-     *            to govern the creation of the megawidgets.
-     * @param state
-     *            State to be viewed and/or modified via the megawidgets that
-     *            are constructed. Each megawidget specifier within <code>
-     *            specifierManager</code> should have an entry in this map,
-     *            mapping the specifier's identifier to the value that the
-     *            megawidget will take on (with conversions between megawidget
-     *            state and state element being performed by
-     *            {@link #convertStateElementToMegawidgetState(String, Object)}
-     *            and
-     *            {@link #convertMegawidgetStateToStateElement(String, Object)}
-     *            ).
-     * @param minVisibleTime
-     *            Minimum visible time for any time scale megawidgets specified
-     *            within <code>specifiers</code>. If no time scale megawidgets
-     *            are included in <code>specifiers</code>, this is ignored.
-     * @param maxVisibleTime
-     *            Maximum visible time for any time scale megawidgets specified
-     *            within <code>specifiers</code>. If no time scale megawidgets
-     *            are included in <code>specifiers</code>, this is ignored.
-     * @param managerResizeListener
-     *            Resize listener to be notified if the manager experiences a
-     *            size change. If <code>null</code>, no such notifications are
-     *            posted.
-     * @throws MegawidgetException
-     *             If one of the megawidget specifiers is invalid, or if an
-     *             error occurs while creating or initializing one of the
-     *             megawidgets.
-     */
-    public MegawidgetManager(Composite parent,
-            MegawidgetSpecifierManager specifierManager,
-            Map<String, Object> state, long minVisibleTime,
-            long maxVisibleTime, IManagerResizeListener managerResizeListener)
-            throws MegawidgetException {
+            Map<String, Object> state,
+            IMegawidgetManagerListener managerListener, long minVisibleTime,
+            long maxVisibleTime) throws MegawidgetException {
 
         /*
          * Ensure that the parent has the properly configured layout manager.
@@ -689,8 +616,8 @@ public abstract class MegawidgetManager {
          * Do the heavy lifting for construction.
          */
         Set<IControl> baseMegawidgets = construct(parent, IControl.class,
-                specifierManager, state, minVisibleTime, maxVisibleTime,
-                managerResizeListener);
+                specifierManager, state, managerListener, minVisibleTime,
+                maxVisibleTime);
 
         /*
          * Align the base megawidgets' component elements to one another
@@ -1017,44 +944,6 @@ public abstract class MegawidgetManager {
     // Protected Methods
 
     /**
-     * Respond to a command being issued as a result of a megawidget being
-     * invoked.
-     * 
-     * @param identifier
-     *            Identifier of the command.
-     */
-    protected abstract void commandInvoked(String identifier);
-
-    /**
-     * Respond to a state element having been changed as a result of a
-     * megawidget's state changing.
-     * 
-     * @param identifier
-     *            Identifier of the state element.
-     * @param state
-     *            New value of the state element.
-     */
-    protected abstract void stateElementChanged(String identifier, Object state);
-
-    /**
-     * Respond to an error occurring as a result of a mutable property change
-     * triggered by a side effects application. Subclasses may assume that this
-     * method will only be invoked if a {@link ISideEffectsApplier} was supplied
-     * at construction time, and thus only requires overriding if the latter is
-     * the case.
-     * 
-     * @param exception
-     *            Exception that occurred as a result of the error.
-     */
-    protected void sideEffectMutablePropertyChangeErrorOccurred(
-            MegawidgetPropertyException exception) {
-
-        /*
-         * No action.
-         */
-    }
-
-    /**
      * Convert the specified value for the specified state identifier to a form
      * suitable for the corresponding megawidget's state. This implementation
      * does no conversion, merely returning the original value. Subclasses may
@@ -1123,6 +1012,9 @@ public abstract class MegawidgetManager {
      *            and
      *            {@link #convertMegawidgetStateToStateElement(String, Object)}
      *            ).
+     * @param managerListener
+     *            Listener to be notified of events that occur within this
+     *            manager.
      * @param minVisibleTime
      *            Minimum visible time for any time scale megawidgets specified
      *            within <code>specifiers</code>. If no time scale megawidgets
@@ -1131,10 +1023,6 @@ public abstract class MegawidgetManager {
      *            Maximum visible time for any time scale megawidgets specified
      *            within <code>specifiers</code>. If no time scale megawidgets
      *            are included in <code>specifiers</code>, this is ignored.
-     * @param managerResizeListener
-     *            Resize listener to be notified if the manager experiences a
-     *            size change. If <code>null</code>, no such notifications are
-     *            posted.
      * @return Set of the top-level megawidgets created during this object's
      *         construction.
      * @throws MegawidgetException
@@ -1145,9 +1033,9 @@ public abstract class MegawidgetManager {
     private <P extends Widget, M extends IMegawidget> Set<M> construct(
             P parent, Class<M> superClass,
             MegawidgetSpecifierManager specifierManager,
-            Map<String, Object> state, long minVisibleTime,
-            long maxVisibleTime, IManagerResizeListener managerResizeListener)
-            throws MegawidgetException {
+            Map<String, Object> state,
+            IMegawidgetManagerListener managerListener, long minVisibleTime,
+            long maxVisibleTime) throws MegawidgetException {
 
         /*
          * Remember the specifier manager, parent and state values, and the side
@@ -1157,7 +1045,7 @@ public abstract class MegawidgetManager {
         this.parent = parent;
         this.state = state;
         this.sideEffectsApplier = specifierManager.getSideEffectsApplier();
-        this.managerResizeListener = managerResizeListener;
+        this.managerListener = managerListener;
 
         /*
          * Fill in the megawidget creation parameters map, used to provide
@@ -1551,13 +1439,15 @@ public abstract class MegawidgetManager {
             try {
                 valuesForChangedStates = doSetMutableProperties(changedProperties);
             } catch (MegawidgetPropertyException e) {
-                sideEffectMutablePropertyChangeErrorOccurred(e);
-            }
-            if (valuesForChangedStates != null) {
-                for (String identifier : valuesForChangedStates.keySet()) {
-                    stateElementChanged(identifier,
-                            valuesForChangedStates.get(identifier));
+                if (managerListener != null) {
+                    managerListener
+                            .sideEffectMutablePropertyChangeErrorOccurred(this,
+                                    e);
                 }
+            }
+            if ((valuesForChangedStates != null) && (managerListener != null)) {
+                managerListener.stateElementsChanged(this,
+                        valuesForChangedStates);
             }
         }
         propertyProgrammaticallyChanged = false;

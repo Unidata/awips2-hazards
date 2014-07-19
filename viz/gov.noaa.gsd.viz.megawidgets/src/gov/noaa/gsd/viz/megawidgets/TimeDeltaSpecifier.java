@@ -13,13 +13,10 @@ import gov.noaa.gsd.viz.megawidgets.validators.BoundedComparableValidator;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableList;
 
@@ -53,6 +50,8 @@ import com.google.common.collect.ImmutableList;
  *                                           comments.
  * Jun 17, 2014   3982     Chris.Golden      Changed "isFullWidthOfColumn"
  *                                           property to "isFullWidthOfDetailPanel".
+ * Jun 27, 2014   3512     Chris.Golden      Extracted Unit and made a new
+ *                                           non-inner class out of it (TimeDeltaUnit).
  * </pre>
  * 
  * @author Chris.Golden
@@ -100,164 +99,6 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
      */
     public static final String MEGAWIDGET_STATE_UNIT = "valueUnit";
 
-    // Package Enumerated Types
-
-    /**
-     * Possible unit choices.
-     */
-    enum Unit {
-
-        // Values
-
-        MILLISECOND("ms", 1L, 100), SECOND("seconds", TimeUnit.SECONDS
-                .toMillis(1), 10), MINUTE("minutes", TimeUnit.MINUTES
-                .toMillis(1), 60), HOUR("hours", TimeUnit.HOURS.toMillis(1), 24), DAY(
-                "days", TimeUnit.DAYS.toMillis(1), 7);
-
-        // Private Static Constants
-
-        /**
-         * Hash table mapping identifiers to their units with which they are
-         * associated.
-         */
-        private static final Map<String, Unit> UNITS_FOR_IDENTIFIERS = new HashMap<>();
-        static {
-            for (Unit unit : EnumSet.allOf(Unit.class)) {
-                UNITS_FOR_IDENTIFIERS.put(unit.getIdentifier(), unit);
-            }
-        }
-
-        // Private Variables
-
-        /**
-         * Text identifier.
-         */
-        private String identifier;
-
-        /**
-         * Multiplier applied to a value of this unit in order to get a value in
-         * milliseconds.
-         */
-        private long multiplier;
-
-        /**
-         * Page increment for this unit.
-         */
-        private int pageIncrement;
-
-        // Public Static Methods
-
-        /**
-         * Get the unit that goes with the specified identifier.
-         * 
-         * @param identifier
-         *            Identifier for which to find the matching unit.
-         * @return Unit with the specified identifier, or <code>null</code> if
-         *         no such unit can be found.
-         */
-        public static Unit get(String identifier) {
-            return UNITS_FOR_IDENTIFIERS.get(identifier);
-        }
-
-        // Private Constructors
-
-        /**
-         * Construct a standard instance.
-         * 
-         * @param identifier
-         *            Identifier of this unit.
-         * @param multiplier
-         *            Multiplier to apply to a value of this unit to get a value
-         *            in milliseconds.
-         * @param pageIncrement
-         *            Page increment for this unit.
-         */
-        private Unit(String identifier, long multiplier, int pageIncrement) {
-            this.identifier = identifier;
-            this.multiplier = multiplier;
-            this.pageIncrement = pageIncrement;
-        }
-
-        // Public Methods
-
-        /**
-         * Get the identifier of this unit.
-         * 
-         * @return Identifier of this unit.
-         */
-        public String getIdentifier() {
-            return identifier;
-        }
-
-        /**
-         * Get the page increment for this unit.
-         * 
-         * @return Page increment for this unit.
-         */
-        public int getPageIncrement() {
-            return pageIncrement;
-        }
-
-        /**
-         * Convert the specified value in milliseconds to the same value in this
-         * unit. Any remainder will be dropped.
-         * 
-         * @param value
-         *            Value in milliseconds to convert.
-         * @return Value converted to this unit, with remainders dropped.
-         */
-        public int convertMillisecondsToUnit(long value) {
-            return (int) (value / multiplier);
-        }
-
-        /**
-         * Convert the specified value in milliseconds to the same value in this
-         * unit. Any remainder will be dropped.
-         * 
-         * @param value
-         *            Value in milliseconds, or <code>null</code>.
-         * @return Value converted to this unit, with remainders dropped, or
-         *         <code>null</code> if the pre-converted value was also
-         *         <code>null</code>.
-         */
-        public Integer convertMillisecondsToUnit(Number value) {
-            if (value == null) {
-                return null;
-            } else {
-                return convertMillisecondsToUnit(value.longValue());
-            }
-        }
-
-        /**
-         * Convert the specified value in this unit to the same value in
-         * milliseconds.
-         * 
-         * @param value
-         *            Value in this unit to convert.
-         * @return Value converted to milliseconds.
-         */
-        public long convertUnitToMilliseconds(int value) {
-            return value * multiplier;
-        }
-
-        /**
-         * Convert the specified value in this unit to the same value
-         * milliseconds.
-         * 
-         * @param value
-         *            Value in this unit to convert, or <code>null</code>.
-         * @return Value converted to milliseconds, or <code>null</code> if the
-         *         pre-converted value was also <code>null</code>.
-         */
-        public Long convertUnitToMilliseconds(Number value) {
-            if (value == null) {
-                return null;
-            } else {
-                return convertUnitToMilliseconds(value.intValue());
-            }
-        }
-    };
-
     // Private Variables
 
     /**
@@ -281,17 +122,17 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
      * List of units to be used, in the order they are to be displayed in the
      * list of units available.
      */
-    private final List<Unit> units;
+    private final List<TimeDeltaUnit> units;
 
     /**
      * Unit to be used when megawidget is first created.
      */
-    private final Unit currentUnit;
+    private final TimeDeltaUnit currentUnit;
 
     /**
      * Unit to be used for the state value.
      */
-    private final Unit stateUnit;
+    private final TimeDeltaUnit stateUnit;
 
     // Public Constructors
 
@@ -346,9 +187,9 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
             throw new MegawidgetSpecificationException(getIdentifier(),
                     getType(), MEGAWIDGET_UNIT_CHOICES, null, null);
         }
-        Set<Unit> unitSet = new HashSet<>();
+        Set<TimeDeltaUnit> unitSet = new HashSet<>();
         for (int j = 0; j < choicesList.size(); j++) {
-            Unit unit = Unit.get((String) choicesList.get(j));
+            TimeDeltaUnit unit = TimeDeltaUnit.get((String) choicesList.get(j));
             if (unit == null) {
                 throw new MegawidgetSpecificationException(getIdentifier(),
                         getType(), MEGAWIDGET_UNIT_CHOICES + "[" + j + "]",
@@ -356,7 +197,7 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
             }
             unitSet.add(unit);
         }
-        List<Unit> units = new ArrayList<>(unitSet);
+        List<TimeDeltaUnit> units = new ArrayList<>(unitSet);
         Collections.sort(units);
         this.units = ImmutableList.copyOf(units);
 
@@ -375,7 +216,7 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
         if (value == null) {
             currentUnit = units.get(0);
         } else {
-            currentUnit = Unit.get(value);
+            currentUnit = TimeDeltaUnit.get(value);
             if (currentUnit == null) {
                 throw new MegawidgetSpecificationException(getIdentifier(),
                         getType(), MEGAWIDGET_CURRENT_UNIT_CHOICE, value,
@@ -402,9 +243,9 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
                     "must be unit choice");
         }
         if (value == null) {
-            stateUnit = Unit.MILLISECOND;
+            stateUnit = TimeDeltaUnit.MILLISECOND;
         } else {
-            stateUnit = Unit.get(value);
+            stateUnit = TimeDeltaUnit.get(value);
             if (stateUnit == null) {
                 throw new MegawidgetSpecificationException(getIdentifier(),
                         getType(), MEGAWIDGET_STATE_UNIT, value,
@@ -416,7 +257,7 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
          * Ensure that the state unit is smaller than or equal in size to all
          * the possible units.
          */
-        for (Unit unit : units) {
+        for (TimeDeltaUnit unit : units) {
             if (stateUnit.ordinal() > unit.ordinal()) {
                 throw new MegawidgetSpecificationException(getIdentifier(),
                         getType(), MEGAWIDGET_STATE_UNIT, value,
@@ -465,7 +306,7 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
      * @return List of units; the list should be considered read-only by the
      *         caller.
      */
-    public final List<Unit> getUnits() {
+    public final List<TimeDeltaUnit> getUnits() {
         return units;
     }
 
@@ -474,7 +315,7 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
      * 
      * @return current unit.
      */
-    public final Unit getCurrentUnit() {
+    public final TimeDeltaUnit getCurrentUnit() {
         return currentUnit;
     }
 
@@ -483,7 +324,7 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
      * 
      * @return Unit used for the state.
      */
-    public final Unit getStateUnit() {
+    public final TimeDeltaUnit getStateUnit() {
         return stateUnit;
     }
 }

@@ -21,6 +21,12 @@ package gov.noaa.gsd.viz.mvp.widgets;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * May 08, 2014    2925    Chris.Golden Changed to inherit from new IWidget.
+ * Jun 30, 2014    3512    Chris.Golden Simplified by removing the identifier
+ *                                      association with a handler when
+ *                                      registering it; only one handler is
+ *                                      needed, not one per identifier. This
+ *                                      also maintains symmetry with the
+ *                                      similar change in IStateChanger.
  * </pre>
  * 
  * @author Chris.Golden
@@ -31,16 +37,11 @@ public interface ICommandInvoker<I> extends IWidget<I> {
     // Public Methods
 
     /**
-     * Set the command invocation handler for the specified invoker. The
-     * specified handler will be notified when a command is invoked.
+     * Set the command invocation handler for this invoker. The specified
+     * handler will be notified when a command is invoked.
      * 
-     * @param identifier
-     *            Identifier of the invoker to have its handler set. This may be
-     *            <code>null</code> if this object only handles one type of
-     *            invocation.
      * @param handler
      *            Handler to be used.
      */
-    public void setCommandInvocationHandler(I identifier,
-            ICommandInvocationHandler<I> handler);
+    public void setCommandInvocationHandler(ICommandInvocationHandler<I> handler);
 }

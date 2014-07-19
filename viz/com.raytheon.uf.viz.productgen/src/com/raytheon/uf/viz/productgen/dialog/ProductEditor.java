@@ -72,10 +72,11 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
  * Jun 16, 2014 3519       jsanchez     Initial creation
- * 
+ * Jun 30, 2014 3512       Chris.Golden Changed to work with changes to
+ *                                      ICommandInvoker.
  * </pre>
  * 
  * @author jsanchez
@@ -121,7 +122,7 @@ public class ProductEditor extends CaveSWTDialog {
 
     public static final int ENTRY_PANE_HEIGHT = 300;
 
-    private List<GeneratedProductList> generatedProductListStorage;
+    private final List<GeneratedProductList> generatedProductListStorage;
 
     private List<GeneratedProductList> prevGeneratedProductListStorage;
 
@@ -134,7 +135,7 @@ public class ProductEditor extends CaveSWTDialog {
      */
     private ProgressBar progressBar;
 
-    private ProductGeneration productGeneration = new ProductGeneration();
+    private final ProductGeneration productGeneration = new ProductGeneration();
 
     private Button issueButton;
 
@@ -167,7 +168,7 @@ public class ProductEditor extends CaveSWTDialog {
         }
 
         @Override
-        public void setCommandInvocationHandler(String identifier,
+        public void setCommandInvocationHandler(
                 ICommandInvocationHandler<String> handler) {
             issueHandler = handler;
         }
@@ -191,7 +192,7 @@ public class ProductEditor extends CaveSWTDialog {
         }
 
         @Override
-        public void setCommandInvocationHandler(String identifier,
+        public void setCommandInvocationHandler(
                 ICommandInvocationHandler<String> handler) {
             dismissHandler = handler;
         }
@@ -476,6 +477,7 @@ public class ProductEditor extends CaveSWTDialog {
         @Override
         public void jobFinished(final GeneratedProductList productList) {
             VizApp.runAsync(new Runnable() {
+                @Override
                 public void run() {
 
                     int totalSize = 0;
@@ -574,6 +576,7 @@ public class ProductEditor extends CaveSWTDialog {
                                 DISMISS_DIALOG_TITLE, null,
                                 DISMISS_DIALOG_MESSAGE, MessageDialog.WARNING,
                                 buttonLabels, 0) {
+                            @Override
                             protected void buttonPressed(int buttonId) {
                                 setReturnCode(buttonId);
                                 close();
@@ -616,11 +619,12 @@ public class ProductEditor extends CaveSWTDialog {
         return revertButton;
     }
 
-    private IPythonJobListener<GeneratedProductList> generateListener = new IPythonJobListener<GeneratedProductList>() {
+    private final IPythonJobListener<GeneratedProductList> generateListener = new IPythonJobListener<GeneratedProductList>() {
 
         @Override
         public void jobFinished(final GeneratedProductList productList) {
             VizApp.runAsync(new Runnable() {
+                @Override
                 public void run() {
                     try {
                         CTabItem[] currentFormatTabs = getCurrentFormatTabs();

@@ -46,6 +46,8 @@ import com.google.common.collect.Lists;
  *                                           megawidget changes, and to
  *                                           embed all megawidgets within
  *                                           expand bars.
+ * Jun 30, 2014    3512    Chris.Golden      Changed to work with new
+ *                                           parameters editor changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -229,6 +231,7 @@ public class MegawidgetGeneratorDemo extends Dialog {
                             - TimeUnit.DAYS.toMillis(1L),
                     System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1L),
                     null, new IParametersEditorListener<SimpleParameterInfo>() {
+
                         @Override
                         public void parameterValueChanged(
                                 SimpleParameterInfo parameter, Object value) {
@@ -237,10 +240,31 @@ public class MegawidgetGeneratorDemo extends Dialog {
                                     + value.getClass().getSimpleName() + ": "
                                     + value);
                         }
-                    }, new IManagerResizeListener() {
 
                         @Override
-                        public void sizeChanged(String identifier) {
+                        public void parameterValuesChanged(
+                                Map<SimpleParameterInfo, Object> valuesForParameters) {
+                            StringBuilder stringBuilder = new StringBuilder();
+                            for (Map.Entry<SimpleParameterInfo, Object> entry : valuesForParameters
+                                    .entrySet()) {
+                                if (stringBuilder.length() > 0) {
+                                    stringBuilder.append(", ");
+                                }
+                                stringBuilder.append("\"");
+                                stringBuilder.append(entry.getKey());
+                                stringBuilder.append("\" changed to ");
+                                stringBuilder.append(entry.getValue()
+                                        .getClass().getSimpleName());
+                                stringBuilder.append(": ");
+                                stringBuilder.append(entry.getValue());
+                            }
+                            System.err
+                                    .println("One or more parameters changed ("
+                                            + stringBuilder + ")");
+                        }
+
+                        @Override
+                        public void sizeChanged(SimpleParameterInfo parameter) {
                             inner.setSize(inner.computeSize(SWT.DEFAULT,
                                     SWT.DEFAULT));
                             scrolledComposite.setMinSize(inner.computeSize(

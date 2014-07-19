@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.Map;
+
 /**
  * State change listener, an interface that describes the methods that must be
  * implemented by any class that wishes to be notified when the state of an
@@ -21,12 +23,14 @@ package gov.noaa.gsd.viz.megawidgets;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Sep 25, 2013    2168    Chris.Golden      Changed erroneous "widget"
- *                                           references to "megawidget"
- *                                           in comments and variable
- *                                           names.
- * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           references to "megawidget" in
+ *                                           comments and variable names.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 30, 2014    3512    Chris.Golden      Changed to include new method that
+ *                                           allows notification of multiple
+ *                                           simultaneous state changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -49,4 +53,20 @@ public interface IStateChangeListener {
      */
     public void megawidgetStateChanged(IStateful megawidget, String identifier,
             Object state);
+
+    /**
+     * Receive notification that the given megawidget's states have changed.
+     * 
+     * @param megawidget
+     *            Megawidget that experienced the state changes.
+     * @param statesForIdentifiers
+     *            Map pairing state identifiers with their new values.
+     *            Multi-state megawidgets do not have to include all of their
+     *            states in this map, only those that have changed. Note that
+     *            this map may be modified by implementations of this method,
+     *            since it will be a copy of any map of states kept by the
+     *            megawidget.
+     */
+    public void megawidgetStatesChanged(IStateful megawidget,
+            Map<String, Object> statesForIdentifiers);
 }

@@ -50,6 +50,7 @@ import org.eclipse.swt.widgets.ToolTip;
  * either constrained, meaning that they are constrained by the values of
  * adjacent constrained marked values, or free, meaning that they are not
  * constrained by other marked values in any way.
+ * </p>
  * <p>
  * Additionally, widget each may have zero or more values represented by
  * "thumbs" that may be moved in order to manipulate said values. Marked values
@@ -60,11 +61,19 @@ import org.eclipse.swt.widgets.ToolTip;
  * other thumbs in any way. Each thumb of either type may be editable or
  * read-only at any given time; if in the latter state, that thumb may not be
  * moved via user interaction.
+ * </p>
+ * <p>
+ * Constrained thumb values may be linked together so that when one is dragged
+ * they are all dragged, maintaining the distances they had from one another
+ * before the drag occurred, via the
+ * {@link #setConstrainedThumbIntervalLocked(boolean)}.
+ * </p>
  * <p>
  * Colors may be assigned to the marked values, to the ranges between the marked
  * values, and to the ranges in between the thumb values. Subclasses should
  * honor these color choices by using them in some capacity when rendering said
  * marked values and ranges.
+ * </p>
  * <p>
  * By default, the control allows thumb values to be anything between the
  * current allowable minimum and maximum values. If a coarser value set is
@@ -73,6 +82,7 @@ import org.eclipse.swt.widgets.ToolTip;
  * the correct "snap" values for values of too fine a granularity. A snap value
  * calculator is only used for values generated via GUI manipulation of thumbs;
  * it is not used for programmatic manipulation of thumb or marked values.
+ * </p>
  * 
  * <pre>
  * 
@@ -111,6 +121,9 @@ import org.eclipse.swt.widgets.ToolTip;
  *                                           were being changed by dragging
  *                                           of other thumbs in the same
  *                                           widget.
+ * Jun 27, 2014    3512    Chris.Golden      Added option to lock intervals
+ *                                           between constrained values,
+ *                                           and changed commenting style.
  * </pre>
  * 
  * @author Chris.Golden
@@ -430,6 +443,11 @@ public abstract class MultiValueLinearControl extends Canvas {
     private boolean constrainedThumbsDrawnAboveFree = true;
 
     /**
+     * Flag indicating whether the constrained thumbs' intervals are locked.
+     */
+    private boolean constrainedThumbIntervalLocked = false;
+
+    /**
      * Flag indicating whether the constrained marked values are to be drawn
      * above or below the free marked values.
      */
@@ -552,7 +570,9 @@ public abstract class MultiValueLinearControl extends Canvas {
             long maximumValue) {
         super(parent, SWT.NONE);
 
-        // Initialize the widget.
+        /*
+         * Initialize the widget.
+         */
         initializeMultiValueLinearControl(minimumValue, maximumValue);
     }
 
@@ -573,7 +593,9 @@ public abstract class MultiValueLinearControl extends Canvas {
         super(parent, SWT.NONE);
         this.resizeBehavior = resizeBehavior;
 
-        // Initialize the widget.
+        /*
+         * Initialize the widget.
+         */
         initializeMultiValueLinearControl(minimumValue, maximumValue);
     }
 
@@ -620,15 +642,21 @@ public abstract class MultiValueLinearControl extends Canvas {
     public final void setEnabled(boolean enable) {
         super.setEnabled(enable);
 
-        // End any drag of a thumb.
+        /*
+         * End any drag of a thumb.
+         */
         if ((enable == false) && (draggingThumb != null)) {
             thumbDragEnded(null);
         }
 
-        // Ensure that the correct thumb is active.
+        /*
+         * Ensure that the correct thumb is active.
+         */
         determineActiveThumb();
 
-        // Perform any superclass-specific tasks.
+        /*
+         * Perform any superclass-specific tasks.
+         */
         widgetEnabledStateChanged();
     }
 
@@ -734,6 +762,31 @@ public abstract class MultiValueLinearControl extends Canvas {
     }
 
     /**
+     * Determine whether constrained thumbs' intervals are locked. If they are
+     * locked, dragging one thumb causes other thumbs to move along with it,
+     * maintaining their distances from one another.
+     * 
+     * @return Flag indicating whether constrained thumbs' intervals are locked.
+     */
+    public final boolean isConstrainedThumbIntervalLocked() {
+        return constrainedThumbIntervalLocked;
+    }
+
+    /**
+     * Set the flag indicating whether constrained thumbs' intervals are locked.
+     * When locked, dragging one thumb causes other thumbs to move along with
+     * it, maintaining their distances from one another.
+     * 
+     * @param value
+     *            Flag indicating whether constrained thumbs' intervals are
+     *            locked.
+     */
+    public final void setConstrainedThumbIntervalLocked(boolean value) {
+        constrainedThumbIntervalLocked = value;
+        calculateConstrainedThumbValueBounds();
+    }
+
+    /**
      * Determine whether constrained marked values are to be drawn above or
      * below free ones, if marked values of different types overlap.
      * 
@@ -790,24 +843,32 @@ public abstract class MultiValueLinearControl extends Canvas {
     public final void setAllowableValueRange(long minimumValue,
             long maximumValue) {
 
-        // Ensure that the minimum value is less than the maximum value.
+        /*
+         * Ensure that the minimum value is less than the maximum value.
+         */
         if (minimumValue >= maximumValue) {
             throw new IllegalArgumentException(
                     "minimum value must be less than maximum");
         }
 
-        // If the boundaries have not changed, do nothing more.
+        /*
+         * If the boundaries have not changed, do nothing more.
+         */
         if ((this.minimumValue == minimumValue)
                 && (this.maximumValue == maximumValue)) {
             return;
         }
 
-        // Set the new values.
+        /*
+         * Set the new values.
+         */
         this.minimumValue = minimumValue;
         this.maximumValue = maximumValue;
 
-        // Ensure that the visible range is properly bounded by the new
-        // allowable range.
+        /*
+         * Ensure that the visible range is properly bounded by the new
+         * allowable range.
+         */
         long lowerVisValue = lowerVisibleValue;
         long upperVisValue = upperVisibleValue;
         if ((minimumValue > lowerVisValue) || (maximumValue < lowerVisValue)) {
@@ -825,16 +886,20 @@ public abstract class MultiValueLinearControl extends Canvas {
             }
         }
 
-        // If the visible range has to be changed to fit within the new
-        // allowable range, change it.
+        /*
+         * If the visible range has to be changed to fit within the new
+         * allowable range, change it.
+         */
         if ((lowerVisValue != lowerVisibleValue)
                 || (upperVisValue != upperVisibleValue)) {
             visibleValueRangeChanged(lowerVisValue, upperVisValue,
                     ChangeSource.METHOD_INVOCATION);
         }
 
-        // Adjust the minimum thumb gap if it is now too large to allow all
-        // the thumbs to fit within the allowable value range.
+        /*
+         * Adjust the minimum thumb gap if it is now too large to allow all the
+         * thumbs to fit within the allowable value range.
+         */
         if ((constrainedThumbValues.size() > 1)
                 && (minimumConstrainedThumbGap
                         * (constrainedThumbValues.size() - 1) > getMaximumAllowableValue()
@@ -843,17 +908,23 @@ public abstract class MultiValueLinearControl extends Canvas {
                     / (constrainedThumbValues.size() - 1);
         }
 
-        // Recalculate the thumb value minimum and maximum boundaries.
+        /*
+         * Recalculate the thumb value minimum and maximum boundaries.
+         */
         calculateConstrainedThumbValueBounds();
 
-        // Ensure that the thumb values and marked values fall within the
-        // new allowable range.
+        /*
+         * Ensure that the thumb values and marked values fall within the new
+         * allowable range.
+         */
         correctConstrainedThumbValues();
         correctFreeThumbValues();
         correctConstrainedMarkedValues();
         correctFreeMarkedValues();
 
-        // Make sure that the right thumb, if any, is active.
+        /*
+         * Make sure that the right thumb, if any, is active.
+         */
         scheduleDetermineActiveThumbIfEnabled();
     }
 
@@ -888,14 +959,18 @@ public abstract class MultiValueLinearControl extends Canvas {
     public final void setVisibleValueRange(long lowerVisibleValue,
             long upperVisibleValue) {
 
-        // Ensure that the lower visible value is less than the upper
-        // visible value.
+        /*
+         * Ensure that the lower visible value is less than the upper visible
+         * value.
+         */
         if (lowerVisibleValue >= upperVisibleValue) {
             throw new IllegalArgumentException(
                     "lower visible value must be less than upper");
         }
 
-        // Change the visible value range.
+        /*
+         * Change the visible value range.
+         */
         visibleValueRangeChanged(lowerVisibleValue, upperVisibleValue,
                 ChangeSource.METHOD_INVOCATION);
     }
@@ -952,8 +1027,10 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     public final boolean setConstrainedThumbValue(int index, long value) {
 
-        // Sanity check the value provided, and use it only if it
-        // passes these checks.
+        /*
+         * Sanity check the value provided, and use it only if it passes these
+         * checks.
+         */
         if ((value < minimumValue) || (value > maximumValue)) {
             throw new IllegalArgumentException("value " + value
                     + " for constrained thumb " + index + " out of range ("
@@ -977,6 +1054,15 @@ public abstract class MultiValueLinearControl extends Canvas {
     }
 
     /**
+     * Get the list of values of the constrained thumbs.
+     * 
+     * @return Copy of the list of the values.
+     */
+    public final List<Long> getConstrainedThumbValues() {
+        return new ArrayList<>(constrainedThumbValues);
+    }
+
+    /**
      * Set the values for all constrained thumbs. Any new thumbs created as a
      * result are assumed to be editable.
      * 
@@ -992,7 +1078,9 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     public final boolean setConstrainedThumbValues(long... values) {
 
-        // Ensure that the values obey the usual rules.
+        /*
+         * Ensure that the values obey the usual rules.
+         */
         for (int j = 0; j < values.length; j++) {
             if (((j > 0) && (values[j] < values[j - 1]))
                     || ((j < values.length - 1) && (values[j] > values[j + 1]))) {
@@ -1012,21 +1100,29 @@ public abstract class MultiValueLinearControl extends Canvas {
                     "values for constrained thumbs out of range");
         }
 
-        // Determine whether the value minimum and maximum boundaries
-        // need recalculating once these new values are set.
+        /*
+         * Determine whether the value minimum and maximum boundaries need
+         * recalculating once these new values are set.
+         */
         boolean recalculateBoundaries = ((values.length != constrainedThumbValues
                 .size()) || (areAllConstrainedValuesEditable() == false));
 
-        // Change the values.
+        /*
+         * Change the values.
+         */
         constrainedThumbValuesChanged(values, ChangeSource.METHOD_INVOCATION);
 
-        // Recalculate the thumb value minimum and maximum boundaries
-        // if necessary.
+        /*
+         * Recalculate the thumb value minimum and maximum boundaries if
+         * necessary.
+         */
         if (recalculateBoundaries) {
             calculateConstrainedThumbValueBounds();
         }
 
-        // Determine the active thumb, and return success.
+        /*
+         * Determine the active thumb, and return success.
+         */
         scheduleDetermineActiveThumbIfEnabled();
         return true;
     }
@@ -1053,24 +1149,32 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     public final void setConstrainedThumbEditable(int index, boolean editable) {
 
-        // Remember the new flag value, or do nothing if the new value
-        // is the same as the current one.
+        /*
+         * Remember the new flag value, or do nothing if the new value is the
+         * same as the current one.
+         */
         if (editable == constrainedThumbValuesEditable.get(index)) {
             return;
         }
         constrainedThumbValuesEditable.set(index, editable);
 
-        // If a thumb being dragged is now uneditable, end the drag.
+        /*
+         * If a thumb being dragged is now uneditable, end the drag.
+         */
         if ((editable == false) && (draggingThumb != null)
                 && (draggingThumb.type == ValueType.CONSTRAINED)
                 && (draggingThumb.index == index)) {
             thumbDragEnded(null);
         }
 
-        // Ensure that the correct thumb is active.
+        /*
+         * Ensure that the correct thumb is active.
+         */
         scheduleDetermineActiveThumbIfEnabled();
 
-        // Recalculate the thumb value minimum and maximum boundaries.
+        /*
+         * Recalculate the thumb value minimum and maximum boundaries.
+         */
         calculateConstrainedThumbValueBounds();
     }
 
@@ -1106,13 +1210,24 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     public final void setFreeThumbValue(int index, long value) {
 
-        // Sanity check the value provided, and use it only if it
-        // passes these checks.
+        /*
+         * Sanity check the value provided, and use it only if it passes these
+         * checks.
+         */
         if ((value < minimumValue) || (value > maximumValue)) {
             throw new IllegalArgumentException("value " + value
                     + " for free thumb " + index + " out of range");
         }
         freeThumbValueChanged(index, value, ChangeSource.METHOD_INVOCATION);
+    }
+
+    /**
+     * Get the list of values of the free thumbs.
+     * 
+     * @return Copy of the list of the values.
+     */
+    public final List<Long> getFreeThumbValues() {
+        return new ArrayList<>(freeThumbValues);
     }
 
     /**
@@ -1127,7 +1242,9 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     public final void setFreeThumbValues(long... values) {
 
-        // Ensure that the values obey the usual rules.
+        /*
+         * Ensure that the values obey the usual rules.
+         */
         for (long value : values) {
             if ((value < minimumValue) || (value > maximumValue)) {
                 throw new IllegalArgumentException("values for free "
@@ -1135,10 +1252,14 @@ public abstract class MultiValueLinearControl extends Canvas {
             }
         }
 
-        // Change the values.
+        /*
+         * Change the values.
+         */
         freeThumbValuesChanged(values, ChangeSource.METHOD_INVOCATION);
 
-        // Determine the active thumb.
+        /*
+         * Determine the active thumb.
+         */
         scheduleDetermineActiveThumbIfEnabled();
     }
 
@@ -1164,21 +1285,27 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     public final void setFreeThumbEditable(int index, boolean editable) {
 
-        // Remember the new flag value, or do nothing if the new value
-        // is the same as the current one.
+        /*
+         * Remember the new flag value, or do nothing if the new value is the
+         * same as the current one.
+         */
         if (editable == freeThumbValuesEditable.get(index)) {
             return;
         }
         freeThumbValuesEditable.set(index, editable);
 
-        // If a thumb being dragged is now uneditable, end the drag.
+        /*
+         * If a thumb being dragged is now uneditable, end the drag.
+         */
         if ((editable == false) && (draggingThumb != null)
                 && (draggingThumb.type == ValueType.FREE)
                 && (draggingThumb.index == index)) {
             thumbDragEnded(null);
         }
 
-        // Ensure that the correct thumb is active.
+        /*
+         * Ensure that the correct thumb is active.
+         */
         scheduleDetermineActiveThumbIfEnabled();
     }
 
@@ -1227,6 +1354,15 @@ public abstract class MultiValueLinearControl extends Canvas {
         constrainedMarkedValues.set(index, value);
         redraw();
         return true;
+    }
+
+    /**
+     * Get the list of values of the constrained marked values.
+     * 
+     * @return Copy of the list of the values.
+     */
+    public final List<Long> getConstrainedMarkedValues() {
+        return new ArrayList<>(constrainedMarkedValues);
     }
 
     /**
@@ -1300,6 +1436,15 @@ public abstract class MultiValueLinearControl extends Canvas {
     }
 
     /**
+     * Get the list of values of the free marked values.
+     * 
+     * @return Copy of the list of the values.
+     */
+    public final List<Long> getFreeMarkedValues() {
+        return new ArrayList<>(freeMarkedValues);
+    }
+
+    /**
      * Set all the free marked values.
      * 
      * @param values
@@ -1342,7 +1487,9 @@ public abstract class MultiValueLinearControl extends Canvas {
     public final boolean setMinimumDeltaBetweenConstrainedThumbs(
             long minimumDelta) {
 
-        // Sanity check the provided delta, and if it is okay, use it.
+        /*
+         * Sanity check the provided delta, and if it is okay, use it.
+         */
         if (minimumDelta < 0L) {
             throw new IllegalArgumentException("minimum delta between "
                     + "constrained thumbs must be 0 or greater");
@@ -1351,17 +1498,25 @@ public abstract class MultiValueLinearControl extends Canvas {
             return false;
         } else {
 
-            // Remember the new delta.
+            /*
+             * Remember the new delta.
+             */
             minimumConstrainedThumbGap = minimumDelta;
 
-            // Recalculate the thumb value minimum and maximum boundaries.
+            /*
+             * Recalculate the thumb value minimum and maximum boundaries.
+             */
             calculateConstrainedThumbValueBounds();
 
-            // Ensure that the thumb values are far enough apart
-            // given the new delta.
+            /*
+             * Ensure that the thumb values are far enough apart given the new
+             * delta.
+             */
             correctConstrainedThumbValues();
 
-            // Determine the active thumb, and return success.
+            /*
+             * Determine the active thumb, and return success.
+             */
             scheduleDetermineActiveThumbIfEnabled();
             return true;
         }
@@ -1379,9 +1534,11 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     public final Color getConstrainedMarkedValueColor(int index) {
 
-        // If the index is too high for the colors list, return null if it is
-        // within bounds for the marked value list. Otherwise, an index out of
-        // bounds exception will occur when the former is accessed below.
+        /*
+         * If the index is too high for the colors list, return null if it is
+         * within bounds for the marked value list. Otherwise, an index out of
+         * bounds exception will occur when the former is accessed below.
+         */
         if (index >= constrainedMarkedValueColors.size()) {
             if (index < getConstrainedMarkedValueCount()) {
                 return null;
@@ -1420,9 +1577,11 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     public final Color getFreeMarkedValueColor(int index) {
 
-        // If the index is too high for the colors list, return null if it is
-        // within bounds for the marked value list. Otherwise, an index out of
-        // bounds exception will occur when the former is accessed below.
+        /*
+         * If the index is too high for the colors list, return null if it is
+         * within bounds for the marked value list. Otherwise, an index out of
+         * bounds exception will occur when the former is accessed below.
+         */
         if (index >= freeMarkedValueColors.size()) {
             if (index < getFreeMarkedValueCount()) {
                 return null;
@@ -1464,9 +1623,11 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     public final Color getConstrainedMarkedRangeColor(int index) {
 
-        // If the index is too high for the colors list, return null if it is
-        // within bounds for the marked range list. Otherwise, an index out of
-        // bounds exception will occur when the former is accessed below.
+        /*
+         * If the index is too high for the colors list, return null if it is
+         * within bounds for the marked range list. Otherwise, an index out of
+         * bounds exception will occur when the former is accessed below.
+         */
         if (index >= constrainedMarkedRangeColors.size()) {
             if (index < getConstrainedMarkedValueCount() + 1) {
                 return null;
@@ -1511,9 +1672,11 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     public final Color getConstrainedThumbRangeColor(int index) {
 
-        // If the index is too high for the colors list, return null if it is
-        // within bounds for the thumb range list. Otherwise, an index out of
-        // bounds exception will occur when the former is accessed below.
+        /*
+         * If the index is too high for the colors list, return null if it is
+         * within bounds for the thumb range list. Otherwise, an index out of
+         * bounds exception will occur when the former is accessed below.
+         */
         if (index >= constrainedThumbRangeColors.size()) {
             if (index < getConstrainedThumbValueCount() + 1) {
                 return null;
@@ -1594,26 +1757,36 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     public final void setInsets(int left, int top, int right, int bottom) {
 
-        // Remember the insets.
+        /*
+         * Remember the insets.
+         */
         leftInset = left;
         topInset = top;
         rightInset = right;
         bottomInset = bottom;
 
-        // Recalculate the preferred size.
+        /*
+         * Recalculate the preferred size.
+         */
         computePreferredSize(true);
 
-        // Determine the active thumb.
+        /*
+         * Determine the active thumb.
+         */
         scheduleDetermineActiveThumbIfEnabled();
     }
 
     @Override
     public final Point computeSize(int wHint, int hHint, boolean changed) {
 
-        // Calculate the preferred size if needed.
+        /*
+         * Calculate the preferred size if needed.
+         */
         computePreferredSize(false);
 
-        // Return the size based upon the preferred size and the hints.
+        /*
+         * Return the size based upon the preferred size and the hints.
+         */
         return new Point((wHint == SWT.DEFAULT ? preferredWidth : wHint),
                 (hHint == SWT.DEFAULT ? preferredHeight : hHint));
     }
@@ -1696,7 +1869,9 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     protected void handleUnusedMouseRelease(MouseEvent e) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     /**
@@ -1730,7 +1905,9 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     protected void widgetDisposed(DisposeEvent e) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     /**
@@ -1745,7 +1922,9 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     protected void freeMarkedValueColorChanged(int index, Color color) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     /**
@@ -1760,7 +1939,9 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     protected void constrainedMarkedValueColorChanged(int index, Color color) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     /**
@@ -1775,7 +1956,9 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     protected void constrainedMarkedRangeColorChanged(int index, Color color) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     /**
@@ -1790,7 +1973,9 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     protected void constrainedThumbRangeColorChanged(int index, Color color) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     /**
@@ -1976,16 +2161,21 @@ public abstract class MultiValueLinearControl extends Canvas {
     protected final boolean zoomVisibleValueRange(long newVisibleValueRange,
             ChangeSource source) {
 
-        // Determine the value currently visible in the center of the
-        // viewport.
+        /*
+         * Determine the value currently visible in the center of the viewport.
+         */
         long center = ((getUpperVisibleValue() + 1L - getLowerVisibleValue()) / 2L)
                 + getLowerVisibleValue();
 
-        // Get the new visible value range boundaries.
+        /*
+         * Get the new visible value range boundaries.
+         */
         long lower = center - (newVisibleValueRange / 2);
         long upper = lower + newVisibleValueRange - 1L;
 
-        // Sanity check the bounds.
+        /*
+         * Sanity check the bounds.
+         */
         if (lower < getMinimumAllowableValue()) {
             upper += getMinimumAllowableValue() - lower;
             lower = getMinimumAllowableValue();
@@ -1995,8 +2185,10 @@ public abstract class MultiValueLinearControl extends Canvas {
             upper = getMaximumAllowableValue();
         }
 
-        // If the value range has changed from what the viewport al-
-        // ready had, commit to the change.
+        /*
+         * If the value range has changed from what the viewport already had,
+         * commit to the change.
+         */
         if ((lower != getLowerVisibleValue())
                 || (upper != getUpperVisibleValue())) {
             visibleValueRangeChanged(lower, upper, source);
@@ -2123,13 +2315,17 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     protected final void scheduleDetermineActiveThumbIfEnabled() {
 
-        // If the requested determination is already scheduled or the widget
-        // is disabled, do nothing.
+        /*
+         * If the requested determination is already scheduled or the widget is
+         * disabled, do nothing.
+         */
         if (determinationOfActiveThumbScheduled || (isEnabled() == false)) {
             return;
         }
 
-        // Schedule a determination to be made after other events are processed.
+        /*
+         * Schedule a determination to be made after other events are processed.
+         */
         determinationOfActiveThumbScheduled = true;
         getDisplay().asyncExec(new Runnable() {
             @Override
@@ -2165,16 +2361,21 @@ public abstract class MultiValueLinearControl extends Canvas {
     private void initializeMultiValueLinearControl(long minimumValue,
             long maximumValue) {
 
-        // Remember the minimum and maximum values.
+        /*
+         * Remember the minimum and maximum values.
+         */
         this.minimumValue = minimumValue;
         this.maximumValue = maximumValue;
 
-        // Determine the mark and thumb type drawing and hit test
-        // orders.
+        /*
+         * Determine the mark and thumb type drawing and hit test orders.
+         */
         determineMarkTypeOrder();
         determineThumbTypeOrders();
 
-        // Add a listener for paint request events.
+        /*
+         * Add a listener for paint request events.
+         */
         addPaintListener(new PaintListener() {
             @Override
             public void paintControl(PaintEvent e) {
@@ -2182,7 +2383,9 @@ public abstract class MultiValueLinearControl extends Canvas {
             }
         });
 
-        // Add a listener for resize events.
+        /*
+         * Add a listener for resize events.
+         */
         addControlListener(new ControlAdapter() {
             @Override
             public void controlResized(ControlEvent e) {
@@ -2190,7 +2393,9 @@ public abstract class MultiValueLinearControl extends Canvas {
             }
         });
 
-        // Add a listener for dispose events.
+        /*
+         * Add a listener for dispose events.
+         */
         addDisposeListener(new DisposeListener() {
             @Override
             public void widgetDisposed(DisposeEvent e) {
@@ -2206,13 +2411,16 @@ public abstract class MultiValueLinearControl extends Canvas {
             }
         });
 
-        // Add mouse listeners to handle drags, clicks, and mouse-over
-        // events.
+        /*
+         * Add mouse listeners to handle drags, clicks, and mouse-over events.
+         */
         addMouseListener(new MouseListener() {
             @Override
             public void mouseDoubleClick(MouseEvent e) {
 
-                // No action.
+                /*
+                 * No action.
+                 */
             }
 
             @Override
@@ -2281,25 +2489,31 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     private void controlResized(ControlEvent e) {
 
-        // If the widget is visible, the width has previously been
-        // meaningfully recorded, and the resize behavior requires that
-        // the viewport change with size, calculate the new value range
-        // for the new size.
+        /*
+         * If the widget is visible, the width has previously been meaningfully
+         * recorded, and the resize behavior requires that the viewport change
+         * with size, calculate the new value range for the new size.
+         */
         Rectangle clientArea = getClientArea();
         long lowerValue = -1L, upperValue = -1L;
         if (isVisible() && (lastWidth != 0)
                 && (resizeBehavior == ResizeBehavior.CHANGE_VALUE_RANGE)) {
 
-            // Get the value delta per pixel.
+            /*
+             * Get the value delta per pixel.
+             */
             double valueDeltaPerPixel = ((double) (upperVisibleValue + 1L - lowerVisibleValue))
                     / (double) lastWidth;
 
-            // Determine how large the new viewport should be as a
-            // value delta.
+            /*
+             * Determine how large the new viewport should be as a value delta.
+             */
             long valueRange = Math.round(valueDeltaPerPixel * clientArea.width);
 
-            // Get the lower and upper bounds of the viewport, adjust-
-            // ing them if they go beyond the allowable values.
+            /*
+             * Get the lower and upper bounds of the viewport, adjusting them if
+             * they go beyond the allowable values.
+             */
             lowerValue = lowerVisibleValue;
             upperValue = lowerVisibleValue + valueRange;
             if (upperValue > maximumValue) {
@@ -2311,15 +2525,21 @@ public abstract class MultiValueLinearControl extends Canvas {
             }
         }
 
-        // Remember the now-current width.
+        /*
+         * Remember the now-current width.
+         */
         lastWidth = clientArea.width;
         lastHeight = clientArea.height;
 
-        // Recalculate the tooltip bounds.
+        /*
+         * Recalculate the tooltip bounds.
+         */
         tooltipBoundsChanged();
 
-        // If the value range was calculated above, commit the change;
-        // otherwise, determine the active thumb.
+        /*
+         * If the value range was calculated above, commit the change;
+         * otherwise, determine the active thumb.
+         */
         if (lowerValue != -1L) {
             visibleValueRangeChanged(lowerValue, upperValue,
                     ChangeSource.RESIZE);
@@ -2336,17 +2556,21 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     private void mousePressOverWidget(MouseEvent e) {
 
-        // Reset the flag indicating that the viewport was actually
-        // dragged.
+        /*
+         * Reset the flag indicating that the viewport was actually dragged.
+         */
         viewportWasActuallyDragged = false;
 
-        // Get the editable thumb over which the mouse event occurred,
-        // if any.
+        /*
+         * Get the editable thumb over which the mouse event occurred, if any.
+         */
         ThumbSpecifier newDraggingThumb = getEditableThumbForCoordinates(e.x,
                 e.y);
 
-        // If a thumb has become active or inactive, redraw; otherwise,
-        // if viewport dragging is allowed, start such a drag.
+        /*
+         * If a thumb has become active or inactive, redraw; otherwise, if
+         * viewport dragging is allowed, start such a drag.
+         */
         if ((draggingThumb != newDraggingThumb)
                 && ((draggingThumb == null) || (draggingThumb
                         .equals(newDraggingThumb) == false))) {
@@ -2441,14 +2665,18 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     private void determineActiveThumb() {
 
-        // Calculate the mouse location relative to this widget.
+        /*
+         * Calculate the mouse location relative to this widget.
+         */
         Point mouseLocation = getDisplay().getCursorLocation();
         Point offset = toDisplay(0, 0);
         mouseLocation.x -= offset.x;
         mouseLocation.y -= offset.y;
 
-        // If the mouse is over the widget, process its position to deter-
-        // mine which thumb, if any, should now be active.
+        /*
+         * If the mouse is over the widget, process its position to determine
+         * which thumb, if any, should now be active.
+         */
         if ((mouseLocation.x >= 0) && (mouseLocation.x < lastWidth)
                 && (mouseLocation.y >= 0) && (mouseLocation.y < lastHeight)) {
             mouseOverWidget(mouseLocation.x, mouseLocation.y);
@@ -2466,23 +2694,30 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     private void mouseOverWidget(int x, int y) {
 
-        // If the widget is disposed, do nothing.
+        /*
+         * If the widget is disposed, do nothing.
+         */
         if (isDisposed()) {
             return;
         }
 
-        // Get the editable thumb over which the mouse event occurred,
-        // if any.
+        /*
+         * Get the editable thumb over which the mouse event occurred, if any.
+         */
         ThumbSpecifier newThumb = getEditableThumbForCoordinates(x, y);
 
-        // If a thumb has become active or inactive, redraw.
+        /*
+         * If a thumb has become active or inactive, redraw.
+         */
         if ((activeThumb != newThumb)
                 && ((activeThumb == null) || (activeThumb.equals(newThumb) == false))) {
             activeThumb = newThumb;
             redraw();
         }
 
-        // Show or hide the thumb tooltip as appropriate.
+        /*
+         * Show or hide the thumb tooltip as appropriate.
+         */
         showTooltipForThumb(newThumb);
     }
 
@@ -2496,15 +2731,19 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     private void showTooltipForThumb(ThumbSpecifier thumb) {
 
-        // If the tooltip does not exist, do nothing.
+        /*
+         * If the tooltip does not exist, do nothing.
+         */
         if (tooltip == null) {
             return;
         }
 
-        // If the mouse is over a thumb, show the tooltip if there is
-        // text available for it. If the tooltip is already visible
-        // and either there is no text available or if no thumb is
-        // being hovered over, hide the tooltip.
+        /*
+         * If the mouse is over a thumb, show the tooltip if there is text
+         * available for it. If the tooltip is already visible and either there
+         * is no text available or if no thumb is being hovered over, hide the
+         * tooltip.
+         */
         if (tooltipTextProvider != null) {
             if (thumb != null) {
                 String[] text;
@@ -2547,26 +2786,36 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     private void showTooltipForPoint(MouseEvent e) {
 
-        // If the tooltip does not exist, do nothing.
+        /*
+         * If the tooltip does not exist, do nothing.
+         */
         if (tooltip == null) {
             return;
         }
 
-        // If the tooltip area does not exist or does not
-        // does not contain the point, do nothing.
+        /*
+         * If the tooltip area does not exist or does not contain the point, do
+         * nothing.
+         */
         if ((tooltipBounds == null) || !getTooltipBounds().contains(e.x, e.y)) {
             return;
         }
 
-        // If the tooltip is already visible, do nothing.
+        /*
+         * If the tooltip is already visible, do nothing.
+         */
         if (tooltip.isVisible()) {
             return;
         }
 
-        // Get the value at the specified point.
+        /*
+         * Get the value at the specified point.
+         */
         long value = mapPixelToValue(e.x, true);
 
-        // Show the tooltip if there is text available for it.
+        /*
+         * Show the tooltip if there is text available for it.
+         */
         if (tooltipTextProvider != null) {
             String[] text;
             text = tooltipTextProvider.getTooltipTextForValue(this, value);
@@ -2639,16 +2888,24 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     private void calculateConstrainedThumbValueBounds() {
 
-        // Clear the boundary lists.
+        /*
+         * Clear the boundary lists.
+         */
         minConstrainedThumbValues.clear();
         maxConstrainedThumbValues.clear();
 
-        // Calculate the minimum allowable values for the thumb
-        // values.
+        /*
+         * Calculate the minimum allowable values for the thumb values.
+         */
         for (int j = 0; j < constrainedThumbValues.size(); j++) {
             if (constrainedThumbValuesEditable.get(j)) {
-                long value = (j == 0 ? minimumValue : minConstrainedThumbValues
-                        .get(j - 1) + minimumConstrainedThumbGap);
+                long value = minimumValue;
+                if (j > 0) {
+                    long interval = (constrainedThumbIntervalLocked ? constrainedThumbValues
+                            .get(j) - constrainedThumbValues.get(j - 1)
+                            : minimumConstrainedThumbGap);
+                    value = minConstrainedThumbValues.get(j - 1) + interval;
+                }
                 value = snapValueCalculator.getSnapThumbValue(value, value,
                         maximumValue);
                 minConstrainedThumbValues.add(value);
@@ -2657,15 +2914,22 @@ public abstract class MultiValueLinearControl extends Canvas {
             }
         }
 
-        // Calculate the maximum allowable values for the thumb
-        // values. The list of maximum values is generated backwards,
-        // so it has to be reversed after the values are calculated.
+        /*
+         * Calculate the maximum allowable values for the thumb values. The list
+         * of maximum values is generated backwards, so it has to be reversed
+         * after the values are calculated.
+         */
         for (int j = constrainedThumbValues.size() - 1; j >= 0; j--) {
             if (constrainedThumbValuesEditable.get(j)) {
-                long value = (j == constrainedThumbValues.size() - 1 ? maximumValue
-                        : maxConstrainedThumbValues.get(constrainedThumbValues
-                                .size() - (j + 2))
-                                - minimumConstrainedThumbGap);
+                long value = maximumValue;
+                if (j < constrainedThumbValues.size() - 1) {
+                    long interval = (constrainedThumbIntervalLocked ? constrainedThumbValues
+                            .get(j + 1) - constrainedThumbValues.get(j)
+                            : minimumConstrainedThumbGap);
+                    value = maxConstrainedThumbValues
+                            .get(constrainedThumbValues.size() - (j + 2))
+                            - interval;
+                }
                 value = snapValueCalculator.getSnapThumbValue(value,
                         minimumValue, value);
                 maxConstrainedThumbValues.add(value);
@@ -2691,10 +2955,12 @@ public abstract class MultiValueLinearControl extends Canvas {
             boolean dragEnded) {
         if (thumb.type == ValueType.CONSTRAINED) {
 
-            // Determine the value at which the thumb would be posi-
-            // tioned if it could move freely as far as it wanted; if
-            // this is the same value that the thumb has now, do noth-
-            // ing more unless the drag has ended.
+            /*
+             * Determine the value at which the thumb would be positioned if it
+             * could move freely as far as it wanted; if this is the same value
+             * that the thumb has now, do nothing more unless the drag has
+             * ended.
+             */
             long targetValue = snapValueCalculator.getSnapThumbValue(
                     mapPixelToValue(e.x, true),
                     minConstrainedThumbValues.get(thumb.index),
@@ -2704,48 +2970,68 @@ public abstract class MultiValueLinearControl extends Canvas {
                 return;
             }
 
-            // Get a copy of the thumb value so that they may be ad-
-            // justed if required.
+            /*
+             * Get a copy of the thumb value so that they may be adjusted if
+             * required.
+             */
             long[] newValues = getCopyOfValues(constrainedThumbValues);
 
-            // If the target value is greater than the current value
-            // for the thumb, then the thumb was dragged right; other-
-            // wise, the thumb was dragged left. Either way, adjust all
-            // the thumbs that are to that side of the moved thumb to
-            // ensure that appropriate spacing between them is kept.
-            if (targetValue > newValues[thumb.index]) {
-                newValues[thumb.index] = targetValue;
-                for (int j = thumb.index + 1; j < newValues.length; j++) {
-                    if (newValues[j - 1] + minimumConstrainedThumbGap <= newValues[j]) {
-                        break;
-                    }
-                    newValues[j] = snapValueCalculator.getSnapThumbValue(
-                            newValues[j], newValues[j - 1]
-                                    + minimumConstrainedThumbGap,
-                            maxConstrainedThumbValues.get(j));
+            /*
+             * Handle the adjusting of the thumb values differently depending
+             * upon whether the intervals between the thumbs are locked or not.
+             */
+            if (constrainedThumbIntervalLocked) {
+                long delta = targetValue - newValues[thumb.index];
+                for (int j = 0; j < newValues.length; j++) {
+                    newValues[j] += delta;
                 }
             } else {
-                newValues[thumb.index] = targetValue;
-                for (int j = thumb.index - 1; j >= 0; j--) {
-                    if (newValues[j + 1] - minimumConstrainedThumbGap >= newValues[j]) {
-                        break;
+
+                /*
+                 * If the target value is greater than the current value for the
+                 * thumb, then the thumb was dragged right; otherwise, the thumb
+                 * was dragged left. Either way, adjust all the thumbs that are
+                 * to that side of the moved thumb to ensure that appropriate
+                 * spacing between them is kept.
+                 */
+                if (targetValue > newValues[thumb.index]) {
+                    newValues[thumb.index] = targetValue;
+                    for (int j = thumb.index + 1; j < newValues.length; j++) {
+                        if (newValues[j - 1] + minimumConstrainedThumbGap <= newValues[j]) {
+                            break;
+                        }
+                        newValues[j] = snapValueCalculator.getSnapThumbValue(
+                                newValues[j], newValues[j - 1]
+                                        + minimumConstrainedThumbGap,
+                                maxConstrainedThumbValues.get(j));
                     }
-                    newValues[j] = snapValueCalculator.getSnapThumbValue(
-                            newValues[j], minConstrainedThumbValues.get(j),
-                            newValues[j + 1] - minimumConstrainedThumbGap);
+                } else {
+                    newValues[thumb.index] = targetValue;
+                    for (int j = thumb.index - 1; j >= 0; j--) {
+                        if (newValues[j + 1] - minimumConstrainedThumbGap >= newValues[j]) {
+                            break;
+                        }
+                        newValues[j] = snapValueCalculator.getSnapThumbValue(
+                                newValues[j], minConstrainedThumbValues.get(j),
+                                newValues[j + 1] - minimumConstrainedThumbGap);
+                    }
                 }
             }
 
-            // Set the values to those calculated.
+            /*
+             * Set the values to those calculated.
+             */
             setConstrainedThumbValues(newValues,
                     (dragEnded ? ChangeSource.USER_GUI_INTERACTION_COMPLETE
                             : ChangeSource.USER_GUI_INTERACTION_ONGOING));
         } else {
 
-            // Determine the value at which the thumb would be posi-
-            // tioned if it could move freely as far as it wanted; if
-            // this is the same value that the thumb has now, do noth-
-            // ing more unless the drag has ended.
+            /*
+             * Determine the value at which the thumb would be positioned if it
+             * could move freely as far as it wanted; if this is the same value
+             * that the thumb has now, do nothing more unless the drag has
+             * ended.
+             */
             long targetValue = snapValueCalculator.getSnapThumbValue(
                     mapPixelToValue(e.x, true), getMinimumAllowableValue(),
                     getMaximumAllowableValue());
@@ -2754,12 +3040,16 @@ public abstract class MultiValueLinearControl extends Canvas {
                 return;
             }
 
-            // Get a copy of the thumb value so that they may be ad-
-            // justed, and adjust the target thumb.
+            /*
+             * Get a copy of the thumb value so that they may be adjusted, and
+             * adjust the target thumb.
+             */
             long[] newValues = getCopyOfValues(freeThumbValues);
             newValues[thumb.index] = targetValue;
 
-            // Set the values to those calculated.
+            /*
+             * Set the values to those calculated.
+             */
             setFreeThumbValues(newValues,
                     (dragEnded ? ChangeSource.USER_GUI_INTERACTION_COMPLETE
                             : ChangeSource.USER_GUI_INTERACTION_ONGOING));
@@ -2773,12 +3063,16 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     private void correctConstrainedThumbValues() {
 
-        // Get a copy of the thumb values so that they may be adjusted
-        // if required.
+        /*
+         * Get a copy of the thumb values so that they may be adjusted if
+         * required.
+         */
         long[] newValues = getCopyOfValues(constrainedThumbValues);
 
-        // Iterate through the thumbs, ensuring that each in turn falls
-        // within the allowable range.
+        /*
+         * Iterate through the thumbs, ensuring that each in turn falls within
+         * the allowable range.
+         */
         for (int j = 0; j < newValues.length; j++) {
             if (newValues[j] < getMinimumAllowableValue()) {
                 newValues[j] = getMinimumAllowableValue();
@@ -2787,17 +3081,21 @@ public abstract class MultiValueLinearControl extends Canvas {
             }
         }
 
-        // Iterate through the thumbs, ensuring that each in turn is at
-        // least the minimum thumb gap distance from the previous one.
+        /*
+         * Iterate through the thumbs, ensuring that each in turn is at least
+         * the minimum thumb gap distance from the previous one.
+         */
         for (int j = 1; j < newValues.length; j++) {
             if (newValues[j] - newValues[j - 1] < minimumConstrainedThumbGap) {
                 newValues[j] = newValues[j - 1] + minimumConstrainedThumbGap;
             }
         }
 
-        // The iteration above may have pushed one or more thumbs beyond
-        // the maximum allowable value; if so, push them back the other
-        // way, still maintaining proper spacing between them.
+        /*
+         * The iteration above may have pushed one or more thumbs beyond the
+         * maximum allowable value; if so, push them back the other way, still
+         * maintaining proper spacing between them.
+         */
         if ((newValues.length > 0)
                 && (newValues[newValues.length - 1] > getMaximumAllowableValue())) {
             long delta = newValues[newValues.length - 1]
@@ -2812,7 +3110,9 @@ public abstract class MultiValueLinearControl extends Canvas {
             }
         }
 
-        // Set the values to those calculated.
+        /*
+         * Set the values to those calculated.
+         */
         setConstrainedThumbValues(newValues, ChangeSource.METHOD_INVOCATION);
     }
 
@@ -2821,12 +3121,16 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     private void correctFreeThumbValues() {
 
-        // Get a copy of the thumb values so that they may be adjusted
-        // if required.
+        /*
+         * Get a copy of the thumb values so that they may be adjusted if
+         * required.
+         */
         long[] newValues = getCopyOfValues(freeThumbValues);
 
-        // Iterate through the thumbs, ensuring that each in turn falls
-        // within the allowable range.
+        /*
+         * Iterate through the thumbs, ensuring that each in turn falls within
+         * the allowable range.
+         */
         for (int j = 0; j < newValues.length; j++) {
             if (newValues[j] < getMinimumAllowableValue()) {
                 newValues[j] = getMinimumAllowableValue();
@@ -2835,7 +3139,9 @@ public abstract class MultiValueLinearControl extends Canvas {
             }
         }
 
-        // Set the values to those calculated.
+        /*
+         * Set the values to those calculated.
+         */
         setFreeThumbValues(newValues, ChangeSource.METHOD_INVOCATION);
     }
 
@@ -2845,12 +3151,16 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     private void correctConstrainedMarkedValues() {
 
-        // Get a copy of the marked values so that they may be adjusted
-        // if required.
+        /*
+         * Get a copy of the marked values so that they may be adjusted if
+         * required.
+         */
         long[] newValues = getCopyOfValues(constrainedMarkedValues);
 
-        // Iterate through the values, ensuring that each in turn falls
-        // within the allowable range.
+        /*
+         * Iterate through the values, ensuring that each in turn falls within
+         * the allowable range.
+         */
         for (int j = 0; j < newValues.length; j++) {
             if (newValues[j] < getMinimumAllowableValue()) {
                 newValues[j] = getMinimumAllowableValue();
@@ -2859,7 +3169,9 @@ public abstract class MultiValueLinearControl extends Canvas {
             }
         }
 
-        // Set the values to those calculated.
+        /*
+         * Set the values to those calculated.
+         */
         setConstrainedMarkedValues(newValues);
     }
 
@@ -2868,12 +3180,16 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     private void correctFreeMarkedValues() {
 
-        // Get a copy of the marked values so that they may be adjusted
-        // if required.
+        /*
+         * Get a copy of the marked values so that they may be adjusted if
+         * required.
+         */
         long[] newValues = getCopyOfValues(freeMarkedValues);
 
-        // Iterate through the values, ensuring that each in turn falls
-        // within the allowable range.
+        /*
+         * Iterate through the values, ensuring that each in turn falls within
+         * the allowable range.
+         */
         for (int j = 0; j < newValues.length; j++) {
             if (newValues[j] < getMinimumAllowableValue()) {
                 newValues[j] = getMinimumAllowableValue();
@@ -2882,7 +3198,9 @@ public abstract class MultiValueLinearControl extends Canvas {
             }
         }
 
-        // Set the values to those calculated.
+        /*
+         * Set the values to those calculated.
+         */
         setFreeMarkedValues(newValues);
     }
 
@@ -2896,7 +3214,9 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     private void setConstrainedThumbValues(long[] newValues, ChangeSource source) {
 
-        // If the values have had to be adjusted, set the new values.
+        /*
+         * If the values have had to be adjusted, set the new values.
+         */
         boolean changed = (source == ChangeSource.USER_GUI_INTERACTION_COMPLETE);
         for (int j = 0; j < constrainedThumbValues.size(); j++) {
             if (constrainedThumbValues.get(j) != newValues[j]) {
@@ -2919,7 +3239,9 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     private void setFreeThumbValues(long[] newValues, ChangeSource source) {
 
-        // If the values have had to be adjusted, set the new values.
+        /*
+         * If the values have had to be adjusted, set the new values.
+         */
         boolean changed = (source == ChangeSource.USER_GUI_INTERACTION_COMPLETE);
         for (int j = 0; j < freeThumbValues.size(); j++) {
             if (freeThumbValues.get(j) != newValues[j]) {
@@ -3008,7 +3330,9 @@ public abstract class MultiValueLinearControl extends Canvas {
     private void visibleValueRangeChanged(long lowerVisibleValue,
             long upperVisibleValue, ChangeSource source) {
 
-        // Do sanity checks on the new visible range.
+        /*
+         * Do sanity checks on the new visible range.
+         */
         if (lowerVisibleValue > maximumValue) {
             lowerVisibleValue = maximumValue - DEFAULT_VISIBLE_OFFSET;
         }
@@ -3022,14 +3346,18 @@ public abstract class MultiValueLinearControl extends Canvas {
             upperVisibleValue = maximumValue;
         }
 
-        // Remember the new range, determine the active thumb
-        // if any, and redraw.
+        /*
+         * Remember the new range, determine the active thumb if any, and
+         * redraw.
+         */
         this.lowerVisibleValue = lowerVisibleValue;
         this.upperVisibleValue = upperVisibleValue;
         scheduleDetermineActiveThumbIfEnabled();
         redraw();
 
-        // Notify listeners.
+        /*
+         * Notify listeners.
+         */
         for (IMultiValueLinearControlListener listener : listeners) {
             listener.visibleValueRangeChanged(this, lowerVisibleValue,
                     upperVisibleValue, source);

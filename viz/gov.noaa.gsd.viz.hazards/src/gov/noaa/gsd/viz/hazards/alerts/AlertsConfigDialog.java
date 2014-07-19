@@ -51,6 +51,8 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Apr 20, 2014   2925     Chris.Golden           Changed to work with megawidget manager changes.
  * Jun 23, 2014   4010     Chris.Golden           Changed to work with yet more megawidget manager
  *                                                changes.
+ * Jun 30, 2014   3512     Chris.Golden           Changed to work with still more megawidget
+ *                                                manager changes.
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -283,20 +285,7 @@ class AlertsConfigDialog extends BasicDialog {
         }
         try {
             megawidgetManager = new MegawidgetManager(parent, fieldsList,
-                    values, 0L, 0L, currentTimeProvider) {
-                @Override
-                protected void commandInvoked(String identifier) {
-
-                    // No action.
-                }
-
-                @Override
-                protected void stateElementChanged(String identifier,
-                        Object state) {
-
-                    // No action.
-                }
-            };
+                    values, null, 0L, 0L, currentTimeProvider);
         } catch (MegawidgetException e) {
             statusHandler
                     .error("AlertDialog.createDialogArea(): Unable to create megawidget "

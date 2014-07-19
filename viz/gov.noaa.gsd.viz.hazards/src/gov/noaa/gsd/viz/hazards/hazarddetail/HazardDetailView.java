@@ -95,6 +95,8 @@ import com.raytheon.uf.viz.core.VizApp;
  * Jun 25, 2014   4009     Chris.Golden      Added code to cache extra data held by
  *                                           metadata megawidgets between view
  *                                           instantiations.
+ * Jun 30, 2014   3512     Chris.Golden      Changed to work with changes MVP widget
+ *                                           framework classes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -283,6 +285,11 @@ public class HazardDetailView extends
         public void stateChanged(String identifier, Point value) {
             scrollOriginsForEventIds.put(identifier, value);
         }
+
+        @Override
+        public void statesChanged(Map<String, Point> valuesForIdentifiers) {
+            throw new UnsupportedOperationException();
+        }
     };
 
     /**
@@ -331,7 +338,7 @@ public class HazardDetailView extends
         }
 
         @Override
-        public void setStateChangeHandler(String identifier,
+        public void setStateChangeHandler(
                 IStateChangeHandler<String, Boolean> handler) {
             detailViewVisibilityChangeHandler = handler;
         }
@@ -688,7 +695,7 @@ public class HazardDetailView extends
          * view part if the old one is closed. Then send the accumulated scroll
          * origins to the new view part to initialize it.
          */
-        getViewPart().getScrollOriginChanger().setStateChangeHandler(null,
+        getViewPart().getScrollOriginChanger().setStateChangeHandler(
                 scrollOriginChangeHandler);
         getViewPart().getScrollOriginChanger().setStates(
                 scrollOriginsForEventIds);

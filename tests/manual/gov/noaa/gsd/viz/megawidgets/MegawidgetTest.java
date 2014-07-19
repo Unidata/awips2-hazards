@@ -55,6 +55,8 @@ import org.eclipse.swt.widgets.Shell;
  * Jun 06, 2014    2155    Chris.Golden Initial creation.
  * Jun 23, 2014    4010    Chris.Golden Changed to work with latest megawidget
  *                                      manager changes.
+ * Jun 30, 2014    3512    Chris.Golden Changed to work with more megawidget
+ *                                      manager changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -151,9 +153,64 @@ public class MegawidgetTest extends Dialog {
                 "Megawidget Demo: " + name.split("\\.(?=[^\\.]+$)")[0]);
 
         try {
-            new MegawidgetManager(top, specifiers,
-                    new HashMap<String, Object>(), System.currentTimeMillis()
-                            - TimeUnit.DAYS.toMillis(4L),
+            new MegawidgetManager(
+                    top,
+                    specifiers,
+                    new HashMap<String, Object>(),
+                    new IMegawidgetManagerListener() {
+
+                        @Override
+                        public void commandInvoked(MegawidgetManager manager,
+                                String identifier) {
+                            System.out
+                                    .println("COMMAND INVOKED: " + identifier);
+                        }
+
+                        @Override
+                        public void stateElementChanged(
+                                MegawidgetManager manager, String identifier,
+                                Object state) {
+                            System.out.println("STATE CHANGE: " + identifier
+                                    + " = " + state);
+                        }
+
+                        @Override
+                        public void stateElementsChanged(
+                                MegawidgetManager manager,
+                                Map<String, Object> statesForIdentifiers) {
+                            StringBuilder stringBuilder = new StringBuilder();
+                            for (Map.Entry<String, Object> entry : statesForIdentifiers
+                                    .entrySet()) {
+                                if (stringBuilder.length() > 0) {
+                                    stringBuilder.append(", ");
+                                }
+                                stringBuilder.append(entry.getKey());
+                                stringBuilder.append(" = ");
+                                stringBuilder.append(entry.getValue());
+                            }
+                            System.out
+                                    .println("POTENTIALLY MULTIPLE STATE CHANGES: "
+                                            + stringBuilder);
+                        }
+
+                        @Override
+                        public void sizeChanged(MegawidgetManager manager,
+                                String identifier) {
+
+                            /*
+                             * No action.
+                             */
+                        }
+
+                        @Override
+                        public void sideEffectMutablePropertyChangeErrorOccurred(
+                                MegawidgetManager manager,
+                                MegawidgetPropertyException exception) {
+                            System.err.println("Error: ");
+                            exception.printStackTrace(System.err);
+                        }
+
+                    }, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(4L),
                     System.currentTimeMillis() + TimeUnit.DAYS.toMillis(4L),
                     new ICurrentTimeProvider() {
 
@@ -162,27 +219,7 @@ public class MegawidgetTest extends Dialog {
                             return System.currentTimeMillis();
                         }
                     }, (script == null ? null : new PythonSideEffectsApplier(
-                            script))) {
-
-                @Override
-                protected void commandInvoked(String identifier) {
-                }
-
-                @Override
-                protected void stateElementChanged(String identifier,
-                        Object state) {
-                    System.out.println("STATE CHANGE: " + identifier + " = "
-                            + state);
-                }
-
-                @Override
-                protected void sideEffectMutablePropertyChangeErrorOccurred(
-                        MegawidgetPropertyException exception) {
-                    System.err.println("Error: ");
-                    exception.printStackTrace(System.err);
-                }
-
-            };
+                            script)));
         } catch (Exception e) {
             System.err.println("Error: Megawidget improperly specified:");
             e.printStackTrace(System.err);

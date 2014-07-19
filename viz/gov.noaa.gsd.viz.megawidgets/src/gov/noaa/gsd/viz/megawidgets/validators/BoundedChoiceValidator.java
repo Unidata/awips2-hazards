@@ -14,6 +14,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecificationException;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +30,7 @@ import java.util.Map;
  * Apr 24, 2014   2925     Chris.Golden Initial creation.
  * Jun 24, 2014   4023     Chris.Golden Added ability to create a pruned
  *                                      subset.
+ * Jul 02, 2014   3512     Chris.Golden Changed to allow subclassing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -177,7 +179,41 @@ public class BoundedChoiceValidator<T> extends SingleStateValidator<T> {
     @Override
     protected void doInitialize() throws MegawidgetSpecificationException {
         helper.initialize(getType(), getIdentifier());
+        doInitializeBeforeAvailableChoices();
         availableChoices = helper.convertToAvailableForSpecifier(parameters
                 .get(helper.getChoicesKey()));
+    }
+
+    /**
+     * Perform subclass-specific initialization after the helper is initialized,
+     * but before the available choices are.
+     */
+    protected void doInitializeBeforeAvailableChoices()
+            throws MegawidgetSpecificationException {
+
+        /*
+         * No action.
+         */
+    }
+
+    /**
+     * Get the helper.
+     * 
+     * @return Helper.
+     */
+    @SuppressWarnings("unchecked")
+    protected final <H extends BoundedChoiceValidatorHelper<T>> H getHelper() {
+        return (H) helper;
+    }
+
+    /**
+     * Get the map of parameters used to create the specifier. The map is
+     * unmodifiable. It may be <code>null</code> if the validator has been
+     * constructed as already initialized.
+     * 
+     * @return Map of parameters, or <code>null</code>.
+     */
+    protected final Map<String, Object> getParameters() {
+        return Collections.unmodifiableMap(parameters);
     }
 }

@@ -30,6 +30,12 @@ import org.eclipse.swt.widgets.Widget;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * May 09, 2014    2925    Chris.Golden Initial creation.
+ * Jun 30, 2014    3512    Chris.Golden Simplified setting of handler by
+ *                                      removing identifier; one handler must
+ *                                      be used for all identifiers, since
+ *                                      the handler may be called upon to
+ *                                      receive notification of multiple
+ *                                      simultaneous state changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -76,6 +82,17 @@ public class StateChangerDelegate<I, S, W extends IStateChanger<I, S>> extends
                 @Override
                 public void run() {
                     principal.stateChanged(identifier, value);
+                }
+            });
+        }
+
+        @Override
+        public void statesChanged(final Map<I, S> valuesForIdentifiers) {
+            getHandlerInvocationScheduler().schedule(new Runnable() {
+
+                @Override
+                public void run() {
+                    principal.statesChanged(valuesForIdentifiers);
                 }
             });
         }
@@ -143,8 +160,7 @@ public class StateChangerDelegate<I, S, W extends IStateChanger<I, S>> extends
     }
 
     @Override
-    public void setStateChangeHandler(final I identifier,
-            final IStateChangeHandler<I, S> handler) {
+    public void setStateChangeHandler(final IStateChangeHandler<I, S> handler) {
 
         /*
          * Since handlers must be registered with the current view at all times,
@@ -155,7 +171,7 @@ public class StateChangerDelegate<I, S, W extends IStateChanger<I, S>> extends
 
             @Override
             public void run() {
-                getPrincipal().setStateChangeHandler(identifier,
+                getPrincipal().setStateChangeHandler(
                         new StateChangeHandlerDelegate(handler));
             }
         }, true);

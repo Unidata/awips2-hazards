@@ -58,12 +58,18 @@ import org.eclipse.swt.widgets.Spinner;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 27, 2014    3512    Chris.Golden      Changed to implement new ITimeComponent
+ *                                           interface, and fixed minor visual bug
+ *                                           that caused the time spinner up/down
+ *                                           buttons to look enabled when the
+ *                                           component had editable as true but
+ *                                           enabled as false.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class DateTimeComponent {
+public class DateTimeComponent implements ITimeComponent {
 
     // Private Static Constants
 
@@ -319,7 +325,7 @@ public class DateTimeComponent {
     private final Calendar calendar = Calendar.getInstance();
 
     /**
-     * Holder if this date-time component.
+     * Holder of this date-time component.
      */
     private final IDateTimeComponentHolder holder;
 
@@ -540,8 +546,19 @@ public class DateTimeComponent {
      * @return Label for this date-time component, or <code>null</code> if there
      *         is no such label.
      */
+    @Override
     public Label getLabel() {
         return label;
+    }
+
+    /**
+     * Get the width of the date and time widgets portion of the component.
+     * 
+     * @return Width of the date and time widgets portion of the component.
+     */
+    public int getDateTimeWidth() {
+        return ((GridData) date.getLayoutData()).widthHint
+                + ((GridData) time.getLayoutData()).widthHint;
     }
 
     /**
@@ -551,11 +568,10 @@ public class DateTimeComponent {
      *            Height in pixels of the component. The component widgets will
      *            be vertically centered within this height.
      */
+    @Override
     public void setHeight(int height) {
         ((GridData) label.getParent().getLayoutData()).minimumHeight = height;
     }
-
-    // Protected Methods
 
     /**
      * Set the date-time component to be enabled or disabled.
@@ -564,6 +580,7 @@ public class DateTimeComponent {
      *            Flag indicating whether or not the component should be
      *            enabled.
      */
+    @Override
     public void setEnabled(boolean enable) {
         if (label != null) {
             label.setEnabled(enable);
@@ -574,6 +591,7 @@ public class DateTimeComponent {
         }
         date.setEnabled(enable);
         time.setEnabled(enable);
+        time.setSpinnerEnabled(enable && date.getParent().isEnabled());
     }
 
     /**
@@ -586,6 +604,7 @@ public class DateTimeComponent {
      *            Control component helper to be used to determine what
      *            background color is appropriate for the widgets' fields.
      */
+    @Override
     public void setEditable(boolean editable, ControlComponentHelper helper) {
         if ((editable == false) && date.isOpen()) {
             date.setOpen(false);
@@ -595,7 +614,7 @@ public class DateTimeComponent {
         Color color = helper.getBackgroundColor(editable, date, label);
         date.setBackground(color);
         time.setBackground(color);
-        time.setSpinnerEnabled(editable);
+        time.setSpinnerEnabled(date.isEnabled() && editable);
     }
 
     /**

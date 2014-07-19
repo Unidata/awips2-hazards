@@ -51,6 +51,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                           required implementation of
  *                                           reinitialize(), and made initialize()
  *                                           protected as it is called by setView().
+ * Jun 30, 2014 3512    Chris.Golden         Changed to work with changes to
+ *                                           ICommandInvoker.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -207,7 +209,7 @@ public class ProductStagingPresenter extends
      * By binding to the view, the presenter handles all of the view's events.
      */
     private void bind() {
-        getView().getCommandInvoker().setCommandInvocationHandler(null,
+        getView().getCommandInvoker().setCommandInvocationHandler(
                 commandHandler);
     }
 }

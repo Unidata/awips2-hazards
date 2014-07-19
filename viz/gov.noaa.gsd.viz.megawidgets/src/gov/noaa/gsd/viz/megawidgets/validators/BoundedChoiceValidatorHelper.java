@@ -37,6 +37,7 @@ import java.util.Set;
  * Apr 23, 2014   2925     Chris.Golden Initial creation.
  * Jun 24, 2014   4023     Chris.Golden Added ability to create a pruned
  *                                      subset.
+ * Jul 02, 2014   3512     Chris.Golden Change to allow subclassing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -553,7 +554,7 @@ public abstract class BoundedChoiceValidatorHelper<T> {
             String identifier = null;
             if (node instanceof String) {
                 identifier = (String) node;
-            } else if (node instanceof Map) {
+            } else if (isMapAllowableChoice() && (node instanceof Map)) {
 
                 /*
                  * If the map does not have a name entry, it is illegal.
@@ -583,7 +584,9 @@ public abstract class BoundedChoiceValidatorHelper<T> {
                 validateChoicesMap(map, j, nestedLists);
             } else {
                 throw new InvalidChoicesException("[" + j + "]",
-                        elementNameKey, node, "must be string");
+                        elementNameKey, node,
+                        (isMapAllowableChoice() ? "must be string or map"
+                                : "must be string"));
             }
 
             /*
@@ -598,11 +601,23 @@ public abstract class BoundedChoiceValidatorHelper<T> {
     }
 
     /**
+     * Determine whether or not a map is an acceptable choice.
+     * 
+     * @return True if the choice may be a map or string, false if it must be a
+     *         string.
+     */
+    protected boolean isMapAllowableChoice() {
+        return true;
+    }
+
+    /**
      * Check the specified choices element map to see if it is valid; it may be
      * safely assumed that the name and/or identifier of the map has been found
      * to be valid when this method is called. This implementation assumes
      * validity; subclasses may override this method if they have additional
-     * checks to perform.
+     * checks to perform. Note that this method will never be executed if a
+     * subclass's implementation of {@link #isMapAllowableChoice()} returns
+     * false.
      * 
      * @param map
      *            Choice element map to be checked for legality.
@@ -676,12 +691,12 @@ public abstract class BoundedChoiceValidatorHelper<T> {
          * Ensure that the object is a non-empty list.
          */
         if (choices instanceof List == false) {
-            throw new InvalidChoicesException(identifier, type, choices,
+            throw new InvalidChoicesException(null, null, choices,
                     "must be non-empty list of choices");
         }
         List<?> choicesList = (List<?>) choices;
         if (choicesList.isEmpty()) {
-            throw new InvalidChoicesException(identifier, type, choices,
+            throw new InvalidChoicesException(null, null, choices,
                     "must be non-empty list of choices");
         }
 

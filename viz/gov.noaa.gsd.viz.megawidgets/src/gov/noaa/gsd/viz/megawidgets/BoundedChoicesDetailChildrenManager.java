@@ -46,6 +46,10 @@ import org.eclipse.swt.widgets.Event;
  *                                           button component.
  * Jun 24, 2014    4010    Chris.Golden      Changed to work with new notifier
  *                                           modifications.
+ * Jun 30, 2014    3512    Chris.Golden      Changed to accommodate new
+ *                                           notifications of simultaneous
+ *                                           multi-state child megawidget state
+ *                                           changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -211,6 +215,21 @@ public class BoundedChoicesDetailChildrenManager implements
         fireSelectionEventForDetailMegawidget(megawidget);
         stateChangeListener.megawidgetStateChanged(megawidget, identifier,
                 state);
+    }
+
+    @Override
+    public void megawidgetStatesChanged(IStateful megawidget,
+            Map<String, Object> statesForIdentifiers) {
+
+        /*
+         * Fire off a selection event for the choice button associated with this
+         * detail child megawidget so that the button's choice is selected. Only
+         * after this has been done are the state changes forwarded onto the
+         * real listener.
+         */
+        fireSelectionEventForDetailMegawidget(megawidget);
+        stateChangeListener.megawidgetStatesChanged(megawidget,
+                statesForIdentifiers);
     }
 
     // Private Methods

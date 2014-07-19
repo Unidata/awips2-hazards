@@ -76,6 +76,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Apr 23, 2014 2925       Chris.Golden Augmented with additional methods to
  *                                      set the type components atomically, or
  *                                      the start and end time atomically.
+ * Jun 30, 2014 3512       Chris.Golden Added addHazardAttributes() method.
  * </pre>
  * 
  * @author mnash
@@ -486,17 +487,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
     }
 
     /*
-     * 
-     */
-    @Override
-    public void addHazardAttributes(Map<String, Serializable> attributes) {
-        for (Map.Entry<String, Serializable> entry : attributes.entrySet()) {
-            addHazardAttribute(entry.getKey(), entry.getValue());
-        }
-
-    }
-
-    /*
      * (non-Javadoc)
      * 
      * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
@@ -512,6 +502,13 @@ public class HazardEvent implements IHazardEvent, IValidator {
         } catch (ValidationException e) {
             statusHandler.handle(Priority.ERROR, "Unable to validate "
                     + eventID, e);
+        }
+    }
+
+    @Override
+    public void addHazardAttributes(Map<String, Serializable> attributes) {
+        for (Map.Entry<String, Serializable> entry : attributes.entrySet()) {
+            addHazardAttribute(entry.getKey(), entry.getValue());
         }
     }
 

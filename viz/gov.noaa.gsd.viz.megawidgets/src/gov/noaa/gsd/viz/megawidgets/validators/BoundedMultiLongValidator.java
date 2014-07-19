@@ -31,6 +31,8 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Apr 23, 2014   2925     Chris.Golden Initial creation.
+ * Jun 27, 2014   3512     Chris.Golden Made minimum interval parameter
+ *                                      optional.
  * </pre>
  * 
  * @author Chris.Golden
@@ -48,7 +50,8 @@ public class BoundedMultiLongValidator extends MultiStateValidator<Long> {
     private final Map<String, Object> parameters;
 
     /**
-     * Key in {@link #parameters} for the minimum interval parameter.
+     * Key in {@link #parameters} for the minimum interval parameter; if
+     * <code>null</code>, the minimum interval is assumed to be 0.
      */
     private final String minimumIntervalKey;
 
@@ -81,7 +84,8 @@ public class BoundedMultiLongValidator extends MultiStateValidator<Long> {
      *            Map of parameters used to create the specifier.
      * @param minimumIntervalKey
      *            Key in <code>parameters</code> for the minimum interval
-     *            parameter.
+     *            parameter; if <code>null</code>, no minimum interval may be
+     *            specified and it is assumed to be 0.
      * @param lowest
      *            Lowest allowable value; the minimum value may not be lower
      *            than this.
@@ -227,7 +231,11 @@ public class BoundedMultiLongValidator extends MultiStateValidator<Long> {
         helper = new RangeValidatorHelper<Long>(getType(),
                 getMegawidgetIdentifier(), parameters, null, null, Long.class,
                 lowest, highest);
-        minimumInterval = getMinimumInterval(minimumIntervalKey, parameters);
+        if (minimumIntervalKey != null) {
+            minimumInterval = getMinimumInterval(minimumIntervalKey, parameters);
+        } else {
+            minimumInterval = 0L;
+        }
     }
 
     // Private Methods

@@ -34,6 +34,8 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * Apr 11, 2014   2819     Chris.Golden      Fixed bugs with the Preview and Issue
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
+ * Jun 30, 2014   3512      Chris.Golden     Changed to work with changes to
+ *                                           ICommandInvoker.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -63,7 +65,7 @@ public class TestProductEditorView implements
         }
 
         @Override
-        public void setCommandInvocationHandler(String identifier,
+        public void setCommandInvocationHandler(
                 ICommandInvocationHandler<String> handler) {
             dismissHandler = handler;
         }
@@ -80,7 +82,7 @@ public class TestProductEditorView implements
         }
 
         @Override
-        public void setCommandInvocationHandler(String identifier,
+        public void setCommandInvocationHandler(
                 ICommandInvocationHandler<String> handler) {
             issueHandler = handler;
         }

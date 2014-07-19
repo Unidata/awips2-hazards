@@ -48,7 +48,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           required implementation of
  *                                           reinitialize(), and made initialize()
  *                                           protected as it is called by setView().
- * Apr 23, 2014 1480        jsanchez      Added product editor action CORRECT.
+ * Apr 23, 2014 1480       jsanchez          Added product editor action CORRECT.
+ * Jun 30, 2014 3512       Chris.Golden      Changed to work with changes to
+ *                                           ICommandInvoker.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -123,7 +125,7 @@ public class ProductEditorPresenter extends
      * @return
      */
     private void bind() {
-        getView().getIssueInvoker().setCommandInvocationHandler(null,
+        getView().getIssueInvoker().setCommandInvocationHandler(
                 new ICommandInvocationHandler<String>() {
 
                     @Override
@@ -147,7 +149,7 @@ public class ProductEditorPresenter extends
                     }
                 });
 
-        getView().getDismissInvoker().setCommandInvocationHandler(null,
+        getView().getDismissInvoker().setCommandInvocationHandler(
                 new ICommandInvocationHandler<String>() {
 
                     @Override

@@ -47,6 +47,8 @@ import com.raytheon.uf.common.time.TimeRange;
  *                                        detection.
  * May 18, 2014  2925      Chris.Golden   Substantially rewrote to work with the new HID.
  * Jun 25, 2014  4009      Chris.Golden   Changed to work with new initialize() signature.
+ * Jun 30, 2014  3512      Chris.Golden   Changed to work with modified IStateChanger and
+ *                                        ICommandInvoker.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -82,7 +84,7 @@ public class HazardDetailViewForTesting implements
         }
 
         @Override
-        public void setStateChangeHandler(String identifier,
+        public void setStateChangeHandler(
                 IStateChangeHandler<String, Boolean> handler) {
         }
     };
@@ -109,7 +111,7 @@ public class HazardDetailViewForTesting implements
         }
 
         @Override
-        public void setStateChangeHandler(String identifier,
+        public void setStateChangeHandler(
                 IStateChangeHandler<String, String> handler) {
         }
 
@@ -145,7 +147,7 @@ public class HazardDetailViewForTesting implements
         }
 
         @Override
-        public void setStateChangeHandler(String identifier,
+        public void setStateChangeHandler(
                 IStateChangeHandler<String, String> handler) {
         }
 
@@ -183,7 +185,7 @@ public class HazardDetailViewForTesting implements
         }
 
         @Override
-        public void setStateChangeHandler(String identifier,
+        public void setStateChangeHandler(
                 IStateChangeHandler<String, TimeRange> handler) {
         }
     };
@@ -208,7 +210,7 @@ public class HazardDetailViewForTesting implements
         }
 
         @Override
-        public void setStateChangeHandler(String identifier,
+        public void setStateChangeHandler(
                 IStateChangeHandler<String, Serializable> handler) {
         }
 
@@ -230,7 +232,7 @@ public class HazardDetailViewForTesting implements
         }
 
         @Override
-        public void setCommandInvocationHandler(Command identifier,
+        public void setCommandInvocationHandler(
                 ICommandInvocationHandler<Command> handler) {
         }
     };

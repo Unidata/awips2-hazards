@@ -20,14 +20,14 @@ import gov.noaa.gsd.viz.megawidgets.ComboBoxSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ControlComponentHelper;
 import gov.noaa.gsd.viz.megawidgets.IControl;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
-import gov.noaa.gsd.viz.megawidgets.IManagerResizeListener;
+import gov.noaa.gsd.viz.megawidgets.IMegawidgetManagerListener;
 import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISingleLineSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
 import gov.noaa.gsd.viz.megawidgets.IStateChangeListener;
 import gov.noaa.gsd.viz.megawidgets.IStateful;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierFactory;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
@@ -191,6 +191,10 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           replacement, allowing interdependency scripts
  *                                           to keep state in between executions even if
  *                                           the metadata megawidgets have changed.
+ * Jun 30, 2014   3512     Chris.Golden      Changed to work with megawidget changes that
+ *                                           allow notification to occur of simultaneous
+ *                                           state changes. Also changed to work with new
+ *                                           MVP widget framework alterations.
  * </pre>
  * 
  * @author Chris.Golden
@@ -429,63 +433,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      */
     private static final int MAXIMUM_EVENT_METADATA_CACHE_SIZE = 10;
 
-    // Private Classes
-
-    /**
-     * Megawidget manager for the metadata megawidgets.
-     */
-    private class MetadataMegawidgetManager extends MegawidgetManager {
-
-        // Public Constructors
-
-        /**
-         * Construct a standard instance for managing megawidgets that exist
-         * within a composite widget.
-         * 
-         * @param parent
-         *            Parent composite in which the megawidgets are to be
-         *            created.
-         * @param specifierManager
-         *            Megawidget specifier manager holding the specifiers that
-         *            are to govern the creation of the megawidgets.
-         * @param state
-         *            State to be viewed and/or modified via the megawidgets
-         *            that are constructed. Each megawidget specifier within
-         *            <code>
-         *            specifierManager</code> should have an entry in this map,
-         *            mapping the specifier's identifier to the value that the
-         *            megawidget will take on.
-         * @throws MegawidgetException
-         *             If one of the megawidget specifiers is invalid, or if an
-         *             error occurs while creating or initializing one of the
-         *             megawidgets.
-         */
-        public MetadataMegawidgetManager(Composite parent,
-                MegawidgetSpecifierManager specifierManager,
-                Map<String, Object> state) throws MegawidgetException {
-            super(parent, specifierManager, state, minimumVisibleTime,
-                    maximumVisibleTime, resizeListener);
-        }
-
-        // Public Methods
-
-        @Override
-        protected void commandInvoked(String identifier) {
-
-            /*
-             * No action.
-             */
-        }
-
-        @Override
-        protected void stateElementChanged(String identifier, Object state) {
-            if (metadataChangeHandler != null) {
-                metadataChangeHandler.stateChanged(identifier,
-                        (Serializable) state);
-            }
-        }
-    }
-
     // Private Constants
 
     /**
@@ -634,17 +581,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private ICurrentTimeProvider currentTimeProvider;
 
     /**
-     * Resize listener for metadata megawidget managers.
-     */
-    private final IManagerResizeListener resizeListener = new IManagerResizeListener() {
-
-        @Override
-        public void sizeChanged(String identifier) {
-            metadataPanelResized();
-        }
-    };
-
-    /**
      * <p>
      * Cache of megawidget managers associated with event identifiers. Only the
      * most recently used megawidget managers are cached away; the maximum
@@ -765,7 +701,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         @Override
-        public void setStateChangeHandler(String identifier,
+        public void setStateChangeHandler(
                 IStateChangeHandler<String, Point> handler) {
             scrollOriginChangeHandler = handler;
         }
@@ -808,7 +744,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         @Override
-        public void setStateChangeHandler(String identifier,
+        public void setStateChangeHandler(
                 IStateChangeHandler<String, TimeRange> handler) {
             throw new UnsupportedOperationException(
                     "cannot set state change handler for visible time range");
@@ -861,7 +797,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         @Override
-        public void setStateChangeHandler(String identifier,
+        public void setStateChangeHandler(
                 IStateChangeHandler<String, String> handler) {
             tabChangeHandler = handler;
         }
@@ -915,7 +851,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         @Override
-        public void setStateChangeHandler(String identifier,
+        public void setStateChangeHandler(
                 IStateChangeHandler<String, String> handler) {
             categoryChangeHandler = handler;
         }
@@ -969,7 +905,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         @Override
-        public void setStateChangeHandler(String identifier,
+        public void setStateChangeHandler(
                 IStateChangeHandler<String, String> handler) {
             typeChangeHandler = handler;
         }
@@ -1016,7 +952,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         @Override
-        public void setStateChangeHandler(String identifier,
+        public void setStateChangeHandler(
                 IStateChangeHandler<String, TimeRange> handler) {
             timeRangeChangeHandler = handler;
         }
@@ -1058,7 +994,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         @Override
-        public void setStateChangeHandler(String identifier,
+        public void setStateChangeHandler(
                 IStateChangeHandler<String, Serializable> handler) {
             metadataChangeHandler = handler;
         }
@@ -1094,7 +1030,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         @Override
-        public void setCommandInvocationHandler(Command identifier,
+        public void setCommandInvocationHandler(
                 ICommandInvocationHandler<Command> handler) {
             buttonInvocationHandler = handler;
         }
@@ -1136,7 +1072,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                         + "values from megawidget", e);
                         return;
                     }
-                    timeRangeChangeHandler.stateChanged(identifier, range);
+                    timeRangeChangeHandler.stateChanged(null, range);
                 }
             } else if (identifier
                     .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
@@ -1149,6 +1085,33 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 throw new IllegalArgumentException(
                         "unexpected state change for unknown identifier \""
                                 + identifier + "\"");
+            }
+        }
+
+        @Override
+        public void megawidgetStatesChanged(IStateful megawidget,
+                Map<String, Object> statesForIdentifiers) {
+            if (megawidget == timeRangeMegawidget) {
+                if (timeRangeChangeHandler != null) {
+                    TimeRange range;
+                    try {
+                        range = new TimeRange(
+                                (Long) statesForIdentifiers
+                                        .get(START_TIME_STATE),
+                                (Long) statesForIdentifiers.get(END_TIME_STATE));
+                    } catch (Exception e) {
+                        statusHandler.error(
+                                "unexpected problem fetching time range "
+                                        + "values from megawidget", e);
+                        return;
+                    }
+                    timeRangeChangeHandler.stateChanged(null, range);
+                }
+            } else {
+                throw new IllegalArgumentException(
+                        "unexpected state change for unknown megawidget \""
+                                + megawidget.getSpecifier().getIdentifier()
+                                + "\"");
             }
         }
     };
@@ -2038,8 +2001,67 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 Map<String, Object> map = new HashMap<String, Object>(
                         metadataStates);
                 try {
-                    megawidgetManager = new MetadataMegawidgetManager(panel,
-                            specifierManager, map);
+                    megawidgetManager = new MegawidgetManager(panel,
+                            specifierManager, map,
+                            new IMegawidgetManagerListener() {
+
+                                @Override
+                                public void commandInvoked(
+                                        MegawidgetManager manager,
+                                        String identifier) {
+
+                                    /*
+                                     * No action.
+                                     */
+                                }
+
+                                @Override
+                                public void stateElementChanged(
+                                        MegawidgetManager manager,
+                                        String identifier, Object state) {
+                                    if (metadataChangeHandler != null) {
+                                        metadataChangeHandler.stateChanged(
+                                                identifier,
+                                                (Serializable) state);
+                                    }
+                                }
+
+                                @Override
+                                public void stateElementsChanged(
+                                        MegawidgetManager manager,
+                                        Map<String, Object> statesForIdentifiers) {
+                                    if (metadataChangeHandler != null) {
+                                        Map<String, Serializable> map = new HashMap<>(
+                                                statesForIdentifiers.size());
+                                        for (Map.Entry<String, Object> entry : statesForIdentifiers
+                                                .entrySet()) {
+                                            map.put(entry.getKey(),
+                                                    (Serializable) entry
+                                                            .getValue());
+                                        }
+                                        metadataChangeHandler
+                                                .statesChanged(map);
+                                    }
+                                }
+
+                                @Override
+                                public void sizeChanged(
+                                        MegawidgetManager manager,
+                                        String identifier) {
+                                    metadataPanelResized();
+                                }
+
+                                @Override
+                                public void sideEffectMutablePropertyChangeErrorOccurred(
+                                        MegawidgetManager manager,
+                                        MegawidgetPropertyException exception) {
+                                    statusHandler
+                                            .error("HazardDetailViewPart.MegawidgetManager error occurred "
+                                                    + "while attempting to apply megawidget interdependencies.",
+                                                    exception);
+                                }
+
+                            }, minimumVisibleTime, maximumVisibleTime);
                 } catch (Exception e) {
                     statusHandler
                             .error("Could not create hazard metadata megawidgets "

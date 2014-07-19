@@ -39,6 +39,9 @@ import com.google.common.collect.ImmutableSet;
  *                                           megawidgets.
  * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
  *                                           of NotifierMegawidget.
+ * Jun 30, 2014   3512     Chris.Golden      Added method to notify state change
+ *                                           listeners of multiple simultaneous
+ *                                           state changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -373,6 +376,48 @@ public abstract class StatefulMegawidget extends Megawidget implements
             isSettingState = true;
             stateChangeListener.megawidgetStateChanged(this, identifier, state);
             isSettingState = false;
+        }
+    }
+
+    /**
+     * Notify the state change listener of a single state change or of multiple
+     * simultaneous state changes. This method should be called by a subclass
+     * whenever the latter experiences one or more state change at once as a
+     * result of user action. (If the subclass is sure that only one state
+     * change occurred, it may use {@link #notifyListener(String, Object)}
+     * instead.) It ensures that the state changes are not the result of the
+     * state being programmatically set before going ahead with the
+     * notification.
+     * <p>
+     * Note that if the specified map only contains one entry, then a single
+     * state change notification will be sent out by calling the other
+     * <code>notifyListener()</code> method. If the map contains no entries, no
+     * notifications are dispatched.
+     * </p>
+     * 
+     * @param statesForIdentifiers
+     *            Map of zero or more state identifiers to their new state
+     *            values.
+     */
+    protected final void notifyListener(Map<String, Object> statesForIdentifiers) {
+
+        /*
+         * If one or more values changed and notification is appropriate, send
+         * out a notification appropriate to the number of values that changed.
+         */
+        if (statesForIdentifiers.isEmpty() == false) {
+            if (statesForIdentifiers.size() == 1) {
+                Map.Entry<String, Object> entry = statesForIdentifiers
+                        .entrySet().iterator().next();
+                notifyListener(entry.getKey(), entry.getValue());
+            } else {
+                if (isSettingState == false) {
+                    isSettingState = true;
+                    stateChangeListener.megawidgetStatesChanged(this,
+                            statesForIdentifiers);
+                    isSettingState = false;
+                }
+            }
         }
     }
 

@@ -25,6 +25,12 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * May 08, 2014    2925    Chris.Golden Initial creation.
+ * Jun 30, 2014    3512    Chris.Golden Simplified setting of handler by
+ *                                      removing identifier; one handler must
+ *                                      be used for all identifiers, since
+ *                                      the handler may be called upon to
+ *                                      receive notification of multiple
+ *                                      simultaneous state changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -82,17 +88,11 @@ public interface IStateChanger<I, S> extends IWidget<I> {
     public void setStates(Map<I, S> valuesForIdentifiers);
 
     /**
-     * Set the state change handler for the specified stateful widget. The
-     * specified handler will be notified when the state changes.
+     * Set the state change handler to that specified. The handler will be
+     * notified when the state changes.
      * 
-     * @param identifier
-     *            Identifier of the stateful widget to have its handler set.
-     *            This may be <code>null</code> if this object only handles one
-     *            particular state, or if <code>handler</code> is happy to
-     *            handle all states.
      * @param handler
      *            Handler to be used.
      */
-    public void setStateChangeHandler(I identifier,
-            IStateChangeHandler<I, S> handler);
+    public void setStateChangeHandler(IStateChangeHandler<I, S> handler);
 }

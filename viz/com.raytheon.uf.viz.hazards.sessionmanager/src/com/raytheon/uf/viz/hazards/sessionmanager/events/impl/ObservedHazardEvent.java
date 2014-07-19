@@ -81,6 +81,10 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      as use of new, more fine-grained
  *                                      notifications in response to event
  *                                      modification.
+ * Jun 30, 2014 3512       Chris.Golden Added addHazardAttributes() methods.
+ *                                      Also changed a few methods that were
+ *                                      public that should have been protected
+ *                                      like the other notify-taking methods.
  * </pre>
  * 
  * @author bsteffen
@@ -318,11 +322,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
-    public void addHazardAttributes(Map<String, Serializable> attributes) {
-        addHazardAttributes(attributes, true, Originator.OTHER);
-    }
-
-    @Override
     public void addHazardAttribute(String key, Serializable value) {
         addHazardAttribute(key, value, true, Originator.OTHER);
     }
@@ -330,6 +329,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     protected void addHazardAttribute(String key, Serializable value,
             boolean notify) {
         addHazardAttribute(key, value, notify, Originator.OTHER);
+    }
+
+    @Override
+    public void addHazardAttributes(Map<String, Serializable> attributes) {
+        addHazardAttributes(attributes, true, Originator.OTHER);
     }
 
     @Override
@@ -399,6 +403,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     public void addHazardAttribute(String key, Serializable value,
             IOriginator originator) {
         addHazardAttribute(key, value, true, originator);
+    }
+
+    public void addHazardAttributes(Map<String, Serializable> attributes,
+            IOriginator originator) {
+        addHazardAttributes(attributes, true, originator);
     }
 
     public void removeHazardAttribute(String key, IOriginator originator) {
@@ -687,7 +696,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
                     .hazardEventModified(new SessionEventAttributesModified(
                             eventManager, this, modifiedAttributes, originator));
         }
-
     }
 
     protected void addHazardAttribute(String key, Serializable value,

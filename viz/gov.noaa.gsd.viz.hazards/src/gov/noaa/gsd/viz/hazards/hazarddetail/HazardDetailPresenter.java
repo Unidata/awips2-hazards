@@ -108,6 +108,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Jun 25, 2014    4009    Chris.Golden      Added code to cache extra data held by
  *                                           metadata megawidgets between view
  *                                           instantiations.
+ * Jun 30, 2014    3512    Chris.Golden      Changed to work with new versions of
+ *                                           MVP widget classes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -316,6 +318,11 @@ public class HazardDetailPresenter extends
                 detailViewShowing = false;
             }
         }
+
+        @Override
+        public void statesChanged(Map<String, Boolean> valuesForIdentifiers) {
+            handleUnsupportedOperationAttempt("visibility");
+        }
     };
 
     /**
@@ -335,6 +342,11 @@ public class HazardDetailPresenter extends
                 }
             }
         }
+
+        @Override
+        public void statesChanged(Map<String, String> valuesForIdentifiers) {
+            handleUnsupportedOperationAttempt("visible event");
+        }
     };
 
     /**
@@ -352,6 +364,11 @@ public class HazardDetailPresenter extends
                         UIOriginator.HAZARD_INFORMATION_DIALOG);
                 updateViewTypeList(event);
             }
+        }
+
+        @Override
+        public void statesChanged(Map<String, String> valuesForIdentifiers) {
+            handleUnsupportedOperationAttempt("category");
         }
     };
 
@@ -396,6 +413,11 @@ public class HazardDetailPresenter extends
                 updateViewButtonsEnabledStates();
             }
         }
+
+        @Override
+        public void statesChanged(Map<String, String> valuesForIdentifiers) {
+            handleUnsupportedOperationAttempt("type");
+        }
     };
 
     /**
@@ -412,6 +434,11 @@ public class HazardDetailPresenter extends
                         UIOriginator.HAZARD_INFORMATION_DIALOG);
             }
         }
+
+        @Override
+        public void statesChanged(Map<String, TimeRange> valuesForIdentifiers) {
+            handleUnsupportedOperationAttempt("time range");
+        }
     };
 
     /**
@@ -424,6 +451,15 @@ public class HazardDetailPresenter extends
             ObservedHazardEvent event = getVisibleEvent();
             if (event != null) {
                 event.addHazardAttribute(identifier, value,
+                        UIOriginator.HAZARD_INFORMATION_DIALOG);
+            }
+        }
+
+        @Override
+        public void statesChanged(Map<String, Serializable> valuesForIdentifiers) {
+            ObservedHazardEvent event = getVisibleEvent();
+            if (event != null) {
+                event.addHazardAttributes(valuesForIdentifiers,
                         UIOriginator.HAZARD_INFORMATION_DIALOG);
             }
         }
@@ -896,19 +932,18 @@ public class HazardDetailPresenter extends
         /*
          * Register the various handlers with the view.
          */
-        getView().getButtonInvoker().setCommandInvocationHandler(null,
+        getView().getButtonInvoker().setCommandInvocationHandler(
                 buttonInvocationHandler);
-        getView().getCategoryChanger().setStateChangeHandler(null,
+        getView().getCategoryChanger().setStateChangeHandler(
                 categoryChangeHandler);
-        getView().getTypeChanger().setStateChangeHandler(null,
-                typeChangeHandler);
-        getView().getDetailViewVisibilityChanger().setStateChangeHandler(null,
+        getView().getTypeChanger().setStateChangeHandler(typeChangeHandler);
+        getView().getDetailViewVisibilityChanger().setStateChangeHandler(
                 detailViewVisibilityChangeHandler);
-        getView().getMetadataChanger().setStateChangeHandler(null,
+        getView().getMetadataChanger().setStateChangeHandler(
                 metadataChangeHandler);
-        getView().getTimeRangeChanger().setStateChangeHandler(null,
+        getView().getTimeRangeChanger().setStateChangeHandler(
                 timeRangeChangeHandler);
-        getView().getVisibleEventChanger().setStateChangeHandler(null,
+        getView().getVisibleEventChanger().setStateChangeHandler(
                 visibleEventChangeHandler);
     }
 
@@ -1209,5 +1244,21 @@ public class HazardDetailPresenter extends
     private ObservedHazardEvent getVisibleEvent() {
         return (visibleEventIdentifier == null ? null : getModel()
                 .getEventManager().getEventById(visibleEventIdentifier));
+    }
+
+    /**
+     * Throw an unsupported operation exception for attempts to change multiple
+     * states that are not appropriate.
+     * 
+     * @param description
+     *            Description of the element for which an attempt to change
+     *            multiple states was made.
+     * @throw UnsupportedOperationException Whenever this method is called.
+     */
+    private void handleUnsupportedOperationAttempt(String description)
+            throws UnsupportedOperationException {
+        throw new UnsupportedOperationException(
+                "cannot change multiple states associated with detail view "
+                        + description);
     }
 }

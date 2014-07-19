@@ -57,8 +57,10 @@ import com.google.common.collect.ImmutableList;
  *                                           parameters. Also updated Javadoc and
  *                                           other comments.
  * Jun 17, 2014   3982     Chris.Golden      Removed obsolete properties.
- * Jun 23, 2014    4010    Chris.Golden      Changed to no longer extend notifier
+ * Jun 23, 2014   4010     Chris.Golden      Changed to no longer extend notifier
  *                                           specifier, which has been removed.
+ * Jun 27, 2014   3512     Chris.Golden      Added check against minimum state
+ *                                           identifier count.
  * </pre>
  * 
  * @author Chris.Golden
@@ -178,13 +180,19 @@ public abstract class StatefulMegawidgetSpecifier extends MegawidgetSpecifier
                         null,
                         "stateful megawidget specifier must have "
                                 + "non-repeating colon-separated state identifiers");
-            } else if (stateIdentifiers.size() >= getMaximumStateIdentifierCount()) {
-                throw new MegawidgetSpecificationException(getIdentifier(),
-                        getType(), null, null,
-                        "state identifier count too high for this class (maximum "
-                                + getMaximumStateIdentifierCount() + ")");
             }
             stateIdentifiers.add(identifier);
+        }
+        if (stateIdentifiers.size() < getMinimumStateIdentifierCount()) {
+            throw new MegawidgetSpecificationException(getIdentifier(),
+                    getType(), null, null,
+                    "state identifier count too low for this class (minimum "
+                            + getMinimumStateIdentifierCount() + ")");
+        } else if (stateIdentifiers.size() > getMaximumStateIdentifierCount()) {
+            throw new MegawidgetSpecificationException(getIdentifier(),
+                    getType(), null, null,
+                    "state identifier count too high for this class (maximum "
+                            + getMaximumStateIdentifierCount() + ")");
         }
         this.stateIdentifiers = ImmutableList.copyOf(stateIdentifiers);
 
@@ -287,6 +295,24 @@ public abstract class StatefulMegawidgetSpecifier extends MegawidgetSpecifier
     }
 
     // Protected Methods
+
+    /**
+     * Get the minimum number of state identifiers that may be associated with
+     * this megawidget specifier. This implementation simply returns 1, meaning
+     * that only subclasses that require multiple state identifiers per
+     * megawidget specifier have to override this method.
+     * <p>
+     * <strong>Note</strong>: This method is invoked during
+     * {@link StatefulMegawidgetSpecifier} construction, and thus must be
+     * implemented to not rely upon (or alter) subclass-member-specific
+     * variables. Thus, it should return a constant.
+     * 
+     * @return Minimum number of state identifiers that may be associated with
+     *         the megawidget specifier.
+     */
+    protected int getMinimumStateIdentifierCount() {
+        return 1;
+    }
 
     /**
      * Get the maximum number of state identifiers that may be associated with

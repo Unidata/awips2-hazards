@@ -84,6 +84,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Apr 27, 2014 2925       Chris.Golden Augmented with additional methods to
  *                                      set the type components atomically, or
  *                                      the start and end time atomically.
+ * Jun 30, 2014 3512       Chris.Golden Added addHazardAttributes() method.
  * </pre>
  * 
  * @author mnash
@@ -504,6 +505,13 @@ public class PracticeHazardEvent extends PersistableDataObject<String>
         }
     }
 
+    @Override
+    public void addHazardAttributes(Map<String, Serializable> attributes) {
+        for (Map.Entry<String, Serializable> entry : attributes.entrySet()) {
+            addHazardAttribute(entry.getKey(), entry.getValue());
+        }
+    }
+
     /*
      * (non-Javadoc)
      * 
@@ -684,13 +692,5 @@ public class PracticeHazardEvent extends PersistableDataObject<String>
             return false;
         }
         return true;
-    }
-
-    @Override
-    public void addHazardAttributes(Map<String, Serializable> attributes) {
-        for (Map.Entry<String, Serializable> entry : attributes.entrySet()) {
-            addHazardAttribute(entry.getKey(), entry.getValue());
-        }
-
     }
 }

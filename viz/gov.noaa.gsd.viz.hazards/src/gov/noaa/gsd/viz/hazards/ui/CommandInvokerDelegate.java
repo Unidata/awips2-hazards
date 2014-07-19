@@ -28,6 +28,8 @@ import org.eclipse.swt.widgets.Widget;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * May 09, 2014    2925    Chris.Golden Initial creation.
+ * Jun 30, 2014    3512    Chris.Golden Changed to work with changes to
+ *                                      ICommandInvoker.
  * </pre>
  * 
  * @author Chris.Golden
@@ -98,7 +100,7 @@ public class CommandInvokerDelegate<I, W extends ICommandInvoker<I>> extends
     // Public Methods
 
     @Override
-    public void setCommandInvocationHandler(final I identifier,
+    public void setCommandInvocationHandler(
             final ICommandInvocationHandler<I> handler) {
 
         /*
@@ -110,7 +112,7 @@ public class CommandInvokerDelegate<I, W extends ICommandInvoker<I>> extends
 
             @Override
             public void run() {
-                getPrincipal().setCommandInvocationHandler(identifier,
+                getPrincipal().setCommandInvocationHandler(
                         new CommandInvocationHandlerDelegate(handler));
             }
         }, true);

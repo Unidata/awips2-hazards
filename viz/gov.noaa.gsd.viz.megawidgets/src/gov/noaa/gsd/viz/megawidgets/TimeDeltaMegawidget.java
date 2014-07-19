@@ -9,8 +9,6 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import gov.noaa.gsd.viz.megawidgets.TimeDeltaSpecifier.Unit;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +64,9 @@ import com.google.common.collect.ImmutableSet;
  *                                           show.
  * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
  *                                           of NotifierMegawidget.
+ * Jun 27, 2014   3512     Chris.Golden      Extracted Unit from TimeDeltaSpecifier
+ *                                           and made a new non-inner class out of
+ *                                           it (TimeDeltaUnit).
  * </pre>
  * 
  * @author Chris.Golden
@@ -114,7 +115,7 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
     /**
      * Currently selected unit.
      */
-    private Unit unit = null;
+    private TimeDeltaUnit unit = null;
 
     /**
      * Flag indicating whether state changes that occur as a result of a spinner
@@ -193,7 +194,7 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
          * If there is more than one possible unit, create the unit choosing
          * combo box; otherwise, create a label indicating the unit.
          */
-        List<Unit> units = specifier.getUnits();
+        List<TimeDeltaUnit> units = specifier.getUnits();
         if (units.size() > 1) {
 
             /*
@@ -427,15 +428,15 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
          * Ensure a unit is specified, and that said unit is one of the valid
          * choices for this megawidget.
          */
-        Unit newUnit = null;
+        TimeDeltaUnit newUnit = null;
         if (value instanceof String) {
-            newUnit = Unit.get((String) value);
+            newUnit = TimeDeltaUnit.get((String) value);
         }
         TimeDeltaSpecifier specifier = getSpecifier();
-        List<Unit> units = specifier.getUnits();
+        List<TimeDeltaUnit> units = specifier.getUnits();
         if ((newUnit == null) || (units.contains(newUnit) == false)) {
             StringBuilder stringBuilder = new StringBuilder();
-            for (Unit aUnit : units) {
+            for (TimeDeltaUnit aUnit : units) {
                 if (stringBuilder.length() > 0) {
                     stringBuilder.append(", ");
                 }
@@ -555,7 +556,7 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
      * @return Number of characters required to show the specified number using
      *         the specified unit in base 10.
      */
-    private int getDigitsForValue(long value, Unit unit) {
+    private int getDigitsForValue(long value, TimeDeltaUnit unit) {
         return ((int) Math
                 .floor(Math.log10(unit
                         .convertMillisecondsToUnit(((TimeDeltaSpecifier) getSpecifier())
@@ -571,7 +572,7 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
      *            Flag indicating whether or not notification should occur.
      */
     private void unitChanged(boolean notify) {
-        unit = Unit.get(combo.getItem(combo.getSelectionIndex()));
+        unit = TimeDeltaUnit.get(combo.getItem(combo.getSelectionIndex()));
         setSpinnerParameters(unit);
         Long oldState = state;
         if (state == null) {
@@ -595,7 +596,7 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
      * @param unit
      *            Unit.
      */
-    private void setSpinnerParameters(Unit unit) {
+    private void setSpinnerParameters(TimeDeltaUnit unit) {
         TimeDeltaSpecifier specifier = (TimeDeltaSpecifier) getSpecifier();
         spinner.setMinimum(unit.convertMillisecondsToUnit(specifier
                 .getStateUnit().convertUnitToMilliseconds(getMinimumValue())));

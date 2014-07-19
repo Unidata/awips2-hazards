@@ -34,6 +34,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
  * May 18, 2014  2925      Chris.Golden      Changed to work with new MVP framework.
+ * Jun 30, 2014 3512    Chris.Golden         Changed to work with changes to
+ *                                           ICommandInvoker.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -54,7 +56,7 @@ public class ProductStagingViewForTesting implements IProductStagingView {
         }
 
         @Override
-        public void setCommandInvocationHandler(String identifier,
+        public void setCommandInvocationHandler(
                 ICommandInvocationHandler<String> handler) {
 
             /*

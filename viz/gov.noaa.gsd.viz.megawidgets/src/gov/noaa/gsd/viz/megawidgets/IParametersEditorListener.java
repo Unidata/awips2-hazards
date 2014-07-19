@@ -12,11 +12,13 @@ package gov.noaa.gsd.viz.megawidgets;
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.common.utilities.collect.IParameterInfo;
 
+import java.util.Map;
+
 /**
  * Description: Listener for parameters editor events. The generic parameter
  * <code>K</code> indicates the class of the labels being used, and must be
  * identical to the <code>K</code> used in the call to
- * {@link ParametersEditorFactory#buildParametersEditor(org.eclipse.swt.widgets.Composite, java.util.List, java.util.Map, long, long, ICurrentTimeProvider, IParametersEditorListener, IManagerResizeListener)}
+ * {@link ParametersEditorFactory#buildParametersEditor(org.eclipse.swt.widgets.Composite, java.util.List, java.util.Map, long, long, ICurrentTimeProvider, IParametersEditorListener)}
  * .
  * 
  * <pre>
@@ -28,6 +30,10 @@ import gov.noaa.gsd.common.utilities.collect.IParameterInfo;
  * Apr 10, 2014    2336    Chris.Golden      Augmented by using a generic
  *                                           parameter to specify the type of
  *                                           key being used.
+ * Jun 30, 2014    3512    Chris.Golden      Added method to receive
+ *                                           notification of resize events,
+ *                                           and of multiple simultaneous
+ *                                           parameter changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -44,4 +50,22 @@ public interface IParametersEditorListener<K extends IParameterInfo> {
      *            New value of the parameter.
      */
     public void parameterValueChanged(K label, Object value);
+
+    /**
+     * Receive notification of multiple simultaneous parameter value changes.
+     * 
+     * @param valuesForLabels
+     *            Map pairing parameter label identifiers with their new values.
+     */
+    public void parameterValuesChanged(Map<K, Object> valuesForLabels);
+
+    /**
+     * Receive notification that a parameters editor has experienced a size
+     * change.
+     * 
+     * @param label
+     *            Label identifier of the parameter that precipitated the
+     *            change.
+     */
+    public void sizeChanged(K label);
 }

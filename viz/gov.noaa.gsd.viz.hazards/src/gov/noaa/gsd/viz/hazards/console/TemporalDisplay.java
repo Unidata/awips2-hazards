@@ -40,9 +40,11 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.setting.SettingsView;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
+import gov.noaa.gsd.viz.megawidgets.IMegawidgetManagerListener;
 import gov.noaa.gsd.viz.megawidgets.IMenuSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 import gov.noaa.gsd.viz.widgets.DayHatchMarkGroup;
@@ -212,6 +214,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  *                                           usage of JDK 1.7 features.
  * Jun 23, 2014   4010     Chris.Golden      Changed to work with megawidget manager
  *                                           changes.
+ * Jun 30, 2014   3512     Chris.Golden      Changed to work with more megawidget
+ *                                           manager changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -2089,45 +2093,82 @@ class TemporalDisplay {
                             headerMegawidgetManagersForColumnNames.put(
                                     filterColumnName, new MegawidgetManager(
                                             menu, Lists.newArrayList(filter),
-                                            settingsAsDict) {
-                                        @Override
-                                        protected void commandInvoked(
-                                                String identifier) {
+                                            settingsAsDict,
+                                            new IMegawidgetManagerListener() {
 
-                                            // No action.
-                                        }
+                                                @Override
+                                                public void commandInvoked(
+                                                        MegawidgetManager manager,
+                                                        String identifier) {
 
-                                        @Override
-                                        protected void stateElementChanged(
-                                                String identifier, Object state) {
+                                                    /*
+                                                     * No action.
+                                                     */
+                                                }
 
-                                            // Special case: A translation has
-                                            // to be made between the hazard
-                                            // categories and types tree
-                                            // structure that the user is
-                                            // creating as state and the old
-                                            // hazard categories list and hazard
-                                            // types list. This should be
-                                            // removed if we can get rid of the
-                                            // visibleTypes and
-                                            // hidHazardCategories lists in the
-                                            // dynamic setting.
-                                            Dict settingsAsDict = (Dict) getState();
-                                            SettingsView
-                                                    .translateHazardCategoriesAndTypesToOldLists(settingsAsDict);
-                                            Settings updatedSettings = jsonConverter
-                                                    .fromJson(settingsAsDict
-                                                            .toJSONString(),
+                                                @Override
+                                                public void stateElementChanged(
+                                                        MegawidgetManager manager,
+                                                        String identifier,
+                                                        Object state) {
+
+                                                    /*
+                                                     * Special case: A
+                                                     * translation has to be
+                                                     * made between the hazard
+                                                     * categories and types tree
+                                                     * structure that the user
+                                                     * is creating as state and
+                                                     * the old hazard categories
+                                                     * list and hazard types
+                                                     * list. This should be
+                                                     * removed if we can get rid
+                                                     * of the visibleTypes and
+                                                     * hidHazardCategories lists
+                                                     * in the dynamic setting.
+                                                     */
+                                                    Dict settingsAsDict = (Dict) manager
+                                                            .getState();
+                                                    SettingsView
+                                                            .translateHazardCategoriesAndTypesToOldLists(settingsAsDict);
+                                                    Settings updatedSettings = jsonConverter.fromJson(
+                                                            settingsAsDict
+                                                                    .toJSONString(),
                                                             Settings.class);
-                                            TemporalDisplay.this.currentSettings
-                                                    .apply(updatedSettings);
+                                                    TemporalDisplay.this.currentSettings
+                                                            .apply(updatedSettings);
 
-                                            // Forward the dynamic setting
-                                            // change to the
-                                            // presenter.
-                                            notifyListenersOfSettingDefinitionChange();
-                                        }
-                                    });
+                                                    /*
+                                                     * Forward the dynamic
+                                                     * setting change to the
+                                                     * presenter.
+                                                     */
+                                                    notifyListenersOfSettingDefinitionChange();
+                                                }
+
+                                                @Override
+                                                public void stateElementsChanged(
+                                                        MegawidgetManager manager,
+                                                        Map<String, Object> statesForIdentifiers) {
+                                                    throw new UnsupportedOperationException();
+                                                }
+
+                                                @Override
+                                                public void sizeChanged(
+                                                        MegawidgetManager manager,
+                                                        String identifier) {
+                                                    throw new UnsupportedOperationException();
+                                                }
+
+                                                @Override
+                                                public void sideEffectMutablePropertyChangeErrorOccurred(
+                                                        MegawidgetManager manager,
+                                                        MegawidgetPropertyException exception) {
+                                                    throw new UnsupportedOperationException();
+                                                }
+
+                                            }));
+
                         } catch (MegawidgetException e) {
                             statusHandler
                                     .error(getClass().getName()

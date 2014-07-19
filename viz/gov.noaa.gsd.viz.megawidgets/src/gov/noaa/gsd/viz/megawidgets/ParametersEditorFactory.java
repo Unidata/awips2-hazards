@@ -34,7 +34,7 @@ import com.google.common.collect.ImmutableMap;
  * megawidget-based GUIs to manipulate values.
  * <p>
  * Megawidgets are build using the
- * {@link #buildParametersEditor(Composite, List, Map, long, long, ICurrentTimeProvider, IParametersEditorListener, IManagerResizeListener)}
+ * {@link #buildParametersEditor(Composite, List, Map, long, long, ICurrentTimeProvider, IParametersEditorListener)}
  * method which returns a {@link MegawidgetManager}. Each megawidget managed by
  * the latter is given as its identifier the label with which the corresponding
  * parameter is associated. Note that the labels passed to the editor should not
@@ -66,6 +66,14 @@ import com.google.common.collect.ImmutableMap;
  *                                           an expand bar if desired. Also
  *                                           changed to work with newest
  *                                           megawidget manager changes.
+ * Jun 30, 2014    3512    Chris.Golden      Changed to work with latest
+ *                                           megawidget manager changes, and to
+ *                                           send multiple simultaneous
+ *                                           parameter change notifications to
+ *                                           its listener. Also consolidated
+ *                                           size change notifications and other
+ *                                           notifications into that same single
+ *                                           listener.
  * </pre>
  * 
  * @author Chris.Golden
@@ -195,13 +203,6 @@ public class ParametersEditorFactory {
     private class ParametersEditor<K extends IParameterInfo> extends
             MegawidgetManager {
 
-        // Private Variables
-
-        /**
-         * Map pairing keys with their associated parameters.
-         */
-        private final Map<String, K> parametersForKeys;
-
         // Public Constructors
 
         /**
@@ -242,9 +243,6 @@ public class ParametersEditorFactory {
          *            default current time provider is used. If no time
          *            megawidgets are included in <code>specifiers</code>, this
          *            is ignored.
-         * @param resizeListener
-         *            Listener to be notified when the <code>parent</code> may
-         *            have been resized as a result of a megawidget size change.
          * @throws MegawidgetException
          *             If one of the megawidget specifiers is invalid, or if an
          *             error occurs while creating or initializing one of the
@@ -252,33 +250,55 @@ public class ParametersEditorFactory {
          */
         public ParametersEditor(Composite parent,
                 List<Map<String, Object>> specifiers,
-                Map<String, Object> state, Map<String, K> parametersForKeys,
-                long minTime, long maxTime,
-                ICurrentTimeProvider currentTimeProvider,
-                IManagerResizeListener resizeListener)
+                Map<String, Object> state,
+                final Map<String, K> parametersForKeys, long minTime,
+                long maxTime, ICurrentTimeProvider currentTimeProvider)
                 throws MegawidgetException {
-            super(parent, specifiers, state, minTime, maxTime,
-                    currentTimeProvider, resizeListener);
-            this.parametersForKeys = parametersForKeys;
+            super(parent, specifiers, state, new IMegawidgetManagerListener() {
+
+                @Override
+                public void commandInvoked(MegawidgetManager manager,
+                        String identifier) {
+
+                    /*
+                     * No action.
+                     */
+                }
+
+                @SuppressWarnings("unchecked")
+                @Override
+                public void stateElementChanged(MegawidgetManager manager,
+                        String identifier, Object state) {
+                    ((IParametersEditorListener<K>) listenersForManagers
+                            .get(manager)).parameterValueChanged(
+                            parametersForKeys.get(identifier), state);
+                }
+
+                @Override
+                public void stateElementsChanged(MegawidgetManager manager,
+                        Map<String, Object> statesForIdentifiers) {
+                    throw new UnsupportedOperationException();
+                }
+
+                @SuppressWarnings("unchecked")
+                @Override
+                public void sizeChanged(MegawidgetManager manager,
+                        String identifier) {
+                    ((IParametersEditorListener<K>) listenersForManagers
+                            .get(manager)).sizeChanged(parametersForKeys
+                            .get(identifier));
+                }
+
+                @Override
+                public void sideEffectMutablePropertyChangeErrorOccurred(
+                        MegawidgetManager manager,
+                        MegawidgetPropertyException exception) {
+                    throw new UnsupportedOperationException();
+                }
+            }, minTime, maxTime, currentTimeProvider);
         }
 
-        // Public Methods
-
-        @Override
-        protected void commandInvoked(String identifier) {
-
-            /*
-             * No action.
-             */
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        protected void stateElementChanged(String identifier, Object state) {
-            ((IParametersEditorListener<K>) listenersForParents
-                    .get(getParent())).parameterValueChanged(
-                    parametersForKeys.get(identifier), state);
-        }
+        // Protected Methods
 
         @Override
         protected Object convertStateElementToMegawidgetState(
@@ -344,9 +364,9 @@ public class ParametersEditorFactory {
     private final Map<Composite, Map<String, IConverter>> convertersForKeysForParents = new HashMap<>();
 
     /**
-     * Map of parent composites to their listeners.
+     * Map of megawidget managers to their listeners.
      */
-    private final Map<Composite, IParametersEditorListener<? extends IParameterInfo>> listenersForParents = new HashMap<>();
+    private final Map<MegawidgetManager, IParametersEditorListener<? extends IParameterInfo>> listenersForManagers = new HashMap<>();
 
     // Public Constructors
 
@@ -621,14 +641,11 @@ public class ParametersEditorFactory {
      *            always provides the current system time.
      * @param parametersListener
      *            Listener to be notified each time the one of the parameter
-     *            values has changed, if any. If no listener is desired, the
-     *            caller may track the life of <code>parent</code> and simply
-     *            check the values within <code>valuesForParameters</code> to
-     *            see their updated values once <code>parent</code> is disposed.
-     * @param resizeListener
-     *            Listener to be notified each time a resize of the
-     *            <code>parent</code> may have occurred as a result of a
-     *            megawidget size change.
+     *            values has changed or a parameter editor has resized itself.
+     *            If no listener is desired, the caller may track the life of
+     *            <code>parent</code> and simply check the values within
+     *            <code>valuesForParameters</code> to see their updated values
+     *            once <code>parent</code> is disposed.
      * @return Megawidget manager that is acting as the parameters editor.
      * @throws MegawidgetSpecificationException
      *             If the megawidgets cannot be constructed.
@@ -637,8 +654,8 @@ public class ParametersEditorFactory {
             Composite parent, List<K> parameters,
             Map<K, Object> valuesForParameters, long minimumTime,
             long maximumTime, ICurrentTimeProvider currentTimeProvider,
-            IParametersEditorListener<K> parametersListener,
-            IManagerResizeListener resizeListener) throws MegawidgetException {
+            IParametersEditorListener<K> parametersListener)
+            throws MegawidgetException {
 
         /*
          * Assemble a list of the megawidget specifiers, and any converters
@@ -728,13 +745,12 @@ public class ParametersEditorFactory {
         }
 
         /*
-         * Associate the parent composite with the converters map created above,
-         * as well as the specified listener. This is done so as to allow the
-         * megawidget manager that is about to be created to have access to
-         * these items when it is constructing itself.
+         * Associate the parent composite with the converters map created above.
+         * This is done so as to allow the megawidget manager that is about to
+         * be created to have access to these items when it is constructing
+         * itself.
          */
         convertersForKeysForParents.put(parent, convertersForKeys);
-        listenersForParents.put(parent, parametersListener);
 
         /*
          * Ensure that when the parent composite is disposed of, the
@@ -746,7 +762,16 @@ public class ParametersEditorFactory {
             @Override
             public void widgetDisposed(DisposeEvent e) {
                 convertersForKeysForParents.remove(e.widget);
-                listenersForParents.remove(e.widget);
+                MegawidgetManager managerToRemove = null;
+                for (MegawidgetManager manager : listenersForManagers.keySet()) {
+                    if (manager.getParent() == e.widget) {
+                        managerToRemove = manager;
+                        break;
+                    }
+                }
+                if (managerToRemove != null) {
+                    listenersForManagers.remove(managerToRemove);
+                }
             }
         });
 
@@ -755,8 +780,10 @@ public class ParametersEditorFactory {
          * editor. The former creates all the megawidgets that are specified and
          * notifies the listener of any parameter value changes.
          */
-        return new ParametersEditor<K>(parent, specifiers, valuesForKeys,
-                parametersForKeys, minimumTime, maximumTime,
-                currentTimeProvider, resizeListener);
+        MegawidgetManager manager = new ParametersEditor<K>(parent, specifiers,
+                valuesForKeys, parametersForKeys, minimumTime, maximumTime,
+                currentTimeProvider);
+        listenersForManagers.put(manager, parametersListener);
+        return manager;
     }
 }
