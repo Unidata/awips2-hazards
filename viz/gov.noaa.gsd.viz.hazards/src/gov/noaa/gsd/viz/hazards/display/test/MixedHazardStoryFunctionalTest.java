@@ -52,6 +52,7 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 
 import java.io.Serializable;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +75,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
@@ -99,6 +101,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComp
  *                                      ongoing issue flags are set to false at the end
  *                                      of each test, and moved the steps enum into the
  *                                      base class.
+ * Jul 29, 2014 3512       Chris.Golden Fixed to work with default duration code; the FL.A
+ *                                      must have a start time that is close to the current
+ *                                      CAVE time so that when an FL.W is created from it,
+ *                                      the latter has an end time after the current CAVE
+ *                                      time.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -112,9 +119,9 @@ class MixedHazardStoryFunctionalTest extends
             .getHandler(getClass());
 
     protected enum Steps {
-        RUN_DAM_BREAK, RUN_FLOOD, SELECT_RECOMMENDED, SELECTION_PREVIEW,
+        RUN_DAM_BREAK, RUN_FLOOD, SELECT_RECOMMENDED, CHANGE_TIME_RANGE,
 
-        SELECTION_ISSUE, REMOVING_POTENTIAL_EVENTS,
+        SELECTION_PREVIEW, SELECTION_ISSUE, REMOVING_POTENTIAL_EVENTS,
 
         UPDATING_FIRST_EVENT, UPDATING_SECOND_EVENT,
 
@@ -269,6 +276,26 @@ class MixedHazardStoryFunctionalTest extends
     }
 
     @Handler(priority = -1)
+    public void sessionEventTimeRangeModifiedOccurred(
+            final SessionEventTimeRangeModified action) {
+        try {
+            switch (step) {
+
+            case CHANGE_TIME_RANGE:
+                stepCompleted();
+                step = Steps.SELECTION_PREVIEW;
+                autoTestUtilities.previewEvent();
+                break;
+
+            default:
+                return;
+            }
+        } catch (Exception e) {
+            handleException(e);
+        }
+    }
+
+    @Handler(priority = -1)
     public void sessionEventAtributeModifiedOccurred(
             final SessionEventAttributesModified action) {
         try {
@@ -283,8 +310,8 @@ class MixedHazardStoryFunctionalTest extends
                         checkConsoleSelections();
                         checkFloodEventAddition();
                         stepCompleted();
-                        step = Steps.SELECTION_PREVIEW;
-                        autoTestUtilities.previewEvent();
+                        step = Steps.CHANGE_TIME_RANGE;
+                        changeTimeRangeOfRiverFloodRecommenderEvent();
                     }
                 }
                 break;
@@ -607,7 +634,7 @@ class MixedHazardStoryFunctionalTest extends
                 .productsFromEditorView(mockProductEditorView);
         String legacy = products
                 .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
-        //TODO need to restore this
+        // TODO need to restore this
         // assertTrue(legacy.contains("REPLACED"));
         assertTrue(legacy.contains("FLOOD WATCH"));
 
@@ -691,6 +718,22 @@ class MixedHazardStoryFunctionalTest extends
         assertEquals(selectedEvents.size(), 2);
         ObservedHazardEvent floodEvent = selectedEvents.get(1);
         assertEquals(floodEvent.getHazardType(), FLOOD_WATCH_PHEN_SIG);
+    }
+
+    private void changeTimeRangeOfRiverFloodRecommenderEvent() {
+        for (ObservedHazardEvent event : getEventManager().getSelectedEvents()) {
+            if (event.getPhenomenon().equals("FL")
+                    && event.getSignificance().equals("A")) {
+                long startTime = event.getStartTime().getTime();
+                long endTime = event.getEndTime().getTime();
+                long duration = endTime - startTime;
+                startTime = appBuilder.getSessionManager().getTimeManager()
+                        .getCurrentTime().getTime();
+                event.setTimeRange(new Date(startTime), new Date(startTime
+                        + duration), UIOriginator.HAZARD_INFORMATION_DIALOG);
+                break;
+            }
+        }
     }
 
     private void checkReplacement() {

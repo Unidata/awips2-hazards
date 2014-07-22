@@ -196,10 +196,7 @@ public class MegawidgetTest extends Dialog {
                         @Override
                         public void sizeChanged(MegawidgetManager manager,
                                 String identifier) {
-
-                            /*
-                             * No action.
-                             */
+                            System.out.println("SIZE CHANGED.");
                         }
 
                         @Override

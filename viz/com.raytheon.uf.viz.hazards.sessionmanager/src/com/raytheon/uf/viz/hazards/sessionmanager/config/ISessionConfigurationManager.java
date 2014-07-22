@@ -52,6 +52,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * Apr 29, 2014 2925       Chris.Golden Added method to get a megawidget specifier
  *                                      manager for a given hazard event.
  * May 15, 2014 2925       Chris.Golden Removed hazard info options fetcher.
+ * Jul 03, 2014  3512      Chris.Golden Added ability to fetch duration choices for
+ *                                      hazard events, and also default durations.
  * </pre>
  * 
  * @author bsteffen
@@ -196,6 +198,30 @@ public interface ISessionConfigurationManager {
      * @return
      */
     public String getHeadline(IHazardEvent event);
+
+    /**
+     * Get the default duration from the hazard types configuration file for an
+     * event.
+     * 
+     * @param event
+     *            Event for which to fetch the default duration.
+     * @return Default duration in millliseconds.
+     */
+    public long getDefaultDuration(IHazardEvent event);
+
+    /**
+     * Get the duration selector choices from the hazard types configuration
+     * file for an event.
+     * 
+     * @param event
+     *            Event for which to fetch the duration selector choices.
+     * @return List of choices; each of these is of the form given by the
+     *         description of the
+     *         {@link gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValidatorHelper}
+     *         class. If the specified event does not use a duration selector
+     *         for its end time, an empty list is returned.
+     */
+    public List<String> getDurationChoices(IHazardEvent event);
 
     /**
      * Get the hazard category from the hazardCategories configuration file for

@@ -16,6 +16,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_SORT_DIRECTION_ASCENDING;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_SORT_DIRECTION_DESCENDING;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_SORT_DIRECTION_NONE;
@@ -40,11 +41,10 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.setting.SettingsView;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
-import gov.noaa.gsd.viz.megawidgets.IMegawidgetManagerListener;
 import gov.noaa.gsd.viz.megawidgets.IMenuSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 import gov.noaa.gsd.viz.widgets.DayHatchMarkGroup;
@@ -127,6 +127,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.icon.IconUtil;
@@ -216,6 +217,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  *                                           changes.
  * Jun 30, 2014   3512     Chris.Golden      Changed to work with more megawidget
  *                                           manager changes.
+ * Jul 03, 2014   3512     Chris.Golden      Changed to add locking of the intervals
+ *                                           between start and end times in the
+ *                                           scale widgets for hazard events that
+ *                                           have duration options and that do not
+ *                                           have their end times set to "until
+ *                                           further notice."
  * </pre>
  * 
  * @author Chris.Golden
@@ -1315,10 +1322,14 @@ class TemporalDisplay {
 
                         // Set the end time thumb in the time scale widget
                         // to be read-only.
-                        ((MultiValueScale) tableEditorsForIdentifiers.get(
-                                identifier).getEditor())
-                                .setConstrainedThumbEditable(1,
-                                        !newUntilFurtherNotice);
+                        MultiValueScale scale = (MultiValueScale) tableEditorsForIdentifiers
+                                .get(identifier).getEditor();
+                        scale.setConstrainedThumbEditable(1,
+                                !newUntilFurtherNotice);
+                        eventDict.put(
+                                HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
+                                newUntilFurtherNotice);
+                        configureScaleIntervalLockingForEvent(scale, eventDict);
 
                         // Notify the model of the change.
                         fireConsoleActionOccurred(new ConsoleAction(
@@ -1780,6 +1791,7 @@ class TemporalDisplay {
                                 1,
                                 !Boolean.TRUE.equals(dict
                                         .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)));
+                        configureScaleIntervalLockingForEvent(scale, dict);
                     } else if (!key.equals(HAZARD_EVENT_IDENTIFIER)) {
 
                         // Change the text to match the new
@@ -1802,6 +1814,8 @@ class TemporalDisplay {
                         } else if (key.equals(HAZARD_EVENT_END_TIME)) {
                             endTime = ((Number) dict.get(HAZARD_EVENT_END_TIME))
                                     .longValue();
+                        } else if (key.equals(HAZARD_EVENT_TYPE)) {
+                            configureScaleIntervalLockingForEvent(scale, dict);
                         }
                     }
                 }
@@ -2094,17 +2108,7 @@ class TemporalDisplay {
                                     filterColumnName, new MegawidgetManager(
                                             menu, Lists.newArrayList(filter),
                                             settingsAsDict,
-                                            new IMegawidgetManagerListener() {
-
-                                                @Override
-                                                public void commandInvoked(
-                                                        MegawidgetManager manager,
-                                                        String identifier) {
-
-                                                    /*
-                                                     * No action.
-                                                     */
-                                                }
+                                            new MegawidgetManagerAdapter() {
 
                                                 @Override
                                                 public void stateElementChanged(
@@ -2145,28 +2149,6 @@ class TemporalDisplay {
                                                      */
                                                     notifyListenersOfSettingDefinitionChange();
                                                 }
-
-                                                @Override
-                                                public void stateElementsChanged(
-                                                        MegawidgetManager manager,
-                                                        Map<String, Object> statesForIdentifiers) {
-                                                    throw new UnsupportedOperationException();
-                                                }
-
-                                                @Override
-                                                public void sizeChanged(
-                                                        MegawidgetManager manager,
-                                                        String identifier) {
-                                                    throw new UnsupportedOperationException();
-                                                }
-
-                                                @Override
-                                                public void sideEffectMutablePropertyChangeErrorOccurred(
-                                                        MegawidgetManager manager,
-                                                        MegawidgetPropertyException exception) {
-                                                    throw new UnsupportedOperationException();
-                                                }
-
                                             }));
 
                         } catch (MegawidgetException e) {
@@ -3643,6 +3625,7 @@ class TemporalDisplay {
                             .longValue(),
                     ((Number) eventDict.get(HAZARD_EVENT_END_TIME)).longValue(),
                     untilFurtherNotice);
+            configureScaleIntervalLockingForEvent(scale, eventDict);
 
             // Create the table editor for this time scale.
             createTableEditorForTimeScale(scale, item);
@@ -3657,6 +3640,33 @@ class TemporalDisplay {
         } else {
             selectedIndices = null;
         }
+    }
+
+    /**
+     * Configure the specified scale interval's locking mode for the specified
+     * event.
+     * 
+     * @param scale
+     *            Multi-value scale to have its interval locking mode
+     *            configured.
+     * @param eventDict
+     *            Event dictionary with which the scale is associated.
+     */
+    private void configureScaleIntervalLockingForEvent(MultiValueScale scale,
+            Dict eventDict) {
+
+        /*
+         * The interval between the start and end times should be locked if the
+         * hazard event has duration choices, and if its end time is not
+         * currently "until further notice".
+         */
+        IHazardEvent event = presenter.getSessionManager().getEventManager()
+                .getEventById((String) eventDict.get(HAZARD_EVENT_IDENTIFIER));
+        boolean lockedByDefault = (presenter.getSessionManager()
+                .getConfigurationManager().getDurationChoices(event).size() > 0);
+        scale.setConstrainedThumbIntervalLocked(lockedByDefault
+                && !Boolean.TRUE.equals(eventDict
+                        .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)));
     }
 
     /**

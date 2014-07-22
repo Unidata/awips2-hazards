@@ -19,10 +19,9 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 import gov.noaa.gsd.viz.hazards.utilities.MegawidgetSettingsConversionUtils;
 import gov.noaa.gsd.viz.megawidgets.HierarchicalBoundedChoicesMegawidgetSpecifier;
-import gov.noaa.gsd.viz.megawidgets.IMegawidgetManagerListener;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
 import java.util.ArrayList;
@@ -313,14 +312,7 @@ public class SettingsView implements
                             filterMapList,
                             MegawidgetSettingsConversionUtils
                                     .settingsPOJOToMap(currentSettings),
-                            new IMegawidgetManagerListener() {
-
-                                @Override
-                                public void commandInvoked(
-                                        MegawidgetManager manager,
-                                        String identifier) {
-                                    throw new UnsupportedOperationException();
-                                }
+                            new MegawidgetManagerAdapter() {
 
                                 @Override
                                 public void stateElementChanged(
@@ -344,28 +336,6 @@ public class SettingsView implements
                                                 "Could not serialize JSON.", e);
                                     }
                                 }
-
-                                @Override
-                                public void stateElementsChanged(
-                                        MegawidgetManager manager,
-                                        Map<String, Object> statesForIdentifiers) {
-                                    throw new UnsupportedOperationException();
-                                }
-
-                                @Override
-                                public void sizeChanged(
-                                        MegawidgetManager manager,
-                                        String identifier) {
-                                    throw new UnsupportedOperationException();
-                                }
-
-                                @Override
-                                public void sideEffectMutablePropertyChangeErrorOccurred(
-                                        MegawidgetManager manager,
-                                        MegawidgetPropertyException exception) {
-                                    throw new UnsupportedOperationException();
-                                }
-
                             });
                 } catch (MegawidgetException e) {
                     statusHandler.error(

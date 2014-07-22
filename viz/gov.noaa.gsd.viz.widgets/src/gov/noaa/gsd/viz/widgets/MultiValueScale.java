@@ -61,6 +61,13 @@ import org.eclipse.swt.widgets.Display;
  *                                           individuallly, instead of
  *                                           controlling editability at a
  *                                           coarser widget level.
+ * Jul 03, 2014    3512    Chris.Golden      Added code to make all of the
+ *                                           constrained thumbs look active
+ *                                           if one of them is active or
+ *                                           dragging and the constrained
+ *                                           intervals are locked. Also
+ *                                           changed to better inline comment
+ *                                           style.
  * </pre>
  * 
  * @author Chris.Golden
@@ -173,7 +180,9 @@ public class MultiValueScale extends MultiValueLinearControl {
     private static final java.awt.Color BACKGROUND_DISABLED_CENTER_COLOR = new java.awt.Color(
             220, 212, 200);
 
-    // Initialize the colors.
+    /*
+     * Initialize the colors.
+     */
     static {
         Color color = Display.getCurrent().getSystemColor(
                 SWT.COLOR_LIST_BACKGROUND);
@@ -311,7 +320,9 @@ public class MultiValueScale extends MultiValueLinearControl {
             long maximumValue) {
         super(parent, minimumValue, maximumValue);
 
-        // Initialize the widget.
+        /*
+         * Initialize the widget.
+         */
         initialize();
     }
 
@@ -331,7 +342,9 @@ public class MultiValueScale extends MultiValueLinearControl {
             long maximumValue, ResizeBehavior resizeBehavior) {
         super(parent, minimumValue, maximumValue, resizeBehavior);
 
-        // Initialize the widget.
+        /*
+         * Initialize the widget.
+         */
         initialize();
     }
 
@@ -406,18 +419,24 @@ public class MultiValueScale extends MultiValueLinearControl {
     public final void setComponentDimensions(int thumbLongitudinal,
             int thumbLateral, int trackThickness) {
 
-        // Remember the new component dimensions.
+        /*
+         * Remember the new component dimensions.
+         */
         boolean thumbChanged = ((this.baseThumbLongitudinalDimension != thumbLongitudinal) || (this.baseThumbLateralDimension != thumbLateral));
         this.baseThumbLongitudinalDimension = thumbLongitudinal;
         this.baseThumbLateralDimension = thumbLateral;
         boolean trackChanged = (this.baseTrackThickness != trackThickness);
         this.baseTrackThickness = trackThickness;
 
-        // Recalculate the font-relative pixel dimensions.
+        /*
+         * Recalculate the font-relative pixel dimensions.
+         */
         calculateFontRelativePixelDimensions();
 
-        // Recreate the track tile images using the new thickness, if the
-        // thickness changed.
+        /*
+         * Recreate the track tile images using the new thickness, if the
+         * thickness changed.
+         */
         if (trackChanged) {
             for (int j = 0; j < trackTileImages.size(); j++) {
                 if (trackTileImages.get(j) != null) {
@@ -429,8 +448,10 @@ public class MultiValueScale extends MultiValueLinearControl {
             disabledTrackTileImage = createTrackTileImage(null);
         }
 
-        // Recreate the thumb images using the new dimensions, if the di-
-        // mensions changed.
+        /*
+         * Recreate the thumb images using the new dimensions, if the dimensions
+         * changed.
+         */
         if (thumbChanged) {
             calculateThumbCornerArcSize();
             if (thumbImage != null) {
@@ -447,8 +468,10 @@ public class MultiValueScale extends MultiValueLinearControl {
             disabledThumbImage = createThumbImage(ThumbState.DISABLED);
         }
 
-        // Recalculate the preferred size and the active thumb, and redraw
-        // the widget, if a change in one of the dimensions occurred.
+        /*
+         * Recalculate the preferred size and the active thumb, and redraw the
+         * widget, if a change in one of the dimensions occurred.
+         */
         if (trackChanged || thumbChanged) {
             computePreferredSize(true);
             scheduleDetermineActiveThumbIfEnabled();
@@ -459,13 +482,19 @@ public class MultiValueScale extends MultiValueLinearControl {
     @Override
     public final void setFont(Font font) {
 
-        // Let the superclass do its work.
+        /*
+         * Let the superclass do its work.
+         */
         super.setFont(font);
 
-        // Recalculate the font-relative pixel dimensions.
+        /*
+         * Recalculate the font-relative pixel dimensions.
+         */
         calculateFontRelativePixelDimensions();
 
-        // Recalculate the preferred size and the active thumb, and redraw.
+        /*
+         * Recalculate the preferred size and the active thumb, and redraw.
+         */
         computePreferredSize(true);
         scheduleDetermineActiveThumbIfEnabled();
         redraw();
@@ -481,8 +510,10 @@ public class MultiValueScale extends MultiValueLinearControl {
     @Override
     protected final void computePreferredSize(boolean force) {
 
-        // Compute the preferred size only if it has not yet been computed,
-        // or if being forced to do it regardless of previous computations.
+        /*
+         * Compute the preferred size only if it has not yet been computed, or
+         * if being forced to do it regardless of previous computations.
+         */
         if (force || (getPreferredWidth() == 0)) {
             int preferredWidth = (thumbLongitudinalDimension * getConstrainedThumbValueCount())
                     + getLeftInset() + getRightInset();
@@ -495,33 +526,45 @@ public class MultiValueScale extends MultiValueLinearControl {
     @Override
     protected final void paintControl(PaintEvent e) {
 
-        // Do nothing if the client width or height are 0.
+        /*
+         * Do nothing if the client width or height are 0.
+         */
         if ((getClientAreaWidth() == 0) || (getClientAreaHeight() == 0)) {
             return;
         }
 
-        // Calculate the preferred size if needed, and determine the
-        // width and height to be used when painting this time around.
+        /*
+         * Calculate the preferred size if needed, and determine the width and
+         * height to be used when painting this time around.
+         */
         computePreferredSize(false);
         Rectangle clientArea = getClientArea();
 
-        // Get the default colors, as they are needed later.
+        /*
+         * Get the default colors, as they are needed later.
+         */
         Color background = e.gc.getBackground();
         Color foreground = e.gc.getForeground();
 
-        // Draw the background.
+        /*
+         * Draw the background.
+         */
         if (e.gc.getBackground() != null) {
             e.gc.fillRectangle(clientArea);
         }
 
-        // Ensure that the drawing does not occur in the horizontal inset
-        // area, only in the client area and the vertical padding area
-        // above and below the client area.
+        /*
+         * Ensure that the drawing does not occur in the horizontal inset area,
+         * only in the client area and the vertical padding area above and below
+         * the client area.
+         */
         e.gc.setClipping(clientArea.x, 0, clientArea.width, getTopInset()
                 + clientArea.height + getBottomInset());
 
-        // Iterate through the constrained marked value indicators, draw-
-        // ing the ranges between them and at either end.
+        /*
+         * Iterate through the constrained marked value indicators, drawing the
+         * ranges between them and at either end.
+         */
         int lastMarkedValueX = mapValueToPixel(getMinimumAllowableValue()) - 1;
         for (int j = 0; j <= getConstrainedMarkedValueCount(); j++) {
             int markedValueX = mapValueToPixel(j == getConstrainedMarkedValueCount() ? getMaximumAllowableValue()
@@ -537,16 +580,21 @@ public class MultiValueScale extends MultiValueLinearControl {
             lastMarkedValueX = markedValueX;
         }
 
-        // Reset the clipping region.
+        /*
+         * Reset the clipping region.
+         */
         e.gc.setClipping((Rectangle) null);
 
-        // Determine the Y coordinate where the track will be drawn.
+        /*
+         * Determine the Y coordinate where the track will be drawn.
+         */
         int yTrack = getTopInset() + 2
                 + ((thumbLateralDimension - trackThickness) / 2);
 
-        // Draw the shadowed and highlighted lines around where the
-        // track border will be in order to make it look more three-
-        // dimensional.
+        /*
+         * Draw the shadowed and highlighted lines around where the track border
+         * will be in order to make it look more three-dimensional.
+         */
         e.gc.setForeground(TRACK_BORDER_SHADOW_COLOR);
         e.gc.drawLine(getLeftInset() - 1, yTrack - 2, getLeftInset()
                 + clientArea.width, yTrack - 2);
@@ -554,9 +602,11 @@ public class MultiValueScale extends MultiValueLinearControl {
         e.gc.drawLine(getLeftInset() - 1, yTrack + trackThickness - 1,
                 getLeftInset() + clientArea.width, yTrack + trackThickness - 1);
 
-        // Iterate through the marked value indicators, drawing any that
-        // are visible. Draw the marked value types in the order called
-        // for by the current configuration.
+        /*
+         * Iterate through the marked value indicators, drawing any that are
+         * visible. Draw the marked value types in the order called for by the
+         * current configuration.
+         */
         e.gc.setAntialias(SWT.ON);
         for (ValueType type : getMarkTypeDrawingOrder()) {
             int numValues = (type == ValueType.CONSTRAINED ? getConstrainedMarkedValueCount()
@@ -575,16 +625,19 @@ public class MultiValueScale extends MultiValueLinearControl {
             }
         }
 
-        // Turn off the GC's advanced mode so that the stretched track
-        // images used below do not get translucent or transparent
-        // parts at their edges.
+        /*
+         * Turn off the GC's advanced mode so that the stretched track images
+         * used below do not get translucent or transparent parts at their
+         * edges.
+         */
         boolean advanced = e.gc.getAdvanced();
         e.gc.setAdvanced(false);
 
-        // Iterate through the gaps between the thumbs and between the
-        // start and end thumbs and their respective ends of the track,
-        // drawing the track for that section using the appropriate
-        // image via tiling.
+        /*
+         * Iterate through the gaps between the thumbs and between the start and
+         * end thumbs and their respective ends of the track, drawing the track
+         * for that section using the appropriate image via tiling.
+         */
         int numValues = getConstrainedThumbValueCount();
         int lastX = mapValueToPixel(getMinimumAllowableValue());
         if (disabledTrackTileImage == null) {
@@ -592,15 +645,19 @@ public class MultiValueScale extends MultiValueLinearControl {
         }
         for (int j = 0; j <= numValues; j++) {
 
-            // Create the image for this portion of the track, if
-            // it has not already been created.
+            /*
+             * Create the image for this portion of the track, if it has not
+             * already been created.
+             */
             if (j >= trackTileImages.size()) {
                 updateTrackTileImage(j, getConstrainedThumbRangeColor(j));
             }
 
-            // Determine the X boundaries for this section of the track,
-            // and if they are both offscreen, remember to skip the ac-
-            // tual drawing of this section.
+            /*
+             * Determine the X boundaries for this section of the track, and if
+             * they are both offscreen, remember to skip the actual drawing of
+             * this section.
+             */
             int startX = lastX;
             int endX = mapValueToPixel(j == numValues ? getMaximumAllowableValue()
                     : getConstrainedThumbValue(j));
@@ -610,8 +667,10 @@ public class MultiValueScale extends MultiValueLinearControl {
                 continue;
             }
 
-            // Adjust the boundaries to ensure they fit within the
-            // visible area of the track.
+            /*
+             * Adjust the boundaries to ensure they fit within the visible area
+             * of the track.
+             */
             if (startX < getLeftInset() + 1) {
                 startX = getLeftInset() + 1;
             }
@@ -619,28 +678,33 @@ public class MultiValueScale extends MultiValueLinearControl {
                 endX = getLeftInset() + getClientAreaWidth() - 2;
             }
 
-            // Stretch the track tile image horizontally to cover the
-            // entire track area, using the disabled image if the wid-
-            // get is disabled.
+            /*
+             * Stretch the track tile image horizontally to cover the entire
+             * track area, using the disabled image if the widget is disabled.
+             */
             e.gc.drawImage((isEnabled() ? trackTileImages.get(j)
                     : disabledTrackTileImage), 0, 0, 1, trackThickness - 2,
                     startX, yTrack, endX + 1 - startX, trackThickness - 2);
         }
 
-        // Turn GC advanced mode back on now that image stretching is
-        // done.
+        /*
+         * Turn GC advanced mode back on now that image stretching is done.
+         */
         e.gc.setAdvanced(advanced);
 
-        // Draw the border around the track area.
+        /*
+         * Draw the border around the track area.
+         */
         e.gc.setForeground(TRACK_BORDER_COLOR);
         e.gc.drawRectangle(getLeftInset(), yTrack - 1, clientArea.width - 1,
                 trackThickness - 1);
 
-        // Iterate through the thumbs, drawing each if the value it re-
-        // presents is currently visible on the display. Draw the thumb
-        // types in the order called for by the current configuration,
-        // except for the dragging thumb, if any, which is drawn after
-        // all the others.
+        /*
+         * Iterate through the thumbs, drawing each if the value it represents
+         * is currently visible on the display. Draw the thumb types in the
+         * order called for by the current configuration, except for the
+         * dragging thumb, if any, which is drawn after all the others.
+         */
         ThumbSpecifier activeThumb = getActiveThumb();
         ThumbSpecifier draggingThumb = getDraggingThumb();
         for (ValueType type : getThumbTypeDrawingOrder()) {
@@ -654,10 +718,8 @@ public class MultiValueScale extends MultiValueLinearControl {
                 paintThumb(
                         type,
                         j,
-                        (isEnabled() ? (((activeThumb != null)
-                                && (activeThumb.type == type) && (activeThumb.index == j))
-                                || ((draggingThumb != null)
-                                        && (draggingThumb.type == type) && (draggingThumb.index == j)) ? ThumbState.ACTIVE
+                        (isEnabled() ? (isVisuallyActive(activeThumb, type, j)
+                                || isVisuallyActive(draggingThumb, type, j) ? ThumbState.ACTIVE
                                 : ThumbState.NORMAL)
                                 : ThumbState.DISABLED), e.gc);
             }
@@ -667,7 +729,9 @@ public class MultiValueScale extends MultiValueLinearControl {
                     ThumbState.ACTIVE, e.gc);
         }
 
-        // Reset the colors.
+        /*
+         * Reset the colors.
+         */
         e.gc.setBackground(background);
         e.gc.setForeground(foreground);
     }
@@ -675,11 +739,13 @@ public class MultiValueScale extends MultiValueLinearControl {
     @Override
     protected final ThumbSpecifier getEditableThumbForCoordinates(int x, int y) {
 
-        // If the cursor is inside the client area, check to see if it
-        // is over one of the editable thumbs by iterating through the
-        // latter, and return the index of the thumb it is over, if
-        // this is the case. Otherwise, return -1 to indicate that the
-        // coordinate is not over an editable thumb.
+        /*
+         * If the cursor is inside the client area, check to see if it is over
+         * one of the editable thumbs by iterating through the latter, and
+         * return the index of the thumb it is over, if this is the case.
+         * Otherwise, return -1 to indicate that the coordinate is not over an
+         * editable thumb.
+         */
         if ((x >= 0)
                 && (x < getClientAreaWidth() + getLeftInset() + getRightInset())
                 && (y >= 0)
@@ -757,10 +823,14 @@ public class MultiValueScale extends MultiValueLinearControl {
      */
     private void initialize() {
 
-        // Calculate the font-relative pixel dimensions.
+        /*
+         * Calculate the font-relative pixel dimensions.
+         */
         calculateFontRelativePixelDimensions();
 
-        // Initialize the member data and the thumb images as well.
+        /*
+         * Initialize the member data and the thumb images as well.
+         */
         calculateThumbCornerArcSize();
         thumbImage = createThumbImage(ThumbState.NORMAL);
         activeThumbImage = createThumbImage(ThumbState.ACTIVE);
@@ -797,6 +867,25 @@ public class MultiValueScale extends MultiValueLinearControl {
     }
 
     /**
+     * Determine whether or not the specified thumb should look active.
+     * 
+     * @param thumb
+     *            Thumb to be checked for an active look.
+     * @param type
+     *            Type of thumb currently being drawn; if <code>thumb</code> is
+     *            not of this type, this method will return false.
+     * @param index
+     *            Index of the thumb currently being drawn; if
+     *            <code>thumb</code> is not at this index, this method will
+     *            return false.
+     * @return True if the thumb should look active, false otherwise.
+     */
+    private boolean isVisuallyActive(ThumbSpecifier thumb, ValueType type,
+            int index) {
+        return ((thumb != null) && (thumb.type == type) && ((thumb.index == index) || ((type == ValueType.CONSTRAINED) && isConstrainedThumbIntervalLocked())));
+    }
+
+    /**
      * Paint the specified thumb.
      * 
      * @param type
@@ -830,9 +919,11 @@ public class MultiValueScale extends MultiValueLinearControl {
      */
     private Image createThumbImage(ThumbState state) {
 
-        // Create an AWT image, since such an image can be created with
-        // transparency and painted onto with varying alpha levels.
-        // Then get its graphics object and configure the latter.
+        /*
+         * Create an AWT image, since such an image can be created with
+         * transparency and painted onto with varying alpha levels. Then get its
+         * graphics object and configure the latter.
+         */
         BufferedImage awtImage = new BufferedImage(
                 thumbLongitudinalDimension + 1, thumbLateralDimension + 1,
                 BufferedImage.TYPE_INT_ARGB);
@@ -844,24 +935,32 @@ public class MultiValueScale extends MultiValueLinearControl {
         graphics.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION,
                 RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
 
-        // Draw the drop shadow behind the thumb.
+        /*
+         * Draw the drop shadow behind the thumb.
+         */
         graphics.setColor(SHADOW_COLOR);
         graphics.drawRoundRect(1, 1, thumbLongitudinalDimension - 1,
                 thumbLateralDimension - 1, thumbCornerArcSize,
                 thumbCornerArcSize);
 
-        // Determine whether or not the thumb is to be drawn as active,
-        // or as disabled.
+        /*
+         * Determine whether or not the thumb is to be drawn as active, or as
+         * disabled.
+         */
         boolean active = (state == ThumbState.ACTIVE);
         boolean disabled = (state == ThumbState.DISABLED);
 
-        // Paint the base background color fill of the thumb.
+        /*
+         * Paint the base background color fill of the thumb.
+         */
         graphics.setColor(active ? BACKGROUND_SELECTION_COLOR
                 : (disabled ? BACKGROUND_DISABLED_COLOR : BACKGROUND_COLOR));
         graphics.fillRoundRect(0, 0, thumbLongitudinalDimension,
                 thumbLateralDimension, thumbCornerArcSize, thumbCornerArcSize);
 
-        // Draw the gradient fill for the thumb background.
+        /*
+         * Draw the gradient fill for the thumb background.
+         */
         if (disabled == false) {
             paintGradient(graphics, (active ? java.awt.Color.WHITE
                     : BORDER_COLOR), (active ? 0.75f : 0.05f), (active ? 0.10f
@@ -869,8 +968,10 @@ public class MultiValueScale extends MultiValueLinearControl {
                     thumbLateralDimension - 2, thumbCornerArcSize / 2);
         }
 
-        // Draw the lines bounding the center of the thumb, if the
-        // width and height are different enough.
+        /*
+         * Draw the lines bounding the center of the thumb, if the width and
+         * height are different enough.
+         */
         graphics.setColor(active ? DETAIL_SELECTION_COLOR : DETAIL_COLOR);
         if (thumbLongitudinalDimension + 2 <= thumbLateralDimension) {
             int indent = (thumbCornerArcSize - (thumbLateralDimension - thumbLongitudinalDimension)) / 2;
@@ -905,7 +1006,9 @@ public class MultiValueScale extends MultiValueLinearControl {
                             - (1 + indent));
         }
 
-        // Draw the background for the center of the thumb.
+        /*
+         * Draw the background for the center of the thumb.
+         */
         graphics.setColor(disabled ? BACKGROUND_DISABLED_CENTER_COLOR
                 : BACKGROUND_COLOR);
         int xOffset = (thumbLongitudinalDimension > thumbLateralDimension ? (thumbLongitudinalDimension - thumbLateralDimension) / 2
@@ -918,7 +1021,9 @@ public class MultiValueScale extends MultiValueLinearControl {
                 Math.min(thumbLongitudinalDimension, thumbLateralDimension) - 2,
                 Math.min(thumbLongitudinalDimension, thumbLateralDimension) - 2);
 
-        // Draw the gradient fill for the center of the thumb.
+        /*
+         * Draw the gradient fill for the center of the thumb.
+         */
         if (disabled == false) {
             paintGradient(
                     graphics,
@@ -935,7 +1040,9 @@ public class MultiValueScale extends MultiValueLinearControl {
                                     thumbLateralDimension) - 3, 0);
         }
 
-        // Draw the pips on the center of the thumb.
+        /*
+         * Draw the pips on the center of the thumb.
+         */
         if (thumbLongitudinalDimension < thumbLateralDimension) {
             int pipOffset = ((thumbLongitudinalDimension - 2) % 3) / 2;
             for (int y = ((thumbLateralDimension - thumbLongitudinalDimension) / 2)
@@ -962,17 +1069,23 @@ public class MultiValueScale extends MultiValueLinearControl {
             }
         }
 
-        // Draw the thumb border.
+        /*
+         * Draw the thumb border.
+         */
         graphics.setColor(active ? BORDER_SELECTION_COLOR
                 : (disabled ? BORDER_DISABLED_COLOR : BORDER_COLOR));
         graphics.drawRoundRect(0, 0, thumbLongitudinalDimension - 1,
                 thumbLateralDimension - 1, thumbCornerArcSize,
                 thumbCornerArcSize);
 
-        // Finish up with the graphics object.
+        /*
+         * Finish up with the graphics object.
+         */
         graphics.dispose();
 
-        // Convert the image to an SWT image and return it.
+        /*
+         * Convert the image to an SWT image and return it.
+         */
         return ImageUtilities.convertAwtImageToSwt(awtImage);
     }
 
@@ -986,32 +1099,43 @@ public class MultiValueScale extends MultiValueLinearControl {
      */
     private Image createTrackTileImage(Color color) {
 
-        // Make note of whether the default image or a specifically
-        // colored image is to be created, and get the color ready
-        // if the latter.
+        /*
+         * Make note of whether the default image or a specifically colored
+         * image is to be created, and get the color ready if the latter.
+         */
         java.awt.Color awtColor = (color == null ? BORDER_COLOR
                 : new java.awt.Color(color.getRed(), color.getGreen(),
                         color.getBlue()));
 
-        // Create an AWT image, since such an image can be created
-        // with transparency and painted onto with varying alpha
-        // levels. Then get its graphics object.
+        /*
+         * Create an AWT image, since such an image can be created with
+         * transparency and painted onto with varying alpha levels. Then get its
+         * graphics object.
+         */
         BufferedImage awtImage = new BufferedImage(1, trackThickness - 2,
                 BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = awtImage.createGraphics();
 
-        // Draw the base background color of the track area.
+        /*
+         * Draw the base background color of the track area.
+         */
         graphics.setColor(BACKGROUND_COLOR);
         graphics.fillRect(0, 0, awtImage.getWidth(), awtImage.getHeight());
 
-        // Paint the gradient fill overlay.
+        /*
+         * Paint the gradient fill overlay.
+         */
         paintGradient(graphics, awtColor, (color == null ? 0.4f : 0.8f),
                 (color == null ? 0.23f : 0.25f), 0, 1, 0, trackThickness - 2, 0);
 
-        // Finish up with the graphics object.
+        /*
+         * Finish up with the graphics object.
+         */
         graphics.dispose();
 
-        // Convert the image to an SWT image and return it.
+        /*
+         * Convert the image to an SWT image and return it.
+         */
         return ImageUtilities.convertAwtImageToSwt(awtImage);
     }
 

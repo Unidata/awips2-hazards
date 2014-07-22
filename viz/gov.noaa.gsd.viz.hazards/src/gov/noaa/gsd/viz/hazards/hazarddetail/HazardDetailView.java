@@ -97,6 +97,10 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                           instantiations.
  * Jun 30, 2014   3512     Chris.Golden      Changed to work with changes MVP widget
  *                                           framework classes.
+ * Jul 03, 2014   3512     Chris.Golden      Added code to allow a duration selector
+ *                                           to be displayed instead of an absolute
+ *                                           date/time selector for the end time of
+ *                                           a hazard event.
  * </pre>
  * 
  * @author Chris.Golden
@@ -422,6 +426,20 @@ public class HazardDetailView extends
                     }, this), RUNNABLE_ASYNC_SCHEDULER);
 
     /**
+     * Duration state changer delegate.
+     */
+    private final IChoiceStateChanger<String, String, String, String> durationChanger = new ChoiceStateChangerDelegate<>(
+            new ViewPartWidgetDelegateHelper<>(
+                    new Callable<IChoiceStateChanger<String, String, String, String>>() {
+
+                        @Override
+                        public IChoiceStateChanger<String, String, String, String> call()
+                                throws Exception {
+                            return getViewPart().getDurationChanger();
+                        }
+                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
      * Metadata state changer delegate.
      */
     private final IMetadataStateChanger metadataChanger = new MetadataStateChangerDelegate(
@@ -641,6 +659,11 @@ public class HazardDetailView extends
     @Override
     public IStateChanger<String, TimeRange> getTimeRangeChanger() {
         return timeRangeChanger;
+    }
+
+    @Override
+    public IChoiceStateChanger<String, String, String, String> getDurationChanger() {
+        return durationChanger;
     }
 
     @Override

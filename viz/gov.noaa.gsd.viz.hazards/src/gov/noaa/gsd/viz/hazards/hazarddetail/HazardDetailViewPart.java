@@ -31,7 +31,10 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierFactory;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+import gov.noaa.gsd.viz.megawidgets.MultiTimeMegawidget;
 import gov.noaa.gsd.viz.megawidgets.TimeMegawidgetSpecifier;
+import gov.noaa.gsd.viz.megawidgets.TimeRangeMegawidget;
+import gov.noaa.gsd.viz.megawidgets.TimeRangeSpecifier;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleMegawidget;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
 import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
@@ -195,6 +198,9 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           allow notification to occur of simultaneous
  *                                           state changes. Also changed to work with new
  *                                           MVP widget framework alterations.
+ * Jul 03, 2014   3512     Chris.Golden      Added code to allow a duration selector to be
+ *                                           displayed instead of an absolute date/time
+ *                                           selector for the end time of a hazard event.
  * </pre>
  * 
  * @author Chris.Golden
@@ -235,6 +241,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
     /**
      * Type of the time range megawidget.
+     */
+    private static final String TIMERANGE_MEGAWIDGET_TYPE = "TimeRange";
+
+    /**
+     * Type of the time scale megawidget.
      */
     private static final String TIMESCALE_MEGAWIDGET_TYPE = "TimeScale";
 
@@ -290,13 +301,19 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private static final String END_TIME_TEXT = "End:";
 
     /**
+     * Duration text.
+     */
+    private static final String DURATION_TEXT = "Duration:";
+
+    /**
      * Text for "until further notice" checkbox.
      */
     private static final String UNTIL_FURTHER_NOTICE_TEXT = "Until further notice";
 
     /**
-     * Text to display in the date-time fields of the time range megawidget when
-     * the "until further notice" value is the current state for the end time.
+     * Text to display in the date-time fields for the end time of the time
+     * scale megawidget when the "until further notice" value is the current
+     * state for the end time.
      */
     private static final String UNTIL_FURTHER_NOTICE_VALUE_TEXT = "N/A";
 
@@ -378,7 +395,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     /**
      * Specifier parameters for the time range megawidget.
      */
-    private static final ImmutableMap<String, Object> TIME_RANGE_SPECIFIER_PARAMETERS;
+    private static final ImmutableMap<String, Object> TIME_SCALE_SPECIFIER_PARAMETERS;
     static {
         Map<String, Object> map = new HashMap<>();
         map.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
@@ -407,10 +424,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
         subMap.put(MegawidgetSpecifier.MEGAWIDGET_LABEL,
                 UNTIL_FURTHER_NOTICE_TEXT);
-        List<Map<String, Object>> list = new ArrayList<>();
-        list.add(ImmutableMap.copyOf(subMap));
+        List<Map<String, Object>> childList = new ArrayList<>();
+        childList.add(ImmutableMap.copyOf(subMap));
         subMap = new HashMap<>();
-        subMap.put(END_TIME_STATE, ImmutableList.copyOf(list));
+        subMap.put(END_TIME_STATE, ImmutableList.copyOf(childList));
         map.put(TimeScaleSpecifier.MEGAWIDGET_DETAIL_FIELDS,
                 ImmutableMap.copyOf(subMap));
 
@@ -424,6 +441,47 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 UNTIL_FURTHER_NOTICE_VALUE_TEXT);
         map.put(TimeScaleSpecifier.MEGAWIDGET_TIME_DESCRIPTORS,
                 ImmutableMap.copyOf(descriptiveTextForValues));
+        TIME_SCALE_SPECIFIER_PARAMETERS = ImmutableMap.copyOf(map);
+    }
+
+    /**
+     * Specifier parameters for the time range megawidget.
+     */
+    private static final ImmutableMap<String, Object> TIME_RANGE_SPECIFIER_PARAMETERS;
+    static {
+        Map<String, Object> map = new HashMap<>();
+        map.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
+                TIME_RANGE_IDENTIFIER);
+        map.put(ISpecifier.MEGAWIDGET_TYPE, TIMERANGE_MEGAWIDGET_TYPE);
+        map.put(IControlSpecifier.MEGAWIDGET_SPACING, 0);
+        Map<String, Object> subMap = new HashMap<>();
+        subMap.put(START_TIME_STATE, START_TIME_TEXT);
+        subMap.put(END_TIME_STATE, DURATION_TEXT);
+        map.put(TimeScaleSpecifier.MEGAWIDGET_STATE_LABELS,
+                ImmutableMap.copyOf(subMap));
+        map.put(IControlSpecifier.MEGAWIDGET_SPACING, 5);
+        map.put(IParentSpecifier.MEGAWIDGET_SPECIFIER_FACTORY,
+                new MegawidgetSpecifierFactory());
+        List<String> list = ImmutableList.of("1 minute");
+        map.put(TimeRangeSpecifier.MEGAWIDGET_DURATION_CHOICES, list);
+
+        /*
+         * Specify the "Until further notice" checkbox to be shown next to the
+         * end time time delta fields.
+         */
+        subMap = new HashMap<>();
+        subMap.put(MegawidgetSpecifier.MEGAWIDGET_TYPE,
+                CHECKBOX_MEGAWIDGET_TYPE);
+        subMap.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
+                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
+        subMap.put(MegawidgetSpecifier.MEGAWIDGET_LABEL,
+                UNTIL_FURTHER_NOTICE_TEXT);
+        List<Map<String, Object>> childList = new ArrayList<>();
+        childList.add(ImmutableMap.copyOf(subMap));
+        subMap = new HashMap<>();
+        subMap.put(END_TIME_STATE, ImmutableList.copyOf(childList));
+        map.put(TimeScaleSpecifier.MEGAWIDGET_DETAIL_FIELDS,
+                ImmutableMap.copyOf(subMap));
         TIME_RANGE_SPECIFIER_PARAMETERS = ImmutableMap.copyOf(map);
     }
 
@@ -508,14 +566,44 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private ComboBoxMegawidget typeMegawidget;
 
     /**
-     * Event time range megawidget.
+     * Time group panel.
      */
-    private TimeScaleMegawidget timeRangeMegawidget;
+    private Group timeGroup;
 
     /**
-     * Event end time "until further notice" toggle megawidget.
+     * Layout manager for the time panel.
      */
-    private CheckBoxMegawidget endTimeUntilFurtherNoticeMegawidget;
+    private StackLayout timeContentLayout;
+
+    /**
+     * Composite within the time panel that holds the time scale megawidget.
+     */
+    private Composite timeScalePanel;
+
+    /**
+     * Composite within the time panel that holds the time range megawidget.
+     */
+    private Composite timeRangePanel;
+
+    /**
+     * List holding the time scale and time range megawidgets, one of which is
+     * shown at all times when an event is being displayed to show the start and
+     * end times.
+     */
+    private final List<MultiTimeMegawidget> timeMegawidgets = new ArrayList<>(2);
+
+    /**
+     * Event time range megawidget, used when an event shows a start time and a
+     * duration.
+     */
+    private TimeRangeMegawidget timeRangeMegawidget;
+
+    /**
+     * List holding the "until further notice" checkbox megawidgets associated
+     * with the time scale and time range megawidgets, respectively.
+     */
+    private final List<CheckBoxMegawidget> untilFurtherNoticeToggleMegawidgets = new ArrayList<>(
+            2);
 
     /**
      * Metadata group panel.
@@ -924,14 +1012,18 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         @Override
         public void setEnabled(String identifier, boolean enable) {
             if (isAlive()) {
-                timeRangeMegawidget.setEnabled(enable);
+                for (MultiTimeMegawidget megawidget : timeMegawidgets) {
+                    megawidget.setEnabled(enable);
+                }
             }
         }
 
         @Override
         public void setEditable(String identifier, boolean editable) {
             if (isAlive()) {
-                timeRangeMegawidget.setEditable(editable);
+                for (MultiTimeMegawidget megawidget : timeMegawidgets) {
+                    megawidget.setEditable(editable);
+                }
             }
         }
 
@@ -955,6 +1047,55 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         public void setStateChangeHandler(
                 IStateChangeHandler<String, TimeRange> handler) {
             timeRangeChangeHandler = handler;
+        }
+    };
+
+    /**
+     * Duration combo box state changer.
+     */
+    private final IChoiceStateChanger<String, String, String, String> durationChanger = new IChoiceStateChanger<String, String, String, String>() {
+
+        @Override
+        public void setEnabled(String identifier, boolean enable) {
+            throw new UnsupportedOperationException(
+                    "cannot enable or disable duration");
+        }
+
+        @Override
+        public void setEditable(String identifier, boolean editable) {
+            throw new UnsupportedOperationException(
+                    "cannot change editability of duration");
+        }
+
+        @Override
+        public void setChoices(String identifier, List<String> choices,
+                List<String> choiceDisplayables, String value) {
+            setDurationChoices(choices);
+        }
+
+        @Override
+        public String getState(String identifier) {
+            throw new UnsupportedOperationException(
+                    "cannot get state of duration");
+        }
+
+        @Override
+        public void setState(String identifier, String value) {
+            throw new UnsupportedOperationException(
+                    "cannot set state of duration");
+        }
+
+        @Override
+        public void setStates(Map<String, String> valuesForIdentifiers) {
+            throw new UnsupportedOperationException(
+                    "cannot set state of duration");
+        }
+
+        @Override
+        public void setStateChangeHandler(
+                IStateChangeHandler<String, String> handler) {
+            throw new UnsupportedOperationException(
+                    "cannot set handler for duration changes");
         }
     };
 
@@ -1056,27 +1197,34 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 }
             } else if (identifier.equals(START_TIME_STATE)
                     || identifier.equals(END_TIME_STATE)) {
+                MultiTimeMegawidget otherTimeMegawidget = timeMegawidgets
+                        .get(megawidget == timeRangeMegawidget ? 0 : 1);
+                TimeRange range;
+                try {
+                    range = new TimeRange(
+                            (Long) (identifier.equals(START_TIME_STATE) ? state
+                                    : megawidget.getState(START_TIME_STATE)),
+                            (Long) (identifier.equals(END_TIME_STATE) ? state
+                                    : megawidget.getState(END_TIME_STATE)));
+                } catch (Exception e) {
+                    statusHandler.error(
+                            "unexpected problem fetching time range "
+                                    + "values from megawidget", e);
+                    return;
+                }
+                setTimeRange(otherTimeMegawidget, range);
                 if (timeRangeChangeHandler != null) {
-                    TimeRange range;
-                    try {
-                        range = new TimeRange(
-                                (Long) (identifier.equals(START_TIME_STATE) ? state
-                                        : timeRangeMegawidget
-                                                .getState(START_TIME_STATE)),
-                                (Long) (identifier.equals(END_TIME_STATE) ? state
-                                        : timeRangeMegawidget
-                                                .getState(END_TIME_STATE)));
-                    } catch (Exception e) {
-                        statusHandler.error(
-                                "unexpected problem fetching time range "
-                                        + "values from megawidget", e);
-                        return;
-                    }
                     timeRangeChangeHandler.stateChanged(null, range);
                 }
             } else if (identifier
                     .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
-                setEndTimeEditability(!Boolean.TRUE.equals(state));
+                boolean untilFurtherNotice = Boolean.TRUE.equals(state);
+                CheckBoxMegawidget otherUntilFurtherNoticeMegawidget = untilFurtherNoticeToggleMegawidgets
+                        .get(megawidget == untilFurtherNoticeToggleMegawidgets
+                                .get(1) ? 0 : 1);
+                setEndTimeUntilFurtherNotice(otherUntilFurtherNoticeMegawidget,
+                        untilFurtherNotice);
+                setEndTimeEditability(!untilFurtherNotice);
                 if (metadataChangeHandler != null) {
                     metadataChangeHandler.stateChanged(identifier,
                             (Serializable) state);
@@ -1091,20 +1239,22 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         @Override
         public void megawidgetStatesChanged(IStateful megawidget,
                 Map<String, Object> statesForIdentifiers) {
-            if (megawidget == timeRangeMegawidget) {
+            if (megawidget instanceof MultiTimeMegawidget) {
+                MultiTimeMegawidget otherTimeMegawidget = timeMegawidgets
+                        .get(megawidget == timeRangeMegawidget ? 0 : 1);
+                TimeRange range;
+                try {
+                    range = new TimeRange(
+                            (Long) statesForIdentifiers.get(START_TIME_STATE),
+                            (Long) statesForIdentifiers.get(END_TIME_STATE));
+                } catch (Exception e) {
+                    statusHandler.error(
+                            "unexpected problem fetching time range "
+                                    + "values from megawidget", e);
+                    return;
+                }
+                setTimeRange(otherTimeMegawidget, range);
                 if (timeRangeChangeHandler != null) {
-                    TimeRange range;
-                    try {
-                        range = new TimeRange(
-                                (Long) statesForIdentifiers
-                                        .get(START_TIME_STATE),
-                                (Long) statesForIdentifiers.get(END_TIME_STATE));
-                    } catch (Exception e) {
-                        statusHandler.error(
-                                "unexpected problem fetching time range "
-                                        + "values from megawidget", e);
-                        return;
-                    }
                     timeRangeChangeHandler.stateChanged(null, range);
                 }
             } else {
@@ -1294,40 +1444,36 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         megawidgetsToAlign.clear();
 
         /*
-         * Create group holding the time range megawidget.
+         * Create group holding the time range megawidget, and give it a stack
+         * layout so that the two time option panels to be created can be
+         * swapped back and forth.
          */
-        Group timeRangeGroup = new Group(tabPagePanel, SWT.NONE);
-        timeRangeGroup.setText(TIME_RANGE_SECTION_TEXT);
-        timeRangeGroup.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
-                false));
-        gridLayout = new GridLayout();
-        gridLayout.marginHeight = 0;
-        gridLayout.marginBottom = 5;
-        timeRangeGroup.setLayout(gridLayout);
+        timeGroup = new Group(tabPagePanel, SWT.NONE);
+        timeGroup.setText(TIME_RANGE_SECTION_TEXT);
+        timeGroup
+                .setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        timeContentLayout = new StackLayout();
+        timeGroup.setLayout(timeContentLayout);
 
         /*
-         * Create the time range megawidget; it in turn creates as a child its
-         * "until further notice" checkbox.
+         * Create the time scale and time range panels, holding their respective
+         * megawidgets.
          */
-        try {
-            timeRangeMegawidget = new TimeScaleSpecifier(
-                    TIME_RANGE_SPECIFIER_PARAMETERS).createMegawidget(
-                    timeRangeGroup, TimeScaleMegawidget.class,
-                    megawidgetCreationParams);
-            endTimeUntilFurtherNoticeMegawidget = (CheckBoxMegawidget) timeRangeMegawidget
-                    .getChildren().get(0);
-            megawidgetsToAlign.add(timeRangeMegawidget);
-        } catch (Exception e) {
-            statusHandler.error(
-                    "unexpected problem creating time range and checkbox "
-                            + "megawidgets", e);
+        for (int j = 0; j < 2; j++) {
+            createTimeOptionPanel(timeGroup, megawidgetCreationParams,
+                    megawidgetsToAlign);
         }
 
         /*
-         * Align the created megawidget's labels to one another.
+         * Align the time megawidgets labels to have the same horizontal space
+         * as one another, put the time scale panel at the top of the stack, and
+         * lay out the time group.
          */
         ControlComponentHelper.alignMegawidgetsElements(megawidgetsToAlign);
-        timeRangeGroup.layout();
+        timeScalePanel.layout();
+        timeRangePanel.layout();
+        timeContentLayout.topControl = timeScalePanel;
+        timeGroup.layout();
 
         /*
          * Create the group holding the metadata, and hide it to begin with. It
@@ -1465,6 +1611,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     @Override
+    public IChoiceStateChanger<String, String, String, String> getDurationChanger() {
+        return durationChanger;
+    }
+
+    @Override
     public IMetadataStateChanger getMetadataChanger() {
         return metadataChanger;
     }
@@ -1475,6 +1626,78 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     // Private Methods
+
+    /**
+     * Create a time option panel. The first time this is called, it creates the
+     * panel holding the time scale megawidget, for events that need to allow
+     * the user to manipulate the start time and the end time both as absolute
+     * date-time values; the second time it is called, it creates the panel
+     * holding the time range megawidget, for events that need to allow the user
+     * to manipulate the start time as an absolute value, and the end time as a
+     * duration (offset) from the start time.
+     * 
+     * @param parent
+     *            Parent composite into which the panel will be inserted.
+     * @param megawidgetCreationParams
+     *            Parameters needed for megawidget creation.
+     * @param megawidgetToAlign
+     *            List of megawidgets that are to be visually aligned. The
+     *            method adds the time scale or time range megawidget (whichever
+     *            it creates) to this list so that they may all be aligned by
+     *            the caller.
+     */
+    private void createTimeOptionPanel(Group parent,
+            Map<String, Object> megawidgetCreationParams,
+            List<IControl> megawidgetsToAlign) {
+
+        Composite timeSubPanel = new Composite(parent, SWT.NONE);
+        GridLayout gridLayout = new GridLayout();
+        gridLayout.marginHeight = 0;
+        gridLayout.marginBottom = 5;
+        timeSubPanel.setLayout(gridLayout);
+
+        /*
+         * Create the appropriate time megawidget; it in turn creates as a child
+         * its "until further notice" checkbox.
+         */
+        MultiTimeMegawidget timeMegawidget = null;
+        CheckBoxMegawidget checkBoxMegawidget = null;
+        if (timeScalePanel == null) {
+            timeScalePanel = timeSubPanel;
+            try {
+                timeMegawidget = new TimeScaleSpecifier(
+                        TIME_SCALE_SPECIFIER_PARAMETERS).createMegawidget(
+                        timeScalePanel, TimeScaleMegawidget.class,
+                        megawidgetCreationParams);
+                checkBoxMegawidget = (CheckBoxMegawidget) timeMegawidget
+                        .getChildren().get(0);
+            } catch (Exception e) {
+                statusHandler.error(
+                        "unexpected problem creating time scale and checkbox "
+                                + "megawidgets", e);
+            }
+        } else if (timeRangePanel == null) {
+            timeRangePanel = timeSubPanel;
+            try {
+                timeMegawidget = timeRangeMegawidget = new TimeRangeSpecifier(
+                        TIME_RANGE_SPECIFIER_PARAMETERS).createMegawidget(
+                        timeRangePanel, TimeRangeMegawidget.class,
+                        megawidgetCreationParams);
+                checkBoxMegawidget = (CheckBoxMegawidget) timeRangeMegawidget
+                        .getChildren().get(0);
+            } catch (Exception e) {
+                statusHandler.error(
+                        "unexpected problem creating time range and checkbox "
+                                + "megawidgets", e);
+            }
+        } else {
+            throw new IllegalStateException(
+                    "method already called twice, no more to create");
+        }
+        megawidgetsToAlign.add(timeMegawidget);
+        timeMegawidgets.add(timeMegawidget);
+        untilFurtherNoticeToggleMegawidgets.add(checkBoxMegawidget);
+    }
 
     /**
      * Creates a new button and records it as associated with the specified
@@ -1812,17 +2035,19 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     /**
      * Set the time range to that specified.
      * 
+     * @param megawidget
+     *            Megawidget for which to set the time range.
      * @param range
      *            New time range.
      */
-    private void setTimeRange(TimeRange range) {
-        if (isAlive() && (timeRangeMegawidget != null)) {
+    private void setTimeRange(MultiTimeMegawidget megawidget, TimeRange range) {
+        if (isAlive() && (megawidget != null)) {
             try {
-                timeRangeMegawidget.setUncommittedState(START_TIME_STATE, range
+                megawidget.setUncommittedState(START_TIME_STATE, range
                         .getStart().getTime());
-                timeRangeMegawidget.setUncommittedState(END_TIME_STATE, range
-                        .getEnd().getTime());
-                timeRangeMegawidget.commitStateChanges();
+                megawidget.setUncommittedState(END_TIME_STATE, range.getEnd()
+                        .getTime());
+                megawidget.commitStateChanges();
             } catch (Exception e) {
                 statusHandler.error("unexpected error while setting "
                         + TIME_RANGE_IDENTIFIER + " megawidget values", e);
@@ -1831,18 +2056,57 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Set the end time "until further notice" checkbox to that specified.
+     * Set the time range to that specified for both megawidgets.
      * 
+     * @param range
+     *            New time range.
+     */
+    private void setTimeRange(TimeRange range) {
+        for (MultiTimeMegawidget megawidget : timeMegawidgets) {
+            setTimeRange(megawidget, range);
+        }
+    }
+
+    /**
+     * Set the duration choices for the time range megawidget to those
+     * specified.
+     * 
+     * @param choices
+     *            Choices to be used.
+     */
+    private void setDurationChoices(List<String> choices) {
+        timeContentLayout.topControl = (choices.isEmpty() ? timeScalePanel
+                : timeRangePanel);
+        timeGroup.layout();
+        if (choices.isEmpty() == false) {
+            try {
+                timeRangeMegawidget
+                        .setMutableProperty(
+                                TimeRangeSpecifier.MEGAWIDGET_DURATION_CHOICES,
+                                choices);
+            } catch (MegawidgetPropertyException e) {
+                statusHandler.error("Error while setting duration choices "
+                        + "for time range megawidget.", e);
+            }
+        }
+    }
+
+    /**
+     * Set the specified end time "until further notice" checkbox to that
+     * specified.
+     * 
+     * @param megawidget
+     *            Megawidget that is to have its state set.
      * @param untilFurtherNotice
      *            Boolean flag indicating whether "until further notice" should
      *            be checked, or <code>null</code>, which is treated as
      *            {@link Boolean#FALSE}.
      */
-    private void setEndTimeUntilFurtherNotice(Object untilFurtherNotice) {
+    private void setEndTimeUntilFurtherNotice(IStateful megawidget,
+            Object untilFurtherNotice) {
         if (isAlive()) {
-            setEndTimeEditability(!Boolean.TRUE.equals(untilFurtherNotice));
             try {
-                endTimeUntilFurtherNoticeMegawidget
+                megawidget
                         .setState(
                                 HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
                                 untilFurtherNotice);
@@ -1856,18 +2120,35 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
+     * Set both "until further notice" checkboxes to the specified value.
+     * 
+     * @param untilFurtherNotice
+     *            Boolean flag indicating whether "until further notice" should
+     *            be checked, or <code>null</code>, which is treated as
+     *            {@link Boolean#FALSE}.
+     */
+    private void setEndTimeUntilFurtherNotice(Object untilFurtherNotice) {
+        for (CheckBoxMegawidget megawidget : untilFurtherNoticeToggleMegawidgets) {
+            setEndTimeUntilFurtherNotice(megawidget, untilFurtherNotice);
+        }
+        setEndTimeEditability(!Boolean.TRUE.equals(untilFurtherNotice));
+    }
+
+    /**
      * Set the time range megawidget so that its end time state has the
      * specified editability.
      * 
+     * @param megawidget
+     *            Megawidget to be manipulated.
      * @param editable
      *            Flag indicating whether the end time state should be editable.
      */
-    private void setEndTimeEditability(boolean editable) {
+    private void setEndTimeEditability(IStateful megawidget, boolean editable) {
         Map<String, Boolean> stateEditables = new HashMap<>();
         stateEditables.put(START_TIME_STATE, true);
         stateEditables.put(END_TIME_STATE, editable);
         try {
-            timeRangeMegawidget.setMutableProperty(
+            megawidget.setMutableProperty(
                     TimeScaleSpecifier.MEGAWIDGET_STATE_EDITABLES,
                     stateEditables);
         } catch (Exception e) {
@@ -1877,17 +2158,34 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Set the end time "until further notice" checkbox enabled state to that
-     * specified.
+     * Set both time range megawidgets so that their end time states have the
+     * specified editability.
      * 
+     * @param editable
+     *            Flag indicating whether the end time states should be
+     *            editable.
+     */
+    private void setEndTimeEditability(boolean editable) {
+        for (MultiTimeMegawidget megawidget : timeMegawidgets) {
+            setEndTimeEditability(megawidget, editable);
+        }
+    }
+
+    /**
+     * Set the specified end time "until further notice" checkbox enabled state
+     * to that specified.
+     * 
+     * @param megawidget
+     *            Megawidget to be manipulated.
      * @param enable
      *            Flag indicating whether "until further notice" should be
      *            enabled.
      */
-    private void setEndTimeUntilFurtherNoticeEnabledState(boolean enable) {
+    private void setEndTimeUntilFurtherNoticeEnabledState(
+            CheckBoxMegawidget megawidget, boolean enable) {
         if (isAlive()) {
             try {
-                endTimeUntilFurtherNoticeMegawidget.setEnabled(enable);
+                megawidget.setEnabled(enable);
             } catch (Exception e) {
                 statusHandler
                         .error("unexpected error while setting "
@@ -1898,7 +2196,45 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Set the end time "until further notice" checkbox editability state to
+     * Set both end time "until further notice" checkboxes enabled states to
+     * that specified.
+     * 
+     * @param enable
+     *            Flag indicating whether "until further notice" should be
+     *            enabled.
+     */
+    private void setEndTimeUntilFurtherNoticeEnabledState(boolean enable) {
+        for (CheckBoxMegawidget megawidget : untilFurtherNoticeToggleMegawidgets) {
+            setEndTimeUntilFurtherNoticeEnabledState(megawidget, enable);
+        }
+    }
+
+    /**
+     * Set the specified end time "until further notice" checkbox editability
+     * state to that specified.
+     * 
+     * @param megawidget
+     *            Megawidget to be manipulated.
+     * @param editable
+     *            Flag indicating whether "until further notice" should be
+     *            editable.
+     */
+    private void setEndTimeUntilFurtherNoticeEditableState(
+            CheckBoxMegawidget megawidget, boolean editable) {
+        if (isAlive()) {
+            try {
+                megawidget.setEditable(editable);
+            } catch (Exception e) {
+                statusHandler
+                        .error("unexpected error while setting "
+                                + HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE
+                                + " megawidget editability state", e);
+            }
+        }
+    }
+
+    /**
+     * Set both end time "until further notice" checkboxes editability states to
      * that specified.
      * 
      * @param editable
@@ -1906,15 +2242,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      *            editable.
      */
     private void setEndTimeUntilFurtherNoticeEditableState(boolean editable) {
-        if (isAlive()) {
-            try {
-                endTimeUntilFurtherNoticeMegawidget.setEditable(editable);
-            } catch (Exception e) {
-                statusHandler
-                        .error("unexpected error while setting "
-                                + HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE
-                                + " megawidget editability state", e);
-            }
+        for (CheckBoxMegawidget megawidget : untilFurtherNoticeToggleMegawidgets) {
+            setEndTimeUntilFurtherNoticeEditableState(megawidget, editable);
         }
     }
 
@@ -2010,7 +2339,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                         String identifier) {
 
                                     /*
-                                     * No action.
+                                     * No action, at least for now; there is a
+                                     * possibility that commands will be
+                                     * listened for in order to spawn other
+                                     * dialogs in the future, though how to do
+                                     * this in a way that avoids ugly
+                                     * hard-coding is still up in the air...
                                      */
                                 }
 
@@ -2103,7 +2437,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         /*
          * If the specifiers are being set for the currently visible event, set
-         * the "until further notice" megawidget appropriately, update the
+         * the "until further notice" megawidgets appropriately, update the
          * layout, and turn redraw back on.
          */
         if (eventIdentifier.equals(visibleEventIdentifier)) {
@@ -2159,8 +2493,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         if (identifier
                 .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
             try {
-                return (Boolean) endTimeUntilFurtherNoticeMegawidget
-                        .getState(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
+                return (Boolean) untilFurtherNoticeToggleMegawidgets
+                        .get(0)
+                        .getState(
+                                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
             } catch (Exception e) {
                 statusHandler
                         .error("Error while getting "
@@ -2306,8 +2642,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         if (isAlive() == false) {
             return;
         }
-        if (timeRangeMegawidget != null) {
-            timeRangeMegawidget.setVisibleTimeRange(minimumVisibleTime,
+        for (MultiTimeMegawidget megawidget : timeMegawidgets) {
+            megawidget.setVisibleTimeRange(minimumVisibleTime,
                     maximumVisibleTime);
         }
         for (MegawidgetManager manager : megawidgetManagersForEventIds.values()) {
