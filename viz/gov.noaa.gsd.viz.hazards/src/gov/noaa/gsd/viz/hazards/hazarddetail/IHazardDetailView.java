@@ -34,6 +34,10 @@ import com.raytheon.uf.common.time.TimeRange;
  * Jun 25, 2014    4009    Chris.Golden Added code to cache extra data held by
  *                                      metadata megawidgets between view
  *                                      instantiations.
+ * Jul 03, 2014    3512    Chris.Golden Added code to allow a duration selector
+ *                                      to be displayed instead of an absolute
+ *                                      date/time selector for the end time of
+ *                                      a hazard event.
  * </pre>
  * 
  * @author Chris.Golden
@@ -98,6 +102,15 @@ public interface IHazardDetailView {
      * @return Time range state changer.
      */
     public IStateChanger<String, TimeRange> getTimeRangeChanger();
+
+    /**
+     * Get the duration changer. This is only used to set the choices for
+     * possible durations; changes in the chosen duration are handled as time
+     * range changes.
+     * 
+     * @return Duration changer.
+     */
+    public IChoiceStateChanger<String, String, String, String> getDurationChanger();
 
     /**
      * Get the metadata state changer.

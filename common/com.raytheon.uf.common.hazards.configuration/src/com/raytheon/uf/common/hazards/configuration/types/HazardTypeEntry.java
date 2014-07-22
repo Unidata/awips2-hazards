@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.hazards.configuration.types;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -41,6 +42,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  *                                      allowUntilFurtherNotice
  *                                      fields.
  * Apr 28, 2014 3556       bkowal      Relocate to a common plugin.
+ * Jul 03, 2014 3512       Chris.Golden Added durationChoiceList
+ *                                      field.
  * 
  * </pre>
  * 
@@ -72,6 +75,8 @@ public class HazardTypeEntry {
     private double inclusionPercentage;
 
     private int hazardPointLimit;
+
+    private String[] durationChoiceList;
 
     private long defaultDuration;
 
@@ -195,6 +200,17 @@ public class HazardTypeEntry {
      */
     public void setHazardPointLimit(int hazardPointLimit) {
         this.hazardPointLimit = hazardPointLimit;
+    }
+
+    public List<String> getDurationChoiceList() {
+        return (durationChoiceList == null ? Collections.<String> emptyList()
+                : Arrays.asList(durationChoiceList));
+    }
+
+    public void setDurationChoiceList(List<String> durationChoiceList) {
+        this.durationChoiceList = (durationChoiceList == null ? new String[0]
+                : durationChoiceList.toArray(new String[durationChoiceList
+                        .size()]));
     }
 
     public long getDefaultDuration() {

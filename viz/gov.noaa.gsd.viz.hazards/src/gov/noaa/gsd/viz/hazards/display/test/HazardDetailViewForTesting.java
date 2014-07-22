@@ -49,6 +49,7 @@ import com.raytheon.uf.common.time.TimeRange;
  * Jun 25, 2014  4009      Chris.Golden   Changed to work with new initialize() signature.
  * Jun 30, 2014  3512      Chris.Golden   Changed to work with modified IStateChanger and
  *                                        ICommandInvoker.
+ * Jul 03, 2014  3512      Chris.Golden   Changed to implement new parts of interface.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -127,7 +128,7 @@ public class HazardDetailViewForTesting implements
         }
     };
 
-    private final IChoiceStateChanger<String, String, String, String> categoryAndTypeChanger = new IChoiceStateChanger<String, String, String, String>() {
+    private final IChoiceStateChanger<String, String, String, String> categoryTypeAndDurationChanger = new IChoiceStateChanger<String, String, String, String>() {
 
         @Override
         public void setEditable(String identifier, boolean editable) {
@@ -278,17 +279,22 @@ public class HazardDetailViewForTesting implements
 
     @Override
     public IChoiceStateChanger<String, String, String, String> getCategoryChanger() {
-        return categoryAndTypeChanger;
+        return categoryTypeAndDurationChanger;
     }
 
     @Override
     public IChoiceStateChanger<String, String, String, String> getTypeChanger() {
-        return categoryAndTypeChanger;
+        return categoryTypeAndDurationChanger;
     }
 
     @Override
     public IStateChanger<String, TimeRange> getTimeRangeChanger() {
         return timeRangeChanger;
+    }
+
+    @Override
+    public IChoiceStateChanger<String, String, String, String> getDurationChanger() {
+        return categoryTypeAndDurationChanger;
     }
 
     @Override
