@@ -1494,7 +1494,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         Button button = new Button(parent, SWT.PUSH);
         button.setText(label);
         button.setToolTipText(tooltipLabel);
-        button.setFont(JFaceResources.getDialogFont());
         button.setData(command);
         button.setEnabled(false);
         button.addSelectionListener(new SelectionAdapter() {

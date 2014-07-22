@@ -114,8 +114,6 @@ public class ProductEditor extends CaveSWTDialog {
 
     private static final int MIN_WIDTH = 500;
 
-    private static final int BUTTON_WIDTH = 80;
-
     private static final String ENTRY_TAB_LABEL_FORMAT = "%s (%d)";
 
     public static final int ENTRY_PANE_WIDTH = 500;
@@ -129,6 +127,8 @@ public class ProductEditor extends CaveSWTDialog {
     private boolean isCorrectable;
 
     private CTabFolder productsFolder;
+    
+    private int buttonWidth = 0;
 
     /*
      * The progress bar to display that the formatting is being done currently.
@@ -273,8 +273,13 @@ public class ProductEditor extends CaveSWTDialog {
      */
     private void setButtonGridData(Button button) {
         GridData data = new GridData(SWT.FILL, SWT.NONE, true, false);
-        data.widthHint = BUTTON_WIDTH;
         button.setLayoutData(data);
+        button.pack();
+        
+        if(button.getSize().x < buttonWidth) {
+            data.widthHint = buttonWidth;
+            button.setLayoutData(data);
+        }
     }
 
     private void buildProductTabs(Composite comp,
@@ -421,14 +426,15 @@ public class ProductEditor extends CaveSWTDialog {
         createSaveButton(buttonComp);
         createRevertButton(buttonComp);
         createDismissButton(buttonComp);
+        buttonWidth = 0;
     }
 
     private void createIssueButton(Composite buttonComp) {
         issueButton = new Button(buttonComp, SWT.PUSH);
         issueButton.setText(ISSUE_LABEL);
         setButtonGridData(issueButton);
-
         issueButton.setEnabled(true);
+        buttonWidth = issueButton.getSize().x;
         /*
          * Checks to see if there are any required fields that needs to be
          * completed.
