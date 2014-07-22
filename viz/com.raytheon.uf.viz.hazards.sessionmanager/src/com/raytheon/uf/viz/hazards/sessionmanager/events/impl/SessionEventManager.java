@@ -1180,8 +1180,14 @@ public class SessionEventManager implements
                     settings.getDefaultCategory(), false, originator);
         }
         if (oevent.getStartTime() == null) {
-            oevent.setStartTime(timeManager.getSelectedTime(), false,
-                    originator);
+            Date timeToUse = timeManager.getCurrentTime();
+            if (timeManager.getSelectedTime().after(
+                    timeManager.getCurrentTime())) {
+                timeToUse = timeManager.getSelectedTime();
+            } else {
+               timeManager.setSelectedTime(timeToUse);
+            }
+            oevent.setStartTime(timeToUse, false, originator);
         }
         if (oevent.getEndTime() == null) {
             long s = oevent.getStartTime().getTime();
