@@ -19,7 +19,7 @@ def getMetaData(javaHazardEvent, javaMetaDict):
     metaObject = HazardMetaDataAccessor.getMetaData(HAZARD_METADATA,
                                                     hazardEvent.getPhenomenon(),
                                                     hazardEvent.getSignificance(),
-                                                    hazardEvent.getSubtype())
+                                                    hazardEvent.getSubType())
     if hasattr(metaObject, "execute") and callable(getattr(metaObject, "execute")):
         metaData = metaObject.execute(hazardEvent, metaDict)
         metaData = json.dumps(metaData)

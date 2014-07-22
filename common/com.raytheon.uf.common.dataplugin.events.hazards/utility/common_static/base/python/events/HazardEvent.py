@@ -92,12 +92,6 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     
     def setSubType(self, subtype):
         self.jobj.setSubType(subtype)
-
-    def getSubtype(self):
-        return self.jobj.getSubType()
-    
-    def setSubtype(self, subtype):
-        self.jobj.setSubType(subtype)
         
     def getHazardType(self):
         return self.jobj.getHazardType()
@@ -202,7 +196,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             self.setHazardStatus(HazardStatus.PENDING)
         self.setPhenomenon(javaClass.getPhenomenon())
         self.setSignificance(javaClass.getSignificance())
-        self.setSubtype(javaClass.getSubType())
+        self.setSubType(javaClass.getSubType())
         if javaClass.getCreationTime() is not None:
             self.setCreationTime(datetime.datetime.fromtimestamp(javaClass.getCreationTime().getTime() / 1000.0))
         else :
@@ -236,7 +230,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         elif lowerKey == 'significance' or lowerKey == 'sig':
             return self.getSignificance()
         elif lowerKey == 'subtype':
-            return self.getSubtype()
+            return self.getSubType()
         elif lowerKey == 'creationtime':
             return self.getCreationTime()
         elif lowerKey == 'endtime':
@@ -265,7 +259,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         elif lowerKey == 'significance' or lowerKey == 'sig':
             self.setSignificance(value)
         elif lowerKey == 'subtype':
-            self.setSubtype(value)
+            self.setSubType(value)
         elif lowerKey == 'creationtime':
             self.setCreationTime(value)
         elif lowerKey == 'endtime':

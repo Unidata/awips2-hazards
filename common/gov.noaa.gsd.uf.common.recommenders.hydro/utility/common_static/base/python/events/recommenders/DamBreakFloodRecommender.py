@@ -140,7 +140,7 @@ class Recommender(RecommenderTemplate.Recommender):
         hazardEvent.setHazardMode("O")
         hazardEvent.setPhenomenon("FF")
         hazardEvent.setSignificance(significance)
-        hazardEvent.setSubtype(subType)
+        hazardEvent.setSubType(subType)
 
         # New recommender framework requires some datetime objects, which must
         # be in units of seconds.

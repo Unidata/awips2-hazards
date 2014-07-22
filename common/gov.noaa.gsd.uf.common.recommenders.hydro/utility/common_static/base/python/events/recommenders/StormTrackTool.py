@@ -333,7 +333,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
         hazardEvent.setPhenomenon(forJavaObj["phenomena"])
         if forJavaObj["subType"] != "" :
-            hazardEvent.setSubtype(forJavaObj["subType"])
+            hazardEvent.setSubType(forJavaObj["subType"])
         hazardEvent.setSignificance(forJavaObj["significance"])
 
         #

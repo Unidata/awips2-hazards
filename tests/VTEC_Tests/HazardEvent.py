@@ -158,18 +158,6 @@ class HazardEvent:
      '''    
     def setSignificance(self, significance):
         self.significance = significance
-    
-    '''
-     * @return subtype
-     '''    
-    def getSubtype(self):
-        return self.subtype
-    
-    '''
-     * @param subtype
-     '''    
-    def setSubtype(self, subtype):
-        self.subtype = subtype
 
     '''
      * @return subtype

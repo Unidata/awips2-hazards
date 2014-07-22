@@ -1971,7 +1971,7 @@ class Product(ProductTemplate.Product):
         for hazardEvent in segmentEvents:
             phen = hazardEvent.getPhenomenon()   
             sig = hazardEvent.getSignificance()  
-            subType = hazardEvent.getSubtype()  
+            subType = hazardEvent.getSubType()  
             criteria = {'dataType':'hazardMetaData_filter',
                     'filter':{'phen':phen, 'sig':sig, 'subType':subType}
                     }

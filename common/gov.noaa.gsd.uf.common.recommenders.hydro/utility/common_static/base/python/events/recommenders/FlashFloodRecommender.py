@@ -430,7 +430,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     hazardEvent.setHazardStatus(POTENTIAL_TYPE)
                     hazardEvent.setPhenomenon(FFW_PHENOMENON)
                     hazardEvent.setSignificance(FFW_SIGNIFICANCE)
-                    hazardEvent.setSubtype(FFW_SUBTYPE)
+                    hazardEvent.setSubType(FFW_SUBTYPE)
                     geometry = basin[GEOMETRY_KEY]
                     hazardEvent.setGeometry(GeometryFactory.createCollection([geometry]))
                     
