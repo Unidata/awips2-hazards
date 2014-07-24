@@ -54,7 +54,7 @@ scripts = [
     "gridsStartTime": "20150501_0000",
     "productType": "SMW_MWS",
     "createGrids": [
-       (0, 0.5, "MA.W", ["GMZ830"], {"state": 'ended', 'eventID': 101}),
+       (0, 0.5, "MA.W", ["GMZ830"], {'status': 'ending', 'eventID': 101}),
        ],
     "checkStrings": [
                      "GMZ830-",
@@ -158,7 +158,7 @@ scripts = [
     "drtTime": "20150502_0022",
     "productType": "SMW_MWS",
     "createGrids": [
-       (0, 0.5, "MA.W", ["GMZ830"], {'eventID': 102, 'state': 'ended'}),
+       (0, 0.5, "MA.W", ["GMZ830"], {'eventID': 102, 'status': 'ending'}),
        (0, 0.75, "MA.W", ["GMZ830"], {'eventID': 104}),
        ],
     "checkStrings": [

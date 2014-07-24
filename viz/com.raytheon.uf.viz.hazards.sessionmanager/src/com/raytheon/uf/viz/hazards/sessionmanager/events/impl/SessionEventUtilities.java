@@ -102,7 +102,7 @@ public class SessionEventUtilities {
         if (isEnded(oldEvent) == false) {
             if (oldEvent instanceof ObservedHazardEvent) {
                 ObservedHazardEvent obEvent = (ObservedHazardEvent) oldEvent;
-                obEvent.setStatus(newEvent.getStatus(), true, false,
+                obEvent.setStatus(newEvent.getStatus(), true, true,
                         Originator.OTHER);
             } else {
                 oldEvent.setStatus(newEvent.getStatus());
@@ -120,7 +120,7 @@ public class SessionEventUtilities {
     public static boolean isEnded(IHazardEvent event) {
         Date currTime = SimulatedTime.getSystemTime().getTime();
         if (event.getStatus() == HazardStatus.ENDED
-                || (event.getStatus() == HazardStatus.ISSUED && (event
+                || (HazardStatus.issuedButNotEnded(event.getStatus()) && (event
                         .getEndTime().before(currTime)))) {
             return true;
         }

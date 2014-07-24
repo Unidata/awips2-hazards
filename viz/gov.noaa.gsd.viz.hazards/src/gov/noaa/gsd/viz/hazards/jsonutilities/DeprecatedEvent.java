@@ -49,7 +49,6 @@ import org.codehaus.jackson.annotate.JsonIgnore;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -185,8 +184,8 @@ public class DeprecatedEvent {
             /*
              * Has it been issued? Otherwise, don't assign an issueTime
              */
-            if (event.getStatus() == HazardStatus.ISSUED
-                    || event.getStatus() == HazardStatus.ENDED) {
+            HazardStatus status = event.getStatus();
+            if (HazardStatus.hasEverBeenIssued(status)) {
                 issueTime = (Long) event
                         .getHazardAttribute(HazardConstants.ISSUE_TIME);
             }
@@ -236,12 +235,6 @@ public class DeprecatedEvent {
         checked = (Boolean) attr.get(HAZARD_EVENT_CHECKED);
         color = "255 255 255";
         selected = (Boolean) attr.get(HAZARD_EVENT_SELECTED);
-
-        if (event.getStatus() != HazardStatus.ENDED
-                && Boolean.TRUE.equals(attr
-                        .get(ISessionEventManager.ATTR_ISSUED))) {
-            status = HazardStatus.ISSUED.toString().toLowerCase();
-        }
 
         draggedPoints = new double[0][];
 
@@ -562,57 +555,6 @@ public class DeprecatedEvent {
 
     public void setPolyModified(Boolean polyModified) {
         this.polyModified = polyModified;
-    }
-
-    public IHazardEvent toHazardEvent() {
-        IHazardEvent event = new BaseHazardEvent();
-        if (pointID != null) {
-            event.addHazardAttribute(HazardConstants.POINTID, pointID);
-        }
-        if (streamName != null) {
-            event.addHazardAttribute(HazardConstants.STREAM_NAME, streamName);
-        }
-        if (startTime != null) {
-            event.setStartTime(new Date(startTime));
-        }
-        if (endTime != null) {
-            event.setEndTime(new Date(endTime));
-        }
-        if (endTimeUntilFurtherNotice != null) {
-            event.addHazardAttribute(
-                    HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
-                    endTimeUntilFurtherNotice);
-        }
-        if (creationTime != null) {
-            event.addHazardAttribute(CREATION_TIME, new Date(creationTime));
-        }
-        if (hazardCategory != null) {
-            event.addHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY,
-                    hazardCategory);
-        }
-        event.setSiteID(siteID);
-        event.setPhenomenon(phen);
-        event.setSignificance(sig);
-
-        event.setSubType(subType);
-
-        if (status != null) {
-            event.setStatus(HazardStatus.valueOf(status.toUpperCase()));
-        }
-
-        if (cause != null) {
-            event.addHazardAttribute("cause", cause);
-        }
-        if (type != null) {
-            event.addHazardAttribute("type", type);
-        }
-        if (damName != null) {
-            event.addHazardAttribute(DAM_NAME, damName);
-        }
-
-        event.setGeometry(getGeometry());
-
-        return event;
     }
 
     @JsonIgnore

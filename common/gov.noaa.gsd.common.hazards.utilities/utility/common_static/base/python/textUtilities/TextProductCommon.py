@@ -112,9 +112,8 @@ class TextProductCommon(object):
                     value = productTextList[0].getValue()
                 else:
                     value = default
-        #TODO Needs to be tested with Product Editor
 #         elif displayable:
-#                 userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, False, displayable=True, label=label) 
+#                 userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, '', False, displayable=True, label=label) 
 #                 value = default           
         else:
             value = default

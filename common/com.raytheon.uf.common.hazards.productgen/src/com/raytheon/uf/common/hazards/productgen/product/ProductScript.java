@@ -217,20 +217,24 @@ public class ProductScript extends PythonScriptController {
      * Retrieves the information to define a dialog from the product.
      * 
      * @param product
+     * @param eventSet
      * @return
      */
-    public Map<String, Serializable> getDialogInfo(String product) {
-        return getInfo(product, GET_DIALOG_INFO);
+    public Map<String, Serializable> getDialogInfo(String product,
+            EventSet<IEvent> eventSet) {
+        return getInfo(product, GET_DIALOG_INFO, eventSet);
     }
 
     /**
      * Retrieves the metadata of the product.
      * 
      * @param product
+     * @param eventSet
      * @return
      */
-    public Map<String, Serializable> getScriptMetadata(String product) {
-        return getInfo(product, GET_SCRIPT_METADATA);
+    public Map<String, Serializable> getScriptMetadata(String product,
+            EventSet<IEvent> eventSet) {
+        return getInfo(product, GET_SCRIPT_METADATA, eventSet);
     }
 
     /**
@@ -240,13 +244,15 @@ public class ProductScript extends PythonScriptController {
      *            name of the python module to execute
      * @param methodName
      *            name of the method to execute
+     * @param eventSet
      * @return
      */
     @SuppressWarnings("unchecked")
     private Map<String, Serializable> getInfo(String moduleName,
-            String methodName) {
+            String methodName, EventSet<IEvent> eventSet) {
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(moduleName));
+        args.put(EVENT_SET, eventSet);
         Map<String, Serializable> retVal = null;
         try {
             if (!isInstantiated(moduleName)) {

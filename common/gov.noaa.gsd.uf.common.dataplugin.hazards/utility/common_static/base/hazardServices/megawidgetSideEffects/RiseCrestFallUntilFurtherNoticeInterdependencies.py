@@ -47,36 +47,39 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
         # initialization.
         from VTECConstants import UFN_TIME_VALUE_SECS
         ufnTime = UFN_TIME_VALUE_SECS * 1000L
-        if editable == False and \
-                mutableProperties["riseAbove:crest:fallBelow"]["values"]["fallBelow"] != ufnTime:
-            
-            interval = long(mutableProperties["riseAbove:crest:fallBelow"]["values"]["fallBelow"] - \
-                    mutableProperties["riseAbove:crest:fallBelow"]["values"]["crest"])
-            fallBelow = ufnTime
-            
-            return { "riseAbove:crest:fallBelow": {
-                                                   "valueEditables": { "fallBelow": False },
-                                                   "extraData": { "lastInterval": interval },
-                                                   "values": { "fallBelow": fallBelow }
-                                                   }
-                    }
-        elif editable == True and \
-                mutableProperties["riseAbove:crest:fallBelow"]["values"]["fallBelow"] == ufnTime:
-            
-            if "extraData" in mutableProperties["riseAbove:crest:fallBelow"] \
-                    and "lastInterval" in mutableProperties["riseAbove:crest:fallBelow"]["extraData"]:
-                interval = mutableProperties["riseAbove:crest:fallBelow"]["extraData"]["lastInterval"]
+	if "riseAbove:crest:fallBelow" in mutableProperties:
+            if editable == False and \
+                    mutableProperties["riseAbove:crest:fallBelow"]["values"]["fallBelow"] != ufnTime:
+                
+                interval = long(mutableProperties["riseAbove:crest:fallBelow"]["values"]["fallBelow"] - \
+                        mutableProperties["riseAbove:crest:fallBelow"]["values"]["crest"])
+                fallBelow = ufnTime
+                
+                return { "riseAbove:crest:fallBelow": {
+                                                       "valueEditables": { "fallBelow": False },
+                                                       "extraData": { "lastInterval": interval },
+                                                       "values": { "fallBelow": fallBelow }
+                                                       }
+                        }
+            elif editable == True and \
+                    mutableProperties["riseAbove:crest:fallBelow"]["values"]["fallBelow"] == ufnTime:
+                
+                if "extraData" in mutableProperties["riseAbove:crest:fallBelow"] \
+                        and "lastInterval" in mutableProperties["riseAbove:crest:fallBelow"]["extraData"]:
+                    interval = mutableProperties["riseAbove:crest:fallBelow"]["extraData"]["lastInterval"]
+                else:
+                    interval = long(mutableProperties["riseAbove:crest:fallBelow"]["values"]["crest"] - \
+                            mutableProperties["riseAbove:crest:fallBelow"]["values"]["riseAbove"])
+                fallBelow = mutableProperties["riseAbove:crest:fallBelow"]["values"]["crest"] + interval
+                
+                return { "riseAbove:crest:fallBelow": {
+                                                       "valueEditables": { "fallBelow": True },
+                                                       "values": { "fallBelow": fallBelow }
+                                                       }
+                        }
             else:
-                interval = long(mutableProperties["riseAbove:crest:fallBelow"]["values"]["crest"] - \
-                        mutableProperties["riseAbove:crest:fallBelow"]["values"]["riseAbove"])
-            fallBelow = mutableProperties["riseAbove:crest:fallBelow"]["values"]["crest"] + interval
-            
-            return { "riseAbove:crest:fallBelow": {
-                                                   "valueEditables": { "fallBelow": True },
-                                                   "values": { "fallBelow": fallBelow }
-                                                   }
-                    }
+                return { "riseAbove:crest:fallBelow": { "valueEditables": { "fallBelow": editable } } }
         else:
-            return { "riseAbove:crest:fallBelow": { "valueEditables": { "fallBelow": editable } } }
+            return None
     else:
         return None

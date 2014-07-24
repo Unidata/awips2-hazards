@@ -213,9 +213,9 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public void setLastModifiedSelectedEvent(E event, IOriginator originator);
 
     /**
-     * @return id of the most recently selected event
+     * @return the most recently selected {@link IHazardEvent}
      */
-    String getLastSelectedEventID();
+    public E getLastSelectedEvent();
 
     /**
      * Set the selected events. Any currently selected events that are no in

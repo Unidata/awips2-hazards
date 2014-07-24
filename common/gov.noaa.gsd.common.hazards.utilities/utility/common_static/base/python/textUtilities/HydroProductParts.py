@@ -358,6 +358,7 @@ class HydroProductParts():
                     'setUp_section',
                     'attribution',
                     'firstBullet',
+                    'endingSynopsis',
                     ]
         # FFA, FLW, or FLS FA.Y NEW OR EXT
         elif pil in ['FFA', 'FLW'] or (phen == 'FA' and sig == 'Y' and action in ['NEW', 'EXT']):

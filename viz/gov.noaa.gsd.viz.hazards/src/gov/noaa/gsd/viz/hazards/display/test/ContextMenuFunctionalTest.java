@@ -105,11 +105,6 @@ public class ContextMenuFunctionalTest extends
         try {
             stepCompleted();
             this.step = Steps.CREATE_NEW_NODE_HAZARD_AREA;
-            List<String> contextMenuEntries = convertContextMenuToString(this.toolLayer
-                    .getFlatContextMenuActions());
-
-            assertTrue(contextMenuEntries
-                    .contains(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));
 
             /*
              * Create a new non-draw-by-area event.
@@ -149,7 +144,7 @@ public class ContextMenuFunctionalTest extends
 
             case CREATE_NEW_NODE_HAZARD_AREA:
                 List<String> contextMenuEntries = convertContextMenuToString(this.toolLayer
-                        .getFlatContextMenuActions());
+                        .getContextMenuActions());
 
                 assertTrue(!contextMenuEntries
                         .contains(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));

@@ -32,7 +32,7 @@ class Product(Legacy_ProductGenerator.Product):
         metadata['version'] = '1.0'
         return metadata
        
-    def defineDialog(self):
+    def defineDialog(self, eventSet):
         '''
         @return: dialog definition to solicit user input before running tool
         '''  
@@ -40,34 +40,13 @@ class Product(Legacy_ProductGenerator.Product):
          #  as a starting point if you want to add information to be
          #  solicited from the user:
 
-        overviewHeadlineDict = {}
-        overviewHeadlineDict['fieldName'] = 'overviewHeadline'
-        overviewHeadlineDict['label'] = 'Overview Headline'
-        overviewHeadlineDict['fieldType'] = 'Text'
-        overviewHeadlineDict['maxChars'] = 200
-        overviewHeadlineDict['visibleChars'] = 50
-        overviewHeadlineDict['expandHorizontally'] = False
-
-        overviewFieldDict = {}
-        overviewFieldDict['fieldName'] = 'overview'
-        overviewFieldDict['label'] = 'Overview'
-        overviewFieldDict['fieldType'] = 'Text'
-        overviewFieldDict['maxChars'] = 200
-        overviewFieldDict['visibleChars'] = 50
-        overviewFieldDict['expandHorizontally'] = False        
-        
+        self._initialize()
+         
         dialogDict = {}
-        fieldDicts = [overviewHeadlineDict, overviewFieldDict]
-        dialogDict['fields'] = fieldDicts
-        
-        valueDict = {'overviewHeadline': 'Enter overview headline here.', 'overview':'Enter overview here.'}
-        dialogDict['values'] = valueDict        
-
-    	# TODO Not ready to actually move this into repo.
-    	# If you want to test the dialogInfo, comment this and uncomment 
-    	# the next.
-        # return dialogDict
-    	return {}
+        metaDataList = self._checkForCancel(eventSet)
+        if metaDataList:
+            dialogDict['fields'] = metaDataList
+        return dialogDict
                 
     def _initialize(self):
         # TODO Fix problem in framework which does not re-call the constructor

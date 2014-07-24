@@ -5,7 +5,13 @@ class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-        metaData = [
+	if self.hazardStatus == "ending":
+	  metaData = [
+	      self.getEndingSynopsis(),
+	      ]
+
+	else:
+         metaData = [
                     self.getPointID(),
                     self.getImmediateCause(),
                     self.getFloodSeverity(),

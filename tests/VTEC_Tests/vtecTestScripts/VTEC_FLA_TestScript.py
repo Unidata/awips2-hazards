@@ -98,7 +98,7 @@ scripts = [
        (1*24+0, 2*24+4, "FL.A", ["DTXA6"],
         {'eventID': 25, 'riseAbove': 1*24+1, 'crest': 1*24+2,
          'fallBelow': 1*24+12, 'floodSeverity': 0, 'immediateCause': 'ER',
-         'floodRecord': 'UU', 'state': 'ended'})
+         'floodRecord': 'UU', 'status': 'ending'})
        ],
     "checkStrings": [
                      "DTXA6-",
@@ -316,7 +316,7 @@ scripts = [
        (0*24+22, 1*24+21, "FL.A", ["DXCT3"],
         {'eventID': 27, 'riseAbove': 1*24+6, 'crest': 1*24+19,
          'fallBelow': 1*24+22, 'floodSeverity': 0, 'immediateCause': 'ER',
-         'floodRecord': 'NO', 'state': 'ended'})
+         'floodRecord': 'NO', 'status': 'ending'})
        ],
     "checkStrings": [
                      "DXCT3-",

@@ -4922,11 +4922,10 @@ class TemporalDisplay {
      * Create the hazard menu
      */
     private void createHazardMenu() {
-        ContextMenuHelper helper = new ContextMenuHelper(presenter,
-                presenter.getSessionManager());
+        ContextMenuHelper helper = new ContextMenuHelper(presenter, presenter
+                .getSessionManager().getEventManager());
         List<MenuItem> items = new ArrayList<>();
-        for (IContributionItem item : helper
-                .getSelectedHazardManagementItems(false)) {
+        for (IContributionItem item : helper.getSelectedHazardManagementItems()) {
             MenuItem menuItem = null;
             if (item instanceof ActionContributionItem) {
                 ActionContributionItem actionItem = (ActionContributionItem) item;

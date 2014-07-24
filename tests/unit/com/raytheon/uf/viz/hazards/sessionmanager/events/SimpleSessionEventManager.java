@@ -253,11 +253,6 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public String getLastSelectedEventID() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void setSelectedEvents(
             Collection<ObservedHazardEvent> selectedEvents,
             IOriginator originator) {
@@ -272,6 +267,11 @@ public class SimpleSessionEventManager implements
     @Override
     public void removeEvents(Collection<ObservedHazardEvent> event,
             IOriginator originator) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ObservedHazardEvent getLastSelectedEvent() {
         throw new UnsupportedOperationException();
     }
 }

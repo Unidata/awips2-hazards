@@ -416,7 +416,7 @@ public class HazardServicesDrawableBuilder {
         addTextComponent(toolLayer, hazardEvent.getEventID(), result,
                 polygonDrawable);
 
-        if (hazardEvent.getStatus() != HazardStatus.ISSUED
+        if (!HazardStatus.hasEverBeenIssued(hazardEvent.getStatus())
                 && hazardEvent.getStatus() != HazardStatus.PROPOSED) {
             LineString trackLineString = (LineString) hazardEvent
                     .getHazardAttribute(HazardConstants.STORM_TRACK_LINE);

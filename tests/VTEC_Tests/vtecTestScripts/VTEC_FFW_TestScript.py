@@ -125,7 +125,7 @@ scripts = [
     "productType": "FFW_FFS",
     "createGrids": [
        (0, 2.5, "FF.W.Convective", ["FLC049"], {'eventID': 25,
-        'immediateCause': 'IC', 'floodSeverity': 0, 'state': 'ended'}),
+        'immediateCause': 'IC', 'floodSeverity': 0, 'status': 'ending'}),
        (1.25, 3.5, "FF.W.Convective", ["FLC049", "FLC050"], {'eventID': 26,
         'immediateCause': 'ER', 'floodSeverity': 0}),
        (2, 4.75, "FF.W.NonConvective", ["FLC049", "FLC050"], {'eventID': 27,
@@ -265,7 +265,7 @@ scripts = [
     "productType": "FFW_FFS",
     "createGrids": [
        (2, 5.75, "FF.W.NonConvective", ["FLC049", "FLC050"], {'eventID': 27,
-        'immediateCause': 'DM', 'floodSeverity': 0, 'state': 'ended'}),
+        'immediateCause': 'DM', 'floodSeverity': 0, 'status': 'ending'}),
        ],
     "checkStrings": [
                      "FLC049-050-",
@@ -283,7 +283,7 @@ scripts = [
     "productType": "FFW_FFS",
     "createGrids": [
        (2, 5.75, "FF.W.NonConvective", ["FLC049", "FLC050"], {'eventID': 27,
-        'immediateCause': 'DM', 'floodSeverity': 0, 'state': 'ended'}),
+        'immediateCause': 'DM', 'floodSeverity': 0, 'status': 'ending'}),
        ],
     "checkStrings": [
                      "FLC049-050-",
@@ -301,7 +301,7 @@ scripts = [
     "productType": "FFW_FFS",
     "createGrids": [
        (2, 5.75, "FF.W.NonConvective", ["FLC049", "FLC050"], {'eventID': 27,
-        'immediateCause': 'DM', 'floodSeverity': 0, 'state': 'ended'}),
+        'immediateCause': 'DM', 'floodSeverity': 0, 'status': 'ending'}),
        ],
     "checkStrings": [
                      "FLC049-050-",
@@ -318,7 +318,7 @@ scripts = [
     "productType": "FFW_FFS",
     "createGrids": [
        (2, 5.75, "FF.W.NonConvective", ["FLC049", "FLC050"], {'eventID': 27,
-        'immediateCause': 'DM', 'floodSeverity': 0, 'state': 'ended'}),
+        'immediateCause': 'DM', 'floodSeverity': 0, 'status': 'ending'}),
        ],
     "checkStrings": [
                      "FLC049-050-",

@@ -56,6 +56,7 @@ Flood = {
         "proposed",
         "pending",
         "issued",
+        "ending",
         "ended"
     ], 
     "columns": {

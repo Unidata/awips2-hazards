@@ -51,7 +51,7 @@ scripts = [
     "drtTime": "20150501_0020",
     "productType": "TOR_SVR_SVS",
     "createGrids": [
-       (0, 0.5, "TO.W", ["FLC049"], {"state": 'ended', 'eventID': 25}),
+       (0, 0.5, "TO.W", ["FLC049"], {'status': 'ending', 'eventID': 25}),
        ],
     "checkStrings": [
                      "FLC049-",
@@ -73,7 +73,7 @@ scripts = [
                      ],
     },
     {
-    "commentary": "Single TOR expire after event ended",
+    "commentary": "Single TOR expire after event ending",
     "name": "TOR_1d",
     "decodeVTEC": 0,   # don't store the vtec results
     "drtTime": "20150501_0035",
@@ -160,7 +160,7 @@ scripts = [
     "drtTime": "20150501_0022",
     "productType": "TOR_SVR_SVS",
     "createGrids": [
-       (0, 0.5, "TO.W", ["FLC049"], {'eventID': 25, 'state': 'ended'}),
+       (0, 0.5, "TO.W", ["FLC049"], {'eventID': 25, 'status': 'ending'}),
        (0.25, 0.75, "TO.W", ["FLC049"], {'eventID': 27}),
        ],
     "checkStrings": [
@@ -243,8 +243,8 @@ scripts = [
     "productType": "TOR_SVR_SVS",
     "createGrids": [
        (1, 1.75, "TO.W", ["FLC049"], {'eventID': 31}),
-       (1, 1.50, "TO.W", ["FLC049"], {'eventID': 32, 'state':'ended'}),
-       (1, 1.75, "TO.W", ["FLC050"], {'eventID': 33, 'state':'ended'}),
+       (1, 1.50, "TO.W", ["FLC049"], {'eventID': 32, 'status':'ending'}),
+       (1, 1.75, "TO.W", ["FLC050"], {'eventID': 33, 'status':'ending'}),
        ],
     "checkStrings": [
                      "FLC050-",
@@ -324,7 +324,7 @@ scripts = [
     "drtTime": "20150501_0218",
     "productType": "TOR_SVR_SVS",
     "createGrids": [
-       (2, 2.5, "TO.W", ["FLC049", "FLC050"], {'eventID': 32, 'state': 'ended'}),
+       (2, 2.5, "TO.W", ["FLC049", "FLC050"], {'eventID': 32, 'status': 'ending'}),
        (2, 2.75, "TO.W", ["FLC050"], {'eventID': 33}),
        ],
     "checkStrings": [
@@ -343,7 +343,7 @@ scripts = [
     "drtTime": "20150501_0224",
     "productType": "TOR_SVR_SVS",
     "createGrids": [
-       (2, 2.5, "TO.W", ["FLC049", "FLC050"], {'eventID': 32, 'state': 'ended'}),
+       (2, 2.5, "TO.W", ["FLC049", "FLC050"], {'eventID': 32, 'status': 'ending'}),
        (2, 2.75, "TO.W", ["FLC050"], {'eventID': 33}),
        ],
     "checkStrings": [
@@ -422,7 +422,7 @@ scripts = [
     "drtTime": "20150501_0020",
     "productType": "TOR_SVR_SVS",
     "createGrids": [
-       (0, 0.5, "SV.W", ["FLC049"], {"state": 'ended', 'eventID': 25}),
+       (0, 0.5, "SV.W", ["FLC049"], {'status': 'ending', 'eventID': 25}),
        ],
     "checkStrings": [
                      "FLC049-",
@@ -444,7 +444,7 @@ scripts = [
                      ],
     },
     {
-    "commentary": "Single SVR expire after event ended",
+    "commentary": "Single SVR expire after event ending",
     "name": "SVR_1d",
     "decodeVTEC": 0,   # don't store the vtec results
     "drtTime": "20150501_0035",
@@ -531,7 +531,7 @@ scripts = [
     "drtTime": "20150501_0022",
     "productType": "TOR_SVR_SVS",
     "createGrids": [
-       (0, 0.5, "SV.W", ["FLC049"], {'eventID': 25, 'state': 'ended'}),
+       (0, 0.5, "SV.W", ["FLC049"], {'eventID': 25, 'status': 'ending'}),
        (0.25, 0.75, "SV.W", ["FLC049"], {'eventID': 27}),
        ],
     "checkStrings": [
@@ -614,8 +614,8 @@ scripts = [
     "productType": "TOR_SVR_SVS",
     "createGrids": [
        (1, 1.75, "SV.W", ["FLC049"], {'eventID': 31}),
-       (1, 1.50, "SV.W", ["FLC049"], {'eventID': 32, 'state':'ended'}),
-       (1, 1.75, "SV.W", ["FLC050"], {'eventID': 33, 'state':'ended'}),
+       (1, 1.50, "SV.W", ["FLC049"], {'eventID': 32, 'status':'ending'}),
+       (1, 1.75, "SV.W", ["FLC050"], {'eventID': 33, 'status':'ending'}),
        ],
     "checkStrings": [
                      "FLC050-",
@@ -695,7 +695,7 @@ scripts = [
     "drtTime": "20150501_0218",
     "productType": "TOR_SVR_SVS",
     "createGrids": [
-       (2, 2.5, "SV.W", ["FLC049", "FLC050"], {'eventID': 32, 'state': 'ended'}),
+       (2, 2.5, "SV.W", ["FLC049", "FLC050"], {'eventID': 32, 'status': 'ending'}),
        (2, 2.75, "SV.W", ["FLC050"], {'eventID': 33}),
        ],
     "checkStrings": [
@@ -711,7 +711,7 @@ scripts = [
     "drtTime": "20150501_0224",
     "productType": "TOR_SVR_SVS",
     "createGrids": [
-       (2, 2.5, "SV.W", ["FLC049", "FLC050"], {'eventID': 32, 'state': 'ended'}),
+       (2, 2.5, "SV.W", ["FLC049", "FLC050"], {'eventID': 32, 'status': 'ending'}),
        (2, 2.75, "SV.W", ["FLC050"], {'eventID': 33}),
        ],
     "checkStrings": [
@@ -795,8 +795,8 @@ scripts = [
     "decodeVTEC": 0,   # don't store the vtec results
     "productType": "TOR_SVR_SVS",
     "createGrids": [
-       (0, 0.50, "TO.W", ["FLC049"], {'eventID': 40, 'state': 'ended'}),
-       (0, 0.50, "SV.W", ["FLC049"], {'eventID': 41, 'state': 'ended'}),
+       (0, 0.50, "TO.W", ["FLC049"], {'eventID': 40, 'status': 'ending'}),
+       (0, 0.50, "SV.W", ["FLC049"], {'eventID': 41, 'status': 'ending'}),
        ],
     "checkStrings": [
                      "FLC049-",

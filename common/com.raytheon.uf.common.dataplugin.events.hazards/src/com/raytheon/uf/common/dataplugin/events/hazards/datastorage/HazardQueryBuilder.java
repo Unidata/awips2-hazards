@@ -43,7 +43,7 @@ import java.util.Map;
 
 public class HazardQueryBuilder {
 
-    private Map<String, List<Object>> query;
+    private final Map<String, List<Object>> query;
 
     /**
      * 
@@ -52,7 +52,6 @@ public class HazardQueryBuilder {
         query = new HashMap<String, List<Object>>();
     }
 
-    @SuppressWarnings("unchecked")
     public void addKey(String key, Object value) {
         if (query.containsKey(key)) {
             List<Object> list = query.get(key);

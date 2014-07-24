@@ -9,9 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_END;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CREATION_TIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.END_SELECTED_HAZARDS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ENDING_SYNOPSIS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_COLOR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
@@ -19,8 +18,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATUS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_TYPE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PROPOSE_SELECTED_HAZARDS;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.REMOVE_POTENTIAL_HAZARDS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SITE_ID;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.CAN_VTEC_STRING;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.CAUSE;
@@ -43,6 +40,8 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.OAX;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.SET_CONFIDENCE;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.SEV2;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
+import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
+import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper.ContextMenuSelections;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
@@ -50,6 +49,9 @@ import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.DamBreakUrgencyLevels;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
+import gov.noaa.gsd.viz.megawidgets.ISpecifier;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+import gov.noaa.gsd.viz.megawidgets.TextSpecifier;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -62,6 +64,7 @@ import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.math.NumberUtils;
+import org.eclipse.jface.action.ActionContributionItem;
 
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
@@ -74,9 +77,9 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventMetadataModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 
@@ -114,6 +117,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComp
 class MixedHazardStoryFunctionalTest extends
         FunctionalTest<MixedHazardStoryFunctionalTest.Steps> {
 
+    /**
+     * 
+     */
+    private static final String MY_ENDING_SYNOPSIS = "My Ending Synopsis";
+
     @SuppressWarnings("unused")
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(getClass());
@@ -128,6 +136,8 @@ class MixedHazardStoryFunctionalTest extends
         REPLACEMENT_PREVIEW_PRODUCTS,
 
         REPLACEMENT_ISSUE_PRODUCTS,
+
+        REPLACEMENT_ISSUE_COMPLETE,
 
         CONTINUING_EVENTS,
 
@@ -149,6 +159,8 @@ class MixedHazardStoryFunctionalTest extends
     private Set<String> waitingToBeSelected;
 
     private int counter;
+
+    private int eventStateChangeCount = 0;
 
     MixedHazardStoryFunctionalTest(HazardServicesAppBuilder appBuilder) {
         super(appBuilder);
@@ -173,23 +185,6 @@ class MixedHazardStoryFunctionalTest extends
     }
 
     @Handler(priority = -1)
-    public void sessionModifiedOccurred(final SessionModified action) {
-        if ((step == Steps.REMOVING_ENDED_EVENTS)
-                && (appBuilder.getSessionManager().isIssueOngoing() == false)
-                && appBuilder.getSessionManager().isPreviewOngoing()) {
-            stepCompleted();
-            step = Steps.ENDED_PREVIEW_PRODUCTS;
-        } else if ((step == Steps.TEST_ENDED)
-                && (appBuilder.getSessionManager().isIssueOngoing() == false)
-                && (appBuilder.getSessionManager().isPreviewOngoing() == false)) {
-            stepCompleted();
-            testSuccess();
-        }
-    }
-
-    private int eventStateChangeCount = 0;
-
-    @Handler(priority = -1)
     public void sessionEventStatusModifiedOccurred(
             final SessionEventStatusModified action) {
 
@@ -198,74 +193,56 @@ class MixedHazardStoryFunctionalTest extends
 
             case SELECTION_ISSUE:
 
-                /*
-                 * TODO Waiting for too many notifications
-                 */
-                if (++eventStateChangeCount < 4) {
-                    return;
-                }
-                eventStateChangeCount = 0;
-                checkFirstSelectionIssue();
-                List<String> contextMenuEntries = convertContextMenuToString(toolLayer
-                        .getFlatContextMenuActions());
-                assertTrue(contextMenuEntries.contains(END_SELECTED_HAZARDS));
-                assertTrue(contextMenuEntries
-                        .contains(PROPOSE_SELECTED_HAZARDS));
-                assertTrue(contextMenuEntries
-                        .contains(REMOVE_POTENTIAL_HAZARDS));
-                stepCompleted();
+                if (++eventStateChangeCount == 2) {
 
-                step = Steps.REMOVING_POTENTIAL_EVENTS;
-                postContextMenuEvent(REMOVE_POTENTIAL_HAZARDS);
+                    eventStateChangeCount = 0;
+                    checkFirstSelectionIssue();
+                    List<String> contextMenuEntries = convertContextMenuToString(toolLayer
+                            .getContextMenuActions());
+                    assertTrue(contextMenuEntries
+                            .contains(ContextMenuSelections.PROPOSE_ALL_SELECTED_HAZARDS
+                                    .getValue()));
+                    assertTrue(contextMenuEntries
+                            .contains(ContextMenuSelections.REMOVE_POTENTIAL_HAZARDS
+                                    .getValue()));
+                    stepCompleted();
+
+                    step = Steps.REMOVING_POTENTIAL_EVENTS;
+                    postContextMenuEvent(ContextMenuSelections.REMOVE_POTENTIAL_HAZARDS
+                            .getValue());
+                }
                 break;
 
-            case REPLACEMENT_ISSUE_PRODUCTS:
+            case REPLACEMENT_ISSUE_COMPLETE:
 
-                /*
-                 * TODO Waiting for too many notifications.
-                 */
-                if (++eventStateChangeCount < 8) {
-                    return;
+                if (++eventStateChangeCount == 2) {
+
+                    eventStateChangeCount = 0;
+
+                    checkOriginalProductsEnded();
+                    checkReplacementEvents(HazardStatus.ISSUED.getValue());
+                    checkEndedEventsGoneFromHid();
+                    Map<String, Serializable> metadata = new HashMap<>();
+                    metadata.put(INCLUDE, SEV2);
+                    stepCompleted();
+                    this.step = Steps.CONTINUING_EVENTS;
+                    Dict event = getEventByType(FFW_NON_CONVECTIVE_PHEN_SIG);
+                    updateEvent(event, metadata);
                 }
-                eventStateChangeCount = 0;
-                checkOriginalProductsEnded();
-                checkReplacementEvents(HazardStatus.ISSUED.getValue());
-                checkEndedEventsGoneFromHid();
-                Map<String, Serializable> metadata = new HashMap<>();
-                metadata.put(INCLUDE, SEV2);
-                stepCompleted();
-                this.step = Steps.CONTINUING_EVENTS;
-                Dict event = getEventByType(FFW_NON_CONVECTIVE_PHEN_SIG);
-                updateEvent(event, metadata);
                 break;
 
-            case CONTINUED_ISSUE_PRODUCTS:
+            case REMOVING_ENDED_EVENTS:
+                if (++eventStateChangeCount == 2) {
 
-                /*
-                 * TODO Waiting for too many
-                 */
-                if (++eventStateChangeCount < 4) {
-                    return;
+                    eventStateChangeCount = 0;
+                    List<ObservedHazardEvent> selectedEvents = getEventManager()
+                            .getSelectedEvents();
+                    assertEquals(selectedEvents.get(0).getStatus(),
+                            HazardStatus.ENDING);
+                    assertEquals(selectedEvents.get(1).getStatus(),
+                            HazardStatus.ENDING);
+                    ;
                 }
-                eventStateChangeCount = 0;
-                checkReplacementEvents(HazardStatus.ISSUED.getValue());
-                stepCompleted();
-                step = Steps.REMOVING_ENDED_EVENTS;
-                postContextMenuEvent(CONTEXT_MENU_END);
-                break;
-
-            case ENDED_ISSUE_PRODUCTS:
-
-                /*
-                 * TODO Waiting for too many
-                 */
-                if (++eventStateChangeCount < 4) {
-                    return;
-                }
-                eventStateChangeCount = 0;
-                checkReplacementEvents(HazardStatus.ENDED.getValue());
-                stepCompleted();
-                step = Steps.TEST_ENDED;
                 break;
 
             default:
@@ -273,6 +250,36 @@ class MixedHazardStoryFunctionalTest extends
         } catch (Exception e) {
             handleException(e);
         }
+
+    }
+
+    @Handler(priority = -1)
+    public void sessionEventMetadataModifiedOccurred(
+            SessionEventMetadataModified action) {
+        switch (step) {
+        case REMOVING_ENDED_EVENTS:
+
+            List<String> hidSelectedEventIds = mockHazardDetailView
+                    .getSelectedEventIdentifiers();
+            String eventId = hidSelectedEventIds.get(0);
+            ObservedHazardEvent event = eventManager.getEventById(eventId);
+            MegawidgetSpecifierManager mgr = configManager
+                    .getMegawidgetSpecifiersForHazardEvent(event);
+            List<ISpecifier> specifiers = mgr.getSpecifiers();
+            assertEquals(specifiers.size(), 1);
+
+            TextSpecifier textSpecifier = (TextSpecifier) mgr.getSpecifiers()
+                    .get(0);
+            assertEquals(textSpecifier.getIdentifier(), ENDING_SYNOPSIS);
+
+            stepCompleted();
+            step = Steps.ENDED_PREVIEW_PRODUCTS;
+            event.addHazardAttribute(ENDING_SYNOPSIS, MY_ENDING_SYNOPSIS);
+            break;
+
+        default:
+        }
+
     }
 
     @Handler(priority = -1)
@@ -296,7 +303,7 @@ class MixedHazardStoryFunctionalTest extends
     }
 
     @Handler(priority = -1)
-    public void sessionEventAtributeModifiedOccurred(
+    public void sessionEventAttributeModifiedOccurred(
             final SessionEventAttributesModified action) {
         try {
             switch (step) {
@@ -323,6 +330,14 @@ class MixedHazardStoryFunctionalTest extends
                 stepCompleted();
                 step = Steps.CONTINUED_PREVIEW_PRODUCTS;
                 autoTestUtilities.previewEvent();
+                break;
+
+            case ENDED_PREVIEW_PRODUCTS:
+                if (action.containsAttribute(ENDING_SYNOPSIS)
+                        && action.getAttribute(ENDING_SYNOPSIS).equals(
+                                MY_ENDING_SYNOPSIS)) {
+                    autoTestUtilities.previewEvent();
+                }
                 break;
 
             default:
@@ -368,6 +383,7 @@ class MixedHazardStoryFunctionalTest extends
                 if (++counter < NUM_EVENTS_GENERATED_BY_FLOOD_RECOMMENDER) {
                     break;
                 }
+                counter = 0;
                 hazards = mockConsoleView.getHazardEvents();
                 assertEquals(hazards.size(),
                         NUM_EVENTS_GENERATED_BY_FLOOD_RECOMMENDER + 1);
@@ -518,6 +534,10 @@ class MixedHazardStoryFunctionalTest extends
                 issueEvent();
                 break;
 
+            case REPLACEMENT_ISSUE_PRODUCTS:
+                step = Steps.REPLACEMENT_ISSUE_COMPLETE;
+                break;
+
             case CONTINUED_PREVIEW_PRODUCTS:
                 checkContinuedPreview();
                 stepCompleted();
@@ -525,11 +545,29 @@ class MixedHazardStoryFunctionalTest extends
                 issueEvent();
                 break;
 
+            case CONTINUED_ISSUE_PRODUCTS:
+                checkReplacementEvents(HazardStatus.ISSUED.getValue());
+                stepCompleted();
+                step = Steps.REMOVING_ENDED_EVENTS;
+                ContextMenuHelper c = new ContextMenuHelper(consolePresenter,
+                        eventManager);
+                ActionContributionItem item = (ActionContributionItem) c
+                        .newAction(ContextMenuHelper.ContextMenuSelections.END_ALL_SELECTED_HAZARDS
+                                .getValue());
+                item.getAction().run();
+                break;
+
             case ENDED_PREVIEW_PRODUCTS:
                 checkEndedPreview();
                 stepCompleted();
                 step = Steps.ENDED_ISSUE_PRODUCTS;
                 issueEvent();
+                break;
+
+            case ENDED_ISSUE_PRODUCTS:
+                checkReplacementEvents(HazardStatus.ENDED.getValue());
+                stepCompleted();
+                testSuccess();
                 break;
 
             default:
@@ -655,6 +693,7 @@ class MixedHazardStoryFunctionalTest extends
         String legacy = products
                 .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
         assertTrue(legacy.contains(CAN_VTEC_STRING));
+        assertTrue(legacy.contains(MY_ENDING_SYNOPSIS.toUpperCase()));
 
     }
 

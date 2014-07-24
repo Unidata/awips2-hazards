@@ -22,6 +22,8 @@ package com.raytheon.uf.common.hazards.productgen.executors;
 import java.io.Serializable;
 import java.util.Map;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
 
 /**
@@ -45,15 +47,18 @@ public class ProductMetadataExecutor extends
         AbstractProductExecutor<Map<String, Serializable>> {
 
     /** Name of the product generator */
-    private String product;
+    private final String product;
 
-    public ProductMetadataExecutor(String product) {
+    private final EventSet<IEvent> eventSet;
+
+    public ProductMetadataExecutor(String product, EventSet<IEvent> eventSet) {
         this.product = product;
+        this.eventSet = eventSet;
     }
 
     @Override
     public Map<String, Serializable> execute(ProductScript script) {
-        return script.getScriptMetadata(product);
+        return script.getScriptMetadata(product, eventSet);
     }
 
 }

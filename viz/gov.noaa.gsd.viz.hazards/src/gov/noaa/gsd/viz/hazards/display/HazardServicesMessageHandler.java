@@ -7,9 +7,17 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.REPLACED_BY;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
+import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
@@ -527,11 +535,40 @@ public final class HazardServicesMessageHandler implements
     public void handleProductGenerationCompletion(
             IProductGenerationComplete productGenerationComplete) {
         if (productGenerationComplete.isIssued()) {
+            for (GeneratedProductList generatedProductList : productGenerationComplete
+                    .getGeneratedProducts()) {
+                for (IEvent event : generatedProductList.getEventSet()) {
+                    IHazardEvent hazardEvent = (IHazardEvent) event;
+                    ObservedHazardEvent oEvent = sessionEventManager
+                            .getEventById(hazardEvent.getEventID());
+                    if (oEvent.getStatus().equals(HazardStatus.PENDING)) {
+                        oEvent.setStatus(HazardStatus.ISSUED);
+                        oEvent.clearUndoRedo();
+                        oEvent.setModified(false);
+
+                    } else if (isChangeToEndedStateNeeded(hazardEvent)) {
+                        oEvent.setStatus(HazardStatus.ENDED);
+                    }
+
+                }
+            }
             sessionManager.setIssueOngoing(false);
         } else {
             appBuilder.showProductEditorView(productGenerationComplete
                     .getGeneratedProducts());
         }
+    }
+
+    /**
+     * If an ending hazard is issued or an issued hazard is replaced, we need to
+     * change it's state to ended.
+     * 
+     * @param hazardEvent
+     * @return
+     */
+    private boolean isChangeToEndedStateNeeded(IHazardEvent hazardEvent) {
+        return hazardEvent.getStatus().equals(HazardStatus.ENDING)
+                || hazardEvent.getHazardAttribute(REPLACED_BY) != null;
     }
 
     /**
@@ -576,16 +613,6 @@ public final class HazardServicesMessageHandler implements
         appBuilder.closeProductEditorView();
     }
 
-    private void updateToPreviewEnded() {
-        Collection<ObservedHazardEvent> events = sessionEventManager
-                .getSelectedEvents();
-
-        for (IHazardEvent event : events) {
-            event.addHazardAttribute(HazardConstants.PREVIEW_STATE,
-                    HazardConstants.PREVIEW_STATE_ENDED);
-        }
-    }
-
     /**
      * Issues the events upon user confirmation.
      */
@@ -612,13 +639,13 @@ public final class HazardServicesMessageHandler implements
             sessionManager.setPreviewOngoing(true);
         }
 
-        if (productGeneratorHandler.productGenerationRequired()) {
+        if (productGeneratorHandler.productGenerationRequired(issue)) {
 
             List<String> unsupportedHazards = sessionManager
                     .getProductManager().getUnsupportedHazards();
 
             Collection<ProductInformation> selectedProducts = sessionManager
-                    .getProductManager().getSelectedProducts();
+                    .getProductManager().getSelectedProducts(issue);
 
             boolean continueWithGeneration = true;
 
@@ -654,7 +681,7 @@ public final class HazardServicesMessageHandler implements
 
         } else {
             ProductStagingInfo productStagingInfo = productGeneratorHandler
-                    .buildProductStagingInfo();
+                    .buildProductStagingInfo(issue);
             appBuilder.showProductStagingView(issue, productStagingInfo);
         }
     }
@@ -1029,18 +1056,17 @@ public final class HazardServicesMessageHandler implements
      *            The label of the selected menu item.
      */
     private void handleContextMenuSelection(String label) {
-        if (label.contains(HazardConstants.CONTEXT_MENU_PROPOSE)) {
+        if (label
+                .equals(ContextMenuHelper.ContextMenuSelections.PROPOSE_ALL_SELECTED_HAZARDS
+                        .getValue())) {
             changeSelectedEventsToProposedState(null);
-        } else if (label.contains(HazardConstants.CONTEXT_MENU_ISSUE)) {
-            issueEvents();
-        } else if (label.contains(HazardConstants.CONTEXT_MENU_END)) {
-            updateToPreviewEnded();
-            preview();
         } else if (label.equals(HazardConstants.CONTEXT_MENU_DELETE_VERTEX)) {
             appBuilder.modifyShape(HazardServicesDrawingAction.DELETE_VERTEX);
         } else if (label.equals(HazardConstants.CONTEXT_MENU_ADD_VERTEX)) {
             appBuilder.modifyShape(HazardServicesDrawingAction.ADD_VERTEX);
-        } else if (label.contains(HazardConstants.CONTEXT_MENU_DELETE)) {
+        } else if (label
+                .equals(ContextMenuHelper.ContextMenuSelections.DELETE_ALL_SELECTED_HAZARDS
+                        .getValue())) {
             deleteEvent(sessionEventManager.getSelectedEvents());
         } else if (label
                 .contains(HazardConstants.CONTEXT_MENU_HAZARD_INFORMATION_DIALOG)) {
@@ -1049,7 +1075,9 @@ public final class HazardServicesMessageHandler implements
              * this would be lost when selecting different events.
              */
             appBuilder.showHazardDetail();
-        } else if (label.contains(HazardConstants.REMOVE_POTENTIAL_HAZARDS)) {
+        } else if (label
+                .contains(ContextMenuHelper.ContextMenuSelections.REMOVE_POTENTIAL_HAZARDS
+                        .getValue())) {
             removeEventsWithState(HazardConstants.HazardStatus.POTENTIAL
                     .getValue());
             notifyModelEventsChanged();
@@ -1067,6 +1095,8 @@ public final class HazardServicesMessageHandler implements
                 .equals(HazardConstants.CONTEXT_MENU_CLIP_AND_REDUCE_SELECTED_HAZARDS)) {
             sessionEventManager.clipSelectedHazardGeometries();
             sessionEventManager.reduceSelectedHazardGeometries();
+        } else {
+            throw new IllegalArgumentException("Unexpected label " + label);
         }
     }
 

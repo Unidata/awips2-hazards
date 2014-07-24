@@ -87,13 +87,8 @@ public class AutomatedTests {
     public void testCompleted(final TestCompleted testCompleted) {
         if (testCompleted.getTestClass().equals(
                 MixedHazardStoryFunctionalTest.class)) {
-            runTest(new SimpleHazardStoryFunctionalTest(appBuilder));
-
-        }
-
-        else if (testCompleted.getTestClass().equals(
-                SimpleHazardStoryFunctionalTest.class)) {
             runTest(new StormTrackFunctionalTest(appBuilder));
+
         }
 
         else if (testCompleted.getTestClass().equals(

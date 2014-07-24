@@ -134,6 +134,7 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
         """
         @return: Returns a map of string to string of the dialog info.
         """
+        kwargs['eventSet'] = PythonEventSet(kwargs['eventSet'])
         val = self.runMethod(moduleName, className, 'defineDialog', **kwargs)
         if val is not None:
             val = JUtil.pyValToJavaObj(val)

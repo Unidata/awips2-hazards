@@ -200,7 +200,7 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     @Override
-    public Collection<ProductInformation> getSelectedProducts() {
+    public Collection<ProductInformation> getSelectedProducts(boolean issue) {
         List<ProductInformation> result = new ArrayList<ProductInformation>();
         ProductGeneratorTable pgt = configManager.getProductGeneratorTable();
 
@@ -234,8 +234,12 @@ public class SessionProductManager implements ISessionProductManager {
                 info.setProductGeneratorName(entry.getKey());
                 info.setProductEvents(productEvents);
                 info.setPossibleProductEvents(possibleProductEvents);
+
+                EventSet<IEvent> eventSet = buildEventSet(info, issue,
+                        LocalizationManager.getInstance().getCurrentSite());
+
                 Map<String, Serializable> dialogInfo = productGen
-                        .getDialogInfo(entry.getKey());
+                        .getDialogInfo(entry.getKey(), eventSet);
 
                 info.setDialogInfo(dialogInfo);
                 info.setProductFormats(configManager.getProductGeneratorTable()
@@ -295,7 +299,6 @@ public class SessionProductManager implements ISessionProductManager {
         return unsupportedHazards;
     }
 
-    @SuppressWarnings("unchecked")
     private boolean isCombinable(IHazardEvent e) {
         String type = HazardEventUtilities.getHazardType(e);
         HazardTypes hazardTypes = configManager.getHazardTypes();
@@ -330,6 +333,26 @@ public class SessionProductManager implements ISessionProductManager {
             return false;
         }
 
+        if (issue && confirm && !areYouSure()) {
+            return false;
+        }
+        String locMgrSite = LocalizationManager.getInstance().getCurrentSite();
+        EventSet<IEvent> events = buildEventSet(information, issue, locMgrSite);
+
+        String product = information.getProductGeneratorName();
+        String[] formats = information.getProductFormats().getPreviewFormats()
+                .toArray(new String[0]);
+        IPythonJobListener<GeneratedProductList> listener = new JobListener(
+                issue, notificationSender, information);
+        productGen.generate(product, events, information.getDialogSelections(),
+                formats, listener);
+
+        return true;
+    }/* end generate() method */
+
+    private EventSet<IEvent> buildEventSet(ProductInformation information,
+            boolean issue, String locMgrSite) {
+        eventManager.clipSelectedHazardGeometries();
         eventManager.reduceSelectedHazardGeometries();
 
         /*
@@ -337,10 +360,6 @@ public class SessionProductManager implements ISessionProductManager {
          */
         eventManager.updateSelectedHazardUGCs();
 
-        if (issue && confirm && !areYouSure()) {
-            return false;
-        }
-        String locMgrSite = LocalizationManager.getInstance().getCurrentSite();
         EventSet<IEvent> events = new EventSet<IEvent>();
         events.addAttribute(HazardConstants.CURRENT_TIME, timeManager
                 .getCurrentTime().getTime());
@@ -467,17 +486,8 @@ public class SessionProductManager implements ISessionProductManager {
 
             events.add(event);
         }/* end loop over information.getProductEvents */
-
-        String product = information.getProductGeneratorName();
-        String[] formats = information.getProductFormats().getPreviewFormats()
-                .toArray(new String[0]);
-        IPythonJobListener<GeneratedProductList> listener = new JobListener(
-                issue, notificationSender, information);
-        productGen.generate(product, events, information.getDialogSelections(),
-                formats, listener);
-
-        return true;
-    }/* end generate() method */
+        return events;
+    }
 
     @Override
     public void issue(ProductInformation information) {

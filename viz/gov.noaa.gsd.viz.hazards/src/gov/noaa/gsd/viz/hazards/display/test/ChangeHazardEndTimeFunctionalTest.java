@@ -9,7 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.EXT_VTEC_STRING;
+import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
@@ -111,9 +111,7 @@ public class ChangeHazardEndTimeFunctionalTest extends
             switch (step) {
 
             case ISSUE_FLASH_FLOOD_WATCH:
-                if (isIssuanceComplete(true)) {
-                    handleCompletedIssuance();
-                }
+                handleCompletedIssuance();
                 break;
 
             default:
@@ -160,12 +158,6 @@ public class ChangeHazardEndTimeFunctionalTest extends
                 return;
             }
             stepCompleted();
-
-            /*
-             * TODO: Why does it require 3 firings of the event status change
-             * notification? Need to look into this.
-             */
-            initializeIssuanceTracking(3);
             step = Steps.ISSUE_FLASH_FLOOD_WATCH;
             autoTestUtilities.issueEvent();
         }
@@ -222,9 +214,7 @@ public class ChangeHazardEndTimeFunctionalTest extends
                 break;
 
             case ISSUE_FLASH_FLOOD_WATCH:
-                if (isIssuanceComplete(false)) {
-                    handleCompletedIssuance();
-                }
+                handleCompletedIssuance();
                 break;
 
             default:

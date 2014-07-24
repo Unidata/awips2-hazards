@@ -33,7 +33,7 @@ class Product(Legacy_ProductGenerator.Product):
         metadata['version'] = '1.0'
         return metadata
        
-    def defineDialog(self):
+    def defineDialog(self, eventSet):
         '''
         @return: dialog definition to solicit user input before running tool
         '''  

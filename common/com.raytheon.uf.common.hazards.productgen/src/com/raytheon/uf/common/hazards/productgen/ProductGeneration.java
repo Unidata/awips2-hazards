@@ -127,9 +127,10 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
     }
 
     @Override
-    public Map<String, Serializable> getDialogInfo(String product) {
+    public Map<String, Serializable> getDialogInfo(String product,
+            EventSet<IEvent> eventSet) {
         IPythonExecutor<ProductScript, Map<String, Serializable>> executor = new ProductDialogInfoExecutor(
-                product);
+                product, eventSet);
         Map<String, Serializable> retVal = null;
         try {
             retVal = coordinator.submitSyncJob(executor);
@@ -141,9 +142,10 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
     }
 
     @Override
-    public Map<String, Serializable> getMetadata(String product) {
+    public Map<String, Serializable> getMetadata(String product,
+            EventSet<IEvent> eventSet) {
         IPythonExecutor<ProductScript, Map<String, Serializable>> executor = new ProductMetadataExecutor(
-                product);
+                product, eventSet);
         Map<String, Serializable> retVal = null;
         try {
             retVal = coordinator.submitSyncJob(executor);

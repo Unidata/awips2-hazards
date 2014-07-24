@@ -5,9 +5,14 @@ class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-        metaData = [
-                    self.getImmediateCause(),
-                    ] + self.setCAP_Fields()
+        if self.hazardStatus == 'ending':
+            metaData = [
+                    self.getEndingSynopsis(), 
+                    ]
+        else:
+            metaData = [
+                        self.getImmediateCause(),
+                        ] + self.setCAP_Fields()
         return {
                 METADATA_KEY: metaData
                 }    

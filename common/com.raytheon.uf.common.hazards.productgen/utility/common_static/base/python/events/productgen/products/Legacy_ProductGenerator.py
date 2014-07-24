@@ -49,6 +49,7 @@ from shapely import geometry
 from KeyInfo import KeyInfo
 import ProductTextUtil
 from com.raytheon.uf.common.time import SimulatedTime
+from abc import *
    
 class Prod:
     pass
@@ -82,6 +83,7 @@ class ProductSegmentGroup:
         self.productParts = productParts
 
 class Product(ProductTemplate.Product):
+    __metaclass = ABCMeta
  
     def __init__(self):  
         '''
@@ -131,12 +133,55 @@ class Product(ProductTemplate.Product):
         metadata['version'] = '1.0'
         return metadata
        
-    def defineDialog(self):
-        '''
-        @return: dialog definition to solicit user input before running tool
-        '''  
-        return {}
-    
+    @abstractmethod
+    def defineDialog(self, eventSet):
+        pass
+
+    def _checkForCancel(self, eventSet):
+        # Look for a eventId with both CAN segments and non-CAN segments
+        self._getVariables(eventSet)
+        if not self._inputHazardEvents:
+            return {}
+        segments = self._getSegments(self._inputHazardEvents)
+        self._productSegmentGroups = self._groupSegments(segments)
+        # Determine all the actions in a product associated with each eventID
+        #    eventID : [actions list],
+        actionDict = {}
+        for productSegmentGroup in self._productSegmentGroups:
+            for productSegment in productSegmentGroup.productSegments:
+                vtecRecords = productSegment.vtecRecords
+                actions = []
+                for vtecRecord in vtecRecords:
+                    actions.append(vtecRecord['act'])
+                ids, eventIDs = productSegment.segment
+                for eventID in eventIDs:
+                    eventActions = actionDict.get(eventID, [])
+                    for action in actions:
+                        if action not in eventActions:
+                            eventActions.append(action)
+                    actionDict[eventID] = eventActions
+        # Determine if there are Cancel segments plus non-Cancel segments associated with the same eventID
+        canceledEventIDs = []
+        for eventID in actionDict:
+            eventActions = actionDict.get(eventID, [])
+            if 'CAN' in eventActions:
+                non_CAN = False
+                for eventAction in eventActions:
+                    if eventAction not in ['CAN']:
+                        canceledEventIDs.append(eventID)
+                        break
+        # Get the Meta Data for the canceledEventIDs
+        metaDataList = []
+        for eventID in canceledEventIDs:
+            for hazardEvent in self._inputHazardEvents:
+                if eventID == hazardEvent.getEventID():
+                    saveStatus = hazardEvent.getStatus()
+                    hazardEvent.setStatus('ending')
+                    metaDataList += self.getHazardMetaData(hazardEvent)
+                    hazardEvent.setStatus(saveStatus)
+        return metaDataList
+
+    @abstractmethod    
     def execute(self, eventSet, dialogInputMap):          
         '''
         Must be overridden by the Product Generator
@@ -374,6 +419,7 @@ class Product(ProductTemplate.Product):
                 self._areaVtecEngine = self._vtecEngine                  
         return self._point_productSegments + self._area_productSegments
             
+    @abstractmethod
     def _groupSegments(self, segments):
         '''
         Group the segments into the products
@@ -706,7 +752,7 @@ class Product(ProductTemplate.Product):
     def _setUp_segment(self, segmentDict, productSegmentGroup, productSegment_tuple):  
         segment, vtecRecords = productSegment_tuple 
         productSegment = self.createProductSegment(segment, vtecRecords)
-        productSegment.metaDataList, productSegment.hazardEvents = self.getHazardMetaData(segment)
+        productSegment.metaDataList, productSegment.hazardEvents = self.getSegmentMetaData(segment)
                
         # There may be multiple (metaData, hazardEvent) pairs in a segment 
         #   An example would be for a NPW product which had a Frost Advisory and a Wind Advisory in one segment
@@ -945,8 +991,6 @@ class Product(ProductTemplate.Product):
         # Check to see if emergencyHeadine is to be included
         hazardEvent = self._section.hazardEvent
         includeChoices = hazardEvent.get('include')
-        print "includeChoices", includeChoices
-        self.flush()
         if includeChoices and 'ffwEmergency' in includeChoices:
             location = hazardEvent.get('includeEmergencyLocation')
             if location is None:
@@ -1639,7 +1683,12 @@ class Product(ProductTemplate.Product):
            
     def _endingSynopsis(self, sectionDict, productSegmentGroup, arguments):
         # TODO Add to Product Staging -- FFA, FLS area
-        sectionDict['endingSynopsis'] = '\nBrief post-synopsis of hydrometeorological activity\n'
+        endingSynopsis = self._section.hazardEvent.get('endingSynopsis')
+        if endingSynopsis is None:
+            endingSynopsis = '\nBrief post-synopsis of hydrometeorological activity\n'
+        else:
+            endingSynopsis = '\n'+endingSynopsis+'\n'
+        sectionDict['endingSynopsis'] = endingSynopsis
             
     ######################################
     #  Code       
@@ -1660,10 +1709,6 @@ class Product(ProductTemplate.Product):
                 hazardEvent.set('previousForcastCategory', self._maxForecastCategory)
             except:
                 pass
-        else:
-            # Reset state if previewing ended
-            if hazardEvent.get('previewState') == 'ended':
-                hazardEvent.setStatus('ISSUED')
 
     def _addToProductDict(self, productDict):
         '''
@@ -1950,41 +1995,37 @@ class Product(ProductTemplate.Product):
                     if hazardEvent.get('pointID') is None:
                         hazardEvent.set('pointID', 'XXXXX')
                         
-            #  Handle 'previewState' 
-            #  IF we are previewing an 'ended' state, temporarily set the state as 'ended'
-            #   so that the VTEC processing will be done correctly
-            if hazardEvent.get('previewState') == 'ended':
-                hazardEvent.setStatus('ENDED')
             newHazardEvents.append(hazardEvent)
  
         return newHazardEvents
 
     
-    def getHazardMetaData(self, segment) :
+    def getSegmentMetaData(self, segment) :
         '''
         @param: eventInfo
-        ''' 
+        '''
         # Get meta data for this segment
         #  May need to get multiple hazardEvents and meta data
         metaDataList = []
         segmentEvents = self.getSegmentHazardEvents([segment])
         for hazardEvent in segmentEvents:
-            phen = hazardEvent.getPhenomenon()   
-            sig = hazardEvent.getSignificance()  
-            subType = hazardEvent.getSubType()  
-            criteria = {'dataType':'hazardMetaData_filter',
-                    'filter':{'phen':phen, 'sig':sig, 'subType':subType}
-                    }
-            metaData = self.bridge.getData(json.dumps(criteria))
-            
-            if type(metaData) is not types.ListType:
-                metaData = metaData.execute(hazardEvent, {})
-            if metaData:
-                metaDataList.append((metaData[HazardConstants.METADATA_KEY], hazardEvent))
-            else:
-                metaDataList.append(([], hazardEvent))
-            
+            metaDataList.append((self.getHazardMetaData(hazardEvent), hazardEvent))
         return metaDataList, segmentEvents
+
+    def getHazardMetaData(self, hazardEvent):
+        phen = hazardEvent.getPhenomenon()
+        sig = hazardEvent.getSignificance()
+        subType = hazardEvent.getSubType()
+        criteria = {'dataType':'hazardMetaData_filter',
+                'filter':{'phen':phen, 'sig':sig, 'subType':subType}
+                }
+        metaData = self.bridge.getData(json.dumps(criteria))
+
+        if type(metaData) is not types.ListType:
+            metaData = metaData.execute(hazardEvent, {})
+            metaData = metaData.get('metadata')
+        return metaData
+
         
     def _saveVTEC(self, hazardEvents):
         '''

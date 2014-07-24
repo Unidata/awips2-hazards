@@ -55,7 +55,6 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.jface.action.ActionContributionItem;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IContributionItem;
 import org.eclipse.jface.action.IMenuManager;
@@ -621,8 +620,8 @@ public class ToolLayer extends
              * Test for unissued storm track operations. These should not be
              * filtered out by time.
              */
-            if (!(HazardServicesDrawableBuilder.forModifyingStormTrack(event) && event
-                    .getStatus() != HazardStatus.ISSUED)) {
+            if (!(HazardServicesDrawableBuilder.forModifyingStormTrack(event) && !HazardStatus
+                    .hasEverBeenIssued(event.getStatus()))) {
 
                 if (!doesEventOverlapSelectedTime(event, selectedRange,
                         selectedTime)) {
@@ -1435,15 +1434,24 @@ public class ToolLayer extends
      * @return A list of entries to add to the context menu.
      */
     public List<IAction> getContextMenuActions() {
+        ISessionManager<ObservedHazardEvent> sessionManager = appBuilder
+                .getSessionManager();
         ContextMenuHelper helper = new ContextMenuHelper(getAppBuilder()
-                .getSpatialPresenter(), appBuilder.getSessionManager());
+                .getSpatialPresenter(), sessionManager.getEventManager());
 
         List<IAction> actions = new ArrayList<>();
 
-        IAction action = helper.createMenu(
-                "Manage hazards...",
-                helper.getSelectedHazardManagementItems(true).toArray(
-                        new IContributionItem[0]));
+        ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
+                .getEventManager();
+        List<IContributionItem> items = helper
+                .getSelectedHazardManagementItems();
+        if (eventManager.getEventsByStatus(HazardStatus.POTENTIAL).isEmpty() == false) {
+            items.add(helper
+                    .newAction(ContextMenuHelper.ContextMenuSelections.REMOVE_POTENTIAL_HAZARDS
+                            .getValue()));
+        }
+        IAction action = helper.createMenu("Manage hazards...",
+                items.toArray(new IContributionItem[0]));
 
         if (action != null) {
             actions.add(action);
@@ -1467,47 +1475,6 @@ public class ToolLayer extends
                 .toArray(new IContributionItem[0]));
         if (action != null) {
             actions.add(action);
-        }
-        return actions;
-    }
-
-    /**
-     * This method just returns a flat look at the menu items, used for
-     * automated tests
-     * 
-     * @return
-     */
-    @Deprecated
-    public List<IAction> getFlatContextMenuActions() {
-        ContextMenuHelper helper = new ContextMenuHelper(getAppBuilder()
-                .getSpatialPresenter(), appBuilder.getSessionManager());
-
-        List<IAction> actions = new ArrayList<>();
-
-        for (IContributionItem item : helper
-                .getSelectedHazardManagementItems(true)) {
-            if (item instanceof ActionContributionItem) {
-                actions.add(((ActionContributionItem) item).getAction());
-            }
-        }
-
-        // This isn't the best way to determine this, but not sure what to do at
-        // the moment.
-        boolean drawCursor = spatialView
-                .isCurrentCursor(SpatialViewCursorTypes.DRAW_CURSOR);
-        boolean moveCursor = spatialView
-                .isCurrentCursor(SpatialViewCursorTypes.MOVE_VERTEX_CURSOR);
-        for (IContributionItem item : helper.getSpatialHazardItems(drawCursor,
-                moveCursor)) {
-            if (item instanceof ActionContributionItem) {
-                actions.add(((ActionContributionItem) item).getAction());
-            }
-        }
-
-        for (IContributionItem item : helper.getHazardSpatialItems()) {
-            if (item instanceof ActionContributionItem) {
-                actions.add(((ActionContributionItem) item).getAction());
-            }
         }
         return actions;
     }

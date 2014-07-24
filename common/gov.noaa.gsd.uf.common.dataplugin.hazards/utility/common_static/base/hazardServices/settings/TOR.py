@@ -48,6 +48,7 @@ TOR = {
         "proposed",
         "pending",
         "issued",
+        "ending",
         "ended"
     ],  
     "columns": {

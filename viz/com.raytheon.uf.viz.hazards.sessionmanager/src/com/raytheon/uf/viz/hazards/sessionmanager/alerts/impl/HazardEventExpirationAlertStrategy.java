@@ -124,6 +124,8 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
         HazardQueryBuilder queryBuilder = new HazardQueryBuilder();
         queryBuilder.addKey(HazardConstants.HAZARD_EVENT_STATUS,
                 HazardStatus.ISSUED);
+        queryBuilder.addKey(HazardConstants.HAZARD_EVENT_STATUS,
+                HazardStatus.ENDING);
         filter.putAll(queryBuilder.getQuery());
         Collection<HazardHistoryList> hazardHistories = hazardEventManager
                 .getEventsByFilter(filter).values();
@@ -150,7 +152,7 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
 
         case STORE:
             IHazardEvent hazardEvent = hazardNotification.getEvent();
-            if (hazardEvent.getStatus().equals(HazardStatus.ISSUED)) {
+            if (HazardStatus.issuedButNotEnded(hazardEvent.getStatus())) {
                 if (!alertedEvents.containsKey(hazardEvent.getEventID())) {
                     generateAlertsForIssuedHazardEvent(hazardEvent);
                 } else {

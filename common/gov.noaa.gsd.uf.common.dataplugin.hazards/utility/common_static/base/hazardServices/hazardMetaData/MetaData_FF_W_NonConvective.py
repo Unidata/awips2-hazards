@@ -38,7 +38,7 @@ class MetaData(CommonMetaData.MetaData):
                     ]  
         else:
             metaData = [
-                    #self.getCancellationStatement(), 
+                    self.getEndingSynopsis(), 
                     ]
         return {
                 METADATA_KEY: metaData

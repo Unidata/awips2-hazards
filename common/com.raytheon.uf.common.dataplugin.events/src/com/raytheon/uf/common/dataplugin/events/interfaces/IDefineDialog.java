@@ -22,6 +22,9 @@ package com.raytheon.uf.common.dataplugin.events.interfaces;
 import java.io.Serializable;
 import java.util.Map;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
+
 /**
  * Interface for retrieving the dialog info defined by the module
  * 
@@ -41,5 +44,6 @@ import java.util.Map;
 
 public interface IDefineDialog {
 
-    public Map<String, Serializable> getDialogInfo(String moduleName);
+    public Map<String, Serializable> getDialogInfo(String moduleName,
+            EventSet<IEvent> eventSet);
 }

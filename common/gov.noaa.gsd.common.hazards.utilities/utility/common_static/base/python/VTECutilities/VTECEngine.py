@@ -1073,13 +1073,13 @@ class VTECEngine(VTECTableUtil):
         # determine zones in use (set of all zones in the proposed table)
         zones = set(a['id'] for a in atable)
                 
-        # make a list of those events that have been marked as 'ended'
+        # make a list of those events that have been marked as 'ending'
        ## or has an ending time now or earlier than now
         endedEventIDs = set(a['eventID'] for a in atable
-          if a.get('state') == 'ENDED')
+          if a.get('status') == 'ENDING')
 
         # strip out all ended events from proposed
-        atable = [a for a in atable if a.get('state') != 'ENDED']
+        atable = [a for a in atable if a.get('status') != 'ENDING']
 
         # clear the h-vtec and p-vtec strings
         for a in atable:
@@ -1225,7 +1225,7 @@ class VTECEngine(VTECTableUtil):
                 d['key'] = key   #such as TO.W or FF.W.Convective
 
                 if hazardEvent.getStatus():
-                    d['state'] = hazardEvent.getStatus()
+                    d['status'] = hazardEvent.getStatus()
 
                 d['hvtec'] = hvtec
 
@@ -1819,7 +1819,7 @@ class VTECEngine(VTECTableUtil):
         Keyword Arguments:
         pTable -- proposed set of vtecRecords, non-consolidated by ID.
         activeVtecRecords -- active set of vtecRecords, in non-consolidated format.
-        endedEventIDs -- list of eventIDs that have state='ended'.  These 
+        endedEventIDs -- list of eventIDs that have status='ended'.  These 
           records have already been removed from the pTable.
 
         Returns the modified proposed table.

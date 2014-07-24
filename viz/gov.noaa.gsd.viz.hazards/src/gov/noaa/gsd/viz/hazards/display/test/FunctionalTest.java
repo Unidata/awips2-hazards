@@ -13,6 +13,7 @@ import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
 import gov.noaa.gsd.viz.hazards.console.IConsoleView;
+import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper.ContextMenuCreator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
@@ -32,10 +33,13 @@ import gov.noaa.gsd.viz.mvp.Presenter;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -93,7 +97,7 @@ public abstract class FunctionalTest<E extends Enum<E>> {
 
     private ToolsPresenter toolsPresenter;
 
-    private ConsolePresenter consolePresenter;
+    protected ConsolePresenter consolePresenter;
 
     private ProductStagingPresenter productStagingPresenter;
 
@@ -137,9 +141,15 @@ public abstract class FunctionalTest<E extends Enum<E>> {
 
     protected E step;
 
+    protected final ISessionManager<ObservedHazardEvent> sessionManager;
+
+    protected final ISessionConfigurationManager configManager;
+
     FunctionalTest(HazardServicesAppBuilder appBuilder) {
         this.appBuilder = appBuilder;
-        this.eventManager = appBuilder.getSessionManager().getEventManager();
+        this.sessionManager = appBuilder.getSessionManager();
+        this.eventManager = sessionManager.getEventManager();
+        this.configManager = sessionManager.getConfigurationManager();
         this.eventBus = appBuilder.getEventBus();
         this.autoTestUtilities = new AutoTestUtilities(appBuilder);
         registerForEvents();
@@ -171,67 +181,6 @@ public abstract class FunctionalTest<E extends Enum<E>> {
      * Start off the test by executing the first step.
      */
     protected abstract void runFirstStep();
-
-    protected int issuanceTargetCount;
-
-    protected int issuanceCount;
-
-    protected boolean issuanceProductGenerationComplete;
-
-    /**
-     * Initialize the issuance tracking. This is used for event issue actions to
-     * determine when the issuance is complete, since each issuance may require
-     * multiple hazard status change notifications (that number being specified
-     * by <code>targetCount</code>) as well as a product generation complete
-     * notification.
-     * 
-     * @param targetCount
-     *            Number of event status changes that must occur before the
-     *            tracking can be considered to have reached its target.
-     */
-    protected final void initializeIssuanceTracking(int targetCount) {
-        issuanceTargetCount = targetCount;
-        issuanceCount = 0;
-        issuanceProductGenerationComplete = false;
-    }
-
-    /**
-     * Determine whether or not issuance tracking has reached its target, the
-     * target being that notification of product generation completion was
-     * received, as well as <code>targetCount</code> number of event status
-     * change notifications.
-     * 
-     * @param incrementCount
-     *            Flag indicating whether or not to increment the status change
-     *            notification; if false, this invocation will instead set the
-     *            product generation complete flag high.
-     * @return True if the issuance is complete, false otherwise.
-     */
-    protected final boolean isIssuanceComplete(boolean incrementCount) {
-        if (incrementCount) {
-            issuanceCount++;
-        } else {
-            issuanceProductGenerationComplete = true;
-        }
-        if ((issuanceCount >= issuanceTargetCount)
-                && issuanceProductGenerationComplete) {
-            return true;
-        }
-        statusHandler.debug(getCurrentStep() + ": state change count = "
-                + getIssuanceCount() + " of " + issuanceTargetCount
-                + ", generation complete = "
-                + issuanceProductGenerationComplete);
-        return false;
-    }
-
-    /**
-     * Get the current issuance count.
-     * 
-     * @return Current issuance count.
-     */
-    protected final int getIssuanceCount() {
-        return issuanceCount;
-    }
 
     private void checkForFloodSettings() {
         Settings currentSettings = appBuilder.getSessionManager()
@@ -402,7 +351,13 @@ public abstract class FunctionalTest<E extends Enum<E>> {
     protected List<String> convertContextMenuToString(List<IAction> actions) {
         List<String> contextMenu = new ArrayList<>();
         for (IAction action : actions) {
-            contextMenu.add(action.getText());
+            if (action instanceof Action) {
+                Action a = (Action) action;
+                ContextMenuCreator cc = (ContextMenuCreator) a.getMenuCreator();
+                contextMenu.addAll(cc.menuItemTexts());
+            } else {
+                contextMenu.add(action.getText());
+            }
         }
         return contextMenu;
     }

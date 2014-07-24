@@ -55,7 +55,7 @@ public interface ISessionProductManager {
      * 
      * @return
      */
-    public Collection<ProductInformation> getSelectedProducts();
+    public Collection<ProductInformation> getSelectedProducts(boolean issue);
 
     /**
      * Generate a product from the given information.

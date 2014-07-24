@@ -259,9 +259,9 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
-    public void setStatus(HazardStatus state) {
-        if (changed(getStatus(), state)) {
-            setStatus(state, true, true, Originator.OTHER);
+    public void setStatus(HazardStatus status) {
+        if (changed(getStatus(), status)) {
+            setStatus(status, true, true, Originator.OTHER);
         }
     }
 
@@ -437,19 +437,15 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     protected void setStatus(HazardStatus status, boolean notify,
             boolean persist, IOriginator originator) {
-        /*
-         * TODO This bug fix from Matt needs to be restored. Unfortunately, it
-         * broke automated tests.
-         */
-        // if (changed(getStatus(), status)) {
-        delegate.setStatus(status);
+        if (changed(getStatus(), status)) {
+            delegate.setStatus(status);
 
-        if (notify) {
-            eventManager.hazardEventStatusModified(
-                    new SessionEventStatusModified(eventManager, this,
-                            originator), persist);
+            if (notify) {
+                eventManager.hazardEventStatusModified(
+                        new SessionEventStatusModified(eventManager, this,
+                                originator), persist);
+            }
         }
-        // }
     }
 
     protected void setPhenomenon(String phenomenon, boolean notify,

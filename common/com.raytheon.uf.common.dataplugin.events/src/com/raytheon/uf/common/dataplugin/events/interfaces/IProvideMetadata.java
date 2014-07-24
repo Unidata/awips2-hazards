@@ -22,6 +22,9 @@ package com.raytheon.uf.common.dataplugin.events.interfaces;
 import java.io.Serializable;
 import java.util.Map;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
+
 /**
  * Interface for retrieving the metadata of a module.
  * 
@@ -41,5 +44,6 @@ import java.util.Map;
 
 public interface IProvideMetadata {
 
-    public Map<String, Serializable> getMetadata(String moduleName);
+    public Map<String, Serializable> getMetadata(String moduleName,
+            EventSet<IEvent> eventSet);
 }

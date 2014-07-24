@@ -828,6 +828,15 @@ class MetaData:
                 "displayString": "This warning will be in effect...",
                 "productString": "This warning will be in effect until the river falls below its flood stage."}
     
+    def getEndingSynopsis(self):
+        return {
+         'fieldName': 'endingSynopsis',
+         'fieldType':'Text',
+         'label':'Enter Ending Synopsis',
+         'values': '',
+         'length': 90,
+         }
+        
     # CAP FIELDS
     def getCAP_Fields(self):    
         return [ 

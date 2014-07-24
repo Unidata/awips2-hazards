@@ -55,7 +55,7 @@ scripts = [
     "drtTime": "20150501_0020",
     "productType": "FLW_FLS",
     "createGrids": [
-       (0, 1.75, "FA.Y", ["FLC049"], {"state": 'ended', 'eventID': 25,
+       (0, 1.75, "FA.Y", ["FLC049"], {'status': 'ending', 'eventID': 25,
         'immediateCause': 'ER', 'floodSeverity': 'N'}),
        ],
     "checkStrings": [
@@ -180,7 +180,7 @@ scripts = [
     "drtTime": "20150501_0122",
     "productType": "FLW_FLS",
     "createGrids": [
-       (0, 1.5, "FA.Y", ["FLC049"], {'eventID': 25, 'state': 'ended',
+       (0, 1.5, "FA.Y", ["FLC049"], {'eventID': 25, 'status': 'ending',
         'immediateCause': 'ER', 'floodSeverity': 'N'}),
        (1.25, 1.75, "FA.Y", ["FLC049"], {'eventID': 27,
         'immediateCause': 'ER', 'floodSeverity': 'N'}),

@@ -19,7 +19,8 @@
  **/
 package gov.noaa.gsd.viz.hazards.contextmenu;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_ADD_VERTEX;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_DELETE_VERTEX;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 
@@ -32,13 +33,12 @@ import org.eclipse.jface.action.ActionContributionItem;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IContributionItem;
 import org.eclipse.jface.action.IMenuCreator;
-import org.eclipse.jface.action.Separator;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Menu;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
@@ -63,60 +63,89 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
 
 public class ContextMenuHelper {
 
-    private final ISessionManager<ObservedHazardEvent> manager;
+    public enum ContextMenuSelections {
+        END_ALL_SELECTED_HAZARDS("End Selected"),
+
+        REVERT_ALL_SELECTED_HAZARDS("Revert Selected"),
+
+        DELETE_ALL_SELECTED_HAZARDS("Delete Selected"),
+
+        PROPOSE_ALL_SELECTED_HAZARDS("Propose Selected"),
+
+        END_THIS_HAZARD("End This Hazard"),
+
+        REVERT_THIS_HAZARD("Revert This Hazard"),
+
+        DELETE_THIS_HAZARD("Delete This Hazard"),
+
+        PROPOSE_THIS_HAZARD("Propose This Hazard"),
+
+        REMOVE_POTENTIAL_HAZARDS("Remove Potential"),
+
+        ;
+
+        private final String value;
+
+        private ContextMenuSelections(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
 
     private final HazardServicesPresenter<?> presenter;
+
+    private final ISessionEventManager<ObservedHazardEvent> eventManager;
 
     /**
      * 
      */
     public ContextMenuHelper(HazardServicesPresenter<?> presenter,
-            ISessionManager<ObservedHazardEvent> manager) {
+            ISessionEventManager<ObservedHazardEvent> eventManager) {
         this.presenter = presenter;
-        this.manager = manager;
+        this.eventManager = eventManager;
     }
 
     /**
      * Get the items in the menu that apply to selected hazards
      * 
      * @param states
-     * @param includeGlobal
      * @return
      */
-    public List<IContributionItem> getSelectedHazardManagementItems(
-            boolean includeGlobal) {
+    public List<IContributionItem> getSelectedHazardManagementItems() {
         List<IContributionItem> items = new ArrayList<>();
 
         EnumSet<HazardStatus> states = EnumSet.noneOf(HazardStatus.class);
-        for (ObservedHazardEvent event : manager.getEventManager()
-                .getSelectedEvents()) {
+        for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
             states.add(event.getStatus());
         }
-        if (manager.getEventManager().getSelectedEvents().isEmpty() == false) {
+        if (eventManager.getSelectedEvents().isEmpty() == false) {
             if (states.contains(HazardStatus.PROPOSED) == false) {
-                items.add(newAction(HazardConstants.PROPOSE_SELECTED_HAZARDS));
+                items.add(newAction(ContextMenuSelections.PROPOSE_ALL_SELECTED_HAZARDS
+                        .getValue()));
             }
             if (states.contains(HazardStatus.ISSUED) == false) {
-                items.add(newAction("Issue Selected..."));
-                items.add(new Separator());
-                items.add(newAction("Delete Selected"));
+                items.add(newAction(ContextMenuSelections.DELETE_ALL_SELECTED_HAZARDS
+                        .getValue()));
             }
             if (states.contains(HazardStatus.ISSUED)) {
-                items.add(newAction(HazardConstants.END_SELECTED_HAZARDS));
+                items.add(newAction(ContextMenuSelections.END_ALL_SELECTED_HAZARDS
+                        .getValue()));
+            }
+            if (states.contains(HazardStatus.ENDING)) {
+                items.add(newAction(ContextMenuSelections.REVERT_ALL_SELECTED_HAZARDS
+                        .getValue()));
             }
         }
-        if (includeGlobal) {
-            if (manager.getEventManager()
-                    .getEventsByStatus(HazardStatus.POTENTIAL).isEmpty() == false) {
-                items.add(newAction(HazardConstants.REMOVE_POTENTIAL_HAZARDS));
-            }
-        }
+
         return items;
     }
 
     public List<IContributionItem> getHazardSpatialItems() {
         List<IContributionItem> items = new ArrayList<>();
-        if (manager.getEventManager().getSelectedEvents().isEmpty() == false) {
+        if (eventManager.getSelectedEvents().isEmpty() == false) {
             items.add(newAction("Back"));
             items.add(newAction("Front"));
         }
@@ -126,8 +155,7 @@ public class ContextMenuHelper {
     public List<IContributionItem> getSpatialHazardItems(boolean drawing,
             boolean moving) {
         List<IContributionItem> items = new ArrayList<>();
-        for (ObservedHazardEvent event : manager.getEventManager()
-                .getSelectedEvents()) {
+        for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
             if (event.getHazardType() != null) {
                 items.add(newAction(HazardConstants.CONTEXT_MENU_CLIP_AND_REDUCE_SELECTED_HAZARDS));
             }/*
@@ -146,8 +174,7 @@ public class ContextMenuHelper {
                     if (contextMenuEntry
                             .equals(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES)) {
 
-                        if (manager.getEventManager().canEventAreaBeChanged(
-                                event) == false) {
+                        if (eventManager.canEventAreaBeChanged(event) == false) {
                             continue;
                         }
 
@@ -169,72 +196,142 @@ public class ContextMenuHelper {
     public IAction createMenu(String menuText,
             final IContributionItem... actions) {
         if (actions.length != 0) {
-            final IMenuCreator creator = new IMenuCreator() {
-                Menu menu = null;
 
-                @Override
-                public Menu getMenu(Menu parent) {
-                    if (menu == null) {
-                        menu = new Menu(parent);
-                        fill();
-                    }
-                    return menu;
-                }
-
-                @Override
-                public Menu getMenu(Control parent) {
-                    if (menu == null) {
-                        menu = new Menu(parent);
-                        fill();
-                    }
-                    return menu;
-                }
-
-                @Override
-                public void dispose() {
-                    if (menu != null && menu.isDisposed() == false) {
-                        menu.dispose();
-                    }
-                }
-
-                private void fill() {
-                    for (IContributionItem action : actions) {
-                        action.fill(menu, -1);
-                    }
-                }
-            };
             return new Action(menuText, Action.AS_DROP_DOWN_MENU) {
                 @Override
                 public IMenuCreator getMenuCreator() {
-                    return creator;
+                    return new ContextMenuCreator(actions);
                 }
             };
         }
         return null;
     }
 
-    private IContributionItem newAction(String text) {
+    public class ContextMenuAction extends Action {
+
+        private final IContributionItem[] actions;
+
+        private ContextMenuAction(IContributionItem... actions) {
+            this.actions = actions;
+        }
+
+        @Override
+        public IMenuCreator getMenuCreator() {
+            return new ContextMenuCreator(actions);
+        }
+    }
+
+    public class ContextMenuCreator implements IMenuCreator {
+
+        private final IContributionItem[] actions;
+
+        private ContextMenuCreator(final IContributionItem... actions) {
+            this.actions = actions;
+        }
+
+        Menu menu = null;
+
+        @Override
+        public Menu getMenu(Menu parent) {
+            if (menu == null) {
+                menu = new Menu(parent);
+                fill();
+            }
+            return menu;
+        }
+
+        @Override
+        public Menu getMenu(Control parent) {
+            if (menu == null) {
+                menu = new Menu(parent);
+                fill();
+            }
+            return menu;
+        }
+
+        @Override
+        public void dispose() {
+            if (menu != null && menu.isDisposed() == false) {
+                menu.dispose();
+            }
+        }
+
+        private void fill() {
+            for (IContributionItem action : actions) {
+                action.fill(menu, -1);
+            }
+        }
+
+        public List<String> menuItemTexts() {
+            List<String> result = new ArrayList<String>();
+            for (IContributionItem action : actions) {
+                ActionContributionItem a = (ActionContributionItem) action;
+                result.add(a.getAction().getText());
+            }
+            return result;
+        }
+
+    }
+
+    public IContributionItem newAction(String text) {
         IAction action = new Action(text) {
             @Override
             public void run() {
                 super.run();
-                fireContextMenuItemSelected(getText());
+                handleAction(getText());
             }
         };
         return new ActionContributionItem(action);
     }
 
     /**
-     * When an item is selected from the right click CAVE context menu notify
-     * all listeners.
+     * Handle the action
+     * 
+     * TODO This method is now a mix of the obsolete and new correct way of
+     * handling these actions. The correct way is to update the model directly.
      * 
      * @param menuLabel
      *            The label string of the selected context menu item
      */
-    private void fireContextMenuItemSelected(String menuLabel) {
-        SpatialDisplayAction action = new SpatialDisplayAction(
-                SpatialDisplayAction.ActionType.CONTEXT_MENU_SELECTED, 0,
-                menuLabel);
-        presenter.fireAction(action);
+    private void handleAction(String menuLabel) {
+
+        if (menuLabel.equals(ContextMenuSelections.END_THIS_HAZARD.getValue())) {
+            /*
+             * Here we update the model directly.
+             */
+            ObservedHazardEvent event = eventManager.getLastSelectedEvent();
+            initiateEndingProcess(event);
+
+        } else if (menuLabel
+                .equals(ContextMenuSelections.END_ALL_SELECTED_HAZARDS
+                        .getValue())) {
+            for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
+                initiateEndingProcess(event);
+            }
+
+        } else if (menuLabel
+                .equals(ContextMenuSelections.REVERT_ALL_SELECTED_HAZARDS
+                        .getValue())) {
+            for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
+                revertEndingProcess(event);
+            }
+
+        } else {
+            /*
+             * TODO Handle these actions the correct way.
+             */
+            SpatialDisplayAction action = new SpatialDisplayAction(
+                    SpatialDisplayAction.ActionType.CONTEXT_MENU_SELECTED, 0,
+                    menuLabel);
+            presenter.fireAction(action);
+        }
+    }
+
+    private void initiateEndingProcess(ObservedHazardEvent event) {
+        event.setStatus(HazardStatus.ENDING);
+    }
+
+    private void revertEndingProcess(ObservedHazardEvent event) {
+        event.setStatus(HazardStatus.ISSUED);
     }
 }

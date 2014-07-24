@@ -12,6 +12,8 @@ package gov.noaa.gsd.viz.hazards.display.action;
 import java.io.Serializable;
 import java.util.Map;
 
+import org.apache.commons.lang.builder.ToStringBuilder;
+
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
@@ -251,4 +253,10 @@ public class SpatialDisplayAction {
     public IOriginator getOriginator() {
         return originator;
     }
+
+    @Override
+    public String toString() {
+        return ToStringBuilder.reflectionToString(this);
+    }
+
 }

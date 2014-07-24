@@ -65,7 +65,7 @@ public final class HazardConstants {
     // part of the hazard lifecycle that the user will see
     public enum HazardStatus {
         PENDING("pending"), POTENTIAL("potential"), PROPOSED("proposed"), ISSUED(
-                "issued"), ENDED("ended");
+                "issued"), ENDING("ending"), ENDED("ended");
         private final String value;
 
         private HazardStatus(String value) {
@@ -74,6 +74,14 @@ public final class HazardConstants {
 
         public String getValue() {
             return value;
+        }
+
+        public static boolean hasEverBeenIssued(HazardStatus status) {
+            return issuedButNotEnded(status) || status == ENDED;
+        }
+
+        public static boolean issuedButNotEnded(HazardStatus status) {
+            return status == ISSUED || status == ENDING;
         }
     }
 
@@ -498,10 +506,6 @@ public final class HazardConstants {
 
     public static final String HEADLINE = "headline";
 
-    public static final String PREVIEW_STATE = "previewState";
-
-    public static final String PREVIEW_STATE_ENDED = "ended";
-
     public static final String REPLACES = "replaces";
 
     public static final String REPLACED_BY = "replacedBy";
@@ -532,6 +536,8 @@ public final class HazardConstants {
     public static final String METADATA_KEY = "metadata";
 
     public static final String SIDE_EFFECTS_SCRIPT_KEY = "interdependencies";
+
+    public static final String ENDING_SYNOPSIS = "endingSynopsis";
 
     /*
      * The following are related to hazard geometries and their supporting meta
@@ -573,12 +579,6 @@ public final class HazardConstants {
     public static final String CONTEXT_MENU_ADD_VERTEX = "Add Vertex";
 
     public static final String CONTEXT_MENU_DELETE_VERTEX = "Delete Vertex";
-
-    public static final String CONTEXT_MENU_END = "End";
-
-    public static final String CONTEXT_MENU_ISSUE = "Issue";
-
-    public static final String CONTEXT_MENU_PROPOSE = "Propose";
 
     /*
      * Constants specific to draw-by-area hazard creation operations.
@@ -692,13 +692,7 @@ public final class HazardConstants {
 
     public static final String STATIC_SETTINGS = "staticSettings";
 
-    public static final String END_SELECTED_HAZARDS = "End Selected";
-
-    public static final String PROPOSE_SELECTED_HAZARDS = "Propose Selected";
-
     public static final String SPATIAL_INFO = "spatialInfo";
-
-    public static final String REMOVE_POTENTIAL_HAZARDS = "Remove Potential";
 
     /*
      * Constants related to Data Access Framework Requests.

@@ -25,7 +25,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUE_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PILS;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PREVIEW_STATE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.REPLACED_BY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
 import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
@@ -431,13 +430,17 @@ public class SessionEventManager implements
         return events;
     }
 
-    @Override
-    public String getLastSelectedEventID() {
+    private String getLastSelectedEventID() {
         IHazardEvent event = getLastModifiedSelectedEvent();
         if (event != null) {
             return event.getEventID();
         }
         return "";
+    }
+
+    @Override
+    public ObservedHazardEvent getLastSelectedEvent() {
+        return getEventById(getLastSelectedEventID());
     }
 
     @Handler(priority = 1)
@@ -524,15 +527,14 @@ public class SessionEventManager implements
              * by the original originator.
              */
             if (oldEvent != null) {
+
                 IHazardEvent tempEvent = new BaseHazardEvent();
                 tempEvent.setPhenomenon(phenomenon);
                 tempEvent.setSignificance(significance);
                 tempEvent.setSubType(subType);
                 oldEvent.addHazardAttribute(REPLACED_BY,
                         configManager.getHeadline(tempEvent), originator);
-                oldEvent.addHazardAttribute(PREVIEW_STATE,
-                        HazardConstants.HazardStatus.ENDED.getValue(),
-                        originator);
+                oldEvent.setStatus(HazardStatus.ENDING);
             }
 
             /*
@@ -1071,7 +1073,7 @@ public class SessionEventManager implements
                 }
                 event = addEvent(event, false, Originator.OTHER);
                 for (IHazardEvent histEvent : list) {
-                    if (histEvent.getStatus() == HazardStatus.ISSUED) {
+                    if (HazardStatus.issuedButNotEnded(histEvent.getStatus())) {
                         event.addHazardAttribute(ATTR_ISSUED, true);
                         break;
                     }
@@ -1205,7 +1207,7 @@ public class SessionEventManager implements
                     timeManager.getCurrentTime())) {
                 timeToUse = timeManager.getSelectedTime();
             } else {
-               timeManager.setSelectedTime(timeToUse);
+                timeManager.setSelectedTime(timeToUse);
             }
             oevent.setStartTime(timeToUse, false, originator);
         }
@@ -1260,7 +1262,7 @@ public class SessionEventManager implements
         oevent.addHazardAttribute(HAZARD_EVENT_CHECKED, false, false,
                 originator);
         oevent.addHazardAttribute(ATTR_ISSUED,
-                oevent.getStatus().equals(HazardStatus.ISSUED), false,
+                HazardStatus.issuedButNotEnded(oevent.getStatus()), false,
                 originator);
 
         if (localEvent) {
@@ -1396,9 +1398,9 @@ public class SessionEventManager implements
             SessionEventStatusModified notification, boolean persist) {
         if (persist) {
 
-            ObservedHazardEvent event = (ObservedHazardEvent) notification
-                    .getEvent();
+            ObservedHazardEvent event = notification.getEvent();
             HazardStatus newStatus = event.getStatus();
+
             boolean needsPersist = false;
             switch (newStatus) {
             case ISSUED:
@@ -1416,8 +1418,6 @@ public class SessionEventManager implements
                 ;// do nothing.
             }
             if (needsPersist) {
-                notificationSender.postNotification(new SessionEventModified(
-                        this, event, notification.getOriginator()));
                 try {
                     IHazardEvent dbEvent = dbManager.createEvent(event);
                     dbEvent.removeHazardAttribute(ATTR_ISSUED);
@@ -1449,7 +1449,7 @@ public class SessionEventManager implements
      */
     private void scheduleExpirationTask(final ObservedHazardEvent event) {
         if (eventExpirationTimer != null) {
-            if (event.getStatus() == HazardStatus.ISSUED) {
+            if (HazardStatus.issuedButNotEnded(event.getStatus())) {
                 final String eventId = event.getEventID();
                 TimerTask existingTask = expirationTasks.get(eventId);
                 if (existingTask != null) {
@@ -1754,6 +1754,9 @@ public class SessionEventManager implements
                     hazardQueryBuilder.addKey(
                             HazardConstants.HAZARD_EVENT_STATUS,
                             HazardStatus.ISSUED);
+                    hazardQueryBuilder.addKey(
+                            HazardConstants.HAZARD_EVENT_STATUS,
+                            HazardStatus.ENDING);
 
                     hazardQueryBuilder.addKey(
                             HazardConstants.HAZARD_EVENT_STATUS,
@@ -2006,8 +2009,7 @@ public class SessionEventManager implements
 
     @Override
     public void issueEvent(ObservedHazardEvent event, IOriginator originator) {
-        event.setStatus(HazardStatus.ISSUED, true, true, originator);
-        clearUndoRedo(event);
+        event.clearUndoRedo();
         event.setModified(false);
     }
 
@@ -2017,10 +2019,8 @@ public class SessionEventManager implements
         Set<String> set = new HashSet<String>(selectedEvents.size());
         for (ObservedHazardEvent event : selectedEvents) {
             HazardStatus status = event.getStatus();
-            if ((status != HazardStatus.ISSUED)
-                    && (status != HazardStatus.ENDED)
-                    && (status != HazardStatus.PROPOSED)
-                    && (event.getPhenomenon() != null)) {
+
+            if (isProposedStateAllowed(event, status)) {
                 set.add(event.getEventID());
             }
         }
@@ -2035,13 +2035,18 @@ public class SessionEventManager implements
          * or ended, and that have a valid type.
          */
         HazardStatus status = event.getStatus();
-        if ((status != HazardStatus.ISSUED) && (status != HazardStatus.ENDED)
-                && (status != HazardStatus.PROPOSED)
-                && (event.getPhenomenon() != null)) {
+        if (isProposedStateAllowed(event, status)) {
             event.setStatus(HazardStatus.PROPOSED, true, true, originator);
             clearUndoRedo(event);
             event.setModified(false);
         }
+    }
+
+    private boolean isProposedStateAllowed(ObservedHazardEvent event,
+            HazardStatus status) {
+        return !HazardStatus.hasEverBeenIssued(status)
+                && status != HazardStatus.PROPOSED
+                && event.getPhenomenon() != null;
     }
 
     @Override
@@ -2063,11 +2068,7 @@ public class SessionEventManager implements
                 HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
                         .getHazardType());
 
-                if ((selectedEvent.getStatus() != HazardStatus.ENDED && selectedEvent
-                        .getStatus() != HazardStatus.ISSUED)
-                        || (selectedEvent.getStatus() == HazardStatus.ISSUED
-                                && hazardType.isAllowAreaChange() && selectedEvent
-                                    .isModified())) {
+                if (canBeClipped(selectedEvent, hazardType)) {
 
                     Set<IGeometryData> geoDataSet = HatchingUtilities
                             .getClippedMapGeometries(
@@ -2113,6 +2114,14 @@ public class SessionEventManager implements
         return success;
     }
 
+    private boolean canBeClipped(ObservedHazardEvent selectedEvent,
+            HazardTypeEntry hazardType) {
+        return !HazardStatus.hasEverBeenIssued(selectedEvent.getStatus())
+                || (HazardStatus.issuedButNotEnded(selectedEvent.getStatus())
+                        && hazardType.isAllowAreaChange() && selectedEvent
+                            .isModified());
+    }
+
     @Override
     public void reduceSelectedHazardGeometries() {
 
@@ -2126,11 +2135,7 @@ public class SessionEventManager implements
                 HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
                         .getHazardType());
 
-                if ((selectedEvent.getStatus() != HazardStatus.ENDED && selectedEvent
-                        .getStatus() != HazardStatus.ISSUED)
-                        || (selectedEvent.getStatus() == HazardStatus.ISSUED
-                                && hazardType.isAllowAreaChange() && selectedEvent
-                                    .isModified())) {
+                if (canBeClipped(selectedEvent, hazardType)) {
 
                     /*
                      * Test if point reduction is necessary...
@@ -2203,7 +2208,7 @@ public class SessionEventManager implements
                 .getHazardType());
 
         if (hazardTypeEntry != null
-                && hazardEvent.getStatus() == HazardStatus.ISSUED) {
+                && HazardStatus.issuedButNotEnded(hazardEvent.getStatus())) {
             return hazardTypeEntry.isAllowAreaChange();
         } else {
             return true;

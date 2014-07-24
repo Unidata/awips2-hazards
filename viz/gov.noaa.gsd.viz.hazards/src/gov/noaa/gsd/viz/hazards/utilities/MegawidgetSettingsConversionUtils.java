@@ -19,6 +19,12 @@
  **/
 package gov.noaa.gsd.viz.hazards.utilities;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_CATEGORIES_AND_TYPES;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_SITES;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_STATES;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_TYPES;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_VISIBLE_COLUMNS;
+
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -106,7 +112,7 @@ public class MegawidgetSettingsConversionUtils {
 
             hazardCategoriesAndTypesMapList.add(hazardCategoriesAndTypesMap);
         }
-        currentSettingsMap.put("hazardCategoriesAndTypes",
+        currentSettingsMap.put(SETTING_HAZARD_CATEGORIES_AND_TYPES,
                 hazardCategoriesAndTypesMapList);
 
         // Build the 'column' map
@@ -142,11 +148,11 @@ public class MegawidgetSettingsConversionUtils {
                 observedSettings.getDefaultCategory());
 
         // Add 'visibleTypes' to the map
-        currentSettingsMap.put("visibleTypes",
+        currentSettingsMap.put(SETTING_HAZARD_TYPES,
                 observedSettings.getVisibleTypes());
 
         // Add 'visibleStatuses' to the map
-        currentSettingsMap.put("visibleStatuses",
+        currentSettingsMap.put(SETTING_HAZARD_STATES,
                 observedSettings.getVisibleStatuses());
 
         // Build the 'toolbarTools' list of maps
@@ -164,11 +170,11 @@ public class MegawidgetSettingsConversionUtils {
                 observedSettings.getDefaultTimeDisplayDuration());
 
         // Add 'visibleSites' to the map
-        currentSettingsMap.put("visibleSites",
+        currentSettingsMap.put(SETTING_HAZARD_SITES,
                 observedSettings.getVisibleSites());
 
         // Add 'visibleColumns' to the map
-        currentSettingsMap.put("visibleColumns",
+        currentSettingsMap.put(SETTING_VISIBLE_COLUMNS,
                 observedSettings.getVisibleColumns());
 
         // Add 'staticSettingsID' to the map
@@ -221,40 +227,41 @@ public class MegawidgetSettingsConversionUtils {
 
         // Update the visible types
         updatedSettings.setVisibleTypes((Set<String>) settingsMap
-                .get("visibleTypes"));
+                .get(SETTING_HAZARD_TYPES));
 
         // Update the visible states
-        if (settingsMap.get("visibleStatuses") instanceof List<?>) {
+        if (settingsMap.get(SETTING_HAZARD_STATES) instanceof List<?>) {
             Set<String> visibleStatusesSet = new HashSet<String>();
-            for (Object state : (List<?>) settingsMap.get("visibleStatuses")) {
+            for (Object state : (List<?>) settingsMap
+                    .get(SETTING_HAZARD_STATES)) {
                 visibleStatusesSet.add(state.toString());
             }
             updatedSettings.setVisibleStatuses(visibleStatusesSet);
         } else {
             updatedSettings.setVisibleStatuses((Set<String>) settingsMap
-                    .get("visibleStatuses"));
+                    .get(SETTING_HAZARD_STATES));
         }
 
         // Update the visibleSites
-        if (settingsMap.get("visibleSites") instanceof List<?>) {
+        if (settingsMap.get(SETTING_HAZARD_SITES) instanceof List<?>) {
             Set<String> visibleSitesSet = new HashSet<String>();
-            for (Object site : (List<?>) settingsMap.get("visibleSites")) {
+            for (Object site : (List<?>) settingsMap.get(SETTING_HAZARD_SITES)) {
                 visibleSitesSet.add(site.toString());
             }
             updatedSettings.setVisibleSites(visibleSitesSet);
         } else {
             updatedSettings.setVisibleSites((Set<String>) settingsMap
-                    .get("visibleSites"));
+                    .get(SETTING_HAZARD_SITES));
         }
 
         // Update the visibleColumns
         updatedSettings.setVisibleColumns((List<String>) settingsMap
-                .get("visibleColumns"));
+                .get(SETTING_VISIBLE_COLUMNS));
 
         // Update the Hazards Categories & Types
         List<HazardCategoryAndTypes> hazardCategoriesAndTypesList = new ArrayList<HazardCategoryAndTypes>();
         List<Map<String, Object>> hazardCategoriesAndTypesMapList = (List<Map<String, Object>>) settingsMap
-                .get("hazardCategoriesAndTypes");
+                .get(SETTING_HAZARD_CATEGORIES_AND_TYPES);
         for (Map<String, Object> hcatMap : hazardCategoriesAndTypesMapList) {
             HazardCategoryAndTypes hazardCategoryAndTypes = new HazardCategoryAndTypes();
             if (hcatMap.containsKey("displayString")) {

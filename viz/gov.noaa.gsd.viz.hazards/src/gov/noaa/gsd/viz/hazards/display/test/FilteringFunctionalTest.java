@@ -135,9 +135,8 @@ public class FilteringFunctionalTest extends
     @Handler(priority = -1)
     public void sessionEventStateModified(SessionEventStatusModified action) {
         if (step == Steps.BACK_TO_CANNED_FLOOD) {
-            if (isIssuanceComplete(true)) {
-                handleCompletedIssuance();
-            }
+            handleCompletedIssuance();
+
         }
     }
 
@@ -145,9 +144,8 @@ public class FilteringFunctionalTest extends
     public void handleProductGeneratorResult(
             final IProductGenerationComplete productGenerationComplete) {
         if (step == Steps.BACK_TO_CANNED_FLOOD) {
-            if (isIssuanceComplete(false)) {
-                handleCompletedIssuance();
-            }
+            handleCompletedIssuance();
+
         }
     }
 
@@ -169,11 +167,6 @@ public class FilteringFunctionalTest extends
                 events = mockConsoleView.getHazardEvents();
                 assertEquals(events.size(), 1);
 
-                /*
-                 * TODO: Why does it require 3 firings of the event status
-                 * change notification? Need to look into this.
-                 */
-                initializeIssuanceTracking(3);
                 autoTestUtilities.issueEvent();
                 break;
 

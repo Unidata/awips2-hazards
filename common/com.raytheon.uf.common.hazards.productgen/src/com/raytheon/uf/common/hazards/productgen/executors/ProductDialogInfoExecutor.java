@@ -22,6 +22,8 @@ package com.raytheon.uf.common.hazards.productgen.executors;
 import java.io.Serializable;
 import java.util.Map;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
 
 /**
@@ -44,13 +46,16 @@ import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
 public class ProductDialogInfoExecutor extends
         AbstractProductExecutor<Map<String, Serializable>> {
 
-    public ProductDialogInfoExecutor(String product) {
+    private final EventSet<IEvent> eventSet;
+
+    public ProductDialogInfoExecutor(String product, EventSet<IEvent> eventSet) {
         this.product = product;
+        this.eventSet = eventSet;
     }
 
     @Override
     public Map<String, Serializable> execute(ProductScript script) {
-        return script.getDialogInfo(product);
+        return script.getDialogInfo(product, eventSet);
     }
 
 }

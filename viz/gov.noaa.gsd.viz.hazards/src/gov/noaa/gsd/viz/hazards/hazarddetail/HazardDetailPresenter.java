@@ -639,8 +639,7 @@ public class HazardDetailPresenter extends
              */
             this.selectedEventIdentifiers = selectedEventIdentifiers;
             String oldVisibleEventIdentifier = visibleEventIdentifier;
-            visibleEventIdentifier = getModel().getEventManager()
-                    .getLastSelectedEventID();
+            buildVisibleEventIdentifier();
 
             /*
              * Notify the view of the new list of selected events.
@@ -672,6 +671,16 @@ public class HazardDetailPresenter extends
         }
     }
 
+    private void buildVisibleEventIdentifier() {
+        ObservedHazardEvent event = getModel().getEventManager()
+                .getLastSelectedEvent();
+        if (event != null) {
+            visibleEventIdentifier = event.getEventID();
+        } else {
+            visibleEventIdentifier = "";
+        }
+    }
+
     /**
      * Respond to the last modified event in the list of selected events
      * possibly having changed.
@@ -691,7 +700,7 @@ public class HazardDetailPresenter extends
             return;
         }
         String newVisibleEventIdentifier = getModel().getEventManager()
-                .getLastSelectedEventID();
+                .getLastSelectedEvent().getEventID();
         if (selectedEventIdentifiers.contains(newVisibleEventIdentifier) == false) {
             return;
         }
@@ -1086,11 +1095,8 @@ public class HazardDetailPresenter extends
      */
     private void updateViewCategoryEditability(ObservedHazardEvent event) {
         HazardStatus status = event.getStatus();
-        getView()
-                .getCategoryChanger()
-                .setEditable(
-                        null,
-                        ((status != HazardStatus.ISSUED) && (status != HazardStatus.ENDED)));
+        getView().getCategoryChanger().setEditable(null,
+                !HazardStatus.hasEverBeenIssued(status));
     }
 
     /**
@@ -1247,8 +1253,7 @@ public class HazardDetailPresenter extends
     private void updateEntireView(List<ObservedHazardEvent> selectedEvents) {
         detailViewShowing = true;
         selectedEventIdentifiers = compileSelectedEventIdentifiers(selectedEvents);
-        visibleEventIdentifier = getModel().getEventManager()
-                .getLastSelectedEventID();
+        buildVisibleEventIdentifier();
         selectedEventDisplayables = compileSelectedEventDisplayables(selectedEvents);
         updateViewSelectedEvents();
         updateViewVisibleEvent();

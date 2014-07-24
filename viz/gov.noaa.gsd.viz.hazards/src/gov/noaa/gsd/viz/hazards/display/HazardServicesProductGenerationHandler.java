@@ -112,9 +112,10 @@ class HazardServicesProductGenerationHandler {
         this.eventBus.subscribe(this);
     }
 
-    boolean productGenerationRequired() {
+    boolean productGenerationRequired(boolean issue) {
         boolean result = true;
-        for (ProductInformation info : productManager.getSelectedProducts()) {
+        for (ProductInformation info : productManager
+                .getSelectedProducts(issue)) {
             if (info.getDialogInfo() != null && !info.getDialogInfo().isEmpty()) {
                 result = false;
             } else if (info.getPossibleProductEvents() != null
@@ -132,7 +133,7 @@ class HazardServicesProductGenerationHandler {
         ISessionProductManager productManager = sessionManager
                 .getProductManager();
         Collection<ProductInformation> products = productManager
-                .getSelectedProducts();
+                .getSelectedProducts(issue);
         this.runProductGeneration(products, issue);
     }
 
@@ -155,9 +156,7 @@ class HazardServicesProductGenerationHandler {
             EventSet<IEvent> eventSet = new EventSet<IEvent>();
             for (ProductData productData : result) {
 
-                updatedDataList
-                        .add((LinkedHashMap<KeyInfo, Serializable>) productData
-                                .getData());
+                updatedDataList.add(productData.getData());
 
                 if (productInformation.getProductGeneratorName() == null) {
                     String productGeneratorName = productData
@@ -194,9 +193,9 @@ class HazardServicesProductGenerationHandler {
      * instead of {@link IHazardServicesModel}
      */
     @SuppressWarnings("unchecked")
-    public ProductStagingInfo buildProductStagingInfo() {
+    public ProductStagingInfo buildProductStagingInfo(boolean issue) {
         Collection<ProductInformation> products = productManager
-                .getSelectedProducts();
+                .getSelectedProducts(issue);
 
         ProductStagingInfo result = new ProductStagingInfo();
         for (ProductInformation info : products) {
@@ -305,7 +304,7 @@ class HazardServicesProductGenerationHandler {
     public void createProductsFromHazardEventSets(boolean issue,
             List<GeneratedProductList> generatedProductsList) {
         Collection<ProductInformation> selectedProducts = productManager
-                .getSelectedProducts();
+                .getSelectedProducts(issue);
         ProductInformation productInformation = null;
 
         Collection<ProductInformation> productsToGenerate = new ArrayList<ProductInformation>();
@@ -349,7 +348,7 @@ class HazardServicesProductGenerationHandler {
     public void createProductsFromProductStagingInfo(boolean issue,
             ProductStagingInfo productStagingInfo) {
         Collection<ProductInformation> products = productManager
-                .getSelectedProducts();
+                .getSelectedProducts(issue);
 
         Collection<ProductInformation> productsToGenerate = new ArrayList<ProductInformation>();
 

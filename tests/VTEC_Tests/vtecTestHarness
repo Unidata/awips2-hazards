@@ -157,7 +157,7 @@ class VTECTestHarness(object):
                     # store the key/value into the HazardEvent
                     if k == "eventID":
                         event.setEventID(str(v))
-                    elif k== 'state':
+                    elif k== 'status':
                         event.setStatus(v.upper())
                     else:
                         attributes[k] = v
