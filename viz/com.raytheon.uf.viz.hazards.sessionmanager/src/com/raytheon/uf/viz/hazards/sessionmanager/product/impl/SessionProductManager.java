@@ -134,6 +134,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Apr 29, 2014 2925       Chris.Golden Added protection against null values for checking
  *                                      the selection state of a hazard event.
  * Jun 12, 2014 1480       jsanchez     Updated the use of product formats.
+ * Jul 14, 2014 4187       jsanchez     Check if the generatedProductsList is valid.
  * </pre>
  * 
  * @author bsteffen
@@ -660,14 +661,22 @@ public class SessionProductManager implements ISessionProductManager {
 
                 @Override
                 public void run() {
-                    info.setProducts(result);
-                    info.getProducts().getEventSet()
-                            .addAttribute(HazardConstants.ISSUE_FLAG, issue);
-                    if (issue) {
-                        issue(info);
+                    if (result != null) {
+                        info.setProducts(result);
+                        info.getProducts()
+                                .getEventSet()
+                                .addAttribute(HazardConstants.ISSUE_FLAG, issue);
+                        if (issue) {
+                            issue(info);
+                        }
+                        notificationSender
+                                .postNotification(new ProductGenerated(info));
+                    } else {
+                        info.setError(new Throwable(
+                                "GeneratedProduct result from generator is null."));
+                        notificationSender.postNotification(new ProductFailed(
+                                info));
                     }
-                    notificationSender.postNotification(new ProductGenerated(
-                            info));
                 }
             });
         }

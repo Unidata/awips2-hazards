@@ -51,6 +51,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Apr 23, 2014 1480       jsanchez          Added product editor action CORRECT.
  * Jun 30, 2014 3512       Chris.Golden      Changed to work with changes to
  *                                           ICommandInvoker.
+ * JUl 14, 2014 4187        jsanchez         Check if the generatedProductsList is valid.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -91,9 +92,14 @@ public class ProductEditorPresenter extends
 
     public final void showProductEditorDetail(
             List<GeneratedProductList> generatedProductsList) {
-        this.getView().showProductEditorDetail(generatedProductsList);
-        this.bind();
-        this.getView().openDialog();
+        if (generatedProductsList != null
+                && generatedProductsList.isEmpty() == false) {
+            this.getView().showProductEditorDetail(generatedProductsList);
+            this.bind();
+            this.getView().openDialog();
+        } else {
+            getModel().setPreviewOngoing(false);
+        }
     }
 
     // Protected Methods
