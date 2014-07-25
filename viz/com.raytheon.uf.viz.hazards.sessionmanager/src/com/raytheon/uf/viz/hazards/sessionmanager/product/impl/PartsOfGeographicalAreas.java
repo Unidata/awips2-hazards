@@ -24,11 +24,13 @@ import org.opengis.referencing.operation.MathTransform;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.warning.WarningConstants;
 import com.raytheon.uf.common.dataplugin.warning.config.GridSpacing;
 import com.raytheon.uf.common.dataplugin.warning.gis.GeospatialData;
 import com.raytheon.uf.common.dataplugin.warning.portions.GisUtil;
 import com.raytheon.uf.common.dataplugin.warning.portions.GisUtil.Direction;
 import com.raytheon.uf.common.dataplugin.warning.portions.PortionsUtil;
+import com.raytheon.uf.common.dataplugin.warning.util.CountyUserData;
 import com.raytheon.uf.common.geospatial.MapUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -50,6 +52,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 24, 2014            daniel.s.schaffer@noaa.gov      Initial creation
+ * Jul 24, 2014 4272       jsanchez    Set the CountyUserData.
  * 
  * </pre>
  * 
@@ -223,7 +226,11 @@ public class PartsOfGeographicalAreas {
                     continue;
                 }
                 String ugcCode = stCode + "C" + fipsData.substring(2, 5);
-                siteGeometryMap.put(ugcCode, countyAreas[aaa].getGeometry());
+                Geometry geom = countyAreas[aaa].getGeometry();
+                geom.setUserData(new CountyUserData(countyAreas[aaa], String
+                        .valueOf(countyAreas[aaa].getAttributes().get(
+                                WarningConstants.GID))));
+                siteGeometryMap.put(ugcCode, geom);
                 countyUgcToPartOfStateMap.put(ugcCode, "");
                 /*
                  * When fe area table becomes overrideable, will be able to make

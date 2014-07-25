@@ -19,6 +19,7 @@ import net.engio.mbassy.listener.Handler
 import spock.lang.*
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction
+import com.raytheon.uf.common.hazards.productgen.GeneratedProduct
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager
@@ -62,6 +63,7 @@ class ProductEditorTest extends spock.lang.Specification {
     def setupSpec() {
         generatedProductList = new GeneratedProductList();
         generatedProductList.setProductInfo('Test')
+        generatedProductList.add(new GeneratedProduct('Test'))
 
         testView = new TestProductEditorView();
         sessionManager = mock(ISessionManager.class)

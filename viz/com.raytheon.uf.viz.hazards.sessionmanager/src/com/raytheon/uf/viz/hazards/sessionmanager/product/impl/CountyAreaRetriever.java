@@ -32,6 +32,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 22, 2014            daniel.s.schaffer@noaa.gov      Initial creation
+ * Jul 24, 2014 4272       jsanchez    Retrieved additional fields.
  * 
  * </pre>
  * 
@@ -55,12 +56,27 @@ public class CountyAreaRetriever {
              * request a GeospatialDataSet object.
              */
             GeospatialMetadata gmd = new GeospatialMetadata();
+            /*
+             * TODO: 'County' should not be hard coded. Zones and counties are
+             * different in geometry.
+             */
             gmd.setAreaSource("County");
             gmd.setFipsField(FIPS);
             List<String> areaFields = new ArrayList<>();
+            /*
+             * TODO: 'Countyname' should not be hard coded. Zone and county
+             * tables have different name fields.
+             */
+            areaFields.add("COUNTYNAME");
             areaFields.add(WarningConstants.GID);
             areaFields.add(FIPS);
             areaFields.add(FE_AREA);
+            /*
+             * TODO: Use WarningConstants.LAT and LON when A2 baseline gets
+             * updated.
+             */
+            areaFields.add("LAT");
+            areaFields.add("LON");
             gmd.setAreaFields(areaFields);
             GenerateGeospatialDataRequest request = new GenerateGeospatialDataRequest();
             GeospatialDataSet dataSet = null;
