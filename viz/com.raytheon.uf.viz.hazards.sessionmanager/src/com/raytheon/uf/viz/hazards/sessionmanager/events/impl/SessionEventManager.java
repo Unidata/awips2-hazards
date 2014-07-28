@@ -186,14 +186,6 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      belongs here. The rest has been moved to
  *                                      interdependency scripts that go with the
  *                                      appropriate metadata megawidget specifiers.
- * Jul 03, 2014 3512       Chris.Golden Added code to set new events, and those that
- *                                      have undergone a type change, to have end
- *                                      times equal to their start times plus their
- *                                      default durations (by event type). Also
- *                                      changed to erase any recorded interval
- *                                      between start and end time before "until
- *                                      further notice" was turned on for an event
- *                                      if the type of the event changes.
  * </pre>
  * 
  * @author bsteffen
@@ -556,18 +548,6 @@ public class SessionEventManager implements
         } else {
             event.setHazardType(null, null, null, originator);
         }
-
-        /*
-         * Set the event's end time to have a distance from the start time equal
-         * to its default duration. Also remove any recorded interval from
-         * before "until further notice" had been turned on, in case it was,
-         * since this could lead to the wrong interval being used for the new
-         * event type if "until further notice" is subsequently turned off.
-         */
-        event.setEndTime(new Date(event.getStartTime().getTime()
-                + configManager.getDefaultDuration(event)), Originator.OTHER);
-        event.removeHazardAttribute(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
-
         return (originator != Originator.OTHER);
     }
 
@@ -901,9 +881,9 @@ public class SessionEventManager implements
          * the current end time for later (in case it is toggled off again), and
          * change the end time to the "until further notice" value; otherwise,
          * change the end time to be the same interval distant from the start
-         * time as it was before "until further notice" was toggled on. If no
-         * interval is found to have been saved, perhaps due to a metadata
-         * change or a type change, just use the default duration for the event.
+         * time as it was before "until further notice" was toggled on. (If no
+         * interval was saved, perhaps due to a metadata change, just use 4
+         * hours as the default interval; this is an edge case.)
          */
         if (untilFurtherNotice) {
             if (event
@@ -922,7 +902,7 @@ public class SessionEventManager implements
                     .getHazardAttribute(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
             event.removeHazardAttribute(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
             if (interval == null) {
-                interval = configManager.getDefaultDuration(event);
+                interval = DEFAULT_HAZARD_DURATION;
             }
             event.setEndTime(new Date(event.getStartTime().getTime() + interval));
         }
@@ -1211,7 +1191,7 @@ public class SessionEventManager implements
         }
         if (oevent.getEndTime() == null) {
             long s = oevent.getStartTime().getTime();
-            long d = configManager.getDefaultDuration(oevent);
+            long d = settings.getDefaultDuration();
             oevent.setEndTime(new Date(s + d), false, originator);
         }
         if (oevent.getStatus() == null) {

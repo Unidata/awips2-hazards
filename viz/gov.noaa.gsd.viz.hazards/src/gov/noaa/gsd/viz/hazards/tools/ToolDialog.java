@@ -15,9 +15,9 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
+import gov.noaa.gsd.viz.megawidgets.IMegawidgetManagerListener;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
@@ -366,7 +366,7 @@ class ToolDialog extends BasicDialog {
                     top,
                     megawidgetSpecifiersList,
                     valuesDict,
-                    new MegawidgetManagerAdapter() {
+                    new IMegawidgetManagerListener() {
 
                         @Override
                         public void commandInvoked(MegawidgetManager manager,
@@ -381,6 +381,26 @@ class ToolDialog extends BasicDialog {
                                         ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
                                         identifier, ToolDialog.this.getState()));
                             }
+                        }
+
+                        @Override
+                        public void stateElementChanged(
+                                MegawidgetManager manager, String identifier,
+                                Object state) {
+
+                            /*
+                             * No action.
+                             */
+                        }
+
+                        @Override
+                        public void stateElementsChanged(
+                                MegawidgetManager manager,
+                                Map<String, Object> statesForIdentifiers) {
+
+                            /*
+                             * No action.
+                             */
                         }
 
                         @Override

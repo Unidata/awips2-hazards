@@ -13,9 +13,10 @@ import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
 import gov.noaa.gsd.viz.hazards.utilities.MegawidgetSettingsConversionUtils;
+import gov.noaa.gsd.viz.megawidgets.IMegawidgetManagerListener;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
 import java.util.ArrayList;
@@ -329,7 +330,16 @@ class SettingDialog extends BasicDialog {
             megawidgetManager = new MegawidgetManager(top, listForMegawidget,
                     MegawidgetSettingsConversionUtils
                             .settingsPOJOToMap(this.values),
-                    new MegawidgetManagerAdapter() {
+                    new IMegawidgetManagerListener() {
+
+                        @Override
+                        public void commandInvoked(MegawidgetManager manager,
+                                String identifier) {
+
+                            /*
+                             * No action.
+                             */
+                        }
 
                         @Override
                         public void stateElementChanged(
@@ -344,6 +354,20 @@ class SettingDialog extends BasicDialog {
                                 Map<String, Object> statesForIdentifiers) {
                             settingChanged();
                         }
+
+                        @Override
+                        public void sizeChanged(MegawidgetManager manager,
+                                String identifier) {
+                            throw new UnsupportedOperationException();
+                        }
+
+                        @Override
+                        public void sideEffectMutablePropertyChangeErrorOccurred(
+                                MegawidgetManager manager,
+                                MegawidgetPropertyException exception) {
+                            throw new UnsupportedOperationException();
+                        }
+
                     }, 0L, 0L, currentTimeProvider);
         } catch (MegawidgetException e) {
             statusHandler

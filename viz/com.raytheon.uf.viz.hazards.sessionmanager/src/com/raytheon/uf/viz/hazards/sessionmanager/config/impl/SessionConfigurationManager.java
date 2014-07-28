@@ -48,7 +48,6 @@ import jep.JepException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -129,8 +128,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      hazard info options fetcher.
  * Jul 03, 2014  4084      Chris.Golden Added displaying of exceptions for errors while
  *                                      trying to retrieve hazard event metadata.
- * Jul 03, 2014  3512      Chris.Golden Added ability to fetch duration choices for hazard
- *                                      events, and also default durations.
  * </pre>
  * 
  * @author bsteffen
@@ -233,8 +230,6 @@ public class SessionConfigurationManager implements
     private String siteId;
 
     private Jep jep;
-
-    private Map<String, ImmutableList<String>> durationChoicesForHazardTypes;
 
     SessionConfigurationManager() {
 
@@ -756,38 +751,6 @@ public class SessionConfigurationManager implements
         return getHeadline(HazardEventUtilities.getHazardType(
                 event.getPhenomenon(), event.getSignificance(),
                 event.getSubType()));
-    }
-
-    @Override
-    public long getDefaultDuration(IHazardEvent event) {
-        String type = HazardEventUtilities.getHazardType(event.getPhenomenon(),
-                event.getSignificance(), event.getSubType());
-        return (type != null ? hazardTypes.getConfig().get(type)
-                .getDefaultDuration() : getSettings().getDefaultDuration());
-    }
-
-    @Override
-    public List<String> getDurationChoices(IHazardEvent event) {
-
-        /*
-         * If the duration choices for hazard types map has not yet been
-         * initialized, do so now. Include an entry of an empty list for the
-         * null hazard type, so that hazard events without a type have an entry.
-         */
-        if (durationChoicesForHazardTypes == null) {
-            durationChoicesForHazardTypes = new HashMap<>();
-            for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
-                    .getConfig().entrySet()) {
-                durationChoicesForHazardTypes.put(entry.getKey(), ImmutableList
-                        .copyOf(entry.getValue().getDurationChoiceList()));
-            }
-            durationChoicesForHazardTypes.put(null,
-                    ImmutableList.copyOf(Collections.<String> emptyList()));
-        }
-
-        return durationChoicesForHazardTypes.get(HazardEventUtilities
-                .getHazardType(event.getPhenomenon(), event.getSignificance(),
-                        event.getSubType()));
     }
 
     @Override

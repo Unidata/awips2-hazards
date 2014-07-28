@@ -26,19 +26,6 @@
 #         hazardClipArea   The area, usually hsa or cwa, to restrict hazard geometries to.
 #         hazardPointLimit The maximum number of vertices allowed for the hazard type. Excluding
 #                          this field means that there is no point limit.
-#         durationChoiceList Optional parameter. If not specified, the hazard type will use
-#                           an absolute time selector for hazard event end time. If it is
-#                           specified, it must be a list of one or more possible durations, 
-#                           each of the form "num days", "num hours", "num minutes", or any
-#                           combination of the three as long as it is ordered from largest
-#                           to smallest unit, i.e. "2 days, 4 hours" is fine, but "4 hours,
-#                           2 days" is not. The num must be a positive integer in each case.
-#                           The "day" unit may be represented by "d", "day", or "days"; the
-#                           "hour" unit by "h", "hr", "hrs", "hour", or "hours"; and the
-#                           "minute" unit by "m", "mn", "min", "mins", "minute", or "minutes".
-#                           Some examples of valid entries are "5 min", "20 minutes", "45m",
-#                           "1 hr", "1h 30m" "1 hour, 45 minutes", "4 hrs", "1 day", "1d 12h",
-#                           "2 days", "2 days, 240 minutes", and "3d 5h 20m".
 #         defaultDuration   represents the default time duration for this hazard upon
 #                           creation.  In milliseconds. (3600000 ms/hour, 60000 ms/minute)
 #         durationIncrement represents the increment when setting the duration directly. 
@@ -365,7 +352,6 @@ HazardTypes = {
               'hazardClipArea' : 'cwa',
               'replacedBy': ['FA.Y'],
               'hazardPointLimit': 20,
-              'durationChoiceList': [ "60 min", "90 min", "120 min", "3 hrs", "6 hrs", "9 hrs", "12 hrs", "24 hrs", "1 day 12 hrs", "2 days", "2 days 12 hrs", "3 days", "4 days", "5 days", "6 days", "7 days" ],
               'defaultDuration': 3 * HOURS,
               'durationIncrement': 15,
               'allowUntilFurtherNotice': True, 
@@ -382,7 +368,6 @@ HazardTypes = {
               'hazardConflictList': [],              
               'hazardPointLimit': 20,
               'replacedBy': ['FA.W'],
-              'durationChoiceList': [ "60 min", "120 min", "3 hrs", "3 hrs 30 min", "4 hrs", "4 hrs 30 min", "5 hrs", "5 hrs 30 min", "6 hrs", "7 hrs", "8 hrs", "9 hrs", "10 hrs", "11 hrs", "12 hrs", "24 hrs", "1 day 12 hrs", "2 days", "2 days 12 hrs" ],
               'defaultDuration': 3 * HOURS,
               'durationIncrement': 15, 
               'allowUntilFurtherNotice': True, 
@@ -430,8 +415,7 @@ HazardTypes = {
               'hazardHatchLabel': '',
               'hazardClipArea' : 'cwa',
               'hazardPointLimit': 20,
-              'durationChoiceList': [ "60 min", "90 min", "120 min", "2 hrs 30 min", "3 hrs", "3 hrs 30 min", "4 hrs", "4 hrs 30 min", "5 hrs", "5 hrs 30 min", "6 hrs", "6 hrs 30 min", "7 hrs", "7 hrs 30 min", "8 hrs" ],
-              'defaultDuration': 1 * HOURS,
+              'defaultDuration': 30 * MINUTES,  # 30 minutes
               'durationIncrement': 15, 
               },
     'FF.W.NonConvective' : {
@@ -446,7 +430,6 @@ HazardTypes = {
               'hazardHatchLabel': '',
               'hazardClipArea' : 'cwa',
               'hazardPointLimit' : 20,
-              'durationChoiceList': [ "60 min", "90 min", "120 min", "3 hrs", "6 hrs", "9 hrs", "12 hrs", "24 hrs", "1 day 12 hrs", "2 days", "2 days 12 hrs", "3 days", "4 days", "5 days", "6 days", "7 days" ],
               'defaultDuration': 3 * HOURS,
               'durationIncrement': 15, 
               },

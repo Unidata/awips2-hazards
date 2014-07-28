@@ -254,7 +254,16 @@ public class ParametersEditorFactory {
                 final Map<String, K> parametersForKeys, long minTime,
                 long maxTime, ICurrentTimeProvider currentTimeProvider)
                 throws MegawidgetException {
-            super(parent, specifiers, state, new MegawidgetManagerAdapter() {
+            super(parent, specifiers, state, new IMegawidgetManagerListener() {
+
+                @Override
+                public void commandInvoked(MegawidgetManager manager,
+                        String identifier) {
+
+                    /*
+                     * No action.
+                     */
+                }
 
                 @SuppressWarnings("unchecked")
                 @Override
@@ -265,6 +274,12 @@ public class ParametersEditorFactory {
                             parametersForKeys.get(identifier), state);
                 }
 
+                @Override
+                public void stateElementsChanged(MegawidgetManager manager,
+                        Map<String, Object> statesForIdentifiers) {
+                    throw new UnsupportedOperationException();
+                }
+
                 @SuppressWarnings("unchecked")
                 @Override
                 public void sizeChanged(MegawidgetManager manager,
@@ -272,6 +287,13 @@ public class ParametersEditorFactory {
                     ((IParametersEditorListener<K>) listenersForManagers
                             .get(manager)).sizeChanged(parametersForKeys
                             .get(identifier));
+                }
+
+                @Override
+                public void sideEffectMutablePropertyChangeErrorOccurred(
+                        MegawidgetManager manager,
+                        MegawidgetPropertyException exception) {
+                    throw new UnsupportedOperationException();
                 }
             }, minTime, maxTime, currentTimeProvider);
         }

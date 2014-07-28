@@ -124,9 +124,6 @@ import org.eclipse.swt.widgets.ToolTip;
  * Jun 27, 2014    3512    Chris.Golden      Added option to lock intervals
  *                                           between constrained values,
  *                                           and changed commenting style.
- * Jul 03, 2014    3512    Chris.Golden      Improved code to have it avoid
- *                                           making a thumb look active
- *                                           when the widget is invisible.
  * </pre>
  * 
  * @author Chris.Golden
@@ -2320,10 +2317,9 @@ public abstract class MultiValueLinearControl extends Canvas {
 
         /*
          * If the requested determination is already scheduled or the widget is
-         * disabled or invisible, do nothing.
+         * disabled, do nothing.
          */
-        if (determinationOfActiveThumbScheduled || (isVisible() == false)
-                || (isEnabled() == false)) {
+        if (determinationOfActiveThumbScheduled || (isEnabled() == false)) {
             return;
         }
 
@@ -2347,7 +2343,7 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     protected final void determineActiveThumbIfEnabled() {
         determinationOfActiveThumbScheduled = false;
-        if ((isDisposed() == false) && isVisible() && isEnabled()) {
+        if ((isDisposed() == false) && isEnabled()) {
             determineActiveThumb();
         }
     }
@@ -2429,7 +2425,7 @@ public abstract class MultiValueLinearControl extends Canvas {
 
             @Override
             public void mouseDown(MouseEvent e) {
-                if ((e.button == 1) && isVisible() && isEnabled()) {
+                if ((e.button == 1) && isEnabled()) {
                     mousePressOverWidget(e);
                 } else if ((tooltip != null) && tooltip.isVisible()) {
                     tooltip.setVisible(false);
@@ -2442,7 +2438,7 @@ public abstract class MultiValueLinearControl extends Canvas {
                     thumbDragEnded(e);
                 } else if (viewportWasActuallyDragged) {
                     viewportDragEnded(e);
-                } else if ((e.button == 1) && isVisible() && isEnabled()) {
+                } else if ((e.button == 1) && isEnabled()) {
                     mayBeDraggingViewport = false;
                     handleUnusedMouseRelease(e);
                     mouseOverWidget(e.x, e.y);
@@ -2456,7 +2452,7 @@ public abstract class MultiValueLinearControl extends Canvas {
                     thumbDragged(e);
                 } else if (mayBeDraggingViewport) {
                     viewportDragged(e.x, false);
-                } else if (isVisible() && isEnabled()) {
+                } else if (isEnabled()) {
                     mouseOverWidget(e.x, e.y);
                 }
             }
@@ -2464,7 +2460,7 @@ public abstract class MultiValueLinearControl extends Canvas {
         addMouseTrackListener(new MouseTrackListener() {
             @Override
             public void mouseEnter(MouseEvent e) {
-                if (isVisible() && isEnabled()) {
+                if (isEnabled()) {
                     mouseOverWidget(e.x, e.y);
                 }
             }
@@ -2701,7 +2697,7 @@ public abstract class MultiValueLinearControl extends Canvas {
         /*
          * If the widget is disposed, do nothing.
          */
-        if (isDisposed() || (isVisible() == false)) {
+        if (isDisposed()) {
             return;
         }
 

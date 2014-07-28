@@ -110,10 +110,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           instantiations.
  * Jun 30, 2014    3512    Chris.Golden      Changed to work with new versions of
  *                                           MVP widget classes.
- * Jul 03, 2014    3512    Chris.Golden      Added code to allow a duration selector
- *                                           to be displayed instead of an absolute
- *                                           date/time selector for the end time of
- *                                           a hazard event.
  * </pre>
  * 
  * @author Chris.Golden
@@ -414,7 +410,6 @@ public class HazardDetailPresenter extends
                     .equals(HazardDetailPresenter.this.selectedEventIdentifiers)) {
                 selectedEventDisplayables = compileSelectedEventDisplayables(selectedEvents);
                 updateViewSelectedEvents();
-                updateViewDurations(event);
                 updateViewButtonsEnabledStates();
             }
         }
@@ -1106,7 +1101,6 @@ public class HazardDetailPresenter extends
                 typeListsForCategories.get(selectedCategory),
                 typeDescriptionListsForCategories.get(selectedCategory),
                 (selectedType == null ? BLANK_TYPE_CHOICE : selectedType));
-        updateViewDurations(event);
     }
 
     /**
@@ -1119,7 +1113,6 @@ public class HazardDetailPresenter extends
         String selectedType = event.getHazardType();
         getView().getTypeChanger().setState(null,
                 (selectedType == null ? BLANK_TYPE_CHOICE : selectedType));
-        updateViewDurations(event);
     }
 
     /**
@@ -1133,18 +1126,6 @@ public class HazardDetailPresenter extends
                 null,
                 new TimeRange(event.getStartTime().getTime(), event
                         .getEndTime().getTime()));
-    }
-
-    /**
-     * Update the view to use the duration list goes with the current event.
-     * 
-     * @param event
-     *            Event for which the update should occur.
-     */
-    private void updateViewDurations(ObservedHazardEvent event) {
-        getView().getDurationChanger().setChoices(null,
-                getModel().getConfigurationManager().getDurationChoices(event),
-                null, null);
     }
 
     /**

@@ -11,9 +11,9 @@ import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo.Product;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
+import gov.noaa.gsd.viz.megawidgets.IMegawidgetManagerListener;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
@@ -181,7 +181,16 @@ class ProductStagingDialog extends BasicDialog {
         public DialogMegawidgetManager(Composite parent, List<Dict> specifiers,
                 Dict state, final Product stagingProduct)
                 throws MegawidgetException {
-            super(parent, specifiers, state, new MegawidgetManagerAdapter() {
+            super(parent, specifiers, state, new IMegawidgetManagerListener() {
+
+                @Override
+                public void commandInvoked(MegawidgetManager manager,
+                        String identifier) {
+
+                    /*
+                     * No action.
+                     */
+                }
 
                 @SuppressWarnings("unchecked")
                 @Override
