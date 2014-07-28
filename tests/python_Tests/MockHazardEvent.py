@@ -166,13 +166,13 @@ class HazardEvent:
     '''
      * @return subtype
      '''    
-    def getSubtype(self):
+    def getSubType(self):
         return self.subtype
     
     '''
      * @param subtype
      '''    
-    def setSubtype(self, subtype):
+    def setSubType(self, subtype):
         self.subtype = subtype
                 
     '''

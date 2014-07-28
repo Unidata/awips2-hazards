@@ -140,7 +140,7 @@ class VTECTestHarness(object):
             event.setPhenomenon(parts[0])
             event.setSignificance(parts[1])
             if len(parts) > 2:
-                event.setSubtype(parts[2])
+                event.setSubType(parts[2])
 
             # calculate the starting and ending times
             event.setStartTime(datetime.datetime.fromtimestamp(gridsStartTime + t1 * 3600))  # sec
