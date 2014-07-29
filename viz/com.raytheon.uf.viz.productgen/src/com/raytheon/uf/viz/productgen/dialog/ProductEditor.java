@@ -96,6 +96,10 @@ public class ProductEditor extends CaveSWTDialog {
 
     private static final String DISMISS_DIALOG_MESSAGE = "Are you sure you want to 'Dismiss'? Your product(s) will NOT be issued and your edits have not been saved.";
 
+    private static final String REGENERATE_DIALOG_TITLE = "Selected Events Changed";
+
+    private static final String REGENERATE_DIALOG_MESSAGE = "The selected events have changed. Do you want to regenerate the products or do you want to close the product editor?";
+
     private static final String ISSUE_LABEL = "Issue All";
 
     private static final String SAVE_LABEL = "Save";
@@ -135,13 +139,15 @@ public class ProductEditor extends CaveSWTDialog {
      */
     private ProgressBar progressBar;
 
-    private final ProductGeneration productGeneration = new ProductGeneration();
+    private ProductGeneration productGeneration = new ProductGeneration();
 
     private Button issueButton;
 
     private Button saveButton;
 
     private Button revertButton;
+
+    private MessageDialog selectedEventsModifiedDialog;
 
     /**
      * Issuance command invocation handler. Using these handlers, together with
@@ -508,7 +514,7 @@ public class ProductEditor extends CaveSWTDialog {
                             }
                         }
                         issueCounter = 0;
-                        invokeIssue();
+                        invokeIssue(isCorrectable);
                         close();
                     }
                 };
@@ -582,7 +588,6 @@ public class ProductEditor extends CaveSWTDialog {
                                 DISMISS_DIALOG_TITLE, null,
                                 DISMISS_DIALOG_MESSAGE, MessageDialog.WARNING,
                                 buttonLabels, 0) {
-                            @Override
                             protected void buttonPressed(int buttonId) {
                                 setReturnCode(buttonId);
                                 close();
@@ -591,14 +596,14 @@ public class ProductEditor extends CaveSWTDialog {
 
                         String buttonLabel = buttonLabels[dismissDialog.open()];
                         if (buttonLabel.equals(DISMISS_LABEL)) {
-                            invokeDismiss();
+                            invokeDismiss(false);
                         } else if (buttonLabel.equals(SAVE_AND_DISMISS_LABEL)) {
                             for (DataEditor de : getAllDataEditors()) {
                                 if (de != null) {
                                     de.saveModifiedValues();
                                 }
                             }
-                            invokeDismiss();
+                            invokeDismiss(false);
                         }
                         hasUnsavedChanges = true;
                         break;
@@ -606,7 +611,7 @@ public class ProductEditor extends CaveSWTDialog {
                 }
 
                 if (hasUnsavedChanges == false) {
-                    invokeDismiss();
+                    invokeDismiss(false);
                 }
 
             }
@@ -801,7 +806,7 @@ public class ProductEditor extends CaveSWTDialog {
         }
     }
 
-    private void invokeIssue() {
+    private void invokeIssue(boolean isCorrectable) {
         if (isCorrectable) {
             issueHandler.commandInvoked(HazardConstants.CORRECTION_FLAG);
         } else {
@@ -809,8 +814,12 @@ public class ProductEditor extends CaveSWTDialog {
         }
     }
 
-    private void invokeDismiss() {
-        dismissHandler.commandInvoked(DISMISS_LABEL);
+    private void invokeDismiss(boolean regenerate) {
+        if (regenerate) {
+            dismissHandler.commandInvoked(HazardConstants.REGENERATE_FLAG);
+        } else {
+            dismissHandler.commandInvoked(DISMISS_LABEL);
+        }
     }
 
     /**
@@ -832,4 +841,25 @@ public class ProductEditor extends CaveSWTDialog {
         return dismissInvoker;
     }
 
+    /**
+     * Shows a dialog notifying the user he has selected other hazard events in
+     * the console. The user will have the option to regenerate the product(s)
+     * or just close the product editor dialog.
+     */
+    public void showSelectedEventsModifiedDialog() {
+        if (selectedEventsModifiedDialog == null) {
+            String[] buttonLabels = new String[] { "Regenerate", "Close Dialog" };
+            selectedEventsModifiedDialog = new MessageDialog(null,
+                    REGENERATE_DIALOG_TITLE, null, REGENERATE_DIALOG_MESSAGE,
+                    MessageDialog.WARNING, buttonLabels, 0) {
+                protected void buttonPressed(int buttonId) {
+                    setReturnCode(buttonId);
+                    close();
+                }
+            };
+
+            boolean regenerate = selectedEventsModifiedDialog.open() == 0;
+            invokeDismiss(regenerate);
+        }
+    }
 }

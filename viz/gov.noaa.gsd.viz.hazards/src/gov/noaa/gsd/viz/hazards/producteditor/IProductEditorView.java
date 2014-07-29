@@ -32,6 +32,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
  * May 08, 2014 2925       Chris.Golden      Changed to work with MVP framework changes.
+ * Jul 28, 2014 3214       jsanchez     Added notifySessionEventsModified method.  
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -76,4 +77,6 @@ public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
     public ICommandInvoker<String> getDismissInvoker();
 
     public void openDialog();
+
+    public void notifySessionEventsModified();
 }

@@ -34,6 +34,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  *                                           when they should be enabled.
  * Jun 30, 2014 3512    Chris.Golden         Changed to work with changes to
  *                                           ICommandInvoker.
+ * Jul 28, 2014 3412       jsanchez          Added notifySessionEventsModified();
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -135,5 +136,10 @@ public class ProductEditorViewForTesting implements IProductEditorView {
         if (issueInvocationHandler != null) {
             dismissInvocationHandler.commandInvoked(null);
         }
+    }
+
+    @Override
+    public void notifySessionEventsModified() {
+
     }
 }

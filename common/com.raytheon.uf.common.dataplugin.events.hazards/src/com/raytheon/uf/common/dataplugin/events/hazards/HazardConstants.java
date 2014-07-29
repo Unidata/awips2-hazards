@@ -53,6 +53,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Mar 3, 2014  3034    bkowal      Added a constant for the gfe interoperability flag
  * Jun 17, 2014  3982     Chris.Golden  Changed megawidget "side effects" to "interdependencies".
  * Apr 23,2014  1480    jsanchez    Added CORRECTION_FLAG
+ * Jul 09, 2014 3214    jsanchez    Added REGENERATE_FLAG
  * </pre>
  * 
  * @author mnash
@@ -492,6 +493,8 @@ public final class HazardConstants {
     public static final String ISSUE_FLAG = "issueFlag";
 
     public static final String CORRECTION_FLAG = "correctionFlag";
+
+    public static final String REGENERATE_FLAG = "regenerateFlag";
 
     public static final String HEADLINE = "headline";
 

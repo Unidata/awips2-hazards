@@ -9,16 +9,24 @@ package gov.noaa.gsd.viz.hazards.producteditor;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
+import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.List;
 
+import net.engio.mbassy.listener.Handler;
+
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
@@ -51,7 +59,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Apr 23, 2014 1480       jsanchez          Added product editor action CORRECT.
  * Jun 30, 2014 3512       Chris.Golden      Changed to work with changes to
  *                                           ICommandInvoker.
- * JUl 14, 2014 4187        jsanchez         Check if the generatedProductsList is valid.
+ * Jul 14, 2014 4187        jsanchez         Check if the generatedProductsList is valid.
+ * Jul 28, 2014 3412        jsanchez         Close the product editor on regeneration request.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -150,8 +159,7 @@ public class ProductEditorPresenter extends
                                 .getGeneratedProductsList());
                         getModel().setIssueOngoing(true);
                         ProductEditorPresenter.this.fireAction(action);
-                        getModel().setPreviewOngoing(false);
-                        getView().closeProductEditorDialog();
+                        dismissProductEditor();
                     }
                 });
 
@@ -161,6 +169,13 @@ public class ProductEditorPresenter extends
                     @Override
                     public void commandInvoked(String identifier) {
                         dismissProductEditor();
+                        if (identifier != null
+                                && identifier
+                                        .equalsIgnoreCase(HazardConstants.REGENERATE_FLAG)) {
+                            HazardDetailAction action = new HazardDetailAction(
+                                    HazardDetailAction.ActionType.PREVIEW);
+                            ProductEditorPresenter.this.fireAction(action);
+                        }
                     }
                 });
 
@@ -169,5 +184,31 @@ public class ProductEditorPresenter extends
     private void dismissProductEditor() {
         getModel().setPreviewOngoing(false);
         getView().closeProductEditorDialog();
+    }
+
+    @Handler
+    public void sessionEventsModified(final SessionEventsModified notification) {
+        if (getView() != null) {
+            List<GeneratedProductList> generatedProductListStorage = getView()
+                    .getGeneratedProductsList();
+            List<String> currentEvents = new ArrayList<String>();
+            for (GeneratedProductList productList : generatedProductListStorage) {
+                Iterator<IEvent> iterator = productList.getEventSet()
+                        .iterator();
+                while (iterator.hasNext()) {
+                    IHazardEvent hazardEvent = (IHazardEvent) iterator.next();
+                    currentEvents.add(hazardEvent.getEventID());
+                }
+            }
+            List<String> modifiedEvents = new ArrayList<String>();
+            for (ObservedHazardEvent observedHazardEvent : notification
+                    .getEvents()) {
+                modifiedEvents.add(observedHazardEvent.getEventID());
+            }
+            currentEvents.retainAll(modifiedEvents);
+            if (!currentEvents.isEmpty()) {
+                getView().notifySessionEventsModified();
+            }
+        }
     }
 }

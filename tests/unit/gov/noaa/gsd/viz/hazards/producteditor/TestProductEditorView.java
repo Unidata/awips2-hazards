@@ -186,4 +186,10 @@ public class TestProductEditorView implements
         return null;
     }
 
+    @Override
+    public void notifySessionEventsModified() {
+        // TODO Auto-generated method stub
+
+    }
+
 }

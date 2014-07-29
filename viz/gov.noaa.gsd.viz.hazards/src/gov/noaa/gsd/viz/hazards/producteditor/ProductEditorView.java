@@ -12,6 +12,7 @@ package gov.noaa.gsd.viz.hazards.producteditor;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -43,6 +44,7 @@ import com.raytheon.viz.ui.VizWorkbenchManager;
  *                                           when they should be enabled.
  * May 08, 2014  2925      Chris.Golden Changed to work with MVP framework changes.
  * Jun 18, 2014  3519      jsanchez         Replaced ProductGenerationDialog with ProductEditor.
+ * Jul 09, 2014  3214      jsanchez     Listens if the selected events have changed.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -127,7 +129,10 @@ public final class ProductEditorView implements
 
     @Override
     public List<GeneratedProductList> getGeneratedProductsList() {
-        return productEditor.getGeneratedProductListStorage();
+        if (productEditor != null) {
+            return productEditor.getGeneratedProductListStorage();
+        }
+        return new ArrayList<GeneratedProductList>();
     }
 
     @Override
@@ -150,4 +155,12 @@ public final class ProductEditorView implements
         });
 
     }
+
+    @Override
+    public void notifySessionEventsModified() {
+        if (productEditor != null) {
+            productEditor.showSelectedEventsModifiedDialog();
+        }
+    }
+
 }

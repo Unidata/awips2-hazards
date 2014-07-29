@@ -19,19 +19,13 @@
  **/
 package com.raytheon.uf.common.localization;
 
-import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 import java.io.IOException;
 
-import org.junit.Before;
-import org.junit.Test;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.TestPathManager.TestLocalizationAdapter;
 import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.common.util.TestUtil;
@@ -50,7 +44,7 @@ import com.raytheon.uf.common.util.TestUtil;
  * Oct 23, 2012 1286       djohnson     Handle executing tests in Eclipse/command-line transparently.
  * Apr 18, 2013 1914       djohnson     Allow initializing test localization support from Spring.
  * Jan 08, 2014 2615       bgonzale     Fixes for PropertiesFactory configuration loading in test.
- * 
+ * Jul 28, 2014 3214       jsanchez     PathManager's fileCache is no longer static. Removed the call to fix junit tests.
  * </pre>
  * 
  * @author djohnson
@@ -74,8 +68,6 @@ public class PathManagerFactoryTest implements BeanFactoryPostProcessor {
      */
     public static void initLocalization(final String site) {
 
-        // Clear known file cache and the directory each time
-        PathManager.fileCache.clear();
         File file = TestUtil.setupTestClassDir(PathManagerFactoryTest.class);
         savedLocalizationFileDir = new File(file, "data");
         savedLocalizationFileDir = new File(savedLocalizationFileDir, "utility");
@@ -89,7 +81,7 @@ public class PathManagerFactoryTest implements BeanFactoryPostProcessor {
                     : new CommandLineTestLocalizationAdapter(site,
                             savedLocalizationFileDir);
             PathManagerFactory.pathManager = new TestPathManager(adapter);
-            
+
             System.setProperty("edex.home", file.getAbsolutePath());
             File confResDataDir = new File(file, "conf/res");
             confResDataDir.mkdirs();
