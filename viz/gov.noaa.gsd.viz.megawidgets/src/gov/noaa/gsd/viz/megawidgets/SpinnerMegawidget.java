@@ -56,6 +56,16 @@ import com.google.common.collect.ImmutableSet;
  *                                           occurs over it.
  * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
  *                                           of NotifierMegawidget.
+ * Jul 22, 2014   4259     Chris.Golden      Fixed bug that caused negative
+ *                                           values to not work correctly when
+ *                                           the spinner included a scale bar
+ *                                           below it. Also changed to ensure
+ *                                           spinner text field is large enough
+ *                                           to show all the characters of the
+ *                                           largest possible string it could be
+ *                                           called upon to display with its
+ *                                           original minimum, maximum, and
+ *                                           precision parameters.
  * </pre>
  * 
  * @author Chris.Golden
@@ -95,6 +105,12 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
      * Scale component associated with this megawidget, if any.
      */
     private final Scale scale;
+
+    /**
+     * Integer offset added to the current value to get the scale value, since
+     * the SWT {@link Scale} cannot handle negative values.
+     */
+    private int scaleOffset;
 
     /**
      * Flag indicating whether state changes that occur as a result of a spinner
@@ -149,13 +165,22 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
         label = UiBuilder.buildLabel(panel, specifier);
 
         /*
-         * Create the spinner.
+         * Create the spinner. The maximum must be set twice to bogus values in
+         * order to calculate how many pixels are needed per digit, so that the
+         * minimum width may be figured below.
          */
         onlySendEndStateChanges = !specifier.isSendingEveryChange();
         spinner = new Spinner(panel, SWT.BORDER + SWT.WRAP);
-        spinner.setTextLimit(Math.max(
+        spinner.setMaximum(9);
+        int oneDigitSpinnerWidthPixels = spinner.computeSize(SWT.DEFAULT,
+                SWT.DEFAULT).x;
+        spinner.setMaximum(99);
+        int digitWidthPixels = spinner.computeSize(SWT.DEFAULT, SWT.DEFAULT).x
+                - oneDigitSpinnerWidthPixels;
+        int maxNumCharacters = Math.max(
                 getDigitsForValue(specifier.getMinimumValue()),
-                getDigitsForValue(specifier.getMaximumValue())));
+                getDigitsForValue(specifier.getMaximumValue()));
+        spinner.setTextLimit(maxNumCharacters);
         spinner.setMinimum(convertValueToSpinner(specifier.getMinimumValue()));
         spinner.setMaximum(convertValueToSpinner(specifier.getMaximumValue()));
         T incrementDelta = specifier.getIncrementDelta();
@@ -169,6 +194,8 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
         GridData gridData = new GridData((expandHorizontally ? SWT.FILL
                 : SWT.LEFT), SWT.CENTER, true, false);
         gridData.horizontalSpan = (label == null ? 2 : 1);
+        gridData.minimumWidth = oneDigitSpinnerWidthPixels
+                + ((maxNumCharacters - 1) * digitWidthPixels);
         spinner.setLayoutData(gridData);
 
         /*
@@ -180,8 +207,8 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
              * Create the scale.
              */
             scale = new Scale(panel, SWT.HORIZONTAL);
-            scale.setMinimum(convertValueToSpinner(specifier.getMinimumValue()));
-            scale.setMaximum(convertValueToSpinner(specifier.getMaximumValue()));
+            setScaleBounds(convertValueToSpinner(specifier.getMinimumValue()),
+                    convertValueToSpinner(specifier.getMaximumValue()));
             scale.setPageIncrement(convertValueToSpinner(incrementDelta));
             scale.setEnabled(specifier.isEnabled());
 
@@ -258,7 +285,8 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
                         || (state != convertValueToSpinner(SpinnerMegawidget.this.state))) {
                     SpinnerMegawidget.this.state = convertSpinnerToValue(state);
                     if (SpinnerMegawidget.this.scale != null) {
-                        SpinnerMegawidget.this.scale.setSelection(state);
+                        SpinnerMegawidget.this.scale.setSelection(scaleOffset
+                                + state);
                     }
                     SpinnerMegawidget.this.spinner.update();
                     notifyListenersOfRapidStateChange();
@@ -341,7 +369,8 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
                      * If the state is changing, make a record of the change and
                      * alter the spinner to match.
                      */
-                    int state = SpinnerMegawidget.this.scale.getSelection();
+                    int state = SpinnerMegawidget.this.scale.getSelection()
+                            - scaleOffset;
                     if ((SpinnerMegawidget.this.state == null)
                             || (state != convertValueToSpinner(SpinnerMegawidget.this.state))) {
                         SpinnerMegawidget.this.state = convertSpinnerToValue(state);
@@ -479,8 +508,8 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
         spinner.setMinimum(minValue);
         spinner.setMaximum(maxValue);
         if (scale != null) {
-            scale.setMinimum(minValue);
-            scale.setMaximum(maxValue);
+            setScaleBounds(convertValueToSpinner(getMinimumValue()),
+                    convertValueToSpinner(getMaximumValue()));
         }
         spinner.setTextLimit(Math.max(getDigitsForValue(getMinimumValue()),
                 getDigitsForValue(getMaximumValue())));
@@ -490,7 +519,7 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
     protected final void doSynchronizeComponentWidgetsToState() {
         spinner.setSelection(convertValueToSpinner(state));
         if (scale != null) {
-            scale.setSelection(convertValueToSpinner(state));
+            scale.setSelection(convertValueToSpinner(state) + scaleOffset);
         }
     }
 
@@ -552,6 +581,20 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
     protected abstract T convertSpinnerToValue(int value);
 
     // Private Methods
+
+    /**
+     * Set the scale's boundaries to those specified.
+     * 
+     * @param minimumValue
+     *            Minimum value to be used.
+     * @param maximumValue
+     *            Maximum value to be used.
+     */
+    private void setScaleBounds(int minimumValue, int maximumValue) {
+        scaleOffset = (minimumValue < 0 ? -minimumValue : 0);
+        scale.setMinimum(scaleOffset + minimumValue);
+        scale.setMaximum(scaleOffset + maximumValue);
+    }
 
     /**
      * Change the component widgets to ensure their state matches that of the

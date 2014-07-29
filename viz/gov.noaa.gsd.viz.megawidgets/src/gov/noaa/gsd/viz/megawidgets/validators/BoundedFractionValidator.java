@@ -34,6 +34,10 @@ import java.util.Map;
  *                                      initialized so that the increment
  *                                      delta can be checked against the
  *                                      precision.
+ * Jul 22, 2014   4259     Chris.Golden Changed to make increment delta an
+ *                                      optional parameter by setting it by
+ *                                      default to the minimum possible
+ *                                      value it can have.
  * </pre>
  * 
  * @author Chris.Golden
@@ -261,7 +265,7 @@ public class BoundedFractionValidator extends BoundedNumberValidator<Double> {
         Double newDelta = ConversionUtilities
                 .getSpecifierDoubleObjectFromObject(getIdentifier(), getType(),
                         getParameters().get(incrementDeltaKey),
-                        incrementDeltaKey, 0.0);
+                        incrementDeltaKey, Math.pow(10, -precision));
         if (newDelta < Math.pow(10, -precision)) {
             throw new MegawidgetException(getIdentifier(), getType(),
                     incrementDelta,

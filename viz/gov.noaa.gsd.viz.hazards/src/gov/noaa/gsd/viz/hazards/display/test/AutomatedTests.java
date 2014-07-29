@@ -66,18 +66,13 @@ public class AutomatedTests {
      */
     private FunctionalTest<? extends Enum<?>> functionalTest;
 
-    private final NotificationLogger notificationLogger;
-
     public AutomatedTests() {
-        notificationLogger = new NotificationLogger();
     }
 
     public void run(final HazardServicesAppBuilder appBuilder) {
 
         this.appBuilder = appBuilder;
         appBuilder.getEventBus().subscribe(this);
-        appBuilder.getEventBus().subscribe(notificationLogger);
-
     }
 
     @Handler(priority = -1)
