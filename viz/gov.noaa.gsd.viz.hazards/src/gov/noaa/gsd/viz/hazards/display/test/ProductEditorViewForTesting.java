@@ -13,6 +13,7 @@ import gov.noaa.gsd.viz.hazards.producteditor.IProductEditorView;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -111,7 +112,10 @@ public class ProductEditorViewForTesting implements IProductEditorView {
 
     @Override
     public List<GeneratedProductList> getGeneratedProductsList() {
-        return this.generatedProductsList;
+        if (this.generatedProductsList != null) {
+            return this.generatedProductsList;
+        }
+        return new ArrayList<GeneratedProductList>();
     }
 
     @SuppressWarnings("unchecked")
