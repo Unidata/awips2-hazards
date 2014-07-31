@@ -93,7 +93,7 @@ public class HazardGeometryFactory extends AbstractDataFactory {
 
     private static final String FIELD_HAZARD_ATTRIBUTES = "hazardAttributes";
 
-    private static final String[] VALID_INDENTIFIERS = new String[] { MODE,
+    private static final String[] VALID_INDENTIFIERS = new String[] {
             HAZARD_TYPE, EVENTID, SITEID, STATE, HAZARDMODE };
 
     private static Map<IDataRequest, HazardResponse> cachedRequests = new ConcurrentHashMap<IDataRequest, HazardResponse>();
@@ -288,8 +288,19 @@ public class HazardGeometryFactory extends AbstractDataFactory {
      * getValidIdentifiers()
      */
     @Override
-    public String[] getValidIdentifiers() {
+    public String[] getOptionalIdentifiers() {
         return VALID_INDENTIFIERS;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.dataaccess.impl.AbstractDataFactory#
+     * getRequiredIdentifiers()
+     */
+    @Override
+    public String[] getRequiredIdentifiers() {
+        return new String[] { MODE };
     }
 
     private List<IGeometryData> makeGeometryData(
