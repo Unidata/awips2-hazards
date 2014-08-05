@@ -16,10 +16,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.SelectionAdapter;
-import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 
@@ -57,6 +54,8 @@ import com.google.common.collect.ImmutableSet;
  * Jun 24, 2014   4023     Chris.Golden      Changed to prune old state to new
  *                                           choices when available choices are
  *                                           changed.
+ * Aug 04, 2014   4122     Chris.Golden      Changed to include autocomplete
+ *                                           functionality.
  * </pre>
  * 
  * @author Chris.Golden
@@ -87,9 +86,10 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
     private final Label label;
 
     /**
-     * Combo box associated with this megawidget.
+     * Combo box component helper, managing the combo box associated with this
+     * megawidget.
      */
-    private final Combo comboBox;
+    private final ComboBoxComponentHelper comboBoxHelper;
 
     /**
      * Map of choice identifiers to their names.
@@ -139,9 +139,21 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
         /*
          * Create the combo box.
          */
-        comboBox = new Combo(panel, SWT.READ_ONLY);
+        comboBoxHelper = new ComboBoxComponentHelper(panel,
+                new IComboBoxComponentHolder() {
+
+                    @Override
+                    public String getSelection() {
+                        return choiceNamesForIdentifiers.get(state);
+                    }
+
+                    @Override
+                    public void setSelection(String item) {
+                        handleSelectionChange(item);
+                    }
+                }, specifier.isAutocompleteEnabled(), specifier.isEnabled(),
+                label, helper);
         populateComboBoxWithChoices();
-        comboBox.setEnabled(specifier.isEnabled());
 
         /*
          * Place the combo box in the grid.
@@ -152,26 +164,7 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
             gridData.minimumWidth = 0;
         }
         gridData.horizontalSpan = (label == null ? 2 : 1);
-        comboBox.setLayoutData(gridData);
-
-        /*
-         * Bind the combo box selection event to trigger a change in the record
-         * of the state for the widget.
-         */
-        comboBox.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                Combo comboBox = (Combo) e.widget;
-                int index = comboBox.getSelectionIndex();
-                if (index == -1) {
-                    state = null;
-                } else {
-                    state = choiceIdentifiersForNames.get(comboBox
-                            .getItem(index));
-                }
-                notifyListener(getSpecifier().getIdentifier(), state);
-            }
-        });
+        comboBoxHelper.getComboBox().setLayoutData(gridData);
 
         /*
          * Render the combo box uneditable if necessary.
@@ -303,16 +296,7 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
 
     @Override
     protected final void doSynchronizeComponentWidgetsToState() {
-        String selected = choiceNamesForIdentifiers.get(state);
-        if (selected != null) {
-            for (int j = 0; j < comboBox.getItemCount(); j++) {
-                if (comboBox.getItem(j).equals(selected)) {
-                    comboBox.select(j);
-                    return;
-                }
-            }
-        }
-        comboBox.deselectAll();
+        comboBoxHelper.setSelection(choiceNamesForIdentifiers.get(state));
     }
 
     @Override
@@ -320,10 +304,21 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
         if (label != null) {
             label.setEnabled(enable);
         }
-        comboBox.setEnabled(enable);
+        comboBoxHelper.setEnabled(enable);
     }
 
     // Private Methods
+
+    /**
+     * Handle the combo box's selection having changed to that specified.
+     * 
+     * @param value
+     *            New combo box selection.
+     */
+    private void handleSelectionChange(String value) {
+        state = choiceIdentifiersForNames.get(value);
+        notifyListener(getSpecifier().getIdentifier(), state);
+    }
 
     /**
      * Change the component widgets to ensure their state matches that of the
@@ -334,9 +329,7 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
      *            editable or read-only.
      */
     private void doSetEditable(boolean editable) {
-        comboBox.getParent().setEnabled(editable);
-        comboBox.setBackground(editable ? null : helper.getBackgroundColor(
-                editable, comboBox, label));
+        comboBoxHelper.setEditable(editable);
     }
 
     /**
@@ -365,6 +358,6 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
         /*
          * Set the combo box's choices to the list of names compiled above.
          */
-        comboBox.setItems(names);
+        comboBoxHelper.getComboBox().setItems(names);
     }
 }

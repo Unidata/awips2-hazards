@@ -35,6 +35,10 @@ import java.util.Map;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jul 23, 2014    4122    Chris.Golden      Extracted most of class to form
+ *                                           ContainerSpecifierOptionsManager
+ *                                           in order to allow reuse by new
+ *                                           DetailedComboBoxSpecifier.
  * </pre>
  * 
  * @author Chris.Golden
@@ -45,22 +49,6 @@ public abstract class ContainerMegawidgetSpecifier<C extends IControlSpecifier>
         extends MegawidgetSpecifier implements IContainerSpecifier<C>,
         IControlSpecifier {
 
-    // Private Static Constants
-
-    /**
-     * Array of margins in the order they are specified in the {@link #margins}
-     * member variable.
-     */
-    private static final String[] MARGIN_NAMES = { LEFT_MARGIN, TOP_MARGIN,
-            RIGHT_MARGIN, BOTTOM_MARGIN };
-
-    /**
-     * Array of expand flags in the order they are specified in the
-     * {@link #expander} member variable.
-     */
-    private static final String[] EXPANDER_NAMES = { EXPAND_HORIZONTALLY,
-            EXPAND_VERTICALLY };
-
     // Private Variables
 
     /**
@@ -69,22 +57,9 @@ public abstract class ContainerMegawidgetSpecifier<C extends IControlSpecifier>
     private final ChildSpecifiersManager<C> childManager;
 
     /**
-     * Margins in pixels, the first being left, the second being top, the third
-     * right, and the fourth bottom.
+     * Container specifier options manager.
      */
-    private final int[] margins = new int[4];
-
-    /**
-     * Column spacing in pixels.
-     */
-    private final int columnSpacing;
-
-    /**
-     * Expander flags, indicating whether the megawidget should expand to fill
-     * available space horizontally (for the first) and vertically (for the
-     * second).
-     */
-    private final boolean[] expander = new boolean[2];
+    private final ContainerSpecifierOptionsManager<C> optionsManager;
 
     // Public Constructors
 
@@ -105,6 +80,8 @@ public abstract class ContainerMegawidgetSpecifier<C extends IControlSpecifier>
             Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
         super(parameters);
+        optionsManager = new ContainerSpecifierOptionsManager<>(this,
+                superClass, parameters);
 
         /*
          * Ensure that the factory is present and acceptable.
@@ -128,33 +105,6 @@ public abstract class ContainerMegawidgetSpecifier<C extends IControlSpecifier>
          * Create the children manager.
          */
         childManager = new ChildSpecifiersManager<C>(superClass, factory);
-
-        /*
-         * Ensure that the margins, if present, are acceptable.
-         */
-        for (int j = 0; j < MARGIN_NAMES.length; j++) {
-            margins[j] = ConversionUtilities
-                    .getSpecifierIntegerValueFromObject(getIdentifier(),
-                            getType(), parameters.get(MARGIN_NAMES[j]),
-                            MARGIN_NAMES[j], 0);
-        }
-
-        /*
-         * Ensure that the column spacing, if present, is acceptable.
-         */
-        columnSpacing = ConversionUtilities.getSpecifierIntegerValueFromObject(
-                getIdentifier(), getType(), parameters.get(COLUMN_SPACING),
-                COLUMN_SPACING, 15);
-
-        /*
-         * Ensure that the expand flags, if present, are acceptable.
-         */
-        for (int j = 0; j < EXPANDER_NAMES.length; j++) {
-            expander[j] = ConversionUtilities
-                    .getSpecifierBooleanValueFromObject(getIdentifier(),
-                            getType(), parameters.get(EXPANDER_NAMES[j]),
-                            EXPANDER_NAMES[j], false);
-        }
     }
 
     // Public Methods
@@ -166,37 +116,37 @@ public abstract class ContainerMegawidgetSpecifier<C extends IControlSpecifier>
 
     @Override
     public final int getLeftMargin() {
-        return margins[0];
+        return optionsManager.getLeftMargin();
     }
 
     @Override
     public final int getTopMargin() {
-        return margins[1];
+        return optionsManager.getTopMargin();
     }
 
     @Override
     public final int getRightMargin() {
-        return margins[2];
+        return optionsManager.getRightMargin();
     }
 
     @Override
     public final int getBottomMargin() {
-        return margins[3];
+        return optionsManager.getBottomMargin();
     }
 
     @Override
     public final int getColumnSpacing() {
-        return columnSpacing;
+        return optionsManager.getColumnSpacing();
     }
 
     @Override
     public final boolean isHorizontalExpander() {
-        return expander[0];
+        return optionsManager.isHorizontalExpander();
     }
 
     @Override
     public final boolean isVerticalExpander() {
-        return expander[1];
+        return optionsManager.isVerticalExpander();
     }
 
     // Protected Methods

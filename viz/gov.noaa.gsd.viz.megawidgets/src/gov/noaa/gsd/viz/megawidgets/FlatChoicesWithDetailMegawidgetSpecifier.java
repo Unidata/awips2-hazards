@@ -12,8 +12,10 @@ package gov.noaa.gsd.viz.megawidgets;
 import gov.noaa.gsd.viz.megawidgets.validators.BoundedChoiceValidatorHelper;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Description: Base class for megawidget specifiers that include a flat closed
@@ -40,6 +42,13 @@ import java.util.Map;
  *                                           comments.
  * Jun 17, 2014   3982     Chris.Golden      Changed "isFullWidthOfColumn"
  *                                           property to "isFullWidthOfDetailPanel".
+ * Jul 23, 2014   4122     Chris.Golden      Changed to allow the detail fields
+ *                                           parameter to have as a value the
+ *                                           choice identifier of a previously
+ *                                           defined choice, indicating that the
+ *                                           detail fields for the current choice
+ *                                           should be the same as those of the
+ *                                           specified choice.
  * </pre>
  * 
  * @author Chris.Golden
@@ -90,13 +99,21 @@ public abstract class FlatChoicesWithDetailMegawidgetSpecifier<T> extends
      *            pairs.
      * @param stateValidatorHelper
      *            State validator helper.
+     * @param repeatDetailFields
+     *            Flag indicating whether or not a {@link #DETAIL_FIELDS} value
+     *            may be a string instead of a list of detail megawidget
+     *            specifiers. If true, the string may specify the choice
+     *            identifier of a choice defined earlier in the choices list; if
+     *            this is the case, the detail fields for the new choice are to
+     *            be the same as those of the choice identifier given as the
+     *            <code>DETAIL_FIELDS</code> value.
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
      */
     public FlatChoicesWithDetailMegawidgetSpecifier(
             Map<String, Object> parameters,
-            BoundedChoiceValidatorHelper<T> stateValidatorHelper)
-            throws MegawidgetSpecificationException {
+            BoundedChoiceValidatorHelper<T> stateValidatorHelper,
+            boolean repeatDetailFields) throws MegawidgetSpecificationException {
         super(parameters, stateValidatorHelper);
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.TRUE);
@@ -130,8 +147,11 @@ public abstract class FlatChoicesWithDetailMegawidgetSpecifier<T> extends
          * megawidgets.
          */
         List<?> choices = (List<?>) parameters.get(MEGAWIDGET_VALUE_CHOICES);
+        Set<String> choiceIdentifiers = new HashSet<>(choices.size());
         for (int j = 0; j < choices.size(); j++) {
             Object choice = choices.get(j);
+            String choiceIdentifier = getIdentifierOfNode(choice);
+            choiceIdentifiers.add(choiceIdentifier);
 
             /*
              * If this choice is not a map or has no detail fields, skip it.
@@ -140,36 +160,71 @@ public abstract class FlatChoicesWithDetailMegawidgetSpecifier<T> extends
                 continue;
             }
             Map<?, ?> map = (Map<?, ?>) choice;
-            List<?> fields = (List<?>) map.get(DETAIL_FIELDS);
-            if (fields == null) {
+
+            /*
+             * Remove the detail fields, as they should not be left in the map,
+             * and determine whether the value is valid. If repeat detail fields
+             * are allowed, then a string specifying the identifier of a
+             * previously-defined choice is allowable. Whether or not repeats
+             * are allowed, a list of detail megawidget specifiers is allowable.
+             * All other non-null values are invalid.
+             */
+            Object fieldsObj = map.remove(DETAIL_FIELDS);
+            if (fieldsObj == null) {
                 continue;
             }
-
-            /*
-             * Remove the detail fields, as they should not be left in the map.
-             */
-            map.remove(DETAIL_FIELDS);
-
-            /*
-             * Convert the maps to child megawidget specifiers.
-             */
             List<IControlSpecifier> children = null;
-            try {
-                children = getChildManager().createMegawidgetSpecifiers(fields,
-                        fields.size());
-            } catch (MegawidgetSpecificationException e) {
+            if (repeatDetailFields && (fieldsObj instanceof String)) {
+
+                /*
+                 * Make sure that the choice identifier specified has already
+                 * been defined earlier in the choices list, and get the
+                 * children associated with that choice identifier, if any.
+                 */
+                String fieldsIdentifier = (String) fieldsObj;
+                if (fieldsIdentifier.equals(choiceIdentifier)
+                        || (choiceIdentifiers.contains(fieldsIdentifier) == false)) {
+                    throw new MegawidgetSpecificationException(getIdentifier(),
+                            getType(),
+                            MEGAWIDGET_VALUE_CHOICES + "[" + j + "]",
+                            fieldsIdentifier, getDetailFieldsDescription(true));
+                }
+                children = fieldListsForChoices.get(fieldsIdentifier);
+            } else if (fieldsObj instanceof List) {
+
+                /*
+                 * Convert the maps to child megawidget specifiers.
+                 */
+                List<?> fields = (List<?>) fieldsObj;
+                try {
+                    children = getChildManager().createMegawidgetSpecifiers(
+                            fields, fields.size());
+                } catch (MegawidgetSpecificationException e) {
+                    throw new MegawidgetSpecificationException(getIdentifier(),
+                            getType(),
+                            MEGAWIDGET_VALUE_CHOICES + "[" + j + "]", fields,
+                            "bad child megawidget specifier", e);
+                }
+
+                /*
+                 * Add the child megawidget specifiers for this choice to the
+                 * list of all children.
+                 */
+                getChildManager().addChildMegawidgetSpecifiers(children);
+            } else {
                 throw new MegawidgetSpecificationException(getIdentifier(),
                         getType(), MEGAWIDGET_VALUE_CHOICES + "[" + j + "]",
-                        fields, "bad child megawidget specifier", e);
+                        fieldsObj,
+                        getDetailFieldsDescription(repeatDetailFields));
             }
 
             /*
-             * Add the child megawidget specifiers for this choice to the list
-             * of all children, and remember the parameters for this choice's
-             * detail fields.
+             * Remember the parameters for this choice's detail fields, if any
+             * were found.
              */
-            getChildManager().addChildMegawidgetSpecifiers(children);
-            fieldListsForChoices.put(getIdentifierOfNode(map), children);
+            if (children != null) {
+                fieldListsForChoices.put(choiceIdentifier, children);
+            }
         }
     }
 
@@ -222,5 +277,21 @@ public abstract class FlatChoicesWithDetailMegawidgetSpecifier<T> extends
      */
     protected final ChildSpecifiersManager<IControlSpecifier> getChildManager() {
         return childManager;
+    }
+
+    // Private Variables
+
+    /**
+     * Get the description of what the {@link #DETAIL_FIELDS} value must be.
+     * 
+     * @param repeatDetailFields
+     *            Flag indicating whether or not repeat detail fields are
+     *            allowed.
+     * @return Description.
+     */
+    private String getDetailFieldsDescription(boolean repeatDetailFields) {
+        return "detail fields must be list of megawidget specifiers"
+                + (repeatDetailFields ? " or previously-defined "
+                        + "choice identifier" : "");
     }
 }

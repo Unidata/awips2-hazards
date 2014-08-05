@@ -31,9 +31,11 @@ import java.util.Map;
  *                                           specified in abstract superclass.
  * Jan 28, 2014    2161    Chris.Golden      Changed to support use of collections
  *                                           instead of only lists for the state.
- * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jul 23, 2014    4122    Chris.Golden      Changed to work with new parameter
+ *                                           of superclass's constructor.
  * </pre>
  * 
  * @author Chris.Golden
@@ -59,6 +61,6 @@ public class CheckBoxesSpecifier extends
             throws MegawidgetSpecificationException {
         super(parameters,
                 new MultiFlatChoiceValidatorHelper(MEGAWIDGET_VALUE_CHOICES,
-                        CHOICE_NAME, CHOICE_IDENTIFIER, false));
+                        CHOICE_NAME, CHOICE_IDENTIFIER, false), false);
     }
 }

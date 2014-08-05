@@ -30,6 +30,8 @@ import java.util.Map;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jul 23, 2014    4122    Chris.Golden      Changed to work with new parameter
+ *                                           of superclass's constructor.
  * </pre>
  * 
  * @author Chris.Golden
@@ -54,6 +56,7 @@ public class RadioButtonsSpecifier extends
     public RadioButtonsSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
         super(parameters, new SingleChoiceValidatorHelper(
-                MEGAWIDGET_VALUE_CHOICES, CHOICE_NAME, CHOICE_IDENTIFIER));
+                MEGAWIDGET_VALUE_CHOICES, CHOICE_NAME, CHOICE_IDENTIFIER),
+                false);
     }
 }

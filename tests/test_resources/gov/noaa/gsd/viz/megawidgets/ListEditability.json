@@ -7,8 +7,7 @@
   "choices": [ "Name", "Type", "Description", "Threat Level", "Time Until Impact", "Confidence", "Duration" ],
   "values": [ "Description",  "Time Until Impact", "Threat Level" ],
   "expandHorizontally": true,
-  "expandVertically": true,
-  "editable": false
+  "expandVertically": true
  },
  {
   "fieldType": "UnboundedListBuilder",

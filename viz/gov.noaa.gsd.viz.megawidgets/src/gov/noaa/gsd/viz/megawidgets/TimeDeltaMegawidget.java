@@ -67,6 +67,10 @@ import com.google.common.collect.ImmutableSet;
  * Jun 27, 2014   3512     Chris.Golden      Extracted Unit from TimeDeltaSpecifier
  *                                           and made a new non-inner class out of
  *                                           it (TimeDeltaUnit).
+ * Jul 24, 2014   4122     Chris.Golden      Fixed bug that caused exception to be
+ *                                           thrown if too small a minimum or
+ *                                           maximum value was specified relative
+ *                                           to the displayable time units.
  * </pre>
  * 
  * @author Chris.Golden
@@ -557,12 +561,13 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
      *         the specified unit in base 10.
      */
     private int getDigitsForValue(long value, TimeDeltaUnit unit) {
-        return ((int) Math
+        int digits = ((int) Math
                 .floor(Math.log10(unit
                         .convertMillisecondsToUnit(((TimeDeltaSpecifier) getSpecifier())
                                 .getStateUnit().convertUnitToMilliseconds(
                                         Math.abs(value))))))
                 + (value < 0 ? 1 : 0) + 1;
+        return (digits > 0 ? digits : 1);
     }
 
     /**

@@ -12,6 +12,7 @@ package gov.noaa.gsd.viz.megawidgets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.KeyEvent;
@@ -63,6 +64,8 @@ import com.google.common.collect.Lists;
  *                                           they always took up extra space,
  *                                           which was bad when used with the
  *                                           CheckBoxMegawidget).
+ * Jul 23, 2014    4122    Chris.Golden      Added methods extracted from
+ *                                           ContainerMegawidget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -185,6 +188,77 @@ public class UiBuilder {
         label.setEnabled(specifier.isEnabled());
         label.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
         return label;
+    }
+
+    /**
+     * Create the GUI components making up the specified container megawidget's
+     * children, as well as properly configuring the specified container
+     * megawidget's layout.
+     * 
+     * @param specifier
+     *            Container specifier for which the child megawidgets are to be
+     *            created.
+     * @param composite
+     *            Composite into which to place the child megawidgets' GUI
+     *            representations.
+     * @param columnCount
+     *            Number of columns that the layout must provide to its
+     *            children.
+     * @param enabled
+     *            Flag indicating whether or not the the children should be
+     *            enabled.
+     * @param editable
+     *            Flag indicating whether or not the the children should be
+     *            editable.
+     * @param childMegawidgetSpecifiers
+     *            List of child megawidgets for which GUI components are to be
+     *            created and placed within the composite.
+     * @param creationParams
+     *            Hash table mapping identifiers to values that child megawidget
+     *            specifiers might require when creating megawidgets.
+     * @return List of child megawidgets created.
+     * @throws MegawidgetException
+     *             If an error occurs while creating or initializing child
+     *             megawidgets.
+     */
+    public static List<IControl> createChildMegawidgets(
+            IContainerSpecifier<IControlSpecifier> specifier,
+            Composite composite, int columnCount, boolean enabled,
+            boolean editable,
+            List<? extends IControlSpecifier> childMegawidgetSpecifiers,
+            Map<String, Object> creationParams) throws MegawidgetException {
+
+        /*
+         * Create the layout manager for the composite, and configure it.
+         */
+        GridLayout layout = new GridLayout(columnCount, false);
+        layout.marginWidth = layout.marginHeight = 0;
+        layout.marginLeft = specifier.getLeftMargin();
+        layout.marginTop = specifier.getTopMargin();
+        layout.marginRight = specifier.getRightMargin();
+        layout.marginBottom = specifier.getBottomMargin();
+        layout.horizontalSpacing = specifier.getColumnSpacing();
+        composite.setLayout(layout);
+
+        /*
+         * Create the child megawidgets, making sure that they are disabled
+         * and/or uneditable if the container is. Then align their elements, and
+         * return the former.
+         */
+        List<IControl> childMegawidgets = new ArrayList<>();
+        for (IControlSpecifier childSpecifier : childMegawidgetSpecifiers) {
+            IControl childMegawidget = childSpecifier.createMegawidget(
+                    composite, IControl.class, creationParams);
+            if (enabled == false) {
+                childMegawidget.setEnabled(false);
+            }
+            if (editable == false) {
+                childMegawidget.setEditable(false);
+            }
+            childMegawidgets.add(childMegawidget);
+        }
+        ControlComponentHelper.alignMegawidgetsElements(childMegawidgets);
+        return childMegawidgets;
     }
 
     /**

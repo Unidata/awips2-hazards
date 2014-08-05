@@ -35,8 +35,10 @@ import java.util.Map;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
- * Jun 17, 2014    3982    Chris.Golden      Changed "isFullWidthOfColumn"
+ * Jun 17, 2014   3982     Chris.Golden      Changed "isFullWidthOfColumn"
  *                                           property to "isFullWidthOfDetailPanel".
+ * Aug 04, 2014   4122     Chris.Golden      Changed to include autocomplete
+ *                                           functionality.
  * </pre>
  * 
  * @author Chris.Golden
@@ -52,7 +54,12 @@ public class ComboBoxSpecifier extends
     /**
      * Control options manager.
      */
-    private final ControlSpecifierOptionsManager optionsManager;
+    private final ControlSpecifierOptionsManager controlOptionsManager;
+
+    /**
+     * Combo box options manager.
+     */
+    private final ComboBoxSpecifierOptionsManager comboBoxOptionsManager;
 
     /**
      * Flag indicating whether or not the megawidget is to expand to fill all
@@ -76,8 +83,10 @@ public class ComboBoxSpecifier extends
             throws MegawidgetSpecificationException {
         super(parameters, new SingleChoiceValidatorHelper(
                 MEGAWIDGET_VALUE_CHOICES, CHOICE_NAME, CHOICE_IDENTIFIER));
-        optionsManager = new ControlSpecifierOptionsManager(this, parameters,
-                ControlSpecifierOptionsManager.BooleanSource.FALSE);
+        controlOptionsManager = new ControlSpecifierOptionsManager(this,
+                parameters, ControlSpecifierOptionsManager.BooleanSource.FALSE);
+        comboBoxOptionsManager = new ComboBoxSpecifierOptionsManager(this,
+                parameters);
 
         /*
          * Get the horizontal expansion flag if available.
@@ -92,26 +101,35 @@ public class ComboBoxSpecifier extends
 
     @Override
     public final boolean isEditable() {
-        return optionsManager.isEditable();
+        return controlOptionsManager.isEditable();
     }
 
     @Override
     public final int getWidth() {
-        return optionsManager.getWidth();
+        return controlOptionsManager.getWidth();
     }
 
     @Override
     public final boolean isFullWidthOfDetailPanel() {
-        return optionsManager.isFullWidthOfDetailPanel();
+        return controlOptionsManager.isFullWidthOfDetailPanel();
     }
 
     @Override
     public final int getSpacing() {
-        return optionsManager.getSpacing();
+        return controlOptionsManager.getSpacing();
     }
 
     @Override
     public final boolean isHorizontalExpander() {
         return horizontalExpander;
+    }
+
+    /**
+     * Determine whether or not autocomplete is enabled.
+     * 
+     * @return True if autocomplete is enabled, false otherwise.
+     */
+    public final boolean isAutocompleteEnabled() {
+        return comboBoxOptionsManager.isAutocompleteEnabled();
     }
 }

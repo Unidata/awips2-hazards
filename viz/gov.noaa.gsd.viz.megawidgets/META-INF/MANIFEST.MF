@@ -11,7 +11,9 @@ Bundle-ClassPath: lib/org.eclipse.nebula.cwt_0.9.0.201312041736.jar,
 Require-Bundle: org.eclipse.swt,
  gov.noaa.gsd.viz.widgets;bundle-version="1.0.0",
  com.google.guava;bundle-version="1.0.0",
- gov.noaa.gsd.common.utilities;bundle-version="1.0.0"
+ gov.noaa.gsd.common.utilities;bundle-version="1.0.0",
+ net.sf.swtaddons,
+ org.eclipse.jface;bundle-version="3.8.0"
 Export-Package: gov.noaa.gsd.viz.megawidgets;
   uses:="com.google.common.collect,
    org.eclipse.swt.events,

@@ -17,7 +17,6 @@ import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 
 import com.google.common.collect.ImmutableSet;
@@ -44,6 +43,8 @@ import com.google.common.collect.ImmutableSet;
  *                                           comments.
  * Jun 17, 2014    3982    Chris.Golden      Changed to keep children synced
  *                                           with enabled and editable state.
+ * Jul 23, 2014    4122    Chris.Golden      Extracted methods to be placed in
+ *                                           UiBuilder to enable reuse.
  * </pre>
  * 
  * @author Chris.Golden
@@ -211,12 +212,8 @@ public abstract class ContainerMegawidget extends Megawidget implements
      * @param composite
      *            Container panel to be gridded.
      */
+    @SuppressWarnings("unchecked")
     protected final void gridContainerPanel(Composite composite) {
-
-        /*
-         * Place the widget in the grid.
-         */
-        @SuppressWarnings("unchecked")
         ContainerMegawidgetSpecifier<IControlSpecifier> specifier = (ContainerMegawidgetSpecifier<IControlSpecifier>) getSpecifier();
         GridData gridData = new GridData(SWT.FILL, SWT.FILL,
                 specifier.isHorizontalExpander(),
@@ -239,11 +236,11 @@ public abstract class ContainerMegawidget extends Megawidget implements
      *            Number of columns that the layout must provide to its
      *            children.
      * @param enabled
-     *            Flag indicating whether or not the container of the children
-     *            is enabled; if it is not, children will also be disabled.
+     *            Flag indicating whether or not the the children should be
+     *            enabled.
      * @param editable
-     *            Flag indicating whether or not the container of the children
-     *            is editable; if it is not, children will also be uneditable.
+     *            Flag indicating whether or not the the children should be
+     *            editable.
      * @param childMegawidgetSpecifiers
      *            List of child megawidgets for which GUI components are to be
      *            created and placed within the composite.
@@ -255,43 +252,14 @@ public abstract class ContainerMegawidget extends Megawidget implements
      *             If an error occurs while creating or initializing child
      *             megawidgets.
      */
+    @SuppressWarnings("unchecked")
     protected final List<IControl> createChildMegawidgets(Composite composite,
             int columnCount, boolean enabled, boolean editable,
             List<? extends IControlSpecifier> childMegawidgetSpecifiers,
             Map<String, Object> creationParams) throws MegawidgetException {
-
-        /*
-         * Create the layout manager for the composite, and configure it.
-         */
-        @SuppressWarnings("unchecked")
-        ContainerMegawidgetSpecifier<IControlSpecifier> specifier = (ContainerMegawidgetSpecifier<IControlSpecifier>) getSpecifier();
-        GridLayout layout = new GridLayout(columnCount, false);
-        layout.marginWidth = layout.marginHeight = 0;
-        layout.marginLeft = specifier.getLeftMargin();
-        layout.marginTop = specifier.getTopMargin();
-        layout.marginRight = specifier.getRightMargin();
-        layout.marginBottom = specifier.getBottomMargin();
-        layout.horizontalSpacing = specifier.getColumnSpacing();
-        composite.setLayout(layout);
-
-        /*
-         * Create the child megawidgets, making sure that they are disabled
-         * and/or uneditable if the container is. Then align their elements, and
-         * return the former.
-         */
-        List<IControl> childMegawidgets = new ArrayList<>();
-        for (IControlSpecifier childSpecifier : childMegawidgetSpecifiers) {
-            IControl childMegawidget = childSpecifier.createMegawidget(
-                    composite, IControl.class, creationParams);
-            if (enabled == false) {
-                childMegawidget.setEnabled(false);
-            }
-            if (editable == false) {
-                childMegawidget.setEditable(false);
-            }
-            childMegawidgets.add(childMegawidget);
-        }
-        ControlComponentHelper.alignMegawidgetsElements(childMegawidgets);
-        return childMegawidgets;
+        return UiBuilder.createChildMegawidgets(
+                (IContainerSpecifier<IControlSpecifier>) getSpecifier(),
+                composite, columnCount, enabled, editable,
+                childMegawidgetSpecifiers, creationParams);
     }
 }
