@@ -1924,7 +1924,7 @@ class Product(ProductTemplate.Product):
         self._vtecEngineWrapper = VTECEngineWrapper(
                self.bridge, self._productCategory, self._fullStationID,
                hazardEvents, vtecMode=self._vtecMode, issueTime=self._issueTime_secs,
-               operationalMode=opMode, testHarnessMode=False, vtecProduct=self._vtecProduct)
+               operationalMode=opMode, testHarnessMode=False, vtecProduct=self._vtecProduct, issueFlag=self._issueFlag)
         try :
             pass
         except :

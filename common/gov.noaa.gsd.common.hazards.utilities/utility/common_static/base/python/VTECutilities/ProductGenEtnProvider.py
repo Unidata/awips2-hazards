@@ -11,7 +11,7 @@ is utilized by Hazard Services' VTECEngine.py.
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    01/30/14        2462          dgilling       Initial Creation.    
-#
+#    08/06/14        2826          jsanchez       Added boolean flags for issue and operational mode.
 #
 
 
@@ -33,7 +33,7 @@ class ProductGenEtnProvider(object):
         self.__tpcBaseETN = tpcBaseETN
         self.__currentYear = time.gmtime(self.__time).tm_year
 
-    def getLastETN(self, phen, sig, vtecRecords):
+    def getLastETN(self, phen, sig, vtecRecords, issueFlag, operationalMode):
         """Returns the maximum etn used for the given phen/sig for the 
         current year, given the set of vtec records (not proposed records).
 
@@ -46,12 +46,12 @@ class ProductGenEtnProvider(object):
         """
         etn = 0
         if USE_NEW_STYLE_VTEC:
-            etn = self.__newStyleETN(phen, sig)
+            etn = self.__newStyleETN(phen, sig, issueFlag, operationalMode)
         else:
             etn = self.__legacyETN(phen, sig, vtecRecords)
         return etn
     
-    def __newStyleETN(self, phen, sig):
+    def __newStyleETN(self, phen, sig, issueFlag, operationalMode):
         etn_base = 0
         phensig = (phen, sig)
         
@@ -59,7 +59,8 @@ class ProductGenEtnProvider(object):
         # issued by the relevant national center
         # UNLESS, your site is PGUM, then you issue all ETNs locally
         if phensig not in self.__tpcKeys or self.__siteID4 == 'PGUM':
-            etn_base = ProductGenVtecUtil.getLastEtn(self.__siteID4, '.'.join(phensig))
+            # determine the last ETN
+            etn_base = ProductGenVtecUtil.getNextEtn(self.__siteID4, '.'.join(phensig), issueFlag, operationalMode) - 1                                    
 
         return etn_base
 

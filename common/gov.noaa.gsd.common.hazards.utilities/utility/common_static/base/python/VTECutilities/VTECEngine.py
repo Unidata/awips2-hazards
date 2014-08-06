@@ -16,7 +16,7 @@ segments, VTEC codes, HVTEC codes, and vtecRecords.
 #                                                 hazardEvents.
 #    01/16/14        2462          dgilling       Rewrite to use GetNextEtnRequest.    
 #    Feb 14, 2013    2161        Chris.Golden     Added use of UFN_TIME_VALUE_SECS constant
-#                                                 instead of hardcoded value.
+#    Aug  6, 2014    2826        jsanchez         Added boolean flags for issuing and operational mode.                                            instead of hardcoded value.
 #
     
 
@@ -43,7 +43,7 @@ class VTECEngine(VTECTableUtil):
 
     def __init__(self, productCategory, siteID4, hazardEvents,
       rawVtecRecords, vtecDefinitions, allowedHazards,
-      vtecMode, issueTime=None, limitGeoZones=None):
+      vtecMode, issueTime=None, limitGeoZones=None, issueFlag=True, operationalMode=True):
 
         '''Constructor for VTEC Engine
         Once instantiated, it will run the calculations.  The output may
@@ -83,6 +83,8 @@ class VTECEngine(VTECTableUtil):
         self._vtecMode = vtecMode
         self._etnCache = {}
         self._hazardEvents = hazardEvents
+        self._issueFlag = issueFlag
+        self._operationalMode = operationalMode
         
         # determine appropriate VTEC lifecycle, based on event dicts,
         # and the hazards table.  All hazard records provided must equate
@@ -875,7 +877,7 @@ class VTECEngine(VTECTableUtil):
         '''
         etn_provider = ProductGenEtnProvider.ProductGenEtnProvider(
                 self._siteID4, self._time, self._tpcKeys, self._tpcBaseETN)
-        highest_etn = etn_provider.getLastETN(phen, sig, vtecRecords)
+        highest_etn = etn_provider.getLastETN(phen, sig, vtecRecords, self._issueFlag, self._operationalMode)
         LogStream.logDebug('HIGHEST ETN for ', phen, sig, highest_etn)
         return highest_etn
 

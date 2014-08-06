@@ -20,4 +20,12 @@
 			<bean ref="gfeHazardsCreator" method="createHazards" />
 		</route>
 	</camelContext>
+	
+	<camelContext id="practicegfeactions-camel" xmlns="http://camel.apache.org/schema/spring"
+		errorHandlerRef="errorHandler">
+		<route id="hazards.practiceGfeIngest">
+			<from uri="jms-generic:topic:edex.alerts.practicewarning" />
+			<bean ref="gfeHazardsCreator" method="createHazardsFromBytes" />
+		</route>
+	</camelContext>
 </beans>

@@ -6,7 +6,7 @@
 #  Date         Ticket#    Engineer    Description
 #  ------------ ---------- ----------- --------------------------
 #  Feb 27, 2014  #2826     dgilling     Updates for refactored VTECTableIO.
-#
+#  Aug  6, 2014   2826     jsanchez     Added boolean flag for issuing.
 #
 
 from VTECEngine import VTECEngine
@@ -66,7 +66,7 @@ import VTECTableIO
 class VTECEngineWrapper(object):
     def __init__(self, bridge, productCategory, siteID4, hazardEvents = [],
       vtecMode='O', issueTime=None, limitGeoZones=None, operationalMode=True,
-      testHarnessMode=False, vtecProduct=True):
+      testHarnessMode=False, vtecProduct=True, issueFlag=True):
         '''Constructor for VTEC Engine Wrapper
         Once instantiated, it will run the VTEC Engine.  Then the user can
         access the output through different functions.
@@ -133,7 +133,7 @@ class VTECEngineWrapper(object):
         # instantiate the actual vtec engine
         self._engine = VTECEngine(productCategory, siteID4, hazardEvents,
           vtecRecords, vtecDefinitions, allowedHazards, vtecMode,
-          issueTime, limitGeoZones)
+          issueTime, limitGeoZones, issueFlag, operationalMode)
 
     def engine(self):
         '''Returns the VTECEngine object, used for access to information'''

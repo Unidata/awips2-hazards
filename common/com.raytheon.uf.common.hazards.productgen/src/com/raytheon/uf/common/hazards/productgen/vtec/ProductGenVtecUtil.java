@@ -38,6 +38,7 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 20, 2013  #2462     dgilling     Initial creation
+ * Aug  6, 2014  2826      jsanchez     Added the parameter operationalMode to determine ActiveTable mode.
  * 
  * </pre>
  * 
@@ -57,10 +58,10 @@ public class ProductGenVtecUtil {
         throw new AssertionError();
     }
 
-    public static int getLastEtn(String office, String phensig)
-            throws Exception {
-        return getNextEtn(office, phensig, false, false, false, null)
-                .getNextEtn() - 1;
+    public static int getLastEtn(String office, String phensig,
+            boolean operationalMode) throws Exception {
+        return getNextEtn(office, phensig, false, false, false, null,
+                operationalMode).getNextEtn() - 1;
     }
 
     /**
@@ -79,14 +80,16 @@ public class ProductGenVtecUtil {
      *            increment the server's running sequence, so the ETN return
      *            could be used by another client that makes a
      *            GetNextEtnRequest.
+     * @param operationalMode
+     *            indicates if cave mode is in practice mode.
      * @return The next ETN in sequence, given the office and phensig.
      * @throws Exception
      *             If an error occurred sending the request to the server.
      */
-    public static int getNextEtn(String office, String phensig, boolean lockEtn)
-            throws Exception {
-        return getNextEtn(office, phensig, lockEtn, false, false, null)
-                .getNextEtn();
+    public static int getNextEtn(String office, String phensig,
+            boolean lockEtn, boolean operationalMode) throws Exception {
+        return getNextEtn(office, phensig, lockEtn, false, false, null,
+                operationalMode).getNextEtn();
     }
 
     /**
@@ -120,6 +123,8 @@ public class ProductGenVtecUtil {
      *            Allows the user to influence the next ETN assigned by using
      *            this value unless it is less than or equal to the last ETN
      *            used by this site or one of its partners.
+     * @param operationalMode
+     *            indicates if cave mode is in practice mode.
      * @return The next ETN in sequence, given the office and phensig.
      * @throws Exception
      *             If an error occurs while submitting or processing the remote
@@ -127,13 +132,11 @@ public class ProductGenVtecUtil {
      */
     public static GetNextEtnResponse getNextEtn(String office, String phensig,
             boolean lockEtn, boolean performISC, boolean reportOnlyConflict,
-            Integer etnOverride) throws Exception {
+            Integer etnOverride, boolean operationalMode) throws Exception {
         Calendar currentTime = Calendar.getInstance();
         currentTime.setTime(SimulatedTime.getSystemTime().getTime());
-        // TODO: Set ActiveTableMode based on some session state variable
-        // For now we'll hard code to OPERATIONAL, but we should have the option
-        // to fall back to PRACTICE in the future.
-        ActiveTableMode activeTable = ActiveTableMode.OPERATIONAL;
+        ActiveTableMode activeTable = operationalMode ? ActiveTableMode.OPERATIONAL
+                : ActiveTableMode.PRACTICE;
         GetNextEtnRequest req = new GetNextEtnRequest(office, activeTable,
                 phensig, currentTime, lockEtn, performISC, reportOnlyConflict,
                 etnOverride);

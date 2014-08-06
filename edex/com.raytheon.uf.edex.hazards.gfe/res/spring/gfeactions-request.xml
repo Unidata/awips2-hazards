@@ -26,7 +26,8 @@
                 </doCatch>
             </doTry>
 		</route>
-		
+    </camelContext>
+	<camelContext id="gfeactions-camel2" xmlns="http://camel.apache.org/schema/spring" errorHandlerRef="errorHandler">
 		<route id="activeTableDeleter">
 			<from uri="jms-generic:topic:edex.alerts.hazards" />	
             <doTry>
