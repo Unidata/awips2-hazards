@@ -135,6 +135,8 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      the selection state of a hazard event.
  * Jun 12, 2014 1480       jsanchez     Updated the use of product formats.
  * Jul 14, 2014 4187       jsanchez     Check if the generatedProductsList is valid.
+ * Aug 07, 2014 3992       Robert.Blum  Removed use of CAVE's localized site when 
+ *                                      retrieving UGC's.
  * </pre>
  * 
  * @author bsteffen
@@ -445,7 +447,7 @@ public class SessionProductManager implements ISessionProductManager {
                             .buildGeometry(polygonGeometries);
                 }
                 this.partsOfCounty.addPortionsDescriptionToEvent(
-                        geometryCollection, event, locMgrSite);
+                        geometryCollection, event, configManager.getSiteID());
             }
 
             /*
