@@ -126,10 +126,10 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
             }
 
             if (points.size() < 2) {
-                getDrawingLayer().removeGhostLine();
+                getToolLayer().removeGhostLine();
                 points.clear();
 
-                getDrawingLayer().issueRefresh();
+                getToolLayer().issueRefresh();
 
                 // Indicate that this drawing action is done.
                 getSpatialPresenter().getView().drawingActionComplete();
@@ -153,13 +153,13 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                 ArrayList<Coordinate> reducedPointsList = Lists
                         .newArrayList(reducedPoints);
 
-                getDrawingLayer().removeGhostLine();
+                getToolLayer().removeGhostLine();
 
                 // Could be LINE_SOLID or LINE_DASHED_4
                 @SuppressWarnings("unused")
                 AbstractDrawableComponent warningBox = def.create(
                         DrawableType.LINE, freeLine, "Line", "LINE_DASHED_4",
-                        reducedPointsList, getDrawingLayer().getActiveLayer());
+                        reducedPointsList, getToolLayer().getActiveLayer());
 
                 points.clear();
 
@@ -206,13 +206,13 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                 // create the ghost element and put it in the drawing layer
                 AbstractDrawableComponent ghost = def.create(DrawableType.LINE,
                         freeLine, "Line", "LINE_SOLID", points,
-                        getDrawingLayer().getActiveLayer());
+                        getToolLayer().getActiveLayer());
 
                 List<Coordinate> ghostPts = Lists.newArrayList(points);
                 ((Line) ghost).setLinePoints(ghostPts);
 
-                getDrawingLayer().setGhostLine(ghost);
-                getDrawingLayer().issueRefresh();
+                getToolLayer().setGhostLine(ghost);
+                getToolLayer().issueRefresh();
             }
 
             return true;

@@ -265,13 +265,40 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public void removeEvents(Collection<ObservedHazardEvent> event,
+    public void removeEvents(Collection<ObservedHazardEvent> events,
             IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public ObservedHazardEvent getLastSelectedEvent() {
+    public void setCurrentEvent(String eventID) {
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    public ObservedHazardEvent getCurrentEvent() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setCurrentEvent(ObservedHazardEvent event) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void proposeEvents(Collection<ObservedHazardEvent> events,
+            IOriginator originator) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void noCurrentEvent() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean isCurrentEvent() {
+        throw new UnsupportedOperationException();
+    }
+
 }

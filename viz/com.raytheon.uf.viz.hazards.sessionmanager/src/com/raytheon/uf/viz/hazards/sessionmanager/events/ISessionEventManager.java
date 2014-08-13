@@ -180,7 +180,7 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @param events
      * @param originator
      */
-    public void removeEvents(Collection<E> event, IOriginator originator);
+    public void removeEvents(Collection<E> events, IOriginator originator);
 
     /**
      * Get all events that are currently part of this session.
@@ -211,11 +211,6 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *            Originator of the change.
      */
     public void setLastModifiedSelectedEvent(E event, IOriginator originator);
-
-    /**
-     * @return the most recently selected {@link IHazardEvent}
-     */
-    public E getLastSelectedEvent();
 
     /**
      * Set the selected events. Any currently selected events that are no in
@@ -395,6 +390,15 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public void proposeEvent(E event, IOriginator originator);
 
     /**
+     * Sets the state of the events to PROPOSED, persists them to the database
+     * and notifies all listeners of this.
+     * 
+     * @param events
+     * @param originator
+     */
+    public void proposeEvents(Collection<E> events, IOriginator originator);
+
+    /**
      * Clips the selected hazard geometries to the cwa or hsa boundaries as
      * specified in the hazard type definition in HazardTypes.py.
      * 
@@ -426,5 +430,33 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * Execute any shutdown needed.
      */
     public void shutdown();
+
+    /**
+     * @param eventId
+     *            of the event the user is currently pointing to.
+     */
+    public void setCurrentEvent(String eventId);
+
+    /**
+     * @param the
+     *            event the user is currently pointing to.
+     */
+    public void setCurrentEvent(E event);
+
+    /**
+     * 
+     * @return event the user is currently pointing to
+     */
+    public E getCurrentEvent();
+
+    /**
+     * Indicates the user it not currently point to any event
+     */
+    public void noCurrentEvent();
+
+    /**
+     * @return true if the user is currently pointing to an event
+     */
+    public boolean isCurrentEvent();
 
 }

@@ -92,9 +92,9 @@ public class DragDropAction extends NonDrawingAction {
                 getSpatialPresenter().fireAction(action);
                 getSpatialPresenter().getView().drawingActionComplete();
 
-                getDrawingLayer().removeGhostLine();
-                getDrawingLayer().removeEvent("DragDropDot");
-                getDrawingLayer().setSelectedDE(null);
+                getToolLayer().removeGhostLine();
+                getToolLayer().removeEvent("DragDropDot");
+                getToolLayer().setSelectedDE(null);
                 ghostEl = null;
 
                 // We are done dragging the storm dot. Switch back
@@ -105,7 +105,7 @@ public class DragDropAction extends NonDrawingAction {
 
                 // Tell the Spatial Display to fire a DMTS message
 
-                getDrawingLayer().issueRefresh();
+                getToolLayer().issueRefresh();
 
                 return true;
             } else {
@@ -119,7 +119,7 @@ public class DragDropAction extends NonDrawingAction {
 
             boolean mouseActionHandled = super.handleMouseDown(anX, aY, button);
 
-            AbstractDrawableComponent elSelected = getDrawingLayer()
+            AbstractDrawableComponent elSelected = getToolLayer()
                     .getSelectedDE();
 
             if (elSelected != null) {
@@ -132,7 +132,7 @@ public class DragDropAction extends NonDrawingAction {
         @Override
         public boolean handleMouseDownMove(int anX, int aY, int button) {
 
-            AbstractDrawableComponent elSelected = getDrawingLayer()
+            AbstractDrawableComponent elSelected = getToolLayer()
                     .getSelectedDE();
 
             if (elSelected != null) {

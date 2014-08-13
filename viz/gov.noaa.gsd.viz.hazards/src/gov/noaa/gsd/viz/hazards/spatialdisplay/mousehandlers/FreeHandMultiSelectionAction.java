@@ -195,11 +195,11 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
                 if (isSelectByArea) {
 
                     handleSelectByArea(loc);
-                } else if (getDrawingLayer().getSelectedDE() == null) {
+                } else if (getToolLayer().getSelectedDE() == null) {
                     points.clear();
 
                     // Is any event selected?
-                    List<AbstractDrawableComponent> containingComponentsList = getDrawingLayer()
+                    List<AbstractDrawableComponent> containingComponentsList = getToolLayer()
                             .getContainingComponents(loc, x, y);
 
                     // No, do nothing
@@ -211,7 +211,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
                     // the list,
                     // otherwise, remove it.
                     for (AbstractDrawableComponent drawableComponent : containingComponentsList) {
-                        String selectedElementEventID = getDrawingLayer()
+                        String selectedElementEventID = getToolLayer()
                                 .elementClicked(drawableComponent, false, false);
                         if (selectedElementEventID == null) {
                             continue;
@@ -223,7 +223,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
                         } else {
                             // if is not existing, add on
                             clickedElementList.add(selectedElementEventID);
-                            getDrawingLayer().elementClicked(drawableComponent,
+                            getToolLayer().elementClicked(drawableComponent,
                                     false, false);
                         }
                     }
@@ -239,7 +239,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
                  * HazardServicesAppBuilder..
                  */
                 if (clickedElementList != null) {
-                    getDrawingLayer().multipleElementsClicked(
+                    getToolLayer().multipleElementsClicked(
                             clickedElementList);
                     clickedElementList.clear();
                 }
@@ -261,10 +261,10 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
          */
         private void handleSelectByArea(Coordinate loc) {
             if (points.size() < 2) {
-                getDrawingLayer().removeGhostLine();
+                getToolLayer().removeGhostLine();
                 points.clear();
 
-                getDrawingLayer().issueRefresh();
+                getToolLayer().issueRefresh();
 
                 // Indicate that this drawing action is done.
                 getSpatialPresenter().getView().drawingActionComplete();
@@ -287,7 +287,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
                 Geometry polygon = new GeometryFactory().createPolygon(
                         linearRing, null);
 
-                getDrawingLayer().removeGhostLine();
+                getToolLayer().removeGhostLine();
 
                 points.clear();
 
@@ -297,7 +297,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
                 // what ids are selected?
                 clickedElementList.clear();
 
-                Iterator<AbstractDrawableComponent> iterator = getDrawingLayer()
+                Iterator<AbstractDrawableComponent> iterator = getToolLayer()
                         .getActiveLayer().getComponentIterator();
                 while (iterator.hasNext()) {
                     AbstractDrawableComponent comp = iterator.next();
@@ -306,7 +306,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
                     // The event is inside the selected area
                     if (p != null && polygon.contains(p)) {
                         // What it's thevent ID
-                        String selectedEventId = getDrawingLayer()
+                        String selectedEventId = getToolLayer()
                                 .elementClicked(comp, false, false);
 
                         // Put the ID in the selected ID list
@@ -323,7 +323,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
                  * from here to the HazardServicesAppBuilder..
                  */
                 if (clickedElementList != null) {
-                    getDrawingLayer().multipleElementsClicked(
+                    getToolLayer().multipleElementsClicked(
                             clickedElementList);
                     clickedElementList.clear();
                 }
@@ -372,15 +372,15 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
                     AbstractDrawableComponent ghost = def.create(
                             DrawableType.LINE, (IAttribute) drawingAttributes,
                             "Line", "LINE_SOLID",
-                            (ArrayList<Coordinate>) points, getDrawingLayer()
+                            (ArrayList<Coordinate>) points, getToolLayer()
                                     .getActiveLayer());
 
                     ArrayList<Coordinate> ghostPts = new ArrayList<Coordinate>(
                             points);
                     ((Line) ghost).setLinePoints(ghostPts);
 
-                    getDrawingLayer().setGhostLine(ghost);
-                    getDrawingLayer().issueRefresh();
+                    getToolLayer().setGhostLine(ghost);
+                    getToolLayer().issueRefresh();
                 }
             }
 

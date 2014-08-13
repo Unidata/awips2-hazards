@@ -146,20 +146,20 @@ public class NonDrawingAction extends AbstractMouseHandler {
             // at this time send a message to the IHIS Layer.
             if (button == 1) {
 
-                if (getDrawingLayer().getSelectedDE() == null) {
+                if (getToolLayer().getSelectedDE() == null) {
                     /*
                      * Get the nearest element and set it as the selected
                      * element. Note: for Contours, we should select the nearest
                      * ContourLine, ContourMinmax or ContourCircle.
                      */
-                    AbstractDrawableComponent nadc = getDrawingLayer()
+                    AbstractDrawableComponent nadc = getToolLayer()
                             .getContainingComponent(loc, anX, aY);
-                    getDrawingLayer().setSelectedDE(nadc);
+                    getToolLayer().setSelectedDE(nadc);
 
                     // Remove the label associated with the element.
-                    getDrawingLayer().removeElementLabel(nadc);
+                    getToolLayer().removeElementLabel(nadc);
 
-                    getDrawingLayer().issueRefresh();
+                    getToolLayer().issueRefresh();
                 }
 
                 return true;
@@ -186,7 +186,7 @@ public class NonDrawingAction extends AbstractMouseHandler {
                 return false;
             }
 
-            AbstractDrawableComponent elSelected = getDrawingLayer()
+            AbstractDrawableComponent elSelected = getToolLayer()
                     .getSelectedDE();
 
             Color ghostColor = new java.awt.Color(255, 255, 255);
@@ -230,7 +230,7 @@ public class NonDrawingAction extends AbstractMouseHandler {
                         if (distance < distanceToSelect) {
                             ptSelected = new Coordinate(clickPoint.getX(),
                                     clickPoint.getY());
-                            ghostEl = getDrawingLayer().getSelectedDE().copy();
+                            ghostEl = getToolLayer().getSelectedDE().copy();
 
                         }
                     }
@@ -266,8 +266,8 @@ public class NonDrawingAction extends AbstractMouseHandler {
                         ghostEl.setColors(new Color[] { ghostColor,
                                 new java.awt.Color(255, 255, 255) });
 
-                        getDrawingLayer().setGhostLine(ghostEl);
-                        getDrawingLayer().issueRefresh();
+                        getToolLayer().setGhostLine(ghostEl);
+                        getToolLayer().issueRefresh();
                     }
 
                 }
@@ -292,19 +292,19 @@ public class NonDrawingAction extends AbstractMouseHandler {
 
                 Iterator<DrawableElement> iterator1 = ghostEl
                         .createDEIterator();
-                Iterator<DrawableElement> iterator2 = getDrawingLayer()
+                Iterator<DrawableElement> iterator2 = getToolLayer()
                         .getSelectedDE().createDEIterator();
 
                 while (iterator1.hasNext() && iterator2.hasNext()) {
                     iterator1.next().setColors(iterator2.next().getColors());
                 }
 
-                getDrawingLayer().addElement(ghostEl);
+                getToolLayer().addElement(ghostEl);
 
-                getDrawingLayer().removeGhostLine();
+                getToolLayer().removeGhostLine();
                 ghostEl = null;
-                getDrawingLayer().setSelectedDE(null);
-                getDrawingLayer().issueRefresh();
+                getToolLayer().setSelectedDE(null);
+                getToolLayer().issueRefresh();
 
             }
 
@@ -319,7 +319,7 @@ public class NonDrawingAction extends AbstractMouseHandler {
             Coordinate loc = editor.translateClick(x, y);
 
             if (loc != null) {
-                AbstractDrawableComponent nadc = getDrawingLayer()
+                AbstractDrawableComponent nadc = getToolLayer()
                         .getContainingComponent(loc, x, y);
 
                 // There is a selected element. Is the

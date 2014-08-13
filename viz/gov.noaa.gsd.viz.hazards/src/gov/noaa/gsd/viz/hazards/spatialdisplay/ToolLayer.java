@@ -1307,6 +1307,13 @@ public class ToolLayer extends
         return Lists.reverse(containingSymbolsList);
     }
 
+    private List<AbstractDrawableComponent> getContainingComponents(int x, int y) {
+        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
+                .getInstance().getActiveEditor());
+        Coordinate loc = editor.translateClick(x, y);
+        return getContainingComponents(loc, x, y);
+    }
+
     /**
      * Replace one drawable element in the product list with another drawable
      * element.
@@ -1375,6 +1382,7 @@ public class ToolLayer extends
          * only if over a selected hazard and point. Retrieve the list of
          * context menu items to add...
          */
+        setCurrentEvent(x, y);
         List<IAction> actions = getContextMenuActions();
         for (IAction action : actions) {
             menuManager.add(action);
@@ -1437,7 +1445,7 @@ public class ToolLayer extends
         ISessionManager<ObservedHazardEvent> sessionManager = appBuilder
                 .getSessionManager();
         ContextMenuHelper helper = new ContextMenuHelper(getAppBuilder()
-                .getSpatialPresenter(), sessionManager.getEventManager());
+                .getSpatialPresenter(), sessionManager);
 
         List<IAction> actions = new ArrayList<>();
 
@@ -1888,6 +1896,35 @@ public class ToolLayer extends
      */
     public GeometryFactory getGeoFactory() {
         return geoFactory;
+    }
+
+    /**
+     * @param components
+     *            over which the user has clicked.
+     */
+    public void setCurrentEvent(
+            List<AbstractDrawableComponent> containingComponents) {
+        ISessionEventManager<ObservedHazardEvent> eventManager = appBuilder
+                .getSessionManager().getEventManager();
+        eventManager.noCurrentEvent();
+        if (containingComponents.size() == 1) {
+            AbstractDrawableComponent component = containingComponents.get(0);
+            if (component instanceof IHazardServicesShape) {
+                /*
+                 * TODO Ugly, yes but no uglier than the overall approach. This
+                 * is why we need refactoring of the spatial display.
+                 */
+                eventManager.setCurrentEvent(((IHazardServicesShape) component)
+                        .getID());
+            }
+        }
+    }
+
+    private void setCurrentEvent(int x, int y) {
+        List<AbstractDrawableComponent> containingComponents = getContainingComponents(
+                x, y);
+        setCurrentEvent(containingComponents);
+
     }
 
 }

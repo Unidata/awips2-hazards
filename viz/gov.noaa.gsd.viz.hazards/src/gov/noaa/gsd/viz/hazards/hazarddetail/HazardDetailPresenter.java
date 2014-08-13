@@ -639,7 +639,7 @@ public class HazardDetailPresenter extends
              */
             this.selectedEventIdentifiers = selectedEventIdentifiers;
             String oldVisibleEventIdentifier = visibleEventIdentifier;
-            buildVisibleEventIdentifier();
+            visibleEventIdentifier = buildVisibleEventIdentifier();
 
             /*
              * Notify the view of the new list of selected events.
@@ -671,14 +671,14 @@ public class HazardDetailPresenter extends
         }
     }
 
-    private void buildVisibleEventIdentifier() {
-        ObservedHazardEvent event = getModel().getEventManager()
-                .getLastSelectedEvent();
-        if (event != null) {
-            visibleEventIdentifier = event.getEventID();
-        } else {
-            visibleEventIdentifier = "";
+    private String buildVisibleEventIdentifier() {
+        String result = "";
+        ObservedHazardEvent selectedEvent = getModel().getEventManager()
+                .getLastModifiedSelectedEvent();
+        if (selectedEvent != null) {
+            result = selectedEvent.getEventID();
         }
+        return result;
     }
 
     /**
@@ -699,8 +699,8 @@ public class HazardDetailPresenter extends
         if (detailViewShowing == false) {
             return;
         }
-        String newVisibleEventIdentifier = getModel().getEventManager()
-                .getLastSelectedEvent().getEventID();
+        String newVisibleEventIdentifier = buildVisibleEventIdentifier();
+
         if (selectedEventIdentifiers.contains(newVisibleEventIdentifier) == false) {
             return;
         }
@@ -1253,7 +1253,7 @@ public class HazardDetailPresenter extends
     private void updateEntireView(List<ObservedHazardEvent> selectedEvents) {
         detailViewShowing = true;
         selectedEventIdentifiers = compileSelectedEventIdentifiers(selectedEvents);
-        buildVisibleEventIdentifier();
+        visibleEventIdentifier = buildVisibleEventIdentifier();
         selectedEventDisplayables = compileSelectedEventDisplayables(selectedEvents);
         updateViewSelectedEvents();
         updateViewVisibleEvent();

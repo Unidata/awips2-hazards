@@ -200,9 +200,6 @@ class MixedHazardStoryFunctionalTest extends
                     List<String> contextMenuEntries = convertContextMenuToString(toolLayer
                             .getContextMenuActions());
                     assertTrue(contextMenuEntries
-                            .contains(ContextMenuSelections.PROPOSE_ALL_SELECTED_HAZARDS
-                                    .getValue()));
-                    assertTrue(contextMenuEntries
                             .contains(ContextMenuSelections.REMOVE_POTENTIAL_HAZARDS
                                     .getValue()));
                     stepCompleted();
@@ -550,7 +547,7 @@ class MixedHazardStoryFunctionalTest extends
                 stepCompleted();
                 step = Steps.REMOVING_ENDED_EVENTS;
                 ContextMenuHelper c = new ContextMenuHelper(consolePresenter,
-                        eventManager);
+                        sessionManager);
                 ActionContributionItem item = (ActionContributionItem) c
                         .newAction(ContextMenuHelper.ContextMenuSelections.END_ALL_SELECTED_HAZARDS
                                 .getValue());

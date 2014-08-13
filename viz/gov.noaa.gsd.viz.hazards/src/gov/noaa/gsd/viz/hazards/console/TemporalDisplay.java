@@ -134,6 +134,8 @@ import com.raytheon.uf.viz.core.icon.IconUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Column;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
  * Description: Temporal display, providing the user the ability to view and
@@ -649,6 +651,13 @@ class TemporalDisplay {
      * Indices of items that are currently selected.
      */
     private int[] selectedIndices = null;
+
+    /**
+     * Timestamp (epoch time in milliseconds) of the last mouse or other event
+     * that occurred that should be ignored for the purposes of changing the
+     * table selection.
+     */
+    private long lastIgnorableEventTime = 0L;
 
     /**
      * The number of rows in this table.
@@ -1373,6 +1382,8 @@ class TemporalDisplay {
         }
     };
 
+    private ISessionEventManager<ObservedHazardEvent> eventManager;
+
     // Public Constructors
 
     /**
@@ -1439,6 +1450,7 @@ class TemporalDisplay {
         // Remember the presenter, and the set of event identifiers
         // allowing "until further notice".
         this.presenter = presenter;
+        this.eventManager = presenter.getSessionManager().getEventManager();
         this.eventIdentifiersAllowingUntilFurtherNotice = eventIdentifiersAllowingUntilFurtherNotice;
 
         // If the controls are to be shown in the toolbar, hide the
@@ -2725,20 +2737,20 @@ class TemporalDisplay {
         // list of selected items whenever a selection or de-
         // selection occurs.
         table.addSelectionListener(new SelectionAdapter() {
-            private int lastCheckEventTime = 0;
 
             @Override
             public void widgetSelected(SelectionEvent e) {
 
-                // If the event is a check event, handle it as
-                // such, and remember its timestamp. If it is
-                // a selection event, see if the timestamp is
-                // the same as the one for the check event, and
-                // if so, prevent it from happening and reset
-                // the selection to what it last was; otherwise
-                // allow it.
+                /*
+                 * If the event is a check event, handle it as such, and
+                 * remember its timestamp. If it is a selection event, see if
+                 * the timestamp is the same as a previous event that should not
+                 * change the selection, and if so, prevent it from happening
+                 * and reset the selection to what it last was; otherwise allow
+                 * it.
+                 */
                 if (e.detail == SWT.CHECK) {
-                    lastCheckEventTime = e.time;
+                    lastIgnorableEventTime = e.time;
                     String identifier = (String) e.item.getData();
                     boolean isChecked = ((TableItem) e.item).getChecked();
                     for (Dict eventDict : dictsForEventIdentifiers.values()) {
@@ -2752,7 +2764,7 @@ class TemporalDisplay {
                             ConsoleAction.ActionType.CHECK_BOX, identifier,
                             isChecked));
                 } else {
-                    if (e.time == lastCheckEventTime) {
+                    if (e.time == lastIgnorableEventTime) {
                         e.doit = false;
                         if ((selectedIndices == null)
                                 || (selectedIndices.length == 0)) {
@@ -2885,7 +2897,14 @@ class TemporalDisplay {
                     untilFurtherNoticeMenuItem
                             .addSelectionListener(rowMenuListener);
                     new MenuItem(rowMenu, SWT.SEPARATOR);
+                    TableItem item = table.getItem(point);
+
+                    if (item != null) {
+                        String eventID = (String) item.getData();
+                        eventManager.setCurrentEvent(eventID);
+                    }
                     createHazardMenu();
+
                     // Unfortunately, SWT tables fire these events
                     // before the selection events, so at the point
                     // where this code is executing, any modification
@@ -2896,6 +2915,7 @@ class TemporalDisplay {
                     // until the selection event has been handled.
                     table.setMenu(rowMenu);
                     rowMenu.setLocation(e.x, e.y);
+
                     Display.getCurrent().asyncExec(new Runnable() {
                         @Override
                         public void run() {
@@ -2903,9 +2923,7 @@ class TemporalDisplay {
                             // Only display the menu if at least one
                             // table row is selected, and if the table
                             // has not itself been disposed of.
-                            if ((table.isDisposed() == false)
-                                    && (selectedIndices != null)
-                                    && (selectedIndices.length > 0)) {
+                            if (table.isDisposed() == false) {
 
                                 // Iterate through the table rows,
                                 // determining for each one whether
@@ -2916,18 +2934,23 @@ class TemporalDisplay {
                                 TableItem[] items = table.getItems();
                                 boolean untilFurtherNoticeAllowed = true;
                                 int numUntilFurtherNotice = 0;
-                                for (int index : selectedIndices) {
-                                    String identifier = (String) items[index]
-                                            .getData();
-                                    if (eventIdentifiersAllowingUntilFurtherNotice
-                                            .contains(identifier) == false) {
-                                        untilFurtherNoticeAllowed = false;
-                                    }
-                                    if (Boolean.TRUE
-                                            .equals(dictsForEventIdentifiers
-                                                    .get(identifier)
-                                                    .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE))) {
-                                        numUntilFurtherNotice++;
+                                if (selectedIndices == null
+                                        || selectedIndices.length == 0) {
+                                    untilFurtherNoticeAllowed = false;
+                                } else {
+                                    for (int index : selectedIndices) {
+                                        String identifier = (String) items[index]
+                                                .getData();
+                                        if (eventIdentifiersAllowingUntilFurtherNotice
+                                                .contains(identifier) == false) {
+                                            untilFurtherNoticeAllowed = false;
+                                        }
+                                        if (Boolean.TRUE
+                                                .equals(dictsForEventIdentifiers
+                                                        .get(identifier)
+                                                        .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE))) {
+                                            numUntilFurtherNotice++;
+                                        }
                                     }
                                 }
 
@@ -3122,6 +3145,16 @@ class TemporalDisplay {
 
             @Override
             public void mouseDown(MouseEvent e) {
+
+                /*
+                 * Remember this timestamp as ignorable if this is a
+                 * right-button press, since these should not cause table row
+                 * selection changes.
+                 */
+                if (e.button == 3) {
+                    lastIgnorableEventTime = e.time;
+                }
+
                 if ((tableToolTip != null) && tableToolTip.isVisible()) {
                     tableToolTip.setVisible(false);
                 }
@@ -4922,8 +4955,8 @@ class TemporalDisplay {
      * Create the hazard menu
      */
     private void createHazardMenu() {
-        ContextMenuHelper helper = new ContextMenuHelper(presenter, presenter
-                .getSessionManager().getEventManager());
+        ContextMenuHelper helper = new ContextMenuHelper(presenter,
+                presenter.getSessionManager());
         List<MenuItem> items = new ArrayList<>();
         for (IContributionItem item : helper.getSelectedHazardManagementItems()) {
             MenuItem menuItem = null;

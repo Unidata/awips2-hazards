@@ -52,7 +52,6 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -203,12 +202,6 @@ public class SessionEventManager implements
         ISessionEventManager<ObservedHazardEvent> {
 
     /**
-     * Default duration for hazard events that do not have a type.
-     */
-    private static final long DEFAULT_HAZARD_DURATION = TimeUnit.HOURS
-            .toMillis(8);
-
-    /**
      * Contains the mappings between geodatabase table names and the UGCBuilders
      * which correspond to them.
      */
@@ -285,6 +278,8 @@ public class SessionEventManager implements
 
     private final GeometryFactory geoFactory;
 
+    private ObservedHazardEvent currentEvent;
+
     /**
      * Comparator can be used with sortEvents to send selected events to the
      * front of the list.
@@ -331,6 +326,7 @@ public class SessionEventManager implements
                 createTimeListener());
         this.messenger = messenger;
         geoFactory = new GeometryFactory();
+
     }
 
     @Override
@@ -428,19 +424,6 @@ public class SessionEventManager implements
             }
         }
         return events;
-    }
-
-    private String getLastSelectedEventID() {
-        IHazardEvent event = getLastModifiedSelectedEvent();
-        if (event != null) {
-            return event.getEventID();
-        }
-        return "";
-    }
-
-    @Override
-    public ObservedHazardEvent getLastSelectedEvent() {
-        return getEventById(getLastSelectedEventID());
     }
 
     @Handler(priority = 1)
@@ -2042,6 +2025,14 @@ public class SessionEventManager implements
         }
     }
 
+    @Override
+    public void proposeEvents(Collection<ObservedHazardEvent> events,
+            IOriginator originator) {
+        for (ObservedHazardEvent observedHazardEvent : events) {
+            proposeEvent(observedHazardEvent, originator);
+        }
+    }
+
     private boolean isProposedStateAllowed(ObservedHazardEvent event,
             HazardStatus status) {
         return !HazardStatus.hasEverBeenIssued(status)
@@ -2214,6 +2205,31 @@ public class SessionEventManager implements
             return true;
         }
 
+    }
+
+    @Override
+    public void setCurrentEvent(String eventId) {
+        setCurrentEvent(getEventById(eventId));
+    }
+
+    @Override
+    public void setCurrentEvent(ObservedHazardEvent event) {
+        this.currentEvent = event;
+    }
+
+    @Override
+    public ObservedHazardEvent getCurrentEvent() {
+        return currentEvent;
+    }
+
+    @Override
+    public void noCurrentEvent() {
+        this.currentEvent = null;
+    }
+
+    @Override
+    public boolean isCurrentEvent() {
+        return currentEvent != null;
     }
 
     /**

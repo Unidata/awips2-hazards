@@ -207,6 +207,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         return delegate.getHazardAttribute(key);
     }
 
+    protected ObservedHazardEvent() {
+        eventManager = null;
+        delegate = null;
+    }
+
     public ObservedHazardEvent(IHazardEvent event,
             SessionEventManager eventManager) {
         delegate = new BaseHazardEvent(event);
