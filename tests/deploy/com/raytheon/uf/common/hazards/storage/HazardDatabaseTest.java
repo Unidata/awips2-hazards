@@ -22,7 +22,10 @@ package com.raytheon.uf.common.hazards.storage;
 import org.junit.BeforeClass;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
+import com.raytheon.uf.common.geospatial.adapter.GeometryTypeAdapter;
+import com.raytheon.uf.common.serialization.DynamicSerializationManager;
 import com.raytheon.uf.common.serialization.comm.RequestRouterTest;
+import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Tests database interaction of IHazardEvents
@@ -46,6 +49,7 @@ public class HazardDatabaseTest extends AbstractHazardStorageTest {
     @BeforeClass
     public static void classSetUp() {
         RequestRouterTest.setDeployInstance();
+        DynamicSerializationManager.registerAdapter(Geometry.class, new GeometryTypeAdapter());
     }
 
     /*

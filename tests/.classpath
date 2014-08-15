@@ -67,5 +67,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.viz.core"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataaccess"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/net.sf.swtaddons"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.geospatial"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
