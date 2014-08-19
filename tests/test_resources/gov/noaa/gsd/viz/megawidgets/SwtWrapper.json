@@ -1,0 +1,32 @@
+[
+ {
+  "fieldType": "BoundedListBuilder",
+  "fieldName": "list1",
+  "label": "Available Columns:",
+  "selectedLabel": "Selected Columns:",
+  "choices": [ "Name", "Type", "Description", "Threat Level", "Time Until Impact", "Confidence", "Duration" ],
+  "values": [ "Description",  "Time Until Impact", "Threat Level" ],
+  "expandHorizontally": true,
+  "expandVertically": true
+ },
+ {
+  "fieldType": "SwtWrapper",
+  "fieldName": "swtWrapper1",
+  "expandHorizontally": True,
+  "expandVertically": True
+ },
+ {
+  "fieldType": "UnboundedListBuilder",
+  "fieldName": "list2",
+  "label": "Cities:",
+  "values": [ "Amherst", "Northampton", "Hadley", "South Hadley", "Pelham", "Leverett", "Belchertown", "Florence" ],
+  "expandHorizontally": true,
+  "expandVertically": true
+ },
+ {
+  "fieldType": "CheckBox",
+  "fieldName": "editability",
+  "label": "Editable",
+  "values": true
+ }
+]

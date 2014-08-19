@@ -133,6 +133,8 @@ import com.google.common.collect.Lists;
  *                                           of being an abstract class that forces the
  *                                           creation of subclasses to receive such
  *                                           notifications.
+ * Aug 19, 2014    4098     Chris.Golden     Changed to provide a method for accessing
+ *                                           SWT wrapper megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -191,6 +193,12 @@ public class MegawidgetManager {
      * Set of all time scale megawidgets.
      */
     private final Set<TimeScaleMegawidget> timeScaleMegawidgets = new HashSet<>();
+
+    /**
+     * Map pairing megawidget identifiers with their corresponding SWT wrapper
+     * megawidgets.
+     */
+    private final Map<String, SwtWrapperMegawidget> swtWrappersForIdentifiers = new HashMap<>();
 
     /**
      * Side effects applier, or <code>null</code> if there are no side effects
@@ -941,6 +949,18 @@ public class MegawidgetManager {
         }
     }
 
+    /**
+     * Get the SWT wrapper megawidget associated with the specified identifier.
+     * 
+     * @param identifier
+     *            Megawidget identifier for which to fetch the SWT wrapper.
+     * @return SWT wrapper megawidget associated with the identifier, or
+     *         <code>null</code> if there is no such megawidget.
+     */
+    public final SwtWrapperMegawidget getSwtWrapper(String identifier) {
+        return swtWrappersForIdentifiers.get(identifier);
+    }
+
     // Protected Methods
 
     /**
@@ -1108,6 +1128,10 @@ public class MegawidgetManager {
     private void rememberMegawidgets(IMegawidget megawidget) {
         megawidgetsForIdentifiers.put(
                 megawidget.getSpecifier().getIdentifier(), megawidget);
+        if (megawidget instanceof SwtWrapperMegawidget) {
+            swtWrappersForIdentifiers.put(megawidget.getSpecifier()
+                    .getIdentifier(), (SwtWrapperMegawidget) megawidget);
+        }
         if (megawidget instanceof IParent) {
             for (IMegawidget childMegawidget : ((IParent<? extends IMegawidget>) megawidget)
                     .getChildren()) {

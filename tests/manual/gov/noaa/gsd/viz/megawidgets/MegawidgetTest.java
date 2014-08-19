@@ -26,7 +26,9 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
@@ -57,6 +59,8 @@ import org.eclipse.swt.widgets.Shell;
  *                                      manager changes.
  * Jun 30, 2014    3512    Chris.Golden Changed to work with more megawidget
  *                                      manager changes.
+ * Aug 19, 2014    4098    Chris.Golden Added use of SWT wrapper megawidget if
+ *                                      one is specified.
  * </pre>
  * 
  * @author Chris.Golden
@@ -64,11 +68,17 @@ import org.eclipse.swt.widgets.Shell;
  */
 public class MegawidgetTest extends Dialog {
 
+    // Private Static Constants
+
+    private static final String PATH_PREFIX = "test_resources/gov/noaa/gsd/viz/megawidgets/";
+
+    // Private Variables
+
     private final String specifiersFilePath;
 
     private final String scriptFilePath;
 
-    private static final String PATH_PREFIX = "test_resources/gov/noaa/gsd/viz/megawidgets/";
+    private final String swtWrapperIdentifier;
 
     // Public Static Methods
 
@@ -87,7 +97,8 @@ public class MegawidgetTest extends Dialog {
             PythonSideEffectsApplier.initialize();
         }
         MegawidgetTest dialog = new MegawidgetTest(args[0],
-                (args.length > 1 ? args[1] : null));
+                (args.length > 1 ? args[1] : null), (args.length > 2 ? args[2]
+                        : null));
         dialog.open();
 
         while ((dialog.getShell() != null)
@@ -107,10 +118,12 @@ public class MegawidgetTest extends Dialog {
     /**
      * Construct a standard instance.
      */
-    public MegawidgetTest(String specifiersFilePath, String scriptFilePath) {
+    public MegawidgetTest(String specifiersFilePath, String scriptFilePath,
+            String swtWrapperIdentifier) {
         super((Shell) null);
         this.specifiersFilePath = specifiersFilePath;
         this.scriptFilePath = scriptFilePath;
+        this.swtWrapperIdentifier = swtWrapperIdentifier;
         setShellStyle(getShellStyle() | SWT.RESIZE);
     }
 
@@ -152,8 +165,9 @@ public class MegawidgetTest extends Dialog {
         parent.getShell().setText(
                 "Megawidget Demo: " + name.split("\\.(?=[^\\.]+$)")[0]);
 
+        MegawidgetManager manager = null;
         try {
-            new MegawidgetManager(
+            manager = new MegawidgetManager(
                     top,
                     specifiers,
                     new HashMap<String, Object>(),
@@ -222,6 +236,22 @@ public class MegawidgetTest extends Dialog {
             e.printStackTrace(System.err);
             PythonSideEffectsApplier.prepareForShutDown();
             System.exit(1);
+        }
+
+        if (swtWrapperIdentifier != null) {
+            SwtWrapperMegawidget megawidget = manager
+                    .getSwtWrapper(swtWrapperIdentifier);
+            if (megawidget == null) {
+                System.err
+                        .println("Error: No SWT wrapper megawidget with identifier \""
+                                + swtWrapperIdentifier + "\" found.");
+            } else {
+                Composite wrapper = megawidget.getWrapperComposite();
+                wrapper.setLayout(new FillLayout());
+                Button button = new Button(wrapper, SWT.PUSH);
+                button.setText("Sample SWT Button");
+                megawidget.sizeChanged();
+            }
         }
 
         return top;
