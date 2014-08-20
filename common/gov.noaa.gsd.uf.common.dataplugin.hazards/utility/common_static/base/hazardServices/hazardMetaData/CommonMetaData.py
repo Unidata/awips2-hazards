@@ -625,14 +625,38 @@ class MetaData:
                 "productString": 
                 '''The heavy rain has ended...and flooding is no longer expected to pose a threat.''',}
  
+        
     # CALLS TO ACTION
-    def getCTAs(self):
+    # Make collapsable
+    def getCTAs(self,values=None):
+ 
+        pageFields = { 
+                         "fieldType":"CheckList",
+                         "label":"Calls to Action (1 or more):",
+                         "fieldName": "cta",
+                         "choices": self.getCTA_Choices()
+                     }
+         
+        if values is not None:
+            pageFields['values'] = values
+             
+             
         return {
-                "fieldType":"CheckList",
-                "label":"Calls to Action (1 or more):",
-                "fieldName": "cta",
-                "choices": self.getCTA_Choices()
+                 
+               "fieldType": "ExpandBar",
+               "fieldName": "CTABar",
+               "expandHorizontally": True,
+               "expandVertically": True,
+               "pages": [
+                            {
+                             "pageName": "Calls to Action",
+                             "pageFields": [pageFields]
+                            }
+                         ]
                 }        
+
+                       
+                       
     def ctaNoCTA(self):
         return {"identifier": "noCTA", 
                 "displayString": "No call to action",
@@ -838,41 +862,79 @@ class MetaData:
          }
         
     # CAP FIELDS
-    def getCAP_Fields(self):    
+    def getCAP_Fields(self,tupleList=None):
+        capFieldsExpandBar = {
+                 
+               "fieldType": "ExpandBar",
+               "fieldName": "CAPBar",
+               "expandHorizontally": True,
+               "expandVertically": True,
+               "pages": [
+                            {
+                             "pageName": "CAP",
+                             "pageFields":self.getCAPFieldEntries()
+                             }
+                         ]
+                }
+         
+        if tupleList is not None:
+            capFieldsExpandBar = self.setCAP_Fields(tupleList)
+         
+        return capFieldsExpandBar
+    
+
+    def getCAPFieldEntries(self):
         return [ 
-               { 
-                'fieldName': 'urgency',
-                'fieldType':'ComboBox',
-                'label':'Urgency:',
-                'expandHorizontally': True,
-                'values': 'Immediate',
-                'choices': ['Immediate', 'Expected', 'Future','Past','Unknown']
-                },
-               {     
-                'fieldName': 'responseType',
-                'fieldType':'ComboBox',
-                'label':'Response Type:',
-                'expandHorizontally': True,
-                'values': 'Avoid',
-                'choices': ['Shelter','Evacuate','Prepare','Execute','Avoid','Monitor','Assess','AllClear','None']
-                },                    
-               { 
-                'fieldName': 'severity',
-                'fieldType':'ComboBox',
-                'label':'Severity:',
-                'expandHorizontally': True,
-                'values': 'Severe',
-                'choices': ['Extreme','Severe','Moderate','Minor','Unknown']
-                },
-               { 
-                'fieldName': 'certainty',
-                'fieldType':'ComboBox',
-                'label':'Certainty:',
-                'expandHorizontally': True,
-                'values': 'Likely',
-                'choices': ['Observed','Likely','Possible','Unlikely','Unknown']
-                },
+                   { 
+                    'fieldName': 'urgency',
+                    'fieldType':'ComboBox',
+                    'label':'Urgency:',
+                    'expandHorizontally': True,
+                    'values': 'Immediate',
+                    'choices': ['Immediate', 'Expected', 'Future','Past','Unknown']
+                    },
+                   {     
+                    'fieldName': 'responseType',
+                    'fieldType':'ComboBox',
+                    'label':'Response Type:',
+                    'expandHorizontally': True,
+                    'values': 'Avoid',
+                    'choices': ['Shelter','Evacuate','Prepare','Execute','Avoid','Monitor','Assess','AllClear','None']
+                    },                    
+                   { 
+                    'fieldName': 'severity',
+                    'fieldType':'ComboBox',
+                    'label':'Severity:',
+                    'expandHorizontally': True,
+                    'values': 'Severe',
+                    'choices': ['Extreme','Severe','Moderate','Minor','Unknown']
+                    },
+                   { 
+                    'fieldName': 'certainty',
+                    'fieldType':'ComboBox',
+                    'label':'Certainty:',
+                    'expandHorizontally': True,
+                    'values': 'Likely',
+                    'choices': ['Observed','Likely','Possible','Unlikely','Unknown']
+                    },
                 ]  + [self.CAP_WEA_Message()]
+
+
+    # Used to be in subclasses                
+    def setCAP_Fields(self, tupleList):
+        # Set the defaults for the CAP Fields
+        ### NOTE - since we are using a ExpandBar, we have to
+        ### mind the structure which is a dict of lists 
+        ### of dicts of lists (seriously)
+         
+        capExpandBar = self.getCAP_Fields()
+        for entry in capExpandBar['pages']:
+            for capFields in entry['pageFields']:
+                for fieldName, values in tupleList:
+                    if capFields["fieldName"] == fieldName:
+                        capFields["values"] = values  
+        return capExpandBar          
+
                  
     def CAP_WEA_Message(self):
         return {                

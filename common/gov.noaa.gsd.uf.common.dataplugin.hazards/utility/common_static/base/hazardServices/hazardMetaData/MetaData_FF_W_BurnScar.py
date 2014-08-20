@@ -19,7 +19,13 @@ class MetaData(CommonMetaData.MetaData):
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
                      self.getVolcano(),                  
-                    ] + self.setCAP_Fields()
+                     self.getCAP_Fields([
+                                          ("urgency", "Immediate"),
+                                          ("severity", "Severe"),
+                                          ("certainty", "Likely"),
+                                          ("responseType", "Avoid"),
+                                         ])
+                    ]
         return {
                 METADATA_KEY: metaData
                 }    
@@ -241,13 +247,22 @@ class MetaData(CommonMetaData.MetaData):
 
     # ADDITIONAL INFORMATION -- 'additionalChoices'
     def additionalInfoChoices(self):
-        if self.previewState == "ENDED":
-            return [ 
-                self.recedingWater(),
-                self.rainEnded(),
-                ]
-        else:
-            return [ 
+        ### FIXME: Not sure why this logic is here. Can't find
+        ### and mention of 'previewState' in all of HazSvcs (klm 20140723)
+        #=======================================================================
+        # if self.previewState == "ENDED":
+        #     return [ 
+        #         self.recedingWater(),
+        #         self.rainEnded(),
+        #         ]
+        # else:
+        #     return [ 
+        #         self.listOfCities(),
+        #         self.listOfDrainages(),
+        #         self.floodMoving(),
+        #         ]
+        #=======================================================================
+        return [ 
                 self.listOfCities(),
                 self.listOfDrainages(),
                 self.floodMoving(),
@@ -398,22 +413,6 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaReportFlooding(),
             ]
          
-    # CAP fields        
-    def setCAP_Fields(self):
-        # Set the defaults for the CAP Fields
-        capFields = self.getCAP_Fields()
-        for entry in capFields:
-            entryFieldName = entry["fieldName"]
-            # Urgency, Severity, Certainty, ResponseType
-            for fieldName, values in [
-                        ("urgency", "Immediate"),
-                        ("severity", "Severe"),
-                        ("certainty", "Likely"),
-                        ("responseType", "Avoid"),
-                        ]:
-                if entryFieldName == fieldName:
-                    entry["values"] = values
-        return capFields          
         
     def CAP_WEA_Values(self):
         if self.hazardStatus == "PENDING":

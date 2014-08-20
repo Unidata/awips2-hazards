@@ -16,21 +16,18 @@ class MetaData(CommonMetaData.MetaData):
                      self.getFloodSeverity(),
                      self.getFloodRecord(),
                      self.getDebrisFlowOptions(),
-                     self.getCTAs(),                    
-                    ] + self.setCAP_Fields()
+                     self.getCTAs("stayTunedCTA"),                    
+                     self.getCAP_Fields([
+                                         ("urgency", "Future"),
+                                         ("severity", "Severe"),
+                                         ("certainty", "Possible"),
+                                         ("responseType", "Prepare"),
+                                        ])
+                    ]
         return {
                 METADATA_KEY: metaData
                 }    
                 
-        # CALLS TO ACTION
-    def getCTAs(self):
-        return {
-                "fieldType":"CheckList",
-                "label":"Calls to Action (1 or more):",
-                "fieldName": "cta",
-                "values": ["stayTunedCTA"],
-                "choices": self.getCTA_Choices()
-                }        
     def getCTA_Choices(self):
         return [
             self.ctaNoCTA(),
@@ -39,18 +36,3 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaReportFlooding(),
             ]
 
-    # CAP fields        
-    def setCAP_Fields(self):
-        # Set the defaults for the CAP Fields
-        capFields = self.getCAP_Fields()
-        for entry in capFields:
-            for fieldName, values in [
-                        ("urgency", "Future"),
-                        ("severity", "Severe"),
-                        ("certainty", "Possible"),
-                        ("responseType", "Prepare"),
-                        ]:
-                if entry["fieldName"] == fieldName:
-                    entry["values"] = values  
-        return capFields          
-        

@@ -20,7 +20,13 @@ class MetaData(CommonMetaData.MetaData):
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
                      self.getVolcano(),                  
-                    ] + self.setCAP_Fields()
+                     self.getCAP_Fields([
+                                          ("urgency", "Immediate"),
+                                          ("severity", "Severe"),
+                                          ("certainty", "Likely"),
+                                          ("responseType", "Avoid"),
+                                         ]) 
+                        ]
         elif self.hazardStatus == "issued":
             metaData = [
                      self.getFloodSeverity(),
@@ -431,23 +437,6 @@ class MetaData(CommonMetaData.MetaData):
             } 
 
          
-    # CAP fields        
-    def setCAP_Fields(self):
-        # Set the defaults for the CAP Fields
-        capFields = self.getCAP_Fields()
-        for entry in capFields:
-            entryFieldName = entry["fieldName"]
-            # Urgency, Severity, Certainty, ResponseType
-            for fieldName, values in [
-                        ("urgency", "Immediate"),
-                        ("severity", "Severe"),
-                        ("certainty", "Likely"),
-                        ("responseType", "Avoid"),
-                        ]:
-                if entryFieldName == fieldName:
-                    entry["values"] = values
-        return capFields          
-        
     def CAP_WEA_Values(self):
         if self.hazardStatus == "pending":
            return ["WEA_activated"]

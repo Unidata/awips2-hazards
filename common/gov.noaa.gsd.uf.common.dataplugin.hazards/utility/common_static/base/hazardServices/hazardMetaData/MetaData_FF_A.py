@@ -14,7 +14,13 @@ class MetaData(CommonMetaData.MetaData):
                     self.getImmediateCause(),
                     self.basisStatement(),
                     self.getCTAs(),                    
-                    ] + self.setCAP_Fields()
+                    self.getCAP_Fields([
+                                          ("urgency", "Future"),
+                                          ("severity", "Severe"),
+                                          ("certainty", "Possible"),
+                                          ("responseType", "Monitor"),
+                                        ]) 
+                    ]
         return {
                 METADATA_KEY: metaData
                 }    
@@ -65,21 +71,6 @@ class MetaData(CommonMetaData.MetaData):
              "fieldName": "basis",
              "expandHorizontally": True,
              "visibleChars": 12,
-             #"values": "|* Enter basis text *|",
              "values": "Enter basis text",
             } 
                    
-    # CAP fields        
-    def setCAP_Fields(self):
-        # Set the defaults for the CAP Fields
-        capFields = self.getCAP_Fields()
-        for entry in capFields:
-            for fieldName, values in [
-                ("urgency", "Future"),
-                ("severity", "Severe"),
-                ("certainty", "Possible"),
-                ("responseType", "Monitor"),
-                ]:
-                if entry["fieldName"] == fieldName:
-                    entry["values"] = values  
-        return capFields          

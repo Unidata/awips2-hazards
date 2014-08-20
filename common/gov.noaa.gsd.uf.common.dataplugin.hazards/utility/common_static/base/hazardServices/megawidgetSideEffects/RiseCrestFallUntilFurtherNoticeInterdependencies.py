@@ -21,6 +21,11 @@
 #                                                 in the session event manager).
 #
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
+    parm = "impacts"
+    ### FIXME: very specific hard coding here.  Need to make more flexible.
+    triggerFieldName = parm + "SelectedForecastPointsComboBox"
+    mutableFieldName = parm + "StringForStageFlowTextArea"
+
     
     # Do nothing unless the "until further notice" checkbox has changed state, or
     # initialization is occurring.
@@ -47,7 +52,7 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
         # initialization.
         from VTECConstants import UFN_TIME_VALUE_SECS
         ufnTime = UFN_TIME_VALUE_SECS * 1000L
-	if "riseAbove:crest:fallBelow" in mutableProperties:
+        if "riseAbove:crest:fallBelow" in mutableProperties:
             if editable == False and \
                     mutableProperties["riseAbove:crest:fallBelow"]["values"]["fallBelow"] != ufnTime:
                 
@@ -81,5 +86,20 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
                 return { "riseAbove:crest:fallBelow": { "valueEditables": { "fallBelow": editable } } }
         else:
             return None
+    
+    ### For Impacts and Crests interaction
+    if triggerIdentifiers == None or triggerFieldName in triggerIdentifiers:
+             
+            if triggerFieldName in mutableProperties and "values" in mutableProperties[triggerFieldName]:
+                line = mutableProperties[triggerFieldName]["values"]
+                vals = filter(None,line.split('::'))
+                
+                return {
+                        "impactsStringForStageFlowTextArea": { "values" : vals[0] }
+                        }
+                
+            else:
+                return None
+        
     else:
         return None

@@ -13,7 +13,13 @@ class MetaData(CommonMetaData.MetaData):
                     self.getBasis(),
                     self.getAdditionalInfo(),
                     self.getCTAs(),                    
-                    ] + self.setCAP_Fields()
+                    self.getCAP_Fields([
+                                          ("urgency", "Expected"),
+                                          ("severity", "Minor"),
+                                          ("certainty", "Likely"),
+                                          ("responseType", "Avoid"),
+                                        ]) 
+                    ]
         return {
                 METADATA_KEY: metaData
                 }    
@@ -109,18 +115,4 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaReportFlooding(),
             ]
         
-    # CAP fields        
-    def setCAP_Fields(self):
-        # Set the defaults for the CAP Fields
-        capFields = self.getCAP_Fields()
-        for entry in capFields:
-            for fieldName, values in [
-                ("urgency", "Expected"),
-                ("severity", "Minor"),
-                ("certainty", "Likely"),
-                ("responseType", "Avoid"),
-                ]:
-                if entry["fieldName"] == fieldName:
-                    entry["values"] = values  
-        return capFields          
 

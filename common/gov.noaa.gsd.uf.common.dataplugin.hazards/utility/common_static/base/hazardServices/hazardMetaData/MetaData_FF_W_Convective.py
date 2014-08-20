@@ -19,8 +19,13 @@ class MetaData(CommonMetaData.MetaData):
                     self.getDebrisFlowOptions(),
                     self.getAdditionalInfo(),
                     self.getCTAs(),                    
-                    ] + self.setCAP_Fields()
-
+                    self.getCAP_Fields([
+                                        ("urgency", "Immediate"),
+                                        ("severity", "Severe"),
+                                        ("certainty", "Likely"),
+                                        ("responseType", "Avoid"),
+                                       ])
+                    ]
         return {
                 METADATA_KEY: metaData
                 }    
@@ -75,23 +80,6 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaReportFlooding(),
             ]
 
-    # CAP fields        
-    def setCAP_Fields(self):
-        # Set the defaults for the CAP Fields
-        capFields = self.getCAP_Fields()
-        for entry in capFields:
-            entryFieldName = entry["fieldName"]
-            # Urgency, Severity, Certainty, ResponseType
-            for fieldName, values in [
-                        ("urgency", "Immediate"),
-                        ("severity", "Severe"),
-                        ("certainty", "Likely"),
-                        ("responseType", "Avoid"),
-                        ]:
-                if entryFieldName == fieldName:
-                    entry["values"] = values
-        return capFields          
-        
     def CAP_WEA_Values(self):
         if self.hazardStatus == "pending":
                 return ["WEA_activated"] 

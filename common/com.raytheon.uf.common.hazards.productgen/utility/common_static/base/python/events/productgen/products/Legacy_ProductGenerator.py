@@ -1665,11 +1665,20 @@ class Product(ProductTemplate.Product):
                          productCategory=self._productCategory, productID=self._product.productID)
     
     def _pointImpactsBullet(self, sectionDict, productSegmentGroup, arguments):
+        impacts = self._section.hazardEvent.get('impactsStringForStageFlowTextArea')
+        
         productSegment_tuple, vtecRecord, formatArgs = arguments
+        
         bulletContent = ''
         if self._productSegment.ctas:
             bulletContent = ' '.join(self._productSegment.ctas)
-        self._tpc.setVal(sectionDict, 'pointImpactsBullet', bulletContent, formatMethod=self._section.bulletFormat, formatArgs='Impact...',
+            
+        if impacts:
+           impactsString = impacts + ' ' + bulletContent
+        else:
+           impactsString =  bulletContent
+           
+        self._tpc.setVal(sectionDict, 'pointImpactsBullet', impactsString, formatMethod=self._section.bulletFormat, formatArgs='Impact...',
                          productCategory=self._productCategory, productID=self._product.productID) 
     
     def _floodHistoryBullet(self, sectionDict, productSegmentGroup, arguments):
@@ -1677,8 +1686,12 @@ class Product(ProductTemplate.Product):
         FLOOD HISTORY...THIS CREST COMPARES TO A PREVIOUS CREST OF <HistCrestStg> <ImpCompUnits> on <HistCrestDate>.
         '''
         productSegment_tuple, vtecRecord, formatArgs = arguments
-        # ImpCompUnits -- self._rfp.getStageFlowUnits(self._productSegment.pointID)
-        self._tpc.setVal(sectionDict, 'floodHistoryBullet', 'Flood history bullet', formatMethod=self._section.bulletFormat,
+        crestString = ''
+        crestContents = self._section.hazardEvent.get('crestsSelectedForecastPointsComboBox')
+        if crestContents is not None:
+            crest,crestDate = crestContents.split(' :: ')
+            crestString = "This crest compares to a previous crest of " + crest + " <ImpCompUnits> on " + crestDate +"."
+        self._tpc.setVal(sectionDict, 'floodHistoryBullet', crestString, formatMethod=self._section.bulletFormat, formatArgs='FLOOD HISTORY...',
                          productCategory=self._productCategory, productID=self._product.productID) 
            
     def _endingSynopsis(self, sectionDict, productSegmentGroup, arguments):

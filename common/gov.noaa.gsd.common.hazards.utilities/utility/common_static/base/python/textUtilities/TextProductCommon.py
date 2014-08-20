@@ -425,6 +425,7 @@ class TextProductCommon(object):
         returned would then be 'Excessive rain causing Flash Flooding was occurring over the warned area.'
         '''   
         value = hazardEvent.get(fieldName) 
+        import inspect
         if not value:
             return '' 
         if type(value) is types.ListType:
@@ -437,6 +438,34 @@ class TextProductCommon(object):
                 return returnList
         else:
             return self.getMetaDataValue(hazardEvent, metaData, fieldName, value)
+
+
+
+    
+        
+    def getEmbeddedDict(self, node, keyValue, search):
+        """
+        Recursive method to extract an embedded megawidget within a nested list/dict based
+        on the field name
+        @param node: the next node in the nested list/dict
+        @param keyValue: key value - usually will be megawidget 'fieldName'
+        @param search: the fieldName we're looking for. Ie. 'cta'
+        """
+        if isinstance(node, list):
+            for element in node:
+                result =  self.getEmbeddedDict(element, keyValue, search)
+                if result is not None:
+                   return result
+        elif isinstance(node, dict):
+            if keyValue in node:
+                if node[keyValue] == search:
+                    return node
+            for value in node.values():
+                result =  self.getEmbeddedDict(value, keyValue, search)
+                if result is not None:
+                   return result
+
+
 
     def getMetaDataValue(self, hazardEvent, metaData, fieldName, value):                     
         '''
@@ -477,25 +506,26 @@ class TextProductCommon(object):
 
         '''    
         returnVal = ''
-        for widget in metaData:
-            if widget.get('fieldName') == fieldName:
-                for choice in widget.get('choices'):
-                    if choice.get('identifier') == value or choice.get('displayString') == value:
-                        returnVal = choice.get('productString')
-                        if returnVal is None:
-                            returnVal = choice.get('displayString')
-                        returnVal = returnVal.replace('  ', '')
-                        returnVal = returnVal.replace('\n', ' ')
-                        returnVal = returnVal.replace('</br>', '\n')
-                        # Search for #...# values  e.g. floodLocation
-                        hashTags = self.getFramedValues(returnVal, '#', '#')
-                        for hashTag in hashTags:
-                            eventValue = hazardEvent.get(hashTag)
-                            if eventValue is not None:
-                                replaceVal = eventValue
-                            else:
-                                replaceVal = self.frame(hashTag)
-                            returnVal = returnVal.replace('#'+hashTag+'#', replaceVal) 
+        widget = self.getEmbeddedDict(metaData, 'fieldName', fieldName)
+        
+        if widget is not None:
+            for choice in widget.get('choices'):
+                if choice.get('identifier') == value or choice.get('displayString') == value:
+                    returnVal = choice.get('productString')
+                    if returnVal is None:
+                        returnVal = choice.get('displayString')
+                    returnVal = returnVal.replace('  ', '')
+                    returnVal = returnVal.replace('\n', ' ')
+                    returnVal = returnVal.replace('</br>', '\n')
+                    # Search for #...# values  e.g. floodLocation
+                    hashTags = self.getFramedValues(returnVal, '#', '#')
+                    for hashTag in hashTags:
+                        eventValue = hazardEvent.get(hashTag)
+                        if eventValue is not None:
+                            replaceVal = eventValue
+                        else:
+                            replaceVal = self.frame(hashTag)
+                        returnVal = returnVal.replace('#'+hashTag+'#', replaceVal) 
         return returnVal
     
     def getFramedValues(self, text, beginStr='|* ', endStr=' *|'):
