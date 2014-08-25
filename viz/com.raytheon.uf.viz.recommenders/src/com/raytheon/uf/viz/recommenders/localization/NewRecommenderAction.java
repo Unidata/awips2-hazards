@@ -29,7 +29,7 @@ import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.productgen.localization.AbstractNewActionBasedVelocity;
+import com.raytheon.uf.viz.python.localization.AbstractNewActionBasedVelocity;
 
 /**
  * Action for the localization perspective to create a new recommender with the

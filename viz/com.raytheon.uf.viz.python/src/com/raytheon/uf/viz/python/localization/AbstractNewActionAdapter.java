@@ -17,13 +17,15 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.productgen.localization;
+package com.raytheon.uf.viz.python.localization;
 
-import org.eclipse.jface.action.IAction;
+import org.eclipse.jface.action.IMenuManager;
+
+import com.raytheon.uf.viz.localization.filetreeview.FileTreeEntryData;
 
 /**
- * A generic interface that any action classes that use velocity to generate a python
- * file implement.
+ * Adds a "New ..." menu action to the localization menu for certain file types.
+ * Child classes supply the action that must be an INewBasedVelocity action.
  * 
  * <pre>
  * 
@@ -31,7 +33,7 @@ import org.eclipse.jface.action.IAction;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Nov 25, 2013            bkowal      Initial creation
+ * Nov 25, 2013            bkowal     Initial creation
  * 
  * </pre>
  * 
@@ -39,5 +41,18 @@ import org.eclipse.jface.action.IAction;
  * @version 1.0
  */
 
-public interface INewBasedVelocityAction extends IAction {
+public abstract class AbstractNewActionAdapter extends CopyPythonClassesAdapter {
+
+    @Override
+    public boolean addContextMenuItems(IMenuManager menuMgr,
+            FileTreeEntryData[] selectedData) {
+        super.addContextMenuItems(menuMgr, selectedData);
+        if (selectedData.length == 1
+                && selectedData[0].getClass() == FileTreeEntryData.class) {
+            menuMgr.add(this.getLocalizationAction());
+        }
+        return false;
+    }
+
+    abstract protected INewBasedVelocityAction getLocalizationAction();
 }

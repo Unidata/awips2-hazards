@@ -19,8 +19,8 @@
  **/
 package com.raytheon.uf.viz.recommenders.localization;
 
-import com.raytheon.uf.viz.productgen.localization.AbstractNewActionAdapter;
-import com.raytheon.uf.viz.productgen.localization.INewBasedVelocityAction;
+import com.raytheon.uf.viz.python.localization.AbstractNewActionAdapter;
+import com.raytheon.uf.viz.python.localization.INewBasedVelocityAction;
 
 /**
  * Adds ability to grab recommender template directly in Localization

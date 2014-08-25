@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.viz.productgen.localization;
 
+import com.raytheon.uf.viz.python.localization.AbstractNewActionAdapter;
+import com.raytheon.uf.viz.python.localization.INewBasedVelocityAction;
+
 /**
  * Add ability to grab product template directly in Localization
  * Perspective.

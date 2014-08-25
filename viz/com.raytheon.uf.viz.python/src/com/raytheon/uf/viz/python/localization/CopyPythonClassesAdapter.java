@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.productgen.localization;
+package com.raytheon.uf.viz.python.localization;
 
 import org.apache.commons.io.FilenameUtils;
 import org.eclipse.jface.action.IMenuManager;

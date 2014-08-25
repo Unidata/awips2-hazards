@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.viz.productgen.localization;
 
+import com.raytheon.uf.viz.python.localization.AbstractNewActionAdapter;
+import com.raytheon.uf.viz.python.localization.INewBasedVelocityAction;
+
 /**
  * Adds ability to grab formatter template directly in Localization Perspective.
  * 

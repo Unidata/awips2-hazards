@@ -19,8 +19,15 @@
  **/
 package com.raytheon.uf.viz.recommenders;
 
+import java.io.Serializable;
+import java.util.Map;
+
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.python.concurrent.PythonJobCoordinator;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
+import com.raytheon.uf.viz.python.VizPythonJob;
 
 /**
  * A single class in which all recommender actions will go through.
@@ -57,5 +64,40 @@ public final class CAVERecommenderEngine extends
     protected PythonJobCoordinator<CAVERecommenderScriptManager> getCoordinator() {
         factory = new CAVERecommenderPythonFactory();
         return PythonJobCoordinator.newInstance(factory);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.recommenders.AbstractRecommenderEngine#
+     * runExecuteRecommender(java.lang.String,
+     * com.raytheon.uf.common.dataplugin.events.EventSet, java.util.Map,
+     * java.util.Map,
+     * com.raytheon.uf.common.python.concurrent.IPythonJobListener)
+     */
+    @Override
+    public void runExecuteRecommender(String recommenderName,
+            EventSet<IEvent> eventSet, Map<String, Serializable> spatialInfo,
+            Map<String, Serializable> dialogInfo,
+            IPythonJobListener<EventSet<IEvent>> listener) {
+        VizPythonJob<EventSet<IEvent>> job = new VizPythonJob<>(
+                recommenderName, listener);
+        super.runExecuteRecommender(recommenderName, eventSet, spatialInfo,
+                dialogInfo, job);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.recommenders.AbstractRecommenderEngine#
+     * runEntireRecommender(java.lang.String,
+     * com.raytheon.uf.common.python.concurrent.IPythonJobListener)
+     */
+    @Override
+    public void runEntireRecommender(String recommenderName,
+            IPythonJobListener<EventSet<IEvent>> listener) {
+        VizPythonJob<EventSet<IEvent>> job = new VizPythonJob<>(
+                recommenderName, listener);
+        super.runEntireRecommender(recommenderName, job);
     }
 }
