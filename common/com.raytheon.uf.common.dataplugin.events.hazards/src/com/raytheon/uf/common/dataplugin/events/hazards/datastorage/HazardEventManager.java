@@ -117,50 +117,6 @@ public class HazardEventManager implements IHazardEventManager {
     }
 
     /**
-     * Retrieve the required fields from the python scripts
-     * 
-     * @return
-     */
-    private Map<String, List<String>> getRequiredFields() {
-        IPathManager manager = PathManagerFactory.getPathManager();
-        Map<LocalizationLevel, LocalizationFile> files = manager
-                .getTieredLocalizationFile(LocalizationType.CAVE_STATIC,
-                        "hazards" + File.separator + "HazardRequiredFields.py");
-        LocalizationFile executeFile = manager.getLocalizationFile(manager
-                .getContext(LocalizationType.CAVE_STATIC,
-                        LocalizationLevel.BASE), "hazards" + File.separator
-                + "LoadConfig.py");
-        String configPath = "";
-
-        ArrayList<LocalizationLevel> keys = new ArrayList<LocalizationLevel>(
-                files.keySet());
-        Collections.sort(keys);
-
-        Map<String, List<String>> fields = new HashMap<String, List<String>>(1);
-        Map<String, Object> args = new HashMap<String, Object>(1);
-
-        for (LocalizationLevel level : keys) {
-            try {
-                PythonScript py = new PythonScript(executeFile.getFile()
-                        .getAbsolutePath(),
-                        HazardEventManager.class.getClassLoader());
-                // TODO need to tell python which one to execute, using level
-                fields.putAll((Map<String, List<String>>) py.execute(
-                        "loadConfig", args));
-            } catch (JepException e) {
-                statusHandler
-                        .handle(Priority.PROBLEM,
-                                "Unable to load "
-                                        + level.name()
-                                        + " hazard required fields, validation will not occur with them",
-                                e);
-            }
-        }
-
-        return fields;
-    }
-
-    /**
      * Creates an event based on the mode.
      */
     @Override
