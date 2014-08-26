@@ -20,17 +20,12 @@
 package com.raytheon.uf.common.serialization.comm;
 
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-
-import org.junit.Before;
-import org.junit.Test;
 
 import com.raytheon.uf.common.auth.RequestConstants;
 import com.raytheon.uf.common.registry.RegistryConstants;
 import com.raytheon.uf.common.util.DeployTestProperties;
 import com.raytheon.uf.common.util.registry.RegistryException;
-import com.raytheon.uf.edex.auth.RemoteServerRequestRouter;
+import com.raytheon.uf.edex.requestsrv.router.RemoteServerRequestRouter;
 
 /**
  * Test {@link RequestRouter}.

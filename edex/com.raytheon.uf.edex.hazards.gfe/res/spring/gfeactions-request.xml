@@ -10,7 +10,7 @@
     </bean>
 
 	<bean id="hazardEventHandler"
-		class="com.raytheon.uf.edex.hazards.gfe.HazardEventHandler" factory-method="getInstance" depends-on="serializeServer, getGridParmInfoRequestRegister, gfeSitesActiveRequest, getGridInventoryRequestRegister, getGridHistoryRequestRegister"/> 
+		class="com.raytheon.uf.edex.hazards.gfe.HazardEventHandler" factory-method="getInstance" depends-on="getGridParmInfoRequestRegister, gfeSitesActiveRequest, getGridInventoryRequestRegister, getGridHistoryRequestRegister"/> 
 
 	<bean id="activeTableRemover"
 		class="com.raytheon.uf.edex.hazards.gfe.ActiveTableRemover" factory-method="getInstance"/> 
