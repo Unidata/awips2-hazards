@@ -27,9 +27,7 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict = {}
         metaDict["toolName"] = "ModifyStormTrackTool"
         metaDict["author"] = "GSD"
-        metaDict["toolType"] = "Recommender"
-        metaDict["outputFormat"] = "PYTHON"
-        metaDict["returnType"] = "ModifiedEventDict"
+        metaDict["version"] = "1.0"
         metaDict["eventState"] = "Pending"
         return metaDict
 

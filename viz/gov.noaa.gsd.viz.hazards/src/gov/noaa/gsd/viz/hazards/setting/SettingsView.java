@@ -78,6 +78,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  *                                           changes.
  * Jun 30, 2014    3512    Chris.Golden      Changed to work with more megawidget
  *                                           manager changes.
+ * Aug 28, 2014    3768    Robert.Blum       Changed to sort the settings menu and 
+ *                                           to load a valid setting on a delete.
  * </pre>
  * 
  * @author Chris.Golden
@@ -173,7 +175,25 @@ public class SettingsView implements
                                 iter.remove();
                             }
                         }
-                        setSettings(availableSettings);
+
+                        /*
+                         * Select the new setting to be selected. Currently just
+                         * the first in the list.
+                         */
+                        if (iter.hasNext()) {
+                            String id = availableSettings.iterator().next()
+                                    .getSettingsID();
+
+                            /*
+                             * Need to select a new setting since the current
+                             * one was deleted, fire off the action.
+                             */
+                            presenter
+                                    .fireAction(new StaticSettingsAction(
+                                            StaticSettingsAction.ActionType.SETTINGS_CHOSEN,
+                                            id));
+                        }
+
                     }
                 }
             }
@@ -551,6 +571,11 @@ public class SettingsView implements
             String identifier = settings.getSettingsID();
             settingIdentifiersForNames.put(name, identifier);
         }
+
+        /*
+         * Alphabetize the settingsNames
+         */
+        Collections.sort(settingNames);
 
         /*
          * Notify the settings pulldown that the settings have changed.

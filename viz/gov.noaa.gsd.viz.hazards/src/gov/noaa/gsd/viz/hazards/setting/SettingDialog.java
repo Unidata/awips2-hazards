@@ -25,12 +25,15 @@ import java.util.Map;
 import org.eclipse.jface.dialogs.IInputValidator;
 import org.eclipse.jface.dialogs.InputDialog;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
@@ -63,6 +66,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  *                                         changes.
  * Jun 30, 2014   3512     Chris.Golden    Changed to work with more megawidget
  *                                         manager changes.
+ * Aug 27, 2014   3768     Robert.Blum     Added ability to select recommenders as 
+ *                                         part of the settings dialog.
  * </pre>
  * 
  * @author Chris.Golden
@@ -184,6 +189,11 @@ class SettingDialog extends BasicDialog {
      * Values dictionary, used to hold the dialog's widgets' values.
      */
     private Settings values;
+
+    /**
+     * Recommender Composite.
+     */
+    private Composite recommenderComp;
 
     /**
      * Current time provider.
@@ -354,6 +364,7 @@ class SettingDialog extends BasicDialog {
             statusHandler.error(
                     "Failed to convert the Current Settings to a Java Map!", e);
         }
+        createRecommenderComposite();
         return top;
     }
 
@@ -452,5 +463,33 @@ class SettingDialog extends BasicDialog {
      */
     private void fireAction(StaticSettingsAction action) {
         presenter.fireAction(action);
+    }
+
+    /**
+     * Adds a RecommenderInventoryComposite to the SWTWrapperMegawidget's
+     * composite.
+     */
+    private void createRecommenderComposite() {
+        Composite wrapperComposite = megawidgetManager.getSwtWrapper(
+                "Recommenders").getWrapperComposite();
+
+        GridLayout gl = new GridLayout(1, false);
+        gl.marginHeight = 0;
+        gl.marginWidth = 0;
+
+        SashForm sashForm = new SashForm(wrapperComposite, SWT.VERTICAL);
+        sashForm.SASH_WIDTH = 5;
+        sashForm.setLayout(gl);
+        sashForm.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+        sashForm.setBackground(Display.getCurrent().getSystemColor(
+                SWT.COLOR_DARK_GRAY));
+
+        wrapperComposite.setLayout(gl);
+        wrapperComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true,
+                true));
+
+        recommenderComp = new RecommenderInventoryComposite(sashForm, presenter);
+        sashForm.setWeights(new int[] { 80, 20 });
+        megawidgetManager.getSwtWrapper("Recommenders").sizeChanged();
     }
 }

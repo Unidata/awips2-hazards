@@ -1,33 +1,33 @@
 siteIDs = [ 
                      {
-                      "displayString": "BOU", 
+                      "displayString": "BOU",
                      },
                      {
-                      "displayString": "PUB", 
+                      "displayString": "PUB",
                      },
                      {
-                      "displayString": "GJT", 
+                      "displayString": "GJT",
                      },
                      {
-                      "displayString": "CYS", 
+                      "displayString": "CYS",
                      },
                      {
-                      "displayString": "OAX", 
+                      "displayString": "OAX",
                      },
                      {
-                      "displayString": "FSD", 
+                      "displayString": "FSD",
                      },
                      {
                       "displayString": "DMX",
                      },
                      {
-                      "displayString": "GID", 
+                      "displayString": "GID",
                      },
                      {
-                      "displayString": "EAX", 
+                      "displayString": "EAX",
                      },
                      {
-                      "displayString": "TOP", 
+                      "displayString": "TOP",
                      },
                      {
                       "displayString": "RAH"
@@ -36,18 +36,18 @@ siteIDs = [
 
 statuses = [ 
                      {
-                      "displayString": "potential", 
+                      "displayString": "potential",
                      },
                      {
-                      "displayString": "proposed", 
-                     },
-
-                     {
-                      "displayString": "pending", 
+                      "displayString": "proposed",
                      },
 
                      {
-                      "displayString": "issued", 
+                      "displayString": "pending",
+                     },
+
+                     {
+                      "displayString": "issued",
                      },
 
                      {
@@ -61,25 +61,25 @@ statuses = [
             ]
 columns = [ 
                      {
-                      "displayString": "Event ID", 
+                      "displayString": "Event ID",
                      },
                      {
-                      "displayString": "Hazard Type", 
+                      "displayString": "Hazard Type",
                      },
                      {
                       "displayString": "Status",
                      },
                      {
-                      "displayString": "Start Time", 
+                      "displayString": "Start Time",
                      },
                      {
-                      "displayString": "End Time", 
+                      "displayString": "End Time",
                      },
                      {
-                      "displayString": "Phen", 
+                      "displayString": "Phen",
                      },
                      {
-                      "displayString": "Sig", 
+                      "displayString": "Sig",
                      },
                      {
                       "displayString": "Expiration Time",
@@ -91,10 +91,10 @@ columns = [
                       "displayString": "Issue Time",
                      },
                      {
-                      "displayString": "Site ID", 
+                      "displayString": "Site ID",
                      },
                      {
-                      "displayString": "VTEC Codes", 
+                      "displayString": "VTEC Codes",
                      },
                      {
                       "displayString": "ETNs"
@@ -136,6 +136,7 @@ viewConfig = [
                "bottomMargin": 7,
                "spacing": 10,
                "expandHorizontally": 1,
+               "expandVertically": 1,
                "pages": [
                          {
                           "pageName": "Hazards Filter",
@@ -155,7 +156,7 @@ viewConfig = [
                                           "choices": siteIDs,
                                           "lines": 16,
                                           "columnName": "Site ID"
-                                         },              
+                                         },
                                          {
                                           "fieldName": "visibleStatuses",
                                           "label": "Status:",
@@ -189,8 +190,15 @@ viewConfig = [
                                          },
                                         ],
                          },
+                         {
+                          "pageName": "Recommenders",
+                          "pageFields": [
+                                         {
+                                          "fieldType": "SwtWrapper",
+                                          "fieldName": "Recommenders",
+                                         },
+                                        ],
+                         },
                         ],
               },
             ]
-              
-                

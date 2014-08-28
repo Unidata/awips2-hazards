@@ -74,9 +74,8 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict = {}
         metaDict["toolName"] = "RiverFloodRecommender"
         metaDict["author"] = "GSD"
-        metaDict["toolType"] = "Recommender"
-        metaDict["outputFormat"] = "PYTHON"
-        metaDict["returnType"] = "IEvent List"
+        metaDict["version"] = "1.0"
+        metaDict["description"] = "Builds recommendations based on river gauge points and hydro data."
         metaDict["eventState"] = "Potential"
         return metaDict
 

@@ -97,8 +97,8 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict = {}
         metaDict['toolName'] = 'Flash Flood Recommender'
         metaDict['author'] = 'GSD'
-        metaDict['toolType'] = 'Recommender'
-        metaDict['returnType'] = 'IEvent List'
+        metaDict['version'] = '1.0'
+        metaDict['description'] = 'Uses FFMP data to get current and aggregated data similar to FFMP..'
         metaDict['eventState'] = 'Potential'
         
         return metaDict

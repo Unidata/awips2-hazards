@@ -35,9 +35,8 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict = {}
         metaDict["toolName"] = "DamBreakFloodRecommender"
         metaDict["author"] = "GSD"
-        metaDict["toolType"] = "Recommender"
-        metaDict["outputFormat"] = "PYTHON"
-        metaDict["returnType"] = "IEvent List"
+        metaDict["version"] = "1.0"
+        metaDict["description"] = "Calculates inundation areas based on dams."
         metaDict["eventState"] = "Pending"
         return metaDict
 

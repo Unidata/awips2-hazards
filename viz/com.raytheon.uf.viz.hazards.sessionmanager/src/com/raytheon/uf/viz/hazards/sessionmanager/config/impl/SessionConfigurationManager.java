@@ -38,6 +38,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -131,6 +132,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      trying to retrieve hazard event metadata.
  * Jul 03, 2014  3512      Chris.Golden Added ability to fetch duration choices for hazard
  *                                      events, and also default durations.
+ * Aug 28, 2014  3768      Robert.Blum  Modified the deleteSetting() function to correclty
+ *                                      remove the settings.
  * </pre>
  * 
  * @author bsteffen
@@ -467,7 +470,14 @@ public class SessionConfigurationManager implements
             } else {
                 getUserSettings().write("".getBytes());
             }
-            allSettings.remove(settings);
+            Iterator<ConfigLoader<Settings>> iter = allSettings.iterator();
+            while (iter.hasNext()) {
+                Settings available = iter.next().getConfig();
+                String id = available.getSettingsID();
+                if (id.equals(settings.getSettingsID())) {
+                    iter.remove();
+                }
+            }
         } catch (LocalizationException e) {
             statusHandler.handle(Priority.PROBLEM, "Unable to delete "
                     + settings.getDisplayName() + " setting.", e);
