@@ -301,9 +301,11 @@ public class SelectByAreaDrawingActionGeometryResource extends
                         zoneDisplay.setSelectedGeometries(selectedGeoms);
 
                         try {
-                            IHazardEvent hazardEvent = new HazardEventBuilder(
-                                    sessionManager)
+                            HazardEventBuilder hazardEventBuilder = new HazardEventBuilder(
+                                    sessionManager);
+                            IHazardEvent hazardEvent = hazardEventBuilder
                                     .buildPolygonHazardEvent(mergedPolygons);
+                            hazardEventBuilder.addEvent(hazardEvent);
                             eventID = hazardEvent.getEventID();
                             SessionEventAdded addAction = new SessionEventAdded(
                                     sessionManager.getEventManager(),

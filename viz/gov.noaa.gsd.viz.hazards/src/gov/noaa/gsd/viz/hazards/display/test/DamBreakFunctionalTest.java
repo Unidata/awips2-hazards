@@ -74,7 +74,7 @@ class DamBreakFunctionalTest extends
     }
 
     @Override
-    protected void run() {
+    public void run() {
         try {
             super.run();
 

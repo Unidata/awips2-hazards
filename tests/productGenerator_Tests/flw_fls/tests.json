@@ -1,0 +1,32 @@
+[  
+  {
+    "commentary": "Single FL.W issuance",
+    "name": "flw_1",
+    "stagingDialogInfo" : {
+      "stagingKey" : "stagingValue"
+    }
+  },
+  {
+    "name": "flw_2",
+    "commentary": "FL.W continuance",
+    "hazardEventOverrides" : [{
+      "endTime" : "2011-02-08T06:00:00.000Z",
+      "cta" : [ "Arroyos...", "Burn Areas..."],
+      "status" : "ISSUED"
+    }],
+    "stagingDialogInfo" : {
+      "stagingKey" : "stagingValue"
+    }
+  },
+  {
+    "commentary": "FL.W end",
+    "name": "flw_3",
+    "hazardEventOverrides" : [{
+      "status" : "ENDING",
+      "endTime" : "2011-02-08T05:30:00.000Z"
+    }],
+    "stagingDialogInfo" : {
+      "stagingKey" : "stagingValue"
+    }
+  }
+]

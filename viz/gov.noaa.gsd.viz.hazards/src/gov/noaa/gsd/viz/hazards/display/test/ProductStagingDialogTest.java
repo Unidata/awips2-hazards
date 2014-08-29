@@ -149,7 +149,7 @@ public class ProductStagingDialogTest extends
                 }
                 stepCompleted();
                 step = Steps.PREVIEW;
-                autoTestUtilities.previewEvent();
+                autoTestUtilities.previewFromHID();
             }
 
         } catch (Exception e) {

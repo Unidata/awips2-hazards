@@ -158,7 +158,7 @@ public class ChangeHazardAreaFunctionalTest extends
                 stepCompleted();
 
                 step = Steps.ISSUE_FLASH_FLOOD_WATCH;
-                autoTestUtilities.issueEvent();
+                autoTestUtilities.issueFromHID();
             }
         } catch (Exception e) {
             handleException(e);
@@ -175,7 +175,7 @@ public class ChangeHazardAreaFunctionalTest extends
             case READY_FOR_PREVIEW:
                 stepCompleted();
                 step = Steps.PREVIEW_MODIFIED_EVENT;
-                autoTestUtilities.previewEvent();
+                autoTestUtilities.previewFromHID();
                 break;
 
             default:

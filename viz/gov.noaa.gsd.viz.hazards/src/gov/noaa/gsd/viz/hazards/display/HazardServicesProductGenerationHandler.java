@@ -334,6 +334,7 @@ class HazardServicesProductGenerationHandler {
             for (IHazardEvent hazardEvent : productInformation
                     .getPossibleProductEvents()) {
                 if (selectedEventIDs.contains(hazardEvent.getEventID())) {
+
                     selectedEvents.add(hazardEvent);
                 }
             }

@@ -772,8 +772,6 @@ public final class HazardConstants {
 
     public static final String IS_VISIBLE_KEY = "isVisible";
 
-    public static final String SHAPES = "shapes";
-
     /*
      * Constants related to the python data dictionary keys
      */

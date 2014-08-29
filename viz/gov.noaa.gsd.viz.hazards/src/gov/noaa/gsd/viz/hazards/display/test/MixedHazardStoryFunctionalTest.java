@@ -167,7 +167,7 @@ class MixedHazardStoryFunctionalTest extends
     }
 
     @Override
-    protected void run() {
+    public void run() {
         try {
             super.run();
 
@@ -288,7 +288,7 @@ class MixedHazardStoryFunctionalTest extends
             case CHANGE_TIME_RANGE:
                 stepCompleted();
                 step = Steps.SELECTION_PREVIEW;
-                autoTestUtilities.previewEvent();
+                autoTestUtilities.previewFromHID();
                 break;
 
             default:
@@ -326,14 +326,14 @@ class MixedHazardStoryFunctionalTest extends
                 }
                 stepCompleted();
                 step = Steps.CONTINUED_PREVIEW_PRODUCTS;
-                autoTestUtilities.previewEvent();
+                autoTestUtilities.previewFromHID();
                 break;
 
             case ENDED_PREVIEW_PRODUCTS:
                 if (action.containsAttribute(ENDING_SYNOPSIS)
                         && action.getAttribute(ENDING_SYNOPSIS).equals(
                                 MY_ENDING_SYNOPSIS)) {
-                    autoTestUtilities.previewEvent();
+                    autoTestUtilities.previewFromHID();
                 }
                 break;
 
@@ -419,7 +419,7 @@ class MixedHazardStoryFunctionalTest extends
                 checkReplacement();
                 stepCompleted();
                 step = Steps.REPLACEMENT_PREVIEW_PRODUCTS;
-                autoTestUtilities.previewEvent();
+                autoTestUtilities.previewFromHID();
                 break;
 
             default:
@@ -521,14 +521,14 @@ class MixedHazardStoryFunctionalTest extends
                 checkSelectionPreview();
                 stepCompleted();
                 step = Steps.SELECTION_ISSUE;
-                issueEvent();
+                issue();
                 break;
 
             case REPLACEMENT_PREVIEW_PRODUCTS:
                 checkReplacementPreview();
                 stepCompleted();
                 step = Steps.REPLACEMENT_ISSUE_PRODUCTS;
-                issueEvent();
+                issue();
                 break;
 
             case REPLACEMENT_ISSUE_PRODUCTS:
@@ -539,7 +539,7 @@ class MixedHazardStoryFunctionalTest extends
                 checkContinuedPreview();
                 stepCompleted();
                 step = Steps.CONTINUED_ISSUE_PRODUCTS;
-                issueEvent();
+                issue();
                 break;
 
             case CONTINUED_ISSUE_PRODUCTS:
@@ -558,7 +558,7 @@ class MixedHazardStoryFunctionalTest extends
                 checkEndedPreview();
                 stepCompleted();
                 step = Steps.ENDED_ISSUE_PRODUCTS;
-                issueEvent();
+                issue();
                 break;
 
             case ENDED_ISSUE_PRODUCTS:
@@ -573,6 +573,10 @@ class MixedHazardStoryFunctionalTest extends
             handleException(e);
         }
 
+    }
+
+    private void issue() {
+        autoTestUtilities.issueFromProductEditor(mockProductEditorView);
     }
 
     private void postContextMenuEvent(String choice) {
@@ -692,10 +696,6 @@ class MixedHazardStoryFunctionalTest extends
         assertTrue(legacy.contains(CAN_VTEC_STRING));
         assertTrue(legacy.contains(MY_ENDING_SYNOPSIS.toUpperCase()));
 
-    }
-
-    private void issueEvent() {
-        mockProductEditorView.invokeIssueButton();
     }
 
     private void replaceEvent(IHazardEvent event, String eventType) {

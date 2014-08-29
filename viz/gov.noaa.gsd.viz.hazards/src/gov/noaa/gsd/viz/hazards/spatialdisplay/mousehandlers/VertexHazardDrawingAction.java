@@ -284,9 +284,7 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
                     hazardEvent = hazardEventBuilder
                             .buildLineHazardEvent(pointsAsArray());
                 }
-
-                sessionManager.getEventManager().addEvent(hazardEvent,
-                        getSpatialPresenter());
+                hazardEventBuilder.addEvent(hazardEvent, getSpatialPresenter());
             } catch (InvalidGeometryException e) {
                 statusHandler.handle(Priority.WARN,
                         "Error drawing vertex polygon: ", e);
@@ -307,8 +305,7 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
         private void createPointShape(Coordinate loc) {
             IHazardEvent hazardEvent = hazardEventBuilder
                     .buildPointHazardEvent(loc);
-            sessionManager.getEventManager().addEvent(hazardEvent,
-                    getSpatialPresenter());
+            hazardEventBuilder.addEvent(hazardEvent, getSpatialPresenter());
         }
     }
 }

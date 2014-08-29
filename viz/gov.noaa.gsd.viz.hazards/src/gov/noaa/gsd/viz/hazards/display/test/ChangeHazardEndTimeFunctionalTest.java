@@ -136,7 +136,7 @@ public class ChangeHazardEndTimeFunctionalTest extends
                 }
                 stepCompleted();
                 step = Steps.PREVIEW_MODIFIED_EVENT;
-                autoTestUtilities.previewEvent();
+                autoTestUtilities.previewFromHID();
                 break;
 
             default:
@@ -159,7 +159,7 @@ public class ChangeHazardEndTimeFunctionalTest extends
             }
             stepCompleted();
             step = Steps.ISSUE_FLASH_FLOOD_WATCH;
-            autoTestUtilities.issueEvent();
+            autoTestUtilities.issueFromHID();
         }
     }
 

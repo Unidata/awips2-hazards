@@ -69,7 +69,7 @@ public class AutomatedTests {
     public AutomatedTests() {
     }
 
-    public void run(final HazardServicesAppBuilder appBuilder) {
+    public void init(final HazardServicesAppBuilder appBuilder) {
 
         this.appBuilder = appBuilder;
         appBuilder.getEventBus().subscribe(this);
@@ -88,7 +88,6 @@ public class AutomatedTests {
         if (testCompleted.getTestClass().equals(
                 MixedHazardStoryFunctionalTest.class)) {
             runTest(new StormTrackFunctionalTest(appBuilder));
-
         }
 
         else if (testCompleted.getTestClass().equals(
@@ -138,6 +137,7 @@ public class AutomatedTests {
         } else {
             functionalTest = null;
             System.out.println("All tests completed");
+            appBuilder.getEventBus().unsubscribe(this);
 
             /**
              * TODO If the HID is detached, in causes a an error in

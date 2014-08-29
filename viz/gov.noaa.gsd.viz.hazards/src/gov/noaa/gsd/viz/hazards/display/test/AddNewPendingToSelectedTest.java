@@ -80,7 +80,7 @@ public class AddNewPendingToSelectedTest extends
     }
 
     @Override
-    protected void run() {
+    public void run() {
         try {
             super.run();
 
@@ -226,7 +226,7 @@ public class AddNewPendingToSelectedTest extends
                             ToolActionEnum.TOOL_RECOMMENDATIONS)) {
                 stepCompleted();
                 step = Steps.PREVIEW;
-                autoTestUtilities.previewEvent();
+                autoTestUtilities.previewFromHID();
             }
 
         } catch (Exception e) {

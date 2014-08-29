@@ -1,0 +1,58 @@
+[
+{
+"startTime":"2011-02-08T04:00:00.000Z",
+
+"endTime":"2011-02-08T05:00:00.000Z",
+
+"phen":"FF",
+
+"sig":"W",
+
+"subType":"Convective",
+
+"shapes":[
+  {"shapeType":"polygon", 
+    "points":[[-95.94, 41.12],
+              [-95.87, 41.00],
+  	      [-95.99, 41.09],
+  	      [-95.94, 41.12]]
+  }
+],
+
+"attributes":{
+
+"debrisBurnScarDrainage":"Enter drainage",
+
+"debrisFlows":"burnScar",
+
+"activateWEA":["WEA_activated"],
+
+"basis":"radInd",
+
+"certainty":"Likely",
+
+"severity":"Severe",
+
+"eventType":"thunderEvent",
+
+"hazardCategory":"Hydrology",
+
+"cta":[],
+
+"additionalInfo":[],
+
+"urgency":"Immediate",
+
+"immediateCause":"ER",
+
+"includeEmergencyLocation":"Enter Location",
+
+"responseType":"Avoid",
+
+"WEA_Text":"Flash Flood Warning this area til %s. Avoid flooded areas. Check local media. -NWS",
+
+"rainAmt":"rainNull",
+
+"rainAmtRainEditInches":0.0
+}}
+]

@@ -164,10 +164,13 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                 points.clear();
 
                 try {
-                    IHazardEvent hazardEvent = new HazardEventBuilder(
-                            getSpatialPresenter().getSessionManager())
+                    HazardEventBuilder hazardEventBuilder = new HazardEventBuilder(
+                            getSpatialPresenter().getSessionManager());
+
+                    IHazardEvent hazardEvent = hazardEventBuilder
                             .buildPolygonHazardEvent(reducedGeometry
                                     .getCoordinates());
+                    hazardEventBuilder.addEvent(hazardEvent);
                     SessionEventAdded action = new SessionEventAdded(
                             getSpatialPresenter().getSessionManager()
                                     .getEventManager(), hazardEvent,
@@ -205,8 +208,8 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
 
                 // create the ghost element and put it in the drawing layer
                 AbstractDrawableComponent ghost = def.create(DrawableType.LINE,
-                        freeLine, "Line", "LINE_SOLID", points,
-                        getToolLayer().getActiveLayer());
+                        freeLine, "Line", "LINE_SOLID", points, getToolLayer()
+                                .getActiveLayer());
 
                 List<Coordinate> ghostPts = Lists.newArrayList(points);
                 ((Line) ghost).setLinePoints(ghostPts);

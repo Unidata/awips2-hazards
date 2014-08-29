@@ -22,6 +22,7 @@ import gov.noaa.gsd.viz.hazards.console.ConsoleView;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardServicesCloseAction;
 import gov.noaa.gsd.viz.hazards.display.test.AutomatedTests;
+import gov.noaa.gsd.viz.hazards.display.test.product_generators.ProductGenerationTests;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailView;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
@@ -213,6 +214,11 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private static final String AUTO_TEST_COMMAND_MENU_TEXT = "Run Automated Tests";
 
     /**
+     * Run product generation tests command string.
+     */
+    private static final String PRODUCT_GENERATION_TEST_COMMAND_MENU_TEXT = "Run Product Generation Tests";
+
+    /**
      * Logging mechanism.
      */
     private static final transient IUFStatusHandler statusHandler = UFStatus
@@ -225,11 +231,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private final BoundedReceptionEventBus<Object> eventBus = new BoundedReceptionEventBus<>(
             BusConfiguration.Default(0), RUNNABLE_ASYNC_SCHEDULER);
-
-    /**
-     * Automated tests.
-     */
-    private AutomatedTests automatedTests;
 
     /**
      * Message handler for all incoming messages.
@@ -317,6 +318,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private IContinueCanceller continueCanceller;
 
     private IMainUiContributor<Action, RCPMainUserInterfaceElement> appBuilderMenubarContributor = null;
+
+    private ProductGenerationTests productGenerationTests;
+
+    private AutomatedTests automatedTests;
 
     public boolean getUserAnswerToQuestion(String question) {
         return questionAnswerer.getUserAnswerToQuestion(question);
@@ -505,8 +510,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         String autoTestsEnabled = System
                 .getenv("HAZARD_SERVICES_AUTO_TESTS_ENABLED");
         if (autoTestsEnabled != null) {
-            automatedTests = new AutomatedTests();
-            automatedTests.run(this);
 
             // Build a menubar contributor that adds the
             // automated test menu item.
@@ -520,11 +523,28 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                                 Action.AS_PUSH_BUTTON, null) {
                             @Override
                             public void run() {
+                                automatedTests = new AutomatedTests();
+                                automatedTests
+                                        .init(HazardServicesAppBuilder.this);
                                 eventBus.publish(new ConsoleAction(
                                         ConsoleAction.ActionType.RUN_AUTOMATED_TESTS));
                             }
                         };
-                        return Lists.newArrayList(autoTestAction);
+
+                        Action productGenerationTestAction = new BasicAction(
+                                PRODUCT_GENERATION_TEST_COMMAND_MENU_TEXT,
+                                null, Action.AS_PUSH_BUTTON, null) {
+                            @Override
+                            public void run() {
+                                productGenerationTests = new ProductGenerationTests();
+                                productGenerationTests
+                                        .init(HazardServicesAppBuilder.this);
+                                eventBus.publish(new ConsoleAction(
+                                        ConsoleAction.ActionType.RUN_PRODUCT_GENERATION_TESTS));
+                            }
+                        };
+                        return Lists.newArrayList(autoTestAction,
+                                productGenerationTestAction);
                     }
                     return Collections.emptyList();
                 }

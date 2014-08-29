@@ -189,7 +189,9 @@ public class AutoTestUtilities {
     void createEvent(Double centerX, Double centerY) {
         Coordinate[] coordinates = buildEventArea(centerX, centerY);
         try {
-            hazardEventBuilder.buildPolygonHazardEvent(coordinates);
+            IHazardEvent hazardEvent = hazardEventBuilder
+                    .buildPolygonHazardEvent(coordinates);
+            hazardEventBuilder.addEvent(hazardEvent);
         } catch (InvalidGeometryException e) {
             throw new TopologyException(e.getMessage());
         }
@@ -258,19 +260,20 @@ public class AutoTestUtilities {
         return hazardTypeSelection;
     }
 
+    public void issueFromProductEditor(
+            ProductEditorViewForTesting mockProductEditorView) {
+        mockProductEditorView.invokeIssueButton();
+    }
+
     /**
-     * Issues one or more products associated with hazard events. This version
-     * tests the issue button on the Hazard Information Dialog.
-     * 
-     * @param
-     * @return
+     * Issues one or more products associated with hazard events.
      */
-    void issueEvent() {
+    public void issueFromHID() {
         eventBus.publishAsync(new HazardDetailAction(
                 HazardDetailAction.ActionType.ISSUE));
     }
 
-    void previewEvent() {
+    public void previewFromHID() {
         eventBus.publishAsync(new HazardDetailAction(
                 HazardDetailAction.ActionType.PREVIEW));
     }
@@ -360,6 +363,13 @@ public class AutoTestUtilities {
         }
 
         return generatedProductsDictList;
+    }
+
+    /**
+     * @return the hazardEventBuilder
+     */
+    public HazardEventBuilder getHazardEventBuilder() {
+        return hazardEventBuilder;
     }
 
 }

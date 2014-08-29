@@ -9,11 +9,14 @@
  */
 package gov.noaa.gsd.viz.hazards.utilities;
 
+import java.util.List;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -52,20 +55,30 @@ public class HazardEventBuilder {
         checkValidity(geometry);
 
         IHazardEvent event = new BaseHazardEvent();
-        IHazardEvent result = finishBuild(event, geometry);
-        return result;
+        finishBuild(event, geometry);
+        return event;
     }
 
     public IHazardEvent buildPolygonHazardEvent(Coordinate[] coordinates)
             throws InvalidGeometryException {
-        Geometry geometry = geometryFactory.createPolygon(
-                geometryFactory.createLinearRing(coordinates), null);
+        Geometry geometry = geometryFromCoordinates(coordinates);
 
         checkValidity(geometry);
 
         IHazardEvent event = new BaseHazardEvent();
-        IHazardEvent result = finishBuild(event, geometry);
-        return result;
+        finishBuild(event, geometry);
+        return event;
+    }
+
+    public Geometry geometryFromCoordinates(Coordinate[] coordinates) {
+        Geometry geometry = geometryFactory.createPolygon(
+                geometryFactory.createLinearRing(coordinates), null);
+        return geometry;
+    }
+
+    public Geometry geometryFromCoordinates(List<Coordinate> coordinates) {
+        return geometryFromCoordinates(coordinates
+                .toArray(new Coordinate[coordinates.size()]));
     }
 
     private void checkValidity(Geometry geometry)
@@ -81,8 +94,8 @@ public class HazardEventBuilder {
         Geometry geometry = geometryFactory.createPoint(coordinate);
 
         IHazardEvent event = new BaseHazardEvent();
-        IHazardEvent result = finishBuild(event, geometry);
-        return result;
+        finishBuild(event, geometry);
+        return event;
     }
 
     public IHazardEvent buildLineHazardEvent(Coordinate[] coordinates)
@@ -92,16 +105,27 @@ public class HazardEventBuilder {
         checkValidity(geometry);
 
         IHazardEvent event = new BaseHazardEvent();
-        IHazardEvent result = finishBuild(event, geometry);
-        return result;
+        finishBuild(event, geometry);
+        return event;
     }
 
-    private IHazardEvent finishBuild(IHazardEvent event, Geometry geometry) {
+    private void finishBuild(IHazardEvent event, Geometry geometry) {
         event.setGeometry(geometry);
         event.setCreationTime(sessionManager.getTimeManager().getCurrentTime());
-        IHazardEvent result = sessionManager.getEventManager().addEvent(event,
-                null);
-        return result;
+    }
+
+    public void addEvent(IHazardEvent event) {
+        addEvent(event, null);
+    }
+
+    public void addEvent(IHazardEvent event, IOriginator originator) {
+        sessionManager.getEventManager().addEvent(event, originator);
+    }
+
+    public IHazardEvent buildPolygonHazardEvent(List<Coordinate> coordinates)
+            throws InvalidGeometryException {
+        return buildPolygonHazardEvent(coordinates
+                .toArray(new Coordinate[coordinates.size()]));
     }
 
 }

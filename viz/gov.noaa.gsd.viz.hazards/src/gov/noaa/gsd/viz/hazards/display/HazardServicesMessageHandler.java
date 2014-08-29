@@ -1548,6 +1548,7 @@ public final class HazardServicesMessageHandler implements
             break;
 
         case RUN_AUTOMATED_TESTS:
+        case RUN_PRODUCT_GENERATION_TESTS:
             /*
              * Nothing to do here
              */

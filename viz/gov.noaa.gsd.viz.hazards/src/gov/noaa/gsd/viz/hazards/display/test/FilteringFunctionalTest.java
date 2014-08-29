@@ -167,7 +167,7 @@ public class FilteringFunctionalTest extends
                 events = mockConsoleView.getHazardEvents();
                 assertEquals(events.size(), 1);
 
-                autoTestUtilities.issueEvent();
+                autoTestUtilities.issueFromHID();
                 break;
 
             default:

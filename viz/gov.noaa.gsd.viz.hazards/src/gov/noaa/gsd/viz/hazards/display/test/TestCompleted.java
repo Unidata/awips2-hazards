@@ -27,15 +27,15 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-class TestCompleted {
+public class TestCompleted {
 
     private final Class<?> testClass;
 
-    TestCompleted(Class<?> testClass) {
+    public TestCompleted(Class<?> testClass) {
         this.testClass = testClass;
     }
 
-    Class<?> getTestClass() {
+    public Class<?> getTestClass() {
         return testClass;
     }
 

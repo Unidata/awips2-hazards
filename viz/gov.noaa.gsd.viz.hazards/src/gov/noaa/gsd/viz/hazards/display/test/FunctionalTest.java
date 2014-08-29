@@ -27,6 +27,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayer;
 import gov.noaa.gsd.viz.hazards.tools.IToolsView;
 import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
+import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.Presenter;
 
@@ -145,13 +146,16 @@ public abstract class FunctionalTest<E extends Enum<E>> {
 
     protected final ISessionConfigurationManager configManager;
 
-    FunctionalTest(HazardServicesAppBuilder appBuilder) {
+    protected HazardEventBuilder hazardEventBuilder;
+
+    public FunctionalTest(HazardServicesAppBuilder appBuilder) {
         this.appBuilder = appBuilder;
         this.sessionManager = appBuilder.getSessionManager();
         this.eventManager = sessionManager.getEventManager();
         this.configManager = sessionManager.getConfigurationManager();
         this.eventBus = appBuilder.getEventBus();
         this.autoTestUtilities = new AutoTestUtilities(appBuilder);
+        this.hazardEventBuilder = autoTestUtilities.getHazardEventBuilder();
         registerForEvents();
 
     }
@@ -168,7 +172,7 @@ public abstract class FunctionalTest<E extends Enum<E>> {
         this.eventBus.subscribe(this);
     }
 
-    protected void run() {
+    public void run() {
         resetEvents();
         mockViews();
         checkForFloodSettings();
@@ -191,8 +195,7 @@ public abstract class FunctionalTest<E extends Enum<E>> {
         }
     }
 
-    private void resetEvents() {
-        appBuilder.getSessionManager().getEventManager().getEvents();
+    protected void resetEvents() {
         eventBus.publish(new ConsoleAction(ConsoleAction.ActionType.RESET,
                 ConsoleAction.RESET_EVENTS));
     }

@@ -84,7 +84,7 @@ public class HazardConflictFunctionalTest extends
     }
 
     @Override
-    protected void run() {
+    public void run() {
         try {
             super.run();
 
