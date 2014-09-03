@@ -51,6 +51,10 @@ statuses = [
                      },
 
                      {
+                      "displayString": "ending", 
+                     },
+
+                     {
                       "displayString": "ended", 
                      },
 
@@ -154,11 +158,11 @@ viewConfig = [
                                          },              
                                          {
                                           "fieldName": "visibleStatuses",
-                                          "label": "State:",
+                                          "label": "Status:",
                                           "fieldType": "CheckList",
                                           "choices": statuses,
                                           "lines": 16,
-                                          "columnName": "State"
+                                          "columnName": "Status"
                                          },              
                                         ],
                          },
