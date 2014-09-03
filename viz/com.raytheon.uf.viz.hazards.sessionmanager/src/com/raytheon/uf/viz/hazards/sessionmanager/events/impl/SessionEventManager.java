@@ -390,6 +390,12 @@ public class SessionEventManager implements
     }
 
     @Override
+    public boolean isSelected(ObservedHazardEvent event) {
+        return getSelectedEvents().contains(event);
+
+    }
+
+    @Override
     public void setSelectedEvents(
             Collection<ObservedHazardEvent> selectedEvents,
             IOriginator originator) {

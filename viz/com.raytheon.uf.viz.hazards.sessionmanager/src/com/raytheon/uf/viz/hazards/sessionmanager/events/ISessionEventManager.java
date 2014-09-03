@@ -459,4 +459,9 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      */
     public boolean isCurrentEvent();
 
+    /**
+     * @return true if the event is selected
+     */
+    public boolean isSelected(E event);
+
 }

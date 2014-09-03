@@ -26,9 +26,7 @@ import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ActionContributionItem;
@@ -68,28 +66,46 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 
 public class ContextMenuHelper {
 
+    private enum Command {
+        DELETE("Delete"), PROPOSE("Propose"), END("End"), REVERT("Revert");
+
+        private String value;
+
+        private Command(String value) {
+            this.value = value;
+        }
+    }
+
     public enum ContextMenuSelections {
-        END_ALL_SELECTED_HAZARDS("End Selected"),
+        END_ALL_SELECTED_HAZARDS(),
 
-        REVERT_ALL_SELECTED_HAZARDS("Revert Selected"),
+        REVERT_ALL_SELECTED_HAZARDS(),
 
-        DELETE_ALL_SELECTED_HAZARDS("Delete Selected"),
+        DELETE_ALL_SELECTED_HAZARDS(),
 
-        PROPOSE_ALL_SELECTED_HAZARDS("Propose Selected"),
+        PROPOSE_ALL_SELECTED_HAZARDS(),
 
-        END_THIS_HAZARD("End This Hazard"),
+        END_THIS_HAZARD(appendThis(Command.END)),
 
-        REVERT_THIS_HAZARD("Revert This Hazard"),
+        REVERT_THIS_HAZARD(appendThis(Command.REVERT)),
 
-        DELETE_THIS_HAZARD("Delete This Hazard"),
+        DELETE_THIS_HAZARD(appendThis(Command.DELETE)),
 
-        PROPOSE_THIS_HAZARD("Propose This Hazard"),
+        PROPOSE_THIS_HAZARD(appendThis(Command.PROPOSE)),
 
         REMOVE_POTENTIAL_HAZARDS("Remove Potential"),
 
         ;
 
         private final String value;
+
+        private ContextMenuSelections() {
+            this.value = "Error: undefined";
+        }
+
+        private static String appendThis(Command command) {
+            return command.value + " This";
+        }
 
         private ContextMenuSelections(String value) {
             this.value = value;
@@ -125,42 +141,43 @@ public class ContextMenuHelper {
         ObservedHazardEvent currentEvent = null;
         if (eventManager.isCurrentEvent()) {
             currentEvent = eventManager.getCurrentEvent();
-            HazardStatus status = currentEvent.getStatus();
-            switch (status) {
+            if (eventManager.isSelected(currentEvent)) {
+                HazardStatus status = currentEvent.getStatus();
+                switch (status) {
 
-            case PENDING:
-                addContributionItem(items,
-                        ContextMenuSelections.DELETE_THIS_HAZARD.getValue());
-                if (currentEvent.getHazardType() != null) {
+                case PENDING:
                     addContributionItem(items,
-                            ContextMenuSelections.PROPOSE_THIS_HAZARD
-                                    .getValue());
+                            ContextMenuSelections.DELETE_THIS_HAZARD.getValue());
+                    if (currentEvent.getHazardType() != null) {
+                        addContributionItem(items,
+                                ContextMenuSelections.PROPOSE_THIS_HAZARD
+                                        .getValue());
+                    }
+                    break;
+
+                case ISSUED:
+                    addContributionItem(items,
+                            ContextMenuSelections.END_THIS_HAZARD.getValue());
+                    break;
+
+                case ENDING:
+                    addContributionItem(items,
+                            ContextMenuSelections.REVERT_THIS_HAZARD.getValue());
+                    break;
+
+                case PROPOSED:
+                    addContributionItem(items,
+                            ContextMenuSelections.DELETE_THIS_HAZARD.getValue());
+                    break;
+
+                default:
+                    break;
+
                 }
-                break;
-
-            case ISSUED:
-                addContributionItem(items,
-                        ContextMenuSelections.END_THIS_HAZARD.getValue());
-                break;
-
-            case ENDING:
-                addContributionItem(items,
-                        ContextMenuSelections.REVERT_THIS_HAZARD.getValue());
-                break;
-
-            case PROPOSED:
-                addContributionItem(items,
-                        ContextMenuSelections.DELETE_THIS_HAZARD.getValue());
-                break;
-
-            default:
-                break;
-
             }
         }
 
         EnumSet<HazardStatus> states = EnumSet.noneOf(HazardStatus.class);
-        Set<String> types = new HashSet<>();
         for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
             /*
              * Don't consider the current event when tallying states since the
@@ -171,39 +188,60 @@ public class ContextMenuHelper {
                 continue;
             } else {
                 states.add(event.getStatus());
-                String eventType = event.getHazardType();
-                if (eventType != null) {
-                    types.add(event.getHazardType());
-                }
             }
         }
+        int n;
+        String text;
         if (states.contains(HazardStatus.PENDING)) {
-            addContributionItem(items,
-                    ContextMenuSelections.DELETE_ALL_SELECTED_HAZARDS
-                            .getValue());
-            if (!types.isEmpty()) {
-                addContributionItem(items,
-                        ContextMenuSelections.PROPOSE_ALL_SELECTED_HAZARDS
-                                .getValue());
+            n = numSelectedEventsForStatus(HazardStatus.PENDING);
+            String textWithoutCommand = String
+                    .format(" %d Selected Pending", n);
+            text = Command.DELETE.value + textWithoutCommand;
+            addContributionItem(items, text);
+            boolean areProposableEvents = false;
+            for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
+                if (event.getStatus().equals(HazardStatus.PENDING)
+                        && event.getHazardType() != null) {
+                    areProposableEvents = true;
+                    break;
+                }
+            }
+            if (areProposableEvents) {
+                text = Command.PROPOSE.value + textWithoutCommand;
+                addContributionItem(items, text);
             }
         }
         if (states.contains(HazardStatus.ISSUED)) {
-            addContributionItem(items,
-                    ContextMenuSelections.END_ALL_SELECTED_HAZARDS.getValue());
+            n = numSelectedEventsForStatus(HazardStatus.ISSUED);
+            text = String.format("%s %d Selected Issued", Command.END.value, n);
+            addContributionItem(items, text);
         }
+
         if (states.contains(HazardStatus.ENDING)) {
-            addContributionItem(items,
-                    ContextMenuSelections.REVERT_ALL_SELECTED_HAZARDS
-                            .getValue());
+            n = numSelectedEventsForStatus(HazardStatus.ENDING);
+            text = String.format("%s %d Selected Ending", Command.REVERT.value,
+                    n);
+            addContributionItem(items, text);
         }
 
         if (states.contains(HazardStatus.PROPOSED)) {
-            addContributionItem(items,
-                    ContextMenuSelections.DELETE_ALL_SELECTED_HAZARDS
-                            .getValue());
+            n = numSelectedEventsForStatus(HazardStatus.PROPOSED);
+            text = String.format("%s %d Selected Proposed",
+                    Command.DELETE.value, n);
+            addContributionItem(items, text);
         }
 
         return items;
+    }
+
+    private int numSelectedEventsForStatus(HazardStatus status) {
+        int count = 0;
+        for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
+            if (event.getStatus().equals(status)) {
+                count += 1;
+            }
+        }
+        return count;
     }
 
     private void addContributionItem(List<IContributionItem> items, String label) {
@@ -371,9 +409,9 @@ public class ContextMenuHelper {
             eventManager.setSelectedEvents(Lists.newArrayList(event),
                     Originator.OTHER);
 
-        } else if (menuLabel
-                .equals(ContextMenuSelections.END_ALL_SELECTED_HAZARDS
-                        .getValue())) {
+        } else if (menuLabel.contains(Command.END.value)
+                && menuLabel.toLowerCase().contains(
+                        HazardStatus.ISSUED.getValue())) {
             for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
 
                 /**
@@ -387,14 +425,14 @@ public class ContextMenuHelper {
             eventManager.setSelectedEvents(eventManager.getSelectedEvents(),
                     Originator.OTHER);
 
-        } else if (menuLabel.equals(ContextMenuSelections.REVERT_THIS_HAZARD
+        } else if (menuLabel.contains(ContextMenuSelections.REVERT_THIS_HAZARD
                 .getValue())) {
             ObservedHazardEvent event = eventManager.getCurrentEvent();
             revertEndingProcess(event);
 
-        } else if (menuLabel
-                .equals(ContextMenuSelections.REVERT_ALL_SELECTED_HAZARDS
-                        .getValue())) {
+        } else if (menuLabel.contains(Command.REVERT.value)
+                && menuLabel.toLowerCase().contains(
+                        HazardStatus.ENDING.getValue())) {
             for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
                 if (event.getStatus().equals(HazardStatus.ENDING)) {
                     revertEndingProcess(event);
@@ -406,9 +444,9 @@ public class ContextMenuHelper {
             ObservedHazardEvent event = eventManager.getCurrentEvent();
             eventManager.removeEvent(event, Originator.OTHER);
 
-        } else if (menuLabel
-                .equals(ContextMenuSelections.DELETE_ALL_SELECTED_HAZARDS
-                        .getValue())) {
+        } else if (menuLabel.contains(Command.DELETE.value)
+                && menuLabel.toLowerCase().contains(
+                        HazardStatus.PENDING.getValue())) {
             for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
                 if (event.getStatus().equals(HazardStatus.PENDING)) {
                     eventManager.removeEvent(event, Originator.OTHER);
@@ -420,9 +458,9 @@ public class ContextMenuHelper {
             ObservedHazardEvent event = eventManager.getCurrentEvent();
             eventManager.proposeEvent(event, Originator.OTHER);
 
-        } else if (menuLabel
-                .equals(ContextMenuSelections.PROPOSE_ALL_SELECTED_HAZARDS
-                        .getValue())) {
+        } else if (menuLabel.contains(Command.PROPOSE.value)
+                && menuLabel.toLowerCase().contains(
+                        HazardStatus.PENDING.getValue())) {
             eventManager.proposeEvents(eventManager.getSelectedEvents(),
                     Originator.OTHER);
 

@@ -549,8 +549,7 @@ class MixedHazardStoryFunctionalTest extends
                 ContextMenuHelper c = new ContextMenuHelper(consolePresenter,
                         sessionManager);
                 ActionContributionItem item = (ActionContributionItem) c
-                        .newAction(ContextMenuHelper.ContextMenuSelections.END_ALL_SELECTED_HAZARDS
-                                .getValue());
+                        .newAction("End 2 Selected Issued");
                 item.getAction().run();
                 break;
 

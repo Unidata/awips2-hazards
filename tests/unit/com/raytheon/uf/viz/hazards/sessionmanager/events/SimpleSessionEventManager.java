@@ -301,4 +301,9 @@ public class SimpleSessionEventManager implements
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public boolean isSelected(ObservedHazardEvent event) {
+        throw new UnsupportedOperationException();
+    }
+
 }
