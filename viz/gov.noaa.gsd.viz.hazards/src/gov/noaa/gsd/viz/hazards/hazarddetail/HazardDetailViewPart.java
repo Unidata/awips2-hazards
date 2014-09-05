@@ -204,6 +204,9 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Aug 15, 2014   4243     Chris.Golden      Added ability to invoke event-modifying
  *                                           scripts via metadata-specified notifier
  *                                           megawidgets.
+ * Sep 05, 2014   4277     Chris.Golden      Changed scrollbars' buttons to cause the
+ *                                           metadata pane to scroll a reasonable amount
+ *                                           instead of barely moving.
  * </pre>
  * 
  * @author Chris.Golden
@@ -493,6 +496,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * by the cache.
      */
     private static final int MAXIMUM_EVENT_METADATA_CACHE_SIZE = 10;
+
+    /**
+     * Number of pixels by which to scroll when a scrollbar arrow button is
+     * invoked.
+     */
+    private static final int SCROLLBAR_BUTTON_INCREMENT = 16;
 
     // Private Constants
 
@@ -1560,6 +1569,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         metadataContentPanel.setLayout(metadataContentLayout);
         scrolledComposite.setContent(metadataContentPanel);
         scrolledComposite.setExpandHorizontal(true);
+        scrolledComposite.getHorizontalBar().setIncrement(
+                SCROLLBAR_BUTTON_INCREMENT);
+        scrolledComposite.getVerticalBar().setIncrement(
+                SCROLLBAR_BUTTON_INCREMENT);
 
         /*
          * Add a listener to the horizontal and vertical scroll bars of the
