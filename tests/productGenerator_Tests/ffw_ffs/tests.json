@@ -1,18 +1,26 @@
 [  
   {
     "commentary": "Single FF.W issuance",
+    "name": "ffw_0",
+    "stagingDialogInfo" : {
+      "stagingKey" : "stagingValue"
+    }
+  },
+  {
     "name": "ffw_1",
+    "commentary": "FF.W continuance",
+    "hazardEventOverrides" : [{
+      "cta" : [ "Arroyos...", "Burn Areas..."]
+    }],
     "stagingDialogInfo" : {
       "stagingKey" : "stagingValue"
     }
   },
   {
     "name": "ffw_2",
-    "commentary": "FF.W continuance",
+    "commentary": "FF.W extension",
     "hazardEventOverrides" : [{
-      "endTime" : "2011-02-08T06:00:00.000Z",
-      "cta" : [ "Arroyos...", "Burn Areas..."],
-      "status" : "ISSUED"
+      "endTime" : "2011-02-08T14:00:00.000Z"
     }],
     "stagingDialogInfo" : {
       "stagingKey" : "stagingValue"
@@ -23,7 +31,7 @@
     "name": "ffw_3",
     "hazardEventOverrides" : [{
       "status" : "ENDING",
-      "endTime" : "2011-02-08T05:30:00.000Z"
+      "endTime" : "2011-02-08T13:30:00.000Z"
     }],
     "stagingDialogInfo" : {
       "stagingKey" : "stagingValue"

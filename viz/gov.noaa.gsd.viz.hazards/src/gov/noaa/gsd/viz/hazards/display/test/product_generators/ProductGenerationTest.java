@@ -142,8 +142,6 @@ public class ProductGenerationTest extends
             hazardEventBuilder.addEvent(hazardEvent);
 
             /**
-             * TODO Wish the eventManager had a getEvents returning a list!
-             * 
              * TODO Will have to be smarter about this once test cases can
              * define more than one event
              */

@@ -1,5 +1,4 @@
 { "tests" : [
-               "flw_fls",
-	       "ffw_ffs"
+	       "all"
             ]
 }

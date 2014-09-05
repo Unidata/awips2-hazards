@@ -1,3 +1,32 @@
+[
 {
-"shapes":[{"shapeType":"polygon","label":"10580 FF.A","points":[[-95.94384271028139,41.11573187546317],[-95.8725344407914,41.00074729091055],[-95.99464985229301,41.09344804124755],[-95.94384271028139,41.11573187546317]],"include":"true","isSelected":false,"isVisible":"true"}],
-"backupSiteID":"OAX","draggedPoints":[],"selected":false,"fullType":"FF.A (FLASH FLOOD WATCH)","etns":"[1]","vtecCodes":"[NEW]","pils":"[FFA]","polyModified":true,"color":"142 224 209","headline":"FLASH FLOOD WATCH","siteID":"OAX","creationTime":1297137600000,"endTime":1297276560000,"startTime":1297247760000,"type":"FF.A","status":"issued","issueTime":1297137600000,"eventID":"10580","subType":"","phen":"FF","sig":"A","checked":true,"expirationTime":1297166400000}
+"startTime":"2011-02-08T04:00:00.000Z",
+
+"endTime":"2011-02-08T12:00:00.000Z",
+
+"phen":"FF",
+
+"sig":"A",
+
+"shapes":[
+  {"shapeType":"polygon", 
+    "points":[[-95.94, 41.12],
+              [-95.87, 41.00],
+  	      [-95.99, 41.09],
+  	      [-95.94, 41.12]]
+  }
+],
+
+"attributes":{
+  "activateWEA":[],
+  "basis":"Enter basis text",
+  "immediateCause":"ER",
+  "certainty":"Possible",
+  "responseType":"Monitor",
+  "severity":"Severe",
+  "WEA_Text":"",
+  "hazardCategory":"Hydrology",
+  "cta":[],
+  "urgency":"Future"
+}}
+]

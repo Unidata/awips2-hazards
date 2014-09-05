@@ -14,6 +14,7 @@ import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.test.TestCompleted;
 
 import java.io.File;
+import java.util.List;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -25,6 +26,16 @@ import com.raytheon.uf.common.util.FileUtil;
 
 /**
  * Description: Handles running of collection of all {@ProductGenerationTest
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
  * 
  * 
  * 
@@ -44,6 +55,8 @@ import com.raytheon.uf.common.util.FileUtil;
  * @version 1.0
  */
 public class ProductGenerationTests {
+
+    private static final String ALL_TESTS = "all";
 
     /**
      * 
@@ -91,7 +104,19 @@ public class ProductGenerationTests {
             objectMapper = new ObjectMapper();
             suite = objectMapper.readValue(suiteFile,
                     ProductGenerationTestSuite.class);
+            List<String> tests = suite.getTests();
+            if (tests.size() > 0 && tests.get(0).equals(ALL_TESTS)) {
+                tests.clear();
+                File baseTestDirFile = new File(baseTestDir);
+                File[] files = baseTestDirFile.listFiles();
+                for (File file : files) {
+                    if (file.isDirectory()) {
+                        tests.add(file.getName());
+                    }
+                }
+            }
             this.testIndex = 0;
+            suite.setTests(tests);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -118,7 +143,7 @@ public class ProductGenerationTests {
         }
 
         else {
-            System.out.println("All product generation tests successful");
+            System.out.println("All tests completed");
             appBuilder.getEventBus().unsubscribe(this);
         }
     }
