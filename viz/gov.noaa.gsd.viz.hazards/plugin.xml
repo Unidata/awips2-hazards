@@ -98,7 +98,7 @@
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.productgen.localization.CopyPythonClassesAdapter"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Hazard Types"
             recursive="true"
             value="hazardServices/hazardTypes">
@@ -107,7 +107,7 @@
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.productgen.localization.CopyPythonClassesAdapter"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Hazard Type Color Table"
             recursive="true"
             value="hazardServices/hazardTypeColorTable">
@@ -116,7 +116,7 @@
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.productgen.localization.CopyPythonClassesAdapter"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Hazard Categories"
             recursive="true"
             value="hazardServices/hazardCategories">
@@ -125,7 +125,7 @@
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.productgen.localization.CopyPythonClassesAdapter"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Settings"
             recursive="true"
             value="hazardServices/settings">
@@ -134,7 +134,7 @@
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.productgen.localization.CopyPythonClassesAdapter"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Product Generator Table"
             recursive="true"
             value="hazardServices/productGeneratorTable">
@@ -143,7 +143,7 @@
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.productgen.localization.CopyPythonClassesAdapter"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Alerts"
             recursive="true"
             value="hazardServices/alerts">
@@ -152,7 +152,7 @@
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.productgen.localization.CopyPythonClassesAdapter"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Startup Config"
             recursive="true"
             value="hazardServices/startUpConfig">
