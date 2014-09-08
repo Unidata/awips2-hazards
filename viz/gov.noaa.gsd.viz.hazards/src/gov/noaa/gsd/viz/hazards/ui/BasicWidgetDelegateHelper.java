@@ -66,7 +66,7 @@ public class BasicWidgetDelegateHelper<I, W extends IWidget<I>> implements
     public final void scheduleTask(final PrincipalRunnableTask<I, W> task) {
 
         /*
-         * No action; yhe view should always exist when this method is called.
+         * No action; the view should always exist when this method is called.
          */
     }
 
@@ -74,7 +74,7 @@ public class BasicWidgetDelegateHelper<I, W extends IWidget<I>> implements
     public void scheduleTaskForEachViewCreation(PrincipalRunnableTask<I, W> task) {
 
         /*
-         * No action; yhe view should always exist when this method is called.
+         * No action; the view should always exist when this method is called.
          */
     }
 }

@@ -9,5 +9,6 @@ Export-Package: gov.noaa.gsd.viz.megawidgets.sideeffects
 Import-Package: com.google.gson,
  com.google.gson.reflect,
  com.raytheon.uf.common.status,
+ com.raytheon.uf.common.util,
  gov.noaa.gsd.viz.megawidgets,
  jep

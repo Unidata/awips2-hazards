@@ -19,6 +19,9 @@ recommender framework
                                                  getting and setting values for
                                                  single-state megawidgets' mutable
                                                  properties.
+    Aug 15, 2014    4243     Chris.Golden        Changed megawidget interdependency script
+                                                 entry point function to be within the
+                                                 recommender script.
     
 @since: November 2012
 @author: GSD Hazard Services Team
@@ -30,7 +33,6 @@ import RecommenderTemplate
 import numpy
 import JUtil
 from EventSet import EventSet
-from LocalizationInterface import LocalizationInterface
 
 from com.raytheon.uf.common.hazards.hydro import RiverProDataManager
 from gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender import RiverProFloodRecommender
@@ -114,13 +116,6 @@ class Recommender(RecommenderTemplate.Recommender):
         valueDict = {"forecastType":"Set confidence:", "forecastConfidencePercentage":50}
         dialogDict["valueDict"] = valueDict
         
-
-        # Define the side effects script used to make the megawidgets
-        # affect one another (in this case, radio button selection
-        # enables and disables the forecast confidence spinner).        
-        localizationInterface = LocalizationInterface()
-        dialogDict["interdependenciesScript"] = localizationInterface.getLocFile("hazardServices/megawidgetSideEffects/RiverFloodRecommenderInterdependencies.py", "common")
-        
         return dialogDict
     
     def execute(self, eventSet, dialogInputMap, spatialInputMap):
@@ -197,4 +192,21 @@ class Recommender(RecommenderTemplate.Recommender):
         if hazardEvents is not None:
             for hazardEvent in hazardEvents:
                 self.getFloodPolygonForRiverPointHazard(hazardEvent)
-        
+
+
+# Interdependencies script entry point.
+def applyInterdependencies(triggerIdentifiers, mutableProperties):
+   if triggerIdentifiers == None or "forecastType" in triggerIdentifiers:
+      if mutableProperties["forecastType"]["values"] == "Watch":
+         return { "forecastConfidencePercentage": { "enable": False, "values": 50 }, "includeNonFloodPoints": { "enable": False, "values": False } }
+      elif mutableProperties["forecastType"]["values"] == "Warning":
+         return { "forecastConfidencePercentage": { "enable": False, "values": 80 }, "includeNonFloodPoints": { "enable": True } }
+      else:
+         return { "forecastConfidencePercentage": { "enable": True } }
+   elif "forecastConfidencePercentage" in triggerIdentifiers:
+      if mutableProperties["forecastConfidencePercentage"]["values"] >= 80:
+         return {"includeNonFloodPoints":{ "enable": True } }
+      else:
+         return {"includeNonFloodPoints":{ "enable": False, "values": False } }
+   else:
+      return None

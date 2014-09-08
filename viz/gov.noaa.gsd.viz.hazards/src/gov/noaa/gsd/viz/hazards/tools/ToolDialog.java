@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.tools;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.FIELDS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.FILE_PATH_KEY;
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
@@ -22,6 +24,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 
+import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +38,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
@@ -52,12 +54,12 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * <dd>List of dictionaries, with each of the latter defining a megawidget.</dd>
  * <dt><code>valueDict</code></dt>
  * <dd>Dictionary mapping tool parameter identifiers to their starting values.</dd>
- * <dt><code>interdependenciesScript</code></dt>
- * <dd>Optional string which, if provided, is used as the Python script that
- * defines the <code>applyInterdependencies()</code> method required by
- * {@link gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier}. If
- * not provided, no interdependencies are applied when megawidgets are invoked
- * or experience state changes.</dd>
+ * <dt><code>filePath</code></dt>
+ * <dd>String containing the full path to the script used to run the
+ * recommender. If the recommender defines an
+ * <code>applyInterdependencies()</code> function for
+ * {@link gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier}, it
+ * is found within this file.</dd>
  * <dt><code>runToolTriggers</code></dt>
  * <dd>Optional list of megawidget identifier strings indicating which of the
  * megawidgets defined within <code>fields</code> are to trigger tool execution
@@ -98,6 +100,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                           changes.
  * Jun 30, 2014   3512     Chris Golden      Changed to work with more megawidget manager
  *                                           changes.
+ * Aug 18, 2014   4243     Chris.Golden      Changed to take a file path instead of a
+ *                                           Python script for an interdependency script.
  * </pre>
  * 
  * @author Chris.Golden
@@ -161,10 +165,10 @@ class ToolDialog extends BasicDialog {
     private boolean enabled = true;
 
     /**
-     * Python side effects applier script for implementing any needed megawidget
+     * Python side effects script file for implementing any needed megawidget
      * interdependencies; if <code>null</code>, there is no such script.
      */
-    private final String pythonSideEffectsScript;
+    private final File pythonSideEffectsScriptFile;
 
     /**
      * List of megawidget identifiers that, when their associated megawidgets
@@ -216,16 +220,15 @@ class ToolDialog extends BasicDialog {
                     .error("ToolDialog.<init>: Error: Problem parsing JSON for initial values.",
                             e);
         }
-        String script = null;
+        String scriptFile = null;
         try {
-            script = dialogDict
-                    .getDynamicallyTypedValue("interdependenciesScript");
+            scriptFile = dialogDict.getDynamicallyTypedValue(FILE_PATH_KEY);
         } catch (Exception e) {
             statusHandler
                     .error("ToolDialog.<init>: Error: Problem parsing JSON for initial values.",
                             e);
         }
-        pythonSideEffectsScript = script;
+        pythonSideEffectsScriptFile = new File(scriptFile);
         List<String> triggers = null;
         try {
             triggers = dialogDict.getDynamicallyTypedValue("runToolTriggers");
@@ -303,7 +306,7 @@ class ToolDialog extends BasicDialog {
         /*
          * Get the list of megawidget specifiers from the parameters.
          */
-        Object megawidgetSpecifiersObj = dialogDict.get(HazardConstants.FIELDS);
+        Object megawidgetSpecifiersObj = dialogDict.get(FIELDS);
         DictList megawidgetSpecifiers = null;
         if (megawidgetSpecifiersObj == null) {
             statusHandler.warn("ToolDialog.createDialogArea(): Warning: "
@@ -360,8 +363,12 @@ class ToolDialog extends BasicDialog {
             megawidgetSpecifiersList.add((Dict) specifier);
         }
         try {
-            PythonSideEffectsApplier sideEffectsApplier = (pythonSideEffectsScript == null ? null
-                    : new PythonSideEffectsApplier(pythonSideEffectsScript));
+            PythonSideEffectsApplier sideEffectsApplier = null;
+            if (PythonSideEffectsApplier
+                    .containsSideEffectsEntryPointFunction(pythonSideEffectsScriptFile)) {
+                sideEffectsApplier = new PythonSideEffectsApplier(
+                        pythonSideEffectsScriptFile);
+            }
             megawidgetManager = new MegawidgetManager(
                     top,
                     megawidgetSpecifiersList,

@@ -19,24 +19,23 @@
  **/
 package com.raytheon.uf.common.recommenders.executors;
 
-import java.util.List;
-
+import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 import com.raytheon.uf.common.recommenders.EventRecommender;
 
 /**
- * THIS EXECUTOR CURRENTLY ONLY EXISTS FOR TESTING PURPOSES. This executor
- * allows a user to specify a recommender that they would like to be loaded into
- * inventory before retrieving the inventory.
+ * This executor allows a user to specify a recommender that they would like to
+ * be loaded into inventory before retrieving the inventory.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Apr 14, 2014            bkowal     Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Apr 14, 2014            bkowal       Initial creation
+ * Aug 18, 2014    4243    Chris.Golden Changed to have its execute method return
+ *                                      a single recommender, not a collection.
  * </pre>
  * 
  * @author bkowal
@@ -44,7 +43,7 @@ import com.raytheon.uf.common.recommenders.EventRecommender;
  */
 
 public class RecommenderLoaderInventoryExecutor<P extends AbstractRecommenderScriptManager>
-        extends RecommenderInventoryExecutor<P> {
+        implements IPythonExecutor<P, EventRecommender> {
 
     private final String recommenderName;
 
@@ -53,7 +52,7 @@ public class RecommenderLoaderInventoryExecutor<P extends AbstractRecommenderScr
     }
 
     @Override
-    public List<EventRecommender> execute(P script) {
-        return script.getInventory(this.recommenderName);
+    public EventRecommender execute(P script) {
+        return script.getRecommender(this.recommenderName);
     }
 }

@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.FILE_PATH_KEY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE;
@@ -172,6 +173,9 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            before the subclass has finished being
  *                                            built).
  * Apr 23, 2014  1480      jsanchez           Handled reviewable products.
+ * Aug 18, 2014  4243      Chris.Golden       Changed to pass recommender file path as
+ *                                            opposed to a Python script when showing a
+ *                                            dialog for a recommender.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -362,6 +366,9 @@ public final class HazardServicesMessageHandler implements
                 // If the dialog dictionary is non-empty, display the
                 // subview for gathering tool parameters.
                 if (!dialogInput.isEmpty()) {
+                    dialogInput.put(FILE_PATH_KEY, recommenderEngine
+                            .getInventory(toolName).getFile().getFile()
+                            .getPath());
                     appBuilder.showToolParameterGatherer(toolName, dialogInput);
                 }
             }

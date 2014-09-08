@@ -64,7 +64,7 @@ class MetaData(CommonMetaData.MetaData):
         
         return {
                 METADATA_KEY: metaData,
-                INTERDEPENDENCIES_SCRIPT_KEY: self.getInterdependenciesScriptFromLocalizedFile("RiseCrestFallUntilFurtherNoticeInterdependencies.py")
+                EVENT_MODIFIERS_KEY: { "crestsApplyButton": "testScript" }
                 }    
 
 
@@ -602,3 +602,46 @@ class MetaData(CommonMetaData.MetaData):
             ]
 
         
+# Interdependency script entry point.
+def applyInterdependencies(triggerIdentifiers, mutableProperties):
+
+    # Get any changes required for fall-below until-further-notice interaction.
+    ufnChanges = CommonMetaData.applyRiseCrestFallUntilFurtherNoticeInterdependencies(triggerIdentifiers, mutableProperties)
+
+    parm = "impacts"
+    ### FIXME: very specific hard coding here.  Need to make more flexible.
+    triggerFieldName = parm + "SelectedForecastPointsComboBox"
+    mutableFieldName = parm + "StringForStageFlowTextArea"
+    
+    ### For Impacts and Crests interaction
+    impactsCrestsChanges = None
+    if triggerIdentifiers is not None and triggerFieldName in triggerIdentifiers:
+             
+            if triggerFieldName in mutableProperties and "values" in mutableProperties[triggerFieldName]:
+                line = mutableProperties[triggerFieldName]["values"]
+                vals = filter(None,line.split('::'))
+                impactsCrestsChanges = {
+                                       "impactsStringForStageFlowTextArea": { "values" : vals[0] }
+                                       }
+    
+    # Return None if no changes were needed for until-further-notice or for
+    # impacts and crests; if changes were needed for only one of these,
+    # return those changes; and if changes were needed for both, merge the
+    # two dictionaries together and return the resut.            
+    if ufnChanges == None:
+        return impactsCrestsChanges
+    elif impactsCrestsChanges == None:
+        return ufnChanges
+    else:
+        impactsCrestsChanges.update(ufnChanges)
+        return impactsCrestsChanges
+
+
+# Sample event-modifying script entry point
+#
+# TODO: This is a testing script only; obviously we need something more
+# useful here.
+def testScript(hazardEvent):
+    hazardEvent.addHazardAttribute("pointID", "DONE!");
+    return hazardEvent
+

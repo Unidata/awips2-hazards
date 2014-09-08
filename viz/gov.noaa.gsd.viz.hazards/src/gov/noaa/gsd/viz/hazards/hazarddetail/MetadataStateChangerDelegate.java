@@ -10,9 +10,9 @@
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-import gov.noaa.gsd.viz.hazards.ui.PrincipalRunnableTask;
-import gov.noaa.gsd.viz.hazards.ui.StateChangerDelegate;
-import gov.noaa.gsd.viz.hazards.ui.ViewPartWidgetDelegateHelper;
+import gov.noaa.gsd.viz.hazards.ui.QualifiedPrincipalRunnableTask;
+import gov.noaa.gsd.viz.hazards.ui.QualifiedStateChangerDelegate;
+import gov.noaa.gsd.viz.hazards.ui.ViewPartQualifiedWidgetDelegateHelper;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 
 import java.io.Serializable;
@@ -29,13 +29,18 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * May 09, 2014    2925    Chris.Golden Initial creation.
+ * Aug 15, 2014    4243    Chris.Golden Modified to take a qualifier so as
+ *                                      to allow a thread-safe way to determine
+ *                                      what hazard event a change is intended
+ *                                      for.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-class MetadataStateChangerDelegate extends
-        StateChangerDelegate<String, Serializable, IMetadataStateChanger>
+class MetadataStateChangerDelegate
+        extends
+        QualifiedStateChangerDelegate<String, String, Serializable, IMetadataStateChanger>
         implements IMetadataStateChanger {
 
     // Public Constructors
@@ -49,7 +54,7 @@ class MetadataStateChangerDelegate extends
      *            Handler invocation scheduler.
      */
     public MetadataStateChangerDelegate(
-            ViewPartWidgetDelegateHelper<String, HazardDetailViewPart, IMetadataStateChanger> helper,
+            ViewPartQualifiedWidgetDelegateHelper<String, String, HazardDetailViewPart, IMetadataStateChanger> helper,
             IRunnableAsynchronousScheduler handlerScheduler) {
         super(helper, handlerScheduler);
     }
@@ -60,7 +65,7 @@ class MetadataStateChangerDelegate extends
     public void setMegawidgetSpecifierManager(final String eventIdentifier,
             final MegawidgetSpecifierManager specifierManager,
             final Map<String, Serializable> metadataStates) {
-        runOrScheduleTask(new PrincipalRunnableTask<String, IMetadataStateChanger>() {
+        runOrScheduleTask(new QualifiedPrincipalRunnableTask<String, String, IMetadataStateChanger>() {
 
             @Override
             public void run() {

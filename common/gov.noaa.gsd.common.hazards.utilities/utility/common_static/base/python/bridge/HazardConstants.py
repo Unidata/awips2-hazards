@@ -12,6 +12,8 @@
     June 17, 2014  3982     Chris.Golden         Changed megawidget
                                                  "side effects" to
                                                  "interdependencies".
+    August 15, 2014  4243   Chris.Golden         Changed metadata-
+                                                 fetching constants.
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 """
@@ -136,7 +138,8 @@ FILTER_KEY = "filter"
 RETURN_TYPE_KEY = "returnType"
 GRID_PARAM_KEY = "gridParm"
 METADATA_KEY = "metadata"
-INTERDEPENDENCIES_SCRIPT_KEY = "interdependencies"
+METADATA_FILE_PATH_KEY = "filePath"
+EVENT_MODIFIERS_KEY = "eventModifiers"
 
 
 #################################

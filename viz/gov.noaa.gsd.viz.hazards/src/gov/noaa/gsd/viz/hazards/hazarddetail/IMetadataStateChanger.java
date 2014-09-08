@@ -10,14 +10,15 @@
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
+import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
 
 import java.io.Serializable;
 import java.util.Map;
 
 /**
  * Description: Interface describing the methods required in an HMI component
- * that manipulates metadata.
+ * that manipulates metadata. The qualifier is the hazard event, while the
+ * identifier is that of a particular element of metadata.
  * 
  * <pre>
  * 
@@ -25,13 +26,17 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * May 09, 2014    2925    Chris.Golden Initial creation.
+ * Aug 15, 2014    4243    Chris.Golden Modified to take a qualifier so as
+ *                                      to allow a thread-safe way to determine
+ *                                      what hazard event a change is intended
+ *                                      for.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public interface IMetadataStateChanger extends
-        IStateChanger<String, Serializable> {
+        IQualifiedStateChanger<String, String, Serializable> {
 
     // Public Methods
 
@@ -39,7 +44,7 @@ public interface IMetadataStateChanger extends
      * Set the megawidget specifier manager to be used to represent the metadata
      * within widgets for the currently visible event.
      * 
-     * @param eventIdentifier
+     * @param qualifier
      *            Event identifier for which the megawidget specifiers are
      *            intended.
      * @param specifierManager
@@ -47,7 +52,7 @@ public interface IMetadataStateChanger extends
      * @param metadataStates
      *            States for the metadata.
      */
-    public void setMegawidgetSpecifierManager(String eventIdentifier,
+    public void setMegawidgetSpecifierManager(String qualifier,
             MegawidgetSpecifierManager specifierManager,
             Map<String, Serializable> metadataStates);
 }

@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.hazards.display.test;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.hazards.hazarddetail.EventAndDetail;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.Command;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.DisplayableEventIdentifier;
@@ -21,6 +22,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
@@ -194,35 +196,51 @@ public class HazardDetailViewForTesting implements
     private final IMetadataStateChanger metadataChanger = new IMetadataStateChanger() {
 
         @Override
-        public void setEditable(String identifier, boolean editable) {
+        public void setEditable(String qualifier, String identifier,
+                boolean editable) {
         }
 
         @Override
-        public Serializable getState(String identifier) {
+        public Serializable getState(String qualifier, String identifier) {
             return null;
         }
 
         @Override
-        public void setState(String identifier, Serializable value) {
+        public void setState(String qualifier, String identifier,
+                Serializable value) {
         }
 
         @Override
-        public void setStates(Map<String, Serializable> valuesForIdentifiers) {
+        public void setStates(String qualifier,
+                Map<String, Serializable> valuesForIdentifiers) {
         }
 
         @Override
         public void setStateChangeHandler(
-                IStateChangeHandler<String, Serializable> handler) {
+                IQualifiedStateChangeHandler<String, String, Serializable> handler) {
         }
 
         @Override
-        public void setEnabled(String identifier, boolean enable) {
+        public void setEnabled(String qualifier, String identifier,
+                boolean enable) {
         }
 
         @Override
         public void setMegawidgetSpecifierManager(String eventIdentifier,
                 MegawidgetSpecifierManager specifierManager,
                 Map<String, Serializable> metadataStates) {
+        }
+    };
+
+    private final ICommandInvoker<EventAndDetail> notifierInvoker = new ICommandInvoker<EventAndDetail>() {
+
+        @Override
+        public void setEnabled(EventAndDetail identifier, boolean enable) {
+        }
+
+        @Override
+        public void setCommandInvocationHandler(
+                ICommandInvocationHandler<EventAndDetail> handler) {
         }
     };
 
@@ -300,6 +318,11 @@ public class HazardDetailViewForTesting implements
     @Override
     public IMetadataStateChanger getMetadataChanger() {
         return metadataChanger;
+    }
+
+    @Override
+    public ICommandInvoker<EventAndDetail> getNotifierInvoker() {
+        return notifierInvoker;
     }
 
     @Override

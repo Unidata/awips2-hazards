@@ -52,10 +52,9 @@ import com.vividsolutions.jts.geom.Geometry;
  * Nov 14, 2013 1463       blawrenc    Added stubbed out methods
  *                                     for handling conflict
  *                                     detection.
- * 
- *  
  * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
- * 
+ * Aug 20, 2014 4243       Chris.Golden Added implementation of
+ *                                      new method to run scripts.
  * </pre>
  * 
  * @author bsteffen
@@ -88,6 +87,12 @@ public class SimpleSessionEventManager implements
     public MegawidgetSpecifierManager getMegawidgetSpecifiers(
             ObservedHazardEvent hazardEvent) {
         return null;
+    }
+
+    @Override
+    public void scriptCommandInvoked(ObservedHazardEvent event,
+            String identifier) {
+        throw new UnsupportedOperationException();
     }
 
     @Override

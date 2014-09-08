@@ -21,6 +21,7 @@ import gov.noaa.gsd.viz.hazards.ui.ChoiceStateChangerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.CommandInvokerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.StateChangerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.ViewPartDelegateView;
+import gov.noaa.gsd.viz.hazards.ui.ViewPartQualifiedWidgetDelegateHelper;
 import gov.noaa.gsd.viz.hazards.ui.ViewPartWidgetDelegateHelper;
 import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
@@ -101,6 +102,9 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                           to be displayed instead of an absolute
  *                                           date/time selector for the end time of
  *                                           a hazard event.
+ * Aug 15, 2014   4243     Chris.Golden      Added ability to invoke event-modifying
+ *                                           scripts via metadata-specified notifier
+ *                                           megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -443,12 +447,26 @@ public class HazardDetailView extends
      * Metadata state changer delegate.
      */
     private final IMetadataStateChanger metadataChanger = new MetadataStateChangerDelegate(
-            new ViewPartWidgetDelegateHelper<>(
+            new ViewPartQualifiedWidgetDelegateHelper<>(
                     new Callable<IMetadataStateChanger>() {
 
                         @Override
                         public IMetadataStateChanger call() throws Exception {
                             return getViewPart().getMetadataChanger();
+                        }
+                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Notifier invoker delegate.
+     */
+    private final ICommandInvoker<EventAndDetail> notifierInvoker = new CommandInvokerDelegate<>(
+            new ViewPartWidgetDelegateHelper<>(
+                    new Callable<ICommandInvoker<EventAndDetail>>() {
+
+                        @Override
+                        public ICommandInvoker<EventAndDetail> call()
+                                throws Exception {
+                            return getViewPart().getNotifierInvoker();
                         }
                     }, this), RUNNABLE_ASYNC_SCHEDULER);
 
@@ -669,6 +687,11 @@ public class HazardDetailView extends
     @Override
     public IMetadataStateChanger getMetadataChanger() {
         return metadataChanger;
+    }
+
+    @Override
+    public ICommandInvoker<EventAndDetail> getNotifierInvoker() {
+        return notifierInvoker;
     }
 
     @Override

@@ -76,7 +76,8 @@ import com.raytheon.uf.common.util.FileUtil;
  *                                     re-loaded / re-initialized if the updated
  *                                     script is actually used instead of after
  *                                     every change / save.
- * 
+ * Aug 18, 2014 4243       Chris.Golden Changed getInventory(recommenderName) to
+ *                                      only return a single recommender.
  * </pre>
  * 
  * @author mnash
@@ -499,8 +500,13 @@ public abstract class AbstractRecommenderScriptManager extends
         return new ArrayList<EventRecommender>(inventory.values());
     }
 
-    public List<EventRecommender> getInventory(String recommenderName) {
+    public EventRecommender getRecommender(String recommenderName) {
         this.verifyRecommenderIsLoaded(recommenderName);
-        return new ArrayList<EventRecommender>(inventory.values());
+        for (EventRecommender rec : inventory.values()) {
+            if (rec.getName().equals(recommenderName)) {
+                return rec;
+            }
+        }
+        return null;
     }
 }

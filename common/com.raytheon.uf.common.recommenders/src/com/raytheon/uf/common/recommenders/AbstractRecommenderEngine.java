@@ -60,8 +60,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  *                                     (primarily for testing purposes) that can
  *                                     can be used to ensure that a file has actually
  *                                     been loaded before the inventory is retrieved.
- * 
- * 
+ * Aug 18, 2014 4243       Chris.Golden Changed getInventory(recommenderName) to only
+ *                                      return a single recommender.
  * </pre>
  * 
  * @author mnash
@@ -75,7 +75,7 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
 
     protected AbstractPythonScriptFactory<P> factory;
 
-    private Map<String, String> recommenderToCoordinator = new HashMap<String, String>();
+    private final Map<String, String> recommenderToCoordinator = new HashMap<String, String>();
 
     public static final String DEFAULT_RECOMMENDER_JOB_COORDINATOR = "Recommenders";
 
@@ -200,16 +200,16 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
     }
 
     /**
-     * THIS METHOD IS CURRENTLY PRIMARILY FOR UNIT TEST PURPOSES. Attempt to
-     * load the specified recommender and return the inventory.
+     * Attempt to load the specified recommender and return it.
      * 
      * @param recommenderName
      *            The name of the recommender that should be or needs to be
      *            loaded before returning the inventory
-     * @return the inventory of recommenders that have been loaded.
+     * @return The recommender that was loaded, or <code>null</code> if none was
+     *         found.
      */
-    public List<EventRecommender> getInventory(String recommenderName) {
-        IPythonExecutor<P, List<EventRecommender>> executor = new RecommenderLoaderInventoryExecutor<P>(
+    public EventRecommender getInventory(String recommenderName) {
+        IPythonExecutor<P, EventRecommender> executor = new RecommenderLoaderInventoryExecutor<P>(
                 recommenderName);
         try {
             return getCoordinator().submitSyncJob(executor);

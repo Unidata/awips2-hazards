@@ -15,8 +15,10 @@ def getMetaData(datatype, phenomenon, significance, subType = None) :
     @param phenomenon: hazard phenomenon
     @param significance:  hazard significance
     @param subType: optional hazard subType
-    @return: A dict containing the hazard metadata
-             for this phen sig or None.
+    @return: A tuple of two values, the first being an object (executable
+             or not) holding the metadata (or None if there is none), and
+             the second being a relative path to the localized file from
+             which the metadata was sourced (or None if there is none).
     """
     if phenomenon is not None and significance is not None:
         if subType == "": 
@@ -36,10 +38,10 @@ def getMetaData(datatype, phenomenon, significance, subType = None) :
                             locPath = "hazardServices/hazardMetaData/" + metaDataEntry + ".py"
                             result = importModule(locPath) 
                             m = result.MetaData()
-                            return m
+                            return m, locPath
                         elif metaDataEntry is None:
-                            return []
+                            return [], None
                         else:
-                            return metaDataEntry
-    return None
+                            return metaDataEntry, None
+    return None, None
 

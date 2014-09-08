@@ -19,8 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
-import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
-
+import java.io.File;
 import java.util.List;
 
 import com.raytheon.uf.common.colormap.Color;
@@ -52,8 +51,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * Apr 29, 2014 2925       Chris.Golden Added method to get a megawidget specifier
  *                                      manager for a given hazard event.
  * May 15, 2014 2925       Chris.Golden Removed hazard info options fetcher.
- * Jul 03, 2014  3512      Chris.Golden Added ability to fetch duration choices for
+ * Jul 03, 2014 3512       Chris.Golden Added ability to fetch duration choices for
  *                                      hazard events, and also default durations.
+ * Aug 20, 2014 4243       Chris.Golden Added new method to run an event-modifying
+ *                                      script.
  * </pre>
  * 
  * @author bsteffen
@@ -127,22 +128,38 @@ public interface ISessionConfigurationManager {
     public HazardInfoConfig getHazardInfoConfig();
 
     /**
-     * Get the megawidget specifier manager for the specified hazard event.
+     * Get the metadata for the specified hazard event.
      * <p>
-     * <strong>Note</strong>: This method does not ever return a cached manager;
-     * it creates a manager each time it is invoked. The method
+     * <strong>Note</strong>: This method does not ever return a cached object;
+     * it creates a new metadata object each time it is invoked. The method
      * {@link ISessionEventManager#getMegawidgetSpecifiers(IHazardEvent)} should
-     * be used instead if caching behavior is desired.
+     * be used if a cached copy of the megawidget specifier manager is desired.
      * </p>
      * 
      * @param hazardEvent
-     *            Hazard event for which to retrieve the manager.
-     * @return Megawidget specifier manager, holding specifiers for the
-     *         megawidgets as well as any side effects applier to be used with
-     *         the megawidgets.
+     *            Hazard event for which to retrieve the metadata.
+     * @return Metadata.
      */
-    public MegawidgetSpecifierManager getMegawidgetSpecifiersForHazardEvent(
+    public HazardEventMetadata getMetadataForHazardEvent(
             IHazardEvent hazardEvent);
+
+    /**
+     * Run the event modifying script with the specified entry-point function
+     * name.
+     * 
+     * @param hazardEvent
+     *            Hazard event to which to apply the script.
+     * @param scriptFile
+     *            Script file in which to find the entry-point function.
+     * @param functionName
+     *            Name of the entry-point function.
+     * @param listener
+     *            Listener to be notified if the event modifying script runs
+     *            successfully.
+     */
+    public void runEventModifyingScript(IHazardEvent hazardEvent,
+            File scriptFile, String functionName,
+            IEventModifyingScriptJobListener listener);
 
     /**
      * Get the HazardAlertConfig

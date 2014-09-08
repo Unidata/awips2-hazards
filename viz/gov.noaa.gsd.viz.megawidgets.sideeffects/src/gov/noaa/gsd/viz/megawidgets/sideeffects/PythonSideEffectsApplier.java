@@ -18,6 +18,7 @@ import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import jep.Jep;
 import jep.JepException;
@@ -26,13 +27,15 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.util.FileUtil;
 
 /**
  * Description: Side effects applier for megawidget managers that uses Python
- * scripts to govern the application of side effects. The class as a whole must
- * be initialized before any instances are created, and shut down when all
- * instances have been disposed of and no more are to be created (for example,
- * just prior to the closing of the application).
+ * scripts to govern the application of side effects (also known as
+ * interdependencies). The class as a whole must be initialized before any
+ * instances are created, and shut down when all instances have been disposed of
+ * and no more are to be created (for example, just prior to the closing of the
+ * application).
  * <p>
  * When created, instances of this class take the path of a Python script to be
  * executed. This script must contain the definition of a method called
@@ -87,6 +90,11 @@ import com.raytheon.uf.common.status.UFStatus;
  * Jun 24, 2014    4009    Chris.Golden      Changed to allow Python include path
  *                                           to be specified at initialization
  *                                           time.
+ * Aug 15, 2014    4243    Chris.Golden      Changed to always expect a file as the
+ *                                           script to be run, and to accept scripts
+ *                                           in which the entry point function
+ *                                           references other functions in the same
+ *                                           or another module.
  * </pre>
  * 
  * @author Chris.Golden
@@ -99,60 +107,44 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
     /**
      * Python script used for initializing the Jep instance.
      */
-    private static final String INITIALIZE = "import json; import inspect";
+    private static final String INITIALIZE = "import json, JavaImporter";
 
     /**
-     * Name of the Python method that calls the instance's script's
-     * <code>applyInterdependencies()</code> Python method, and returns the
-     * result as a JSON string.
+     * Name of the Python function that calls the instance's script's
+     * apply-interdependencies entry point function, and returns the result as a
+     * JSON string.
      */
-    private static final String NAME_APPLY_SIDE_EFFECTS_WRAPPER = "_applyInterdependenciesWrapper";
+    private static final String NAME_APPLY_INTERDEPENDENCIES_WRAPPER = "_applyInterdependenciesWrapper_";
 
     /**
-     * Python script used for defining the method that calls the instance's
-     * script's <code>applyInterdependencies()</code> Python method, and returns
-     * the result as a JSON string.
+     * First part of the Python script used to define the function that calls
+     * the instance's script's <code>applyInterdependencies()</code> entry point
+     * function, and returns the result as a JSON string.
      */
-    private static final String DEFINE_APPLY_SIDE_EFFECTS_WRAPPER_METHOD = "def "
-            + NAME_APPLY_SIDE_EFFECTS_WRAPPER
+    private static final String DEFINE_APPLY_INTERDEPENDENCIES_WRAPPER_FUNCTION = "def "
+            + NAME_APPLY_INTERDEPENDENCIES_WRAPPER
             + "(triggerIdentifier, mutableProperties, mutablePropertiesChanged):\n"
-            + "   global _megawidgetMutableProperties\n"
+            + "   global _megawidgetMutableProperties_\n"
             + "   if mutablePropertiesChanged:\n"
-            + "      _megawidgetMutableProperties = json.loads(mutableProperties)\n"
-            + "   result = applyInterdependencies(triggerIdentifier, _megawidgetMutableProperties)\n"
+            + "      _megawidgetMutableProperties_ = json.loads(mutableProperties)\n"
+            + "   result = applyInterdependencies(triggerIdentifier, _megawidgetMutableProperties_)\n"
             + "   if result is not None:\n"
             + "      for identifier in result:\n"
             + "         for name in result[identifier]:\n"
-            + "            _megawidgetMutableProperties[identifier][name] = result[identifier][name]\n"
+            + "            _megawidgetMutableProperties_[identifier][name] = result[identifier][name]\n"
             + "      return json.dumps(result)\n" + "   return None\n\n";
 
     /**
-     * Name of the Python method for determining whether the <code>
-     * applyInterdependencies()</code> Python method is defined and takes two
-     * parameters.
+     * Name of the Python function used to clean up between Jep context
+     * switches.
      */
-    private static final String NAME_IS_SIDE_EFFECTS_METHOD_DEFINED = "_isInterdependenciesMethodDefined";
+    private static final String NAME_CLEANUP_FOR_CONTEXT_SWITCH = "_cleanupForContextSwitch_";
 
     /**
-     * Python script used for defining the method used to check to see if the
-     * side effects application method has been defined by an instance's script.
-     */
-    private static final String DEFINE_CHECK_FOR_SIDE_EFFECTS_METHOD = "def "
-            + NAME_IS_SIDE_EFFECTS_METHOD_DEFINED + "():\n" + "   try:\n"
-            + "      argSpec = inspect.getargspec(applyInterdependencies)\n"
-            + "   except:\n" + "      return False\n"
-            + "   return len(argSpec.args) == 2\n\n";
-
-    /**
-     * Name of the Python method used to clean up between Jep context switches.
-     */
-    private static final String NAME_CLEANUP_FOR_CONTEXT_SWITCH = "cleanupForContextSwitch";
-
-    /**
-     * Python script used for defining the method used to clean up between Jep
+     * Python script used for defining the function used to clean up between Jep
      * context switches.
      */
-    private static final String DEFINE_CLEANUP_FOR_CONTEXT_SWITCH_METHOD = "def "
+    private static final String DEFINE_CLEANUP_FOR_CONTEXT_SWITCH_FUNCTION = "def "
             + NAME_CLEANUP_FOR_CONTEXT_SWITCH
             + "():\n"
             + "   g = globals()\n"
@@ -162,10 +154,8 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
             + NAME_CLEANUP_FOR_CONTEXT_SWITCH
             + "' "
             + "and not i == 'jep' and not i == '"
-            + NAME_IS_SIDE_EFFECTS_METHOD_DEFINED
-            + "' and not i == '"
-            + NAME_APPLY_SIDE_EFFECTS_WRAPPER
-            + "' and not i == 'json' and not i == 'inspect':\n"
+            + NAME_APPLY_INTERDEPENDENCIES_WRAPPER
+            + "' and not i == 'json':\n"
             + "         g[i] = None\n\n";
 
     /**
@@ -175,15 +165,15 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
             + "(); " + NAME_CLEANUP_FOR_CONTEXT_SWITCH + " = None\n";
 
     /**
-     * Name of the Python method used to clean up before shutdown.
+     * Name of the Python function used to clean up before shutdown.
      */
-    private static final String NAME_CLEANUP_FOR_SHUTDOWN = "cleanupForShutdown";
+    private static final String NAME_CLEANUP_FOR_SHUTDOWN = "_cleanupForShutdown_";
 
     /**
-     * Python script used for defining the method used to clean up before
+     * Python script used for defining the function used to clean up before
      * shutdown.
      */
-    private static final String DEFINE_CLEANUP_FOR_SHUTDOWN_METHOD = "def "
+    private static final String DEFINE_CLEANUP_FOR_SHUTDOWN_FUNCTION = "def "
             + NAME_CLEANUP_FOR_SHUTDOWN + "():\n" + "   g = globals()\n"
             + "   for i in g:\n"
             + "      if not i.startswith('__') and not i == '"
@@ -197,9 +187,17 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
             + NAME_CLEANUP_FOR_SHUTDOWN
             + " = None; "
             + "import gc; "
-            + "uncollected = gc.collect(2); "
-            + "uncollected = None; "
+            + "_uncollected_ = gc.collect(2); "
+            + "_uncollected_ = None; "
             + "gc = None\n";
+
+    /**
+     * Regular expression pattern used to find the apply-interdependencies entry
+     * point function definition in Python scripts.
+     */
+    private static final Pattern APPLY_INTERDEPENDENCIES_ENTRY_POINT_DEFINITION = Pattern
+            .compile("(.*\n|)def +applyInterdependencies *\\(.+",
+                    Pattern.DOTALL);
 
     // Private Static Variables
 
@@ -244,18 +242,10 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
     // Private Variables
 
     /**
-     * Path for the script that is run by the side effects applier prior to
-     * application of side effects. Either this or {@link #script} will be
-     * <code>null</code>; whichever is not <code>null</code> is used.
+     * File holding the script run by the side effects applier prior to
+     * application of side effects.
      */
-    private final String scriptPath;
-
-    /**
-     * Script that is run by the side effects applier prior to application of
-     * side effects. Either this or {@link #scriptPath} will be <code>
-     * null</code>; whichever is not <code>null</code> is used.
-     */
-    private final String script;
+    private final File scriptFile;
 
     // Public Static Methods
 
@@ -264,7 +254,7 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
      * path.
      */
     public static void initialize() {
-        initialize(null);
+        initialize(null, PythonSideEffectsApplier.class.getClassLoader());
     }
 
     /**
@@ -274,15 +264,19 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
      *            Python include path to be used. If not <code>null</code>, it
      *            is used when running Python code so that the latter can import
      *            non-standard modules.
+     * @param classLoader
+     *            Class loader to be used. This must be a class loader from a
+     *            project that has access to any Java classes that will be used
+     *            by the Python scripts that are run.
      */
-    public static void initialize(String includePath) {
+    public static void initialize(String includePath, ClassLoader classLoader) {
         synchronized (PythonSideEffectsApplier.class) {
             if ((++requestCounter == 1) && (jep == null)) {
                 try {
-                    jep = new Jep(false, includePath);
+
+                    jep = new Jep(false, includePath, classLoader);
                     jep.eval(INITIALIZE);
-                    jep.eval(DEFINE_CHECK_FOR_SIDE_EFFECTS_METHOD);
-                    jep.eval(DEFINE_APPLY_SIDE_EFFECTS_WRAPPER_METHOD);
+                    jep.eval(DEFINE_APPLY_INTERDEPENDENCIES_WRAPPER_FUNCTION);
                 } catch (JepException e) {
                     statusHandler.error(
                             "Internal error while initializing Python "
@@ -302,7 +296,7 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
                 lastApplier = null;
                 gson = null;
                 try {
-                    jep.eval(DEFINE_CLEANUP_FOR_SHUTDOWN_METHOD);
+                    jep.eval(DEFINE_CLEANUP_FOR_SHUTDOWN_FUNCTION);
                     jep.eval(CLEANUP_FOR_SHUTDOWN);
                     jep.close();
                     jep = null;
@@ -315,46 +309,46 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
         }
     }
 
-    // Public Constructors
-
     /**
-     * Construct a standard instance with a path to a Python script.
+     * Determine whether the script within the specified file appears to contain
+     * a definition of an Python interdependency script entry point function.
+     * This method does not parse the script for any sort of correctness; it
+     * simply determines whether such a function appears to be defined, not
+     * whether the script would compile.
      * 
-     * @param scriptPath
-     *            Path to Python script that defines the <code>
-     *            applyInterdependencies()</code> method used by this instance
-     *            to apply side effects.
-     * @throws IllegalStateException
-     *             If {@link #initialize()} has not been invoked already, or if
-     *             {@link #prepareForShutDown()} has been invoked since the last
-     *             invocation of <code>initialize()</code>.
-     * @throws NullPointerException
-     *             If <code>scriptPath</code> is <code>null</code>.
-     * @throws IOException
-     *             If the <code>scriptPath</code> does not resolve to a
-     *             canonical path.
+     * @param file
+     *            File in which to look for the entry point function.
+     * @return True
      */
-    public PythonSideEffectsApplier(File scriptPath) throws IOException {
-        ensureClassInitialized();
-        this.scriptPath = scriptPath.getCanonicalPath();
-        this.script = null;
+    public static boolean containsSideEffectsEntryPointFunction(File file) {
+        try {
+            String script = FileUtil.file2String(file);
+            return APPLY_INTERDEPENDENCIES_ENTRY_POINT_DEFINITION.matcher(
+                    script).matches();
+        } catch (IOException e) {
+            statusHandler.error("Could not read in " + file + " to check for "
+                    + "apply-interdependencies entry point function.", e);
+        }
+        return false;
     }
+
+    // Public Constructors
 
     /**
      * Construct a standard instance with a Python script.
      * 
-     * @param script
-     *            Python script that defines the <code>applyInterdependencies()
-     *            </code> method used by this instance to apply side effects.
+     * @param scriptFile
+     *            File holding the Python script that defines the
+     *            <code>applyInterdependencies()</code> entry point function
+     *            used by this instance to apply side effects.
      * @throws IllegalStateException
      *             If {@link #initialize()} has not been invoked already, or if
      *             {@link #prepareForShutDown()} has been invoked since the last
      *             invocation of <code>initialize()</code>.
      */
-    public PythonSideEffectsApplier(String script) {
+    public PythonSideEffectsApplier(File scriptFile) {
         ensureClassInitialized();
-        this.scriptPath = null;
-        this.script = script;
+        this.scriptFile = scriptFile;
     }
 
     // Public Methods
@@ -403,7 +397,7 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
                  * Clean up to prepare for the context switch.
                  */
                 try {
-                    jep.eval(DEFINE_CLEANUP_FOR_CONTEXT_SWITCH_METHOD);
+                    jep.eval(DEFINE_CLEANUP_FOR_CONTEXT_SWITCH_FUNCTION);
                     jep.eval(CLEANUP_FOR_CONTEXT_SWITCH);
                 } catch (JepException e) {
                     statusHandler.error("Internal error while cleaning up "
@@ -416,58 +410,14 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
                 /*
                  * Switch context by running the script for this instance. The
                  * script has to define the Python applyInterdependencies()
-                 * method. The script is either evaluated directly, if it was
-                 * supplied as a string, or run from a file, if a path was
-                 * supplied.
+                 * method.
                  */
                 try {
-                    if (script != null) {
-                        if (jep.eval(script) == false) {
-                            throw new JepException(
-                                    "script incomplete and/or not executed");
-                        }
-                    } else {
-                        jep.runScript(scriptPath);
-                    }
+                    jep.runScript(scriptFile.getPath());
                 } catch (JepException e) {
-                    statusHandler.error("Internal error while performing "
-                            + "context switch of Python side effects applier.",
-                            e);
-                    sideEffectsBeingApplied = false;
-                    return null;
-                }
-
-                /*
-                 * Ensure that the Python method applyInterdependencies() has
-                 * been defined by the script that was run above.
-                 */
-                Object result = null;
-                try {
-                    result = jep.invoke(NAME_IS_SIDE_EFFECTS_METHOD_DEFINED);
-                } catch (JepException e) {
-                    statusHandler.error("Internal error while checking for "
-                            + "presence of Python script for application "
-                            + "of side effects within Python side "
-                            + "effects applier.", e);
-                    sideEffectsBeingApplied = false;
-                    return null;
-                }
-                if ((result == null) || !(result instanceof Boolean)) {
                     statusHandler
-                            .error("Internal error while checking for "
-                                    + "presence of Python script for application of "
-                                    + "side effects within Python side effects applier.",
-                                    new IllegalStateException(
-                                            "Could not execute Python "
-                                                    + "method "
-                                                    + NAME_IS_SIDE_EFFECTS_METHOD_DEFINED
-                                                    + "()"));
-                    sideEffectsBeingApplied = false;
-                    return null;
-                } else if ((Boolean) result == false) {
-                    statusHandler.error("Could not find Python method "
-                            + "applyInterdependencies() defined "
-                            + "within Python side effects applier.");
+                            .error("Error while loading Python interdependency script.",
+                                    e);
                     sideEffectsBeingApplied = false;
                     return null;
                 }
@@ -487,7 +437,7 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
             Map<String, Map<String, Object>> resultMap = null;
             try {
                 Object result = jep.invoke(
-                        NAME_APPLY_SIDE_EFFECTS_WRAPPER,
+                        NAME_APPLY_INTERDEPENDENCIES_WRAPPER,
                         (triggerIdentifiers == null ? null : gson
                                 .toJson(triggerIdentifiers)), gson
                                 .toJson(mutableProperties),

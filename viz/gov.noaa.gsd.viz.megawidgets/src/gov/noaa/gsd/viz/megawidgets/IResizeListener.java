@@ -24,7 +24,7 @@ package gov.noaa.gsd.viz.megawidgets;
  * 
  * @author Chris.Golden
  * @version 1.0
- * @see INotifier
+ * @see IResizer
  */
 public interface IResizeListener {
 

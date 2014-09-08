@@ -7,10 +7,26 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_SERVICES_LOCALIZATION_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_TYPES_LOCALIZATION_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_BRIDGE_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_CONFIG_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_DATA_ACCESS_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_DATA_STORAGE_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_EVENTS_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_GENERAL_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_GEO_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_GFE_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_RECOMMENDERS_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_TIME_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_TRACK_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_UTILITIES_DIR;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
@@ -158,6 +174,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             modules.
  * Jul 03, 2014 4084       Chris.Golden        Added shut down of event bus when shutting
  *                                             down Hazard Services.
+ * Aug 18, 2014 4243       Chris.Golden        Changed Python side effects applier include
+ *                                             path to work with recommender scripts.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -415,9 +433,48 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR);
         String logUtilitiesPath = FileUtil.join(pythonPath,
                 PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
+        String eventsPath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_EVENTS_DIR);
+        String eventsUtilitiesPath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_EVENTS_DIR, PYTHON_UTILITIES_DIR);
+        String recommendersPath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_EVENTS_DIR,
+                PYTHON_LOCALIZATION_RECOMMENDERS_DIR);
+        String recommendersConfigPath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_EVENTS_DIR,
+                PYTHON_LOCALIZATION_RECOMMENDERS_DIR,
+                PYTHON_LOCALIZATION_CONFIG_DIR);
+        String geoUtilitiesPath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_GEO_UTILITIES_DIR);
+        String shapeUtilitiesPath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR);
+        String textUtilitiesPath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR);
+        String dataStoragePath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_DATA_STORAGE_DIR);
+        String bridgePath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_BRIDGE_DIR);
+        String gfePath = FileUtil.join(pythonPath, PYTHON_LOCALIZATION_GFE_DIR);
+        String timePath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_TIME_DIR);
+        String generalUtilitiesPath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_GENERAL_UTILITIES_DIR);
+        String trackUtilitiesPath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_TRACK_UTILITIES_DIR);
+        String dataAccessPath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_DATA_ACCESS_DIR);
+        String hazardServicesPath = pathManager.getFile(localizationContext,
+                HAZARD_SERVICES_LOCALIZATION_DIR).getPath();
+        String hazardTypesPath = FileUtil.join(hazardServicesPath,
+                HAZARD_TYPES_LOCALIZATION_DIR);
         PythonSideEffectsApplier.initialize(PyUtil.buildJepIncludePath(
                 pythonPath, localizationUtilitiesPath, logUtilitiesPath,
-                vtecUtilitiesPath));
+                vtecUtilitiesPath, geoUtilitiesPath, shapeUtilitiesPath,
+                textUtilitiesPath, dataStoragePath, eventsPath,
+                eventsUtilitiesPath, bridgePath, hazardServicesPath,
+                hazardTypesPath, gfePath, timePath, generalUtilitiesPath,
+                trackUtilitiesPath, dataAccessPath, recommendersPath,
+                recommendersConfigPath), getClass().getClassLoader());
 
         /*
          * For testing and demos, force DRT for operational mode start HS

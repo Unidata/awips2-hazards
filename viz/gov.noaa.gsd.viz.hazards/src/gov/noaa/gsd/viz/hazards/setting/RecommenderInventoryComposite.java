@@ -58,10 +58,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 28, 2014 3768       Robert.Blum Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Aug 28, 2014 3768       Robert.Blum  Initial creation.
+ * Sep 08, 2014 4243       Chris.Golden Changed to work with latest version
+ *                                      of abstract recommender engine.
  * </pre>
  * 
  * @author Robert.Blum
@@ -120,9 +121,8 @@ public class RecommenderInventoryComposite extends Composite {
             @Override
             public void widgetSelected(SelectionEvent event) {
                 TreeItem item = (TreeItem) event.item;
-                List<EventRecommender> recommenders = presenter
-                        .getSessionManager().getRecommenderEngine()
-                        .getInventory(item.getText());
+                EventRecommender rec = presenter.getSessionManager()
+                        .getRecommenderEngine().getInventory(item.getText());
                 if (event.detail == SWT.CHECK) {
                     boolean checked = item.getChecked();
                     checkItems(item, checked);
@@ -130,56 +130,48 @@ public class RecommenderInventoryComposite extends Composite {
                     Tool tool = null;
                     ISessionConfigurationManager manager = presenter
                             .getSessionManager().getConfigurationManager();
-                    for (EventRecommender rec : recommenders) {
-                        if (item.getText().equals(rec.getName())) {
-                            
-                            if (checked) {
-                                tool = new Tool();
-                                tool.setDisplayName(rec.getName());
-                                tool.setToolName(rec.getName());
-                                manager.getSettings().getToolbarTools()
-                                        .add(tool);
-                            } else {
-                                for (Tool t : manager.getSettings()
-                                        .getToolbarTools()) {
-                                    if (t.getToolName().equals(rec.getName())) {
-                                        tool = t;
-                                        break;
-                                    }
+                    if (item.getText().equals(rec.getName())) {
+
+                        if (checked) {
+                            tool = new Tool();
+                            tool.setDisplayName(rec.getName());
+                            tool.setToolName(rec.getName());
+                            manager.getSettings().getToolbarTools().add(tool);
+                        } else {
+                            for (Tool t : manager.getSettings()
+                                    .getToolbarTools()) {
+                                if (t.getToolName().equals(rec.getName())) {
+                                    tool = t;
+                                    break;
                                 }
-                                manager.getSettings().getToolbarTools()
-                                        .remove(tool);
                             }
-                            presenter.fireAction(new SettingsToolsModified(
-                                    manager));
-                            break;
+                            manager.getSettings().getToolbarTools()
+                                    .remove(tool);
                         }
+                        presenter
+                                .fireAction(new SettingsToolsModified(manager));
                     }
                 } else {
-                    for (EventRecommender rec : recommenders) {
-                        if (item.getText().equals(rec.getName())) {
-                            StringBuilder builder = new StringBuilder();
-                            List<StyleRange> ranges = new ArrayList<StyleRange>();
-                            buildString(ranges, builder,
-                                    EventRecommender.AUTHOR + " : ",
-                                    rec.getAuthor());
-                            buildString(ranges, builder,
-                                    EventRecommender.VERSION + " : ",
-                                    rec.getVersion());
-                            buildString(ranges, builder,
-                                    EventRecommender.DESCRIPTION + " : ",
-                                    rec.getDescription());
-                            if (builder.length() != 0) {
-                                stText.setText(builder.toString());
-                                stText.setStyleRanges(ranges
-                                        .toArray(new StyleRange[0]));
-                            } else {
-                                stText.setText("No information available");
-                                StyleRange style = new StyleRange();
-                                style.start = 0;
-                                style.length = stText.getText().length();
-                                stText.setStyleRange(style);
-                            }
+                    if (item.getText().equals(rec.getName())) {
+                        StringBuilder builder = new StringBuilder();
+                        List<StyleRange> ranges = new ArrayList<StyleRange>();
+                        buildString(ranges, builder, EventRecommender.AUTHOR
+                                + " : ", rec.getAuthor());
+                        buildString(ranges, builder, EventRecommender.VERSION
+                                + " : ", rec.getVersion());
+                        buildString(ranges, builder,
+                                EventRecommender.DESCRIPTION + " : ",
+                                rec.getDescription());
+                        if (builder.length() != 0) {
+                            stText.setText(builder.toString());
+                            stText.setStyleRanges(ranges
+                                    .toArray(new StyleRange[0]));
+                        } else {
+                            stText.setText("No information available");
+                            StyleRange style = new StyleRange();
+                            style.start = 0;
+                            style.length = stText.getText().length();
+                            stText.setStyleRange(style);
                         }
                     }
 
@@ -223,8 +215,9 @@ public class RecommenderInventoryComposite extends Composite {
     }
 
     private void checkPath(TreeItem item, boolean checked, boolean grayed) {
-        if (item == null)
+        if (item == null) {
             return;
+        }
         if (grayed) {
             checked = true;
         } else {

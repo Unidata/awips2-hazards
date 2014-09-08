@@ -50,6 +50,10 @@ import org.eclipse.swt.widgets.Event;
  *                                           notifications of simultaneous
  *                                           multi-state child megawidget state
  *                                           changes.
+ * Aug 15, 2014    4243    Chris.Golden      Fixed bug that caused IStateful
+ *                                           megawidgets as details to throw an
+ *                                           exception when they notified this
+ *                                           megawidget of a state change.
  * </pre>
  * 
  * @author Chris.Golden
@@ -247,10 +251,12 @@ public class BoundedChoicesDetailChildrenManager implements
     @SuppressWarnings("unchecked")
     private void rememberChildMegawidgetsAssociationWithChoiceButton(
             IControl megawidget, ChoiceButtonComponent button) {
-        if (megawidget instanceof INotifier) {
+        if ((megawidget instanceof IStateful)
+                || (megawidget instanceof INotifier)) {
             choiceButtonsForDetailIdentifiers.put(megawidget.getSpecifier()
                     .getIdentifier(), button);
-        } else if (megawidget instanceof IParent) {
+        }
+        if (megawidget instanceof IParent) {
             for (IControl child : ((IParent<IControl>) megawidget)
                     .getChildren()) {
                 rememberChildMegawidgetsAssociationWithChoiceButton(child,

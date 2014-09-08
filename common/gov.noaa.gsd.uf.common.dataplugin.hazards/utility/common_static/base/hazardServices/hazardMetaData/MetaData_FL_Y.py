@@ -21,8 +21,7 @@ class MetaData(CommonMetaData.MetaData):
                                        ])
                     ]
         return {
-                METADATA_KEY: metaData,
-                INTERDEPENDENCIES_SCRIPT_KEY: self.getInterdependenciesScriptFromLocalizedFile("RiseCrestFallUntilFurtherNoticeInterdependencies.py")
+                METADATA_KEY: metaData
                 }    
                         
         
@@ -42,4 +41,8 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaWarningInEffect(),
             self.ctaReportFlooding(),
             ]
+        
+# Interdependency script entry point.
+def applyInterdependencies(triggerIdentifiers, mutableProperties):
+  return CommonMetaData.applyRiseCrestFallUntilFurtherNoticeInterdependencies(triggerIdentifiers, mutableProperties)
 

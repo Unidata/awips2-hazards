@@ -20,6 +20,7 @@
     Apr 18, 2014   696       dgilling            Add support for selectable VTEC mode.
     Apr 20, 2014   2925      Chris.Golden        Changed to work with new hazard event metadata.
     May 06, 2014   1328      jramer              Remove reference to deprecated MapInfo class.
+    Aug 15, 2014   4243      Chris.Golden        Changed to work with latest version of hazard event metadata.
     @author Tracy.L.Hansen@noaa.gov
 '''
 
@@ -2032,7 +2033,7 @@ class Product(ProductTemplate.Product):
         criteria = {'dataType':'hazardMetaData_filter',
                 'filter':{'phen':phen, 'sig':sig, 'subType':subType}
                 }
-        metaData = self.bridge.getData(json.dumps(criteria))
+        metaData, filePath = self.bridge.getData(json.dumps(criteria))
 
         if type(metaData) is not types.ListType:
             metaData = metaData.execute(hazardEvent, {})

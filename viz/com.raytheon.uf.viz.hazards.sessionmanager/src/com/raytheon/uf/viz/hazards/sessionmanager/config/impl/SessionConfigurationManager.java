@@ -19,13 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_UTILITIES_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_SITES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_STATES;
-import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
@@ -43,11 +38,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import jep.Jep;
-import jep.JepException;
-
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
+import org.eclipse.swt.widgets.Display;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -66,8 +59,11 @@ import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
+import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.localization.exception.LocalizationException;
-import com.raytheon.uf.common.python.PyUtil;
+import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
+import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
+import com.raytheon.uf.common.python.concurrent.PythonJobCoordinator;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -80,6 +76,8 @@ import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.core.jobs.JobPool;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.IEventModifyingScriptJobListener;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
@@ -132,6 +130,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      trying to retrieve hazard event metadata.
  * Jul 03, 2014  3512      Chris.Golden Added ability to fetch duration choices for hazard
  *                                      events, and also default durations.
+ * Aug 15, 2014  4243      Chris.Golden Changed to look for any interdependency script's
+ *                                      entry point in a hazard metadata file, and to send
+ *                                      the file onto the Python side effects applier if
+ *                                      one is found. Also added ability to run arbitrary
+ *                                      event-modifying scripts when prompted to do so.
  * Aug 28, 2014  3768      Robert.Blum  Modified the deleteSetting() function to correclty
  *                                      remove the settings.
  * </pre>
@@ -142,33 +145,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 
 public class SessionConfigurationManager implements
         ISessionConfigurationManager {
-
-    /**
-     * Name of the Python method used to clean up before shutdown.
-     */
-    private static final String NAME_CLEANUP_FOR_SHUTDOWN = "cleanupForShutdown";
-
-    /**
-     * Python script used for defining the method used to clean up before
-     * shutdown.
-     */
-    private static final String DEFINE_CLEANUP_FOR_SHUTDOWN_METHOD = "def "
-            + NAME_CLEANUP_FOR_SHUTDOWN + "():\n" + "   g = globals()\n"
-            + "   for i in g:\n"
-            + "      if not i.startswith('__') and not i == '"
-            + NAME_CLEANUP_FOR_SHUTDOWN + "':\n" + "         g[i] = None\n\n";
-
-    /**
-     * Python script used for cleaning up before shutdown.
-     */
-    private static final String CLEANUP_FOR_SHUTDOWN = NAME_CLEANUP_FOR_SHUTDOWN
-            + "(); "
-            + NAME_CLEANUP_FOR_SHUTDOWN
-            + " = None; "
-            + "import gc; "
-            + "uncollected = gc.collect(2); "
-            + "uncollected = None; "
-            + "gc = None\n";
 
     /**
      * Empty map standing in for an environment map, which will be needed in the
@@ -185,12 +161,6 @@ public class SessionConfigurationManager implements
 
     private static final Color WHITE = new Color(1.0f, 1.0f, 1.0f);
 
-    private static final String BRIDGE = "bridge";
-
-    private static final String EVENTS = "events";
-
-    private static final String UTILITIES = "utilities";
-
     private static final MegawidgetSpecifierManager EMPTY_MEGAWIDGET_SPECIFIER_MANAGER;
     static {
         MegawidgetSpecifierManager manager = null;
@@ -205,6 +175,9 @@ public class SessionConfigurationManager implements
         }
         EMPTY_MEGAWIDGET_SPECIFIER_MANAGER = manager;
     }
+
+    private static final HazardEventMetadata EMPTY_HAZARD_EVENT_METADATA = new HazardEventMetadata(
+            EMPTY_MEGAWIDGET_SPECIFIER_MANAGER, null, null);
 
     private ISessionNotificationSender notificationSender;
 
@@ -235,7 +208,12 @@ public class SessionConfigurationManager implements
 
     private String siteId;
 
-    private Jep jep;
+    /**
+     * Python job coordinator that handles both metadata fetching scripts and
+     * event modifying scripts.
+     */
+    private final PythonJobCoordinator<ContextSwitchingPythonEval> coordinator = PythonJobCoordinator
+            .newInstance(new ConfigScriptFactory());
 
     private Map<String, ImmutableList<String>> durationChoicesForHazardTypes;
 
@@ -246,7 +224,6 @@ public class SessionConfigurationManager implements
     public SessionConfigurationManager(IPathManager pathManager,
             ISessionTimeManager timeManager,
             ISessionNotificationSender notificationSender) {
-        this.jep = buildJep(pathManager);
         this.pathManager = pathManager;
         this.timeManager = timeManager;
         this.notificationSender = notificationSender;
@@ -313,46 +290,6 @@ public class SessionConfigurationManager implements
         settingsConfig = new ConfigLoader<SettingsConfig[]>(file,
                 SettingsConfig[].class, "viewConfig");
         loaderPool.schedule(settingsConfig);
-    }
-
-    private Jep buildJep(IPathManager pathManager) {
-        try {
-            LocalizationContext localizationContext = pathManager.getContext(
-                    LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-            String pythonPath = pathManager.getFile(localizationContext,
-                    PYTHON_LOCALIZATION_DIR).getPath();
-            String localizationUtilitiesPath = FileUtil.join(pythonPath,
-                    PYTHON_LOCALIZATION_UTILITIES_DIR);
-            String vtecUtilitiesPath = FileUtil.join(pythonPath,
-                    PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR);
-            String logUtilitiesPath = FileUtil.join(pythonPath,
-                    PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
-            String eventsPath = FileUtil.join(pythonPath, EVENTS);
-            String eventsUtilitiesPath = FileUtil.join(pythonPath, EVENTS,
-                    UTILITIES);
-            String bridgePath = FileUtil.join(pythonPath, BRIDGE);
-
-            /**
-             * TODO This path is used in multiple places elsewhere. Are those
-             * cases also due to the micro-engine issue?
-             */
-            String tbdWorkaroundToUEngineInLocalizationPath = FileUtil.join(
-                    File.separator, "awips2", "fxa", "bin", "src");
-
-            String includePath = PyUtil.buildJepIncludePath(pythonPath,
-                    localizationUtilitiesPath, logUtilitiesPath,
-                    tbdWorkaroundToUEngineInLocalizationPath,
-                    vtecUtilitiesPath, eventsPath, eventsUtilitiesPath,
-                    bridgePath);
-            ClassLoader cl = this.getClass().getClassLoader();
-            Jep result = new Jep(false, includePath, cl);
-            result.eval("import JavaImporter");
-            result.eval("import HazardServicesMetaDataRetriever");
-            return result;
-        } catch (JepException e) {
-            statusHandler.error("Could not initialize metadata retriever.", e);
-            return null;
-        }
     }
 
     protected void loadAllSettings() {
@@ -560,78 +497,132 @@ public class SessionConfigurationManager implements
 
     @SuppressWarnings("unchecked")
     @Override
-    public MegawidgetSpecifierManager getMegawidgetSpecifiersForHazardEvent(
+    public HazardEventMetadata getMetadataForHazardEvent(
             IHazardEvent hazardEvent) {
 
         /*
          * Get the metadata, which is a map with at least one entry holding the
          * list of megawidget specifiers that applies, as well as an optional
-         * entry for a Python side effects script. For now, just pass an empty
-         * environment map.
+         * entry for a map of event modifier identifiers to script function
+         * names. For now, just pass an empty environment map.
          * 
          * TODO: Substitute an actual map of environmental parameters for the
          * empty placeholder.
          */
-        String metaData = getHazardMetaData(hazardEvent, ENVIRONMENT);
-        JSONConverter converter = new JSONConverter();
-        Map<String, Object> result;
+        IPythonExecutor<ContextSwitchingPythonEval, Map<String, Object>> executor = new MetaDataScriptExecutor(
+                hazardEvent, ENVIRONMENT);
+        Map<String, Object> result = null;
         try {
-            result = converter.fromJson(metaData);
+            result = coordinator.submitSyncJob(executor);
         } catch (Exception e) {
-            statusHandler.error("Could not get hazard metadata.", e);
-            return EMPTY_MEGAWIDGET_SPECIFIER_MANAGER;
+            statusHandler.error("Error executing metadata-fetching job.", e);
+            return EMPTY_HAZARD_EVENT_METADATA;
         }
 
         /*
-         * Build a megawidget specifier manager out of the metadata.
+         * Build a megawidget specifier manager out of the metadata. If the file
+         * that produced the metadata has an apply-interdependencies entry
+         * point, create a side effects applier for it. If it includes a map of
+         * event modifiers to the names of scripts that are to be run, remember
+         * these.
          */
         ISideEffectsApplier sideEffectsApplier = null;
-        if (result.containsKey(HazardConstants.SIDE_EFFECTS_SCRIPT_KEY)) {
-            sideEffectsApplier = new PythonSideEffectsApplier(
-                    (String) result
-                            .get(HazardConstants.SIDE_EFFECTS_SCRIPT_KEY));
+        File scriptFile = null;
+        Map<String, String> eventModifyingFunctionNamesForIdentifiers = null;
+        if (result.containsKey(HazardConstants.FILE_PATH_KEY)) {
+            scriptFile = PathManagerFactory
+                    .getPathManager()
+                    .getStaticLocalizationFile(
+                            (String) result.get(HazardConstants.FILE_PATH_KEY))
+                    .getFile();
+            if (PythonSideEffectsApplier
+                    .containsSideEffectsEntryPointFunction(scriptFile)) {
+                sideEffectsApplier = new PythonSideEffectsApplier(scriptFile);
+            }
+            if (result.containsKey(HazardConstants.EVENT_MODIFIERS_KEY)) {
+                eventModifyingFunctionNamesForIdentifiers = (Map<String, String>) result
+                        .get(HazardConstants.EVENT_MODIFIERS_KEY);
+            }
         }
         List<?> specifiersList = (List<?>) result
                 .get(HazardConstants.METADATA_KEY);
         if (specifiersList.isEmpty()) {
-            return EMPTY_MEGAWIDGET_SPECIFIER_MANAGER;
+            return (eventModifyingFunctionNamesForIdentifiers == null ? EMPTY_HAZARD_EVENT_METADATA
+                    : new HazardEventMetadata(
+                            EMPTY_MEGAWIDGET_SPECIFIER_MANAGER, scriptFile,
+                            eventModifyingFunctionNamesForIdentifiers));
         }
         try {
-            return new MegawidgetSpecifierManager(
+            return new HazardEventMetadata(new MegawidgetSpecifierManager(
                     (List<Map<String, Object>>) specifiersList,
                     IControlSpecifier.class,
-                    timeManager.getCurrentTimeProvider(), sideEffectsApplier);
+                    timeManager.getCurrentTimeProvider(), sideEffectsApplier),
+                    scriptFile, eventModifyingFunctionNamesForIdentifiers);
         } catch (MegawidgetSpecificationException e) {
             statusHandler.error("Could not get hazard metadata for event ID = "
                     + hazardEvent.getEventID() + ".", e);
-            return EMPTY_MEGAWIDGET_SPECIFIER_MANAGER;
+            return EMPTY_HAZARD_EVENT_METADATA;
+        }
+    }
+
+    @Override
+    public void runEventModifyingScript(final IHazardEvent hazardEvent,
+            final File scriptFile, final String functionName,
+            final IEventModifyingScriptJobListener listener) {
+
+        /*
+         * Run the event-modifying script asynchronously.
+         */
+        IPythonExecutor<ContextSwitchingPythonEval, IHazardEvent> executor = new EventModifyingScriptExecutor(
+                hazardEvent, scriptFile, functionName);
+        try {
+            IPythonJobListener<IHazardEvent> pythonJobListener = new IPythonJobListener<IHazardEvent>() {
+
+                @Override
+                public void jobFinished(final IHazardEvent result) {
+                    Display.getDefault().asyncExec(new Runnable() {
+                        @Override
+                        public void run() {
+                            listener.scriptExecutionComplete(functionName,
+                                    result);
+                        }
+                    });
+                }
+
+                @Override
+                public void jobFailed(final Throwable e) {
+                    Display.getDefault().asyncExec(new Runnable() {
+                        @Override
+                        public void run() {
+                            handleEventModifyingScriptExecutionError(
+                                    hazardEvent, functionName, e);
+                        }
+                    });
+                }
+            };
+            coordinator.submitAsyncJob(executor, pythonJobListener);
+        } catch (Exception e) {
+            handleEventModifyingScriptExecutionError(hazardEvent, functionName,
+                    e);
         }
     }
 
     /**
-     * Get the hazard metadata for the specified hazard event.
+     * Handle an error that occurred during an event modifying script execution
+     * attempt.
      * 
      * @param hazardEvent
-     *            Event for which to fetch metadata.
-     * @param environment
-     *            Map of environmental information.
-     * @return Metadata as a JSON-encoded string.
+     *            Hazard event to which the script was being applied.
+     * @param identifier
+     *            Identifier of the script that was running.
+     * @param e
+     *            Error that occcurred.
      */
-    private String getHazardMetaData(IHazardEvent hazardEvent,
-            Map<String, Serializable> environment) {
-
-        try {
-            jep.set("hazardEvent", hazardEvent);
-            jep.set("metaDict", environment);
-            jep.eval("result = HazardServicesMetaDataRetriever.getMetaData(hazardEvent, metaDict)");
-            String result = (String) jep.getValue("result");
-            jep.eval("hazardEvent = None\n" + "metaDict = None\n"
-                    + "result = None");
-            return result;
-        } catch (JepException e) {
-            statusHandler.error("Could not get hazard metadata.", e);
-            return null;
-        }
+    private void handleEventModifyingScriptExecutionError(
+            IHazardEvent hazardEvent, String identifier, Throwable e) {
+        statusHandler.error("Error executing async event "
+                + "modifying script job for button identifier " + identifier
+                + " on event " + hazardEvent.getEventID() + ".", e);
     }
 
     @Override
@@ -865,14 +856,7 @@ public class SessionConfigurationManager implements
 
     @Override
     public void shutdown() {
-        try {
-            jep.eval(DEFINE_CLEANUP_FOR_SHUTDOWN_METHOD);
-            jep.eval(CLEANUP_FOR_SHUTDOWN);
-            jep.close();
-        } catch (JepException e) {
-            statusHandler.error("Internal error while preparing for shutdown "
-                    + "of Jep for configuration manager.", e);
-        }
+        coordinator.shutdown();
     }
 
 }

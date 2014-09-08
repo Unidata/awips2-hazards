@@ -17,11 +17,6 @@ class MetaData:
             self.hazardStatus = self.hazardEvent.getStatus().lower()
         else:
             self.hazardStatus = "pending"
-            
-    # INTERDEPENDENCIES SCRIPT FROM A SEPARATE FILE
-    def getInterdependenciesScriptFromLocalizedFile(self, scriptFileName):
-        localizationInterface = LocalizationInterface()
-        return localizationInterface.getLocFile("hazardServices/megawidgetSideEffects/" + scriptFileName, "common")
     
     # POINT ID
     def getPointID(self):
@@ -979,3 +974,72 @@ class MetaData:
     #     tzT = timezone
     #     ddd= three letter abbreviation for day of the week 
     #      
+
+# Helper function to be called by metadata megawidget interdependency implementations
+# that include Rise Above/Crest/Fall Below and need to allow Until Further Notice to
+# be applied to Fall Below. It ensures that if the associated Until Further Notice
+# checkbox is checked, the Fall Below thumb in the time scale megawidget is disabled.
+def applyRiseCrestFallUntilFurtherNoticeInterdependencies(triggerIdentifiers, mutableProperties):
+    
+    # Do nothing unless the "until further notice" checkbox has changed state, or
+    # initialization is occurring.
+    if triggerIdentifiers == None or "fallBelowUntilFurtherNotice" in triggerIdentifiers:
+        
+        # Determine whether the "fall below" state should be editable or read-only.
+        # If "until further notice" is turned on, it should be read-only.
+        editable = True
+        if "fallBelowUntilFurtherNotice" in mutableProperties \
+                and "values" in mutableProperties["fallBelowUntilFurtherNotice"]:
+            editable = not mutableProperties["fallBelowUntilFurtherNotice"]["values"]
+
+        # If "until further notice" has just been turned on, remember the interval
+        # as it is now between the "crest" and "fall below" times in case "until
+        # further notice" is toggled off in the future, and set the "fall below"
+        # time to the special "until further notice" value. Otherwise, if "until
+        # further notice" has just been turned off, set the "fall below" time to
+        # be an interval offset from the "crest" time. If a saved interval is
+        # found, use that as the interval; otherwise, make the interval equal to
+        # the one between the "riseAbove" and "crest" times. Finally, if it has
+        # not just been turned on or off, ensure that the "fallBelow" state is
+        # still read-only or editable as appropriate. This last case will occur,
+        # for example, when the script is called as part of the megawidgets'
+        # initialization.
+        from VTECConstants import UFN_TIME_VALUE_SECS
+        ufnTime = UFN_TIME_VALUE_SECS * 1000L
+        if "riseAbove:crest:fallBelow" in mutableProperties:
+            if editable == False and \
+                    mutableProperties["riseAbove:crest:fallBelow"]["values"]["fallBelow"] != ufnTime:
+                
+                interval = long(mutableProperties["riseAbove:crest:fallBelow"]["values"]["fallBelow"] - \
+                        mutableProperties["riseAbove:crest:fallBelow"]["values"]["crest"])
+                fallBelow = ufnTime
+                
+                return { "riseAbove:crest:fallBelow": {
+                                                       "valueEditables": { "fallBelow": False },
+                                                       "extraData": { "lastInterval": interval },
+                                                       "values": { "fallBelow": fallBelow }
+                                                       }
+                        }
+            elif editable == True and \
+                    mutableProperties["riseAbove:crest:fallBelow"]["values"]["fallBelow"] == ufnTime:
+                
+                if "extraData" in mutableProperties["riseAbove:crest:fallBelow"] \
+                        and "lastInterval" in mutableProperties["riseAbove:crest:fallBelow"]["extraData"]:
+                    interval = mutableProperties["riseAbove:crest:fallBelow"]["extraData"]["lastInterval"]
+                else:
+                    interval = long(mutableProperties["riseAbove:crest:fallBelow"]["values"]["crest"] - \
+                            mutableProperties["riseAbove:crest:fallBelow"]["values"]["riseAbove"])
+                fallBelow = mutableProperties["riseAbove:crest:fallBelow"]["values"]["crest"] + interval
+                
+                return { "riseAbove:crest:fallBelow": {
+                                                       "valueEditables": { "fallBelow": True },
+                                                       "values": { "fallBelow": fallBelow }
+                                                       }
+                        }
+            else:
+                return { "riseAbove:crest:fallBelow": { "valueEditables": { "fallBelow": editable } } }
+        else:
+            return None
+    else:
+        return None
+

@@ -54,6 +54,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Jun 17, 2014  3982     Chris.Golden  Changed megawidget "side effects" to "interdependencies".
  * Apr 23,2014  1480    jsanchez    Added CORRECTION_FLAG
  * Jul 09, 2014 3214    jsanchez    Added REGENERATE_FLAG
+ * Aug 15, 2014 4243      Chris.Golden  Changed megawidget-metadata-fetching related constants.
  * </pre>
  * 
  * @author mnash
@@ -535,7 +536,9 @@ public final class HazardConstants {
      */
     public static final String METADATA_KEY = "metadata";
 
-    public static final String SIDE_EFFECTS_SCRIPT_KEY = "interdependencies";
+    public static final String FILE_PATH_KEY = "filePath";
+
+    public static final String EVENT_MODIFIERS_KEY = "eventModifiers";
 
     public static final String ENDING_SYNOPSIS = "endingSynopsis";
 
@@ -870,14 +873,46 @@ public final class HazardConstants {
      */
     public static final String PYTHON_LOCALIZATION_DIR = "python";
 
-    public static final String PYTHON_LOCALIZATION_UTILITIES_DIR = "localizationUtilities";
+    public static final String PYTHON_LOCALIZATION_CONFIG_DIR = "config";
 
-    public static final String PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR = "VTECutilities";
+    public static final String PYTHON_LOCALIZATION_DATA_ACCESS_DIR = "dataaccess";
+
+    public static final String PYTHON_LOCALIZATION_DATA_STORAGE_DIR = "dataStorage";
+
+    public static final String PYTHON_LOCALIZATION_GENERAL_UTILITIES_DIR = "generalUtilities";
+
+    public static final String PYTHON_LOCALIZATION_GFE_DIR = "gfe";
+
+    public static final String PYTHON_LOCALIZATION_GEO_UTILITIES_DIR = "geoUtilities";
+
+    public static final String PYTHON_LOCALIZATION_UTILITIES_DIR = "localizationUtilities";
 
     public static final String PYTHON_LOCALIZATION_LOG_UTILITIES_DIR = "logUtilities";
 
-    public static String UGC_PARTS_OF_COUNTY = "ugcPortions";
+    public static final String PYTHON_LOCALIZATION_RECOMMENDERS_DIR = "recommenders";
 
-    public static String UGC_PARTS_OF_STATE = "ugcPartsOfState";
+    public static final String PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR = "shapeUtilities";
+
+    public static final String PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR = "textUtilities";
+
+    public static final String PYTHON_LOCALIZATION_TIME_DIR = "time";
+
+    public static final String PYTHON_LOCALIZATION_TRACK_UTILITIES_DIR = "trackUtilities";
+
+    public static final String PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR = "VTECutilities";
+
+    public static final String HAZARD_SERVICES_LOCALIZATION_DIR = "hazardServices";
+
+    public static final String HAZARD_TYPES_LOCALIZATION_DIR = "hazardTypes";
+
+    public static final String UGC_PARTS_OF_COUNTY = "ugcPortions";
+
+    public static final String UGC_PARTS_OF_STATE = "ugcPartsOfState";
+
+    public static final String PYTHON_LOCALIZATION_BRIDGE_DIR = "bridge";
+
+    public static final String PYTHON_LOCALIZATION_EVENTS_DIR = "events";
+
+    public static final String PYTHON_UTILITIES_DIR = "utilities";
 
 }

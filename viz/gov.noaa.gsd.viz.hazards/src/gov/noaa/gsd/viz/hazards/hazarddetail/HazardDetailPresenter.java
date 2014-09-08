@@ -16,6 +16,7 @@ import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction.ActionType;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 
 import java.io.Serializable;
@@ -114,6 +115,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           to be displayed instead of an absolute
  *                                           date/time selector for the end time of
  *                                           a hazard event.
+ * Aug 15, 2014    4243    Chris.Golden      Added ability to invoke event-modifying
+ *                                           scripts via metadata-specified notifier
+ *                                           megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -307,7 +311,7 @@ public class HazardDetailPresenter extends
     private final Map<String, Collection<IHazardEvent>> conflictingEventsForSelectedEventIdentifiers;
 
     /**
-     * Detail view visibility change handler.
+     * Detail view visibility change handler. The identifier is ignored.
      */
     private final IStateChangeHandler<String, Boolean> detailViewVisibilityChangeHandler = new IStateChangeHandler<String, Boolean>() {
 
@@ -330,7 +334,7 @@ public class HazardDetailPresenter extends
     };
 
     /**
-     * Visible event state change handler.
+     * Visible event state change handler. The identifier is ignored.
      */
     private final IStateChangeHandler<String, String> visibleEventChangeHandler = new IStateChangeHandler<String, String>() {
 
@@ -354,19 +358,22 @@ public class HazardDetailPresenter extends
     };
 
     /**
-     * Category state change handler.
+     * Category state change handler. The identifier is that of the changed
+     * event.
      */
     private final IStateChangeHandler<String, String> categoryChangeHandler = new IStateChangeHandler<String, String>() {
 
         @Override
         public void stateChanged(String identifier, String value) {
             selectedCategory = value;
-            ObservedHazardEvent event = getVisibleEvent();
+            ObservedHazardEvent event = getEventByIdentifier(identifier);
             if (event != null) {
                 getModel().getEventManager().setEventCategory(event,
                         selectedCategory,
                         UIOriginator.HAZARD_INFORMATION_DIALOG);
-                updateViewTypeList(event);
+                if (identifier.equals(visibleEventIdentifier)) {
+                    updateViewTypeList(event);
+                }
             }
         }
 
@@ -377,7 +384,7 @@ public class HazardDetailPresenter extends
     };
 
     /**
-     * Type state change handler.
+     * Type state change handler. The identifier is that of the changed event.
      */
     private final IStateChangeHandler<String, String> typeChangeHandler = new IStateChangeHandler<String, String>() {
 
@@ -387,7 +394,7 @@ public class HazardDetailPresenter extends
             /*
              * Ensure that the event is around.
              */
-            ObservedHazardEvent event = getVisibleEvent();
+            ObservedHazardEvent event = getEventByIdentifier(identifier);
             if (event == null) {
                 return;
             }
@@ -426,13 +433,14 @@ public class HazardDetailPresenter extends
     };
 
     /**
-     * Time range state change handler.
+     * Time range state change handler. The identifier is that of the changed
+     * event.
      */
     private final IStateChangeHandler<String, TimeRange> timeRangeChangeHandler = new IStateChangeHandler<String, TimeRange>() {
 
         @Override
         public void stateChanged(String identifier, TimeRange value) {
-            ObservedHazardEvent event = getVisibleEvent();
+            ObservedHazardEvent event = getEventByIdentifier(identifier);
             if (event != null) {
                 event.setTimeRange(new Date(value.getStart().getTime()),
                         new Date(value.getEnd().getTime()),
@@ -447,13 +455,15 @@ public class HazardDetailPresenter extends
     };
 
     /**
-     * Metadata state change handler.
+     * Metadata state change handler. The qualifier is the identifier of the
+     * changed event, while the identifier is that of the metadata that changed.
      */
-    private final IStateChangeHandler<String, Serializable> metadataChangeHandler = new IStateChangeHandler<String, Serializable>() {
+    private final IQualifiedStateChangeHandler<String, String, Serializable> metadataChangeHandler = new IQualifiedStateChangeHandler<String, String, Serializable>() {
 
         @Override
-        public void stateChanged(String identifier, Serializable value) {
-            ObservedHazardEvent event = getVisibleEvent();
+        public void stateChanged(String qualifier, String identifier,
+                Serializable value) {
+            ObservedHazardEvent event = getEventByIdentifier(qualifier);
             if (event != null) {
                 event.addHazardAttribute(identifier, value,
                         UIOriginator.HAZARD_INFORMATION_DIALOG);
@@ -461,8 +471,9 @@ public class HazardDetailPresenter extends
         }
 
         @Override
-        public void statesChanged(Map<String, Serializable> valuesForIdentifiers) {
-            ObservedHazardEvent event = getVisibleEvent();
+        public void statesChanged(String qualifier,
+                Map<String, Serializable> valuesForIdentifiers) {
+            ObservedHazardEvent event = getEventByIdentifier(qualifier);
             if (event != null) {
                 event.addHazardAttributes(valuesForIdentifiers,
                         UIOriginator.HAZARD_INFORMATION_DIALOG);
@@ -471,7 +482,25 @@ public class HazardDetailPresenter extends
     };
 
     /**
-     * Button invocation handler.
+     * Notifier invocation handler. The identifier is that of the event for
+     * which the invocation is occurring coupled with that of the notifier that
+     * has been invoked.
+     */
+    private final ICommandInvocationHandler<EventAndDetail> notifierInvocationHandler = new ICommandInvocationHandler<EventAndDetail>() {
+
+        @Override
+        public void commandInvoked(EventAndDetail identifier) {
+            ObservedHazardEvent event = getModel().getEventManager()
+                    .getEventById(identifier.getEventIdentifier());
+            if (event != null) {
+                getModel().getEventManager().scriptCommandInvoked(event,
+                        identifier.getDetailIdentifier());
+            }
+        }
+    };
+
+    /**
+     * Button invocation handler. The identifier is the command.
      */
     private final ICommandInvocationHandler<Command> buttonInvocationHandler = new ICommandInvocationHandler<Command>() {
 
@@ -811,8 +840,7 @@ public class HazardDetailPresenter extends
     public void sessionEventMetadataSpecifiersModified(
             final SessionEventMetadataModified change) {
         String eventIdentifier = change.getEvent().getEventID();
-        ObservedHazardEvent event = getModel().getEventManager().getEventById(
-                eventIdentifier);
+        ObservedHazardEvent event = getEventByIdentifier(eventIdentifier);
         if (event != null) {
             specifierManagersForSelectedEvents.remove(eventIdentifier);
             cacheMetadataSpecifiers(event);
@@ -833,7 +861,7 @@ public class HazardDetailPresenter extends
     public void sessionEventAllowUntilFurtherNoticeModified(
             final SessionEventAllowUntilFurtherNoticeModified change) {
         if (detailViewShowing && isVisibleEventModified(change)) {
-            updateViewEndTimeUntilFurtherNoticeEnabled();
+            updateViewEndTimeUntilFurtherNoticeEnabled(change.getEvent());
         }
     }
 
@@ -955,6 +983,8 @@ public class HazardDetailPresenter extends
                 detailViewVisibilityChangeHandler);
         getView().getMetadataChanger().setStateChangeHandler(
                 metadataChangeHandler);
+        getView().getNotifierInvoker().setCommandInvocationHandler(
+                notifierInvocationHandler);
         getView().getTimeRangeChanger().setStateChangeHandler(
                 timeRangeChangeHandler);
         getView().getVisibleEventChanger().setStateChangeHandler(
@@ -1059,8 +1089,10 @@ public class HazardDetailPresenter extends
      * Update the view to enable or disable the end time "until further notice"
      * toggle.
      */
-    private void updateViewEndTimeUntilFurtherNoticeEnabled() {
+    private void updateViewEndTimeUntilFurtherNoticeEnabled(
+            ObservedHazardEvent event) {
         getView().getMetadataChanger().setEnabled(
+                event.getEventID(),
                 HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
                 eventIdentifiersAllowingUntilFurtherNotice
                         .contains(visibleEventIdentifier));
@@ -1084,7 +1116,8 @@ public class HazardDetailPresenter extends
     private void updateViewCategory(ObservedHazardEvent event) {
         selectedCategory = getModel().getConfigurationManager()
                 .getHazardCategory(event);
-        getView().getCategoryChanger().setState(null, selectedCategory);
+        getView().getCategoryChanger().setState(event.getEventID(),
+                selectedCategory);
     }
 
     /**
@@ -1095,7 +1128,7 @@ public class HazardDetailPresenter extends
      */
     private void updateViewCategoryEditability(ObservedHazardEvent event) {
         HazardStatus status = event.getStatus();
-        getView().getCategoryChanger().setEditable(null,
+        getView().getCategoryChanger().setEditable(event.getEventID(),
                 !HazardStatus.hasEverBeenIssued(status));
     }
 
@@ -1108,7 +1141,7 @@ public class HazardDetailPresenter extends
      */
     private void updateViewTypeList(ObservedHazardEvent event) {
         String selectedType = event.getHazardType();
-        getView().getTypeChanger().setChoices(null,
+        getView().getTypeChanger().setChoices(event.getEventID(),
                 typeListsForCategories.get(selectedCategory),
                 typeDescriptionListsForCategories.get(selectedCategory),
                 (selectedType == null ? BLANK_TYPE_CHOICE : selectedType));
@@ -1123,7 +1156,7 @@ public class HazardDetailPresenter extends
      */
     private void updateViewType(ObservedHazardEvent event) {
         String selectedType = event.getHazardType();
-        getView().getTypeChanger().setState(null,
+        getView().getTypeChanger().setState(event.getEventID(),
                 (selectedType == null ? BLANK_TYPE_CHOICE : selectedType));
         updateViewDurations(event);
     }
@@ -1136,7 +1169,7 @@ public class HazardDetailPresenter extends
      */
     private void updateViewTimeRange(ObservedHazardEvent event) {
         getView().getTimeRangeChanger().setState(
-                null,
+                event.getEventID(),
                 new TimeRange(event.getStartTime().getTime(), event
                         .getEndTime().getTime()));
     }
@@ -1148,7 +1181,7 @@ public class HazardDetailPresenter extends
      *            Event for which the update should occur.
      */
     private void updateViewDurations(ObservedHazardEvent event) {
-        getView().getDurationChanger().setChoices(null,
+        getView().getDurationChanger().setChoices(event.getEventID(),
                 getModel().getConfigurationManager().getDurationChoices(event),
                 null, null);
     }
@@ -1161,7 +1194,7 @@ public class HazardDetailPresenter extends
      */
     private void updateViewMetadataSpecifiers(ObservedHazardEvent event) {
         getView().getMetadataChanger().setMegawidgetSpecifierManager(
-                visibleEventIdentifier,
+                event.getEventID(),
                 specifierManagersForSelectedEvents.get(visibleEventIdentifier),
                 new HashMap<>(event.getHazardAttributes()));
     }
@@ -1178,6 +1211,7 @@ public class HazardDetailPresenter extends
     private void updateViewMetadataValues(ObservedHazardEvent event,
             Set<String> names) {
         getView().getMetadataChanger().setStates(
+                event.getEventID(),
                 new HashMap<>(names == null ? event.getHazardAttributes()
                         : Maps.filterKeys(event.getHazardAttributes(),
                                 Predicates.in(names))));
@@ -1239,7 +1273,7 @@ public class HazardDetailPresenter extends
             updateViewTypeList(event);
             updateViewTimeRange(event);
             updateViewMetadataSpecifiers(event);
-            updateViewEndTimeUntilFurtherNoticeEnabled();
+            updateViewEndTimeUntilFurtherNoticeEnabled(event);
         }
         updateViewButtonsEnabledStates();
     }
@@ -1268,6 +1302,18 @@ public class HazardDetailPresenter extends
     private ObservedHazardEvent getVisibleEvent() {
         return (visibleEventIdentifier == null ? null : getModel()
                 .getEventManager().getEventById(visibleEventIdentifier));
+    }
+
+    /**
+     * Get the specified event.
+     * 
+     * @param identifier
+     *            Event identifier.
+     * @return Event with the specified identifier, or <code>null</code> if
+     *         there is no such event.
+     */
+    private ObservedHazardEvent getEventByIdentifier(String identifier) {
+        return getModel().getEventManager().getEventById(identifier);
     }
 
     /**

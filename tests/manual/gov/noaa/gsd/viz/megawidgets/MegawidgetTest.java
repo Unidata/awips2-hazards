@@ -61,6 +61,8 @@ import org.eclipse.swt.widgets.Shell;
  *                                      manager changes.
  * Aug 19, 2014    4098    Chris.Golden Added use of SWT wrapper megawidget if
  *                                      one is specified.
+ * Aug 21, 2014    4243    Chris.Golden Changed to work with new side effects
+ *                                      applier.
  * </pre>
  * 
  * @author Chris.Golden
@@ -155,11 +157,6 @@ public class MegawidgetTest extends Dialog {
             System.exit(1);
         }
 
-        String script = null;
-        if (scriptFilePath != null) {
-            script = readFile(scriptFilePath);
-        }
-
         File file = new File(specifiersFilePath);
         String name = file.getName();
         parent.getShell().setText(
@@ -229,8 +226,9 @@ public class MegawidgetTest extends Dialog {
                         public long getCurrentTime() {
                             return System.currentTimeMillis();
                         }
-                    }, (script == null ? null : new PythonSideEffectsApplier(
-                            script)));
+                    }, (scriptFilePath == null ? null
+                            : new PythonSideEffectsApplier(new File(PATH_PREFIX
+                                    + scriptFilePath))));
         } catch (Exception e) {
             System.err.println("Error: Megawidget improperly specified:");
             e.printStackTrace(System.err);

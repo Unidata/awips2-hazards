@@ -261,7 +261,8 @@ class MixedHazardStoryFunctionalTest extends
             String eventId = hidSelectedEventIds.get(0);
             ObservedHazardEvent event = eventManager.getEventById(eventId);
             MegawidgetSpecifierManager mgr = configManager
-                    .getMegawidgetSpecifiersForHazardEvent(event);
+                    .getMetadataForHazardEvent(event)
+                    .getMegawidgetSpecifierManager();
             List<ISpecifier> specifiers = mgr.getSpecifiers();
             assertEquals(specifiers.size(), 1);
 

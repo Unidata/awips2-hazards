@@ -32,6 +32,7 @@ import gov.noaa.gsd.viz.megawidgets.ISpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.megawidgets.TimeMegawidgetSpecifier;
 
+import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -76,6 +77,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.IEventModifyingScriptJobListener;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
@@ -192,6 +195,9 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      between start and end time before "until
  *                                      further notice" was turned on for an event
  *                                      if the type of the event changes.
+ * Aug 20, 2014 4243       Chris.Golden Added implementation of new method to receive
+ *                                      notification of a script command having been
+ *                                      invoked.
  * </pre>
  * 
  * @author bsteffen
@@ -265,6 +271,10 @@ public class SessionEventManager implements
 
     private final Map<String, MegawidgetSpecifierManager> megawidgetSpecifiersForEventIdentifiers = new HashMap<>();
 
+    private final Map<String, File> scriptFilesForEventIdentifiers = new HashMap<>();
+
+    private final Map<String, Map<String, String>> eventModifyingScriptsForEventIdentifiers = new HashMap<>();
+
     /*
      * The messenger for displaying questions and warnings to the user and
      * retrieving answers. This allows the viz side (App Builder) to be
@@ -279,6 +289,18 @@ public class SessionEventManager implements
     private final GeometryFactory geoFactory;
 
     private ObservedHazardEvent currentEvent;
+
+    /**
+     * Listener for event modifying script completions.
+     */
+    private final IEventModifyingScriptJobListener eventModifyingScriptListener = new IEventModifyingScriptJobListener() {
+
+        @Override
+        public void scriptExecutionComplete(String identifier,
+                IHazardEvent hazardEvent) {
+            eventModifyingScriptExecutionComplete(hazardEvent);
+        }
+    };
 
     /**
      * Comparator can be used with sortEvents to send selected events to the
@@ -638,6 +660,47 @@ public class SessionEventManager implements
         return megawidgetSpecifiersForEventIdentifiers.get(event.getEventID());
     }
 
+    @Override
+    public void scriptCommandInvoked(ObservedHazardEvent event,
+            String identifier) {
+        Map<String, String> eventModifyingFunctionNamesForIdentifiers = eventModifyingScriptsForEventIdentifiers
+                .get(event.getEventID());
+        if (eventModifyingFunctionNamesForIdentifiers == null) {
+            statusHandler
+                    .error("No event modifying script identifiers found for event "
+                            + event.getEventID());
+            return;
+        }
+        String eventModifyingFunctionName = eventModifyingFunctionNamesForIdentifiers
+                .get(identifier);
+        if (eventModifyingFunctionName == null) {
+            statusHandler
+                    .error("No event modifying script function name found for identifier "
+                            + identifier + " for event " + event.getEventID());
+            return;
+        }
+        configManager.runEventModifyingScript(event,
+                scriptFilesForEventIdentifiers.get(event.getEventID()),
+                eventModifyingFunctionName, eventModifyingScriptListener);
+    }
+
+    /**
+     * Respond to the completion of an event modifying script execution.
+     * 
+     * @param event
+     *            Hazard event that was returned, indicating what hazard
+     *            attributes have changed. If <code>null</code>, no changes were
+     *            made.
+     */
+    private void eventModifyingScriptExecutionComplete(IHazardEvent event) {
+        if (event != null) {
+            ObservedHazardEvent originalEvent = getEventById(event.getEventID());
+            if (originalEvent != null) {
+                originalEvent.setHazardAttributes(event.getHazardAttributes());
+            }
+        }
+    }
+
     /**
      * Update the specified event's metadata in response to some sort of change
      * (creation of the event, updating of status or hazard type) that may
@@ -650,10 +713,13 @@ public class SessionEventManager implements
 
         /*
          * Get a new megawidget specifier manager for this event, and store it
-         * in the cache.
+         * in the cache. Also get the event modifiers map if one was provided,
+         * and cache it away as well.
          */
-        MegawidgetSpecifierManager manager = configManager
-                .getMegawidgetSpecifiersForHazardEvent(event);
+        HazardEventMetadata metadata = configManager
+                .getMetadataForHazardEvent(event);
+        MegawidgetSpecifierManager manager = metadata
+                .getMegawidgetSpecifierManager();
 
         assert (manager != null);
         assert (event.getStartTime() != null);
@@ -661,6 +727,14 @@ public class SessionEventManager implements
 
         megawidgetSpecifiersForEventIdentifiers
                 .put(event.getEventID(), manager);
+        Map<String, String> eventModifiers = metadata
+                .getEventModifyingFunctionNamesForIdentifiers();
+        if (eventModifiers != null) {
+            scriptFilesForEventIdentifiers.put(event.getEventID(),
+                    metadata.getScriptFile());
+            eventModifyingScriptsForEventIdentifiers.put(event.getEventID(),
+                    eventModifiers);
+        }
 
         /*
          * Fire off a notification that the metadata may have changed for this
@@ -1308,6 +1382,9 @@ public class SessionEventManager implements
                 updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
                         (ObservedHazardEvent) event, true);
                 megawidgetSpecifiersForEventIdentifiers.remove(event
+                        .getEventID());
+                scriptFilesForEventIdentifiers.remove(event.getEventID());
+                eventModifyingScriptsForEventIdentifiers.remove(event
                         .getEventID());
                 notificationSender
                         .postNotificationAsync(new SessionEventRemoved(this,

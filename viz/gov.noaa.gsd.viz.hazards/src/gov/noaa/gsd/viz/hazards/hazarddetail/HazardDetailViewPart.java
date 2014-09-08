@@ -40,6 +40,7 @@ import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
 import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
@@ -52,7 +53,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
@@ -201,6 +201,9 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Jul 03, 2014   3512     Chris.Golden      Added code to allow a duration selector to be
  *                                           displayed instead of an absolute date/time
  *                                           selector for the end time of a hazard event.
+ * Aug 15, 2014   4243     Chris.Golden      Added ability to invoke event-modifying
+ *                                           scripts via metadata-specified notifier
+ *                                           megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -752,12 +755,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             Command.class);
 
     /**
-     * Scroll position state change handler.
+     * Scroll position state change handler. The identifier is that of the
+     * hazard event having its scroll position changed.
      */
     private IStateChangeHandler<String, Point> scrollOriginChangeHandler;
 
     /**
-     * Time range state changer.
+     * Scroll position state changer. The identifier is that of the hazard
+     * event.
      */
     private final IStateChanger<String, Point> scrollOriginChanger = new IStateChanger<String, Point>() {
 
@@ -796,7 +801,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     };
 
     /**
-     * Time range state changer.
+     * Visible time range state changer. The identifier is ignored.
      */
     private final IStateChanger<String, TimeRange> visibleTimeRangeChanger = new IStateChanger<String, TimeRange>() {
 
@@ -840,12 +845,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     };
 
     /**
-     * Selected event state change handler.
+     * Selected event state change handler. The identifier is ignored.
      */
     private IStateChangeHandler<String, String> tabChangeHandler;
 
     /**
-     * Visible event state changer.
+     * Visible event state changer. The identifier is ignored.
      */
     private final IChoiceStateChanger<String, String, String, DisplayableEventIdentifier> visibleEventChanger = new IChoiceStateChanger<String, String, String, DisplayableEventIdentifier>() {
 
@@ -892,25 +897,27 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     };
 
     /**
-     * Category combo box state change handler.
+     * Category combo box state change handler. The identifier is that of the
+     * hazard event being changed.
      */
     private IStateChangeHandler<String, String> categoryChangeHandler;
 
     /**
-     * Category combo box state changer.
+     * Category combo box state changer. The identifier is that of the hazard
+     * event.
      */
     private final IChoiceStateChanger<String, String, String, String> categoryChanger = new IChoiceStateChanger<String, String, String, String>() {
 
         @Override
         public void setEnabled(String identifier, boolean enable) {
-            if (isAlive()) {
+            if (isAlive() && identifier.equals(visibleEventIdentifier)) {
                 categoryMegawidget.setEnabled(enable);
             }
         }
 
         @Override
         public void setEditable(String identifier, boolean editable) {
-            if (isAlive()) {
+            if (isAlive() && identifier.equals(visibleEventIdentifier)) {
                 categoryMegawidget.setEditable(editable);
             }
         }
@@ -918,8 +925,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         @Override
         public void setChoices(String identifier, List<String> choices,
                 List<String> choiceDisplayables, String value) {
-            setCategories(choices);
-            setSelectedCategory(value);
+            if (identifier.equals(visibleEventIdentifier)) {
+                setCategories(choices);
+                setSelectedCategory(value);
+            }
         }
 
         @Override
@@ -929,7 +938,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         @Override
         public void setState(String identifier, String value) {
-            setSelectedCategory(value);
+            if (identifier.equals(visibleEventIdentifier)) {
+                setSelectedCategory(value);
+            }
         }
 
         @Override
@@ -946,25 +957,26 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     };
 
     /**
-     * Type combo box state change handler.
+     * Type combo box state change handler. The identifier is that of the hazard
+     * event being changed.
      */
     private IStateChangeHandler<String, String> typeChangeHandler;
 
     /**
-     * Type combo box state changer.
+     * Type combo box state changer. The identifier is that of the hazard event.
      */
     private final IChoiceStateChanger<String, String, String, String> typeChanger = new IChoiceStateChanger<String, String, String, String>() {
 
         @Override
         public void setEnabled(String identifier, boolean enable) {
-            if (isAlive()) {
+            if (isAlive() && identifier.equals(visibleEventIdentifier)) {
                 typeMegawidget.setEnabled(enable);
             }
         }
 
         @Override
         public void setEditable(String identifier, boolean editable) {
-            if (isAlive()) {
+            if (isAlive() && identifier.equals(visibleEventIdentifier)) {
                 typeMegawidget.setEditable(editable);
             }
         }
@@ -972,8 +984,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         @Override
         public void setChoices(String identifier, List<String> choices,
                 List<String> choiceDisplayables, String value) {
-            setTypes(choices, choiceDisplayables);
-            setSelectedType(value);
+            if (identifier.equals(visibleEventIdentifier)) {
+                setTypes(choices, choiceDisplayables);
+                setSelectedType(value);
+            }
         }
 
         @Override
@@ -983,7 +997,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         @Override
         public void setState(String identifier, String value) {
-            setSelectedType(value);
+            if (identifier.equals(visibleEventIdentifier)) {
+                setSelectedType(value);
+            }
         }
 
         @Override
@@ -1000,18 +1016,19 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     };
 
     /**
-     * Time range state change handler.
+     * Time range state change handler. The identifier is that of the hazard
+     * event being changed.
      */
     private IStateChangeHandler<String, TimeRange> timeRangeChangeHandler;
 
     /**
-     * Time range state changer.
+     * Time range state changer. The identifier is that of the hazard event.
      */
     private final IStateChanger<String, TimeRange> timeRangeChanger = new IStateChanger<String, TimeRange>() {
 
         @Override
         public void setEnabled(String identifier, boolean enable) {
-            if (isAlive()) {
+            if (isAlive() && identifier.equals(visibleEventIdentifier)) {
                 for (MultiTimeMegawidget megawidget : timeMegawidgets) {
                     megawidget.setEnabled(enable);
                 }
@@ -1020,7 +1037,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         @Override
         public void setEditable(String identifier, boolean editable) {
-            if (isAlive()) {
+            if (isAlive() && identifier.equals(visibleEventIdentifier)) {
                 for (MultiTimeMegawidget megawidget : timeMegawidgets) {
                     megawidget.setEditable(editable);
                 }
@@ -1034,7 +1051,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         @Override
         public void setState(String identifier, TimeRange value) {
-            setTimeRange(value);
+            if (identifier.equals(visibleEventIdentifier)) {
+                setTimeRange(value);
+            }
         }
 
         @Override
@@ -1051,7 +1070,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     };
 
     /**
-     * Duration combo box state changer.
+     * Duration combo box state changer. The identifier is that of the hazard
+     * event.
      */
     private final IChoiceStateChanger<String, String, String, String> durationChanger = new IChoiceStateChanger<String, String, String, String>() {
 
@@ -1070,7 +1090,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         @Override
         public void setChoices(String identifier, List<String> choices,
                 List<String> choiceDisplayables, String value) {
-            setDurationChoices(choices);
+            if (identifier.equals(visibleEventIdentifier)) {
+                setDurationChoices(choices);
+            }
         }
 
         @Override
@@ -1100,63 +1122,98 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     };
 
     /**
-     * Metadata state change handler.
+     * Metadata state change handler. The qualifier is the identifier of the
+     * hazard event being changed, while the identifier is the metadata that was
+     * changed.
      */
-    private IStateChangeHandler<String, Serializable> metadataChangeHandler;
+    private IQualifiedStateChangeHandler<String, String, Serializable> metadataChangeHandler;
 
     /**
-     * Metadata state changer.
+     * Metadata state changer. The qualifier is the identifier of the hazard
+     * event, while the identifier is that of the metadata.
      */
     private final IMetadataStateChanger metadataChanger = new IMetadataStateChanger() {
 
         @Override
-        public void setEnabled(String identifier, boolean enable) {
-            setMetadataEnabledState(identifier, enable);
+        public void setEnabled(String qualifier, String identifier,
+                boolean enable) {
+            setMetadataEnabledState(qualifier, identifier, enable);
         }
 
         @Override
-        public void setEditable(String identifier, boolean editable) {
-            setMetadataEditabilityState(identifier, editable);
+        public void setEditable(String qualifier, String identifier,
+                boolean editable) {
+            setMetadataEditabilityState(qualifier, identifier, editable);
         }
 
         @Override
-        public Serializable getState(String identifier) {
-            return getMetadataValue(identifier);
+        public Serializable getState(String qualifier, String identifier) {
+            return getMetadataValue(qualifier, identifier);
         }
 
         @Override
-        public void setState(String identifier, Serializable value) {
-            setMetadataValue(identifier, value);
+        public void setState(String qualifier, String identifier,
+                Serializable value) {
+            setMetadataValue(qualifier, identifier, value);
         }
 
         @Override
-        public void setStates(Map<String, Serializable> valuesForIdentifiers) {
-            setMetadataValues(valuesForIdentifiers);
+        public void setStates(String qualifier,
+                Map<String, Serializable> valuesForIdentifiers) {
+            setMetadataValues(qualifier, valuesForIdentifiers);
         }
 
         @Override
         public void setStateChangeHandler(
-                IStateChangeHandler<String, Serializable> handler) {
+                IQualifiedStateChangeHandler<String, String, Serializable> handler) {
             metadataChangeHandler = handler;
         }
 
         @Override
-        public void setMegawidgetSpecifierManager(String eventIdentifier,
+        public void setMegawidgetSpecifierManager(String qualifier,
                 MegawidgetSpecifierManager specifierManager,
                 Map<String, Serializable> metadataStates) {
-            setMetadataSpecifierManager(eventIdentifier, specifierManager,
+            setMetadataSpecifierManager(qualifier, specifierManager,
                     metadataStates);
         }
     };
 
     /**
+     * Notifier invocation handler, for any notifier megawidgets included in the
+     * metadata megawidgets. The identifier is that of the hazard event for
+     * which the invocation is occurring, coupled with the notifier's
+     * identifier.
+     */
+    private ICommandInvocationHandler<EventAndDetail> notifierInvocationHandler;
+
+    /**
+     * Button invoker, for the buttons at the bottom of the view part. The
+     * identifier is that of the hazard event coupled with that of the notifier.
+     */
+    private final ICommandInvoker<EventAndDetail> notifierInvoker = new ICommandInvoker<EventAndDetail>() {
+
+        @Override
+        public void setEnabled(EventAndDetail identifier, boolean enable) {
+            throw new UnsupportedOperationException(
+                    "cannot enable or disable notifier");
+        }
+
+        @Override
+        public void setCommandInvocationHandler(
+                ICommandInvocationHandler<EventAndDetail> handler) {
+            notifierInvocationHandler = handler;
+        }
+    };
+
+    /**
      * Button invocation handler, for the buttons at the bottom of the view
-     * part.
+     * part. The identifier is the command.
      */
     private ICommandInvocationHandler<Command> buttonInvocationHandler;
 
     /**
-     * Button invoker, for the buttons at the bottom of the view part.
+     * Button invoker, for the buttons at the bottom of the view part. The
+     * identifier is the command.
      */
     private final ICommandInvoker<Command> buttonInvoker = new ICommandInvoker<Command>() {
 
@@ -1188,12 +1245,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 String identifier, Object state) {
             if (identifier.equals(CATEGORY_IDENTIFIER)) {
                 if (categoryChangeHandler != null) {
-                    categoryChangeHandler.stateChanged(identifier,
+                    categoryChangeHandler.stateChanged(visibleEventIdentifier,
                             (String) state);
                 }
             } else if (identifier.equals(TYPE_IDENTIFIER)) {
                 if (typeChangeHandler != null) {
-                    typeChangeHandler.stateChanged(identifier, (String) state);
+                    typeChangeHandler.stateChanged(visibleEventIdentifier,
+                            (String) state);
                 }
             } else if (identifier.equals(START_TIME_STATE)
                     || identifier.equals(END_TIME_STATE)) {
@@ -1214,7 +1272,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 }
                 setTimeRange(otherTimeMegawidget, range);
                 if (timeRangeChangeHandler != null) {
-                    timeRangeChangeHandler.stateChanged(null, range);
+                    timeRangeChangeHandler.stateChanged(visibleEventIdentifier,
+                            range);
                 }
             } else if (identifier
                     .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
@@ -1226,8 +1285,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         untilFurtherNotice);
                 setEndTimeEditability(!untilFurtherNotice);
                 if (metadataChangeHandler != null) {
-                    metadataChangeHandler.stateChanged(identifier,
-                            (Serializable) state);
+                    metadataChangeHandler.stateChanged(visibleEventIdentifier,
+                            identifier, (Serializable) state);
                 }
             } else {
                 throw new IllegalArgumentException(
@@ -1255,7 +1314,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 }
                 setTimeRange(otherTimeMegawidget, range);
                 if (timeRangeChangeHandler != null) {
-                    timeRangeChangeHandler.stateChanged(null, range);
+                    timeRangeChangeHandler.stateChanged(visibleEventIdentifier,
+                            range);
                 }
             } else {
                 throw new IllegalArgumentException(
@@ -1310,6 +1370,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         typeChangeHandler = null;
         timeRangeChangeHandler = null;
         metadataChangeHandler = null;
+        notifierInvocationHandler = null;
         buttonInvocationHandler = null;
     }
 
@@ -1618,6 +1679,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     @Override
     public IMetadataStateChanger getMetadataChanger() {
         return metadataChanger;
+    }
+
+    @Override
+    public ICommandInvoker<EventAndDetail> getNotifierInvoker() {
+        return notifierInvoker;
     }
 
     @Override
@@ -2337,15 +2403,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                 public void commandInvoked(
                                         MegawidgetManager manager,
                                         String identifier) {
-
-                                    /*
-                                     * No action, at least for now; there is a
-                                     * possibility that commands will be
-                                     * listened for in order to spawn other
-                                     * dialogs in the future, though how to do
-                                     * this in a way that avoids ugly
-                                     * hard-coding is still up in the air...
-                                     */
+                                    if (notifierInvocationHandler != null) {
+                                        notifierInvocationHandler
+                                                .commandInvoked(new EventAndDetail(
+                                                        visibleEventIdentifier,
+                                                        identifier));
+                                    }
                                 }
 
                                 @Override
@@ -2354,6 +2417,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                         String identifier, Object state) {
                                     if (metadataChangeHandler != null) {
                                         metadataChangeHandler.stateChanged(
+                                                visibleEventIdentifier,
                                                 identifier,
                                                 (Serializable) state);
                                     }
@@ -2372,8 +2436,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                                     (Serializable) entry
                                                             .getValue());
                                         }
-                                        metadataChangeHandler
-                                                .statesChanged(map);
+                                        metadataChangeHandler.statesChanged(
+                                                visibleEventIdentifier, map);
                                     }
                                 }
 
@@ -2485,12 +2549,18 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     /**
      * Get the specified metadata element value.
      * 
-     * @param identifier
+     * @param eventIdentifier
+     *            Event identifier.
+     * @param metadataIdentifier
      *            Identifier of the metadata element for which to get the value.
      * @return Value of the metadata element.
      */
-    private Serializable getMetadataValue(String identifier) {
-        if (identifier
+    private Serializable getMetadataValue(String eventIdentifier,
+            String metadataIdentifier) {
+        if (eventIdentifier.equals(visibleEventIdentifier) == false) {
+            return null;
+        }
+        if (metadataIdentifier
                 .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
             try {
                 return (Boolean) untilFurtherNoticeToggleMegawidgets
@@ -2508,10 +2578,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     .get(visibleEventIdentifier);
             if (manager != null) {
                 try {
-                    return (Serializable) manager.getStateElement(identifier);
+                    return (Serializable) manager
+                            .getStateElement(metadataIdentifier);
                 } catch (Exception e) {
                     statusHandler.error("Error while trying to get metadata \""
-                            + identifier + "\"", e);
+                            + metadataIdentifier + "\"", e);
                 }
             }
         }
@@ -2522,16 +2593,20 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Set the enabled state of the specified metadata element to the specified
      * value.
      * 
-     * @param identifier
+     * @param eventIdentifier
+     *            Event identifier.
+     * @param metadataIdentifier
      *            Identifier of the metadata element to be set.
      * @param enable
      *            Flag indicating whether or not the element should be enabled.
      */
-    private void setMetadataEnabledState(String identifier, boolean enable) {
-        if (isAlive() == false) {
+    private void setMetadataEnabledState(String eventIdentifier,
+            String metadataIdentifier, boolean enable) {
+        if ((isAlive() == false)
+                || (eventIdentifier.equals(visibleEventIdentifier) == false)) {
             return;
         }
-        if (identifier
+        if (metadataIdentifier
                 .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
             setEndTimeUntilFurtherNoticeEnabledState(enable);
         } else {
@@ -2549,16 +2624,20 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Set the editability state of the specified metadata element to the
      * specified value.
      * 
-     * @param identifier
+     * @param eventIdentifier
+     *            Event identifier.
+     * @param metadataIdentifier
      *            Identifier of the metadata element to be set.
      * @param editable
      *            Flag indicating whether or not the element should be editable.
      */
-    private void setMetadataEditabilityState(String identifier, boolean editable) {
-        if (isAlive() == false) {
+    private void setMetadataEditabilityState(String eventIdentifier,
+            String metadataIdentifier, boolean editable) {
+        if ((isAlive() == false)
+                || (eventIdentifier.equals(visibleEventIdentifier) == false)) {
             return;
         }
-        if (identifier
+        if (metadataIdentifier
                 .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
             setEndTimeUntilFurtherNoticeEditableState(editable);
         } else {
@@ -2575,16 +2654,20 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     /**
      * Set the specified metadata element to the specified value.
      * 
-     * @param identifier
+     * @param eventIdentifier
+     *            Event identifier.
+     * @param metadataIdentifier
      *            Identifier of the metadata element to be set.
      * @param value
      *            New value of the metadata element.
      */
-    private void setMetadataValue(String identifier, Serializable value) {
-        if (isAlive() == false) {
+    private void setMetadataValue(String eventIdentifier,
+            String metadataIdentifier, Serializable value) {
+        if ((isAlive() == false)
+                || (eventIdentifier.equals(visibleEventIdentifier) == false)) {
             return;
         }
-        if (identifier
+        if (metadataIdentifier
                 .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
             setEndTimeUntilFurtherNotice(value);
         } else if (visibleEventIdentifier != null) {
@@ -2592,12 +2675,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     .get(visibleEventIdentifier);
             if (manager != null) {
                 Map<String, Object> map = new HashMap<>();
-                map.put(identifier, value);
+                map.put(metadataIdentifier, value);
                 try {
                     manager.modifyState(map);
                 } catch (Exception e) {
                     statusHandler.error("Error while trying to set metadata \""
-                            + identifier + "\" to " + value, e);
+                            + metadataIdentifier + "\" to " + value, e);
                 }
             }
         }
@@ -2606,12 +2689,15 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     /**
      * Set the specified metadata elements to the specified values.
      * 
+     * @param eventIdentifier
+     *            Event identifier.
      * @param valuesForIdentifiers
      *            Map of metadata element identifiers to their new values.
      */
-    private void setMetadataValues(
+    private void setMetadataValues(String eventIdentifier,
             Map<String, Serializable> valuesForIdentifiers) {
-        if (isAlive() == false) {
+        if ((isAlive() == false)
+                || (eventIdentifier.equals(visibleEventIdentifier) == false)) {
             return;
         }
         int numElements = valuesForIdentifiers.size();

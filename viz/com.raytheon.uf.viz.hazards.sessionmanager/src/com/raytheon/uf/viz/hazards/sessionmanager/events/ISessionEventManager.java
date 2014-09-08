@@ -61,6 +61,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      event, and get set of hazards for which proposal is
  *                                      possible. Also changed getSelectedEvents() to return a
  *                                      list.
+ * Aug 20, 2014 4243       Chris.Golden Added new method to receive notification of a script
+ *                                      command having been invoked.
  * </pre>
  * 
  * @author bsteffen
@@ -156,6 +158,17 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *         the megawidgets.
      */
     public MegawidgetSpecifierManager getMegawidgetSpecifiers(E event);
+
+    /**
+     * Receive notification that a command was invoked within the user interface
+     * that requires a script to be run in response.
+     * 
+     * @param event
+     *            Hazard event for which to run the script.
+     * @param identifier
+     *            Identifier of the command that was invoked.
+     */
+    public void scriptCommandInvoked(E event, String identifier);
 
     /**
      * Get all events with the given state from the session. This will never

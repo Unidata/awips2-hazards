@@ -52,6 +52,7 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
  *                                     Strings.
  * Dec 3, 2013  1472       bkowal      Remove ignore annotation.
  * Apr 14, 2014 3422       bkowal      Updated to use the alternate getInventory method.
+ * Aug 18, 2014 4243       Chris.Golden Changed to use new version of getInventory().
  * 
  * </pre>
  * 
@@ -84,10 +85,9 @@ public abstract class AbstractRecommenderTest {
     public EventSet<IEvent> runRecommender(String name,
             IPythonJobListener<EventSet<IEvent>> listener) {
         try {
-            for (EventRecommender rec : engine.getInventory(name)) {
-                if (rec.getName().equals(name)) {
-                    engine.runEntireRecommender(rec.getName(), listener);
-                }
+            EventRecommender rec = engine.getInventory(name);
+            if (rec != null) {
+                engine.runEntireRecommender(rec.getName(), listener);
             }
         } catch (Throwable t) {
             fail("Could not run recommender " + t);
@@ -97,11 +97,8 @@ public abstract class AbstractRecommenderTest {
 
     public Map<String, Serializable> getDialogInfo(String name) {
         try {
-            for (EventRecommender rec : engine.getInventory(name)) {
-                if (rec.getName().equals(name)) {
-                    Map<String, Serializable> vals = engine.getDialogInfo(name);
-                    return vals;
-                }
+            if (engine.getInventory(name) != null) {
+                return engine.getDialogInfo(name);
             }
         } catch (Throwable t) {
             fail("Could not run get dialog info " + t);
@@ -111,12 +108,8 @@ public abstract class AbstractRecommenderTest {
 
     public Map<String, Serializable> getSpatialInfo(String name) {
         try {
-            for (EventRecommender rec : engine.getInventory(name)) {
-                if (rec.getName().equals(name)) {
-                    Map<String, Serializable> vals = engine
-                            .getSpatialInfo(name);
-                    return vals;
-                }
+            if (engine.getInventory(name) != null) {
+                return engine.getSpatialInfo(name);
             }
         } catch (Throwable t) {
             fail("Could not run get dialog info " + t);
