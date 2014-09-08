@@ -5,11 +5,15 @@ class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
+        useVolcanoDetails = False
+        if hazardEvent is not None and hazardEvent.get("hydrologicCause", "N/A").startswith("volcano"):
+            useVolcanoDetails = True
         if self.hazardStatus == 'pending':
             metaData = [
                      self.getInclude(),
                      self.getFloodSeverity(),
                      self.getHydrologicCause(),
+                     self.getHydrologicCauseDetails(useVolcanoDetails),
                      self.getBasis(),                                        
                      self.getAdditionalInfo(),
                      self.getCTAs(), 
@@ -31,6 +35,7 @@ class MetaData(CommonMetaData.MetaData):
             metaData = [
                      self.getFloodSeverity(),
                      self.getHydrologicCause(editable=False),
+                     self.getHydrologicCauseDetails(useVolcanoDetails),
                      self.getBasis(),                                        
                      self.getAdditionalInfo(),
                      self.getCTAs(), 
@@ -169,6 +174,19 @@ class MetaData(CommonMetaData.MetaData):
     #     #set($reportType1 = "EXCESSIVE RAIN CAUSING FLASH FLOODING WAS OCCURING OVER THE WARNED AREA")
     # #end
     
+    def getHydrologicCauseDetails(self, useVolcanoDetails):
+        if useVolcanoDetails:
+            label = "Future site of volcano-oriented detail metadata selectors..."
+        else:
+            label = "Future site of of detail metadata selectors..."
+        return {
+                "fieldType": "Label",
+                "fieldName": "hydroCauseDetailsSample",
+                "label": label,
+                "bold": True,
+                "italic": True
+                }
+    
     def getHydrologicCause(self, editable=True):
         return {   
             # The immediate cause will be automatically assigned based on the hydrologic cause chosen.  
@@ -178,6 +196,7 @@ class MetaData(CommonMetaData.MetaData):
              "editable": editable,
              "values": "dam",
              "choices": self.hydrologicCauseChoices(),
+             "refreshMetadata": True
              }
     def hydrologicCauseChoices(self):
         return [

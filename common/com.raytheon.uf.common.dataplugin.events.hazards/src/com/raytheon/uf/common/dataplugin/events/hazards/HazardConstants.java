@@ -55,6 +55,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Apr 23,2014  1480    jsanchez    Added CORRECTION_FLAG
  * Jul 09, 2014 3214    jsanchez    Added REGENERATE_FLAG
  * Aug 15, 2014 4243      Chris.Golden  Changed megawidget-metadata-fetching related constants.
+ * Sep 04, 2014 4560      Chris.Golden  Added constant for metadata-reload-triggering megawidgets.
  * </pre>
  * 
  * @author mnash
@@ -535,6 +536,8 @@ public final class HazardConstants {
      * The following are related to hazard event metadata.
      */
     public static final String METADATA_KEY = "metadata";
+
+    public static final String METADATA_RELOAD_TRIGGER = "refreshMetadata";
 
     public static final String FILE_PATH_KEY = "filePath";
 

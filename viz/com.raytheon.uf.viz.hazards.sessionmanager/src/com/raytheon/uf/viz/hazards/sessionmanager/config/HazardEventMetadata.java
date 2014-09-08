@@ -13,11 +13,13 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 
 import java.io.File;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Description: Encapsulation of the description of all metadata parameters for
  * a hazard event, including the megawidget specifiers, the path to the script
- * file, and any event modifying scripts.
+ * file, the set of metadata keys that should trigger a refresh of the metadata,
+ * and any event modifying scripts.
  * 
  * <pre>
  * 
@@ -25,6 +27,8 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 20, 2014    4243    Chris.Golden Initial creation.
+ * Sep 04, 2014    4560    Chris.Golden Added the set of metadata keys that
+ *                                      trigger a refresh of the metadata.
  * </pre>
  * 
  * @author Chris.Golden
@@ -38,6 +42,12 @@ public class HazardEventMetadata {
      * Megawidget specifier manager.
      */
     private final MegawidgetSpecifierManager megawidgetSpecifierManager;
+
+    /**
+     * Set of metadata keys that are to trigger a metadata reload when any one
+     * of them is changed.
+     */
+    private final Set<String> refreshTriggeringMetadataKeys;
 
     /**
      * Script file.
@@ -57,15 +67,21 @@ public class HazardEventMetadata {
      * 
      * @param megawidgetSpecifierManager
      *            Megawidget specifier manager.
+     * @param refreshTriggeringMetadataKeys
+     *            Set of metadata keys that are to trigger a metadata reload
+     *            when any one of them is changed.
+     * @param scriptFile
+     *            File holding the script from which the metadata was produced.
      * @param eventModifyingFunctionNamesForIdentifiers
      *            Map of event modifying script identifiers to their
      *            corresponding entry point function names.
      */
     public HazardEventMetadata(
             MegawidgetSpecifierManager megawidgetSpecifierManager,
-            File scriptFile,
+            Set<String> refreshTriggeringMetadataKeys, File scriptFile,
             Map<String, String> eventModifyingFunctionNamesForIdentifiers) {
         this.megawidgetSpecifierManager = megawidgetSpecifierManager;
+        this.refreshTriggeringMetadataKeys = refreshTriggeringMetadataKeys;
         this.scriptFile = scriptFile;
         this.eventModifyingFunctionNamesForIdentifiers = eventModifyingFunctionNamesForIdentifiers;
     }
@@ -79,6 +95,16 @@ public class HazardEventMetadata {
      */
     public final MegawidgetSpecifierManager getMegawidgetSpecifierManager() {
         return megawidgetSpecifierManager;
+    }
+
+    /**
+     * Get the set of metadata keys that, when changed, are to trigger a
+     * metadata reload.
+     * 
+     * @return Set of metadata keys.
+     */
+    public final Set<String> getRefreshTriggeringMetadataKeys() {
+        return refreshTriggeringMetadataKeys;
     }
 
     /**

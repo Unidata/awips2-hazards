@@ -33,10 +33,12 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
@@ -137,6 +139,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      event-modifying scripts when prompted to do so.
  * Aug 28, 2014  3768      Robert.Blum  Modified the deleteSetting() function to correclty
  *                                      remove the settings.
+ * Sep 04, 2014  4560      Chris.Golden Added code to find metadata-reload-triggering
+ *                                      megawidgets.
  * </pre>
  * 
  * @author bsteffen
@@ -177,7 +181,8 @@ public class SessionConfigurationManager implements
     }
 
     private static final HazardEventMetadata EMPTY_HAZARD_EVENT_METADATA = new HazardEventMetadata(
-            EMPTY_MEGAWIDGET_SPECIFIER_MANAGER, null, null);
+            EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
+            Collections.<String> emptySet(), null, null);
 
     private ISessionNotificationSender notificationSender;
 
@@ -520,8 +525,9 @@ public class SessionConfigurationManager implements
         }
 
         /*
-         * Build a megawidget specifier manager out of the metadata. If the file
-         * that produced the metadata has an apply-interdependencies entry
+         * Build a megawidget specifier manager out of the metadata, as well as
+         * getting a set of metadata-reload-triggering metadata keys. If the
+         * file that produced the metadata has an apply-interdependencies entry
          * point, create a side effects applier for it. If it includes a map of
          * event modifiers to the names of scripts that are to be run, remember
          * these.
@@ -549,19 +555,86 @@ public class SessionConfigurationManager implements
         if (specifiersList.isEmpty()) {
             return (eventModifyingFunctionNamesForIdentifiers == null ? EMPTY_HAZARD_EVENT_METADATA
                     : new HazardEventMetadata(
-                            EMPTY_MEGAWIDGET_SPECIFIER_MANAGER, scriptFile,
+                            EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
+                            Collections.<String> emptySet(), scriptFile,
                             eventModifyingFunctionNamesForIdentifiers));
         }
+        Set<String> refreshTriggeringMetadataKeys = getMegawidgetIdentifiersWithParameter(
+                specifiersList, HazardConstants.METADATA_RELOAD_TRIGGER);
         try {
             return new HazardEventMetadata(new MegawidgetSpecifierManager(
                     (List<Map<String, Object>>) specifiersList,
                     IControlSpecifier.class,
                     timeManager.getCurrentTimeProvider(), sideEffectsApplier),
-                    scriptFile, eventModifyingFunctionNamesForIdentifiers);
+                    refreshTriggeringMetadataKeys, scriptFile,
+                    eventModifyingFunctionNamesForIdentifiers);
         } catch (MegawidgetSpecificationException e) {
             statusHandler.error("Could not get hazard metadata for event ID = "
                     + hazardEvent.getEventID() + ".", e);
             return EMPTY_HAZARD_EVENT_METADATA;
+        }
+    }
+
+    /**
+     * Get the set of megawidget identifiers from the specified list, which may
+     * contain raw specifiers and their descendants, of any megawidget
+     * specifiers that include the specified parameter name.
+     * 
+     * @param list
+     *            List to be checked.
+     * @param parameterName
+     *            Parameter name for which to search.
+     * @return Set of megawidget identifiers that contain the specified
+     *         parameter.
+     */
+    private Set<String> getMegawidgetIdentifiersWithParameter(
+            List<?> list, String parameterName) {
+        Set<String> triggeringIdentifiers = new HashSet<>();
+        addMegawidgetIdentifiersIncludingParameterToSet(list, parameterName,
+                triggeringIdentifiers);
+        return triggeringIdentifiers;
+    }
+
+    /**
+     * Find any raw megawidget specifiers in the specified object, which may be
+     * a list of some sort (the items within which must be checked recursively);
+     * a map of some sort (in which case it itself may be a raw specifier,
+     * and/or its values must be checked recursively), or a primitive (which
+     * never has any raw specifiers in it), and add any found specifiers that
+     * include the given parameter name to the specified set.
+     * 
+     * @param object
+     *            Object to be checked.
+     * @param parameterName
+     *            Parameter name for which to search.
+     * @param triggerIdentifiers
+     *            Set to which to add any megawidget identifiers that qualify.
+     */
+    private void addMegawidgetIdentifiersIncludingParameterToSet(Object object,
+            String parameterName, Set<String> triggeringIdentifiers) {
+
+        /*
+         * Iterate through the list, recursively calling this method on any
+         * sublist found, and treating any map as a potential megawidget
+         * specifier and, regardless of whether it is found to be or not, also
+         * recursively calling
+         */
+        if (object instanceof Map) {
+            Map<?, ?> map = (Map<?, ?>) object;
+            if (map.containsKey(parameterName)
+                    && map.containsKey(HazardConstants.FIELD_NAME)) {
+                triggeringIdentifiers.add(map.get(HazardConstants.FIELD_NAME)
+                        .toString());
+            }
+            for (Object value : map.values()) {
+                addMegawidgetIdentifiersIncludingParameterToSet(value,
+                        parameterName, triggeringIdentifiers);
+            }
+        } else if (object instanceof List) {
+            for (Object item : (List<?>) object) {
+                addMegawidgetIdentifiersIncludingParameterToSet(item,
+                        parameterName, triggeringIdentifiers);
+            }
         }
     }
 

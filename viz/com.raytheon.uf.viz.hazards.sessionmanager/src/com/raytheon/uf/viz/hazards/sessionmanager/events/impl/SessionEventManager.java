@@ -58,6 +58,7 @@ import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.time.DateUtils;
 
+import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
@@ -198,6 +199,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Aug 20, 2014 4243       Chris.Golden Added implementation of new method to receive
  *                                      notification of a script command having been
  *                                      invoked.
+ * Sep 04, 2014 4560       Chris.Golden Added code to find metadata-reload-triggering
+ *                                      megawidgets.
  * </pre>
  * 
  * @author bsteffen
@@ -270,6 +273,8 @@ public class SessionEventManager implements
     private final Map<String, Collection<IHazardEvent>> conflictingEventsForSelectedEventIdentifiers = new HashMap<>();
 
     private final Map<String, MegawidgetSpecifierManager> megawidgetSpecifiersForEventIdentifiers = new HashMap<>();
+
+    private final Map<String, Set<String>> metadataReloadTriggeringIdentifiersForEventIdentifiers = new HashMap<>();
 
     private final Map<String, File> scriptFilesForEventIdentifiers = new HashMap<>();
 
@@ -727,6 +732,9 @@ public class SessionEventManager implements
 
         megawidgetSpecifiersForEventIdentifiers
                 .put(event.getEventID(), manager);
+        metadataReloadTriggeringIdentifiersForEventIdentifiers
+                .put(event.getEventID(),
+                        metadata.getRefreshTriggeringMetadataKeys());
         Map<String, String> eventModifiers = metadata
                 .getEventModifyingFunctionNamesForIdentifiers();
         if (eventModifiers != null) {
@@ -867,9 +875,10 @@ public class SessionEventManager implements
     /**
      * Ensure that toggles of end time "until further notice" flags result in
      * the appropriate time being set to "until further notice" or, if the flag
-     * has been set to false, an appropriate default time. Also generate
-     * notifications that the list of selected hazard events has changed if the
-     * selected attribute is found to have been altered.
+     * has been set to false, an appropriate default time. Also ensure that any
+     * metadata state changes that should trigger a metadata reload do so.
+     * Finally, generate notifications that the list of selected hazard events
+     * has changed if the selected attribute is found to have been altered.
      * 
      * @param change
      *            Change that occurred.
@@ -913,6 +922,18 @@ public class SessionEventManager implements
                                     .getEvent()
                                     .getHazardAttribute(
                                             HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)));
+        }
+
+        /*
+         * If any of the attributes changed are metadata-reload triggers, then
+         * reload the metadata.
+         */
+        Set<String> metadataReloadTriggeringIdentifiers = metadataReloadTriggeringIdentifiersForEventIdentifiers
+                .get(change.getEvent().getEventID());
+        if ((metadataReloadTriggeringIdentifiers != null)
+                && (Sets.intersection(metadataReloadTriggeringIdentifiers,
+                        change.getAttributeKeys()).isEmpty() == false)) {
+            updateEventMetadata(change.getEvent());
         }
     }
 
@@ -1372,20 +1393,22 @@ public class SessionEventManager implements
                 // TODO this should never delete operation issued events
                 // TODO this should not delete the whole list, just any pending
                 // or proposed items on the end of the list.
+                String eventIdentifier = event.getEventID();
                 if (delete) {
-                    HazardHistoryList histList = dbManager.getByEventID(event
-                            .getEventID());
+                    HazardHistoryList histList = dbManager
+                            .getByEventID(eventIdentifier);
                     if (histList != null && !histList.isEmpty()) {
                         dbManager.removeEvents(histList);
                     }
                 }
                 updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
                         (ObservedHazardEvent) event, true);
-                megawidgetSpecifiersForEventIdentifiers.remove(event
-                        .getEventID());
-                scriptFilesForEventIdentifiers.remove(event.getEventID());
-                eventModifyingScriptsForEventIdentifiers.remove(event
-                        .getEventID());
+                megawidgetSpecifiersForEventIdentifiers.remove(eventIdentifier);
+                metadataReloadTriggeringIdentifiersForEventIdentifiers
+                        .remove(eventIdentifier);
+                scriptFilesForEventIdentifiers.remove(eventIdentifier);
+                eventModifyingScriptsForEventIdentifiers
+                        .remove(eventIdentifier);
                 notificationSender
                         .postNotificationAsync(new SessionEventRemoved(this,
                                 event, originator));
