@@ -62,6 +62,7 @@ import org.eclipse.jface.action.Separator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Event;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -147,6 +148,7 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  * Nov 29, 2013  2378     Bryon.Lawrence  Changed to use hazard event modified flag instead of
  *                                        test for PENDING when testing whether or not to show
  *                                        End Selected Hazard context menu item.
+ * Sep 09, 2014  3994     Robert.Blum     Added handleMouseEnter to reset the cursor type.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1800,6 +1802,15 @@ public class ToolLayer extends
             return mouseHandler.handleKeyUp(key);
         } else {
             return false;
+        }
+    }
+
+    @Override
+    public boolean handleMouseEnter(Event event) {
+        if ((mouseHandler != null) && isEditable()) {
+            return mouseHandler.handleMouseEnter(event);
+        } else {
+            return handleMouseMove(event.x, event.y);
         }
     }
 

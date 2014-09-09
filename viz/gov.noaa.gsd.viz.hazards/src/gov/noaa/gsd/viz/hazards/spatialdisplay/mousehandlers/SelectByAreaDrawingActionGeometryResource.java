@@ -11,6 +11,7 @@ import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Polygon;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Shape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 import gov.noaa.nws.ncep.ui.pgen.tools.InputHandlerDefaultImpl;
@@ -20,6 +21,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.eclipse.swt.widgets.Event;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -60,6 +63,7 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov  23, 2013 2474     bryon.lawrence      Replaced string literal with
  *                                            a constant.
+ * Sep 09, 2014 3994      Robert.Blum         Added handleMouseEnter to reset the cursor type.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -375,6 +379,13 @@ public class SelectByAreaDrawingActionGeometryResource extends
                 }
             }
             return false;
+        }
+
+        @Override
+        public boolean handleMouseEnter(Event event) {
+            getSpatialPresenter().getView().setCursor(
+                    SpatialViewCursorTypes.DRAW_CURSOR);
+            return handleMouseMove(event.x, event.y);
         }
 
         /**

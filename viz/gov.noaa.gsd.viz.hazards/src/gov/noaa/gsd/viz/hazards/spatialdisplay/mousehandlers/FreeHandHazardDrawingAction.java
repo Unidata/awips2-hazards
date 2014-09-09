@@ -8,6 +8,7 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.display.ILine;
@@ -20,6 +21,8 @@ import gov.noaa.nws.ncep.ui.pgen.tools.InputHandlerDefaultImpl;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.eclipse.swt.widgets.Event;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -54,6 +57,7 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 23, 2013     1462   bryon.lawrence     Changed polygons to be drawn without fill by default.
+ * Sep 09, 2014 3994       Robert.Blum        Added handleMouseEnter to reset the cursor type.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -219,6 +223,13 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
             }
 
             return true;
+        }
+
+        @Override
+        public boolean handleMouseEnter(Event event) {
+            getSpatialPresenter().getView().setCursor(
+                    SpatialViewCursorTypes.DRAW_CURSOR);
+            return handleMouseMove(event.x, event.y);
         }
 
     }

@@ -11,6 +11,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.LineDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PointDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
@@ -23,6 +24,8 @@ import gov.noaa.nws.ncep.ui.pgen.tools.InputHandlerDefaultImpl;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import org.eclipse.swt.widgets.Event;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -58,6 +61,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov  23, 2013    1462   Bryon.Lawrence      Changed polygons to be drawn without
  *                                             fill by default.
+ * Sep 09, 2014     3994   Robert.Blum         Added handleMouseEnter to reset the 
+ *                                             cursor type.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -154,6 +159,13 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
          * box added to it.
          */
         private final DrawableElementFactory def = new DrawableElementFactory();
+
+        @Override
+        public boolean handleMouseEnter(Event event) {
+            getSpatialPresenter().getView().setCursor(
+                    SpatialViewCursorTypes.DRAW_CURSOR);
+            return handleMouseMove(event.x, event.y);
+        }
 
         @Override
         public boolean handleMouseMove(int x, int y) {

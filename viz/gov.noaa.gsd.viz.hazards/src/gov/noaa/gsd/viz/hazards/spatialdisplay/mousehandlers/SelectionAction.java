@@ -26,13 +26,12 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.widgets.Event;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -58,6 +57,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * Sep 10, 2013      782     Bryon.Lawrence   Updated getShapesForEvents to 
  *                                            consider storm track events
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Sep 09, 2014  3994     Robert.Blum         Added handleMouseEnter to reset the cursor type.
  * 
  * </pre>
  * 
@@ -831,6 +831,11 @@ public class SelectionAction extends NonDrawingAction {
             }
 
             return false;
+        }
+
+        @Override
+        public boolean handleMouseEnter(Event event) {
+            return handleMouseMove(event.x, event.y);
         }
 
         /**

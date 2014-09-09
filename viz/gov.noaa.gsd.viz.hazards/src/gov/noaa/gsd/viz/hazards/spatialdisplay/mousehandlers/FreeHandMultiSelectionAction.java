@@ -8,6 +8,7 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SelectionRectangleDrawingAttributes;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.TrackExtrapPointInfoDlg;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.widgets.Event;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -54,6 +56,7 @@ import com.vividsolutions.jts.geom.LinearRing;
  * 07/15/2012                Xiangbao Jing    Initial creation
  * Jul 15, 2013      585     Chris.Golden     Changed to no longer be a singleton.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Sep 09, 2014  3994       Robert.Blum  Added handleMouseEnter to reset the cursor type.
  * </pre>
  * 
  * @author Xiangbao jing
@@ -253,6 +256,13 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
             points.clear();
             return false;
 
+        }
+
+        @Override
+        public boolean handleMouseEnter(Event event) {
+            getSpatialPresenter().getView().setCursor(
+                    SpatialViewCursorTypes.ARROW_CURSOR);
+            return handleMouseMove(event.x, event.y);
         }
 
         /**
