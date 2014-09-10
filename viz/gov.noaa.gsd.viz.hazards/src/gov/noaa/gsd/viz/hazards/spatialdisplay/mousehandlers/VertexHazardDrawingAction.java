@@ -140,6 +140,8 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
      * Date         Ticket#    Engineer    Description
      * ------------ ---------- ----------- --------------------------
      * March 13, 2013            Bryon.Lawrence      Initial creation
+     * Sep   10, 2014  3793    Robert.Blum     Modified handleMouseUp to return false for
+     *                                         when the middle mouse button is pressed.
      * 
      * </pre>
      * 
@@ -216,7 +218,7 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
                 } else {
                     addPointIfNotIdenticalToPreviousPoint(loc);
                 }
-
+                return true;
             } else if (mouseButton == 3) {
 
                 if (shapeType == GeometryType.POINT) {
@@ -244,7 +246,7 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
 
                 return true;
             }
-            return true;
+            return false;
         }
 
         /**

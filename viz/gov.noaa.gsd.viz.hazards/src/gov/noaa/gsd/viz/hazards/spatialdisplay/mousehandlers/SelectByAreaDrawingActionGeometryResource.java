@@ -64,6 +64,8 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Nov  23, 2013 2474     bryon.lawrence      Replaced string literal with
  *                                            a constant.
  * Sep 09, 2014 3994      Robert.Blum         Added handleMouseEnter to reset the cursor type.
+ * Sep  10, 2014 3793     Robert.Blum         Modified handleMouseDown to return false for
+ *                                            when the middle mouse button is pressed.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -200,6 +202,8 @@ public class SelectByAreaDrawingActionGeometryResource extends
                     mode = Mode.NONE;
                 }
 
+                return false;
+            } else if (mouseButton == 2) {
                 return false;
             }
             return true;

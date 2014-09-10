@@ -112,6 +112,8 @@ public class SelectionAction extends NonDrawingAction {
      * Date         Ticket#    Engineer             Description
      * ------------ ---------- -----------          --------------------------
      * November 2011           bryon.lawrence       Initial creation
+     * Sep 10, 2014 3793       Robert.Blum          Modified handleMouseUp to return false for
+     *                                              when the middle mouse button is pressed.
      * 
      * </pre>
      * 
@@ -309,9 +311,12 @@ public class SelectionAction extends NonDrawingAction {
              * Button 2 functionality for adding/deleting vertices... This
              * mimics WarnGen.
              */
-            if (button == 2
-                    && getToolLayer().getSelectedHazardIHISLayer() != null) {
-                handleVertexAdditionOrDeletion();
+            if (button == 2) {
+                if (getToolLayer().getSelectedHazardIHISLayer() != null) {
+                    handleVertexAdditionOrDeletion();
+                    finalizeMouseHandling();
+                }
+                return false;
             } else if (isVertexMove) {
                 handleVertexMove();
 
