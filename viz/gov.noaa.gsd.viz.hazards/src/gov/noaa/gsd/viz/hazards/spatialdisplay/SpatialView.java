@@ -681,6 +681,9 @@ public class SpatialView implements
         }
     }
 
+    /**
+     * TODO Rewrite entire method to be used in all perspectives.
+     */
     @Override
     public void setDisplayZoomParameters(double longitude, double latitude,
             double multiplier) {

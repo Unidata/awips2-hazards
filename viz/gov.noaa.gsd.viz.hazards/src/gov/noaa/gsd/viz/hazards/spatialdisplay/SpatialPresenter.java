@@ -45,6 +45,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * May 17, 2014 2925       Chris.Golden      Added newly required implementation of
  *                                           reinitialize(), and made initialize()
  *                                           protected as it is called by setView().
+ * Aug 28, 2014 2532       Robert.Blum       Commented out zooming when settings are
+ *                                           changed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -105,7 +107,7 @@ public class SpatialPresenter extends
     @Override
     public void modelChanged(EnumSet<HazardConstants.Element> changed) {
         if (changed.contains(HazardConstants.Element.SETTINGS)) {
-            useSettingZoomParameters();
+            // useSettingZoomParameters();
         } else if (changed.contains(HazardConstants.Element.CURRENT_SETTINGS)) {
             Settings settings = getModel().getConfigurationManager()
                     .getSettings();
