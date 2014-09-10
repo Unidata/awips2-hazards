@@ -9,22 +9,31 @@ package gov.noaa.gsd.viz.hazards.productstaging;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.hazards.display.action.ProductStagingAction;
+import gov.noaa.gsd.viz.megawidgets.CheckListSpecifier;
+import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifier;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
 
 /**
  * Settings presenter, used to mediate between the model and the settings view.
@@ -53,6 +62,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                           protected as it is called by setView().
  * Jun 30, 2014 3512    Chris.Golden         Changed to work with changes to
  *                                           ICommandInvoker.
+ * Sep 09, 2014 4042    Chris.Golden         Moved product staging info generation
+ *                                           method into this class where it belongs,
+ *                                           and changed it to use maps instead of
+ *                                           Field instances to hold raw megawidget
+ *                                           specifiers.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -63,6 +77,36 @@ public class ProductStagingPresenter extends
         IOriginator {
 
     // Private Static Constants
+
+    /**
+     * Label for the related hazards megawidget.
+     */
+    private static final String COMBINE_MESSAGE = "When issuing this hazard, there are other related hazards that could be included in the legacy product:";
+
+    /**
+     * Type of the related hazards megawidget.
+     */
+    private static final String CHECK_LIST_FIELD_TYPE = "CheckList";
+
+    /**
+     * Identifier of the related hazards megawidget.
+     */
+    private static final String POSSIBLE_EVENTS_IDENTIFIER = "possibleEvents";
+
+    /**
+     * Type of the related hazards grouping megawidget.
+     */
+    private static final String GROUP_FIELD_TYPE = "Group";
+
+    /**
+     * Label of the related hazards grouping megawidget.
+     */
+    private static final String EVENTS_SECTION_TEXT = "Events";
+
+    /**
+     * Margins for the related hazards grouping megawidget.
+     */
+    private static final Integer GROUP_BORDER_MARGIN = 10;
 
     /**
      * Logging mechanism.
@@ -168,9 +212,9 @@ public class ProductStagingPresenter extends
      *            Whether or not this is a result of an issue action
      * @param productStagingInfo
      */
-    public final void showProductStagingDetail(boolean issueFlag,
-            ProductStagingInfo productStagingInfo) {
-        getView().showProductStagingDetail(issueFlag, productStagingInfo);
+    public final void showProductStagingDetail(boolean issueFlag) {
+        getView().showProductStagingDetail(issueFlag,
+                buildProductStagingInfo(issueFlag));
         bind();
     }
 
@@ -212,4 +256,109 @@ public class ProductStagingPresenter extends
         getView().getCommandInvoker().setCommandInvocationHandler(
                 commandHandler);
     }
+
+    /**
+     * Compile the product staging info.
+     * 
+     * @param issue
+     *            Flag indicating whether this is for an issue or preview
+     *            action.
+     * @return Product staging info that has been put together.
+     */
+    @SuppressWarnings("unchecked")
+    private ProductStagingInfo buildProductStagingInfo(boolean issue) {
+        Collection<ProductInformation> products = getModel()
+                .getProductManager().getSelectedProducts(issue);
+
+        ProductStagingInfo result = new ProductStagingInfo();
+        for (ProductInformation info : products) {
+            ProductStagingInfo.Product product = new ProductStagingInfo.Product(
+                    info.getProductGeneratorName());
+
+            result.addProducts(product);
+            for (IHazardEvent event : info.getProductEvents()) {
+                product.addSelectedEventIDs(event.getEventID());
+            }
+            Map<String, Serializable> dialogInfo = info.getDialogInfo();
+            if (dialogInfo.isEmpty() == false) {
+
+                List<Map<String, Serializable>> allFieldParameters = (List<Map<String, Serializable>>) dialogInfo
+                        .get(HazardConstants.FIELDS);
+
+                for (Map<String, Serializable> fieldParameters : allFieldParameters) {
+                    product.addField(new HashMap<String, Object>(
+                            fieldParameters));
+                }
+
+            }
+
+            if (info.getPossibleProductEvents().isEmpty() == false) {
+
+                Map<String, Object> field = new HashMap<>();
+                product.addField(field);
+                field.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
+                        POSSIBLE_EVENTS_IDENTIFIER);
+                field.put(MegawidgetSpecifier.MEGAWIDGET_TYPE, GROUP_FIELD_TYPE);
+                field.put(MegawidgetSpecifier.MEGAWIDGET_LABEL,
+                        EVENTS_SECTION_TEXT);
+                field.put(GroupSpecifier.LEFT_MARGIN, GROUP_BORDER_MARGIN);
+                field.put(GroupSpecifier.RIGHT_MARGIN, GROUP_BORDER_MARGIN);
+                field.put(GroupSpecifier.BOTTOM_MARGIN, GROUP_BORDER_MARGIN);
+                List<Map<String, Object>> childFields = new ArrayList<>();
+                field.put(GroupSpecifier.CHILD_MEGAWIDGETS, childFields);
+
+                Map<String, Object> subField = new HashMap<>();
+                childFields.add(subField);
+
+                subField.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
+                        HazardConstants.HAZARD_EVENT_IDS);
+                subField.put(MegawidgetSpecifier.MEGAWIDGET_TYPE,
+                        CHECK_LIST_FIELD_TYPE);
+                subField.put(MegawidgetSpecifier.MEGAWIDGET_LABEL,
+                        COMBINE_MESSAGE);
+
+                /*
+                 * Make the sub-window containing the selectable events fall
+                 * within a reasonable size range.
+                 */
+                subField.put(
+                        CheckListSpecifier.MEGAWIDGET_VISIBLE_LINES,
+                        Math.min(10,
+                                Math.max(info.getProductEvents().size(), 5)));
+
+                List<IHazardEvent> eventChoices = new ArrayList<IHazardEvent>();
+                eventChoices.addAll(info.getProductEvents());
+                eventChoices.addAll(info.getPossibleProductEvents());
+
+                List<Map<String, Object>> choices = new ArrayList<>();
+                subField.put(CheckListSpecifier.MEGAWIDGET_VALUE_CHOICES,
+                        choices);
+                for (IHazardEvent event : eventChoices) {
+
+                    StringBuilder displayString = new StringBuilder();
+                    displayString.append(event.getEventID());
+                    displayString.append(" ");
+                    displayString.append(event.getPhenomenon());
+                    displayString.append(".");
+                    displayString.append(event.getSignificance());
+                    if (event.getSubType() != null) {
+                        displayString.append(".");
+                        displayString.append(event.getSubType());
+                    }
+
+                    Map<String, Object> choice = new HashMap<>();
+                    choices.add(choice);
+                    choice.put(CheckListSpecifier.CHOICE_NAME,
+                            displayString.toString());
+                    choice.put(CheckListSpecifier.CHOICE_IDENTIFIER,
+                            event.getEventID());
+
+                }
+            }
+
+        }
+
+        return result;
+    }
+
 }

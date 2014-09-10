@@ -33,11 +33,20 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.events.ControlAdapter;
+import org.eclipse.swt.events.ControlEvent;
+import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
@@ -66,6 +75,12 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * when invoked, if any.</dd>
  * <dt><code>title</code></dt>
  * <dd>Optional string giving the dialog title.</dd>
+ * <dt><code>maxInitialWidth</code></dt>
+ * <dd>Optional integer giving the maximum initial width the the dialog should
+ * be allowed in pixels.</dd>
+ * <dt><code>maxInitialHeight</code></dt>
+ * <dd>Optional integer giving the maximum initial height the the dialog should
+ * be allowed in pixels.</dd>
  * <dt><code>minimumVisibleTime</code></dt>
  * <dd>Minimum visible time as required by
  * {@link gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier}. This is not required
@@ -102,6 +117,10 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                           changes.
  * Aug 18, 2014   4243     Chris.Golden      Changed to take a file path instead of a
  *                                           Python script for an interdependency script.
+ * Sep 05, 2014   4042     Chris.Golden      Added scrollbars to be used when needed to
+ *                                           display the megawidgets. Also added maximum
+ *                                           size constraints that may be specified as
+ *                                           part of the dialog options.
  * </pre>
  * 
  * @author Chris.Golden
@@ -177,6 +196,28 @@ class ToolDialog extends BasicDialog {
      */
     private final List<String> runToolTriggerIdentifiers;
 
+    /**
+     * Scrolled composite, used to hold the megawidget panel.
+     */
+    private ScrolledComposite scrolledComposite;
+
+    /**
+     * Megawidget holding panel.
+     */
+    private Composite megawidgetPanel;
+
+    /**
+     * Flag indicating whether the scrolled composite's contents are currently
+     * changing.
+     */
+    private boolean scrolledCompositeContentsChanging = false;
+
+    /**
+     * Flag indicating whether the scrolled composite page increment is
+     * currently changing.
+     */
+    private boolean scrolledCompositePageIncrementChanging = false;
+
     // Public Constructors
 
     /**
@@ -199,7 +240,8 @@ class ToolDialog extends BasicDialog {
         super(parent);
         this.presenter = presenter;
         this.toolName = toolName;
-        setShellStyle(SWT.CLOSE | SWT.MODELESS | SWT.BORDER | SWT.TITLE);
+        setShellStyle(SWT.CLOSE | SWT.MODELESS | SWT.BORDER | SWT.TITLE
+                | SWT.RESIZE);
         setBlockOnOpen(false);
 
         /*
@@ -214,7 +256,8 @@ class ToolDialog extends BasicDialog {
                             e);
         }
         try {
-            valuesDict = dialogDict.getDynamicallyTypedValue("valueDict");
+            valuesDict = dialogDict
+                    .getDynamicallyTypedValue(HazardConstants.VALUES_DICTIONARY_KEY);
         } catch (Exception e) {
             statusHandler
                     .error("ToolDialog.<init>: Error: Problem parsing JSON for initial values.",
@@ -231,7 +274,8 @@ class ToolDialog extends BasicDialog {
         pythonSideEffectsScriptFile = new File(scriptFile);
         List<String> triggers = null;
         try {
-            triggers = dialogDict.getDynamicallyTypedValue("runToolTriggers");
+            triggers = dialogDict
+                    .getDynamicallyTypedValue(HazardConstants.RUN_TOOL_TRIGGERS_LIST_KEY);
             if (triggers == null) {
                 triggers = new ArrayList<>();
             }
@@ -253,7 +297,6 @@ class ToolDialog extends BasicDialog {
      */
     public Map<String, Serializable> getState() {
         return Utilities.asMap(valuesDict);
-
     }
 
     /**
@@ -280,6 +323,10 @@ class ToolDialog extends BasicDialog {
         }
     }
 
+    /**
+     * Button
+     */
+
     // Protected Methods
 
     @Override
@@ -290,8 +337,8 @@ class ToolDialog extends BasicDialog {
     @Override
     protected void configureShell(Shell shell) {
         super.configureShell(shell);
-        if (dialogDict.containsKey("title")) {
-            shell.setText((String) dialogDict.get("title"));
+        if (dialogDict.containsKey(HazardConstants.TITLE_KEY)) {
+            shell.setText((String) dialogDict.get(HazardConstants.TITLE_KEY));
         }
     }
 
@@ -302,6 +349,8 @@ class ToolDialog extends BasicDialog {
          * Let the superclass create the area.
          */
         Composite top = (Composite) super.createDialogArea(parent);
+        GridLayout gridLayout = (GridLayout) top.getLayout();
+        gridLayout.marginWidth = gridLayout.marginHeight = 0;
 
         /*
          * Get the list of megawidget specifiers from the parameters.
@@ -325,6 +374,45 @@ class ToolDialog extends BasicDialog {
         }
 
         /*
+         * Create the scrollable and its content panel to hold the megawidgets.
+         */
+        scrolledComposite = new ScrolledComposite(top, SWT.H_SCROLL
+                | SWT.V_SCROLL);
+        megawidgetPanel = new Composite(scrolledComposite, SWT.NONE);
+        gridLayout = new GridLayout(1, false);
+        gridLayout.marginWidth = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_MARGIN);
+        gridLayout.marginHeight = 0;
+        gridLayout.marginTop = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_MARGIN);
+        megawidgetPanel.setLayout(gridLayout);
+        scrolledComposite.setContent(megawidgetPanel);
+        scrolledComposite.setExpandHorizontal(true);
+        scrolledComposite.getHorizontalBar().setIncrement(
+                HazardConstants.SCROLLBAR_BUTTON_INCREMENT);
+        scrolledComposite.getVerticalBar().setIncrement(
+                HazardConstants.SCROLLBAR_BUTTON_INCREMENT);
+        scrolledComposite.addControlListener(new ControlAdapter() {
+            @Override
+            public void controlResized(ControlEvent e) {
+
+                /*
+                 * Schedule a resize of the page increment to happen after the
+                 * laying out of the panels is complete. The latter must be done
+                 * asynchronously to ensure the laying out is done before it
+                 * proceeds, otherwise it gets the wrong information from the
+                 * scrollbars.
+                 */
+                Display.getDefault().asyncExec(new Runnable() {
+                    @Override
+                    public void run() {
+                        recalculateScrolledCompositePageIncrement();
+                    }
+                });
+            }
+        });
+        scrolledComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true,
+                true));
+
+        /*
          * Get the minimum and maximum visible times for any time scale
          * megawidgets that might be created.
          */
@@ -335,7 +423,7 @@ class ToolDialog extends BasicDialog {
         } catch (Exception e) {
             statusHandler.info("ToolDialog.createDialogArea(): Warning: No "
                     + TimeScaleSpecifier.MINIMUM_VISIBLE_TIME
-                    + " specified in " + "dialog dictionary.");
+                    + " specified in dialog dictionary.");
             minVisibleTime = TimeUtil.currentTimeMillis();
         }
         long maxVisibleTime = 0L;
@@ -345,7 +433,7 @@ class ToolDialog extends BasicDialog {
         } catch (Exception e) {
             statusHandler.info("ToolDialog.createDialogArea(): Warning: No "
                     + TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME
-                    + " specified in " + "dialog dictionary.");
+                    + " specified in dialog dictionary.");
             maxVisibleTime = minVisibleTime + TimeUnit.DAYS.toMillis(1);
         }
 
@@ -370,7 +458,7 @@ class ToolDialog extends BasicDialog {
                         pythonSideEffectsScriptFile);
             }
             megawidgetManager = new MegawidgetManager(
-                    top,
+                    megawidgetPanel,
                     megawidgetSpecifiersList,
                     valuesDict,
                     new MegawidgetManagerAdapter() {
@@ -393,14 +481,7 @@ class ToolDialog extends BasicDialog {
                         @Override
                         public void sizeChanged(MegawidgetManager manager,
                                 String identifier) {
-
-                            /*
-                             * TODO: When scrollbars are added to the tool
-                             * dialog's megawidget panel as an option, this
-                             * should result in a recalculation of the
-                             * scrollable area.
-                             */
-                            throw new UnsupportedOperationException();
+                            recalculateScrolledCompositeClientArea();
                         }
 
                         @Override
@@ -421,6 +502,11 @@ class ToolDialog extends BasicDialog {
                             + "manager due to megawidget construction problem.",
                             e);
         }
+
+        /*
+         * Set up the scrolled composite's client area.
+         */
+        recalculateScrolledCompositeClientArea();
 
         /*
          * Return the created area.
@@ -446,7 +532,101 @@ class ToolDialog extends BasicDialog {
         }
     }
 
+    @Override
+    protected Point getInitialSize() {
+
+        /*
+         * Get the bounds of the display (meaning all monitors combined).
+         */
+        Rectangle bounds = Display.getDefault().getBounds();
+
+        /*
+         * Let the superclass's implementation determine the initial size, and
+         * then shrink it down to fit within both the bounds of the display as
+         * determined above, and also the maximum initial size of the dialog, if
+         * such was provided as part of its configuration.
+         */
+        Point size = super.getInitialSize();
+        int max = bounds.width;
+        if (dialogDict.containsKey(HazardConstants.MAX_INITIAL_WIDTH_KEY)) {
+            max = ((Number) dialogDict
+                    .get(HazardConstants.MAX_INITIAL_WIDTH_KEY)).intValue();
+        }
+        if (max < size.x) {
+            size.x = max;
+        }
+        max = bounds.height;
+        if (dialogDict.containsKey(HazardConstants.MAX_INITIAL_HEIGHT_KEY)) {
+            max = ((Number) dialogDict
+                    .get(HazardConstants.MAX_INITIAL_HEIGHT_KEY)).intValue();
+        }
+        if (max < size.y) {
+            size.y = max;
+        } else {
+
+            /*
+             * For some reason, if given free rein, the scrolled composite will
+             * ask for additional height for its horizontal scrollbar even if it
+             * is not needed. So, that height is subtracted here.
+             */
+            size.y -= scrolledComposite.computeTrim(0, 0, 0, 0).height;
+        }
+
+        /*
+         * Calculate the minimum size to which the user may shrink this dialog
+         * down. A reasonable minimum width is assumed to be the width of the
+         * dialog if it is to contain the bottom button bar fully. A reasonable
+         * minimum height is assumed to be the dialog if it is to contain a
+         * height for the megawidgets equal to the button bar width, plus the
+         * height of the button bar, plus the dialog trim. If either of the
+         * dimensions thus calculated are larger than the corresponding initial
+         * dimensions, use the appropriate initial dimension.
+         */
+        Rectangle trimRect = getShell().computeTrim(0, 0, 0, 0);
+        Point buttonBarSize = getButtonBar().computeSize(SWT.DEFAULT,
+                SWT.DEFAULT);
+        getShell().setMinimumSize(
+                Math.min(trimRect.width + buttonBarSize.x, size.x),
+                Math.min(trimRect.height + buttonBarSize.x + buttonBarSize.y,
+                        size.y));
+
+        return size;
+    }
+
     // Private Methods
+
+    /**
+     * Recalculate the scrolled composite's client area.
+     */
+    private void recalculateScrolledCompositeClientArea() {
+        if (scrolledCompositeContentsChanging) {
+            return;
+        }
+        scrolledCompositeContentsChanging = true;
+        Point size = megawidgetPanel.computeSize(SWT.DEFAULT, SWT.DEFAULT);
+        megawidgetPanel.setSize(size);
+        scrolledComposite.setMinSize(size);
+        recalculateScrolledCompositePageIncrement();
+        scrolledCompositeContentsChanging = false;
+    }
+
+    /**
+     * Recalculate the scrolled composite's page increment.
+     */
+    private void recalculateScrolledCompositePageIncrement() {
+        if (scrolledComposite.isDisposed()) {
+            return;
+        }
+        if (scrolledCompositePageIncrementChanging) {
+            return;
+        }
+        scrolledCompositePageIncrementChanging = true;
+        scrolledComposite.getHorizontalBar().setPageIncrement(
+                scrolledComposite.getHorizontalBar().getThumb());
+        scrolledComposite.getVerticalBar().setPageIncrement(
+                scrolledComposite.getVerticalBar().getThumb());
+        scrolledCompositePageIncrementChanging = false;
+    }
 
     /**
      * Fire the specified action.

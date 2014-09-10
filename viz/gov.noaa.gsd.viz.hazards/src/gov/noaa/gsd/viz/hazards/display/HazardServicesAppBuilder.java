@@ -176,6 +176,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             down Hazard Services.
  * Aug 18, 2014 4243       Chris.Golden        Changed Python side effects applier include
  *                                             path to work with recommender scripts.
+ * Sep 09, 2014 4042       Chris.Golden        Moved product staging info generation to
+ *                                             the product staging presenter.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -970,15 +972,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * 
      * @param issueFlag
      *            Whether or not this is being called as a result of an issue
-     *            action. productList List of products to stage.
-     * @param productStagingInfo
-     *            Information to be passed to the product staging dialog in the
-     *            form of a dictionary.
+     *            action.
      */
-    public void showProductStagingView(boolean issueFlag,
-            ProductStagingInfo productStagingInfo) {
-        productStagingPresenter.showProductStagingDetail(issueFlag,
-                productStagingInfo);
+    public void showProductStagingView(boolean issueFlag) {
+        productStagingPresenter.showProductStagingDetail(issueFlag);
     }
 
     public void showProductEditorView(

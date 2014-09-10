@@ -9,9 +9,10 @@
  */
 package gov.noaa.gsd.viz.hazards.productstaging;
 
-import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
 
 /**
  * Description: Defines the interface that a concrete ProductStagingView must

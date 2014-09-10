@@ -9,7 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
-import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
 
 /**
  * Action class "fired" from the Product Editor. Registered observers receive

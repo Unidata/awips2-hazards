@@ -56,6 +56,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Jul 09, 2014 3214    jsanchez    Added REGENERATE_FLAG
  * Aug 15, 2014 4243      Chris.Golden  Changed megawidget-metadata-fetching related constants.
  * Sep 04, 2014 4560      Chris.Golden  Added constant for metadata-reload-triggering megawidgets.
+ * Sep 09, 2014 4042      Chris.Golden  Added constant for UI scrolling increment.
  * </pre>
  * 
  * @author mnash
@@ -533,7 +534,8 @@ public final class HazardConstants {
     public static final String EXPAND_HORIZONTALLY = "expandHorizontally";
 
     /*
-     * The following are related to hazard event metadata.
+     * The following are related to hazard event metadata and recommender
+     * dialogs.
      */
     public static final String METADATA_KEY = "metadata";
 
@@ -544,6 +546,36 @@ public final class HazardConstants {
     public static final String EVENT_MODIFIERS_KEY = "eventModifiers";
 
     public static final String ENDING_SYNOPSIS = "endingSynopsis";
+
+    /**
+     * Key for values dictionary within the recommender dialog.
+     */
+    public static final String VALUES_DICTIONARY_KEY = "valueDict";
+
+    /**
+     * Key for run tool triggers list in the recommender dialog.
+     */
+    public static final String RUN_TOOL_TRIGGERS_LIST_KEY = "runToolTriggers";
+
+    /**
+     * Key for title text.
+     */
+    public static final String TITLE_KEY = "title";
+
+    /**
+     * Maximum initial width key.
+     */
+    public static final String MAX_INITIAL_WIDTH_KEY = "maxInitialWidth";
+
+    /**
+     * Maximum initial height key.
+     */
+    public static final String MAX_INITIAL_HEIGHT_KEY = "maxInitialHeight";
+
+    /*
+     * The following are related to UI elements.
+     */
+    public static final int SCROLLBAR_BUTTON_INCREMENT = 16;
 
     /*
      * The following are related to hazard geometries and their supporting meta

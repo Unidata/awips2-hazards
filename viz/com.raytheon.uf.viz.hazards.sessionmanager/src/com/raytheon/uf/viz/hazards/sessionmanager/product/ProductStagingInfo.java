@@ -7,10 +7,7 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.viz.hazards.display;
-
-import gov.noaa.gsd.common.utilities.JSONConverter;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -21,7 +18,6 @@ import java.util.Map;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.google.common.collect.Lists;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 
 /**
  * Description: Information used to populate the Product Staging Dialog.
@@ -31,10 +27,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Nov 15, 2013            daniel.s.schaffer@noaa.gov      Initial creation
- * 
+ * Date         Ticket#    Engineer          Description
+ * ------------ ---------- ----------------- --------------------------
+ * Nov 15, 2013            daniel.s.schaffer Initial creation
+ * Sep 09, 2014    4042    Chris.Golden      Moved to session manager where it
+ *                                           belongs, and changed to use maps for
+ *                                           megawidget specifiers instead of
+ *                                           Field instances,
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -57,25 +56,28 @@ public class ProductStagingInfo {
     }
 
     public static class Product {
-        private final JSONConverter jsonConverter = new JSONConverter();
 
         private final String productGenerator;
 
-        private final List<Field> fields = new ArrayList<>();
+        private final List<Map<String, Object>> fields = new ArrayList<>();
 
         private List<String> selectedEventIDs = new ArrayList<>();
 
         private Map<String, Serializable> dialogSelections = new HashMap<>();
 
-        Product(String productGenerator) {
+        public Product(String productGenerator) {
             this.productGenerator = productGenerator;
         }
 
-        boolean addFields(Field... fields) {
-            return this.fields.addAll(Lists.newArrayList(fields));
+        public boolean addField(Map<String, Object> field) {
+            return this.fields.add(field);
         }
 
-        boolean addSelectedEventIDs(String... eventIDs) {
+        public boolean addFields(List<Map<String, Object>> fields) {
+            return this.fields.addAll(fields);
+        }
+
+        public boolean addSelectedEventIDs(String... eventIDs) {
             return this.selectedEventIDs.addAll(Lists.newArrayList(eventIDs));
         }
 
@@ -83,22 +85,12 @@ public class ProductStagingInfo {
             return productGenerator;
         }
 
-        public List<Field> getFields() {
+        public List<Map<String, Object>> getFields() {
             return fields;
         }
 
         public List<String> getSelectedEventIDs() {
             return selectedEventIDs;
-        }
-
-        public List<Dict> fieldsAsDicts() {
-            List<Dict> result = Lists.newArrayList();
-            for (Field field : fields) {
-                Dict fieldAsDict = Dict
-                        .getInstance(jsonConverter.toJson(field));
-                result.add(fieldAsDict);
-            }
-            return result;
         }
 
         @Override

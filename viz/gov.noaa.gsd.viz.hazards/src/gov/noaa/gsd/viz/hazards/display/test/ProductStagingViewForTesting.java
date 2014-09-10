@@ -9,7 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.hazards.productstaging.IProductStagingView;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
@@ -19,6 +18,7 @@ import java.util.List;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
 
 /**
  * Description: Mock {@link IProductStagingView} used for testing.

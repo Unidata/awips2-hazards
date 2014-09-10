@@ -7,8 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.productstaging;
 
-import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
-import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo.Product;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
@@ -38,6 +36,8 @@ import org.eclipse.swt.widgets.Shell;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo.Product;
 import com.raytheon.viz.ui.dialogs.ModeListener;
 
 /**
@@ -74,6 +74,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                     changes.
  * Jun 30, 2014   3512     Chris G.    Changed to work with more megawidget manager
  *                                     changes, and with changes to ICommandInvoker.
+ * Sep 09, 2014   4042     Chris G.    Changed to work with megawidget specifiers
+ *                                     in map form instead of as Field instances.
  * </pre>
  * 
  * @author shouming.wei
@@ -178,9 +180,9 @@ class ProductStagingDialog extends BasicDialog {
          *             error occurs while creating or initializing one of the
          *             megawidgets.
          */
-        public DialogMegawidgetManager(Composite parent, List<Dict> specifiers,
-                Dict state, final Product stagingProduct)
-                throws MegawidgetException {
+        public DialogMegawidgetManager(Composite parent,
+                List<Map<String, Object>> specifiers, Dict state,
+                final Product stagingProduct) throws MegawidgetException {
             super(parent, specifiers, state, new MegawidgetManagerAdapter() {
 
                 @SuppressWarnings("unchecked")
@@ -411,7 +413,7 @@ class ProductStagingDialog extends BasicDialog {
          * Create the megawidget manager, which will in turn create the
          * megawidgets and bind them to the values dictionary, and return it.
          */
-        List<Dict> specifiersList = product.fieldsAsDicts();
+        List<Map<String, Object>> specifiersList = product.getFields();
 
         try {
             return new DialogMegawidgetManager(panel, specifiersList, values,

@@ -37,9 +37,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
- * 
- * Dec 03, 2013     2182  daniel.s.schaffer Refactoring
- * May 17, 2014 2925       Chris.Golden      Added newly required implementation of
+ * Dec 03, 2013    2182    daniel.s.schaffer Refactoring
+ * May 17, 2014    2925    Chris.Golden      Added newly required implementation of
  *                                           reinitialize(), and made initialize()
  *                                           protected as it is called by setView().
  * </pre>
@@ -123,6 +122,7 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
 
     @Override
     protected void reinitialize(IToolsView<?, ?> view) {
+
         /*
          * No action.
          */

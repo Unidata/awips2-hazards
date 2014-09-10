@@ -14,10 +14,11 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.EVENT_BUIL
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLASH_FLOOD_WATCH_PHEN_SIG;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLOOD_WATCH_PRODUCT_ID;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
-import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo.Product;
+import gov.noaa.gsd.viz.megawidgets.CheckListSpecifier;
+import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
 
 import java.util.List;
+import java.util.Map;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -31,13 +32,13 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo.Product;
 
 /**
  * Description: {@link FunctionalTest} of the product staging dialog.
@@ -57,6 +58,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComp
  *                                      ongoing issue flags are set to false at the end
  *                                      of each test, and moved the steps enum into the
  *                                      base class.
+ * Sep 09, 2014 4042       Chris.Golden Changed to work with megawidgets specified by
+ *                                      maps instead of the Field class.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -151,12 +154,12 @@ public class ProductStagingDialogTest extends
                 step = Steps.PREVIEW;
                 autoTestUtilities.previewFromHID();
             }
-
         } catch (Exception e) {
             handleException(e);
         }
     }
 
+    @SuppressWarnings("unchecked")
     @Handler(priority = -1)
     public void handleProductGeneratorResult(
             final IProductGenerationComplete productGenerationComplete) {
@@ -169,9 +172,11 @@ public class ProductStagingDialogTest extends
                 assertEquals(productStagingInfo.getProducts().size(), 1);
                 Product product = productStagingInfo.getProducts().get(0);
                 assertEquals(product.getSelectedEventIDs().size(), 1);
-                List<Field> fields = product.getFields();
-                Field field = fields.get(0).getFields().get(0);
-                List<Choice> choices = field.getChoices();
+                List<Map<String, Object>> fields = product.getFields();
+                Map<String, Object> field = ((List<Map<String, Object>>) fields
+                        .get(0).get(GroupSpecifier.CHILD_MEGAWIDGETS)).get(0);
+                List<?> choices = (List<?>) field
+                        .get(CheckListSpecifier.MEGAWIDGET_VALUE_CHOICES);
                 assertEquals(choices.size(), 2);
                 checkChoice(choices.get(0));
                 checkChoice(choices.get(1));
@@ -206,11 +211,12 @@ public class ProductStagingDialogTest extends
         }
     }
 
-    private void checkChoice(Choice choice) {
-        boolean validType = choice.getDisplayString().contains(
-                AREAL_FLOOD_WATCH_PHEN_SIG)
-                || choice.getDisplayString().contains(
-                        FLASH_FLOOD_WATCH_PHEN_SIG);
+    @SuppressWarnings("unchecked")
+    private void checkChoice(Object choice) {
+        String displayString = (String) ((Map<String, Object>) choice)
+                .get(CheckListSpecifier.CHOICE_NAME);
+        boolean validType = displayString.contains(AREAL_FLOOD_WATCH_PHEN_SIG)
+                || displayString.contains(FLASH_FLOOD_WATCH_PHEN_SIG);
         assertTrue(validType);
     }
 

@@ -63,11 +63,7 @@ public interface IToolsView<C, E extends Enum<E>> extends IView<C, E> {
      * Set the tools to those specified.
      * 
      * @param tools
-     *            - a list of Tool objects
+     *            List of tool objects.
      */
     public void setTools(List<Tool> tools);
-
-    /**
-     * @param tools
-     */
 }

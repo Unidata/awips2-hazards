@@ -52,7 +52,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  *                                           tool list was provided, and made
  *                                           tool menu button disabled in such
  *                                           cases.
- * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
+ * Jul 15, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * </pre>
  * 
  * @author Chris.Golden
@@ -125,7 +125,7 @@ public class ToolsView implements
          */
         public void toolsChanged() {
             toolsChanged = true;
-            setEnabled(toolIdentifiersForNames.size() > 0);
+            setEnabled(toolIdentifiersForNames.isEmpty() == false);
         }
 
         // Protected Methods
@@ -144,11 +144,15 @@ public class ToolsView implements
         @Override
         public Menu doGetMenu(Control parent, Menu menu) {
 
-            // If the tools have changed, recreate the menu's contents.
+            /*
+             * If the tools have changed, recreate the menu's contents.
+             */
             if (toolsChanged) {
 
-                // If the menu has not yet been created, do so now;
-                // otherwise, delete its contents.
+                /*
+                 * If the menu has not yet been created, do so now; otherwise,
+                 * delete its contents.
+                 */
                 if (menu == null) {
                     menu = new Menu(parent);
                 } else {
@@ -157,8 +161,9 @@ public class ToolsView implements
                     }
                 }
 
-                // Iterate through the tools, if any, creating an item
-                // for each.
+                /*
+                 * Iterate through the tools, if any, creating an item for each.
+                 */
                 for (Entry<String, String> entry : toolIdentifiersForNames
                         .entrySet()) {
                     MenuItem item = new MenuItem(menu, SWT.PUSH);
@@ -167,11 +172,15 @@ public class ToolsView implements
                     item.addSelectionListener(listener);
                 }
 
-                // Reset the tools changed flag.
+                /*
+                 * Reset the tools changed flag.
+                 */
                 toolsChanged = false;
             }
 
-            // Return the menu.
+            /*
+             * Return the menu.
+             */
             return menu;
         }
     }
@@ -215,7 +224,9 @@ public class ToolsView implements
      */
     public ToolsView() {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     // Public Methods
@@ -305,14 +316,19 @@ public class ToolsView implements
      */
     @Override
     public final void setTools(List<Tool> tools) {
-        // Get the names and identifiers of the tools.
+
+        /*
+         * Get the names and identifiers of the tools.
+         */
         toolIdentifiersForNames.clear();
         for (Tool tool : tools) {
             toolIdentifiersForNames.put(tool.getDisplayName(),
                     tool.getToolName());
         }
 
-        // Notify the pulldown that the tools have changed.
+        /*
+         * Notify the pulldown that the tools have changed.
+         */
         if (toolsPulldownAction != null) {
             toolsPulldownAction.toolsChanged();
         }

@@ -207,6 +207,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Sep 05, 2014   4277     Chris.Golden      Changed scrollbars' buttons to cause the
  *                                           metadata pane to scroll a reasonable amount
  *                                           instead of barely moving.
+ * Sep 08, 2014   4042     Chris.Golden      Fixed minor bugs in setting of metadata
+ *                                           scrollbar page increments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -496,12 +498,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * by the cache.
      */
     private static final int MAXIMUM_EVENT_METADATA_CACHE_SIZE = 10;
-
-    /**
-     * Number of pixels by which to scroll when a scrollbar arrow button is
-     * invoked.
-     */
-    private static final int SCROLLBAR_BUTTON_INCREMENT = 16;
 
     // Private Constants
 
@@ -1570,9 +1566,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         scrolledComposite.setContent(metadataContentPanel);
         scrolledComposite.setExpandHorizontal(true);
         scrolledComposite.getHorizontalBar().setIncrement(
-                SCROLLBAR_BUTTON_INCREMENT);
+                HazardConstants.SCROLLBAR_BUTTON_INCREMENT);
         scrolledComposite.getVerticalBar().setIncrement(
-                SCROLLBAR_BUTTON_INCREMENT);
+                HazardConstants.SCROLLBAR_BUTTON_INCREMENT);
 
         /*
          * Add a listener to the horizontal and vertical scroll bars of the
@@ -1606,7 +1602,20 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         scrolledComposite.addControlListener(new ControlAdapter() {
             @Override
             public void controlResized(ControlEvent e) {
-                recalculateScrolledCompositePageIncrement();
+
+                /*
+                 * Schedule a resize of the page increment to happen after the
+                 * laying out of the panels is complete. The latter must be done
+                 * asynchronously to ensure the laying out is done before it
+                 * proceeds, otherwise it gets the wrong information from the
+                 * scrollbars.
+                 */
+                Display.getDefault().asyncExec(new Runnable() {
+                    @Override
+                    public void run() {
+                        recalculateScrolledCompositePageIncrement();
+                    }
+                });
             }
         });
 
@@ -2880,6 +2889,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             return;
         }
         scrolledCompositePageIncrementChanging = true;
+        scrolledComposite.getHorizontalBar().setPageIncrement(
+                scrolledComposite.getHorizontalBar().getThumb());
         scrolledComposite.getVerticalBar().setPageIncrement(
                 scrolledComposite.getVerticalBar().getThumb());
         scrolledCompositePageIncrementChanging = false;

@@ -93,6 +93,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.viz.core.mode.CAVEMode;
@@ -176,6 +177,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Aug 18, 2014  4243      Chris.Golden       Changed to pass recommender file path as
  *                                            opposed to a Python script when showing a
  *                                            dialog for a recommender.
+ * Sep 09, 2014  4042      Chris.Golden       Moved product staging info generation to
+ *                                            the product staging presenter.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -687,9 +690,7 @@ public final class HazardServicesMessageHandler implements
             }
 
         } else {
-            ProductStagingInfo productStagingInfo = productGeneratorHandler
-                    .buildProductStagingInfo(issue);
-            appBuilder.showProductStagingView(issue, productStagingInfo);
+            appBuilder.showProductStagingView(issue);
         }
     }
 
