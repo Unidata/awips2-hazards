@@ -45,6 +45,7 @@ import com.raytheon.uf.common.util.TestUtil;
  * Apr 18, 2013 1914       djohnson     Allow initializing test localization support from Spring.
  * Jan 08, 2014 2615       bgonzale     Fixes for PropertiesFactory configuration loading in test.
  * Jul 28, 2014 3214       jsanchez     PathManager's fileCache is no longer static. Removed the call to fix junit tests.
+ * Sep 10, 2014 4703       Robert.Blum  Fixes for PathManagerFactory errors caused by changes in AWIPS2 baseline.
  * </pre>
  * 
  * @author djohnson
@@ -75,12 +76,12 @@ public class PathManagerFactoryTest implements BeanFactoryPostProcessor {
 
         // But only install the path manager if the test version is not already
         // installed
-        if (!(PathManagerFactory.pathManager instanceof TestPathManager)) {
+        if (!(PathManagerFactory.getPathManager() instanceof TestPathManager)) {
             TestLocalizationAdapter adapter = (isRunningInEclipse()) ? new EclipseTestLocalizationAdapter(
                     site, savedLocalizationFileDir)
                     : new CommandLineTestLocalizationAdapter(site,
                             savedLocalizationFileDir);
-            PathManagerFactory.pathManager = new TestPathManager(adapter);
+            PathManagerFactory.setAdapter(adapter);
 
             System.setProperty("edex.home", file.getAbsolutePath());
             File confResDataDir = new File(file, "conf/res");
