@@ -47,6 +47,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
+import gov.noaa.gsd.viz.widgets.CustomToolTip;
 import gov.noaa.gsd.viz.widgets.DayHatchMarkGroup;
 import gov.noaa.gsd.viz.widgets.IHatchMarkGroup;
 import gov.noaa.gsd.viz.widgets.IMultiValueLinearControlListener;
@@ -80,6 +81,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ActionContributionItem;
 import org.eclipse.jface.action.IContributionItem;
 import org.eclipse.jface.action.Separator;
+import org.eclipse.jface.dialogs.PopupDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.TableEditor;
 import org.eclipse.swt.events.ControlEvent;
@@ -121,7 +123,6 @@ import org.eclipse.swt.widgets.ScrollBar;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
-import org.eclipse.swt.widgets.ToolTip;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -225,6 +226,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           have duration options and that do not
  *                                           have their end times set to "until
  *                                           further notice."
+ * Sep 11, 2014   1283     Robert.Blum       Changed out the ToolTip with a custom one
+ *                                           that displays on the correct monitor.
  * </pre>
  * 
  * @author Chris.Golden
@@ -510,7 +513,7 @@ class TemporalDisplay {
     /**
      * Table tool tip, used to display hint text for table cells.
      */
-    private ToolTip tableToolTip = null;
+    private CustomToolTip tableToolTip = null;
 
     /**
      * Flag indicating whether or not the timeline ruler should display tooltips
@@ -2279,7 +2282,7 @@ class TemporalDisplay {
         }
 
         // Delete the table tooltip.
-        if ((tableToolTip != null) && !tableToolTip.isDisposed()) {
+        if ((tableToolTip != null) && !tableToolTip.isVisible()) {
             tableToolTip.dispose();
             tableToolTip = null;
         }
@@ -3062,9 +3065,9 @@ class TemporalDisplay {
                             // mouse coordinates can be tested
                             // to see if they still fall within
                             // the cell.
-                            if (text != null) {
+                            if (text != null && (!text.equals(""))) {
                                 tableToolTip.setMessage(text);
-                                tableToolTip.setData(cellBounds);
+                                tableToolTip.setToolTipBounds(cellBounds);
                                 tableToolTip.setLocation(table.toDisplay(e.x,
                                         e.y));
                                 tableToolTip.setVisible(true);
@@ -3086,8 +3089,7 @@ class TemporalDisplay {
             @Override
             public void mouseMove(MouseEvent e) {
                 if ((tableToolTip != null) && tableToolTip.isVisible()) {
-                    if (!((Rectangle) tableToolTip.getData())
-                            .contains(e.x, e.y)) {
+                    if (!(tableToolTip.getToolTipBounds().contains(e.x, e.y))) {
                         tableToolTip.setVisible(false);
                     }
                 }
@@ -3168,7 +3170,8 @@ class TemporalDisplay {
         });
 
         // Create the table tooltip.
-        tableToolTip = new ToolTip(table.getShell(), SWT.BALLOON);
+        tableToolTip = new CustomToolTip(table.getShell(),
+                PopupDialog.HOVER_SHELLSTYLE);
     }
 
     /**

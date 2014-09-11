@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.eclipse.jface.dialogs.PopupDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
@@ -31,7 +32,6 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.ToolTip;
 
 /**
  * Multi-value linear control widget, an abstract class from which linear
@@ -127,6 +127,9 @@ import org.eclipse.swt.widgets.ToolTip;
  * Jul 03, 2014    3512    Chris.Golden      Improved code to have it avoid
  *                                           making a thumb look active
  *                                           when the widget is invisible.
+ * Sep 11, 2014    1283    Robert.Blum       Changed out the ToolTip with a 
+ *                                           custom one that displays on the 
+ *                                           correct monitor.
  * </pre>
  * 
  * @author Chris.Golden
@@ -437,7 +440,7 @@ public abstract class MultiValueLinearControl extends Canvas {
      * string (not <code>null</code>) when invoked. If the provider is <code>
      * null</code>, this will be as well.
      */
-    private ToolTip tooltip;
+    private CustomToolTip tooltip;
 
     /**
      * Flag indicating whether the constrained thumbs are to be drawn above or
@@ -475,12 +478,6 @@ public abstract class MultiValueLinearControl extends Canvas {
      * Last recorded height of the client area.
      */
     private int lastHeight = 0;
-
-    /**
-     * Boundaries of the area in which a mouse hover may generate a tooltip
-     * showing the value under the mouse.
-     */
-    private Rectangle tooltipBounds = null;
 
     /**
      * Number of pixels by which to inset the client area of the widget from the
@@ -735,7 +732,8 @@ public abstract class MultiValueLinearControl extends Canvas {
             tooltip.dispose();
             tooltip = null;
         } else if ((provider != null) && (tooltip == null)) {
-            tooltip = new ToolTip(getShell(), SWT.BALLOON);
+            tooltip = new CustomToolTip(getShell(),
+                    PopupDialog.HOVER_SHELLSTYLE);
         }
     }
 
@@ -2042,7 +2040,7 @@ public abstract class MultiValueLinearControl extends Canvas {
      *            New bounds for tooltips.
      */
     protected final void setTooltipBounds(Rectangle tooltipBounds) {
-        this.tooltipBounds = tooltipBounds;
+        this.tooltip.setToolTipBounds(tooltipBounds);
     }
 
     /**
@@ -2053,7 +2051,7 @@ public abstract class MultiValueLinearControl extends Canvas {
      *         tooltip.
      */
     protected final Rectangle getTooltipBounds() {
-        return tooltipBounds;
+        return tooltip.getToolTipBounds();
     }
 
     /**
@@ -2538,7 +2536,9 @@ public abstract class MultiValueLinearControl extends Canvas {
         /*
          * Recalculate the tooltip bounds.
          */
-        tooltipBoundsChanged();
+        if (tooltip != null) {
+            tooltipBoundsChanged();
+        }
 
         /*
          * If the value range was calculated above, commit the change;
@@ -2801,7 +2801,8 @@ public abstract class MultiValueLinearControl extends Canvas {
          * If the tooltip area does not exist or does not contain the point, do
          * nothing.
          */
-        if ((tooltipBounds == null) || !getTooltipBounds().contains(e.x, e.y)) {
+        if ((getTooltipBounds() == null)
+                || !getTooltipBounds().contains(e.x, e.y)) {
             return;
         }
 
