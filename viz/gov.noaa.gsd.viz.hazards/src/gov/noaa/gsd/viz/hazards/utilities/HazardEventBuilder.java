@@ -114,12 +114,13 @@ public class HazardEventBuilder {
         event.setCreationTime(sessionManager.getTimeManager().getCurrentTime());
     }
 
-    public void addEvent(IHazardEvent event) {
-        addEvent(event, null);
+    public ObservedHazardEvent addEvent(IHazardEvent event) {
+        return addEvent(event, null);
     }
 
-    public void addEvent(IHazardEvent event, IOriginator originator) {
-        sessionManager.getEventManager().addEvent(event, originator);
+    public ObservedHazardEvent addEvent(IHazardEvent event,
+            IOriginator originator) {
+        return sessionManager.getEventManager().addEvent(event, originator);
     }
 
     public IHazardEvent buildPolygonHazardEvent(List<Coordinate> coordinates)

@@ -313,11 +313,12 @@ public class SelectByAreaDrawingActionGeometryResource extends
                                     sessionManager);
                             IHazardEvent hazardEvent = hazardEventBuilder
                                     .buildPolygonHazardEvent(mergedPolygons);
-                            hazardEventBuilder.addEvent(hazardEvent);
-                            eventID = hazardEvent.getEventID();
+                            ObservedHazardEvent observedHazardEvent = hazardEventBuilder
+                                    .addEvent(hazardEvent);
+                            eventID = observedHazardEvent.getEventID();
                             SessionEventAdded addAction = new SessionEventAdded(
                                     sessionManager.getEventManager(),
-                                    hazardEvent, getSpatialPresenter());
+                                    observedHazardEvent, getSpatialPresenter());
 
                             getSpatialPresenter().fireAction(addAction);
 

@@ -174,10 +174,11 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                     IHazardEvent hazardEvent = hazardEventBuilder
                             .buildPolygonHazardEvent(reducedGeometry
                                     .getCoordinates());
-                    hazardEventBuilder.addEvent(hazardEvent);
+                    ObservedHazardEvent observedHazardEvent = hazardEventBuilder
+                            .addEvent(hazardEvent);
                     SessionEventAdded action = new SessionEventAdded(
                             getSpatialPresenter().getSessionManager()
-                                    .getEventManager(), hazardEvent,
+                                    .getEventManager(), observedHazardEvent,
                             getSpatialPresenter());
                     getSpatialPresenter().fireAction(action);
                 } catch (InvalidGeometryException e) {
