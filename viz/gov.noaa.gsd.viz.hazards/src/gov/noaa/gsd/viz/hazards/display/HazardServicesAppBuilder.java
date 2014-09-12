@@ -64,6 +64,7 @@ import gov.noaa.gsd.viz.mvp.IMainUiContributor;
 import gov.noaa.gsd.viz.mvp.IView;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
@@ -114,6 +115,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -973,9 +975,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * @param issueFlag
      *            Whether or not this is being called as a result of an issue
      *            action.
+     * @param productInformation
      */
-    public void showProductStagingView(boolean issueFlag) {
-        productStagingPresenter.showProductStagingDetail(issueFlag);
+    public void showProductStagingView(boolean issueFlag,
+            Collection<ProductInformation> productInformation) {
+        productStagingPresenter.showProductStagingDetail(issueFlag,
+                productInformation);
     }
 
     public void showProductEditorView(

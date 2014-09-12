@@ -87,21 +87,29 @@ class HazardServicesProductGenerationHandler {
 
     private final BoundedReceptionEventBus<Object> eventBus;
 
+    private final HazardServicesAppBuilder appBuilder;
+
+    private final Map<Boolean, Collection<ProductInformation>> selectedProductsCache;
+
     HazardServicesProductGenerationHandler(
             ISessionManager<ObservedHazardEvent> sessionManager,
-            BoundedReceptionEventBus<Object> eventBus) {
+            HazardServicesAppBuilder appBuilder) {
         this.sessionManager = sessionManager;
         this.productManager = sessionManager.getProductManager();
-        this.eventBus = eventBus;
+        this.appBuilder = appBuilder;
+        this.eventBus = appBuilder.getEventBus();
         this.productGenerationAuditManager = new HashMap<String, ProductGenerationAuditor>();
 
         this.eventBus.subscribe(this);
+        selectedProductsCache = new HashMap<>();
     }
 
     boolean productGenerationRequired(boolean issue) {
         boolean result = true;
-        for (ProductInformation info : productManager
-                .getSelectedProducts(issue)) {
+        Collection<ProductInformation> products = productManager
+                .getSelectedProducts(issue);
+        selectedProductsCache.put(issue, products);
+        for (ProductInformation info : products) {
             if (info.getDialogInfo() != null && !info.getDialogInfo().isEmpty()) {
                 result = false;
             } else if (info.getPossibleProductEvents() != null
@@ -116,11 +124,7 @@ class HazardServicesProductGenerationHandler {
     }
 
     public void generateProducts(boolean issue) {
-        ISessionProductManager productManager = sessionManager
-                .getProductManager();
-        Collection<ProductInformation> products = productManager
-                .getSelectedProducts(issue);
-        this.runProductGeneration(products, issue);
+        this.runProductGeneration(selectedProductsCache.get(issue), issue);
     }
 
     public void generateReviewableProduct(List<ProductData> result) {
@@ -187,6 +191,9 @@ class HazardServicesProductGenerationHandler {
             List<GeneratedProductList> generatedProductsList) {
         Collection<ProductInformation> selectedProducts = productManager
                 .getSelectedProducts(issue);
+
+        selectedProductsCache.put(issue, selectedProducts);
+
         ProductInformation productInformation = null;
 
         Collection<ProductInformation> productsToGenerate = new ArrayList<ProductInformation>();
@@ -230,8 +237,8 @@ class HazardServicesProductGenerationHandler {
 
     public void createProductsFromProductStagingInfo(boolean issue,
             ProductStagingInfo productStagingInfo) {
-        Collection<ProductInformation> products = productManager
-                .getSelectedProducts(issue);
+        Collection<ProductInformation> products = selectedProductsCache
+                .get(issue);
 
         Collection<ProductInformation> productsToGenerate = new ArrayList<ProductInformation>();
 
@@ -356,5 +363,66 @@ class HazardServicesProductGenerationHandler {
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
+    }
+
+    /**
+     * Launch the Staging Dialog if necessary OR return the Generated Products
+     * 
+     * @param issue
+     *            Flag indicating whether or not this is the result of an issue
+     *            action.
+     * @return
+     */
+    void generate(boolean issue) {
+        if (issue) {
+            sessionManager.setIssueOngoing(true);
+        } else {
+            sessionManager.setPreviewOngoing(true);
+        }
+
+        if (productGenerationRequired(issue)) {
+
+            List<String> unsupportedHazards = sessionManager
+                    .getProductManager().getUnsupportedHazards();
+
+            Collection<ProductInformation> selectedProducts = sessionManager
+                    .getProductManager().getSelectedProducts(issue);
+
+            boolean continueWithGeneration = true;
+
+            if (!unsupportedHazards.isEmpty()) {
+                StringBuffer message = new StringBuffer(
+                        "Products for the following hazard types are not yet supported: ");
+                for (String type : unsupportedHazards) {
+                    message.append(type + " ");
+                }
+
+                if (!selectedProducts.isEmpty()) {
+                    message.append("\nPress Continue to generate products for the supported hazard types.");
+                    continueWithGeneration = appBuilder.getContinueCanceller()
+                            .getUserAnswerToQuestion("Unsupported HazardTypes",
+                                    message.toString());
+                } else {
+                    appBuilder.getWarner().warnUser("Unsupported HazardTypes",
+                            message.toString());
+                    continueWithGeneration = false;
+                }
+
+            }
+
+            if (continueWithGeneration) {
+                generateProducts(issue);
+            } else {
+                if (issue) {
+                    sessionManager.setIssueOngoing(false);
+                } else {
+                    sessionManager.setPreviewOngoing(false);
+                }
+            }
+
+        } else {
+            appBuilder.showProductStagingView(issue,
+                    selectedProductsCache.get(issue));
+        }
     }
 }

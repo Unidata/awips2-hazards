@@ -210,11 +210,13 @@ public class ProductStagingPresenter extends
      * 
      * @param issueFlag
      *            Whether or not this is a result of an issue action
+     * @param productInformation
      * @param productStagingInfo
      */
-    public final void showProductStagingDetail(boolean issueFlag) {
+    public final void showProductStagingDetail(boolean issueFlag,
+            Collection<ProductInformation> productInformation) {
         getView().showProductStagingDetail(issueFlag,
-                buildProductStagingInfo(issueFlag));
+                buildProductStagingInfo(issueFlag, productInformation));
         bind();
     }
 
@@ -263,15 +265,14 @@ public class ProductStagingPresenter extends
      * @param issue
      *            Flag indicating whether this is for an issue or preview
      *            action.
+     * @param productInformation
      * @return Product staging info that has been put together.
      */
     @SuppressWarnings("unchecked")
-    private ProductStagingInfo buildProductStagingInfo(boolean issue) {
-        Collection<ProductInformation> products = getModel()
-                .getProductManager().getSelectedProducts(issue);
-
+    private ProductStagingInfo buildProductStagingInfo(boolean issue,
+            Collection<ProductInformation> productInformation) {
         ProductStagingInfo result = new ProductStagingInfo();
-        for (ProductInformation info : products) {
+        for (ProductInformation info : productInformation) {
             ProductStagingInfo.Product product = new ProductStagingInfo.Product(
                     info.getProductGeneratorName());
 

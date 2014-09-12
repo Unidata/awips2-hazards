@@ -262,7 +262,7 @@ public final class HazardServicesMessageHandler implements
         this.sessionManager = appBuilder.getSessionManager();
 
         this.productGeneratorHandler = new HazardServicesProductGenerationHandler(
-                sessionManager, appBuilder.getEventBus());
+                sessionManager, appBuilder);
         this.sessionEventManager = sessionManager.getEventManager();
         this.sessionTimeManager = sessionManager.getTimeManager();
         this.sessionConfigurationManager = sessionManager
@@ -633,65 +633,9 @@ public final class HazardServicesMessageHandler implements
         }
     }
 
-    /**
-     * Launch the Staging Dialog if necessary OR return the Generated Products
-     * 
-     * @param issue
-     *            Flag indicating whether or not this is the result of an issue
-     *            action.
-     * @return Products that were generated.
-     */
     private void generateProducts(boolean issue) {
+        productGeneratorHandler.generate(issue);
 
-        if (issue) {
-            sessionManager.setIssueOngoing(true);
-        } else {
-            sessionManager.setPreviewOngoing(true);
-        }
-
-        if (productGeneratorHandler.productGenerationRequired(issue)) {
-
-            List<String> unsupportedHazards = sessionManager
-                    .getProductManager().getUnsupportedHazards();
-
-            Collection<ProductInformation> selectedProducts = sessionManager
-                    .getProductManager().getSelectedProducts(issue);
-
-            boolean continueWithGeneration = true;
-
-            if (!unsupportedHazards.isEmpty()) {
-                StringBuffer message = new StringBuffer(
-                        "Products for the following hazard types are not yet supported: ");
-                for (String type : unsupportedHazards) {
-                    message.append(type + " ");
-                }
-
-                if (!selectedProducts.isEmpty()) {
-                    message.append("\nPress Continue to generate products for the supported hazard types.");
-                    continueWithGeneration = appBuilder.getContinueCanceller()
-                            .getUserAnswerToQuestion("Unsupported HazardTypes",
-                                    message.toString());
-                } else {
-                    appBuilder.getWarner().warnUser("Unsupported HazardTypes",
-                            message.toString());
-                    continueWithGeneration = false;
-                }
-
-            }
-
-            if (continueWithGeneration) {
-                productGeneratorHandler.generateProducts(issue);
-            } else {
-                if (issue) {
-                    sessionManager.setIssueOngoing(false);
-                } else {
-                    sessionManager.setPreviewOngoing(false);
-                }
-            }
-
-        } else {
-            appBuilder.showProductStagingView(issue);
-        }
     }
 
     /**
