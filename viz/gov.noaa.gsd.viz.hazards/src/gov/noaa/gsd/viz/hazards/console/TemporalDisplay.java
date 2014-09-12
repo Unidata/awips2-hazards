@@ -228,6 +228,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           further notice."
  * Sep 11, 2014   1283     Robert.Blum       Changed out the ToolTip with a custom one
  *                                           that displays on the correct monitor.
+ * Sep 12, 2014   3511     Robert.Blum       Changed the format/timezone of the 
+ *                                           Console time to match CAVE time.
  * </pre>
  * 
  * @author Chris.Golden
@@ -364,7 +366,7 @@ class TemporalDisplay {
     /**
      * Date-time format string.
      */
-    private static final String DATE_TIME_FORMAT_STRING = "EEE dd-MMM HH:mm";
+    private static final String DATE_TIME_FORMAT_STRING = "HH:mm'Z' dd-MMM-yy";
 
     /**
      * Filter menu name.
@@ -1406,7 +1408,7 @@ class TemporalDisplay {
 
         // Configure the date-time formatter.
         dateTimeFormatter = new SimpleDateFormat(DATE_TIME_FORMAT_STRING);
-        dateTimeFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+        dateTimeFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
     }
 
     // Public Methods
