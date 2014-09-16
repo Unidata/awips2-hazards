@@ -33,6 +33,8 @@ import java.util.Map;
  *                                      to allow a thread-safe way to determine
  *                                      what hazard event a change is intended
  *                                      for.
+ * Sep 16, 2014    4753    Chris.Golden Changed to allow setting of mutable
+ *                                      properties.
  * </pre>
  * 
  * @author Chris.Golden
@@ -71,6 +73,19 @@ class MetadataStateChangerDelegate
             public void run() {
                 getPrincipal().setMegawidgetSpecifierManager(eventIdentifier,
                         specifierManager, metadataStates);
+            }
+        });
+    }
+
+    @Override
+    public void changeMegawidgetMutableProperties(final String eventIdentifier,
+            final Map<String, Map<String, Object>> mutableProperties) {
+        runOrScheduleTask(new QualifiedPrincipalRunnableTask<String, String, IMetadataStateChanger>() {
+
+            @Override
+            public void run() {
+                getPrincipal().changeMegawidgetMutableProperties(
+                        eventIdentifier, mutableProperties);
             }
         });
     }

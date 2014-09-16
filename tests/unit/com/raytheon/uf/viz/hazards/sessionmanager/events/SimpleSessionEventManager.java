@@ -55,6 +55,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
  * Aug 20, 2014 4243       Chris.Golden Added implementation of
  *                                      new method to run scripts.
+ * Sep 16, 2014 4753       Chris.Golden Added mutable properties to event scripts.
  * </pre>
  * 
  * @author bsteffen
@@ -91,7 +92,8 @@ public class SimpleSessionEventManager implements
 
     @Override
     public void scriptCommandInvoked(ObservedHazardEvent event,
-            String identifier) {
+            String identifier,
+            Map<String, Map<String, Object>> mutableProperties) {
         throw new UnsupportedOperationException();
     }
 

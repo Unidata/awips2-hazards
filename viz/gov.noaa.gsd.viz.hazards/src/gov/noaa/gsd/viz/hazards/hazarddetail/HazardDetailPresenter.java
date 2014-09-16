@@ -54,6 +54,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesM
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventMetadataModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventScriptExtraDataAvailable;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
@@ -118,6 +119,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Aug 15, 2014    4243    Chris.Golden      Added ability to invoke event-modifying
  *                                           scripts via metadata-specified notifier
  *                                           megawidgets.
+ * Sep 16, 2014    4753    Chris.Golden      Changed event script running to include
+ *                                           mutable properties.
  * </pre>
  * 
  * @author Chris.Golden
@@ -486,15 +489,16 @@ public class HazardDetailPresenter extends
      * which the invocation is occurring coupled with that of the notifier that
      * has been invoked.
      */
-    private final ICommandInvocationHandler<EventAndDetail> notifierInvocationHandler = new ICommandInvocationHandler<EventAndDetail>() {
+    private final ICommandInvocationHandler<EventScriptInfo> notifierInvocationHandler = new ICommandInvocationHandler<EventScriptInfo>() {
 
         @Override
-        public void commandInvoked(EventAndDetail identifier) {
+        public void commandInvoked(EventScriptInfo identifier) {
             ObservedHazardEvent event = getModel().getEventManager()
                     .getEventById(identifier.getEventIdentifier());
             if (event != null) {
                 getModel().getEventManager().scriptCommandInvoked(event,
-                        identifier.getDetailIdentifier());
+                        identifier.getDetailIdentifier(),
+                        identifier.getMutableProperties());
             }
         }
     };
@@ -668,7 +672,7 @@ public class HazardDetailPresenter extends
              */
             this.selectedEventIdentifiers = selectedEventIdentifiers;
             String oldVisibleEventIdentifier = visibleEventIdentifier;
-            visibleEventIdentifier = buildVisibleEventIdentifier();
+            visibleEventIdentifier = getVisibleEventIdentifier();
 
             /*
              * Notify the view of the new list of selected events.
@@ -700,16 +704,6 @@ public class HazardDetailPresenter extends
         }
     }
 
-    private String buildVisibleEventIdentifier() {
-        String result = "";
-        ObservedHazardEvent selectedEvent = getModel().getEventManager()
-                .getLastModifiedSelectedEvent();
-        if (selectedEvent != null) {
-            result = selectedEvent.getEventID();
-        }
-        return result;
-    }
-
     /**
      * Respond to the last modified event in the list of selected events
      * possibly having changed.
@@ -728,7 +722,7 @@ public class HazardDetailPresenter extends
         if (detailViewShowing == false) {
             return;
         }
-        String newVisibleEventIdentifier = buildVisibleEventIdentifier();
+        String newVisibleEventIdentifier = getVisibleEventIdentifier();
 
         if (selectedEventIdentifiers.contains(newVisibleEventIdentifier) == false) {
             return;
@@ -847,6 +841,23 @@ public class HazardDetailPresenter extends
             if (detailViewShowing && isVisibleEventModified(change)) {
                 updateViewMetadataSpecifiers(event);
             }
+        }
+    }
+
+    /**
+     * Respond to an event's megawidgets' mutable properties changing.
+     * 
+     * @param change
+     *            Changed mutable properties.
+     */
+    @Handler
+    public void sessionEventScriptMutablePropertiesModified(
+            final SessionEventScriptExtraDataAvailable change) {
+        String eventIdentifier = change.getEvent().getEventID();
+        ObservedHazardEvent event = getEventByIdentifier(eventIdentifier);
+        if (event != null) {
+            getView().getMetadataChanger().changeMegawidgetMutableProperties(
+                    eventIdentifier, change.getMutableProperties());
         }
     }
 
@@ -998,6 +1009,22 @@ public class HazardDetailPresenter extends
     }
 
     // Private Methods
+
+    /**
+     * Determine the visible event identifier.
+     * 
+     * @return Last modified selected event, if found, or just the currently
+     *         selected event otherwise.
+     */
+    private String getVisibleEventIdentifier() {
+        String result = "";
+        ObservedHazardEvent selectedEvent = getModel().getEventManager()
+                .getLastModifiedSelectedEvent();
+        if (selectedEvent != null) {
+            result = selectedEvent.getEventID();
+        }
+        return result;
+    }
 
     /**
      * Determine whether or not the currently visible event is the subject of
@@ -1287,7 +1314,7 @@ public class HazardDetailPresenter extends
     private void updateEntireView(List<ObservedHazardEvent> selectedEvents) {
         detailViewShowing = true;
         selectedEventIdentifiers = compileSelectedEventIdentifiers(selectedEvents);
-        visibleEventIdentifier = buildVisibleEventIdentifier();
+        visibleEventIdentifier = getVisibleEventIdentifier();
         selectedEventDisplayables = compileSelectedEventDisplayables(selectedEvents);
         updateViewSelectedEvents();
         updateViewVisibleEvent();

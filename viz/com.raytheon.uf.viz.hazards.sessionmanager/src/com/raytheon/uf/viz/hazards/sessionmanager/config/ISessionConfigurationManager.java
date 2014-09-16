@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
 import java.io.File;
 import java.util.List;
+import java.util.Map;
 
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -55,6 +56,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  *                                      hazard events, and also default durations.
  * Aug 20, 2014 4243       Chris.Golden Added new method to run an event-modifying
  *                                      script.
+ * Sep 16, 2014 4753       Chris.Golden Added mutable properties to event script.
  * </pre>
  * 
  * @author bsteffen
@@ -153,12 +155,15 @@ public interface ISessionConfigurationManager {
      *            Script file in which to find the entry-point function.
      * @param functionName
      *            Name of the entry-point function.
+     * @param mutableProperties
+     *            Metadata megawidgets' mutable properties.
      * @param listener
      *            Listener to be notified if the event modifying script runs
      *            successfully.
      */
     public void runEventModifyingScript(IHazardEvent hazardEvent,
             File scriptFile, String functionName,
+            Map<String, Map<String, Object>> mutableProperties,
             IEventModifyingScriptJobListener listener);
 
     /**

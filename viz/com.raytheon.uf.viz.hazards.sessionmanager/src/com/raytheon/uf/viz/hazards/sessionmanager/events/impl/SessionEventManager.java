@@ -81,6 +81,7 @@ import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.IEventModifyingScriptJobListener;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ModifiedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
@@ -91,6 +92,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryMod
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventMetadataModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventScriptExtraDataAvailable;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
@@ -201,6 +203,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      invoked.
  * Sep 04, 2014 4560       Chris.Golden Added code to find metadata-reload-triggering
  *                                      megawidgets.
+ * Sep 16, 2014  4753      Chris.Golden Changed event script to include mutable
+ *                                      properties.
  * </pre>
  * 
  * @author bsteffen
@@ -302,7 +306,7 @@ public class SessionEventManager implements
 
         @Override
         public void scriptExecutionComplete(String identifier,
-                IHazardEvent hazardEvent) {
+                ModifiedHazardEvent hazardEvent) {
             eventModifyingScriptExecutionComplete(hazardEvent);
         }
     };
@@ -667,7 +671,8 @@ public class SessionEventManager implements
 
     @Override
     public void scriptCommandInvoked(ObservedHazardEvent event,
-            String identifier) {
+            String identifier,
+            Map<String, Map<String, Object>> mutableProperties) {
         Map<String, String> eventModifyingFunctionNamesForIdentifiers = eventModifyingScriptsForEventIdentifiers
                 .get(event.getEventID());
         if (eventModifyingFunctionNamesForIdentifiers == null) {
@@ -686,7 +691,8 @@ public class SessionEventManager implements
         }
         configManager.runEventModifyingScript(event,
                 scriptFilesForEventIdentifiers.get(event.getEventID()),
-                eventModifyingFunctionName, eventModifyingScriptListener);
+                eventModifyingFunctionName, mutableProperties,
+                eventModifyingScriptListener);
     }
 
     /**
@@ -697,12 +703,20 @@ public class SessionEventManager implements
      *            attributes have changed. If <code>null</code>, no changes were
      *            made.
      */
-    private void eventModifyingScriptExecutionComplete(IHazardEvent event) {
-        if (event != null) {
-            ObservedHazardEvent originalEvent = getEventById(event.getEventID());
-            if (originalEvent != null) {
-                originalEvent.setHazardAttributes(event.getHazardAttributes());
+    private void eventModifyingScriptExecutionComplete(ModifiedHazardEvent event) {
+        IHazardEvent hazardEvent = event.getHazardEvent();
+        ObservedHazardEvent originalEvent = getEventById(hazardEvent
+                .getEventID());
+        if (originalEvent != null) {
+            if (event.getMutableProperties() != null) {
+                notificationSender
+                        .postNotificationAsync(new SessionEventScriptExtraDataAvailable(
+                                this, originalEvent, event
+                                        .getMutableProperties(),
+                                Originator.OTHER));
             }
+            originalEvent
+                    .setHazardAttributes(hazardEvent.getHazardAttributes());
         }
     }
 

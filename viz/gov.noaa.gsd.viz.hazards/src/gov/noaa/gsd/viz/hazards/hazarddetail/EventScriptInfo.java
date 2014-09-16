@@ -9,9 +9,12 @@
  */
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
+import java.util.Map;
+
 /**
- * Description: Simple encapsulation of an event identifier and a detail
- * identifier, used to specify a particular part of an event.
+ * Description: Simple encapsulation of an event identifier, script identifier,
+ * and megawidget mutable properties, used to specify a script command to be run
+ * for an event.
  * 
  * <pre>
  * 
@@ -19,12 +22,13 @@ package gov.noaa.gsd.viz.hazards.hazarddetail;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 15, 2014    4243    Chris.Golden Initial creation.
+ * Sep 16, 2014    4753    Chris.Golden Changed name, and added mutable properties.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class EventAndDetail {
+public class EventScriptInfo {
 
     // Private Variables
 
@@ -38,6 +42,11 @@ public class EventAndDetail {
      */
     private final String detailIdentifier;
 
+    /**
+     * Mutable properties of all metadata megawidgets for the event.
+     */
+    private final Map<String, Map<String, Object>> mutableProperties;
+
     // Public Constructors
 
     /**
@@ -47,10 +56,14 @@ public class EventAndDetail {
      *            Event identifier.
      * @param detailIdentifier
      *            Detail identifier.
+     * @param mutableProperties
+     *            Mutable properties of all metadata megawidgets for the event.
      */
-    public EventAndDetail(String eventIdentifier, String detailIdentifier) {
+    public EventScriptInfo(String eventIdentifier, String detailIdentifier,
+            Map<String, Map<String, Object>> mutableProperties) {
         this.eventIdentifier = eventIdentifier;
         this.detailIdentifier = detailIdentifier;
+        this.mutableProperties = mutableProperties;
     }
 
     // Public Methods
@@ -71,5 +84,14 @@ public class EventAndDetail {
      */
     public final String getDetailIdentifier() {
         return detailIdentifier;
+    }
+
+    /**
+     * Get the mutable properties of all metadata megawidgets for the event.
+     * 
+     * @return Mutable properties of all metadata megawidgets for the event.
+     */
+    public final Map<String, Map<String, Object>> getMutableProperties() {
+        return mutableProperties;
     }
 }

@@ -105,6 +105,8 @@ import com.raytheon.uf.viz.core.VizApp;
  * Aug 15, 2014   4243     Chris.Golden      Added ability to invoke event-modifying
  *                                           scripts via metadata-specified notifier
  *                                           megawidgets.
+ * Sep 16, 2014   4753     Chris.Golden      Changed event script running to include
+ *                                           mutable properties.
  * </pre>
  * 
  * @author Chris.Golden
@@ -459,12 +461,12 @@ public class HazardDetailView extends
     /**
      * Notifier invoker delegate.
      */
-    private final ICommandInvoker<EventAndDetail> notifierInvoker = new CommandInvokerDelegate<>(
+    private final ICommandInvoker<EventScriptInfo> notifierInvoker = new CommandInvokerDelegate<>(
             new ViewPartWidgetDelegateHelper<>(
-                    new Callable<ICommandInvoker<EventAndDetail>>() {
+                    new Callable<ICommandInvoker<EventScriptInfo>>() {
 
                         @Override
-                        public ICommandInvoker<EventAndDetail> call()
+                        public ICommandInvoker<EventScriptInfo> call()
                                 throws Exception {
                             return getViewPart().getNotifierInvoker();
                         }
@@ -690,7 +692,7 @@ public class HazardDetailView extends
     }
 
     @Override
-    public ICommandInvoker<EventAndDetail> getNotifierInvoker() {
+    public ICommandInvoker<EventScriptInfo> getNotifierInvoker() {
         return notifierInvoker;
     }
 

@@ -641,7 +641,25 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
 #
 # TODO: This is a testing script only; obviously we need something more
 # useful here.
-def testScript(hazardEvent):
+def testScript(hazardEvent, data):
+    
+    # Change point ID to an example value, to show it can be done.
     hazardEvent.addHazardAttribute("pointID", "DONE!");
-    return hazardEvent
+    
+    # Change the immediate cause to one of the new choice values from below.
+    hazardEvent.addHazardAttribute("immediateCause", "Script");
+    
+    # Put together the mutable properties to be changed, again just to show
+    # it can be done. The corresponding attribute is changed above to match
+    # the new "values" value so that the hazard event is in sync with the
+    # values available for immediate cause. 
+    data = {
+            "immediateCause": {
+                               "choices": [ "Script", "Run", "Successfully" ],
+                               "values": "Script"
+                               }
+            }
+    
+    # Return the two as a tuple.
+    return (hazardEvent, data)
 

@@ -11,7 +11,7 @@ package gov.noaa.gsd.viz.hazards.display.test;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.hazards.hazarddetail.EventAndDetail;
+import gov.noaa.gsd.viz.hazards.hazarddetail.EventScriptInfo;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.Command;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.DisplayableEventIdentifier;
@@ -52,6 +52,8 @@ import com.raytheon.uf.common.time.TimeRange;
  * Jun 30, 2014  3512      Chris.Golden   Changed to work with modified IStateChanger and
  *                                        ICommandInvoker.
  * Jul 03, 2014  3512      Chris.Golden   Changed to implement new parts of interface.
+ * Sep 16, 2014  4753      Chris.Golden   Changed event script running to include mutable
+ *                                        properties.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -230,17 +232,22 @@ public class HazardDetailViewForTesting implements
                 MegawidgetSpecifierManager specifierManager,
                 Map<String, Serializable> metadataStates) {
         }
-    };
-
-    private final ICommandInvoker<EventAndDetail> notifierInvoker = new ICommandInvoker<EventAndDetail>() {
 
         @Override
-        public void setEnabled(EventAndDetail identifier, boolean enable) {
+        public void changeMegawidgetMutableProperties(String qualifier,
+                Map<String, Map<String, Object>> mutableProperties) {
+        }
+    };
+
+    private final ICommandInvoker<EventScriptInfo> notifierInvoker = new ICommandInvoker<EventScriptInfo>() {
+
+        @Override
+        public void setEnabled(EventScriptInfo identifier, boolean enable) {
         }
 
         @Override
         public void setCommandInvocationHandler(
-                ICommandInvocationHandler<EventAndDetail> handler) {
+                ICommandInvocationHandler<EventScriptInfo> handler) {
         }
     };
 
@@ -321,7 +328,7 @@ public class HazardDetailViewForTesting implements
     }
 
     @Override
-    public ICommandInvoker<EventAndDetail> getNotifierInvoker() {
+    public ICommandInvoker<EventScriptInfo> getNotifierInvoker() {
         return notifierInvoker;
     }
 

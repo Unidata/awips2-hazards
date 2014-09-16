@@ -50,6 +50,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 19, 2014    4243    Chris.Golden Initial creation.
+ * Sep 16, 2014    4753    Chris.Golden Changed to include mutable properties.
  * </pre>
  * 
  * @author Chris.Golden
@@ -75,6 +76,11 @@ public class ConfigScriptFactory extends
      */
     public static final String EVENT_MODIFIER_FUNCTION_NAME = "_runHazardEventModifier_";
 
+    /**
+     * Name of the attribute used to return any extra data as JSON.
+     */
+    public static final String EXTRA_DATA_ATTRIBUTE = "__extraDataAttribute__";
+
     // Private Static Constants
 
     /**
@@ -83,11 +89,16 @@ public class ConfigScriptFactory extends
      */
     private static final String INVOKE_EVENT_MODIFIER_FUNCTION_DEFINITION = "def "
             + EVENT_MODIFIER_FUNCTION_NAME
-            + "(javaModifierFunc, javaHazardEvent):\n"
+            + "(javaModifierFunc, javaHazardEvent, jsonData):\n"
             + "  hazardEvent = JUtil.javaObjToPyVal(javaHazardEvent)\n"
             + "  modifierFunc = JUtil.javaObjToPyVal(javaModifierFunc)\n"
-            + "  hazardEvent = globals()[modifierFunc](hazardEvent)\n"
+            + "  extraData = json.loads(jsonData)\n"
+            + "  hazardEvent, extraData = globals()[modifierFunc](hazardEvent, extraData)\n"
             + "  if hazardEvent is not None:\n"
+            + "    if extraData is not None:\n"
+            + "      hazardEvent.set(\""
+            + EXTRA_DATA_ATTRIBUTE
+            + "\", json.dumps(extraData))\n"
             + "    return JUtil.pyValToJavaObj(hazardEvent)\n"
             + "  return None\n\n";
 

@@ -209,6 +209,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           instead of barely moving.
  * Sep 08, 2014   4042     Chris.Golden      Fixed minor bugs in setting of metadata
  *                                           scrollbar page increments.
+ * Sep 16, 2014   4753     Chris.Golden      Changed event script running to include
+ *                                           mutable properties.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1181,6 +1183,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             setMetadataSpecifierManager(qualifier, specifierManager,
                     metadataStates);
         }
+
+        @Override
+        public void changeMegawidgetMutableProperties(String qualifier,
+                Map<String, Map<String, Object>> mutableProperties) {
+            changeMetadataMutableProperties(qualifier, mutableProperties);
+        }
     };
 
     /**
@@ -1189,23 +1197,23 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * which the invocation is occurring, coupled with the notifier's
      * identifier.
      */
-    private ICommandInvocationHandler<EventAndDetail> notifierInvocationHandler;
+    private ICommandInvocationHandler<EventScriptInfo> notifierInvocationHandler;
 
     /**
      * Button invoker, for the buttons at the bottom of the view part. The
      * identifier is that of the hazard event coupled with that of the notifier.
      */
-    private final ICommandInvoker<EventAndDetail> notifierInvoker = new ICommandInvoker<EventAndDetail>() {
+    private final ICommandInvoker<EventScriptInfo> notifierInvoker = new ICommandInvoker<EventScriptInfo>() {
 
         @Override
-        public void setEnabled(EventAndDetail identifier, boolean enable) {
+        public void setEnabled(EventScriptInfo identifier, boolean enable) {
             throw new UnsupportedOperationException(
                     "cannot enable or disable notifier");
         }
 
         @Override
         public void setCommandInvocationHandler(
-                ICommandInvocationHandler<EventAndDetail> handler) {
+                ICommandInvocationHandler<EventScriptInfo> handler) {
             notifierInvocationHandler = handler;
         }
     };
@@ -1704,7 +1712,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     @Override
-    public ICommandInvoker<EventAndDetail> getNotifierInvoker() {
+    public ICommandInvoker<EventScriptInfo> getNotifierInvoker() {
         return notifierInvoker;
     }
 
@@ -2427,9 +2435,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                         String identifier) {
                                     if (notifierInvocationHandler != null) {
                                         notifierInvocationHandler
-                                                .commandInvoked(new EventAndDetail(
+                                                .commandInvoked(new EventScriptInfo(
                                                         visibleEventIdentifier,
-                                                        identifier));
+                                                        identifier,
+                                                        manager.getMutableProperties()));
                                     }
                                 }
 
@@ -2531,6 +2540,36 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     .get(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE));
             layoutMetadataGroup(panel);
             metadataContentPanel.setRedraw(true);
+        }
+    }
+
+    /**
+     * Set the metadata specifier manager as that specified for an event
+     * identifier.
+     * 
+     * @param eventIdentifier
+     *            Event identifier for which the metadata specifier manager is
+     *            being set.
+     * @param specifierManager
+     *            Megawidget specifier manager to be used.
+     * @param metadataStates
+     *            States for the metadata.
+     */
+    private void changeMetadataMutableProperties(String eventIdentifier,
+            Map<String, Map<String, Object>> mutableProperties) {
+        if (isAlive() == false) {
+            return;
+        }
+        MegawidgetManager manager = megawidgetManagersForEventIds
+                .get(eventIdentifier);
+        if (manager != null) {
+            try {
+                manager.setMutableProperties(mutableProperties);
+            } catch (Exception e) {
+                statusHandler
+                        .error("Error while trying to set metadata mutable properties",
+                                e);
+            }
         }
     }
 

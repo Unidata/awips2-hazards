@@ -30,6 +30,8 @@ import java.util.Map;
  *                                      to allow a thread-safe way to determine
  *                                      what hazard event a change is intended
  *                                      for.
+ * Sep 16, 2014    4753    Chris.Golden Changed to support setting of mutable
+ *                                      properties.
  * </pre>
  * 
  * @author Chris.Golden
@@ -55,4 +57,14 @@ public interface IMetadataStateChanger extends
     public void setMegawidgetSpecifierManager(String qualifier,
             MegawidgetSpecifierManager specifierManager,
             Map<String, Serializable> metadataStates);
+
+    /**
+     * Change the metadata megawidget mutable properties to include those
+     * specified.
+     * 
+     * @param mutableProperties
+     *            Mutable properties to be changed.
+     */
+    public void changeMegawidgetMutableProperties(String qualifier,
+            Map<String, Map<String, Object>> mutableProperties);
 }

@@ -81,6 +81,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.IEventModifyingScriptJobListener;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ModifiedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
@@ -141,6 +142,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      remove the settings.
  * Sep 04, 2014  4560      Chris.Golden Added code to find metadata-reload-triggering
  *                                      megawidgets.
+ * Sep 16, 2014  4753      Chris.Golden Changed event script to include mutable properties.
  * </pre>
  * 
  * @author bsteffen
@@ -587,8 +589,8 @@ public class SessionConfigurationManager implements
      * @return Set of megawidget identifiers that contain the specified
      *         parameter.
      */
-    private Set<String> getMegawidgetIdentifiersWithParameter(
-            List<?> list, String parameterName) {
+    private Set<String> getMegawidgetIdentifiersWithParameter(List<?> list,
+            String parameterName) {
         Set<String> triggeringIdentifiers = new HashSet<>();
         addMegawidgetIdentifiersIncludingParameterToSet(list, parameterName,
                 triggeringIdentifiers);
@@ -641,18 +643,19 @@ public class SessionConfigurationManager implements
     @Override
     public void runEventModifyingScript(final IHazardEvent hazardEvent,
             final File scriptFile, final String functionName,
+            Map<String, Map<String, Object>> mutableProperties,
             final IEventModifyingScriptJobListener listener) {
 
         /*
          * Run the event-modifying script asynchronously.
          */
-        IPythonExecutor<ContextSwitchingPythonEval, IHazardEvent> executor = new EventModifyingScriptExecutor(
-                hazardEvent, scriptFile, functionName);
+        IPythonExecutor<ContextSwitchingPythonEval, ModifiedHazardEvent> executor = new EventModifyingScriptExecutor(
+                hazardEvent, scriptFile, functionName, mutableProperties);
         try {
-            IPythonJobListener<IHazardEvent> pythonJobListener = new IPythonJobListener<IHazardEvent>() {
+            IPythonJobListener<ModifiedHazardEvent> pythonJobListener = new IPythonJobListener<ModifiedHazardEvent>() {
 
                 @Override
-                public void jobFinished(final IHazardEvent result) {
+                public void jobFinished(final ModifiedHazardEvent result) {
                     Display.getDefault().asyncExec(new Runnable() {
                         @Override
                         public void run() {

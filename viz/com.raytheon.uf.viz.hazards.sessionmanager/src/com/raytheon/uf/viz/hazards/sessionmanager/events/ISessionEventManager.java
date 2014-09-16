@@ -63,6 +63,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      list.
  * Aug 20, 2014 4243       Chris.Golden Added new method to receive notification of a script
  *                                      command having been invoked.
+ * Sep 16, 2014 4753       Chris.Golden Changed event script to include mutable properties.
  * </pre>
  * 
  * @author bsteffen
@@ -167,8 +168,11 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *            Hazard event for which to run the script.
      * @param identifier
      *            Identifier of the command that was invoked.
+     * @param mutableProperties
+     *            Mutable properties to be passed to the script.
      */
-    public void scriptCommandInvoked(E event, String identifier);
+    public void scriptCommandInvoked(E event, String identifier,
+            Map<String, Map<String, Object>> mutableProperties);
 
     /**
      * Get all events with the given state from the session. This will never

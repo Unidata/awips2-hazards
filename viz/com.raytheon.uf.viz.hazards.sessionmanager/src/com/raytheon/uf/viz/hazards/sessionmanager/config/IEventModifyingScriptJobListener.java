@@ -9,8 +9,6 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-
 /**
  * Description: Interface describing the methods that must be implemented in
  * order to listen for the result of an event modifying script execution.
@@ -21,6 +19,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 20, 2014    4243    Chris.Golden Initial creation.
+ * Sep 16, 2014    4753    Chris.Golden Changed method parameter so it could
+ *                                      hold more than just the hazard event
+ *                                      modified.
  * </pre>
  * 
  * @author Chris.Golden
@@ -37,10 +38,10 @@ public interface IEventModifyingScriptJobListener {
      * @param identifier
      *            Identifier of the event modifying script that was run.
      * @param hazardEvent
-     *            Hazard event returned by the event modifying script; if
-     *            <code>null</code> none was returned, meaning no modification
-     *            is required.
+     *            Hazard event and associated JSON-encoded data returned by the
+     *            event modifying script; if <code>null</code> none was
+     *            returned, meaning no modification is required.
      */
     public void scriptExecutionComplete(String identifier,
-            IHazardEvent hazardEvent);
+            ModifiedHazardEvent hazardEvent);
 }
