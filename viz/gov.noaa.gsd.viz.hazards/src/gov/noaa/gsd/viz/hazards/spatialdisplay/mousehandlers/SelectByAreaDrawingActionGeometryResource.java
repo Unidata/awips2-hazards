@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.swt.custom.BusyIndicator;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 
 import com.google.common.collect.Lists;
@@ -64,8 +66,9 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Nov  23, 2013 2474     bryon.lawrence      Replaced string literal with
  *                                            a constant.
  * Sep 09, 2014 3994      Robert.Blum         Added handleMouseEnter to reset the cursor type.
- * Sep  10, 2014 3793     Robert.Blum         Modified handleMouseDown to return false for
+ * Sep 10, 2014 3793      Robert.Blum         Modified handleMouseDown to return false for
  *                                            when the middle mouse button is pressed.
+ * Sep 16, 2014 3786      Robert.Blum         Added user feedback when simplifying polygons.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -152,6 +155,8 @@ public class SelectByAreaDrawingActionGeometryResource extends
         private final Geometry mouseDownGeometry = null;
 
         private Geometry selectedGeometry = null;
+
+        private Geometry mergedPolygons = null;
 
         private List<Geometry> selectedGeoms = new ArrayList<>();
 
@@ -272,115 +277,137 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
                 // Send off the selected geometries.
                 if (selectedGeoms != null && selectedGeoms.size() > 0) {
-                    // Try this polygon merging technique instead...
-                    GeometryFactory geoFactory = selectedGeoms.get(0)
-                            .getFactory();
-                    Geometry geomColl = geoFactory
-                            .createGeometryCollection(selectedGeoms
-                                    .toArray(new Geometry[1]));
-                    Geometry mergedPolygons = geomColl.buffer(0.001);
 
-                    mergedPolygons = TopologyPreservingSimplifier.simplify(
-                            mergedPolygons, 0.0001);
-                    List<Shape> shapes = new ArrayList<>();
+                    Runnable mergingPolygons = new Runnable() {
 
-                    for (int i = 0; i < mergedPolygons.getNumGeometries(); ++i) {
-                        Polygon polygon = new Polygon("", "true", "true",
-                                "true", "White", 2, "SOLID", "White",
-                                mergedPolygons.getGeometryN(i).getCoordinates());
-                        shapes.add(polygon);
-                    }
+                        @Override
+                        public void run() {
+                            // Try this polygon merging technique instead...
+                            GeometryFactory geoFactory = selectedGeoms.get(0)
+                                    .getFactory();
+                            Geometry geomColl = geoFactory
+                                    .createGeometryCollection(selectedGeoms
+                                            .toArray(new Geometry[1]));
+                            mergedPolygons = geomColl.buffer(0.001);
 
-                    /*
-                     * Clone the list of selected geometries.
-                     */
-                    List<Geometry> copyGeometriesList = new ArrayList<>();
+                            mergedPolygons = TopologyPreservingSimplifier
+                                    .simplify(mergedPolygons, 0.0001);
 
-                    for (Geometry geometry : selectedGeoms) {
-                        copyGeometriesList.add((Geometry) geometry.clone());
-                    }
+                            List<Shape> shapes = new ArrayList<>();
 
-                    if (!modifyingEvent) {
-
-                        selectedGeoms.clear();
-
-                        // Tell the resource to update its display of
-                        // the selected geometries.
-                        zoneDisplay.setSelectedGeometries(selectedGeoms);
-
-                        try {
-                            HazardEventBuilder hazardEventBuilder = new HazardEventBuilder(
-                                    sessionManager);
-                            IHazardEvent hazardEvent = hazardEventBuilder
-                                    .buildPolygonHazardEvent(mergedPolygons);
-                            ObservedHazardEvent observedHazardEvent = hazardEventBuilder
-                                    .addEvent(hazardEvent);
-                            eventID = observedHazardEvent.getEventID();
-                            SessionEventAdded addAction = new SessionEventAdded(
-                                    sessionManager.getEventManager(),
-                                    observedHazardEvent, getSpatialPresenter());
-
-                            getSpatialPresenter().fireAction(addAction);
-
-                            if (hazardGeometryList.containsKey(eventID)) {
-                                hazardGeometryList.get(eventID).addAll(
-                                        copyGeometriesList);
-
-                            } else {
-                                hazardGeometryList.put(eventID,
-                                        copyGeometriesList);
+                            for (int i = 0; i < mergedPolygons
+                                    .getNumGeometries(); ++i) {
+                                Polygon polygon = new Polygon("", "true",
+                                        "true", "true", "White", 2, "SOLID",
+                                        "White", mergedPolygons.getGeometryN(i)
+                                                .getCoordinates());
+                                shapes.add(polygon);
                             }
 
                             /*
-                             * Store the geometry table that this hazard was
-                             * originally based on in the eventDict as well.
+                             * Clone the list of selected geometries.
                              */
-                            String geometryTable = zoneDisplay
-                                    .getResourceData().getTable();
-                            String geometryLegend = zoneDisplay
-                                    .getResourceData().getMapName();
-                            Map<String, Serializable> geoReferenceDict = new HashMap<>();
-                            geoReferenceDict.put(
-                                    HazardConstants.HAZARD_EVENT_IDENTIFIER,
-                                    eventID);
-                            geoReferenceDict.put(
-                                    HazardConstants.GEOMETRY_REFERENCE_KEY,
-                                    geometryTable);
-                            geoReferenceDict.put(
-                                    HazardConstants.GEOMETRY_MAP_NAME_KEY,
-                                    geometryLegend);
-                            ArrayList<String> contextMenuList = new ArrayList<>();
-                            contextMenuList
-                                    .add(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
-                            geoReferenceDict
-                                    .put(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
-                                            contextMenuList);
-                            SpatialDisplayAction action = new SpatialDisplayAction(
-                                    SpatialDisplayAction.ActionType.UPDATE_EVENT_METADATA);
-                            action.setToolParameters(geoReferenceDict);
-                            getSpatialPresenter().fireAction(action);
-                        } catch (InvalidGeometryException e) {
-                            statusHandler
-                                    .warn("Error creating Select-by-Area polygon: "
-                                            + e.getMessage());
+                            List<Geometry> copyGeometriesList = new ArrayList<>();
+
+                            for (Geometry geometry : selectedGeoms) {
+                                copyGeometriesList.add((Geometry) geometry
+                                        .clone());
+                            }
+
+                            if (!modifyingEvent) {
+
+                                selectedGeoms.clear();
+
+                                // Tell the resource to update its display of
+                                // the selected geometries.
+                                zoneDisplay
+                                        .setSelectedGeometries(selectedGeoms);
+
+                                try {
+                                    HazardEventBuilder hazardEventBuilder = new HazardEventBuilder(
+                                            sessionManager);
+                                    IHazardEvent hazardEvent = hazardEventBuilder
+                                            .buildPolygonHazardEvent(mergedPolygons);
+                                    ObservedHazardEvent observedHazardEvent = hazardEventBuilder
+                                            .addEvent(hazardEvent);
+                                    eventID = observedHazardEvent.getEventID();
+                                    SessionEventAdded addAction = new SessionEventAdded(
+                                            sessionManager.getEventManager(),
+                                            observedHazardEvent,
+                                            getSpatialPresenter());
+
+                                    getSpatialPresenter().fireAction(addAction);
+
+                                    if (hazardGeometryList.containsKey(eventID)) {
+                                        hazardGeometryList.get(eventID).addAll(
+                                                copyGeometriesList);
+
+                                    } else {
+                                        hazardGeometryList.put(eventID,
+                                                copyGeometriesList);
+                                    }
+
+                                    /*
+                                     * Store the geometry table that this hazard
+                                     * was originally based on in the eventDict
+                                     * as well.
+                                     */
+                                    String geometryTable = zoneDisplay
+                                            .getResourceData().getTable();
+                                    String geometryLegend = zoneDisplay
+                                            .getResourceData().getMapName();
+                                    Map<String, Serializable> geoReferenceDict = new HashMap<>();
+                                    geoReferenceDict
+                                            .put(HazardConstants.HAZARD_EVENT_IDENTIFIER,
+                                                    eventID);
+                                    geoReferenceDict
+                                            .put(HazardConstants.GEOMETRY_REFERENCE_KEY,
+                                                    geometryTable);
+                                    geoReferenceDict
+                                            .put(HazardConstants.GEOMETRY_MAP_NAME_KEY,
+                                                    geometryLegend);
+                                    ArrayList<String> contextMenuList = new ArrayList<>();
+                                    contextMenuList
+                                            .add(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
+                                    geoReferenceDict
+                                            .put(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
+                                                    contextMenuList);
+                                    SpatialDisplayAction action = new SpatialDisplayAction(
+                                            SpatialDisplayAction.ActionType.UPDATE_EVENT_METADATA);
+                                    action.setToolParameters(geoReferenceDict);
+                                    getSpatialPresenter().fireAction(action);
+                                } catch (InvalidGeometryException e) {
+                                    statusHandler
+                                            .warn("Error creating Select-by-Area polygon: "
+                                                    + e.getMessage());
+                                }
+                            } else {
+
+                                hazardGeometryList.put(eventID,
+                                        copyGeometriesList);
+                                ObservedHazardEvent modifiedEvent = sessionManager
+                                        .getEventManager()
+                                        .getEventById(eventID);
+                                modifiedEvent.setGeometry(mergedPolygons);
+                                SessionEventGeometryModified modifyAction = new SessionEventGeometryModified(
+                                        sessionManager.getEventManager(),
+                                        modifiedEvent, getSpatialPresenter());
+                                getSpatialPresenter().fireAction(modifyAction);
+
+                            }
+
+                            // Let the IHIS layer know that this drawing
+                            // action is complete.
+                            getSpatialPresenter().getView()
+                                    .drawingActionComplete();
+
                         }
-                    } else {
+                    };
 
-                        hazardGeometryList.put(eventID, copyGeometriesList);
-                        ObservedHazardEvent modifiedEvent = sessionManager
-                                .getEventManager().getEventById(eventID);
-                        modifiedEvent.setGeometry(mergedPolygons);
-                        SessionEventGeometryModified modifyAction = new SessionEventGeometryModified(
-                                sessionManager.getEventManager(),
-                                modifiedEvent, getSpatialPresenter());
-                        getSpatialPresenter().fireAction(modifyAction);
-
-                    }
-
-                    // Let the IHIS layer know that this drawing
-                    // action is complete.
-                    getSpatialPresenter().getView().drawingActionComplete();
-
+                    // Change cursor to busy indicator while the runnable is
+                    // executed
+                    BusyIndicator.showWhile(Display.getCurrent(),
+                            mergingPolygons);
                 }
             }
             return false;
