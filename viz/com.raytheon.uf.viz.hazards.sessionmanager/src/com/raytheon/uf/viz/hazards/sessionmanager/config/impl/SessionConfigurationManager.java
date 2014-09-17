@@ -143,6 +143,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * Sep 04, 2014  4560      Chris.Golden Added code to find metadata-reload-triggering
  *                                      megawidgets.
  * Sep 16, 2014  4753      Chris.Golden Changed event script to include mutable properties.
+ * Sep 23, 2014  3790      Robert.Blum  Added a file observer to the Hazard Metadata directory
+ *                                      to reload the localization files when needed so that 
+ *                                      cave does not need to be restarted.
  * </pre>
  * 
  * @author bsteffen
@@ -242,6 +245,11 @@ public class SessionConfigurationManager implements
         settingsDir
                 .addFileUpdatedObserver(new SettingsDirectoryUpdateObserver());
 
+        LocalizationFile metaDataDir = pathManager.getLocalizationFile(
+                commonStaticBase, "hazardServices/hazardMetaData/");
+        metaDataDir
+                .addFileUpdatedObserver(new MetaDataDirectoryUpdateObserver());
+
         loadAllSettings();
 
         LocalizationFile file = pathManager
@@ -256,25 +264,7 @@ public class SessionConfigurationManager implements
                 HazardCategories.class);
         loaderPool.schedule(hazardCategories);
 
-        // THe HazardMetaData needs an include path that includes Hazard
-        // Categories.
-        StringBuilder metadataIncludes = new StringBuilder();
-        metadataIncludes.append(file.getFile().getParent());
-        file = pathManager
-                .getStaticLocalizationFile("python/VTECutilities/VTECConstants.py");
-        metadataIncludes.append(":").append(file.getFile().getParent());
-        file = pathManager
-                .getStaticLocalizationFile("hazardServices/hazardMetaData/HazardMetaData.py");
-        metadataIncludes.append(":").append(file.getFile().getParent());
-        for (LocalizationFile f : pathManager.listStaticFiles(
-                "hazardServices/hazardMetaData/", new String[] { ".py" },
-                false, true)) {
-            // Force download the file so python has it
-            f.getFile();
-        }
-        hazardMetaData = new ConfigLoader<HazardMetaData>(file,
-                HazardMetaData.class, null, metadataIncludes.toString());
-        loaderPool.schedule(hazardMetaData);
+        loadHazardMetaData();
 
         file = pathManager
                 .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_TYPES_PY);
@@ -297,6 +287,31 @@ public class SessionConfigurationManager implements
         settingsConfig = new ConfigLoader<SettingsConfig[]>(file,
                 SettingsConfig[].class, "viewConfig");
         loaderPool.schedule(settingsConfig);
+    }
+
+    protected void loadHazardMetaData() {
+        LocalizationFile file = pathManager
+                .getStaticLocalizationFile("hazardServices/hazardCategories/HazardCategories.py");
+
+        // THe HazardMetaData needs an include path that includes Hazard
+        // Categories.
+        StringBuilder metadataIncludes = new StringBuilder();
+        metadataIncludes.append(file.getFile().getParent());
+        file = pathManager
+                .getStaticLocalizationFile("python/VTECutilities/VTECConstants.py");
+        metadataIncludes.append(":").append(file.getFile().getParent());
+        file = pathManager
+                .getStaticLocalizationFile("hazardServices/hazardMetaData/HazardMetaData.py");
+        metadataIncludes.append(":").append(file.getFile().getParent());
+        for (LocalizationFile f : pathManager.listStaticFiles(
+                "hazardServices/hazardMetaData/", new String[] { ".py" },
+                false, true)) {
+            // Force download the file so python has it
+            f.getFile();
+        }
+        hazardMetaData = new ConfigLoader<HazardMetaData>(file,
+                HazardMetaData.class, null, metadataIncludes.toString());
+        loaderPool.schedule(hazardMetaData);
     }
 
     protected void loadAllSettings() {
@@ -926,6 +941,16 @@ public class SessionConfigurationManager implements
         @Override
         public void fileUpdated(FileUpdatedMessage message) {
             loadAllSettings();
+        }
+
+    }
+
+    private class MetaDataDirectoryUpdateObserver implements
+            ILocalizationFileObserver {
+
+        @Override
+        public void fileUpdated(FileUpdatedMessage message) {
+            loadHazardMetaData();
         }
 
     }

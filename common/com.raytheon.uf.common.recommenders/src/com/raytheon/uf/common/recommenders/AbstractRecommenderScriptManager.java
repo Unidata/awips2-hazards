@@ -34,6 +34,7 @@ import jep.JepException;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
+import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
@@ -78,6 +79,10 @@ import com.raytheon.uf.common.util.FileUtil;
  *                                     every change / save.
  * Aug 18, 2014 4243       Chris.Golden Changed getInventory(recommenderName) to
  *                                      only return a single recommender.
+ * Oct 13, 2014 3790       Robert.Blum  Processing file changes when initializing
+ *                                      the recommender incase a update was made. 
+ *                                      Also reloading next localization level if a
+ *                                      recommender is deleted.
  * </pre>
  * 
  * @author mnash
@@ -308,6 +313,7 @@ public abstract class AbstractRecommenderScriptManager extends
     }
 
     private boolean initializeRecommender(String recName) {
+        processFileUpdates();
         long startTime = System.currentTimeMillis();
         LocalizationFile localizationFile = this
                 .lookupRecommenderLocalization(recName);
@@ -402,7 +408,34 @@ public abstract class AbstractRecommenderScriptManager extends
             this.inventory.remove(filename);
         }
 
-        super.fileUpdated(message);
+        if (message.getChangeType() == FileChangeType.DELETED) {
+            IPathManager pm = PathManagerFactory.getPathManager();
+            LocalizationFile lf = pm.getLocalizationFile(message.getContext(),
+                    message.getFileName());
+            if (lf != null) {
+                File toDelete = lf.getFile();
+                toDelete.delete();
+            }
+            pendingRemoves.add(filename);
+
+            // Check to see if a another level needs loaded
+            Map<LocalizationLevel, LocalizationFile> map = pm
+                    .getTieredLocalizationFile(LocalizationType.COMMON_STATIC,
+                            message.getFileName());
+
+            // Remove the deleted level
+            if (map.containsKey(lf.getContext().getLocalizationLevel())) {
+                map.remove(lf.getContext().getLocalizationLevel());
+            }
+
+            // If another level exists load it
+            if (!map.isEmpty()) {
+                pendingAdds.add(filename);
+            }
+
+        } else {
+            super.fileUpdated(message);
+        }
     }
 
     @SuppressWarnings("unchecked")

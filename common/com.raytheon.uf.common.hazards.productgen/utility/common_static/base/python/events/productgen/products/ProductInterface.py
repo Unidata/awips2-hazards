@@ -33,9 +33,9 @@
 #    12/05/13        2527          bkowal         Remove unused EventConverter import. Register
 #                                                 Hazard Event conversion capabilities with JUtil.
 #    01/20/14        2766          bkowal         Updated to use the Python Overrider
-# 
+#    10/10/14        3790          Robert.Blum    Reverted to use the RollbackMasterInterface.
 #
-import PythonOverriderInterface
+import RollbackMasterInterface
 import JUtil, importlib
 
 from GeometryHandler import shapelyToJTS, jtsToShapely
@@ -58,10 +58,10 @@ from com.raytheon.uf.common.dataplugin.events import EventSet
 from EventSet import EventSet as PythonEventSet
 from KeyInfo import KeyInfo
 
-class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
+class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
     
     def __init__(self, scriptPath, localizationPath):
-        super(ProductInterface, self).__init__(scriptPath, localizationPath)
+        super(ProductInterface, self).__init__(scriptPath)
         self.importModules()
         self.logger = logging.getLogger("ProductInterface")
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(

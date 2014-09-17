@@ -31,12 +31,13 @@
 #    12/05/13        2527          bkowal         Remove unused EventConverter import. Register
 #                                                 Hazard Event conversion capabilities with JUtil.
 #    01/20/14        2766          bkowal         Updated to use the Python Overrider 
+#    10/13/14        3790          Robert.Blum    Reverted to use the RollbackMasterInterface.
 # 
 #
 
 import os
 
-import PythonOverriderInterface
+import RollbackMasterInterface
 import JUtil
 from GeometryHandler import shapelyToJTS, jtsToShapely
 JUtil.registerPythonToJava(shapelyToJTS)
@@ -47,10 +48,10 @@ JUtil.registerJavaToPython(javaHazardEventToPyHazardEvent)
 
 from EventSet import EventSet
 
-class RecommenderInterface(PythonOverriderInterface.PythonOverriderInterface):
+class RecommenderInterface(RollbackMasterInterface.RollbackMasterInterface):
     
     def __init__(self, scriptPath, localizationPath):
-        super(RecommenderInterface, self).__init__(scriptPath, localizationPath)
+        super(RecommenderInterface, self).__init__(scriptPath)
         self.importModules()
         
     def getScriptMetadata(self, moduleName, className, **kwargs):

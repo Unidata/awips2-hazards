@@ -45,6 +45,9 @@ import com.raytheon.uf.common.util.FileUtil;
  *                                     variable for the python events directory.
  * Mar 19, 2014 3293      bkowal       Added the REGION localization level.
  * Apr  7, 2014 2917      jsanchez     Added productgen to the include paths.
+ * Oct 10, 2014 3790      Robert.Blum  Fixed bug that would put two colons side by side
+ *                                     in the JEP include path if the directories path was
+ *                                     a empty string.
  * 
  * </pre>
  * 
@@ -154,6 +157,9 @@ public class PythonBuildPaths {
         String includePath = PyUtil.buildJepIncludePath(pythonPath,
                 dataAccessPath, dataTimePath, eventsPath, utilitiesPath,
                 gfePath, productGenPath);
+        if (directoryPaths.equals("")) {
+            return PyUtil.buildJepIncludePath(includePath);
+        }
         return PyUtil.buildJepIncludePath(includePath, directoryPaths);
     }
 }
