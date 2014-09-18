@@ -150,8 +150,8 @@ class Product(Legacy_ProductGenerator.Product):
 
     def nonConvectiveBasisPhrase(self, vtecRecord, hazardEvent, metaData, floodDescription, lineLength=69):
         eventTime = vtecRecord.get('startTime')            
-        eventTime = self._tpc.getFormattedTime(eventTime / 1000, '%I%M %p %Z ',shiftToLocal=1, stripLeading=1).upper()
-        para = 'At ' + eventTime
+        eventTime = self._tpc.getFormattedTime(eventTime, '%I%M %p %Z ', stripLeading=True, timeZones=self._productSegment.timeZones)
+        para = 'At ' + eventTime + ' '
         basis = self._tpc.getProductStrings(hazardEvent, metaData, 'basis')
         para += basis + '.'
         return para

@@ -8,13 +8,7 @@
 from HazardConstants import *
 # For the VTEC tests to work, we need to be able to bypass the RiverForecastPoints module
 
-
 import Logger as LogStream
-
-try:
-    from RiverForecastPoints import RiverForecastPoints
-except Exception, e:
-    LogStream.logProblem('Could not import RiverForecastPoints ' + str(e))
      
 class Pil:
 
@@ -23,10 +17,6 @@ class Pil:
         self._vtecRecord = vtecRecord
         self._hazardEvent = hazardEvent
         self._action = self._vtecRecord.get('act')
-        try:
-            self._rfp = RiverForecastPoints()
-        except Exception, e:
-            LogStream.logProblem('Could not instantiate RiverForecastPoints' + str(e))
         
     def getPil(self):  
         pil = None      
@@ -73,6 +63,8 @@ class Pil:
                     prevCategory = 1
                     if pointID:
                         try:
+                            from RiverForecastPoints import RiverForecastPoints
+                            self._rfp = RiverForecastPoints()
                             fcstCategory = self._rfp.getMaximumForecastCategory(pointID)
                             prevCategory = self._hazardEvent.get('previousForecastCategory')
                         except Exception, e:

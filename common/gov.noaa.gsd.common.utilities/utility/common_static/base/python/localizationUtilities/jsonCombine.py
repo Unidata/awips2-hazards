@@ -136,6 +136,8 @@ class jsonCombine :
         self.base = None
         self.btype = 0
         self.override = None
+        self.extraDiag = False
+        self.excludeNonJson = True
 
         if b!=None :
             if isinstance(b, str) or isinstance(b, unicode) :
@@ -191,6 +193,10 @@ class jsonCombine :
             self.btype = otype
             self.override = None
 
+    # Likely temporary, activate extra diagnostics.
+    def setExtraDiag(self, yn) :
+        self.extraDiag = yn
+
     # This is where clients add more data structures to the set of structures
     # to combine.  Returns boolean for success or failure.
     def accumulate(self, a) :
@@ -245,21 +251,25 @@ class jsonCombine :
     #  0=null, 1=simple, 2=string, 3=list, 4=dict
     def classify(self, one) :
         
-        if isinstance(one, str) or isinstance(one, unicode):
-            if one[:10]=="_override_" :
-                if one[:15]=="_override_lock_" :
-                    return -1
-                return -2
-            return 2
-        if one==None :
-            return 0
-        if isinstance(one, dict) :
-            return 4
-        if isinstance(one, tuple) or isinstance(one, list) :
-            return 3
-        if isinstance(one, int) or isinstance(one, bool) or \
-             isinstance(one, long) or isinstance(one, float) :
-            return 1
+        try :
+            if isinstance(one, str) or isinstance(one, unicode):
+                if one[:10]=="_override_" :
+                    if one[:15]=="_override_lock_" :
+                        return -1
+                    return -2
+                return 2
+            if one==None :
+                return 0
+            if isinstance(one, dict) :
+                return 4
+            if isinstance(one, tuple) or isinstance(one, list) :
+                return 3
+            if isinstance(one, int) or isinstance(one, bool) or \
+                 isinstance(one, long) or isinstance(one, float) :
+                return 1
+        except :
+            pass
+
         return -3
 
     # Compare list dict objects for equality, ignoring control strings.    
@@ -370,8 +380,18 @@ class jsonCombine :
                 continue
             vv = d[kk]
             ii = self.classify(vv)
+            if ii==-3 :
+                if self.excludeNonJson :
+                    continue
+                try :
+                    vv = str(vv)
+                    ii = 2
+                except :
+                    continue
             if ii<0 :
                 continue
+            if self.extraDiag :
+                sys.stderr.write("-> '"+kk+"' "+str(ii)+"\n")
             if ii<3 :
                 cdict[kk] = vv
             elif ii==3 :
@@ -389,7 +409,13 @@ class jsonCombine :
         for vv in l :
             ii = self.classify(vv)
             if ii==-3 :
-                continue
+                if self.excludeNonJson :
+                    continue
+                try :
+                    vv = str(vv)
+                    ii = 2
+                except :
+                    continue
             if ii==-1 :
                 if self.final :
                     continue
@@ -401,6 +427,8 @@ class jsonCombine :
                 continue
             if ii<3 :
                 clist.append(vv)
+                if self.extraDiag :
+                    sys.stderr.write("=> '"+str(vv)+"' "+str(ii)+"\n")
             elif ii==3 :
                 clist.append(self.listCopy(vv))
             else :
@@ -414,7 +442,22 @@ class jsonCombine :
             return self.listCopy(a)
         elif ii==4 :
             return self.dictionaryCopy(a)
+        if ii!=-3 or self.excludeNonJson :
+            return a
+        try :
+            aa = str(a)
+            return aa
+        except :
+            pass
         return a
+
+    # Make a clean copy of an arbitrary object, encoding any non json
+    # serializable objects as strings where possible.
+    def arbCopyRobust(self, a) :
+        self.excludeNonJson = False
+        aa = self.arbCopy(a)
+        self.excludeNonJson = True
+        return aa
 
     # Make a copy of a list object, copying only locked items
     # Perhaps this copy mechanism needs to be passed down recursively.

@@ -102,6 +102,7 @@ HAZARD_CATEGORIES_DATA = "hazardCategories"
 PRODUCT_DATA = "productGeneratorTable"
 STARTUP_CONFIG_DATA = "startUpConfig"
 HAZARD_METADATA = "hazardMetaData"
+METADATA = "metaData"
 CLASS_METADATA = "classMetaData"
 HAZARD_METADATA_FILTER = "hazardMetaData_filter"
 CONFIG_DATA = "config"
@@ -140,6 +141,9 @@ GRID_PARAM_KEY = "gridParm"
 METADATA_KEY = "metadata"
 METADATA_FILE_PATH_KEY = "filePath"
 EVENT_MODIFIERS_KEY = "eventModifiers"
+INTERDEPENDENCIES_SCRIPT_KEY = "interdependencies"
+METADICT_KEY = "metaDict"
+FILENAME_KEY = "fileName"
 
 
 #################################

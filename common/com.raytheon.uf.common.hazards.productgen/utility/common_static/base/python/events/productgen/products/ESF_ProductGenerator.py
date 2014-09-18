@@ -98,26 +98,15 @@ class Product(Legacy_ProductGenerator.Product):
         productSegmentGroups = []
         for segment in segments:
             vtecRecords = self.getVtecRecords(segment)
-            segmentGroup = {
-                       "productID": "ESF",
-                       "productName": self._ESF_ProductName,
-                       "geoType": "area",
-                       "vtecEngine": self._vtecEngine,
-                       "mapType": "counties",
-                       "segmented": False,
-                       "segments": [segment],
-                       'segment_vtecRecords_tuples': [(segment, vtecRecords)],
-                       }
-            productSegmentGroups.append(segmentGroup)            
+            productSegmentGroups.append(self.createProductSegmentGroup('ESF', self._ESF_ProductName, 'area', self._vtecEngine, 'counties', False,
+                                            [self.createProductSegment(segment, vtecRecords)]))            
         for productSegmentGroup in productSegmentGroups:
             self._addProductParts(productSegmentGroup)
         return productSegmentGroups
     
     def _addProductParts(self, productSegmentGroup):
-        segment_vtecRecords_tuples = productSegmentGroup.get('segment_vtecRecords_tuples')
-        productSegmentGroup['productParts'] = self._hydroProductParts._productParts_ESF(segment_vtecRecords_tuples)
-        del productSegmentGroup['segment_vtecRecords_tuples'] 
-
+        productSegments = productSegmentGroup.productSegments
+        productSegmentGroup.setProductParts(self._hydroProductParts._productParts_ESF(productSegments))
     
     def _narrativeForecastInformation(self, segmentDict, productSegmentGroup, productSegment):        
         segmentDict['narrativeForecastInformation'] = '''

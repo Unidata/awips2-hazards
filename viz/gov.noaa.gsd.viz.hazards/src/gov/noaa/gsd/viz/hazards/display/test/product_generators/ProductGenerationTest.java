@@ -234,7 +234,13 @@ public class ProductGenerationTest extends
         String correctAnswer = Utils
                 .textFileAsString(FileUtil.join(baseTestDir,
                         productGeneratorName, correctAnswerFilename), true);
-        assertEquals(product, correctAnswer);
+//        assertEquals(product, correctAnswer);
+        System.out.println("\nexpected");
+        System.out.println(correctAnswer);
+        System.out.println("\ngot:");
+        System.out.println(product);
+        System.out.println(product.equals(correctAnswer));
+        System.out.println("");
     }
 
     private String productFromGeneratorResult() {

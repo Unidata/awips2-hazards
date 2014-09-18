@@ -282,22 +282,19 @@ public class AutoTestUtilities {
 
     }
 
-    Dict productsFromEditorView(ProductEditorViewForTesting editorView) {
+    List<String> legacyProductsFromEditorView(
+            ProductEditorViewForTesting editorView) {
+        List<String> result = new ArrayList<>();
         List<GeneratedProductList> generatedProductsStorage = editorView
                 .getGeneratedProductsList();
-        GeneratedProductList generatedProducts = generatedProductsStorage
-                .get(0);
-        IGeneratedProduct generatedProduct = generatedProducts.get(0);
-        Dict d = new Dict();
-        String productID = generatedProduct.getProductID();
-        d.put("productID", productID);
-        Dict products = new Dict();
-        for (String format : generatedProduct.getEntries().keySet()) {
-            products.put(format,
-                    generatedProduct.getEntries().get(format).get(0));
+        for (GeneratedProductList generatedProductList : generatedProductsStorage) {
+            for (IGeneratedProduct iGeneratedProduct : generatedProductList) {
+                String text = (String) iGeneratedProduct.getEntry("Legacy")
+                        .get(0);
+                result.add(text);
+            }
         }
-
-        return products;
+        return result;
     }
 
     void runDamBreakRecommender(DamBreakUrgencyLevels urgencyLevel) {
@@ -370,6 +367,16 @@ public class AutoTestUtilities {
      */
     public HazardEventBuilder getHazardEventBuilder() {
         return hazardEventBuilder;
+    }
+
+    public Integer numInstancesContainingText(List<String> strings, String text) {
+        int result = 0;
+        for (String string : strings) {
+            if (string.contains(text)) {
+                result += 1;
+            }
+        }
+        return result;
     }
 
 }

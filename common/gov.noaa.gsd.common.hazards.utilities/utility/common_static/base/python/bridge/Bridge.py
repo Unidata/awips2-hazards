@@ -304,8 +304,11 @@ class Bridge:
             filter = info.get(FILTER_KEY) or {}
             phenomena, sig, subType = \
                filter.get(PHENOMENON), filter.get(SIGNIFICANCE), filter.get(SUBTYPE)
-            return HazardMetaDataAccessor.getMetaData( \
+            return HazardMetaDataAccessor.getHazardMetaData( \
                       HAZARD_METADATA, phenomena, sig, subType)
+        elif dataType in [METADATA]:
+            fileName = info.get(FILENAME_KEY)
+            return HazardMetaDataAccessor.getMetaData(fileName)
         
         elif dataType in [CONFIG_DATA, VTEC_TABLE_DATA, VTEC_RECORDS_DATA, ALERTS_DATA, \
                           TEST_VTEC_RECORDS_DATA, VIEW_DEF_CONFIG_DATA, VIEW_CONFIG_DATA, \

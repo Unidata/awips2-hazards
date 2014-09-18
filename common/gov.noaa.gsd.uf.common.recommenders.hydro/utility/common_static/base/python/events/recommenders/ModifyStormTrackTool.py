@@ -291,23 +291,12 @@ class Recommender(RecommenderTemplate.Recommender):
             for latLonVertex in latLonPoly :
                 hazardPolygon.append([latLonVertex.lon, latLonVertex.lat])
 
-        # Encode our set of working pivot locations and times into our new
-        # list of "draggedPoints".
-        # draggedPoints = []
-        # nPivots = len(pivotList)
-        # i = 0
-        # while i < nPivots :
-        #     latLon = pivotLatLonList[i]
-        #     draggedPoints.append( \
-        #       (  ( latLon.lon, latLon.lat ) , pivotList[i]  )    )
-        #     i = i + 1
-        # eventDict["draggedPoints"] = draggedPoints
-
         # Finalize our set of output attributes.
         eventDict["trackPoints"] = shapeList
         eventDict["stormMotion"] = stormMotion
         eventDict["pivots"] = pivotList
         eventDict["pivotTimes"] = pivotTimeList
+        eventDict["lastFrameTime"] = sessionFrameTimes[lastFrameIndex]
 
         # Cache some stuff the logic that composes the returned Java backed
         # HazardEvent object needs. We will make this a temporary member of the

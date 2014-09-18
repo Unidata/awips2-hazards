@@ -24,6 +24,9 @@ import VTECConstants
 from KeyInfo import KeyInfo
 import ProductTextUtil
 
+import json
+import traceback
+
 # The size of the buffer for default flood polygons.
 DEFAULT_POLYGON_BUFFER = 0.05
 
@@ -42,16 +45,185 @@ class TextProductCommon(object):
     
     '''      
     def __init__(self):
-        pass
+        self._partOfStateInfo = {}
+        self.currentInfoUGC = None
 
     def setUp(self, areaDict): 
-        self._areaDictionary = areaDict 
+        self._areaDictionary = areaDict
         self._root = None
         self.logger = logging.getLogger('TextProductCommon')
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'TextProductCommon', level=logging.INFO))
-        self.logger.setLevel(logging.INFO) 
-        
+        self.logger.setLevel(logging.INFO)
+
+    def setSiteID(self, siteID):
+        self._siteID = siteID
+
+    # Here we add some methods that are a level of abstraction around the 
+    # areaDictionary.  Later if we want we can swap this functionality out with
+    # DAF calls, or whatever.
+    def getInformationForUGC(self, ugc, infoType="entityName") :
+        '''
+        @summary: Returns information about the given ugc.
+        @param ugc: ugc, in SSX001 format, where SS is the state abreviation,
+                    X is either C for county or Z for zone, and 001 is the FIP
+                    code for that county or zone.
+        @param infoType: Type of information to return.
+        @return: Based on the value for infoType, return the following
+            "entityName"         Full plain language name of county or zone
+            "typeSingular"       Plain language description of type of entity
+            "typePlural"         Plain language description of type of entities
+            "type"               Indicator of type of entity
+            "primaryLocations"   Important associated cities/landmarks
+            "fullStateName"      Plain language name of state entity is in
+            "timeZone"           Unix time zone entity is in
+            "stateAbrev"         Two letter abreviation of state entity is in
+            "partOfState"        Plain language description of part of the state
+                                 entity is in
+        '''
+        if ugc != self.currentInfoUGC :
+            self.currentUGCentry = self._areaDictionary.get(ugc)
+        if infoType[:4] == "type" :
+            if ugc[2] == 'Z':
+                if infoType == 'typeSingular' :
+                    return 'zone'
+                if infoType == 'typePlural' :
+                    return 'zones'
+                return 'ZONE'
+            if ugc[2] != 'C':
+                if infoType == 'typeSingular' or infoType == 'typePlural' :
+                    return ''
+                return '?'
+            if int(ugc[3:])>=500 or ugc[:2]=="DC" :
+                if infoType == 'typeSingular' or infoType == 'typePlural' :
+                    return ''
+                return 'INDEPENDENT CITY'
+            if ugc[:2] == 'LA':
+                if infoType == 'typeSingular' :
+                    return 'Parish'
+                if infoType == 'typePlural' :
+                    return 'Parishes'
+                return 'PARISH'
+            if infoType == 'typeSingular' :
+                return 'County'
+            if infoType == 'typePlural' :
+                return 'Counties'
+            return 'COUNTY'
+        if infoType == "partOfState" :
+            part = self._partOfStateInfo.get(ugc)
+            if not (part is None) :
+                return part
+        if self.currentUGCentry is None :
+            if infoType == "stateAbrev" :
+                return ugc[:2]
+            return ""
+        if infoType == "entityName" :
+            return self.currentUGCentry.get("ugcName", "")
+        if infoType == "primaryLocations" :
+            return self.currentUGCentry.get("ugcCityString", "")
+        if infoType == "fullStateName" :
+            return self.currentUGCentry.get("fullStateName", "")
+        if infoType == "timeZone" :
+            return self.currentUGCentry.get("ugcTimeZone", "")
+        if infoType == "stateAbrev" :
+            return self.currentUGCentry.get("stateAbbr",  ugc[:2])
+        if infoType == "partOfState" :
+            return self.currentUGCentry.get("partOfState", "")
+        return ""
+
+    # This allow the TextProductCommon class to be seeded with parts of state info
+    # from a hazardEvent.
+    def setPartOfStateInfo(self, hazardEventAtts) :
+        if "ugcPartsOfState" in hazardEventAtts :
+            self._partOfStateInfo.update(hazardEventAtts["ugcPartsOfState"])
+            
+
+   # Data Access methods
+    def mapDataQuery(self, tableName, columns, geometry=None, intersect=False,
+                     queryMatch=None, matchColumn=None) :
+        '''
+        This routine attempts to consolidate many of the common steps required to
+        make meaningful queries for static GIS type data from the Data Access
+        Framework
+
+        @param  tableName    specific table within the 'mapdata' schema of the
+                             'maps' database to retrieve data from
+        @param  columns      list of the attributes to retrieve with each returned
+                             JGeometryData.
+        @param  geometry     If not None, will only return items that intersect
+                             that geometry. Can be a single shapely Polygon,
+                             a single Geometry, or a GeometryCollection.
+        @param  overlap      By default, returned geometries must be within the
+                             supplied geometry, if true they only must overlap.
+        @param  intersect    By default, returned shapes must be totally within
+                             the supplied geometry, if this is True they only must
+                             intersect.
+        @param  queryMatch   If filtering the query according to the value of
+                             one of the columns, the attribute value that must
+                             be matched.
+        @param  matchColumn  By default, the columns[0] attribute must match the
+                             queryMatch value.  matchColumn can supply the id or
+                             index of a different attribute to filter the query by.
+        '''
+        if geometry is None :
+            geoList = [ None ]
+        else :
+            try :
+                geoList = geometry.geoms
+            except :
+                geoList = [ geometry ]
+
+        returnList = []
+
+        if queryMatch :
+            if matchColumn not in columns :
+                try :
+                    matchColumn = columns[matchColumn]
+                except :
+                    matchColumn = columns[0]
+
+        for geom in geoList :
+            if geom is not None and not isinstance(geom, Polygon) :
+                continue
+            try :
+                req = DataAccessLayer.newDataRequest()
+                req.setDatatype("maps")
+                req.addIdentifier("table","mapdata."+tableName)
+                req.addIdentifier("geomField","the_geom")
+                if queryMatch :
+                    req.addIdentifier("inLocation", "true")
+                    req.addIdentifier("locationField", matchColumn)
+                    req.setLocationNames(queryMatch)
+                else :
+                    # Even if not filtering on attribute values, you must
+                    # add this to the query or the attribute values will get
+                    # out of sync with the attribute keys in what comes back
+                    req.addIdentifier("locationField", columns[0])
+                if geom is not None :
+                    req.setEnvelope(geom.envelope)
+                req.setParameters(*columns)
+                retGeoms = DataAccessLayer.getGeometryData(req)
+                if geom is None :
+                    returnList.extend(retGeoms)
+                    continue
+                for retGeom in retGeoms :
+                    retGeomGeom = retGeom.getGeometry()
+                    if intersect :
+                        if geom.intersects(retGeomGeom) :
+                            returnList.append(retGeom)
+                    elif geom.contains(retGeomGeom) :
+                        returnList.append(retGeom)
+            except :
+                tbData = traceback.format_exc()
+                sys.stderr.write("\n")
+                sys.stderr.write("For "+tableName+"\n")
+                sys.stderr.write(tbData+"\n")
+                pass
+
+        return returnList
+    
+
+
     #### Product Dictionary methods 
 
     def getVal(self, dictionary, key, default=None, altDict=None):
@@ -80,7 +252,7 @@ class TextProductCommon(object):
              If not found, use the default value provided 
         If formatMethdod:
              format the field according to the formatMethod and formatArgs
-        '''   
+        '''  
         
         if editable:
             # Converts a list of string integers into a list of integers
@@ -124,21 +296,34 @@ class TextProductCommon(object):
         # By setting value to {'value':value, 'valueFormat':formatMethod}
         if formatMethod:
             exec 'value = self.'+formatMethod+'(value, formatArgs)'
-    
+        
         dictionary[userEditedKey] = value
         
-    ### Formatting helper methods
+    ### Formatting helper methods    
                 
+    def getFormattedTime(self, time_ms, format='%I%M %p %Z %a %b %d %Y',
+                        upperCase=False, stripLeading=True, timeZones=['GMT']):  
+        text = ''  
+        for timeZone in timeZones:
+            timeStr = self.formatDatetime(time_ms, format, timeZone)
+            if stripLeading and (timeStr[0] == '0' or timeStr[0] == ' '):
+                timeStr = timeStr[1:]
+            if upperCase:
+                timeStr = string.upper(timeStr)
+            text += timeStr
+        return text
+
     def formatDatetime(self, dt, format='ISO', timeZone=None):
         '''
         @param dt: datetime object
         @param format: format string e.g. '%H%M %p %Z %a %e %b %Y'
-        @param zone: time zone e.g.'CST7CDT'.   If None use UTC 
+        @param timeZone: time zone e.g.'CST7CDT'.   If None use UTC 
         @return datetime formatted with time zone e.g. '1400 PM CST Mon 12 Feb 2011'
         '''
-        # TODO REMOVE THIS BLOCK AS PART OF THE JSON REFACTOR.
-        if type(dt) is float:
+        if type(dt) in [float, int, long]:
             dt = datetime.fromtimestamp(dt / 1000)
+        if timeZone in ['GMT', 'UTC']:
+            timeZone = None
         
         from_zone = tz.tzutc()
         new_time = dt.replace(tzinfo=from_zone)
@@ -149,11 +334,7 @@ class TextProductCommon(object):
             return new_time.isoformat()
         else:
             return new_time.strftime(format)  
- 
-               
-    def setSiteID(self, siteID):
-        self._siteID = siteID
-         
+                         
     def reversePolygon(self, polygon):
         '''
         Reverse lat/lon polygon to lon/lat
@@ -165,131 +346,16 @@ class TextProductCommon(object):
         lat, lon = polygon[0]
         reverse.append((lon, lat))
         return reverse
- 
-    def getFormattedTime(self, time_secs, format='%I%M %p %Z %a %b %d %Y',
-                        shiftToLocal=True, upperCase=False, stripLeading=True):
-        '''
-         Return a text string of the given time in seconds in the given format
-         This method is used for product headers.
-        '''
-        if time_secs == 0:
-            time_secs = time.time()
-        if shiftToLocal:
-            curTime = time.localtime(time_secs)
-        else:
-            curTime = time.gmtime(time_secs)
-            localTime = time.localtime(time_secs)
-            zoneName = time.strftime('%Z',localTime)
-        timeStr = time.strftime(format, curTime)
-        if not shiftToLocal:
-            timeStr = string.replace(timeStr, zoneName, 'GMT')
-        if stripLeading and (timeStr[0] == '0' or timeStr[0] == ' '):
-            timeStr = timeStr[1:]
-        if upperCase:
-            timeStr = string.upper(timeStr)
-        timeStr = string.replace(timeStr, '  ', ' ')
-        return timeStr
 
-    def formatUGC_names(self, ugcs, alphabetize=False, separator='-'):
-        '''
-        For example: Saunders-Douglas-Sarpy-Lancaster-Cass-Otoe-
-        '''
-        nameList = []
-        for ugc in ugcs:
-            entry = self._areaDictionary.get(ugc)
-            nameList.append(entry.get('ugcName', ugc))
-        if alphabetize:
-            nameList.sort()                            
-        return self.formatNameString(nameList, separator) 
-    
-    def formatNameString(self, nameList, separator, state=None):                                   
-        nameString = ''
-        for name in nameList:
-            nameString+= name + separator
-        if state:
-            nameString = nameString.rstrip(separator) + ' ('+state+') '
-        return nameString
-    
-    def formatUGC_namesWithState(self, ugcs, alphabetize=False, separator='; '):
-        '''
-        For example: Citrus; Hernando; Pasco (Florida)
-        '''
-        nameList = []
-        nameStrings = []
-        curState = None
-        for ugc in ugcs:
-            entry = self._areaDictionary.get(ugc)
-            nameList.append(entry.get('ugcName', ugc))
-            if alphabetize:
-                nameList.sort()
-            stateName = entry.get('fullStateName').lower().capitalize()
-            if curState is None:
-                curState = stateName
-            elif stateName != curState:
-                nameStrings.append(self.formatNameString(nameList, separator, curState))
-                curState = stateName
-                nameList = []
-        nameStrings.append(self.formatNameString(nameList, separator, curState))
-        return self.formatNameString(nameStrings, separator = '')
-        
-    def formatUGC_cities(self, ugcs, alphabetize=0):
-        cityList = []
-        for ugc in ugcs:
-            entry = self._areaDictionary.get(ugc)
-            cityList.append(entry.get('ugcCityString', ugc))
-        if alphabetize:
-            cityList.sort()
-        cityString = ''
-        for cityStr in cityList:
-            cityString+= cityStr
-        return cityString
-    
     def formatUGCs(self, ugcs, expireTime):
         '''
         Create ugc header with expire time
         'COC123-112330-'        
         '''
         ugcStr = self.makeUGCString(ugcs)
-        ddhhmmTime = self.getFormattedTime(
-              expireTime/1000, '%d%H%M', shiftToLocal=0, stripLeading=0).upper()
+        ddhhmmTime = self.getFormattedTime(expireTime, '%d%H%M', stripLeading=0)
         ugcStr = ugcStr + '-' + ddhhmmTime + '-'
         return ugcStr
-
-    def makeUGCList(self, areaList):
-        '''
-         Return new areaList and associated ugcList both sorted by ugcCode.
-         Extracts ugcCode from the area dictionary for the each areaName in areaList.
-         Will accept complex UGC strings in the area dictionary such as:
-         ORZ001-004-WAZ021>023-029.
-         However, in this case, one areaName could correspond to multiple
-         ugcCodes and thus, the areaList is not guaranteed to follow
-         the sorted ugcCode list order.
-        '''
-        areaDict = self._areaDictionary
-        # Make a list of (areaName, ugcCode) tuples
-        areaUgcList = []
-        for areaName in areaList:
-            if areaName in areaDict.keys():
-                ugc = areaDict[areaName]['ugcCode']
-                if ugc.find('-') >= 0 or ugc.find('>') >= 0:
-                    ugcs = self.expandComplexUgc(ugc)
-                    for ugc in ugcs:
-                        areaUgcList.append((areaName, ugc))
-                else:
-                    areaUgcList.append((areaName, ugc))
-                
-        # Sort this list in ugc order
-        areaUgcList.sort(self.ugcSort)
-
-        # Make new 'parallel' lists of areaNames and ugcCodes
-        ugcList = []
-        newAreaList = []
-        for areaName, ugcCode in areaUgcList:
-            if areaName not in newAreaList:
-                newAreaList.append(areaName)
-            if ugcCode not in ugcList:
-                ugcList.append(ugcCode)
-        return newAreaList, ugcList
 
     def makeUGCString(self, ugcs):
         '''
@@ -349,7 +415,97 @@ class TextProductCommon(object):
         # May have to clean up last arrow at the end
         ugcStr = self.checkLastArrow(inSeq, ugcStr)
         return ugcStr
+ 
+    def formatUGC_names(self, ugcs, alphabetize=False, separator='-'):
+        '''
+        For example: Saunders-Douglas-Sarpy-Lancaster-Cass-Otoe-
+        '''
+        nameList = []
+        for ugc in ugcs:
+            nameList.append(self.getInformationForUGC(ugc, "entityName"))
+        if alphabetize:
+            nameList.sort()                            
+        return self.formatNameString(nameList, separator) 
+    
+    def formatNameString(self, nameList, separator, state=None) :
+        nameString = ''
+        for name in nameList:
+            nameString+= name + separator
+        if state:
+            nameString = nameString.rstrip(separator) + ' ('+state+') '
+        return nameString
+    
+    def formatUGC_namesWithState(self, ugcs, alphabetize=False, separator='; '):
+        '''
+        For example: Citrus; Hernando; Pasco (Florida)
+        '''
+        nameList = []
+        nameStrings = []
+        curState = None
+        for ugc in ugcs:
+            nameList.append(self.getInformationForUGC(ugc, "entityName"))
+            if alphabetize:
+                nameList.sort()
+            stateName = nameList.append(self.getInformationForUGC(ugc, "fullStateName"))
+            if curState is None:
+                curState = stateName
+            elif stateName != curState:
+                nameStrings.append(self.formatNameString(nameList, separator, curState))
+                curState = stateName
+                nameList = []
+        nameStrings.append(self.formatNameString(nameList, separator, curState))
+        return self.formatNameString(nameStrings, separator = '')
+        
+    # TODO -- Not Used?
+    def formatUGC_cities(self, ugcs, alphabetize=0):
+        cityList = []
+        for ugc in ugcs:
+            entry = self._areaDictionary.get(ugc)
+            cityList.append(entry.get('ugcCityString', ugc))
+        if alphabetize:
+            cityList.sort()
+        cityString = ''
+        for cityStr in cityList:
+            cityString+= cityStr
+        return cityString
+    
+    # TODO -- Not Used?
+    def makeUGCList(self, areaList):
+        '''
+         Return new areaList and associated ugcList both sorted by ugcCode.
+         Extracts ugcCode from the area dictionary for the each areaName in areaList.
+         Will accept complex UGC strings in the area dictionary such as:
+         ORZ001-004-WAZ021>023-029.
+         However, in this case, one areaName could correspond to multiple
+         ugcCodes and thus, the areaList is not guaranteed to follow
+         the sorted ugcCode list order.
+        '''
+        areaDict = self._areaDictionary
+        # Make a list of (areaName, ugcCode) tuples
+        areaUgcList = []
+        for areaName in areaList:
+            if areaName in areaDict.keys():
+                ugc = areaDict[areaName]['ugcCode']
+                if ugc.find('-') >= 0 or ugc.find('>') >= 0:
+                    ugcs = self.expandComplexUgc(ugc)
+                    for ugc in ugcs:
+                        areaUgcList.append((areaName, ugc))
+                else:
+                    areaUgcList.append((areaName, ugc))
+                
+        # Sort this list in ugc order
+        areaUgcList.sort(self.ugcSort)
 
+        # Make new 'parallel' lists of areaNames and ugcCodes
+        ugcList = []
+        newAreaList = []
+        for areaName, ugcCode in areaUgcList:
+            if areaName not in newAreaList:
+                newAreaList.append(areaName)
+            if ugcCode not in ugcList:
+                ugcList.append(ugcCode)
+        return newAreaList, ugcList
+    
     ### Formatting methods
     
     def bulletFormat_CR(self, text, label=''):
@@ -389,14 +545,27 @@ class TextProductCommon(object):
                 textToUse = '|* ' + textToUse + ' *|'
 
         textToUse = '* '+label+textToUse
-        textToUse = self.indentText(textToUse, indentFirstString = '',
-          indentNextString = '  ', maxWidth=lineLength,
-          breakStrings=[' ', '-', '...'])
         return textToUse
         
     def frame(self, text):
         return '|* ' + text + ' *|'
 
+    def formatDelimitedList(self, items, delimiter='...') :
+        if not isinstance(items, list) and not isinstance(items, set) :
+            try :
+                return str(items)
+            except :
+                return ""
+        nLeft = len(items)
+        fmtList = ""
+        for item in items :
+            fmtList += item
+            if nLeft == 2 :
+                fmtList += " and "
+            elif nLeft > 2 :
+                fmtList += delimiter
+            nLeft -= 1
+        return fmtList
 
     ###########
     #  Accessing MetaData
@@ -439,9 +608,6 @@ class TextProductCommon(object):
         else:
             return self.getMetaDataValue(hazardEvent, metaData, fieldName, value)
 
-
-
-    
         
     def getEmbeddedDict(self, node, keyValue, search):
         """
@@ -464,7 +630,6 @@ class TextProductCommon(object):
                 result =  self.getEmbeddedDict(value, keyValue, search)
                 if result is not None:
                    return result
-
 
 
     def getMetaDataValue(self, hazardEvent, metaData, fieldName, value):                     
@@ -506,6 +671,7 @@ class TextProductCommon(object):
 
         '''    
         returnVal = ''
+
         widget = self.getEmbeddedDict(metaData, 'fieldName', fieldName)
         
         if widget is not None:
@@ -616,14 +782,13 @@ class TextProductCommon(object):
                     nmeList.append(n)
                 nmeList.sort()               
         return out      
-    
-          
+
     def getAreaPhrase(self, ugcs, simplified=True, generalOnly=False):
-        areaGroups = self.getGeneralAreaList(ugcs, areaDict=self._areaDictionary)
+        areaGroups = self.getGeneralAreaList(ugcs)
         if simplified:
             areaGroups = self.simplifyAreas(areaGroups)
         return self.makeAreaPhrase(areaGroups, generalOnly=generalOnly)
-                      
+           
     def makeAreaPhrase(self, areaGroups, generalOnly=False):
         '''
         Portions of Iowa and Nebraska...including the following counties...
@@ -1541,41 +1706,27 @@ class TextProductCommon(object):
         '''
         
         # get this time zone
-        thisTimeZone = os.environ.get('TZ')
-        if thisTimeZone is None:
-            thisTimeZone = 'GMT'
-            
-        zoneList = []
-        areaDict = self._areaDictionary
+        thisTimeZone = os.environ.get('TZ', 'GMT')
 
         # check to see if we have any areas outside our time zone
+        zoneList = []
         for areaName in areaList:
-            if areaName in areaDict.keys():
-                entry = areaDict[areaName]
-                if not entry.has_key('ugcTimeZone'): #add your site id
-                    if thisTimeZone not in zoneList:
-                        zoneList.append(thisTimeZone)
-                    continue  # skip it
-                timeZoneList = entry['ugcTimeZone']
-                if type(timeZoneList) is not types.ListType:  # a single value
-                    timeZoneList = [str(timeZoneList)]   # make it into a list
-                for timeZone in timeZoneList:
-                    if timeZone not in zoneList:
-                        zoneList.append(timeZone)
+            timeZoneData = self.getInformationForUGC(areaName, "timeZone")
+            if timeZoneData == "" :
+                timeZoneData = [ thisTimeZone ]
+            elif type(timeZoneData) is not types.ListType:
+                timeZoneData = [ str(timeZoneData) ]
+            for timeZone in timeZoneData:
+                if timeZone in zoneList:
+                    continue
+                if timeZone==thisTimeZone :
+                    zoneList.insert(0, timeZone)
+                else :
+                    zoneList.append(timeZone)
 
         # if the resulting zoneList is empty, put in our time zone
         if len(zoneList) == 0:
             zoneList.append(thisTimeZone)
-
-        # if the resulting zoneList has our time zone in it, be sure it
-        # is the first one in the list
-        try:
-            index = zoneList.index(thisTimeZone)
-            if index != 0:
-                del zoneList[index]
-                zoneList.insert(0, thisTimeZone)
-        except:
-            pass
 
         return zoneList
     
@@ -2394,9 +2545,8 @@ class TextProductCommon(object):
         else:   #within 1 minute, don't add the next increment
             expireTime = baseTime
         return expireTime
-
     
-    def getGeneralAreaList(self, areaList, areaDict):
+    def getGeneralAreaList(self, areaList):
         '''
         Returns a list of strings that describe the 'areaList', such as
         Southwest Kansas, along with their county/zone names.  Format returned
@@ -2407,52 +2557,29 @@ class TextProductCommon(object):
         geoAreas = {}
         
         for areaName in areaList:
-            entry = areaDict.get(areaName)
-            if entry is None:
-                self.logger.info('TextProductCommon: getGeneralAreaList: Area outside CWA '+areaName)
-                # Set this up until we have national AreaDictionary so products continue
-                entry = areaDict.get('COC003')  
-                          
-            if entry.has_key('ugcName'):
-                # Get state
-                state = areaName[0:2]
-                if entry.has_key('fullStateName'):
-                    state = entry['fullStateName']
-                    #Special District of Columbia case
-                    if state == 'DISTRICT OF COLUMBIA':
-                        state = 'THE DISTRICT OF COLUMBIA'
-                # Get part-of-state information
-                partOfState = ''
-                if entry.has_key('partOfState'):
-                    partOfState = entry['partOfState']
 
-                # get the county/zone name
-                zoneName = entry['ugcName']
-                if entry.has_key('locationName'):
-                    zoneName = entry['locationName']  #alternative name
-                if entry.has_key('ugcCode'):
-                    codeType = entry['ugcCode'][2]
-                    if codeType == 'Z':
-                        nameType = 'ZONE'
-                    elif codeType == 'C':
-                        indCty=entry.get('independentCity', 0)
-                        if indCty == 1:
-                            nameType = 'INDEPENDENT CITY'
-                        elif state == 'LOUISIANA':
-                            nameType = 'PARISH'
-                        else:
-                            nameType = 'COUNTY'
-                    else:
-                        codeType == '?'
-                value = (state, partOfState)
-                znt = (zoneName, nameType)
+            state = self.getInformationForUGC(areaName, "fullStateName")
+            if state == "" :
+                state == areaName[:2]
+            #Special District of Columbia case
+            if state == 'DISTRICT OF COLUMBIA':
+                state = 'THE DISTRICT OF COLUMBIA'
+
+            zoneName = self.getInformationForUGC(areaName, "entityName")
+            if zoneName == "" :
+                continue
+            partOfState = self.getInformationForUGC(areaName, "partOfState")
+            nameType = self.getInformationForUGC(areaName, "type")
+
+            value = (state, partOfState)
+            znt = (zoneName, nameType)
                  
-                if geoAreas.has_key(value):
-                    names = geoAreas[value]
-                    if znt not in names:
-                        names.append(znt)
-                else:
-                    geoAreas[value] = [znt]
+            if geoAreas.has_key(value):
+                names = geoAreas[value]
+                if znt not in names:
+                    names.append(znt)
+            else:
+                geoAreas[value] = [znt]
 
         #now sort the zoneName or countyNames
         for state, partState in geoAreas.keys():
@@ -2591,7 +2718,9 @@ class TextProductCommon(object):
         columns in width, with the first line indented by 'indentFirstString'
         and subsequent lines indented by indentNextString.  Any leading spaces
         in the first line are preserved.
+        
         '''
+        
         out = ''   # total output
         line = ''  # each line
 
@@ -2608,7 +2737,6 @@ class TextProductCommon(object):
         additionalIndent = string.find(text, words[0])
         firstLineAdditionalIndent = ''
         for i in xrange(additionalIndent):
-            i = i # for pychecker
             firstLineAdditionalIndent = firstLineAdditionalIndent + ' '
 
         # now start assembling the output
@@ -2626,7 +2754,6 @@ class TextProductCommon(object):
                     line = line +  w   #subsequent words, add a space
         if len(line):
             out = out + line
-
         return out
 
     def splitIntoWords(self, words, breakStrings=[' ']):
@@ -3499,7 +3626,3 @@ A WINTER WEATHER ADVISORY FOR SNOW MEANS THAT PERIODS OF SNOW WILL CAUSE PRIMARI
         elif runMode == "PRACTICE" :
             returnMode = vtecMode
         return returnMode
-        
-        
-    
-    

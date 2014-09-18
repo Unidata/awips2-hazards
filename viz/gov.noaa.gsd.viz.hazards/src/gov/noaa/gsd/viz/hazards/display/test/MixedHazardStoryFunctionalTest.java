@@ -669,32 +669,44 @@ class MixedHazardStoryFunctionalTest extends
     }
 
     private void checkReplacementPreview() {
-        Dict products = autoTestUtilities
-                .productsFromEditorView(mockProductEditorView);
-        String legacy = products
-                .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
-        // TODO need to restore this
-        // assertTrue(legacy.contains("REPLACED"));
-        assertTrue(legacy.contains("FLOOD WATCH"));
+        List<String> products = autoTestUtilities
+                .legacyProductsFromEditorView(mockProductEditorView);
+        assertEquals(products.size(), 4);
+        assertEquals(autoTestUtilities.numInstancesContainingText(products,
+                "CANCELLED"), 2);
+        assertEquals(autoTestUtilities.numInstancesContainingText(products,
+                NEW_VTEC_STRING + ".FL.W"), 1);
+        assertEquals(autoTestUtilities.numInstancesContainingText(products,
+                NEW_VTEC_STRING + ".FF.W"), 1);
 
     }
 
     private void checkContinuedPreview() {
-        Dict products = autoTestUtilities
-                .productsFromEditorView(mockProductEditorView);
-        String legacy = products
-                .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
-        assertTrue(legacy.contains(CON_VTEC_STRING));
+        List<String> products = autoTestUtilities
+                .legacyProductsFromEditorView(mockProductEditorView);
+        assertEquals(products.size(), 2);
+        assertEquals(autoTestUtilities.numInstancesContainingText(products,
+                CON_VTEC_STRING + ".FL.W"), 1);
+        assertEquals(autoTestUtilities.numInstancesContainingText(products,
+                CON_VTEC_STRING + ".FF.W"), 1);
 
     }
 
     private void checkEndedPreview() {
-        Dict products = autoTestUtilities
-                .productsFromEditorView(mockProductEditorView);
-        String legacy = products
-                .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
-        assertTrue(legacy.contains(CAN_VTEC_STRING));
-        assertTrue(legacy.contains(MY_ENDING_SYNOPSIS.toUpperCase()));
+        List<String> products = autoTestUtilities
+                .legacyProductsFromEditorView(mockProductEditorView);
+        assertEquals(products.size(), 2);
+        assertEquals(autoTestUtilities.numInstancesContainingText(products,
+                CAN_VTEC_STRING + ".FL.W"), 1);
+        assertEquals(autoTestUtilities.numInstancesContainingText(products,
+                CAN_VTEC_STRING + ".FF.W"), 1);
+
+        /**
+         * TODO The correct answer should change to 2 when product generation is
+         * complete.
+         */
+        assertEquals(autoTestUtilities.numInstancesContainingText(products,
+                MY_ENDING_SYNOPSIS.toUpperCase()), 1);
 
     }
 

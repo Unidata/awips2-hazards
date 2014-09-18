@@ -261,8 +261,7 @@ class Recommender(RecommenderTemplate.Recommender):
         resultDict["trackPoints"] = shapeList
         resultDict["startTime"] = startTime
         resultDict["endTime"] = endTime
-        # resultDict["draggedPoints"] = \
-        #     [ ((latLon0.lon, latLon0.lat), draggedPointTime) ]
+        resultDict["lastFrameTime"] = sessionFrameTimes[lastFrameIndex]
         resultDict["status"] = "pending"
         resultDict["stormMotion"] = stormMotion
         resultDict["pivots"] = pivotList

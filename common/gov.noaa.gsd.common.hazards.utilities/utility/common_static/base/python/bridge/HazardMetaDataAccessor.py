@@ -9,7 +9,7 @@ from HazardConstants import *
 
 from PythonOverrider import importModule
     
-def getMetaData(datatype, phenomenon, significance, subType = None) :
+def getHazardMetaData(datatype, phenomenon, significance, subType = None) :
     """
     @param datatype: data type representing hazard metadata.  
     @param phenomenon: hazard phenomenon
@@ -44,4 +44,15 @@ def getMetaData(datatype, phenomenon, significance, subType = None) :
                         else:
                             return metaDataEntry, None
     return None, None
+
+def getMetaData(fileName) :
+    """
+    @param fileName -- name of metaData file in the hazardServices/hazardMetaData directory
+           The file must contain a class MetaData with an execute method
+    @return: A class object with an execute method for obtaining the metadata
+             OR None.
+    """
+    locPath = str("hazardServices/hazardMetaData/" + fileName + ".py")
+    result = importModule(locPath) 
+    return result.MetaData()
 

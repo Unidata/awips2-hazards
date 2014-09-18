@@ -13,8 +13,9 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.CON_VTEC_S
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.EXA_VTEC_STRING;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLASH_FLOOD_WATCH_PHEN_SIG;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
+
+import java.util.List;
+
 import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -198,10 +199,10 @@ public class ChangeHazardAreaFunctionalTest extends
                 if (productEditorHasBeenUpdated == false) {
                     return;
                 }
-                Dict products = autoTestUtilities
-                        .productsFromEditorView(mockProductEditorView);
-                String legacy = products
-                        .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
+                List<String> products = autoTestUtilities
+                        .legacyProductsFromEditorView(mockProductEditorView);
+                assertEquals(products.size(), 1);
+                String legacy = products.get(0);
                 assertTrue(legacy.contains(EXA_VTEC_STRING + "."
                         + FLASH_FLOOD_WATCH_PHEN_SIG));
                 assertTrue(legacy.contains(CON_VTEC_STRING + "."

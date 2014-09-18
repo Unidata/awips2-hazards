@@ -13,6 +13,7 @@
 import os, types, copy, sys, json, collections
 import Legacy_ProductGenerator
 from HydroProductParts import HydroProductParts
+from Bridge import Bridge
 
 class Product(Legacy_ProductGenerator.Product):
     
@@ -39,13 +40,27 @@ class Product(Legacy_ProductGenerator.Product):
          #  Here is an example of a dialog definition which you could use
          #  as a starting point if you want to add information to be
          #  solicited from the user:
-
         self._initialize()
-         
+
+        # TODO -- set up hazardEvents and productID's 
+        # Get Product Level Meta Data
+        self.bridge = Bridge() 
+        metaData =   self.getMetaData([], {'productID': 'FFA'}, 'MetaData_FFA_FLW_FLS')
+        # TODO After Product Staging dialog can handle scripts, change this to:
+        # return metaData  
         dialogDict = {}
-        metaDataList = self._checkForCancel(eventSet)
-        if metaDataList:
-            dialogDict['fields'] = metaDataList
+        productLevelFields = metaData.get('metadata')
+          
+        # Check for Cancel
+        cancelFields = self._checkForCancel(eventSet)
+        if cancelFields:
+            cancelFields = metaDataList
+        else:
+            cancelFields = []
+
+        fields = productLevelFields + cancelFields
+        if fields:
+            dialogDict['fields'] = fields
         return dialogDict
                 
     def _initialize(self):
@@ -81,7 +96,7 @@ class Product(Legacy_ProductGenerator.Product):
         self.logger.info('Start ProductGeneratorTemplate:execute FFA')
         
         # Extract information for execution
-        self._getVariables(eventSet)
+        self._getVariables(eventSet, dialogInputMap)
         if not self._inputHazardEvents:
             return []
         # Here is the format of the dictionary that is returned for

@@ -15,6 +15,7 @@
 import os, types, copy, sys, json, collections
 import Legacy_ProductGenerator
 from HydroProductParts import HydroProductParts
+from Bridge import Bridge
 
 class Product(Legacy_ProductGenerator.Product):
     
@@ -39,7 +40,16 @@ class Product(Legacy_ProductGenerator.Product):
         '''
         @return: dialog definition to solicit user input before running tool
         '''  
-        return {}
+        # TODO -- set up hazardEvents and productID's
+        self.bridge = Bridge() 
+        metaData =   self.getMetaData([], {'productID': 'FLW_FLS'}, 'MetaData_FFA_FLW_FLS')
+        # TODO After Product Staging dialog can handle scripts, change this to:
+        # return metaData  
+        dialogDict = {}
+        fields = metaData.get('metadata')
+        if fields:
+            dialogDict['fields'] = fields
+        return dialogDict
 
     def _initialize(self):
         # TODO Fix problem in framework which does not re-call the constructor

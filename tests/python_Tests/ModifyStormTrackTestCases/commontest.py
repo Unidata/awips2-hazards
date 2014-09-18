@@ -404,6 +404,7 @@ TestCaseResults = \
         }
     ], 
     "issued": False, 
+    "lastFrameTime": 1297137600000, 
     "stormMotion": {
         "bearing": 244.40484388368344, 
         "speed": 16.32857188248256

@@ -8,8 +8,6 @@ cd `dirname $0`
 #  code directories.  This tells the unit tests to get their localization
 #  based configuration information from EDEX.
 #
-echo "Running the python tests using EDEX is deprecated"
-exit 0
 setenv LOCALIZATION_DATA_SOURCE EDEX
 #
 #

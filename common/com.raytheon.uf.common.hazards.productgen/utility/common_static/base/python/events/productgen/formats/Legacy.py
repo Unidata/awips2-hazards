@@ -109,7 +109,7 @@ class Format(FormatTemplate.Formatter):
                 if 'polygonText' in productDict and productDict['polygonText']:
                     partText += productDict['polygonText'] + '\n\n'
             elif name == 'endSegment':
-                partText += '\n$$' 
+                partText += '\n$$\n\n' 
             elif name == 'CR':
                 partText += '\n'
             elif name == 'cityList':
@@ -125,7 +125,12 @@ class Format(FormatTemplate.Formatter):
             else:    
                 textStr = self._tpc.getVal(productDict, name)
                 if textStr:
-                    partText = textStr + '\n'                                 
+                    partText = textStr + '\n' 
+            # Note: these print statements are left here for debugging
+            # They will be useful for Focal Points as they are overriding product generators.                                                    
+#             if name not in ['segments', 'sections']:
+#                 print 'Legacy Part:', part, ': ', partText
+                
             text += partText
         return text
         

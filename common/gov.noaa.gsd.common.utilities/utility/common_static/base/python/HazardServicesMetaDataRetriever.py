@@ -30,7 +30,7 @@ def getMetaData(javaHazardEvent, javaMetaDict):
     """
     hazardEvent = JUtil.javaObjToPyVal(javaHazardEvent)
     metaDict = JUtil.javaObjToPyVal(javaMetaDict)
-    metaObject, filePath = HazardMetaDataAccessor.getMetaData(HAZARD_METADATA,
+    metaObject, filePath = HazardMetaDataAccessor.getHazardMetaData(HAZARD_METADATA,
                                                     hazardEvent.getPhenomenon(),
                                                     hazardEvent.getSignificance(),
                                                     hazardEvent.getSubType())

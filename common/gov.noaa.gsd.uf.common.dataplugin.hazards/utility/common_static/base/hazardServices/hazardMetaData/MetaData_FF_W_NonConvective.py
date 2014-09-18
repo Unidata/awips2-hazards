@@ -431,7 +431,7 @@ class MetaData(CommonMetaData.MetaData):
              "maxChars": 40,
              "visibleChars": 12,
              "editable": editable,
-             "values": "Enter river name",
+             "values": "|* Enter river name *|",
             } 
 
     def getFloodLocation(self):
@@ -441,7 +441,7 @@ class MetaData(CommonMetaData.MetaData):
              "expandHorizontally": True,
              "maxChars": 40,
              "visibleChars": 12,
-             "values": "Enter flood location",
+             "values": "|* Enter flood location *|",
             } 
 
 
@@ -452,7 +452,7 @@ class MetaData(CommonMetaData.MetaData):
              "expandHorizontally": True,
              "maxChars": 40,
              "visibleChars": 12,
-             "values": "Enter upstream location",
+             "values": "|* Enter upstream location *|",
             } 
  
     def getDownstreamLocation(self):
@@ -462,7 +462,7 @@ class MetaData(CommonMetaData.MetaData):
              "expandHorizontally": True,
              "maxChars": 40,
              "visibleChars": 12,
-             "values": "Enter downstream location",
+             "values": "|* Enter downstream location *|",
             } 
         
     def getVolcano(self):
@@ -472,7 +472,7 @@ class MetaData(CommonMetaData.MetaData):
              "expandHorizontally": True,
              "maxChars": 40,
              "visibleChars": 12,
-             "values": "Enter volcano name",
+             "values": "|* Enter volcano name *|",
             } 
 
     # CALLS TO ACTION -- 'cta'

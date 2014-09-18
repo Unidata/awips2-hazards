@@ -9,12 +9,11 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
+import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.EXT_VTEC_STRING;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 
 import java.util.Date;
+import java.util.List;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -192,16 +191,11 @@ public class ChangeHazardEndTimeFunctionalTest extends
                     return;
                 }
 
-                Dict products = autoTestUtilities
-                        .productsFromEditorView(mockProductEditorView);
-                String legacy = products
-                        .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
+                List<String> products = autoTestUtilities
+                        .legacyProductsFromEditorView(mockProductEditorView);
+                assertEquals(products.size(), 1);
+                String legacy = products.get(0);
                 assertTrue(legacy.contains(EXT_VTEC_STRING));
-
-                /*
-                 * TODO Uncomment this when Issue #2447 is resolved.
-                 */
-                // assertTrue(legacy.contains(CAN_VTEC_STRING));
 
                 stepCompleted();
                 step = Steps.TEST_ENDED;

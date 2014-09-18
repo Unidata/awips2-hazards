@@ -175,6 +175,7 @@ ProductGeneratorTable = {
             },
         "CFW_ProductGenerator" : {
             "allowedHazards": [
+            ('BH.S', 'CoastalFlood'),     # BEACH HAZARD STATEMENT
             ('CF.W', 'CoastalFlood'),     # COASTAL FLOOD WARNING
             ('CF.Y', 'CoastalFlood'),     # COASTAL FLOOD ADVISORY 
             ('CF.A', 'CoastalFlood'),     # COASTAL FLOOD WATCH
@@ -193,6 +194,14 @@ ProductGeneratorTable = {
             "allowedHazards": [
             ('TO.W', 'Tornado'),     # TORNADO Warning
             ('SV.W', 'SvrThunderstorm'), # Svr Thunderstm Warning
+            ],
+            "previewFormatters": ["Legacy"],
+            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "reservedNameNotYetImplemented": True,
+            },
+        "EWW_ProductGenerator" : {
+            "allowedHazards": [
+            ('EW.W', 'Extreme Wind'),     # Extreme Wind Warning
             ],
             "previewFormatters": ["Legacy"],
             "issueFormatters": ["Legacy", "XML", "CAP"],  

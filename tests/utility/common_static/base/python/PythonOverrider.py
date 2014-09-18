@@ -51,7 +51,7 @@ def importModule(name, loctype='COMMON_STATIC', level=None):
     Returns:
             a module that has all the correct methods after being overridden
     """
-    pathManager = PathManager()
+    pathManager = PathManager()    
     tieredFiles = pathManager.getTieredLocalizationFile(loctype, name)
     availableLevels = pathManager.getAvailableLevels()
     levels = PythonOverriderCore._buildLocalizationLevelsList(availableLevels, level)

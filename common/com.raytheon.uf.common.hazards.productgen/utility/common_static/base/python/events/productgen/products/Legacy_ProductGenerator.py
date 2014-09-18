@@ -29,6 +29,13 @@ import ProductTemplate
 from Bridge import Bridge
 from LocalizationInterface import *
 
+import math
+import traceback
+import LatLonCoord
+import DistanceBearing
+from ufpy.dataaccess import DataAccessLayer
+from shapely.geometry import Polygon 
+
 from HazardServicesGenericHazards import HazardServicesGenericHazards
 from TextProductCommon import  TextProductCommon
 from ProductParts import ProductParts
@@ -50,13 +57,15 @@ from shapely import geometry
 from KeyInfo import KeyInfo
 import ProductTextUtil
 from com.raytheon.uf.common.time import SimulatedTime
+
 from abc import *
-   
+
 class Prod:
     pass
 
 class ProdSegment:
     def __init__(self, segment, vtecRecords):
+        # 'segment' is (frozenset([list of ugcs or points]), frozenset([list of eventIDs])        
         self.segment = segment
         self.vtecRecords = vtecRecords
         self.vtecRecords_ms = vtecRecords
@@ -101,21 +110,21 @@ class Product(ProductTemplate.Product):
     def createProductSection(self):
         return ProdSection()
     def createProductSegmentGroup(self, productID, productName, geoType, vtecEngine, mapType, segmented, productSegments, etn=None, formatPolygon=None):
-        return ProductSegmentGroup(productID, productName, geoType, vtecEngine, mapType, segmented, productSegments, etn, formatPolygon)        
-                   
-    def initialize(self):      
+        return ProductSegmentGroup(productID, productName, geoType, vtecEngine, mapType, segmented, productSegments, etn, formatPolygon)
+
+    def initialize(self):
         self._gh = HazardServicesGenericHazards()
-        
+
         self.bridge = Bridge()        
         self._hazardTypes = self.bridge.getHazardTypes()         
-        self._areaDictionary = self.bridge.getAreaDictionary()
+        areaDict = self.bridge.getAreaDictionary()
         self._cityLocation = self.bridge.getCityLocation()
         self._siteInfo = self.bridge.getSiteInfo()
         
         self._tpc = TextProductCommon()
-        self._tpc.setUp(self._areaDictionary)        
+        self._tpc.setUp(areaDict)
         self._pp = ProductParts()
-        self._rfp = RiverForecastPoints()
+        self._rfp = None #RiverForecastPoints()
 
         self.logger = logging.getLogger('Legacy_ProductGenerator')
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
@@ -136,6 +145,9 @@ class Product(ProductTemplate.Product):
        
     @abstractmethod
     def defineDialog(self, eventSet):
+        '''
+        @return: dialog definition to solicit user input before running tool
+        '''  
         pass
 
     def _checkForCancel(self, eventSet):
@@ -182,18 +194,23 @@ class Product(ProductTemplate.Product):
                     hazardEvent.setStatus(saveStatus)
         return metaDataList
 
-    @abstractmethod    
+    @abstractmethod
     def execute(self, eventSet, dialogInputMap):          
         '''
         Must be overridden by the Product Generator
         '''
         pass
-    def _getVariables(self, eventSet): 
+    
+    def _getVariables(self, eventSet, dialogInputMap=None): 
         '''
          Set up class variables
         ''' 
         self._inputHazardEvents = eventSet.getEvents()
         metaDict = eventSet.getAttributes()
+        if dialogInputMap:
+            self._dialogInputMap = dialogInputMap
+        else:
+            self._dialogInputMap = {}
                 
         # List of vtecEngineWrappers generated for these products
         #  Used at end to save vtec records if issueFlag is on
@@ -224,14 +241,7 @@ class Product(ProductTemplate.Product):
 
         self._lineLength = 69
         self._upperCase = True
-         
-        # Set up issue time strings       
-        self._ddhhmmTime = self._tpc.getFormattedTime(
-              self._issueTime_secs, '%d%H%M', shiftToLocal=True, stripLeading=False)
-        self._timeLabel = self._tpc.getFormattedTime(
-              self._issueTime_secs, '%I%M %p %Z %a %b %e %Y',
-              shiftToLocal=True, stripLeading=True)
-              
+                       
         # These come from SiteInfo
         # Primary Site
         siteEntry = self._siteInfo.get(self._siteID)
@@ -419,7 +429,7 @@ class Product(ProductTemplate.Product):
                 self._area_productSegments = productSegments
                 self._areaVtecEngine = self._vtecEngine                  
         return self._point_productSegments + self._area_productSegments
-            
+
     @abstractmethod
     def _groupSegments(self, segments):
         '''
@@ -511,7 +521,7 @@ class Product(ProductTemplate.Product):
         productDict['sentTimeZ'] = self._convertToISO(self._issueTime)
         productDict['sentTimeZ_datetime'] = self._convertToDatetime(self._issueTime)
         productDict['sentTimeLocal'] = self._convertToISO(self._issueTime, local=True)
-        productDict['timeZones'] = self._product.timeZones
+        productDict['timeZones'] = self._product.timeZones        
         self._addToProductDict(productDict)
         return productDict
     
@@ -535,8 +545,9 @@ class Product(ProductTemplate.Product):
         headerDict['originatingOffice'] = self._backupFullStationID  # Will be siteID if not in backup mode
         headerDict['productID'] = self._product.productID
         headerDict['siteID'] = self._siteID
-        headerDict['wmoHeaderLine'] = self._product.wmoID + ' ' + self._fullStationID + ' ' + self._ddhhmmTime
         headerDict['awipsIdentifierLine'] = self._product.productID + self._siteID
+        ddhhmmTime = self._tpc.getFormattedTime(self._issueTime, '%d%H%M', stripLeading=False)
+        headerDict['wmoHeaderLine'] = self._product.wmoID + ' ' + self._fullStationID + ' ' + ddhhmmTime
         productDict['wmoHeader'] = headerDict
 
     def _wmoHeader_noCR(self, productDict, productSegmentGroup, arguments=None):
@@ -613,7 +624,7 @@ class Product(ProductTemplate.Product):
             if productSegments:
                 overviewHeadline += self._getOverviewHeadline_point(productSegments) 
         productDict['overviewHeadline_point'] = overviewHeadline
-        
+       
     def _getOverviewHeadline_point(self, productSegments):
         '''
         ...The National Weather Service in Newport has issued a Flood Warning
@@ -634,6 +645,9 @@ class Product(ProductTemplate.Product):
         #condition: ( ( <Action> SEQ "NEW" ) AND ( <EventEndTime> LE <EventBeginTime> ) )
         #bulletstr: <EventTime>.
         #
+        if not self._rfp:
+            from RiverForecastPoints import RiverForecastPoints
+            self._rfp = RiverForecastPoints()
         locationPhrases = []  
         areaGroups = []
         # There could be multiple points sharing a VTEC code e.g. NEW     
@@ -649,7 +663,7 @@ class Product(ProductTemplate.Product):
             hazardEvent = self.getSegmentHazardEvents([segment])[0]
             ugcs = hazardEvent.get('ugcs', [])
             
-            pointAreaGroups = self._tpc.getGeneralAreaList(ugcs, areaDict=self._areaDictionary)
+            pointAreaGroups = self._tpc.getGeneralAreaList(ugcs)
             areaGroups += pointAreaGroups
 
             nameDescription, nameTypePhrase = self._tpc.getNameDescription(pointAreaGroups)
@@ -669,11 +683,11 @@ class Product(ProductTemplate.Product):
         attribution, headPhrase = self.getAttributionPhrase(
                     vtecRecord, hazardEvent, riverPhrase, self._issueTime, self._testMode, self._wfoCity, endString = '...')                
         overview = '...'+attribution + headPhrase + '\n\n' + locationPhrase + '\n'
-        return overview        
-                                                
+        return overview
+
     def _overviewSynopsis(self, productDict, productSegmentGroup, arguments=None):
         '''
-        FFA_point:
+        FFA_point, FLW, FLS:
         <General synopsis. Note for cancellation or expiration products: if a
         flood situation never developed, provide a brief explanation of why this
         was the case; if flood situation developed or is developing, mention that a
@@ -681,10 +695,10 @@ class Product(ProductTemplate.Product):
         If product is not a cancellation or expiration, include the following:
         THE SEGMENTS IN THIS PRODUCT ARE RIVER FORECASTS FOR SELECTED
         LOCATIONS IN THE WATCH AREA [(optional:) BASED ON CURRENTLY AVAILABLE
-                                     RAINFALL FORECASTS RANGING FROM <QPF lower range> TO <QPF upper range>
-                                     INCHES OVER THE <river/basin name(s)>]...
+        RAINFALL FORECASTS RANGING FROM <QPF lower range> TO <QPF upper range>
+        INCHES OVER THE <river/basin name(s)>]...
         '''
-        productDict['overviewSynopsis'] = ''
+        productDict['overviewSynopsis'] = self._dialogInputMap.get('overviewSynopsisText', '')
         
     def _rainFallStatement(self, productDict, productSegmentGroup, arguments=None):
         '''
@@ -767,8 +781,7 @@ class Product(ProductTemplate.Product):
             productSegment.ugcs = list(segment[0])
         else:
             productSegment.ugcs = hazardEvent.get('ugcs', [])
-            points, eventIDs = segment
-            productSegment.pointID = str(list(points)[0])
+        productSegment.pointID = hazardEvent.get('pointID')
         productSegment.ugcs.sort()  
         productSegment.cityInfo = self.getCityInfo(productSegment.ugcs, returnType='list')       
         productSegment.cityString = self._tpc.getTextListStr(productSegment.cityInfo)        
@@ -872,7 +885,7 @@ class Product(ProductTemplate.Product):
         segmentDict['emergencyStatement'] = '...A FLASH FLOOD EMERGENCY FOR <geographic area>...'
         
     def _basisAndImpactsStatement_segmentLevel(self, segmentDict, productSegmentGroup, arguments):
-        segmentDict['basisAndImpactsStatement_segmentLevel'] = 'Current hydrometeorological situation and expected impacts \n'
+        segmentDict['basisAndImpactsStatement_segmentLevel'] = '|* Current hydrometeorological situation and expected impacts *| \n'
         
     def _callsToAction(self, segmentDict, productSegmentGroup, arguments):
         segmentDict['callsToAction'] = self._productSegment.ctas
@@ -937,10 +950,22 @@ class Product(ProductTemplate.Product):
             if 'floodMoving' in additionalInfo:
                 self._section.floodMoving = self._tpc.getProductStrings(
                             self._section.hazardEvent, self._section.metaData, 'additionalInfo', choiceIdentifier='floodMoving')
-        self._section.areaPhrase = self.getAreaPhrase(self._productSegment, sectionMetaData, sectionHazardEvent)
+        # Use the phen, sig, life cycle point, and whether an areal product to determine
+        # the format of the areaPhrase.  Maybe this should be in a table???
+        self._tpc.setPartOfStateInfo(sectionHazardEvent["attributes"])
+        phen = self._section.vtecRecord.get("phen")
+        sig = self._section.vtecRecord.get("sig")
+        action = self._section.vtecRecord.get("act")
+        geoType = sectionHazardEvent.get('geoType')
+        if phen in ["FF", "FA", "TO", "SV", "SM", "EW" , "FL" ] and \
+           action in [ "NEW", "EXA", "EXT", "EXB" ] and \
+           geoType == 'area' and sig != "A" :
+            self._section.areaPhrase = self.getAreaPhraseBullet(self._productSegment, sectionMetaData, sectionHazardEvent)
+        else :
+            self._section.areaPhrase = self.getAreaPhrase(self._productSegment, sectionMetaData, sectionHazardEvent)
+
         self._section.attribution, self._section.firstBullet = self.getAttributionPhrase(
                    self._section.vtecRecord, self._section.hazardEvent, self._section.areaPhrase, self._issueTime, self._testMode, self._wfoCity)
-    
         # Format
         self._section.formatArgs = formatArgs
         if 'bulletFormat' in formatArgs:
@@ -970,6 +995,10 @@ class Product(ProductTemplate.Product):
 
         if self._product.formatPolygon:
              self._productSegment.polygonText_value += self.formatPolygonForEvent(self._section.hazardEvent) + '\n'
+             
+        # Point-specific information
+        if self._productSegment.pointID:
+            self._getPointInformation()            
 
        # CAP Specific Fields        
         infoDict = collections.OrderedDict()
@@ -987,7 +1016,49 @@ class Product(ProductTemplate.Product):
         endTime = self._section.hazardEvent.getEndTime() 
         if endTime: 
             infoDict['eventEndingTime_datetime'] = endTime
-
+            
+    def _getPointInformation(self):
+        # Import RiverForecastPoints if not there
+        if not self._rfp:
+            from RiverForecastPoints import RiverForecastPoints
+            self._rfp = RiverForecastPoints()
+        
+        # Gather information\
+        pointID = self._productSegment.pointID
+        timeZones = self._productSegment.timeZones
+        
+        self._section.riverName = self._rfp.getRiverName(pointID)
+        # Observed and Flood Stages
+        self._section.observedStage, shefQualityCode = self._rfp.getObservedStage(pointID)
+        self._section.floodStage = self._rfp.getFloodStage(pointID)
+        
+        # Maximum Forecast Stage       
+        self._section.primaryPE = self._rfp.getPrimaryPhysicalElement(pointID)
+        self._section.maximumForecastStage, shefQualityCode = self._rfp.getMaximumForecastLevel(pointID, self._section.primaryPE)
+        self._section.maximumForecastTime_ms = self._rfp.getMaximumForecastTime(pointID)
+        self._section.maximumForecastTime_str = self._getFormattedTime(self._section.maximumForecastTime_ms, emptyValue='at time unknown', timeZones=timeZones)
+        
+        # Rise    
+        self._section.forecastRiseAboveFloodStageTime_ms = self._rfp.getForecastRiseAboveFloodStageTime(pointID)
+        self._section.forecastRiseAboveFloodStageTime_str = self._getFormattedTime(self._section.forecastRiseAboveFloodStageTime_ms, timeZones=timeZones)
+                        
+        # Crest
+        self._section.forecastCrestStage = self._rfp.getForecastCrestStage(pointID)
+        #self._section.forecastCrest = self._rfp.getPhysicalElementValue(pointID, 'HG', 0, 'FF', 'X', 'NEXT')
+        self._section.forecastCrest = '30 feet'
+        #self._section.forecastCrestTime_ms = self._rfp.getPhysicalElementValue(pointID, 'HG', 0, 'FF', 'X', 'NEXT', timeFlag=True) 
+        self._section.forecastCrestTime_ms = self._rfp.getForecastCrestTime(pointID)       
+        self._section.forecastCrestTime_str = self._getFormattedTime(self._section.forecastCrestTime_ms, timeZones=timeZones)        
+        self._section.physicalElementTime_str = ' stage time'
+        
+        # Fall
+        self._section.forecastFallBelowFloodStageTime_ms = self._rfp.getForecastFallBelowFloodStageTime(pointID)
+        self._section.forecastFallBelowFloodStageTime_str = self._getFormattedTime(self._section.forecastFallBelowFloodStageTime_ms, timeZones=timeZones)
+        self._section.stageFlowUnits = self._rfp.getStageFlowUnits(pointID)
+        
+        # Trend
+        self._section.stageTrend = self._rfp.getStageTrend(pointID)
+        
     def _emergencyHeadline(self, sectionDict, productSegmentGroup, arguments):
         # Check to see if emergencyHeadine is to be included
         hazardEvent = self._section.hazardEvent
@@ -996,8 +1067,6 @@ class Product(ProductTemplate.Product):
             location = hazardEvent.get('includeEmergencyLocation')
             if location is None:
                 location = self._tpc.frame('Enter location')
-            print "location", location
-            self.flush()
             sectionDict['emergencyHeadline'] = '...Flash Flood Emergency for '+ location + '...\n'
 
     def _attribution(self, sectionDict, productSegmentGroup, arguments):
@@ -1012,7 +1081,7 @@ class Product(ProductTemplate.Product):
     def _firstBullet(self, sectionDict, productSegmentGroup, arguments):
         if self._section.firstBullet:
             self._tpc.setVal(sectionDict, 'firstBullet', self._section.firstBullet, formatMethod=self._section.bulletFormat,
-                         productCategory=self._productCategory, productID=self._product.productID) 
+                         productCategory=self._productCategory, productID=self._product.productID)
             sectionDict['description'] += self._section.firstBullet + '\n'
 
     def _timeBullet(self, sectionDict, productSegmentGroup, arguments):        
@@ -1047,7 +1116,7 @@ class Product(ProductTemplate.Product):
             LYING AREAS ARE STILL FLOODED AND DRIVERS NEED TO BE ESPECIALLY CAUTIOUS
             AT NIGHT.
         '''
-        basisAndImpactsStatement = 'Current hydrometeorological situation and expected impacts\n'
+        basisAndImpactsStatement = '|* Current hydrometeorological situation and expected impacts *|\n'
         self._tpc.setVal(sectionDict, 'basisAndImpactsStatement', basisAndImpactsStatement, editable=True, label='Basis and Impacts', eventIDs=[self._section.hazardEvent.getEventID()],
                        segment=self._productSegment.segment, formatMethod=self._section.bulletFormat,
                          productCategory=self._productCategory, productID=self._product.productID) 
@@ -1135,14 +1204,186 @@ class Product(ProductTemplate.Product):
             locationsAffected += self._section.floodMoving + '. '
             
         if not locationsAffected:
-             locationsAffected = 'Forecast path of flood and/or locations to be affected' + '\n'
+            phen = self._section.vtecRecord.get("phen")
+            sig = self._section.vtecRecord.get("sig")
+            geoType = self._section.hazardEvent.get('geoType')
+            if phen in ["FF", "FA", "TO", "SV", "SM", "EW" , "FL" ] and \
+               geoType == 'area' and sig != "A" :
+                if phen == "FF" :
+                    locationsAffected = "Some locations that will experience flash flooding include..."
+                elif phen == "FA" or phen == "FA" :
+                    locationsAffected = "Some locations that will experience flooding include..."
+                else :
+                    locationsAffected = "Locations impacted include..."
+                locationsAffected += self.impactedLocations(self._section.hazardEvent)
+            else :
+                locationsAffected = '|*Forecast path of flood and/or locations to be affected*|' + '\n'
+
         self._tpc.setVal(sectionDict, 'locationsAffected', locationsAffected, editable=True, label='Locations Affected', 
                          eventIDs=[self._section.hazardEvent.getEventID()],
                          segment=self._productSegment.segment, formatMethod=self._section.bulletFormat,
                          productCategory=self._productCategory, productID=self._product.productID) 
         sectionDict['description'] += locationsAffected + '\n'
+
+    def impactedLocations(self, hazardEvent) :
+        nullReturn = "mainly rural areas of the aforementioned areas."
+        columns = ["name", "warngenlev"]
+        try :
+            cityGeoms = self._tpc.mapDataQuery("city", columns, hazardEvent["geometry"])
+        except :
+            return nullReturn
+        if not isinstance(cityGeoms, list) :
+            return nullReturn
+        names12 = []
+        namesOther = []
+        for cityGeom in cityGeoms :
+            try:
+                name = cityGeom.getString(columns[0])
+                if not name:
+                    continue
+                levData = str(cityGeom.getString(columns[1]))
+                if levData == "1" or levData == "2" :
+                      names12.append(name)
+                else :
+                      namesOther.append(name)
+            except :
+                pass
+
+        if len(names12)>0 :
+            return self._tpc.formatDelimitedList(names12)
+        if len(namesOther)>0 :
+            return self._tpc.formatDelimitedList(namesOther)
+        return nullReturn
+
+    def _roadsAffected(self, sectionDict, productSegmentGroup, arguments):
+        roadsAffected = self.affectedRoads(self._section.hazardEvent)
+        if roadsAffected is None :
+            return
+        self._tpc.setVal(sectionDict, 'roadsAffected', roadsAffected, editable=True, label='Roads Affected',
+                         eventIDs=[self._section.hazardEvent.getEventID()],
+                         segment=self._productSegment.segment, 
+                         productCategory=self._productCategory, productID=self._product.productID)
+        sectionDict['description'] += roadsAffected + '\n'
+                
+    def affectedRoads(self, hazardEvent) :
+        # Access the list of roads and location relative to state
+        #  e.g. I90 in Nebraska
+        ugcs = hazardEvent.get("ugcs")
+        import LocalizationInterface
+        myLI = LocalizationInterface.LocalizationInterface()
+        highwayInfo = myLI.getLocData("warngen/mileMarkers.xml", "COMMON_STATIC")
+        if not isinstance(highwayInfo, dict) or not highwayInfo :
+            return None
+        geometries = hazardEvent["geometry"]
+        stateMap = {}
+        for ugc in ugcs :
+            fullState = self._tpc.getInformationForUGC(ugc, "fullStateName")
+            stateMap[ugc[0].lower()] = fullState
+            stateMap[ugc[:2].lower()] = fullState
+
+        # Loop through roads to gather the mile markers
+        #   affectedRoadData = {
+        #        "highway": [
+        #                      (marker1, marker2),
+        #                      (marker3, marker4),
+        #                          ...
+        #                    ]
+        #      }
+        #     
+        columns = ["name", "id"]
+        affectedRoadData = {}
+        checked = set([])
+        for tableList in highwayInfo.keys() :
+            highway = highwayInfo[tableList]
+            try :
+                tableName = highway["pointSource"]
+                if tableName in checked :
+                    continue
+                checked.add(tableName)
+                try :
+                    markerGeoms = self._tpc.mapDataQuery(tableName, columns, hazardEvent["geometry"])
+                except :
+                    markerGeoms = []
+                prevId = -99999
+                for markerGeom in markerGeoms :
+                    try :
+                        marker = str(markerGeom.getString(columns[0]))
+                        if not marker :
+                            continue
+                        idVal = int(markerGeom.getString(columns[1]))
+                        if not tableName in affectedRoadData :
+                            affectedRoadData[tableName] = [[marker, marker]]
+                        elif idVal == prevId+1 :
+                            affectedRoadData[tableName][-1][1] = marker
+                        else:
+                            affectedRoadData[tableName].append([marker, marker])
+                        prevId = idVal
+                    except :
+                        pass
+            except :
+                pass
+
+        if not affectedRoadData:
+            return None
+
+        # Translate the highway table names into plain language for route names
+        # Must parse the table name because the route name is not explicitly mentioned in milemarkers.xml
+        markerText = "This includes the following highways...\n"
+        for road in affectedRoadData.keys() :
+            lenRoadStr = len(road)
+            i = 0
+            while i<lenRoadStr and road[i]>"9" :
+                i += 1
+            if i>=lenRoadStr :
+                continue
+            j = i+1
+            while j<lenRoadStr and road[j]<="9" :
+                j += 1
+            if road[0] == "i" :
+                hwyDesc = "Interstate "
+            elif road[0] == "h" :
+                hwyDesc = "Highway "
+            else :
+                hwyDesc = "Route "
+            hwyDesc += road[i:j]
+            if road[-2:] == "mm" :
+                suffix = road[j:-2]
+            else :
+                suffix = road[j:]
+            if suffix != "" :
+                state = stateMap.get(suffix[:2])
+                if state == None :
+                    state = stateMap.get(suffix[0])
+                if state != None :
+                    hwyDesc += " in "+state
+            markerList = affectedRoadData[road]
+            conjunction = ""
+            for markerItem in markerList :
+                if markerItem[0]== markerItem[1] :
+                    rngDesc = " at mile marker "+markerItem[0]
+                else :
+                    rngDesc = " between mile marker "+markerItem[0]+ \
+                              " and "+markerItem[1]
+                hwyDesc += conjunction+rngDesc
+                conjunction = "...and"
+            markerText += hwyDesc+".\n"
+
+        return markerText
+
+
+
+    #  Point based
+    
+    def _attribution_point(self, sectionDict, productSegmentGroup, arguments):
+        attribution = self._section.attribution
+        if attribution:
+            if self._section.bulletFormat == 'bulletFormat_CR':
+                attribution = self._section.attribution+'\n'
+            self._tpc.setVal(sectionDict, 'attribution_point', attribution, 
+                         productCategory=self._productCategory, productID=self._product.productID) 
+            sectionDict['description'] += attribution + '\n'
         
-        
+       
     #  Point based
     
     def _attribution_point(self, sectionDict, productSegmentGroup, arguments):
@@ -1180,7 +1421,7 @@ class Product(ProductTemplate.Product):
             observedStage, shefQualityCode = self._rfp.getObservedStage(self._productSegment.pointID)
             self._stageFlowUnits = self._rfp.getStageFlowUnits(self._productSegment.pointID)
             # 900 AM EDT FRIDAY 
-            observedTime = self._getFormattedTime(observedTime_ms)
+            observedTime = self._getFormattedTime(observedTime_ms, timeZones=self._productSegment.timeZones)
             bulletContent = 'At '+observedTime+ ' the '+stageFlowName+' was '+`observedStage`+' '+self._stageFlowUnits+'.'
         self._tpc.setVal(sectionDict, 'observedStageBullet', bulletContent, formatMethod=self._section.bulletFormat,
                          productCategory=self._productCategory, productID=self._product.productID) 
@@ -1241,49 +1482,31 @@ class Product(ProductTemplate.Product):
         bulletContent = ''
         if observedCategory > 0:
             observedTime_ms = self._rfp.getObservedTime(self._productSegment.pointID)
-            observedTime = self._getFormattedTime(observedTime_ms)
+            observedTime = self._getFormattedTime(observedTime_ms, timeZones=self._productSegment.timeZones)
             maxStage, shefQualityCode = self._rfp.getMaximum24HourObservedStage(self._productSegment.pointID)
             bulletContent = 'Recent Activity...The maximum river stage in the 24 hours ending at '+observedTime+' was '+`maxStage`+' feet. '            
         self._tpc.setVal(sectionDict, 'recentActivityBullet', bulletContent, formatMethod=self._section.bulletFormat,
                          productCategory=self._productCategory, productID=self._product.productID) 
     
-    def _forecastStageBullet(self, sectionDict, productSegmentGroup, arguments):
-        '''                        
-        '''
-        # From Mark Armstrong -- national baseline templates
-        #    roundups2011.0331  -- 
-        # TODO -- this is for FLW -- is this the same for FFA, FLS?
+    
+    def _forecastStageBullet(self, sectionDict, productSegmentGroup, arguments):    
+        observedStage = self._section.observedStage
+        maximumForecastStage = self._section.maximumForecastStage
+        floodStage = self._section.floodStage
+        forecastCrestStage = self._section.forecastCrest
+        forecastCrestTime_str = self._section.forecastCrestTime_str
+        stageFlowUnits = self._section.stageFlowUnits
+        maximumForecastTime_str = self._section.maximumForecastTime_str
+        forecastFallBelowFloodStageTime_str = self._section.forecastFallBelowFloodStageTime_str
+        forecastRiseAboveFloodStageTime_str = self._section.forecastRiseAboveFloodStageTime_str
+        riverDescription = self._getRiverDescription()
+        
         bulletContent = ''
-        
-        # Gather information
-        observedStage, shefCode = self._rfp.getObservedStage(self._productSegment.pointID)
-        floodStage = self._rfp.getFloodStage(self._productSegment.pointID)
-        maximumForecastStage, shefCode = self._rfp.getMaximumForecastStage(self._productSegment.pointID)
-        maximumForecastTime_ms = self._rfp.getMaximumForecastTime(self._productSegment.pointID)
-        if maximumForecastTime_ms != self._rfp.MISSING_VALUE:
-            maximumForecastTime_str = self._getFormattedTime(maximumForecastTime_ms)
-        else:
-            maximumForecastTime_str = ' at time unknown' 
-        forecastRiseAboveFloodStageTime_ms = self._rfp.getForecastRiseAboveFloodStageTime(self._productSegment.pointID)
-        forecastRiseAboveFloodStageTime_str = self._getFormattedTime(maximumForecastTime_ms)
-            
-        #TODO  <HG,0,FF,X,NEXT>   ???
-        #physicalElement = self._rfp.getPhysicalElement(self._productSegment.pointID, 'HG', '0', 'FF', 'X', 'NEXT')
-        #physicalElementStage = physicalElement.getStage()
-        #physicalElementTime = physicalElement.getTime()
-        physicalElementStage = floodStage 
-        physicalElementTime_str = ' stage time'
-        
-        forecastFallBelowFloodStageTime_ms = self._rfp.getForecastFallBelowFloodStageTime(self._productSegment.pointID)
-        forecastFallBelowFloodStageTime_str = self._getFormattedTime(forecastFallBelowFloodStageTime_ms)
-        stageFlowUnits = self._rfp.getStageFlowUnits(self._productSegment.pointID)
-        
-        forecastCrestStage = self._rfp.getForecastCrestStage(self._productSegment.pointID)
-        stageTrend = self._rfp.getStageTrend(self._productSegment.pointID)
-
         # Create bullet content
-        if self._section.action in ['NEW','CON','EXT']:
-                    
+        if self._section.maximumForecastStage == self._rfp.MISSING_VALUE :
+                bulletContent = '|* Forecast is missing, insert forecast bullet here. *|'
+
+        elif self._section.action != 'ROU':                    
             if observedStage == self._rfp.MISSING_VALUE:
                 # FORECAST INFORMATION FOR NO OBS SITUATION    
                 #  change made 3/17/2009 Mark Armstrong HSD
@@ -1291,7 +1514,7 @@ class Product(ProductTemplate.Product):
                 # condition: ( ( <ObsStg> EQ MISSING ) AND ( <MaxFcstStg> GE <FldStg> ) )
                 # bulletstr: FORECAST...THE RIVER IS FORECAST TO HAVE A MAXIMUM VALUE OF <MaxFcstStg> <StgFlowUnits> <MaxFcstTime>.
                 if maximumForecastStage >= floodStage:
-                    bulletContent = 'The river is forecast to have a maximum value of '+`maximumForecastStage`+' '+stageFlowUnits+\
+                    bulletContent = riverDescription + ' is forecast to have a maximum value of '+`maximumForecastStage`+' '+stageFlowUnits+\
                       ' by '+maximumForecastTime_str+'. '
                 #
                 # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
@@ -1301,7 +1524,7 @@ class Product(ProductTemplate.Product):
                 # bulletstr: FORECAST...THE RIVER IS FORECAST BELOW FLOOD STAGE WITH A MAXIMUM VALUE OF <MaxFcstStg> &
                 # <StgFlowUnits> <MaxFcstTime>.
                 elif maximumForecastStage < floodStage:
-                    bulletContent = 'The river is forecast below flood stage with a maximum value of '+`maximumForecastStage`+' '+stageFlowUnits+\
+                    bulletContent = riverDescription + ' is forecast below flood stage with a maximum value of '+`maximumForecastStage`+' '+stageFlowUnits+\
                       ' by '+maximumForecastTime_str+'. '
 
             elif observedStage < floodStage:
@@ -1311,7 +1534,7 @@ class Product(ProductTemplate.Product):
                 # bulletstr: FORECAST...THE RIVER IS EXPECTED TO RISE TO NEAR FLOOD STAGE <MaxFcstTime>.
                 #
                 if maximumForecastStage == floodStage:
-                    bulletContent = 'The river is expected to rise to near flood stage by '+ maximumForecastTime_str
+                    bulletContent = riverDescription + ' is expected to rise to near flood stage by '+ maximumForecastTime_str
                     
                 # Observed below flood stage/forecast above flood stage/forecast time
                 # series has a crest/not falling below flood stage
@@ -1322,9 +1545,9 @@ class Product(ProductTemplate.Product):
                 # AND CONTINUE TO RISE TO NEAR <HG,0,FF,X,NEXT> <StgFlowUnits> BY &
                 # <HG,0,FF,X,NEXT,TIME>.        
                 #            
-                elif physicalElementStage > floodStage and forecastFallBelowFloodStageTime == self._rfp.MISSING:
+                elif forecastCrestStage > floodStage and forecastFallBelowFloodStageTime == self._rfp.MISSING:
                     bulletContent = 'rise above flood stage by '+ forecastRiseAboveFloodStageTime_str + \
-                        ' and continue to rise to near ' + `physicalElementStage` + ' '+stageFlowUnits + ' by '+stageTime+'. '
+                        ' and continue to rise to near ' + `forecastCrestStage` + ' '+stageFlowUnits + ' by '+ forecastCrestTime_str+'. '
 
                 # Observed below flood stage/forecast above flood stage/forecast time
                 # series has no crest
@@ -1335,7 +1558,7 @@ class Product(ProductTemplate.Product):
                 # AND CONTINUE TO RISE TO NEAR <MaxFcstStg> <StgFlowUnits> BY <MaxFcstTime>. &
                 # ADDITIONAL RISES ARE POSSIBLE THEREAFTER.        
                 #                               
-                elif maximumForecastStage > floodStage and physicalElementStage == self._rfp.MISSING_VALUE and +\
+                elif maximumForecastStage > floodStage and forecastCrestStage == self._rfp.MISSING_VALUE and +\
                     forecastFallBelowFloodStageTime == self._rfp.MISSING_VALUE:
                     bulletContent = 'rise above flood stage by '+forecastRiseAboveFloodStageTime_str +\
                        ' and continue to rise to near '+`maximumForecastStage`+' '+stageFlowUnits+' by '+\
@@ -1350,9 +1573,9 @@ class Product(ProductTemplate.Product):
                 # AND CONTINUE TO RISE TO NEAR <HG,0,FF,X,NEXT> <StgFlowUnits> BY <HG,0,FF,X,NEXT,TIME>.&
                 # THE RIVER WILL FALL BELOW FLOOD STAGE BY <FcstFallFSTime>.
                 #
-                elif physicalElementStage > floodStage and forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE:
+                elif forecastCrestStage > floodStage and forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE:
                     bulletContent = 'rise above flood stage by '+forecastRiseAboveFloodStageTime_str + \
-                       ' and continue to rise to near '+ `physicalElementStage`+' '+stageFlowUnits+' by '+physicalElementTime_str + \
+                       ' and continue to rise to near '+ `forecastCrestStage`+' '+stageFlowUnits+' by '+forecastCrestTime_str + \
                        '. The river will fall below flood stage by '+forecastFallBelowFloodStageTime_str+'. '
             
             else: # observedStage >= floodStage:
@@ -1365,9 +1588,9 @@ class Product(ProductTemplate.Product):
                 # bulletstr: FORECAST...THE RIVER WILL CONTINUE RISING TO NEAR <MaxFcstStg> <StgFlowUnits> BY &
                 # <MaxFcstTime>.  ADDITIONAL RISES MAY BE POSSIBLE THEREAFTER.
                 #        
-                if maximumForecastStage > observedStage and physicalElementStage == self._rfp.MISSING_VALUE and \
+                if maximumForecastStage > observedStage and forecastCrestStage == self._rfp.MISSING_VALUE and \
                      forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
-                     bulletContent = 'The river will continue rising to near '+ `maximumForecastStage`+' '+stageFlowUnits + \
+                     bulletContent = riverDescription + ' will continue rising to near '+ `maximumForecastStage`+' '+stageFlowUnits + \
                      ' by '+ maximumForecastTime_str + '. Additional rises may be possible thereafter. '
             
                 # Observed above flood stage/forecast crests but stays above flood
@@ -1378,9 +1601,9 @@ class Product(ProductTemplate.Product):
                 # bulletstr: FORECAST...THE RIVER WILL CONTINUE RISING TO NEAR <HG,0,FF,X,NEXT> <StgFlowUnits> BY &
                 # <HG,0,FF,X,NEXT,TIME> THEN BEGIN FALLING.
                 #
-                elif physicalElementStage > observedStage and forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
-                        bulletContent = 'The river will continue rising to near '+`physicalElementStage`+' '+stageFlowUnits+' by '+\
-                        physicalElementTime_str+ ' then begin falling.'
+                elif forecastCrestStage > observedStage and forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
+                        bulletContent = riverDescription + ' will continue rising to near '+`forecastCrestStage`+' '+stageFlowUnits+' by '+\
+                        forecastCrestTime_str+ ' then begin falling.'
                     
                 # Observed above flood stage/forecast crests and falls below flood
                 # stage
@@ -1391,9 +1614,9 @@ class Product(ProductTemplate.Product):
                 # <HG,0,FF,X,NEXT,TIME>. THE RIVER WILL FALL BELOW FLOOD STAGE &
                 # <FcstFallFSTime>.
                 #
-                elif physicalElementStage > observedStage and forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE and \
+                elif forecastCrestStage > observedStage and forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE and \
                     forecastCrestStage > observedStage:
-                    bulletContent = 'The river will continue rising to near '+`physicalElementStage`+' '+stageFlowUnits+' by '+\
+                    bulletContent = riverDescription + ' will continue rising to near '+`forecastCrestStage`+' '+stageFlowUnits+' by '+\
                        forecastFallBelowFloodStageTime_ms+'. ' 
                         
                 # Observed above flood stage/forecast continue fall/not below flood
@@ -1417,7 +1640,7 @@ class Product(ProductTemplate.Product):
                 #
                 elif maximumForecastStage <= observedStage and stageTrend == 'steady' and \
                     forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
-                    bulletContent = 'The river will remain near '+`maximumForecastStage`+' '+stageFlowUnits+'. '
+                    bulletContent = riverDescription + ' will remain near '+`maximumForecastStage`+' '+stageFlowUnits+'. '
                     
                 # Observed above flood stage/forecast continues fall to below flood
                 # stage
@@ -1428,7 +1651,7 @@ class Product(ProductTemplate.Product):
                 # <FcstFallFSTime>.
                 #
                 elif maximumForecastStage <= observedStage and forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE:
-                    bulletContent = 'The river will continue to fall to below flood stage by '+forecastFallBelowFloodStageTime_str+'.'
+                    bulletContent = riverDescription + ' will continue to fall to below flood stage by '+forecastFallBelowFloodStageTime_str+'.'
 
         elif self._section.action in ['ROU']:                    
             #  FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
@@ -1437,10 +1660,18 @@ class Product(ProductTemplate.Product):
             # bulletstr: FORECAST...THE RIVER WILL RISE TO NEAR <MaxFcstStg> <StgFlowUnits> <MaxFcstTime>.
             #
             if maximumForecastStage != self._rfp.MISSING_VALUE:
-                bulletContent = 'The river will rise to near '+`maximumForecastStage`+' '+stageFlowUnits+\
+                bulletContent = riverDescription + ' will rise to near '+`maximumForecastStage`+' '+stageFlowUnits+\
                       ' by '+maximumForecastTime_str+'. '                       
         self._tpc.setVal(sectionDict, 'forecastStageBullet', bulletContent, formatMethod=self._section.bulletFormat, formatArgs='Forecast...',
                          productCategory=self._productCategory, productID=self._product.productID) 
+        
+    def _getRiverDescription(self):
+        '''
+        To use the actual river name:
+        
+        return self._section.riverName
+        '''
+        return 'The river'
 
     def _forecastStageBullet_new(self, sectionDict, productSegmentGroup, arguments):
         '''                        
@@ -1450,61 +1681,31 @@ class Product(ProductTemplate.Product):
         # TODO -- this is for FLW -- is this the same for FFA, FLS?
         bulletContent = ''
         
-        # Gather information
-        observedStage, shefQualityCode = self._rfp.getObservedStage(self._productSegment.pointID)
-        floodStage = self._rfp.getFloodStage(self._productSegment.pointID)
-        
-        primaryPE = self._rfp.getPrimaryPhysicalElement(self._productSegment.pointID)
-        
-        maximumForecastStage, shefQualityCode = self._rfp.getMaximumForecastLevel(self._productSegment.pointID, primaryPE)
-        maximumForecastTime_ms = self._rfp.getMaximumForecastTime(self._productSegment.pointID)
-        if maximumForecastTime_ms != self._rfp.MISSING_VALUE:
-            maximumForecastTime_str = self._getFormattedTime(maximumForecastTime_ms)
-        else:
-            maximumForecastTime_str = ' at time unknown' 
-        forecastRiseAboveFloodStageTime_ms = self._rfp.getForecastRiseAboveFloodStageTime(self._productSegment.pointID)
-        forecastRiseAboveFloodStageTime_str = self._getFormattedTime(maximumForecastTime_ms)
-            
-        forecastCrest = self._rfp.getPhysicalElementValue(self._productSegment.pointID, 'HG', 0, 'FF', 'X', 'NEXT')
-        forecastCrestTime = self._rfp.getPhysicalElementValue(self._productSegment.pointID, 'HG', 0, 'FF', 'X', 'NEXT', timeFlag=True)        
-        physicalElementTime_str = ' stage time'
-        
-        forecastFallBelowFloodStageTime_ms = self._rfp.getForecastFallBelowFloodStageTime(self._productSegment.pointID)
-        if forecastFallBelowFloodStageTime_ms:
-            forecastFallBelowFloodStageTime_str = self._getFormattedTime(forecastFallBelowFloodStageTime_ms)
-        else:
-            forecastFallBelowFloodStageTime_ms = 0
-        stageFlowUnits = self._rfp.getStageFlowUnits(self._productSegment.pointID)
-        
-        forecastCrestStage = self._rfp.getForecastCrestStage(self._productSegment.pointID)
-        stageTrend = self._rfp.getStageTrend(self._productSegment.pointID)
-        riverName = self._rfp.getRiverName(self._productSegment.pointID)
-
         # Create bullet content
         if section.action in ['NEW', 'CON', 'EXT']:  # MAA if action != ROU
                     
-            if observedStage == self._rfp.MISSING_VALUE:
+            if self._section.observedStage == self._rfp.MISSING_VALUE:
                 # FORECAST INFORMATION FOR NO OBS SITUATION    
                 #  change made 3/17/2009 Mark Armstrong HSD
                 #
                 # condition: ( ( <ObsStg> EQ MISSING_VALUE) AND ( <MaxFcstStg> GE <FldStg> ) )
                 # bulletstr: FORECAST...THE RIVER IS FORECAST TO HAVE A MAXIMUM VALUE OF <MaxFcstStg> <StgFlowUnits> <MaxFcstTime>.
-                if maximumForecastStage == self._rfp.MISSING_VALUE :
+                if self._section.maximumForecastStage == self._rfp.MISSING_VALUE :
                     bulletContent = 'Forecast is missing, insert forecast bullet here.'
 
-                elif maximumForecastStage >= floodStage:
-                    if forecastRiseAboveFloodStageTime_ms != self._rfp.MISSING_VALUE and forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE:
-                        bulletContent = 'The ' + riverName + ' is forecast to rise above flood stage at ' + forecastRiseAboveFloodStageTime_str\
-                         + ' to ' + maximumForecastStage + ' ' + stageFlowUnits + ' and fall below flood stage at ' + forecastFallBelowFloodStageTime_str + '.'
-                    elif forecastRiseAboveFloodStageTime_ms != self._rpf.MISSING_VALUE and forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
-                        bulletContent = 'The ' + riverName + ' is forecast to rise above flood stage at ' + forecastRiseAboveFloodStageTime_str\
-                         + ' to ' + maximumForecastStage + ' ' + stageFlowUnits + '.'
-                    elif forecastRiseAboveFloodStageTime_ms == self._rfp.MISSING_VALUE and forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE:
-                        bulletContent = 'The ' + riverName + ' is forecast to reach ' + maximumForecastStage + ' ' + stageFlowUnits\
-                         + ' and fall below flood stage at ' + forecastFallBelowFloodStageTime_str + '.'
-                    elif forecastRiseAboveFloodStageTime_ms == self._rfp.MISSING_VALUE and forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
-                        bulletContent = 'The ' + riverName + ' is forecast to reach ' + maximumForecastStage + ' ' + stageFlowUnits + \
-                        ' by ' + maximumForecastTime_str + '.'
+                elif self._section.maximumForecastStage >= self._section.floodStage:
+                    if self._section.forecastRiseAboveFloodStageTime_ms != self._rfp.MISSING_VALUE and self._section.forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE:
+                        bulletContent = 'The ' + self._section.riverName + ' is forecast to rise above flood stage at ' + self._section.forecastRiseAboveFloodStageTime_str\
+                         + ' to ' +self._section.maximumForecastStage + ' ' + self._section.stageFlowUnits + ' and fall below flood stage at ' + self._section.forecastFallBelowFloodStageTime_str + '.'
+                    elif self._section.forecastRiseAboveFloodStageTime_ms != self._rpf.MISSING_VALUE and self._section.forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
+                        bulletContent = 'The ' + self._section.riverName + ' is forecast to rise above flood stage at ' + self._section.forecastRiseAboveFloodStageTime_str\
+                         + ' to ' + self._section.maximumForecastStage + ' ' + self._section.stageFlowUnits + '.'
+                    elif self._section.forecastRiseAboveFloodStageTime_ms == self._rfp.MISSING_VALUE and self._section.forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE:
+                        bulletContent = 'The ' + self._section.riverName + ' is forecast to reach ' + self._section.maximumForecastStage + ' ' + self._section.stageFlowUnits\
+                         + ' and fall below flood stage at ' + self._section.forecastFallBelowFloodStageTime_str + '.'
+                    elif self._section.forecastRiseAboveFloodStageTime_ms == self._rfp.MISSING_VALUE and self._section.forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
+                        bulletContent = 'The ' + self._section.riverName + ' is forecast to reach ' + self._section.maximumForecastStage + ' ' + self._section.stageFlowUnits + \
+                        ' by ' + self._section.maximumForecastTime_str + '.'
                     # elif riseabovetime == MISSING_VALUE&& fallbelowtime != missing
                     # bulletContent=  'The ' + self._getRiverName() + ' is forecast to reach ' +
                     # maxfcstval + StgFlowUnits + ' and fall below flood stage at ' + fallbelowfloodtime + '.'
@@ -1519,13 +1720,13 @@ class Product(ProductTemplate.Product):
                 # condition: ( ( <ObsStg> EQ MISSING_VALUE) AND ( <MaxFcstStg> LT <FldStg> ) )
                 # bulletstr: FORECAST...THE RIVER IS FORECAST BELOW FLOOD STAGE WITH A MAXIMUM VALUE OF <MaxFcstStg> &
                 # <StgFlowUnits> <MaxFcstTime>.
-                elif maximumForecastStage < floodStage:
-                    if forecastCrestStage == self._rfp.MISSING_VALUE:
-                        bulletContent = 'The ' + riverName + ' is forecast to reach ' + maximumForecastStage + ' ' + stageFlowUnits + \
-                        ' by ' + maximumForecastTime_str + '.'                    
+                elif self._section.maximumForecastStage < self._section.floodStage:
+                    if self._section.forecastCrestStage == self._rfp.MISSING_VALUE:
+                        bulletContent = 'The ' + riverName + ' is forecast to reach ' + self._section.maximumForecastStage + ' ' + self._section.stageFlowUnits + \
+                        ' by ' + self._section.maximumForecastTime_str + '.'                    
                     else :
-                        bulletContent = 'The ' + riverName + ' is forecast to crest at ' + forecastCrestStage + ' ' + stageFlowUnits + \
-                        ' by ' + forecastCrestTime + '. '
+                        bulletContent = 'The ' + self._section.riverName + ' is forecast to crest at ' + self._section.forecastCrestStage + ' ' + self._section.stageFlowUnits + \
+                        ' by ' + self._section.forecastCrestTime + '. '
 
             elif observedStage < floodStage:
                 # Observed below flood stage/forecast to rise just to flood stage
@@ -1533,8 +1734,8 @@ class Product(ProductTemplate.Product):
                 # condition: ( ( <ObsStg> LT <FldStg> ) AND ( <MaxFcstStg> EQ <FldStg> ) )
                 # bulletstr: FORECAST...THE RIVER IS EXPECTED TO RISE TO NEAR FLOOD STAGE <MaxFcstTime>.
                 #
-                if maximumForecastStage == floodStage:
-                    bulletContent = 'The river is expected to rise to near flood stage by ' + maximumForecastTime_str
+                if self._section.maximumForecastStage == self._section.floodStage:
+                    bulletContent = 'The river is expected to rise to near flood stage by ' + self._section.maximumForecastTime_str
                     
                 # Observed below flood stage/forecast above flood stage/forecast time
                 # series has a crest/not falling below flood stage
@@ -1545,9 +1746,9 @@ class Product(ProductTemplate.Product):
                 # AND CONTINUE TO RISE TO NEAR <HG,0,FF,X,NEXT> <StgFlowUnits> BY &
                 # <HG,0,FF,X,NEXT,TIME>.        
                 #            
-                elif rfcCrest > floodStage and forecastFallBelowFloodStageTime == self._rfp.MISSING:
-                    bulletContent = 'rise above flood stage by ' + forecastRiseAboveFloodStageTime_str + \
-                        ' and continue to rise to near ' + `rfcCrest` + ' ' + stageFlowUnits + ' by ' + rfcCrestTime + '. '
+                elif self._section.rfcCrest > self._section.floodStage and self._section.forecastFallBelowFloodStageTime == self._rfp.MISSING:
+                    bulletContent = 'rise above flood stage by ' + self._section.forecastRiseAboveFloodStageTime_str + \
+                        ' and continue to rise to near ' + `self._section.rfcCrest` + ' ' + self._section.stageFlowUnits + ' by ' + self._section.rfcCrestTime + '. '
 
                 # Observed below flood stage/forecast above flood stage/forecast time
                 # series has no crest
@@ -1558,11 +1759,11 @@ class Product(ProductTemplate.Product):
                 # AND CONTINUE TO RISE TO NEAR <MaxFcstStg> <StgFlowUnits> BY <MaxFcstTime>. &
                 # ADDITIONAL RISES ARE POSSIBLE THEREAFTER.        
                 #                               
-                elif maximumForecastStage > floodStage and rfcCrest == self._rfp.MISSING_VALUE and +\
-                    forecastFallBelowFloodStageTime == self._rfp.MISSING_VALUE:
-                    bulletContent = 'rise above flood stage by ' + forecastRiseAboveFloodStageTime_str + \
-                       ' and continue to rise to near ' + `maximumForecastStage` + ' ' + stageFlowUnits + ' by ' + \
-                       maximumForecastTime_str + '. Additional rises are possible thereafter.'
+                elif self._section.maximumForecastStage > self._section.floodStage and rfcCrest == self._rfp.MISSING_VALUE and +\
+                    self._section.forecastFallBelowFloodStageTime == self._rfp.MISSING_VALUE:
+                    bulletContent = 'rise above flood stage by ' + self._section.forecastRiseAboveFloodStageTime_str + \
+                       ' and continue to rise to near ' + `self._section.maximumForecastStage` + ' ' + self._section.stageFlowUnits + ' by ' + \
+                       self._section.maximumForecastTime_str + '. Additional rises are possible thereafter.'
 
                 # Observed below flood stage/forecast above flood stage/forecast time
                 # series has a crest/falling below flood stage
@@ -1573,10 +1774,10 @@ class Product(ProductTemplate.Product):
                 # AND CONTINUE TO RISE TO NEAR <HG,0,FF,X,NEXT> <StgFlowUnits> BY <HG,0,FF,X,NEXT,TIME>.&
                 # THE RIVER WILL FALL BELOW FLOOD STAGE BY <FcstFallFSTime>.
                 #
-                elif rfcCrest > floodStage and forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE:
-                    bulletContent = 'rise above flood stage by ' + forecastRiseAboveFloodStageTime_str + \
-                       ' and continue to rise to near ' + `rfcCrest` + ' ' + stageFlowUnits + ' by ' + rfcCrestTime + \
-                       '. The river will fall below flood stage by ' + forecastFallBelowFloodStageTime_str + '. '
+                elif self._section.rfcCrest > self._section.floodStage and self._section.forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE:
+                    bulletContent = 'rise above flood stage by ' + self._section.forecastRiseAboveFloodStageTime_str + \
+                       ' and continue to rise to near ' + `self._section.rfcCrest` + ' ' + self._section.stageFlowUnits + ' by ' + self._section.rfcCrestTime + \
+                       '. The river will fall below flood stage by ' + self._section.forecastFallBelowFloodStageTime_str + '. '
             
             else:  # observedStage >= floodStage:
                 
@@ -1588,10 +1789,10 @@ class Product(ProductTemplate.Product):
                 # bulletstr: FORECAST...THE RIVER WILL CONTINUE RISING TO NEAR <MaxFcstStg> <StgFlowUnits> BY &
                 # <MaxFcstTime>.  ADDITIONAL RISES MAY BE POSSIBLE THEREAFTER.
                 #        
-                if maximumForecastStage > observedStage and rfcCrest == self._rfp.MISSING_VALUE and \
-                     forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
-                     bulletContent = 'The river will continue rising to near ' + `maximumForecastStage` + ' ' + stageFlowUnits + \
-                     ' by ' + maximumForecastTime_str + '. Additional rises may be possible thereafter. '
+                if self._section.maximumForecastStage > self._section.observedStage and rfcCrest == self._rfp.MISSING_VALUE and \
+                     self._section.forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
+                     bulletContent = 'The river will continue rising to near ' + `self._section.maximumForecastStage` + ' ' + self._section.stageFlowUnits + \
+                     ' by ' + self._section.maximumForecastTime_str + '. Additional rises may be possible thereafter. '
             
                 # Observed above flood stage/forecast crests but stays above flood
                 # stage
@@ -1601,9 +1802,9 @@ class Product(ProductTemplate.Product):
                 # bulletstr: FORECAST...THE RIVER WILL CONTINUE RISING TO NEAR <HG,0,FF,X,NEXT> <StgFlowUnits> BY &
                 # <HG,0,FF,X,NEXT,TIME> THEN BEGIN FALLING.
                 #
-                elif rfcCrest > observedStage and forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
-                        bulletContent = 'The river will continue rising to near ' + `rfcCrest` + ' ' + stageFlowUnits + ' by ' + \
-                        rfcCrestTime + ' then begin falling.'
+                elif self._section.rfcCrest > self._section.observedStage and self._section.forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
+                        bulletContent = 'The river will continue rising to near ' + `self._section.rfcCrest` + ' ' + self._section.stageFlowUnits + ' by ' + \
+                        self._section.rfcCrestTime + ' then begin falling.'
                     
                 # Observed above flood stage/forecast crests and falls below flood
                 # stage
@@ -1614,10 +1815,10 @@ class Product(ProductTemplate.Product):
                 # <HG,0,FF,X,NEXT,TIME>. THE RIVER WILL FALL BELOW FLOOD STAGE &
                 # <FcstFallFSTime>.
                 #
-                elif rfcCrest > observedStage and forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE and \
-                    forecastCrestStage > observedStage:
-                    bulletContent = 'The river will continue rising to near ' + `rfcCrest` + ' ' + stageFlowUnits + ' by ' + \
-                       forecastFallBelowFloodStageTime_ms + '. ' 
+                elif self._section.rfcCrest > self._section.observedStage and self._section.forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE and \
+                    self._section.forecastCrestStage > self._section.observedStage:
+                    bulletContent = 'The river will continue rising to near ' + `self._section.rfcCrest` + ' ' + self._section.stageFlowUnits + ' by ' + \
+                       self._section.forecastFallBelowFloodStageTime_ms + '. ' 
                         
                 # Observed above flood stage/forecast continue fall/not below flood
                 # stage
@@ -1627,8 +1828,8 @@ class Product(ProductTemplate.Product):
                 # bulletstr: FORECAST...THE RIVER WILL CONTINUE TO FALL TO A STAGE OF <SpecFcstStg> <StgFlowUnits> BY &
                 # <SpecFcstStgTime>.
                 #
-                elif maximumForecastStage <= observedStage and stageTrend == 'falling' and \
-                    forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
+                elif self._section.maximumForecastStage <= self._section.observedStage and self._section.stageTrend == 'falling' and \
+                    self._section.forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
                     # TODO Need SpecFcstStg and SpecFcstStgTime
                     bulletContent = ''
                     
@@ -1638,9 +1839,9 @@ class Product(ProductTemplate.Product):
                 # ( <StgTrend> SEQ "steady" ) AND ( <FcstFallFSTime> EQ MISSING_VALUE) )
                 # bulletstr: FORECAST...THE RIVER WILL REMAIN NEAR <MaxFcstStg> <StgFlowUnits>.
                 #
-                elif maximumForecastStage <= observedStage and stageTrend == 'steady' and \
-                    forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
-                    bulletContent = 'The river will remain near ' + `maximumForecastStage` + ' ' + stageFlowUnits + '. '
+                elif self._section.maximumForecastStage <= self._section.observedStage and self._section.stageTrend == 'steady' and \
+                    self._section.forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
+                    bulletContent = 'The river will remain near ' + `self._section.maximumForecastStage` + ' ' + self._section.stageFlowUnits + '. '
                     
                 # Observed above flood stage/forecast continues fall to below flood
                 # stage
@@ -1650,8 +1851,8 @@ class Product(ProductTemplate.Product):
                 # bulletstr: FORECAST...THE RIVER WILL CONTINUE TO FALL TO BELOW FLOOD STAGE BY &
                 # <FcstFallFSTime>.
                 #
-                elif maximumForecastStage <= observedStage and forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE:
-                    bulletContent = 'The river will continue to fall to below flood stage by ' + forecastFallBelowFloodStageTime_str + '.'
+                elif self._section.maximumForecastStage <= self._section.observedStage and self._section.forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE:
+                    bulletContent = 'The river will continue to fall to below flood stage by ' + self._section.forecastFallBelowFloodStageTime_str + '.'
 
         elif self._section.action in ['ROU']:                    
             #  FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
@@ -1659,9 +1860,9 @@ class Product(ProductTemplate.Product):
             # condition: ( ( <Action> SEQ "ROU" ) AND ( <MaxFcstStg> NE MISSING_VALUE) )
             # bulletstr: FORECAST...THE RIVER WILL RISE TO NEAR <MaxFcstStg> <StgFlowUnits> <MaxFcstTime>.
             #
-            if maximumForecastStage != self._rfp.MISSING_VALUE:
-                bulletContent = 'The river will rise to near ' + `maximumForecastStage` + ' ' + stageFlowUnits + \
-                      ' by ' + maximumForecastTime_str + '. '                       
+            if self._section.maximumForecastStage != self._rfp.MISSING_VALUE:
+                bulletContent = 'The river will rise to near ' + `self._section.maximumForecastStage` + ' ' + self._section.stageFlowUnits + \
+                      ' by ' + self._section.maximumForecastTime_str + '. '                       
         self._tpc.setVal(sectionDict, 'forecastStageBullet', bulletContent, formatMethod=self._section.bulletFormat, formatArgs='Forecast...',
                          productCategory=self._productCategory, productID=self._product.productID)
     
@@ -1699,7 +1900,7 @@ class Product(ProductTemplate.Product):
         # TODO Add to Product Staging -- FFA, FLS area
         endingSynopsis = self._section.hazardEvent.get('endingSynopsis')
         if endingSynopsis is None:
-            endingSynopsis = '\nBrief post-synopsis of hydrometeorological activity\n'
+            endingSynopsis = '\n|* Brief post-synopsis of hydrometeorological activity *|\n'
         else:
             endingSynopsis = '\n'+endingSynopsis+'\n'
         sectionDict['endingSynopsis'] = endingSynopsis
@@ -1745,15 +1946,8 @@ class Product(ProductTemplate.Product):
     def _formatUGC_entries(self, productSegment):
         ugcCodeList = []
         for ugc in productSegment.ugcs:
-            areaDictEntry = self._areaDictionary.get(ugc)
-            if areaDictEntry is None:
-                # We are not localized correctly for the hazard
-                # So get the first dictionary entry
-                self.logger.info('Not Localized for the hazard area -- ugc' + ugc)
-                keys = self._areaDictionary.keys()
-                areaDictEntry = self._areaDictionary.get(keys[0])
             ugcEntry = collections.OrderedDict()
-            ugcEntry['state'] = areaDictEntry.get('stateAbbr')
+            ugcEntry['state'] = self._tpc.getInformationForUGC(ugc, "stateAbrev")
             ugcEntry['type'] = self._getUgcInfo(ugc, 'type')
             ugcEntry['number'] = self._getUgcInfo(ugc, 'number')
             ugcEntry['text'] = ugc
@@ -2013,7 +2207,6 @@ class Product(ProductTemplate.Product):
  
         return newHazardEvents
 
-    
     def getSegmentMetaData(self, segment) :
         '''
         @param: eventInfo
@@ -2025,22 +2218,33 @@ class Product(ProductTemplate.Product):
         for hazardEvent in segmentEvents:
             metaDataList.append((self.getHazardMetaData(hazardEvent), hazardEvent))
         return metaDataList, segmentEvents
-
+    
     def getHazardMetaData(self, hazardEvent):
-        phen = hazardEvent.getPhenomenon()
-        sig = hazardEvent.getSignificance()
-        subType = hazardEvent.getSubType()
+        phen = hazardEvent.getPhenomenon()   
+        sig = hazardEvent.getSignificance()  
+        subType = hazardEvent.getSubType()  
         criteria = {'dataType':'hazardMetaData_filter',
                 'filter':{'phen':phen, 'sig':sig, 'subType':subType}
                 }
-        metaData, filePath = self.bridge.getData(json.dumps(criteria))
-
+        metaData, filePath = self.bridge.getData(json.dumps(criteria))            
         if type(metaData) is not types.ListType:
-            metaData = metaData.execute(hazardEvent, {})
-            metaData = metaData.get('metadata')
+            metaData = metaData.execute(hazardEvent, {})            
         return metaData
 
-        
+    def getMetaData(self, hazardEvents, metaDict, metaDataFileName): 
+        eventDicts = []
+        for hazardEvent in hazardEvents:
+            eventDict = {}
+            eventDict['eventID'] = hazardEvent.getEventID()
+            eventDict['type'] = hazardEvent.getHazardType()
+            eventDicts.append(eventDict)
+        criteria = {'dataType':'metaData','fileName':metaDataFileName}
+        metaData = self.bridge.getData(json.dumps(criteria))            
+        if type(metaData) is not types.ListType:
+            metaData = metaData.execute(eventDicts, metaDict)            
+        return metaData
+
+
     def _saveVTEC(self, hazardEvents):
         '''
         if issuing: 
@@ -2168,6 +2372,44 @@ class Product(ProductTemplate.Product):
             riverPointName = self._rfp.getRiverPointName(productSegment.pointID) 
             return  '\n the '+riverName + ' '+ proximity + ' ' + riverPointName              
                              
+    def getAreaPhraseBullet(self, productSegment, metaData, hazardEvent):
+        '''
+        @param productSegment object
+        @param metaData
+        @param hazardEvent -- representative for the segment
+        @return: Plain language list of counties/zones in the hazard appropriate
+                 for bullet format procducts
+        ''' 
+        ugcs = hazardEvent.get('ugcs', [])
+        ugcPortions = hazardEvent.get('ugcPortions', {})
+        ugcPartsOfState = hazardEvent.get('ugcPartsOfState', {})
+
+        # These need to be ordered by area of state.
+        orderedUgcs = []
+        for ugc in ugcs :
+            orderedUgcs.append(ugc[:2]+ugcPartsOfState.get(ugc, "")+"|"+ugc)
+        orderedUgcs.sort()
+
+        areaPhrase = "\n"
+        for ougc in orderedUgcs :
+            ugc = ougc.split("|")[1]
+            part = ugcPortions.get(ugc, "")
+            if part == "" :
+                textLine = "  "
+            else :
+                textLine = "  " + part + " "
+            textLine += self._tpc.getInformationForUGC(ugc)+" "
+            textLine += self._tpc.getInformationForUGC(ugc, "typeSingular")+" IN "
+            part = ugcPartsOfState.get(ugc, "")
+            if part == "" :
+                textLine += self._tpc.getInformationForUGC(ugc, "fullStateName")+"\n"
+            else :
+                textLine += part+" "+self._tpc.getInformationForUGC(ugc, "fullStateName")+"\n"
+            areaPhrase += textLine
+
+        return areaPhrase
+            
+                             
     def getAttributionPhrase(self, vtecRecord, hazardEvent, areaPhrase, issueTime, testMode, wfoCity, lineLength=69, endString = '.'):
         '''
         THE NATIONAL WEATHER SERVICE IN DENVER HAS ISSUED A
@@ -2182,9 +2424,12 @@ class Product(ProductTemplate.Product):
         #
         headPhrase = None
         attribution = ''
-                
+
+        # Use this to determine which first bullet format to use.
+        phen = vtecRecord.get("phen")
+
         hazName = self._tpc.hazardName(vtecRecord['hdln'], testMode, False)
-                
+
         if len(vtecRecord['hdln']):
             action = vtecRecord['act']
             
@@ -2195,41 +2440,44 @@ class Product(ProductTemplate.Product):
                                 
             if action == 'NEW':
                 attribution = nwsPhrase + 'issued a'
-                headPhrase = hazName + ' for ' + areaPhrase + endString
+                headPhrase = hazName + ' for'
+                headPhrase += ' ' + areaPhrase + endString
     
             elif action == 'CON':
-                attribution = 'the ' + hazName + ' continues for'
+                attribution = 'the ' + hazName + ' remains in effect for'
                 headPhrase =  areaPhrase + endString
     
             elif action == 'EXA':
                 attribution = nwsPhrase + 'expanded the'
-                headPhrase = hazName + ' to include ' + areaPhrase + endString
+                headPhrase = hazName + ' to include'
+                headPhrase = ' ' + areaPhrase + endString
     
             elif action == 'EXT':
                 if action in 'EXT' and self._product.productID in ['FFA', 'FLW', 'FLS'] and self._product.geoType == 'area':
-                    attribution = nwsPhrase + 'extended the'
+                    attribution = nwsPhrase + 'extended the '
                 else:
                     attribution = 'the ' + hazName + ' is now in effect for' 
-                headPhrase = areaPhrase + endString
+                headPhrase = ' ' + areaPhrase + endString
                     
             elif action == 'EXB':
                 attribution = nwsPhrase + 'expanded the'
-                headPhrase = hazName + ' to include ' + areaPhrase + endString
+                headPhrase = hazName + ' to include'
+                headPhrase = ' ' + areaPhrase + endString
     
             elif action == 'CAN':
                 attribution = 'the ' + hazName + \
-                   ' for ' + areaPhrase + ' has been cancelled' + endString
+                   ' for ' + areaPhrase + ' has been cancelled ' + endString
     
             elif action == 'EXP':
                 expTimeCurrent = issueTime
                 if vtecRecord['endTime'] <= expTimeCurrent:
                     attribution = 'the ' + hazName + \
-                      ' for ' + areaPhrase + ' has expired' + endString
+                      ' for ' + areaPhrase + ' has expired ' + endString
                 else:
                    timeWords = self._tpc.getTimingPhrase(vtecRecord, [hazardEvent], expTimeCurrent)
                    attribution = 'the ' + hazName + \
                       ' for ' + areaPhrase + ' will expire ' + timeWords + endString
-                      
+
         if headPhrase is not None:
             headPhrase = self._tpc.indentText(headPhrase, indentFirstString='',
               indentNextString='  ', maxWidth=lineLength,
@@ -2256,7 +2504,8 @@ class Product(ProductTemplate.Product):
         * FORECAST...FLOOD STAGE MAY BE REACHED BY TUESDAY AM
         '''                
         stageTime = hazardEvent.getStartTime()  # Use start time for now -- '8:45 AM Monday'
-        timeOfStage = self._tpc.getFormattedTime(time.mktime(stageTime.timetuple()), '%I:%M %p %A', shiftToLocal=True, stripLeading=True).upper() 
+        timeOfStage = self._tpc.getFormattedTime(time.mktime(stageTime.timetuple()), '%I:%M %p %A', 
+                                                 stripLeading=True, timeZones=self._productSegment.timeZones) 
         currentStage = hazardEvent.get('currentStage')
         if currentStage is not None:
             stageHeight = `int(float(currentStage))` + ' feet'
@@ -2282,7 +2531,8 @@ class Product(ProductTemplate.Product):
         crest = hazardEvent.get('crest')
         if crest is not None:
             try:
-                crestTime = self._tpc.getFormattedTime(int(crest) / 1000, '%A %p', shiftToLocal=True, stripLeading=True).upper()  # 'Monday Morning'
+                crestTime = self._tpc.getFormattedTime(int(crest), '%A %p', stripLeading=True,
+                                                        timeZones=self._productSegment.timeZones)  # 'Monday Morning'
                 crestPhrase = '* Forecast...Flood stage may be reached by ' + crestTime + '\n'
             except:
                 crestPhrase = ''
@@ -2321,20 +2571,21 @@ class Product(ProductTemplate.Product):
             eventTime = self._sessionDict['framesInfo']['frameTimeList'][-1]
         except :
             eventTime = vtecRecord.get('startTime')            
-        eventTime = self._tpc.getFormattedTime(eventTime / 1000, '%I%M %p %Z ',
-                                               shiftToLocal=1, stripLeading=1).upper()
+
+        eventTime = self._tpc.getFormattedTime(eventTime, '%I%M %p %Z ', stripLeading=True,
+                                                timeZones=self._productSegment.timeZones)
         para = 'At ' + eventTime
         basis = self._tpc.getProductStrings(hazardEvent, metaData, 'basis')
         if basis is None :
             basis = ' '+floodDescription+' was reported'
         para += basis + ' '+floodDescription+' '+ self.basisLocation(hazardEvent)
-        motion = self.wxHazardMotion(hazardEvent)
+        motion = self.wxHazardMotion(hazardEvent, \
+                  still='. This storm was stationary', \
+                  slow='. This storm was nearly stationary')
 
         if motion is None :
             para += '.'
         else :
-            para += self.basisLocation(hazardEvent, '. This rain was ', \
-               '. This storm was ', '. These storms were ', '-')
             para += motion + '.'
         return para
     
@@ -2378,18 +2629,17 @@ class Product(ProductTemplate.Product):
         '''
         countyList = []
         for ugc in productSegment.ugcs:
-            ugcEntry = self._areaDictionary.get(ugc)
-            if ugcEntry is None:
+            ugcName = self._tpc.getInformationForUGC(ugc, "entityName")
+            if ugcName == "" :
                 continue
-            ugcName = ugcEntry.get('ugcName', '')
             portion = ''
             if ugc[:2] == 'LA':
                 equiv = 'PARISH'
             else:
                 equiv = 'COUNTY'
-            fullState = ugcEntry.get('fullStateName')
-            stateAbbrev = ugcEntry.get('stateAbbr')
-            partOfState = ugcEntry.get('partOfState')
+            fullState = self._tpc.getInformationForUGC(ugc, "fullStateName")
+            stateAbbrev = self._tpc.getInformationForUGC(ugc, "stateAbrev")
+            partOfState = self._tpc.getInformationForUGC(ugc, "partOfState")
             countyList.append((ugcName, portion, equiv, fullState, stateAbbrev, partOfState))
         return countyList
             
@@ -2420,11 +2670,13 @@ class Product(ProductTemplate.Product):
             timeArg = timeArg * 1000
         return timeArg
     
-    def _getFormattedTime(self, time_ms, format=None, shiftToLocal=True, stripLeading=True): 
+    def _getFormattedTime(self, time_ms, format=None, stripLeading=True, emptyValue=None, timeZones=['GMT']): 
+        if not time_ms:
+            return emptyValue
         if format is None:
             format = '%I%M %p %A %Z '
         return self._tpc.getFormattedTime(
-                time_ms/1000, format, shiftToLocal=shiftToLocal, stripLeading=stripLeading)
+                time_ms, format, stripLeading=stripLeading, timeZones=timeZones)
                
     def formatPolygonForEvent(self, hazardEvent):
         for polygon in self._extractPolygons(hazardEvent):
@@ -2476,68 +2728,63 @@ class Product(ProductTemplate.Product):
     #  Formatting for Short-fused products
     #  These apply only to TOR and SVR and will be completed later
     ############################################################################# 
-    def formatTimeMotionLocationForEvent(self, hazardEvent) :
-        # Time Motion Location
-        clientid = hazardEvent.get('clientid')
-        if clientid == None :
-            return None
-        # Need to get the storm motion for PV3
-        # Stubbed for PV2
-        return None
-    
-#         try :
-#             tmpEventTime = 0
-#             for shape1 in hazardEvent['shapes'] :
-#                 et1 = self.processTime(shape1.get('pointID'))
-#                 if et1 != None :
-#                     if et1 > tmpEventTime :
-#                         tmpEventTime = et1
-#             if tmpEventTime == 0 :
-#                 tmpEventTime = self.processTime(hazardEvent['startTime'])
-#             inJson = '{ 'action' : 'state', ' + \
-#                        ''times' : ['+str(tmpEventTime)+'], ' + \
-#                        ''id' : ''+clientid+'/latest' }'
-#             outData = json.loads(myJT.transaction(inJson))
-#             frame = outData['frameList'][0]
-#             speed = frame['speed']
-#             bearing = frame['bearing']
-#             shape = frame['shape']
-#             timeMotionLocationStr = 'TIME...MOT...LOC '
-#             timeMotionLocationStr += self._tpc.getFormattedTime(\
-#                self.processTimeForGetFormattedTime(tmpEventTime), \
-#                    '%H%MZ ', shiftToLocal=0, stripLeading=0).upper()
-#             timeMotionLocationStr += str(int(bearing + 0.5)) + 'DEG ' + str(int(speed + 0.5)) + 'KT'
-#             a = 2
-#             for onept in shape :
-#                 a = a - 1
-#                 if a < 0 :
-#                     a = 3
-#                     timeMotionLocationStr += '\n           '
-#                 lat = onept[1]
-#                 lon = onept[0]
-#                 if lat > 50 and lon > 0 :  # For end of Aleutians
-#                     lon = 360 - lon
-#                 elif lon < 0 :
-#                     lon = -lon
-#                 lon = (int)(100 * lon + 0.5)
-#                 if lat < 0 :
-#                     lat = -lat
-#                 lat = (int)(100 * lat + 0.5)
-#                 timeMotionLocationStr += ' ' + str(lat) + ' ' + str(lon)
-#             return timeMotionLocationStr
-#         except :
-#             return None
-#         return None
 
-    # Return None if for some reason the motion was not available.
+    def _plainTextOfBearing(self, bearing, byFrom=False) :
+        bearingDict = {
+             45: 'northeast',
+             90: 'east',
+            135: 'southeast',
+            180: 'south',
+            225: 'southwest',
+            270: 'west',
+            315: 'northwest',
+            }
+        if bearing < 0 :
+            bearing += 360
+        if byFrom :
+            if bearing > 180 :
+                bearing -= 180
+            else :
+                bearing += 180
+        b45 = 45 * (int)((bearing + 22.5) / 45)
+        return  bearingDict.get(b45, 'north')
+
+ # Return None if for some reason the motion was not available.
     def wxHazardMotion(self, hazardEvent, useMph=True,
                         still='stationary', slow='nearly stationary',
-                        lead='moving', trail='',
-                         minSpd=2.5, round=5.0) :
+                        lead='...moving', trail='',
+                        minSpd=2.5, round=5.0) :
         stormMotion = hazardEvent.get('stormMotion')
         if stormMotion is None :
             return None
- 
+        if stormMotion == None :
+            return None
+        try :
+            speed = stormMotion.get('speed')
+            if speed < 0 :
+                return None
+            if speed <= minSpd/10 :
+                return still
+            if useMph :
+                speed *= 1.16
+            if speed < minSpd :
+                return slow
+            bearing = self._plainTextOfBearing(stormMotion.get('bearing'), True)+' '
+            speed = round * int((speed + round / 2) / round)
+            movStr = bearing + 'at ' + str(int(speed))
+            if useMph :
+                movStr += ' mph'
+            else :
+                movStr += ' knots'
+            if len(lead) > 0 :
+                movStr = lead + ' ' + movStr
+            if len(trail) > 0 :
+                movStr += ' ' + trail
+            return movStr
+        except :
+            return None
+        return None
+     
     def correctProduct(self, dataList, prevDataList, correctAllSegments):
         millis = SimulatedTime.getSystemTime().getMillis()
         dt = datetime.datetime.fromtimestamp(millis / 1000)
@@ -2583,110 +2830,331 @@ class Product(ProductTemplate.Product):
                     
         return segment
 
-    def descWxLocForEvent(self, hazardEvent,
-             noevent='FROM HEAVY RAIN. THIS RAIN WAS LOCATED', \
-             point='FROM A THUNDERSTORM. THIS STORM WAS LOCATED', \
-             line='FROM A LINE OF THUNDERSTORMS. THESE STORMS WERE LOCATED', \
-             ):
-        # Speed
-        speed = stormMotion.get('speed')
-        if speed < 0 :
+    def formatTimeMotionLocationForEvent(self, hazardEvent) :
+
+        # Pick up the structures we need from the attributes, exit
+        # with null result if any missing.
+        try :
+            st = hazardEvent.getStartTime()
+            try :
+                startTime = long(st.strftime("%s"))*1000
+            except :
+                startTime = st
+            stormMotion = hazardEvent.get("stormMotion")
+            trackPoints = hazardEvent.get("trackPoints")
+            nTrack = len(trackPoints)
+            wxEventTime = hazardEvent.get("lastFrameTime")
+            if startTime is None or stormMotion is None or trackPoints is None or \
+               wxEventTime is None or nTrack == 0:
+                return None
+        except :
             return None
-        if speed <= minSpd/10 :
-            return still
-        if useMph :
-            speed *= 1.16
-        if speed < minSpd :
-            return slow
-        
-        # Bearing
-        bearingLookUp = {
-            45: 'southwest ',
-            90: 'west ',
-            135:'northwest ',
-            180:'north ',
-            225:'northeast ',
-            270:'east ',
-            315:'southeast ',
-            'default': 'south ',}
-        bearing = stormMotion.get('bearing')
-        bearing = 45 * (int)((bearing + 22.5) / 45)
-        bearing = bearingLookup.get(bearing)
-        if bearing is None:
-            bearing = bearingLookup['default']
-            
-        # Motion string
-        speed = round * int((speed + round / 2) / round)
-        movStr = bearing + 'at ' + str(int(speed))
-        if useMph :
-            movStr += ' mph'
+
+        # Identify the tracking points that bracket the startTime
+        beforeTime = None
+        afterTime = None
+        try :
+            nTrack -= 1
+            while (nTrack>0) :
+                if (trackPoints[nTrack-1]["pointID"]<startTime) :
+                    break
+                nTrack -= 1
+            trackPoint = trackPoints[nTrack]
+            point = trackPoint['point']
+            afterLatLon = LatLonCoord.LatLonCoord(point[1], point[0])
+            afterTime = trackPoint["pointID"]/1000
+            t = 0
+            while t<nTrack :
+                if (trackPoints[t+1]["pointID"]>=startTime) :
+                    break
+                t += 1
+            if t<nTrack :
+                trackPoint = trackPoints[t]
+                point = trackPoint['point']
+                beforeLatLon = LatLonCoord.LatLonCoord(point[1], point[0])
+                beforeTime = trackPoint["pointID"]/1000
+        except :
+            return None
+        if afterTime is None :
+            return None
+        startTime /= 1000
+        wxEventTime /= 1000
+
+        # For now we make the linear tracking assumption.
+        speed = stormMotion["speed"]
+        if speed == 0 or afterTime == startTime or beforeTime == startTime :
+            bearing = stormMotion["bearing"]
+            if beforeTime == startTime :
+                useLatLon = beforeLatLon
+            else :
+                useLatLon = afterLatLon
+        elif beforeTime == None :
+            db = DistanceBearing.DistanceBearing(afterLatLon)
+            bearing = stormMotion["bearing"]
+            d = speed*(afterTime-startTime)/1944
+        elif startTime > afterTime :
+            db = DistanceBearing.DistanceBearing(afterLatLon)
+            ( d, b ) = db.getDistanceBearing(beforeLatLon)
+            bearing = b
+            if b>180 :
+                b -= 180
+            else :
+                b += 180
+            d = d*(startTime-afterTime)/(afterTime-beforeTime)
+            useLatLon = db.getLatLon( d, b )
+        elif startTime < beforeTime :
+            db = DistanceBearing.DistanceBearing(beforeLatLon)
+            ( d, b ) = db.getDistanceBearing(afterLatLon)
+            if b>180 :
+                b -= 180
+            else :
+                b += 180
+            bearing = b
+            d = d*(beforeTime-startTime)/(afterTime-beforeTime)
+            useLatLon = db.getLatLon( d, b )
         else :
-            movStr += ' knots'
-        if len(lead) > 0 :
-            movStr = lead + ' ' + movStr
-        if len(trail) > 0 :
-            movStr += ' ' + trail
-        return movStr
-  
+            db = DistanceBearing.DistanceBearing(afterLatLon)
+            ( d, b ) = db.getDistanceBearing(beforeLatLon)
+            d = d*(afterTime-startTime)/(afterTime-beforeTime)
+            useLatLon = db.getLatLon( d, b )
+            bearing = b
+
+        bearing = int(0.5+bearing)
+        speed = int(0.5+speed)
+        daytime = startTime%86400
+        hh = daytime/3600
+        mm = (daytime%3600)/60
+        tmlLine = "TIME...MOT...LOC "+"%2.2d"%hh+"%2.2d"%mm+"Z "+ \
+                  "%3.3d"%bearing+"DEG "+"%d"%speed+"KT "
+        tmlLine += "%d"%int(0.5+useLatLon.lat*100)+" "
+        if useLatLon.lon<0 :
+            tmlLine += "%d"%int(0.5-useLatLon.lon*100)
+        elif useLatLon.lat<40 :
+            tmlLine += "%d"%int(0.5+useLatLon.lon*100)
+        else :
+            tmlLine += "%d"%int(0.5-(useLatLon.lon-360)*100)
+
+        return tmlLine
+
+    def affectedDrainages(self, hazardEvent, \
+             lead="Affected drainages include...", \
+             trail=".") :
+        
+        columns = ["name"]
+        try :
+            basinGeoms = self._tpc.mapDataQuery("basins", columns, \
+                                                hazardEvent["geometry"], True)
+        except :
+            return None
+        if not isinstance(basinGeoms, list) :
+            return None
+        basinNames = set( [ ] )
+        for basinGeom in basinGeoms :
+            try :
+                basinName = basinGeom.getString(columns[0])
+                if basinName != "" :
+                    basinNames.add(basinName)
+            except :
+                pass
+
+        paraText = self._tpc.formatDelimitedList(basinNames)
+        if len(paraText)==0 :
+            return None
+        return lead+paraText+trail
+
+
     def basisLocation(self, hazardEvent,
              noevent='from heavy rain. This rain was located',\
              point='from a thunderstorm. This storm was located',\
              line='from a line of thunderstorms.  These storms were located',\
              lead='', \
-             trail='over the warned area') :
-        clientid = hazardEvent.get('clientid')
-        if clientid == None :
-            if lead == '-' :
-                return noevent
-            wxLoc = ''
-            if len(lead) > 0 :
-                wxLoc = lead + ' '
-            wxLoc += noevent
-            if len(trail) > 0 :
-                wxLoc += ' ' + trail
-            return wxLoc
-        # Need to get the storm motion for PV3
-        # Stubbed for PV2
-        return None
-#         try :
-#             tmpEventTime = 0
-#             for shape1 in hazardEvent['shapes'] :
-#                 et1 = self.processTime(shape1.get('pointID'))
-#                 if et1 != None :
-#                     if et1 > tmpEventTime :
-#                         tmpEventTime = et1
-#             if tmpEventTime == 0 :
-#                 tmpEventTime = self.processTime(hazardEvent['startTime'])
-#             inJson = '{ 'action' : 'state', ' + \
-#                        ''times' : ['+str(tmpEventTime)+'], ' + \
-#                        ''id' : ''+clientid+'/latest' }'
-#             outData = json.loads(myJT.transaction(inJson))
-#             frame = outData['frameList'][0]
-#             shape = frame['shape']
-#             if lead == '-' :
-#                 if len(shape) <= 1 :
-#                     return point
-#                 else :
-#                     return line
-#             wxLoc = ''
-#             if len(lead) > 0 :
-#                 wxLoc = lead + ' '
-#             if len(shape) <= 1 :
-#                 wxLoc += point
-#             else :
-#                 wxLoc += line
-#             if len(trail) > 0 :
-#                 wxLoc += ' ' + trail
-#             return wxLoc
-#         except :
-#             pass
-#         wxLoc = ''
-#         if len(lead) > 0 :
-#             wxLoc = lead + ' '
-#         wxLoc += noevent
-#         if len(trail) > 0 :
-#             wxLoc += ' ' + trail
-#         return wxLoc
+             trail='over the warned area', \
+             useMiles=True, over=2.0, near=3.5, round=5.0) :
+
+        #  Time is off of last frame of data
+        attributes = hazardEvent["attributes"]
+        eventTime = attributes.get("lastFrameTime")
+
+        # Handle no event time
+        if eventTime is None :
+            return self.setDefaultBasisLocation(noevent, lead, trail)        
+
+        pointText = point
+        lineText = line
+
+        columns = ["name", "state", "warngenlev"]
+        try :
+            cityList = self._tpc.mapDataQuery("city", columns, hazardEvent["geometry"])
+        except :
+            cityList = []
+
+        lastFrameTrackPoint = None
+        firstFrameTrackPoint = None
+        trackPoints = attributes.get("trackPoints")
+        if trackPoints is not None :
+            firstFrameTrackPoint = trackPoints[0]
+            for trackPoint in trackPoints :
+                if trackPoint["pointID"]>eventTime :
+                    break
+                lastFrameTrackPoint = trackPoint
+
+        wxLatLon = None
+        wxTime = None
+        try :
+            wxTime = lastFrameTrackPoint['pointID']
+            point = lastFrameTrackPoint['point']
+            wxLatLon = LatLonCoord.LatLonCoord(point[1], point[0])
+        except :
+            return self.setDefaultBasisLocation(noevent, lead, trail)
+
+        coslat = math.cos(HazardConstants.DEG_TO_RAD*wxLatLon.lat)
+        level1CityShape = None
+        nearCityShape = None
+        bestd2 = 999999999.0
+        for cityLevel in [1, 2, 3] :
+            if cityLevel == 3 and nearCityShape is not None :
+                break
+            for cityGeom in cityList :
+                try :
+                    if str(cityGeom.getString("warngenlev")) != str(cityLevel) :
+                        continue
+                    cityLatLon = LatLonCoord.LatLonCoord( \
+                       cityGeom.getGeometry().y,cityGeom.getGeometry().x)
+                except :
+                    continue
+                dlat = cityLatLon.lat - wxLatLon.lat
+                dlon = (cityLatLon.lon - wxLatLon.lon) * coslat
+                d2 = dlat*dlat + dlon*dlon
+                if d2 >= bestd2 :
+                    continue
+                bestd2 = d2
+                if cityLevel == 1 :
+                    level1CityShape = cityGeom
+                    nearCityShape = cityGeom
+                else :
+                    nearCityShape = cityGeom
+
+        # If no level one city in the hazard area, look further
+        if level1CityShape is None :
+            dlat = 2.0
+            dlon = dlat / coslat
+            vertices = [ (wxLatLon.lon - dlon, wxLatLon.lat - dlat ), 
+                         (wxLatLon.lon - dlon, wxLatLon.lat + dlat ),
+                         (wxLatLon.lon + dlon, wxLatLon.lat + dlat ),
+                         (wxLatLon.lon + dlon, wxLatLon.lat - dlat ),
+                         (wxLatLon.lon - dlon, wxLatLon.lat - dlat ) ]
+            polygon = Polygon(vertices)
+            try :
+                cityGeoms = self._tpc.mapDataQuery("city", columns, polygon, False, \
+                                                   "1", "warngenlev")
+            except :
+                cityGeoms = []
+            bestd2 = 999999999.0
+            for cityGeom in cityGeoms :
+                try :
+                    cityLatLon = LatLonCoord.LatLonCoord( \
+                       cityGeom.getGeometry().y,cityGeom.getGeometry().x)
+                except :
+                    continue
+                dlat = cityLatLon.lat - wxLatLon.lat
+                dlon = (cityLatLon.lon - wxLatLon.lon) * coslat
+                d2 = dlat*dlat + dlon*dlon
+                if d2 >= bestd2 :
+                    continue
+                bestd2 = d2
+                level1CityShape = cityGeom
+
+        # Most common case...note wx location based on nearby cities/landmarks.
+        # First sanity check some parameters.
+        if round < 1 :
+            round = 1
+        if over < 1 :
+            over = 1
+        if near < over :
+            near = over
+
+        # Do the level one city first, we could use it later with county fallback.
+        level1CityDesc = ""
+        if level1CityShape is not None and level1CityShape != nearCityShape :
+            level1CityDesc = self.cityReferenceLocation(level1CityShape)
+        if nearCityShape is not None :
+            nearDesc = self.cityReferenceLocation(nearCityShape)
+            nearDesc = pointText+" "+nearDesc
+            if not level1CityDesc:
+                return nearDesc
+            return nearDesc+"...or about "+level1CityDesc
+
+        # Now we fall back to describing in terms of rural areas of counties if doable.
+        ugcs = attributes.get("ugcs", [])
+        ugcParts = attributes.get("ugcPortions", {})
+        dlat = 0.002
+        dlon = dlat / coslat
+        vertices = [ (wxLatLon.lon - dlon, wxLatLon.lat - dlat ), 
+                     (wxLatLon.lon - dlon, wxLatLon.lat + dlat ),
+                     (wxLatLon.lon + dlon, wxLatLon.lat + dlat ),
+                     (wxLatLon.lon + dlon, wxLatLon.lat - dlat ),
+                     (wxLatLon.lon - dlon, wxLatLon.lat - dlat ) ]
+        polygon = Polygon(vertices)
+        columns = ["countyname", "state", "fips"]
+        try :
+            countyGeoms = self._tpc.mapDataQuery("county", columns, polygon, True)
+        except :
+            countyGeoms = []
+        for countyGeom in countyGeoms :
+            try :
+                st = countyGeom.getString("state")
+                ugc = st+"C"+countyGeom.getString("fips")[2:]
+                if not ugc in ugcs :
+                    continue
+                ruralDesc = pointText+" over mainly rural areas of "
+                part = ugcParts.get(ugc, "")
+                if part != "" :
+                    ruralDesc += part+" "
+                ruralDesc += countyGeom.getString("countyname")
+                ruralDesc += " "+self._tpc.getInformationForUGC(ugc, "typeSingular")
+                if level1CityDesc == "" :
+                    return ruralDesc
+                return ruralDesc+"...or about "+level1CityDesc
+            except :
+                pass
+
+        # Nothing else to do, old default logic.
+        return self.setDefaultBasisLocation(noevent, lead, trail)
+    
+    def setDefaultBasisLocation(self, noevent, lead, trail):
+        if lead == '-' :
+            return noevent
+        wxLoc = ''
+        if lead:
+            wxLoc = lead + ' '
+        wxLoc += noevent
+        if trail:
+            wxLoc += ' ' + trail
+        return wxLoc
+    
+    def cityReferenceLocation(self, cityShape):
+        mainDesc = cityShape.getString(columns[0])
+        cityLatLon = LatLonCoord.LatLonCoord( \
+                   cityShape.getGeometry().y,cityShape.getGeometry().x)
+        distBearing = DistanceBearing.DistanceBearing(cityLatLon)
+        ( dist, bearing ) = distBearing.getDistanceBearing(wxLatLon)
+        if useMiles :
+            dist = dist/1.61
+        else :
+            dist = 0.54*dist
+        if dist < over :
+            mainDesc = "over "+mainDesc
+        elif dist < near :
+            mainDesc = "near "+mainDesc
+        else :
+            dist = str( int( round * int((dist + round / 2) / round) ) )
+            bearing = self._plainTextOfBearing(bearing)
+            if useMiles :
+                mainDesc = dist+" miles "+bearing+" of "+mainDesc
+            else :
+                mainDesc = dist+" nautical miles "+bearing+" of "+mainDesc
+        return cityDesc
+            
 
 
     def flush(self):

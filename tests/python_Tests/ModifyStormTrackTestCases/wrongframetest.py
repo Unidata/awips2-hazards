@@ -257,6 +257,7 @@ TestCaseResults = \
         ]
     }, 
     "hazardCategory": "Convective", 
+    "lastFrameTime": 1297137600000, 
     "issued": False, 
     "modifyCallbackToolName": "ModifyStormTrackTool", 
     "pivotTimes": [
