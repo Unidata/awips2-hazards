@@ -41,6 +41,7 @@ import java.util.Map;
  *                                           comments.
  * Jun 17, 2014   3982     Chris.Golden      Changed "isFullWidthOfColumn"
  *                                           property to "isFullWidthOfDetailPanel".
+ * Aug 06, 2014   3777     Chris.Golden      Added "spellcheck" boolean property.
  * </pre>
  * 
  * @author Chris.Golden
@@ -73,6 +74,13 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
      */
     public static final String MEGAWIDGET_VISIBLE_CHARS = "visibleChars";
 
+    /**
+     * Spellcheck parameter name; a megawidget may include a boolean associated
+     * with this name to indicate whether or not spellcheck should be enabled.
+     * If not specified, spellcheck is disabled.
+     */
+    public static final String SPELLCHECK_ENABLED = "spellcheck";
+
     // Private Variables
 
     /**
@@ -102,6 +110,11 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
      * it is a multi-line text field.
      */
     private final int numVisibleLines;
+
+    /**
+     * Flag indicating whether or not spellcheck is to be used.
+     */
+    private final boolean spellCheck;
 
     // Public Constructors
 
@@ -168,6 +181,13 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
                 .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
                         parameters.get(EXPAND_HORIZONTALLY),
                         EXPAND_HORIZONTALLY, false);
+
+        /*
+         * Ensure that the spellcheck flag, if provided, is appropriate.
+         */
+        spellCheck = ConversionUtilities.getSpecifierBooleanValueFromObject(
+                getIdentifier(), getType(), parameters.get(SPELLCHECK_ENABLED),
+                SPELLCHECK_ENABLED, false);
     }
 
     // Public Methods
@@ -213,6 +233,15 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
      */
     public final int getVisibleTextLength() {
         return visibleLength;
+    }
+
+    /**
+     * Determine whether or not spellcheck is enabled.
+     * 
+     * @return True if spellcheck is enabled, false otherwise.
+     */
+    public final boolean isSpellCheck() {
+        return spellCheck;
     }
 
     @Override

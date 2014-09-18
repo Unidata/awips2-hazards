@@ -33,4 +33,6 @@ Export-Package: gov.noaa.gsd.viz.megawidgets;
    org.eclipse.swt.events,
    org.eclipse.swt.graphics,
    org.eclipse.swt.widgets"
-Import-Package: com.raytheon.viz.ui.widgets.duallist
+Import-Package: com.raytheon.uf.viz.spellchecker.text,
+ com.raytheon.viz.ui.widgets.duallist,
+ org.eclipse.jface.text

@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.jface.text.TextViewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.DisposeEvent;
@@ -34,6 +35,7 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 
 import com.google.common.collect.ImmutableSet;
+import com.raytheon.uf.viz.spellchecker.text.SpellCheckTextViewer;
 
 /**
  * Text megawidget.
@@ -69,6 +71,7 @@ import com.google.common.collect.ImmutableSet;
  *                                           disabled.
  * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
  *                                           of NotifierMegawidget.
+ * Aug 05, 2014   3777     Robert.Blum       Added inline spell check functionality.
  * </pre>
  * 
  * @author Chris.Golden
@@ -112,7 +115,7 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
     /**
      * Text component associated with this megawidget.
      */
-    private final StyledText text;
+    private final TextViewer textViewer;
 
     /**
      * Standard foreground color for the styled text component.
@@ -185,17 +188,24 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
          * Create the text component.
          */
         onlySendEndStateChanges = !specifier.isSendingEveryChange();
-        text = new StyledText(panel, SWT.BORDER
-                | (multiLine ? SWT.MULTI : SWT.SINGLE)
-                | (multiLine ? SWT.WRAP | SWT.V_SCROLL : SWT.NONE));
-        text.setAlwaysShowScrollBars(false);
+
+        if (specifier.isSpellCheck()) {
+            textViewer = new SpellCheckTextViewer(panel, SWT.BORDER
+                    | (multiLine ? SWT.MULTI : SWT.SINGLE)
+                    | (multiLine ? SWT.WRAP | SWT.V_SCROLL : SWT.NONE));
+        } else {
+            textViewer = new TextViewer(panel, SWT.BORDER
+                    | (multiLine ? SWT.MULTI : SWT.SINGLE)
+                    | (multiLine ? SWT.WRAP | SWT.V_SCROLL : SWT.NONE));
+        }
+        textViewer.getTextWidget().setAlwaysShowScrollBars(false);
         int limit = specifier.getMaxTextLength();
         if (limit > 0) {
-            text.setTextLimit(limit);
+            textViewer.getTextWidget().setTextLimit(limit);
         }
-        text.setEnabled(specifier.isEnabled());
-        defaultForegroundColor = text.getForeground();
-        text.addDisposeListener(new DisposeListener() {
+        textViewer.getTextWidget().setEnabled(specifier.isEnabled());
+        defaultForegroundColor = textViewer.getTextWidget().getForeground();
+        textViewer.getTextWidget().addDisposeListener(new DisposeListener() {
 
             @Override
             public void widgetDisposed(DisposeEvent e) {
@@ -211,17 +221,18 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
                 (multiLine ? SWT.FILL : SWT.CENTER), true, multiLine);
         gridData.horizontalSpan = ((multiLine == false) && (label == null) ? 2
                 : 1);
-        GC gc = new GC(text);
+        GC gc = new GC(textViewer.getTextWidget());
         FontMetrics fontMetrics = gc.getFontMetrics();
-        gridData.widthHint = text.computeSize(
+        gridData.widthHint = textViewer.getTextWidget().computeSize(
                 (specifier.getVisibleTextLength() + 1)
                         * fontMetrics.getAverageCharWidth(), SWT.DEFAULT).x;
         if (multiLine) {
-            gridData.heightHint = text.computeSize(SWT.DEFAULT,
+            gridData.heightHint = textViewer.getTextWidget().computeSize(
+                    SWT.DEFAULT,
                     specifier.getNumVisibleLines() * fontMetrics.getHeight()).y;
         }
         gc.dispose();
-        text.setLayoutData(gridData);
+        textViewer.getTextWidget().setLayoutData(gridData);
 
         /*
          * If only ending state changes are to result in notifications, bind
@@ -230,28 +241,29 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
          * change listener was not notified.
          */
         if (onlySendEndStateChanges) {
-            text.addFocusListener(new FocusAdapter() {
+            textViewer.getTextWidget().addFocusListener(new FocusAdapter() {
                 @Override
                 public void focusLost(FocusEvent e) {
                     notifyListenersOfEndingStateChange();
                 }
             });
-            text.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetDefaultSelected(SelectionEvent e) {
-                    notifyListenersOfEndingStateChange();
-                }
-            });
+            textViewer.getTextWidget().addSelectionListener(
+                    new SelectionAdapter() {
+                        @Override
+                        public void widgetDefaultSelected(SelectionEvent e) {
+                            notifyListenersOfEndingStateChange();
+                        }
+                    });
         }
 
         /*
          * Bind the text's change event to trigger a change in the record of the
          * state for the widget, and a change in the scale component to match.
          */
-        text.addModifyListener(new ModifyListener() {
+        textViewer.getTextWidget().addModifyListener(new ModifyListener() {
             @Override
             public void modifyText(ModifyEvent e) {
-                String value = text.getText();
+                String value = textViewer.getTextWidget().getText();
                 state = value;
                 notifyListenersOfRapidStateChange();
             }
@@ -311,13 +323,14 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
 
     @Override
     public int getLeftDecorationWidth() {
-        return (((text.getStyle() & SWT.MULTI) != 0) || (label == null) ? 0
-                : helper.getWidestWidgetWidth(label));
+        return (((textViewer.getTextWidget().getStyle() & SWT.MULTI) != 0)
+                || (label == null) ? 0 : helper.getWidestWidgetWidth(label));
     }
 
     @Override
     public void setLeftDecorationWidth(int width) {
-        if (((text.getStyle() & SWT.MULTI) == 0) && (label != null)) {
+        if (((textViewer.getTextWidget().getStyle() & SWT.MULTI) == 0)
+                && (label != null)) {
             helper.setWidgetsWidth(width, label);
         }
     }
@@ -342,11 +355,12 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
         if (label != null) {
             label.setEnabled(enable);
         }
-        text.setEnabled(enable);
-        text.setBackground(helper.getBackgroundColor((enable && isEditable()),
-                text, label));
-        text.setForeground(enable ? defaultForegroundColor
-                : DISABLED_FOREGROUND_COLOR);
+        textViewer.getTextWidget().setEnabled(enable);
+        textViewer.getTextWidget().setBackground(
+                helper.getBackgroundColor((enable && isEditable()),
+                        textViewer.getTextWidget(), label));
+        textViewer.getTextWidget().setForeground(
+                enable ? defaultForegroundColor : DISABLED_FOREGROUND_COLOR);
     }
 
     @Override
@@ -373,7 +387,7 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
 
     @Override
     protected final void doSynchronizeComponentWidgetsToState() {
-        text.setText(this.state);
+        textViewer.getTextWidget().setText(this.state);
         recordLastNotifiedState();
     }
 
@@ -388,9 +402,10 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
      *            editable or read-only.
      */
     private void doSetEditable(boolean editable) {
-        text.getParent().setEnabled(editable);
-        text.setBackground(helper.getBackgroundColor(isEnabled() && editable,
-                text, label));
+        textViewer.getTextWidget().getParent().setEnabled(editable);
+        textViewer.getTextWidget().setBackground(
+                helper.getBackgroundColor(isEnabled() && editable,
+                        textViewer.getTextWidget(), label));
     }
 
     /**

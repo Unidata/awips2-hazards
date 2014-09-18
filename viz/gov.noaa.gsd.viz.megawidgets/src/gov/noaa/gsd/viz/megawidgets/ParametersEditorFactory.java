@@ -74,6 +74,9 @@ import com.google.common.collect.ImmutableMap;
  *                                           size change notifications and other
  *                                           notifications into that same single
  *                                           listener.
+ * Aug 07, 2014    3777    Robert.Blum       Changed to make SpellCheck Enabled
+ *                                           set to true the default for text
+ *                                           megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -134,6 +137,7 @@ public class ParametersEditorFactory {
         defaults.put(TextSpecifier.EXPAND_HORIZONTALLY, true);
         defaults.put(TextSpecifier.MEGAWIDGET_SEND_EVERY_STATE_CHANGE, false);
         defaults.put(TextSpecifier.MEGAWIDGET_VISIBLE_LINES, 5);
+        defaults.put(TextSpecifier.SPELLCHECK_ENABLED, true);
         map.put(TextSpecifier.class, defaults);
 
         /*
