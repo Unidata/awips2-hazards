@@ -332,18 +332,24 @@ class MetaData:
                 }
  
     # BASIS
-    def getBasis(self):
+    def getBasis(self, hydrologicCause=None):
+        
+        if hydrologicCause is not None:
+            choices = self.basisChoices(hydrologicCause)
+        else:
+            choices = self.basisChoices()
+        
         return {
             "fieldName": "basis",
-            "fieldType":"RadioButtons",
+            "fieldType":"ComboBox",
             "label":"Basis:",
-            "values": self.basisDefaultValue(),
-            "choices": self.basisChoices(),
+            "values": self.basisDefaultValue(choices),
+            "choices": choices,
             } 
     # Takes the first one listed as the default
     #  This can be overridden by listing a specific default
-    def basisDefaultValue(self):
-        for choice in self.basisChoices():
+    def basisDefaultValue(self, choices):
+        for choice in choices:
             return choice.get('identifier')       
     def basisCountyDispatch(self):
         return {"identifier":"county", 
@@ -547,7 +553,8 @@ class MetaData:
                      "fieldType":"CheckList",
                      "fieldName": "additionalInfo",
                      "label": "Additional Info:",
-                     "choices": self.additionalInfoChoices()
+                     "choices": self.additionalInfoChoices(),
+                     "lines": 2
                     }                    
     def listOfCities(self):
         return {"identifier":"listOfCities", 

@@ -5,25 +5,47 @@ class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-        useVolcanoDetails = False
-        if hazardEvent is not None and hazardEvent.get("hydrologicCause", "N/A").startswith("volcano"):
-            useVolcanoDetails = True
-        if self.hazardStatus == 'pending':
+
+        hydrologicCause = None
+        if hazardEvent is not None:
+            hydrologicCause = hazardEvent.get("hydrologicCause")
+
+        metaData = self.buildMetaDataList(self.hazardStatus, hydrologicCause)
+        
+        return {
+                METADATA_KEY: metaData
+                }    
+       
+    def buildMetaDataList(self, status, hydrologicCause):
+        
+        
+        addDam = [
+                  self.hydrologicCauseDam()["identifier"],
+                  self.hydrologicCauseSiteImminent()["identifier"],
+                  self.hydrologicCauseSiteFailed()["identifier"],
+                  self.hydrologicCauseLevee()["identifier"],
+                  self.hydrologicCauseFloodGate()["identifier"]
+                  ]
+        
+        addVolcano = [
+                      self.hydrologicCauseVolcano()["identifier"],
+                      self.hydrologicCauseVolcanoLahar()["identifier"]
+                      ]
+        
+        
+        if status == 'pending':
             metaData = [
                      self.getInclude(),
                      self.getFloodSeverity(),
                      self.getHydrologicCause(),
-                     self.getHydrologicCauseDetails(useVolcanoDetails),
-                     self.getBasis(),                                        
+                     self.getBasis(hydrologicCause),                                        
                      self.getAdditionalInfo(),
-                     self.getCTAs(), 
-                     self.getDamOrLevee(),
                      self.getScenario(),
                      self.getRiver(),
                      self.getFloodLocation(),
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
-                     self.getVolcano(),                  
+                     self.getCTAs(), 
                      self.getCAP_Fields([
                                           ("urgency", "Immediate"),
                                           ("severity", "Severe"),
@@ -31,30 +53,41 @@ class MetaData(CommonMetaData.MetaData):
                                           ("responseType", "Avoid"),
                                          ]) 
                         ]
-        elif self.hazardStatus == "issued":
+        elif status == "issued":
             metaData = [
                      self.getFloodSeverity(),
                      self.getHydrologicCause(editable=False),
-                     self.getHydrologicCauseDetails(useVolcanoDetails),
-                     self.getBasis(),                                        
+                     self.getBasis(hydrologicCause),                                        
                      self.getAdditionalInfo(),
-                     self.getCTAs(), 
-                     self.getDamOrLevee(),
                      self.getScenario(),
                      self.getRiver(editable=False),
                      self.getFloodLocation(),
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
-                     self.getVolcano(),                  
+                     self.getCTAs(), 
+                     self.getCAP_Fields([
+                                          ("urgency", "Immediate"),
+                                          ("severity", "Severe"),
+                                          ("certainty", "Likely"),
+                                          ("responseType", "Avoid"),
+                                         ]) 
                     ]  
         else:
             metaData = [
                     self.getEndingSynopsis(), 
                     ]
-        return {
-                METADATA_KEY: metaData
-                }    
-       
+            return metaData
+        
+        
+        if hydrologicCause is not None:
+            
+            if hydrologicCause in addDam:
+                metaData.insert(5, self.getDamOrLevee())
+                
+            if hydrologicCause in addVolcano:
+                metaData.insert(len(metaData)-2,self.getVolcano())
+                
+        return metaData
 
     # INCLUDE  -- include
     #
@@ -174,23 +207,10 @@ class MetaData(CommonMetaData.MetaData):
     #     #set($reportType1 = "EXCESSIVE RAIN CAUSING FLASH FLOODING WAS OCCURING OVER THE WARNED AREA")
     # #end
     
-    def getHydrologicCauseDetails(self, useVolcanoDetails):
-        if useVolcanoDetails:
-            label = "Future site of volcano-oriented detail metadata selectors..."
-        else:
-            label = "Future site of of detail metadata selectors..."
-        return {
-                "fieldType": "Label",
-                "fieldName": "hydroCauseDetailsSample",
-                "label": label,
-                "bold": True,
-                "italic": True
-                }
-    
     def getHydrologicCause(self, editable=True):
         return {   
             # The immediate cause will be automatically assigned based on the hydrologic cause chosen.  
-             "fieldType":"RadioButtons",
+             "fieldType":"ComboBox",
              "fieldName": "hydrologicCause",
              "label":"Hydrologic Cause:",
              "editable": editable,
@@ -198,6 +218,8 @@ class MetaData(CommonMetaData.MetaData):
              "choices": self.hydrologicCauseChoices(),
              "refreshMetadata": True
              }
+        
+        
     def hydrologicCauseChoices(self):
         return [
             self.hydrologicCauseDam(),
@@ -270,19 +292,43 @@ class MetaData(CommonMetaData.MetaData):
     # <bullet bulletName="cascadeVoc" bulletText="Cascades Volcano Observatory" bulletGroup="source" parseString="CASCADES VOLCANO OBSERVATORY "/>
     # <!--   GP end  -->
     #    
-    def basisChoices(self):
-        return [  
+    def basisChoices(self, hydrologicCause=None):
+        
+        
+        addDam = [
+                  self.hydrologicCauseDam()["identifier"],
+                  self.hydrologicCauseSiteImminent()["identifier"],
+                  self.hydrologicCauseSiteFailed()["identifier"],
+                  self.hydrologicCauseLevee()["identifier"],
+                  self.hydrologicCauseFloodGate()["identifier"]
+                  ]
+        
+        addVolcano = [
+                      self.hydrologicCauseVolcano()["identifier"],
+                      self.hydrologicCauseVolcanoLahar()["identifier"]
+                      ]
+        
+        choices = [  
             self.basisCountyDispatch(),
             self.basisLawEnforcement(),
             self.basisCorpsOfEngineers(),
-            self.basisDamOperator(),
             self.basisBureauOfReclamation(),            
             self.basisPublic(),
             self.basisGauges(),
             self.basisCivilAirPatrol(),
-            self.basisAlaskaVolcanoObservatory(),
-            self.basisCascadesVolcanoObservatory(),
-            ]  
+            ] 
+        
+        if hydrologicCause is not None:
+            
+            if hydrologicCause in addDam:
+                choices.insert(3, self.basisDamOperator())
+                
+            if hydrologicCause in addVolcano:
+                choices.append(self.basisAlaskaVolcanoObservatory())
+                choices.append(self.basisCascadesVolcanoObservatory())
+        
+        
+        return choices
 
 
     # ADDITIONAL INFORMATION -- 'additionalChoices'
@@ -325,7 +371,7 @@ class MetaData(CommonMetaData.MetaData):
         damOrLeveeName = 'Branched Oak Dam'            
         return {
             "fieldName": "damOrLeveeName",
-            "fieldType":"RadioButtons",
+            "fieldType":"ComboBox",
             "label":"Dam or Levee:",
             "values": damOrLeveeName,
             "choices": self.damOrLeveeChoices(),
@@ -348,7 +394,7 @@ class MetaData(CommonMetaData.MetaData):
     def getScenario(self):
         return {
             "fieldName": "scenario",
-            "fieldType":"RadioButtons",
+            "fieldType":"ComboBox",
             "label":"Scenario:",
             "choices": self.scenarioChoices(),
             } 
