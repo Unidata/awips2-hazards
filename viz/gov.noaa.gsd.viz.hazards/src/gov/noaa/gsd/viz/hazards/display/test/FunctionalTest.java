@@ -365,7 +365,7 @@ public abstract class FunctionalTest<E extends Enum<E>> {
         return contextMenu;
     }
 
-    protected static class StopTesting {
+    public static class StopTesting {
 
     }
 

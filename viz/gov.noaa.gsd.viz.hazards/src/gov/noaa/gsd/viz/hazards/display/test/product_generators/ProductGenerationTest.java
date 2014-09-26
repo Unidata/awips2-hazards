@@ -26,7 +26,10 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 
+import java.io.IOException;
 import java.io.Serializable;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -57,7 +60,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Description: Tests of the product generators to ensure they are producing the
- * correct products.
+ * expected products.
  * 
  * <pre>
  * 
@@ -81,7 +84,7 @@ public class ProductGenerationTest extends
 
     private static final String HAZARD_SERVICES_TESTS_DIR = "tests";
 
-    private static final String CORRECT_ANSWER_FILENAME_SUFFIX = ".correct";
+    private static final String EXPECTED_ANSWER_FILENAME_SUFFIX = ".expected";
 
     private static final String HAZARD_EVENT_OVERRIDES = "hazardEventOverrides";
 
@@ -105,6 +108,14 @@ public class ProductGenerationTest extends
 
     private boolean newHazard;
 
+    private Boolean stopOnError;
+
+    private StringBuilder expectedAnswers;
+
+    private StringBuilder actualAnswers;
+
+    private boolean updateCorrectAnswer;
+
     protected enum Steps {
         START, PREVIEW, ISSUE
     }
@@ -127,6 +138,8 @@ public class ProductGenerationTest extends
             String testsAsString = Utils.textFileAsString(testConfigFilename);
             this.tests = DictList.getInstance(testsAsString);
             this.newHazard = true;
+            this.expectedAnswers = new StringBuilder();
+            this.actualAnswers = new StringBuilder();
 
         } catch (Exception e) {
             handleException(e);
@@ -206,7 +219,7 @@ public class ProductGenerationTest extends
             final IProductGenerationComplete productGenerationComplete) {
         try {
             if (step == Steps.PREVIEW) {
-                checkAnswer();
+                checkOrUpdateAnswer();
                 step = Steps.ISSUE;
                 autoTestUtilities.issueFromProductEditor(mockProductEditorView);
 
@@ -221,26 +234,40 @@ public class ProductGenerationTest extends
         }
     }
 
+    void setStopOnError(Boolean stopOnError) {
+        this.stopOnError = stopOnError;
+    }
+
     private void preview() {
         step = Steps.PREVIEW;
         autoTestUtilities.previewFromHID();
     }
 
-    private void checkAnswer() {
-        final String product = productFromGeneratorResult();
+    private void checkOrUpdateAnswer() {
 
-        String correctAnswerFilename = testName
-                + CORRECT_ANSWER_FILENAME_SUFFIX;
-        String correctAnswer = Utils
-                .textFileAsString(FileUtil.join(baseTestDir,
-                        productGeneratorName, correctAnswerFilename), true);
-//        assertEquals(product, correctAnswer);
-        System.out.println("\nexpected");
-        System.out.println(correctAnswer);
-        System.out.println("\ngot:");
-        System.out.println(product);
-        System.out.println(product.equals(correctAnswer));
-        System.out.println("");
+        try {
+            String expectedAnswerFilename = testName
+                    + EXPECTED_ANSWER_FILENAME_SUFFIX;
+            String expectedAnswerPath = FileUtil.join(baseTestDir,
+                    productGeneratorName, expectedAnswerFilename);
+            String expectedAnswer = Utils.textFileAsString(expectedAnswerPath,
+                    true);
+            expectedAnswers.append(expectedAnswer);
+
+            final String actualAnswer = productFromGeneratorResult();
+            actualAnswers.append(actualAnswer);
+
+            if (stopOnError) {
+                assertEquals(actualAnswer, expectedAnswer);
+            } else if (!actualAnswer.equals(expectedAnswer)
+                    && updateCorrectAnswer) {
+                Files.write(Paths.get(expectedAnswerPath),
+                        (actualAnswer + "\n").getBytes());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    "Unexpected exception updating expected answer ", e);
+        }
     }
 
     private String productFromGeneratorResult() {
@@ -315,11 +342,17 @@ public class ProductGenerationTest extends
     private void updateHazardForTest() {
         Dict test = (Dict) tests.get(testIndex);
         testIndex += 1;
-        System.out.println();
+
         testName = test.getDynamicallyTypedValue(TEST_NAME);
-        System.out.println("Test: " + testName);
-        System.out.println("Description: "
-                + test.getDynamicallyTypedValue(TEST_DESCRIPTION));
+        String string = "Test: " + testName;
+        log(string);
+        System.out.println(string);
+
+        string = "Description: "
+                + test.getDynamicallyTypedValue(TEST_DESCRIPTION);
+        log(string);
+        System.out.println(string);
+
         List<Dict> allHazardEventOverrides = test
                 .getDynamicallyTypedValue(HAZARD_EVENT_OVERRIDES);
         if (allHazardEventOverrides != null) {
@@ -387,6 +420,13 @@ public class ProductGenerationTest extends
 
     }
 
+    private void log(String string) {
+        expectedAnswers.append(string);
+        expectedAnswers.append("\n");
+        actualAnswers.append(string);
+        actualAnswers.append("\n");
+    }
+
     private void clearActiveTableIfNecessary() throws VizException {
         /**
          * TODO Make this run only if requested from test config rather than
@@ -397,4 +437,17 @@ public class ProductGenerationTest extends
                 VizApp.getWsId());
         ThriftClient.sendRequest(request);
     }
+
+    public StringBuilder getExpectedAnswers() {
+        return expectedAnswers;
+    }
+
+    public StringBuilder getActualAnswers() {
+        return actualAnswers;
+    }
+
+    public void setUpdateCorrectAnswer(boolean updateCorrectAnswer) {
+        this.updateCorrectAnswer = updateCorrectAnswer;
+    }
+
 }
