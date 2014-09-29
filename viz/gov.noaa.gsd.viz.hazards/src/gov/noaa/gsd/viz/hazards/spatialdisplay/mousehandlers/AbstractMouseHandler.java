@@ -7,8 +7,8 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayer;
 
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 
@@ -29,7 +29,7 @@ import com.raytheon.uf.viz.core.rsc.IInputHandler;
  * @version 1.0
  */
 public abstract class AbstractMouseHandler {
-    private ToolLayer toolLayer;
+    private SpatialDisplay spatialDisplay;
 
     private SpatialPresenter spatialPresenter;
 
@@ -48,13 +48,13 @@ public abstract class AbstractMouseHandler {
         this.mouseHandler = mouseHandler;
     }
 
-    public ToolLayer getToolLayer() {
-        return toolLayer;
+    public SpatialDisplay getSpatialDisplay() {
+        return spatialDisplay;
     }
 
     public void setSpatialPresenter(SpatialPresenter spatialPresenter) {
         this.spatialPresenter = spatialPresenter;
-        this.toolLayer = spatialPresenter.getView().getSpatialDisplay();
+        this.spatialDisplay = spatialPresenter.getView().getSpatialDisplay();
     }
 
     public SpatialPresenter getSpatialPresenter() {

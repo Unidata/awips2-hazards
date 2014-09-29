@@ -184,8 +184,6 @@ public class SpatialView implements
      */
     private class BasicSpatialAction extends BasicAction {
 
-        // Private Variables
-
         /**
          * Action type.
          */
@@ -195,8 +193,6 @@ public class SpatialView implements
          * Action name.
          */
         private final SpatialDisplayAction.ActionIdentifier actionName;
-
-        // Public Constructors
 
         /**
          * Construct a standard instance.
@@ -218,15 +214,13 @@ public class SpatialView implements
          *            ignored for actions of checkbox style, since they always
          *            send "on" or "off" as their action name.
          */
-        public BasicSpatialAction(String text, String iconFileName, int style,
+        private BasicSpatialAction(String text, String iconFileName, int style,
                 String toolTipText, SpatialDisplayAction.ActionType actionType,
                 SpatialDisplayAction.ActionIdentifier actionName) {
             super(text, iconFileName, style, toolTipText);
             this.actionType = actionType;
             this.actionName = actionName;
         }
-
-        // Public Methods
 
         /**
          * Run the action.
@@ -245,8 +239,6 @@ public class SpatialView implements
      * Maps for select-by-area pulldown menu action.
      */
     private class SelectByAreaMapsPulldownAction extends PulldownAction {
-
-        // Private Variables
 
         /**
          * Resource list add listener, for detecting changes in the list of
@@ -281,12 +273,10 @@ public class SpatialView implements
             }
         };
 
-        // Public Constructors
-
         /**
          * Construct a standard instance.
          */
-        public SelectByAreaMapsPulldownAction() {
+        private SelectByAreaMapsPulldownAction() {
             super("");
             setImageDescriptor(getImageDescriptorForFile("mapsForSelectByArea.png"));
             setToolTipText("Maps for Select by Area");
@@ -308,8 +298,6 @@ public class SpatialView implements
             resourceList.addPostRemoveListener(removeListener);
         }
 
-        // Public Methods
-
         /**
          * Dispose of the action.
          */
@@ -330,8 +318,6 @@ public class SpatialView implements
                 resourceList.removePostRemoveListener(removeListener);
             }
         }
-
-        // Protected Methods
 
         /**
          * Get the menu for the specified parent, possibly reusing the specified
@@ -411,8 +397,6 @@ public class SpatialView implements
             return menu;
         }
 
-        // Private Methods
-
         /**
          * Respond to a possible change in the available maps for select by area
          * operations.
@@ -483,7 +467,7 @@ public class SpatialView implements
     /**
      * Hazard Services Tool Layer
      */
-    private ToolLayer spatialDisplay;
+    private SpatialDisplay spatialDisplay;
 
     /**
      * Presenter.
@@ -557,9 +541,9 @@ public class SpatialView implements
     /**
      * Construct a standard instance.
      */
-    public SpatialView(ToolLayer toolLayer) {
-        this.spatialDisplay = toolLayer;
-        toolLayer.setSpatialView(this);
+    public SpatialView(SpatialDisplay spatialDisplay) {
+        this.spatialDisplay = spatialDisplay;
+        spatialDisplay.setSpatialView(this);
     }
 
     // Public Methods
@@ -640,7 +624,7 @@ public class SpatialView implements
             @Override
             public void run() {
                 if (spatialDisplay != null) {
-                    ((ToolLayerResourceData) spatialDisplay.getResourceData())
+                    ((SpatialDisplayResourceData) spatialDisplay.getResourceData())
                             .setSettings(settings);
                 }
             }
@@ -648,18 +632,8 @@ public class SpatialView implements
     }
 
     @Override
-    public MapDescriptor getDescriptor() {
-        return spatialDisplay.getDescriptor();
-    }
-
-    @Override
     public void issueRefresh() {
         spatialDisplay.issueRefresh();
-    }
-
-    @Override
-    public void clearEvents() {
-        spatialDisplay.clearEvents();
     }
 
     @Override
@@ -699,22 +673,6 @@ public class SpatialView implements
             display.recenter(lonLat);
             display.zoom(1.0 / multiplier);
         }
-    }
-
-    @Override
-    public double[] getDisplayZoomParameters() {
-        AbstractEditor editor = (AbstractEditor) VizWorkbenchManager
-                .getInstance().getActiveEditor();
-        IDisplayPane pane = editor.getActiveDisplayPane();
-        IRenderableDisplay display = pane.getRenderableDisplay();
-        double[] params = new double[3];
-        double[] center = pane.getDescriptor().pixelToWorld(
-                display.getExtent().getCenter());
-        for (int j = 0; j < center.length; j++) {
-            params[j] = center[j];
-        }
-        params[2] = 1.0 / display.getZoom();
-        return params;
     }
 
     @Override
@@ -797,31 +755,6 @@ public class SpatialView implements
                     addGeometryToSelectedAction);
         }
         return Collections.emptyList();
-    }
-
-    // Private Methods
-
-    /**
-     * Receive notification that a drawing action has been completed.
-     */
-    private void notifyDrawingActionComplete() {
-        moveAndSelectChoiceAction.setChecked(true);
-        moveAndSelectChoiceAction.run();
-        drawVertexBasedPolygonChoiceAction.setChecked(false);
-        drawFreehandPolygonChoiceAction.setChecked(false);
-        drawVertexPathChoiceAction.setChecked(false);
-        drawPointChoiceAction.setChecked(false);
-    }
-
-    /**
-     * Receive notification that a select-by-area operation has been initiated.
-     */
-    private void notifySelectByAreaInitiated() {
-        moveAndSelectChoiceAction.setChecked(false);
-        drawVertexBasedPolygonChoiceAction.setChecked(false);
-        drawFreehandPolygonChoiceAction.setChecked(false);
-        drawVertexPathChoiceAction.setChecked(false);
-        drawPointChoiceAction.setChecked(false);
     }
 
     @Override
@@ -1047,43 +980,6 @@ public class SpatialView implements
     }
 
     /**
-     * Sets the mouse handler.
-     * 
-     * @param mouseHandler
-     *            The mouse handler to load.
-     * @return
-     */
-
-    private void setMouseHandler(IInputHandler mouseHandler) {
-
-        if (this.currentMouseHandler != null) {
-            unSetMouseHandler(this.currentMouseHandler);
-        }
-
-        this.currentMouseHandler = mouseHandler;
-        spatialDisplay.setMouseHandler(mouseHandler);
-    }
-
-    /**
-     * Removes the specified mouse handler from the current editor.
-     * 
-     * @param mouseHandler
-     *            the mouseHandler to set
-     */
-    private void unSetMouseHandler(IInputHandler mouseHandler) {
-        this.currentMouseHandler = null;
-    }
-
-    /**
-     * Saves the current mouse handler for future retrieval.
-     */
-    void saveCurrentMouseHandler() {
-        if (currentMouseHandler != null) {
-            unSetMouseHandler(currentMouseHandler);
-        }
-    }
-
-    /**
      * Unregisters the current mouse handler from the active editor.
      * 
      * @param
@@ -1100,40 +996,6 @@ public class SpatialView implements
                 currentMouseHandler = null;
             }
         }
-    }
-
-    /**
-     * Remove listeners.
-     */
-    private void removeListeners() {
-
-        // Dispose of the select-by-area maps pulldown action, so as
-        // to remove its listeners.
-        if (selectByAreaMapsPulldownAction != null) {
-            ((SelectByAreaMapsPulldownAction) selectByAreaMapsPulldownAction)
-                    .dispose();
-        }
-
-    }
-
-    /**
-     * Fire an action event to its listener.
-     * 
-     * @param action
-     *            Action.
-     */
-    private void fireAction(SpatialDisplayAction action) {
-        presenter.fireAction(action);
-    }
-
-    /**
-     * Retrieve the descriptor of the current perspective.
-     * 
-     * @return The descriptor of the current perspective.
-     */
-    private IPerspectiveDescriptor getCurrentPerspectiveDescriptor() {
-        return VizWorkbenchManager.getInstance().getActiveEditor().getSite()
-                .getPage().getPerspective();
     }
 
     /**
@@ -1176,71 +1038,6 @@ public class SpatialView implements
             }
 
         }
-
-        return;
-    }
-
-    /**
-     * Returns a new instance of the draw by area viz resource.
-     * 
-     * @param table_name
-     *            The geo database table to retrieve overlay data for
-     * @param mapName
-     *            The name of the map (to display in the legend)
-     * @return A new instance of the draw by area resource.
-     * 
-     */
-    public SelectByAreaDbMapResource getGeometryDisplay(String table_name,
-            String mapName) throws VizException {
-        // Create the resource data class for the geo database
-        // map resource.
-        SelectByAreaDbMapResourceData resourceData = new SelectByAreaDbMapResourceData();
-        resourceData.setTable(table_name);
-        resourceData.setMapName(mapName);
-        resourceData.setGeomField("the_geom");
-
-        // Filter by the CWA. We should try to get this
-        // identifier dynamically.
-        // Some overlays do not have a cwa field.
-        String siteID = LocalizationManager.getInstance().getCurrentSite();
-        resourceData.setConstraints(new String[] { "cwa = '" + siteID + "'" });
-
-        // Create the Viz Resource to display in CAVE
-        selectableGeometryDisplay = resourceData.construct(
-                new LoadProperties(), null);
-        selectableGeometryDisplay.registerListener(this);
-
-        return selectableGeometryDisplay;
-    }
-
-    /**
-     * Removes the geometry viz resource from the CAVE editor
-     * 
-     * @param
-     * @return
-     */
-    public void removeGeometryDisplay() {
-
-        if (selectableGeometryDisplay != null) {
-            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor());
-
-            IDescriptor idesc = editor.getActiveDisplayPane().getDescriptor();
-            IMapDescriptor desc = null;
-
-            if (idesc instanceof IMapDescriptor) {
-                desc = (IMapDescriptor) idesc;
-
-                try {
-                    desc.getResourceList().removeRsc(selectableGeometryDisplay);
-                } catch (Exception e) {
-                    // ignore
-                }
-            }
-
-            selectableGeometryDisplay = null;
-        }
-
     }
 
     /**
@@ -1271,51 +1068,6 @@ public class SpatialView implements
          * of the view, notify the view instead.
          */
         notifyDrawingActionComplete();
-    }
-
-    /**
-     * Tests whether or not the draw by area resource is loaded.
-     * 
-     * @param
-     * @return true - the resource is loaded, false - the resource is not loaded
-     */
-    public boolean isGeometryDisplayResourceLoaded() {
-        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                .getInstance().getActiveEditor());
-
-        IDescriptor idesc = editor.getActiveDisplayPane().getDescriptor();
-        IMapDescriptor desc = null;
-
-        if (selectableGeometryDisplay != null) {
-            if (idesc instanceof IMapDescriptor) {
-                desc = (IMapDescriptor) idesc;
-
-                ResourceList rescList = desc.getResourceList();
-
-                return rescList.containsRsc(selectableGeometryDisplay);
-            }
-        }
-
-        return false;
-
-    }
-
-    /**
-     * Unloads the selected geometry display resource if it is loaded in CAVE.
-     */
-    public void unloadGeometryDisplayResource() {
-        if (selectableGeometryDisplay != null) {
-            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor());
-            IDescriptor idesc = editor.getActiveDisplayPane().getDescriptor();
-            IMapDescriptor desc = null;
-
-            if (idesc instanceof IMapDescriptor) {
-                desc = (IMapDescriptor) idesc;
-                ResourceList rescList = desc.getResourceList();
-                rescList.removeRsc(selectableGeometryDisplay);
-            }
-        }
     }
 
     /**
@@ -1381,18 +1133,6 @@ public class SpatialView implements
     }
 
     /**
-     * This function is called when the selected geometry display resource is
-     * disposed. This will happen if the user right-clicks on the legend item
-     * for this resource and selects the 'unload' option. This will also be
-     * called when this resource is removed from the AbstractVizResource list
-     * using the removeRsc method.
-     */
-    public void dbMapResourceUnloaded() {
-        selectableGeometryDisplay = null;
-        drawingActionComplete();
-    }
-
-    /**
      * Sets the mouse cursor to the specified type.
      * 
      * @param cursorType
@@ -1406,24 +1146,10 @@ public class SpatialView implements
     }
 
     /**
-     * Determine whether this cursor is the current cursor.
-     * 
-     * @param cursorType
-     *            The type of cursor against which to check.
-     * @return True if the current cursor is of the specified type, false
-     *         otherwise.
-     */
-    public boolean isCurrentCursor(SpatialViewCursorTypes cursorType) {
-        Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                .getShell();
-        return (shell.getCursor() == cursorsForCursorTypes.get(cursorType));
-    }
-
-    /**
      * @return An instance of the spatial display.
      */
     @Override
-    public ToolLayer getSpatialDisplay() {
+    public SpatialDisplay getSpatialDisplay() {
         return spatialDisplay;
     }
 
@@ -1472,6 +1198,251 @@ public class SpatialView implements
         if (this.redoCommandAction != null) {
             this.redoCommandAction.setEnabled(redoFlag);
         }
+    }
+
+    /**
+     * Determine whether this cursor is the current cursor.
+     * 
+     * @param cursorType
+     *            The type of cursor against which to check.
+     * @return True if the current cursor is of the specified type, false
+     *         otherwise.
+     */
+    public boolean isCurrentCursor(SpatialViewCursorTypes cursorType) {
+        Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                .getShell();
+        return (shell.getCursor() == cursorsForCursorTypes.get(cursorType));
+    }
+
+    // Private Methods
+
+    private double[] getDisplayZoomParameters() {
+        AbstractEditor editor = (AbstractEditor) VizWorkbenchManager
+                .getInstance().getActiveEditor();
+        IDisplayPane pane = editor.getActiveDisplayPane();
+        IRenderableDisplay display = pane.getRenderableDisplay();
+        double[] params = new double[3];
+        double[] center = pane.getDescriptor().pixelToWorld(
+                display.getExtent().getCenter());
+        for (int j = 0; j < center.length; j++) {
+            params[j] = center[j];
+        }
+        params[2] = 1.0 / display.getZoom();
+        return params;
+    }
+
+    /**
+     * Receive notification that a drawing action has been completed.
+     */
+    private void notifyDrawingActionComplete() {
+        moveAndSelectChoiceAction.setChecked(true);
+        moveAndSelectChoiceAction.run();
+        drawVertexBasedPolygonChoiceAction.setChecked(false);
+        drawFreehandPolygonChoiceAction.setChecked(false);
+        drawVertexPathChoiceAction.setChecked(false);
+        drawPointChoiceAction.setChecked(false);
+    }
+
+    /**
+     * Receive notification that a select-by-area operation has been initiated.
+     */
+    private void notifySelectByAreaInitiated() {
+        moveAndSelectChoiceAction.setChecked(false);
+        drawVertexBasedPolygonChoiceAction.setChecked(false);
+        drawFreehandPolygonChoiceAction.setChecked(false);
+        drawVertexPathChoiceAction.setChecked(false);
+        drawPointChoiceAction.setChecked(false);
+    }
+
+    /**
+     * Sets the mouse handler.
+     * 
+     * @param mouseHandler
+     *            The mouse handler to load.
+     * @return
+     */
+
+    private void setMouseHandler(IInputHandler mouseHandler) {
+
+        if (this.currentMouseHandler != null) {
+            unSetMouseHandler(this.currentMouseHandler);
+        }
+
+        this.currentMouseHandler = mouseHandler;
+        spatialDisplay.setMouseHandler(mouseHandler);
+    }
+
+    /**
+     * Removes the specified mouse handler from the current editor.
+     * 
+     * @param mouseHandler
+     *            the mouseHandler to set
+     */
+    private void unSetMouseHandler(IInputHandler mouseHandler) {
+        this.currentMouseHandler = null;
+    }
+
+    /**
+     * Saves the current mouse handler for future retrieval.
+     */
+    private void saveCurrentMouseHandler() {
+        if (currentMouseHandler != null) {
+            unSetMouseHandler(currentMouseHandler);
+        }
+    }
+
+    /**
+     * Remove listeners.
+     */
+    private void removeListeners() {
+
+        // Dispose of the select-by-area maps pulldown action, so as
+        // to remove its listeners.
+        if (selectByAreaMapsPulldownAction != null) {
+            ((SelectByAreaMapsPulldownAction) selectByAreaMapsPulldownAction)
+                    .dispose();
+        }
+
+    }
+
+    /**
+     * Fire an action event to its listener.
+     * 
+     * @param action
+     *            Action.
+     */
+    private void fireAction(SpatialDisplayAction action) {
+        presenter.fireAction(action);
+    }
+
+    /**
+     * Retrieve the descriptor of the current perspective.
+     * 
+     * @return The descriptor of the current perspective.
+     */
+    private IPerspectiveDescriptor getCurrentPerspectiveDescriptor() {
+        return VizWorkbenchManager.getInstance().getActiveEditor().getSite()
+                .getPage().getPerspective();
+    }
+
+    /**
+     * Returns a new instance of the draw by area viz resource.
+     * 
+     * @param table_name
+     *            The geo database table to retrieve overlay data for
+     * @param mapName
+     *            The name of the map (to display in the legend)
+     * @return A new instance of the draw by area resource.
+     * 
+     */
+    private SelectByAreaDbMapResource getGeometryDisplay(String table_name,
+            String mapName) throws VizException {
+        // Create the resource data class for the geo database
+        // map resource.
+        SelectByAreaDbMapResourceData resourceData = new SelectByAreaDbMapResourceData();
+        resourceData.setTable(table_name);
+        resourceData.setMapName(mapName);
+        resourceData.setGeomField("the_geom");
+
+        // Filter by the CWA. We should try to get this
+        // identifier dynamically.
+        // Some overlays do not have a cwa field.
+        String siteID = LocalizationManager.getInstance().getCurrentSite();
+        resourceData.setConstraints(new String[] { "cwa = '" + siteID + "'" });
+
+        // Create the Viz Resource to display in CAVE
+        selectableGeometryDisplay = resourceData.construct(
+                new LoadProperties(), null);
+        selectableGeometryDisplay.registerListener(this);
+
+        return selectableGeometryDisplay;
+    }
+
+    /**
+     * Removes the geometry viz resource from the CAVE editor
+     * 
+     * @param
+     * @return
+     */
+    private void removeGeometryDisplay() {
+
+        if (selectableGeometryDisplay != null) {
+            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
+                    .getInstance().getActiveEditor());
+
+            IDescriptor idesc = editor.getActiveDisplayPane().getDescriptor();
+            IMapDescriptor desc = null;
+
+            if (idesc instanceof IMapDescriptor) {
+                desc = (IMapDescriptor) idesc;
+
+                try {
+                    desc.getResourceList().removeRsc(selectableGeometryDisplay);
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+
+            selectableGeometryDisplay = null;
+        }
+
+    }
+
+    /**
+     * Tests whether or not the draw by area resource is loaded.
+     * 
+     * @param
+     * @return true - the resource is loaded, false - the resource is not loaded
+     */
+    private boolean isGeometryDisplayResourceLoaded() {
+        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
+                .getInstance().getActiveEditor());
+
+        IDescriptor idesc = editor.getActiveDisplayPane().getDescriptor();
+        IMapDescriptor desc = null;
+
+        if (selectableGeometryDisplay != null) {
+            if (idesc instanceof IMapDescriptor) {
+                desc = (IMapDescriptor) idesc;
+
+                ResourceList rescList = desc.getResourceList();
+
+                return rescList.containsRsc(selectableGeometryDisplay);
+            }
+        }
+
+        return false;
+
+    }
+
+    /**
+     * Unloads the selected geometry display resource if it is loaded in CAVE.
+     */
+    private void unloadGeometryDisplayResource() {
+        if (selectableGeometryDisplay != null) {
+            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
+                    .getInstance().getActiveEditor());
+            IDescriptor idesc = editor.getActiveDisplayPane().getDescriptor();
+            IMapDescriptor desc = null;
+
+            if (idesc instanceof IMapDescriptor) {
+                desc = (IMapDescriptor) idesc;
+                ResourceList rescList = desc.getResourceList();
+                rescList.removeRsc(selectableGeometryDisplay);
+            }
+        }
+    }
+
+    /**
+     * This function is called when the selected geometry display resource is
+     * disposed. This will happen if the user right-clicks on the legend item
+     * for this resource and selects the 'unload' option. This will also be
+     * called when this resource is removed from the AbstractVizResource list
+     * using the removeRsc method.
+     */
+    private void dbMapResourceUnloaded() {
+        selectableGeometryDisplay = null;
+        drawingActionComplete();
     }
 
     /**

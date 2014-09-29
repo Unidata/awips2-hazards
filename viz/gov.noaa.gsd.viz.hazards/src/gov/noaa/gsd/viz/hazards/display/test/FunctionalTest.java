@@ -24,7 +24,7 @@ import gov.noaa.gsd.viz.hazards.productstaging.IProductStagingView;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayer;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.tools.IToolsView;
 import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
@@ -134,7 +134,7 @@ public abstract class FunctionalTest<E extends Enum<E>> {
 
     protected HazardServicesAppBuilder.IQuestionAnswerer realQuestionAnswerer;
 
-    protected ToolLayer toolLayer;
+    protected SpatialDisplay spatialDisplay;
 
     protected AutoTestUtilities autoTestUtilities;
 
@@ -233,7 +233,7 @@ public abstract class FunctionalTest<E extends Enum<E>> {
         mockProductEditorView = new ProductEditorViewForTesting();
         productEditorPresenter.setView(mockProductEditorView);
 
-        toolLayer = appBuilder.getToolLayer();
+        spatialDisplay = appBuilder.getSpatialDisplay();
 
         realQuestionAnswerer = appBuilder.getQuestionAnswerer();
 

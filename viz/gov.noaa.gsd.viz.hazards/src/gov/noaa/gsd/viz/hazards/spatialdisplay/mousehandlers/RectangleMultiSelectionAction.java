@@ -209,7 +209,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                 if (isSelectByArea) {
 
                     handleSelectByArea(loc);
-                } else if (getToolLayer().getSelectedDE() == null)
+                } else if (getSpatialDisplay().getSelectedDE() == null)
 
                 {
 
@@ -217,7 +217,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                     dragCorner = null;
 
                     // Is any event selected?
-                    List<AbstractDrawableComponent> containingComponentsList = getToolLayer()
+                    List<AbstractDrawableComponent> containingComponentsList = getSpatialDisplay()
                             .getContainingComponents(loc, x, y);
 
                     // No, do nothing
@@ -229,7 +229,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                     // the list,
                     // otherwise, remove it.
                     for (AbstractDrawableComponent drawableComponent : containingComponentsList) {
-                        String selectedElementEventID = getToolLayer()
+                        String selectedElementEventID = getSpatialDisplay()
                                 .elementClicked(drawableComponent, false, false);
                         if (selectedElementEventID == null) {
                             continue;
@@ -241,7 +241,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                         } else {
                             // if is not existing, add on
                             clickedElementList.add(selectedElementEventID);
-                            getToolLayer().elementClicked(drawableComponent,
+                            getSpatialDisplay().elementClicked(drawableComponent,
                                     false, false);
                         }
                     }
@@ -260,7 +260,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                 if (clickedElementList != null)
 
                 {
-                    getToolLayer().multipleElementsClicked(clickedElementList);
+                    getSpatialDisplay().multipleElementsClicked(clickedElementList);
                     clickedElementList.clear();
                 }
 
@@ -284,11 +284,11 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
          */
         private void handleSelectByArea(Coordinate loc) {
             if (anchorCorner == null || dragCorner == null) {
-                getToolLayer().removeGhostLine();
+                getSpatialDisplay().removeGhostLine();
                 anchorCorner = null;
                 dragCorner = null;
 
-                getToolLayer().issueRefresh();
+                getSpatialDisplay().issueRefresh();
 
                 // Indicate that this drawing action is done.
                 getSpatialPresenter().getView().drawingActionComplete();
@@ -301,7 +301,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                 Envelope envelope = new Envelope(anchorCorner, dragCorner);
 
                 Geometry polygon = geoFactory.toGeometry(envelope);
-                getToolLayer().removeGhostLine();
+                getSpatialDisplay().removeGhostLine();
 
                 anchorCorner = null;
                 dragCorner = null;
@@ -312,7 +312,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                 // what ids are selected?
                 clickedElementList.clear();
 
-                Iterator<AbstractDrawableComponent> iterator = getToolLayer()
+                Iterator<AbstractDrawableComponent> iterator = getSpatialDisplay()
                         .getActiveLayer().getComponentIterator();
                 while (iterator.hasNext()) {
                     AbstractDrawableComponent comp = iterator.next();
@@ -321,7 +321,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                     // The event is inside the selected area
                     if (p != null && polygon.contains(p)) {
                         // What it's thevent ID
-                        String selectedEventId = getToolLayer().elementClicked(
+                        String selectedEventId = getSpatialDisplay().elementClicked(
                                 comp, false, false);
 
                         // Put the ID in the selected ID list
@@ -338,7 +338,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                  * from here to the HazardServicesAppBuilder..
                  */
                 if (clickedElementList != null) {
-                    getToolLayer().multipleElementsClicked(clickedElementList);
+                    getSpatialDisplay().multipleElementsClicked(clickedElementList);
                     clickedElementList.clear();
                 }
 
@@ -390,14 +390,14 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                 // create the ghost element and put it in the drawing layer
                 AbstractDrawableComponent ghost = def.create(DrawableType.LINE,
                         drawingAttributes, "Line", "LINE_SOLID", points,
-                        getToolLayer().getActiveLayer());
+                        getSpatialDisplay().getActiveLayer());
 
                 List<Coordinate> ghostPts = Lists.newArrayList(points);
 
                 ((Line) ghost).setLinePoints(ghostPts);
 
-                getToolLayer().setGhostLine(ghost);
-                getToolLayer().issueRefresh();
+                getSpatialDisplay().setGhostLine(ghost);
+                getSpatialDisplay().issueRefresh();
             }
 
             return true;

@@ -228,24 +228,24 @@ public class SelectionAction extends NonDrawingAction {
         private boolean findSelectedDE(Coordinate loc, int x, int y) {
             boolean selectedDEFound = true;
 
-            if (getToolLayer().getSelectedDE() == null) {
+            if (getSpatialDisplay().getSelectedDE() == null) {
                 AbstractDrawableComponent nadc = null;
 
                 /*
                  * Retrieve a list of drawables which contain this mouse click
                  * point
                  */
-                List<AbstractDrawableComponent> containingComponentsList = getToolLayer()
+                List<AbstractDrawableComponent> containingComponentsList = getSpatialDisplay()
                         .getContainingComponents(loc, x, y);
 
                 /*
                  * Retrieve the currently selected hazard shape
                  */
-                AbstractDrawableComponent selectedElement = getToolLayer()
-                        .getSelectedHazardIHISLayer();
+                AbstractDrawableComponent selectedElement = getSpatialDisplay()
+                        .getSelectedHazardLayer();
 
                 if (selectedElement != null) {
-                    String selectedElementEventID = getToolLayer()
+                    String selectedElementEventID = getSpatialDisplay()
                             .elementClicked(selectedElement, false, false);
 
                     /*
@@ -256,7 +256,7 @@ public class SelectionAction extends NonDrawingAction {
                      */
                     for (AbstractDrawableComponent comp : containingComponentsList) {
                         if (comp instanceof HazardServicesSymbol) {
-                            String containingComponentEventID = getToolLayer()
+                            String containingComponentEventID = getSpatialDisplay()
                                     .elementClicked(comp, false, false);
 
                             if (containingComponentEventID
@@ -271,7 +271,7 @@ public class SelectionAction extends NonDrawingAction {
                     if (nadc == null && containingComponentsList.size() > 0) {
                         AbstractDrawableComponent comp = containingComponentsList
                                 .get(0);
-                        String containingComponentEventID = getToolLayer()
+                        String containingComponentEventID = getSpatialDisplay()
                                 .elementClicked(comp, false, false);
 
                         if (containingComponentEventID
@@ -293,7 +293,7 @@ public class SelectionAction extends NonDrawingAction {
                 }
 
                 if (nadc != null) {
-                    getToolLayer().setSelectedDE(nadc);
+                    getSpatialDisplay().setSelectedDE(nadc);
                     allowPanning = false;
                 } else {
                     // Pass this event on.
@@ -312,7 +312,7 @@ public class SelectionAction extends NonDrawingAction {
              * mimics WarnGen.
              */
             if (button == 2) {
-                if (getToolLayer().getSelectedHazardIHISLayer() != null) {
+                if (getSpatialDisplay().getSelectedHazardLayer() != null) {
                     handleVertexAdditionOrDeletion();
                     finalizeMouseHandling();
                 }
@@ -321,7 +321,7 @@ public class SelectionAction extends NonDrawingAction {
                 handleVertexMove();
 
             } else if (ghostEl != null) {
-                DrawableElement selectedDE = getToolLayer().getSelectedDE();
+                DrawableElement selectedDE = getSpatialDisplay().getSelectedDE();
                 if (selectedDE != null) {
                     IHazardServicesShape origShape = (IHazardServicesShape) selectedDE;
                     Class<?> selectedDEclass = selectedDE.getClass();
@@ -337,8 +337,8 @@ public class SelectionAction extends NonDrawingAction {
                 /*
                  * Treat this has a hazard selection.
                  */
-                getToolLayer().elementClicked(
-                        getToolLayer().getSelectedDE(),
+                getSpatialDisplay().elementClicked(
+                        getSpatialDisplay().getSelectedDE(),
                         shiftKeyIsDown || ctrlKeyIsDown, true);
             } else {
                 return false;
@@ -359,7 +359,7 @@ public class SelectionAction extends NonDrawingAction {
                 coords = ((Line) ghostEl).getPoints();
             }
             Geometry modifiedGeometry = buildModifiedGeometry(origShape, coords);
-            getToolLayer().notifyModifiedGeometry(origShape.getID(),
+            getSpatialDisplay().notifyModifiedGeometry(origShape.getID(),
                     modifiedGeometry);
         }
 
@@ -426,7 +426,7 @@ public class SelectionAction extends NonDrawingAction {
         private List<Geometry> getGeometriesForEvent(String eventID) {
             List<Geometry> result = Lists.newArrayList();
 
-            List<AbstractDrawableComponent> hazards = getToolLayer()
+            List<AbstractDrawableComponent> hazards = getSpatialDisplay()
                     .getDataManager().getActiveLayer().getDrawables();
 
             for (AbstractDrawableComponent hazard : hazards) {
@@ -484,21 +484,21 @@ public class SelectionAction extends NonDrawingAction {
             newLonLat[1] = newCoord.y;
             modifiedAreaObject.put(HazardConstants.SYMBOL_NEW_LAT_LON,
                     newLonLat);
-            getToolLayer().notifyModifiedStormTrack(modifiedAreaObject);
+            getSpatialDisplay().notifyModifiedStormTrack(modifiedAreaObject);
         }
 
         private void handleVertexMove() {
-            getToolLayer().setSelectedDE(null);
+            getSpatialDisplay().setSelectedDE(null);
 
             isVertexMove = false;
 
-            AbstractDrawableComponent selectedElement = getToolLayer()
-                    .getSelectedHazardIHISLayer();
+            AbstractDrawableComponent selectedElement = getSpatialDisplay()
+                    .getSelectedHazardLayer();
 
             IHazardServicesShape eventShape = (IHazardServicesShape) selectedElement;
             Geometry modifiedGeometry = buildModifiedGeometry(eventShape,
                     selectedElement.getPoints());
-            getToolLayer().notifyModifiedGeometry(eventShape.getID(),
+            getSpatialDisplay().notifyModifiedGeometry(eventShape.getID(),
                     modifiedGeometry);
         }
 
@@ -511,12 +511,12 @@ public class SelectionAction extends NonDrawingAction {
         }
 
         private void finalizeMouseHandling() {
-            getToolLayer().removeGhostLine();
+            getSpatialDisplay().removeGhostLine();
 
-            getToolLayer().setSelectedDE(null);
+            getSpatialDisplay().setSelectedDE(null);
             ghostEl = null;
 
-            getToolLayer().issueRefresh();
+            getSpatialDisplay().issueRefresh();
 
             movePointIndex = -1;
             moveType = null;
@@ -532,7 +532,7 @@ public class SelectionAction extends NonDrawingAction {
                     .getInstance().getActiveEditor());
 
             Coordinate loc = editor.translateClick(anX, aY);
-            List<AbstractDrawableComponent> containingComponentsList = getToolLayer()
+            List<AbstractDrawableComponent> containingComponentsList = getSpatialDisplay()
                     .getContainingComponents(loc, anX, aY);
 
             /*
@@ -566,8 +566,8 @@ public class SelectionAction extends NonDrawingAction {
              */
             if ((moveType != null) && (moveType == MoveType.SINGLE_POINT)
                     && (button == 1)) {
-                AbstractDrawableComponent selectedElement = getToolLayer()
-                        .getSelectedHazardIHISLayer();
+                AbstractDrawableComponent selectedElement = getSpatialDisplay()
+                        .getSelectedHazardLayer();
 
                 if ((selectedElement != null) && (movePointIndex >= 0)) {
                     isVertexMove = true;
@@ -592,8 +592,8 @@ public class SelectionAction extends NonDrawingAction {
                      * The shape's coords are updated...
                      */
                     ghostEl = selectedElement.copy();
-                    getToolLayer().setGhostLine(ghostEl);
-                    getToolLayer().issueRefresh();
+                    getSpatialDisplay().setGhostLine(ghostEl);
+                    getSpatialDisplay().issueRefresh();
                 }
 
                 return true;
@@ -603,7 +603,7 @@ public class SelectionAction extends NonDrawingAction {
              * Are we trying to move something that is not currently selected?
              * Then allow panning.
              */
-            AbstractDrawableComponent selectedComponent = getToolLayer()
+            AbstractDrawableComponent selectedComponent = getSpatialDisplay()
                     .getSelectedDE();
 
             boolean isEditable = false;
@@ -617,8 +617,8 @@ public class SelectionAction extends NonDrawingAction {
             }
 
             if ((selectedComponent != null
-                    && (selectedComponent != getToolLayer()
-                            .getSelectedHazardIHISLayer()) && !(selectedComponent instanceof HazardServicesSymbol))
+                    && (selectedComponent != getSpatialDisplay()
+                            .getSelectedHazardLayer()) && !(selectedComponent instanceof HazardServicesSymbol))
                     || (!isEditable && !isMovable)) {
                 allowPanning = true;
             }
@@ -658,8 +658,8 @@ public class SelectionAction extends NonDrawingAction {
                 moveType = null;
 
                 if (loc != null) {
-                    AbstractDrawableComponent selectedElement = getToolLayer()
-                            .getSelectedHazardIHISLayer();
+                    AbstractDrawableComponent selectedElement = getSpatialDisplay()
+                            .getSelectedHazardLayer();
 
                     if (selectedElement != null) {
 
@@ -668,7 +668,7 @@ public class SelectionAction extends NonDrawingAction {
 
                         if (isEditable) {
 
-                            String selectedElementEventID = getToolLayer()
+                            String selectedElementEventID = getSpatialDisplay()
                                     .elementClicked(selectedElement, false,
                                             false);
 
@@ -676,11 +676,11 @@ public class SelectionAction extends NonDrawingAction {
                             // First try to find a component that completely
                             // contains
                             // the click point. There could be several of these.
-                            List<AbstractDrawableComponent> containingComponentList = getToolLayer()
+                            List<AbstractDrawableComponent> containingComponentList = getSpatialDisplay()
                                     .getContainingComponents(loc, x, y);
 
                             for (AbstractDrawableComponent comp : containingComponentList) {
-                                String containingComponentEventID = getToolLayer()
+                                String containingComponentEventID = getSpatialDisplay()
                                         .elementClicked(comp, false, false);
 
                                 if (containingComponentEventID
@@ -692,8 +692,8 @@ public class SelectionAction extends NonDrawingAction {
                                      * layer reflects the correct geometry.
                                      */
                                     if (!comp.equals(selectedElement)) {
-                                        getToolLayer()
-                                                .setSelectedHazardIHISLayer(
+                                        getSpatialDisplay()
+                                                .setSelectedHazardLayer(
                                                         comp);
                                     }
                                     /*
@@ -711,12 +711,12 @@ public class SelectionAction extends NonDrawingAction {
                             if (nadc == null) {
                                 // There is no containing element.
                                 // Try to find the closest element...
-                                AbstractDrawableComponent comp = getToolLayer()
+                                AbstractDrawableComponent comp = getSpatialDisplay()
                                         .getNearestComponent(loc);
 
                                 if (comp != null) {
 
-                                    String containingComponentEventID = getToolLayer()
+                                    String containingComponentEventID = getSpatialDisplay()
                                             .elementClicked(comp, false, false);
 
                                     if (containingComponentEventID
@@ -739,7 +739,7 @@ public class SelectionAction extends NonDrawingAction {
                                     // Set the flag indicating that the handle
                                     // bars on the selected polygon may be
                                     // displayed.
-                                    getToolLayer()
+                                    getSpatialDisplay()
                                             .setDrawSelectedHandleBars(true);
 
                                     // Test to determine if the mouse is close
@@ -819,7 +819,7 @@ public class SelectionAction extends NonDrawingAction {
                                     }
                                 }
                             } else {
-                                getToolLayer().setDrawSelectedHandleBars(
+                                getSpatialDisplay().setDrawSelectedHandleBars(
                                         false);
 
                                 getSpatialPresenter().getView().setCursor(
@@ -828,7 +828,7 @@ public class SelectionAction extends NonDrawingAction {
                         }
 
                     } else {
-                        getToolLayer().setDrawSelectedHandleBars(false);
+                        getSpatialDisplay().setDrawSelectedHandleBars(false);
                         getSpatialPresenter().getView().setCursor(
                                 SpatialViewCursorTypes.ARROW_CURSOR);
                     }
@@ -849,8 +849,8 @@ public class SelectionAction extends NonDrawingAction {
         public void addVertex() {
             AbstractEditor editor = EditorUtil
                     .getActiveEditorAs(AbstractEditor.class);
-            AbstractDrawableComponent selectedElement = getToolLayer()
-                    .getSelectedHazardIHISLayer();
+            AbstractDrawableComponent selectedElement = getSpatialDisplay()
+                    .getSelectedHazardLayer();
 
             if (selectedElement != null) {
                 int lastMouseX = editor.getActiveDisplayPane().getLastMouseX();
@@ -936,7 +936,7 @@ public class SelectionAction extends NonDrawingAction {
                     }
                     Geometry modifiedGeometry = buildModifiedGeometry(
                             eventShape, coordsAsList);
-                    getToolLayer().notifyModifiedGeometry(
+                    getSpatialDisplay().notifyModifiedGeometry(
                             eventShape.getID(), modifiedGeometry);
 
                     movePointIndex = -1;
@@ -949,8 +949,8 @@ public class SelectionAction extends NonDrawingAction {
          * Delete a vertex from a selected geometry.
          */
         public void deleteVertex() {
-            AbstractDrawableComponent selectedElement = getToolLayer()
-                    .getSelectedHazardIHISLayer();
+            AbstractDrawableComponent selectedElement = getSpatialDisplay()
+                    .getSelectedHazardLayer();
 
             if ((selectedElement != null) && (moveType != null)
                     && (moveType == MoveType.SINGLE_POINT)
@@ -973,7 +973,7 @@ public class SelectionAction extends NonDrawingAction {
                     IHazardServicesShape eventShape = (IHazardServicesShape) selectedElement;
                     Geometry modifiedGeometry = buildModifiedGeometry(
                             eventShape, coords);
-                    getToolLayer().notifyModifiedGeometry(
+                    getSpatialDisplay().notifyModifiedGeometry(
                             eventShape.getID(), modifiedGeometry);
 
                     movePointIndex = -1;
@@ -990,9 +990,9 @@ public class SelectionAction extends NonDrawingAction {
          */
         public void setMoveEntireElement() {
             moveType = MoveType.ALL_POINTS;
-            AbstractDrawableComponent selectedElement = getToolLayer()
-                    .getSelectedHazardIHISLayer();
-            getToolLayer().setSelectedDE(selectedElement);
+            AbstractDrawableComponent selectedElement = getSpatialDisplay()
+                    .getSelectedHazardLayer();
+            getSpatialDisplay().setSelectedDE(selectedElement);
         }
     }
 }

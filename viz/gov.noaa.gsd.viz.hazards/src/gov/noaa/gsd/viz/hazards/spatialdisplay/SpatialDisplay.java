@@ -23,7 +23,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesS
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionAction;
 import gov.noaa.nws.ncep.ui.pgen.display.AbstractElementContainer;
 import gov.noaa.nws.ncep.ui.pgen.display.DefaultElementContainer;
-import gov.noaa.nws.ncep.ui.pgen.display.DisplayElementFactory;
 import gov.noaa.nws.ncep.ui.pgen.display.DisplayProperties;
 import gov.noaa.nws.ncep.ui.pgen.display.ElementContainerFactory;
 import gov.noaa.nws.ncep.ui.pgen.display.LinePatternManager;
@@ -46,7 +45,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.StringTokenizer;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -77,7 +75,6 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.core.IDisplayPaneContainer;
 import com.raytheon.uf.viz.core.IGraphicsTarget;
 import com.raytheon.uf.viz.core.IGraphicsTarget.PointStyle;
-import com.raytheon.uf.viz.core.PixelExtent;
 import com.raytheon.uf.viz.core.drawables.FillPatterns;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.core.drawables.IShadedShape;
@@ -110,9 +107,10 @@ import com.vividsolutions.jts.geom.Polygonal;
 import com.vividsolutions.jts.operation.valid.IsValidOp;
 
 /**
- * This is the AbstractVizResource used for the display of IHIS hazards. This
- * resource should remain loaded in CAVE for the run duration of IHIS. This
- * resource interfaces with NCEP PGEN code for creating the drawables.
+ * This is the AbstractVizResource used for the display of hazards. This
+ * resource should remain loaded in CAVE for the run duration of Hazard
+ * Services. This resource interfaces with NCEP PGEN code for creating the
+ * drawables.
  * 
  * <pre>
  * SOFTWARE HISTORY
@@ -153,29 +151,27 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  * 
  * @author Xiangbao Jing
  */
-public class ToolLayer extends
+public class SpatialDisplay extends
         AbstractMovableToolLayer<AbstractDrawableComponent> implements
         IContextMenuContributor, IToolChangedListener, IResourceDataChanged,
         IOriginator {
+
+    public static final String DEFAULT_NAME = "Hazard Services";
 
     /**
      * Logging mechanism.
      */
     private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(ToolLayer.class);
+            .getHandler(SpatialDisplay.class);
 
-    public static final String DEFAULT_NAME = "Hazard Services";
-
-    public static final String GL_PATTERN_VERTICAL_DOTTED = "VERTICAL_DOTTED";
-
-    public static final double VERTEX_CIRCLE_RADIUS = 2;
+    private static final String GL_PATTERN_VERTICAL_DOTTED = "VERTICAL_DOTTED";
 
     private static final int HIT_TEST_SLOP_DISTANCE_PIXELS = (int) SelectionAction.SELECTION_DISTANCE_PIXELS;
 
     /**
      * Controls the relative size of the handlebars drawn on selected hazards.
      */
-    public static final float HANDLEBAR_MAGNIFICATION = 1.0f;
+    private static final float HANDLEBAR_MAGNIFICATION = 1.0f;
 
     /**
      * A reference to an instance of app builder.
@@ -211,7 +207,7 @@ public class ToolLayer extends
      */
     private final List<AbstractDrawableComponent> elSelected;
 
-    private AbstractDrawableComponent selectedHazardIHISLayer = null;
+    private AbstractDrawableComponent selectedHazardLayer = null;
 
     private final GeometryFactory geoFactory;
 
@@ -223,7 +219,7 @@ public class ToolLayer extends
     private HazardServicesDrawableBuilder drawableBuilder = null;
 
     // Data manager for displayed geometries.
-    private ToolLayerDataManager dataManager = null;
+    private SpatialDisplayDataManager dataManager = null;
 
     private boolean timeMatchBasis = false;
 
@@ -318,7 +314,7 @@ public class ToolLayer extends
      *            App builder that already exists, if any. If <code>null</code>,
      *            an app builder will be created as part of ths construction.
      */
-    public ToolLayer(ToolLayerResourceData resourceData,
+    public SpatialDisplay(SpatialDisplayResourceData resourceData,
             LoadProperties loadProperties, final boolean loadedFromBundle,
             final HazardServicesAppBuilder appBuilder) {
 
@@ -344,7 +340,7 @@ public class ToolLayer extends
         elSelected = new ArrayList<>();
         geoFactory = new GeometryFactory();
 
-        dataManager = new ToolLayerDataManager();
+        dataManager = new SpatialDisplayDataManager();
         persistentShapeMap = new HashMap<>();
         hatchedAreas = new ArrayList<>();
         hatchedAreaAnnotations = new ArrayList<>();
@@ -366,30 +362,30 @@ public class ToolLayer extends
                         SWT.COLOR_GRAY);
 
                 if (appBuilder != null) {
-                    ToolLayer.this.appBuilder = appBuilder;
+                    SpatialDisplay.this.appBuilder = appBuilder;
                     drawableBuilder = new HazardServicesDrawableBuilder(
-                            ToolLayer.this.appBuilder.getSessionManager());
+                            SpatialDisplay.this.appBuilder.getSessionManager());
                 } else {
-                    ToolLayer.this.appBuilder = new HazardServicesAppBuilder(
-                            ToolLayer.this);
+                    SpatialDisplay.this.appBuilder = new HazardServicesAppBuilder(
+                            SpatialDisplay.this);
                     drawableBuilder = new HazardServicesDrawableBuilder(
-                            ToolLayer.this.appBuilder.getSessionManager());
-                    ToolLayer.this.appBuilder.buildGUIs(loadedFromBundle);
+                            SpatialDisplay.this.appBuilder.getSessionManager());
+                    SpatialDisplay.this.appBuilder.buildGUIs(loadedFromBundle);
                 }
 
-                eventBus = ToolLayer.this.appBuilder.getEventBus();
+                eventBus = SpatialDisplay.this.appBuilder.getEventBus();
 
                 // If the resource data has a setting to be used, use
                 // that; otherwise, give the resource data the setting
                 // already in use by the app builder so that it will
                 // have it in case it is saved as part of a bundle.
-                Settings settings = ((ToolLayerResourceData) getResourceData())
+                Settings settings = ((SpatialDisplayResourceData) getResourceData())
                         .getSettings();
                 if (settings != null) {
-                    ToolLayer.this.appBuilder.setCurrentSettings(settings);
+                    SpatialDisplay.this.appBuilder.setCurrentSettings(settings);
                 } else {
-                    ((ToolLayerResourceData) getResourceData())
-                            .setSettings(ToolLayer.this.appBuilder
+                    ((SpatialDisplayResourceData) getResourceData())
+                            .setSettings(SpatialDisplay.this.appBuilder
                                     .getCurrentSettings());
                 }
             }
@@ -400,6 +396,264 @@ public class ToolLayer extends
         } else {
             Display.getDefault().asyncExec(initializationFinisher);
         }
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.viz.core.rsc.IVizResource#getName()
+     */
+    @Override
+    public String getName() {
+        return DEFAULT_NAME;
+    }
+
+    /**
+     * This is used to initialize the Hazard Services Tool Layer Abstract Viz
+     * Resource. Also, it loads the PGEN line pattern manager. This can take a
+     * few seconds, so it is done at Hazard Services start-up.
+     * 
+     * @see com.raytheon.uf.viz.core.rsc.AbstractVizResource#init(com.raytheon.uf
+     *      .viz.core.IGraphicsTarget)
+     * @param target
+     *            The graphics target which will receive drawables.
+     */
+    @Override
+    public void initInternal(IGraphicsTarget target) throws VizException {
+        // This needs to be done to register this tool's mouse listener with
+        // the Pane Manager.
+        super.initInternal(target);
+
+        // Initialize the line pattern manager here.
+        // This saves time with drawing later.
+        new Job("Loading PGEN LinePatternManager...") {
+
+            @Override
+            protected IStatus run(IProgressMonitor monitor) {
+                LinePatternManager.getInstance();
+                return Status.OK_STATUS;
+            }
+
+        }.schedule();
+
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.viz.core.rsc.IVizResource#dispose()
+     */
+    @Override
+    protected void disposeInternal() {
+        appBuilder = null;
+
+        super.disposeInternal();
+
+        // Fire a spatial display dispose event if the perspective is not
+        // changing, since this means that Hazard Services should close.
+        if (perspectiveChanging == false) {
+            fireSpatialDisplayDisposedActionOccurred();
+        }
+
+        if (hatchedAreaShadedShape != null) {
+            hatchedAreaShadedShape.dispose();
+        }
+
+    }
+
+    @Override
+    public void addContextMenuItems(IMenuManager menuManager, int x, int y) {
+        /**
+         * In here, add the options to delete a vertex and add a vertex, but
+         * only if over a selected hazard and point. Retrieve the list of
+         * context menu items to add...
+         */
+        setCurrentEvent(x, y);
+        List<IAction> actions = getContextMenuActions();
+        for (IAction action : actions) {
+            menuManager.add(action);
+        }
+        menuManager.add(new Separator());
+    }
+
+    @Override
+    public void toolChanged() {
+
+    }
+
+    @Override
+    protected void paint(IGraphicsTarget target, PaintProperties paintProps,
+            AbstractDrawableComponent object,
+            AbstractMovableToolLayer.SelectionStatus status)
+            throws VizException {
+
+        /*
+         * Draw the hazard event
+         */
+        drawProduct(target, paintProps, object);
+
+        /*
+         * Draw the selected polygon
+         */
+        if (selectedHazardLayer != null) {
+            drawSelected(target, paintProps);
+        }
+
+    }
+
+    @Override
+    protected boolean isClicked(IDisplayPaneContainer container,
+            Coordinate mouseLoc, AbstractDrawableComponent object) {
+        return false;
+    }
+
+    @Override
+    protected AbstractDrawableComponent makeLive(
+            AbstractDrawableComponent object) {
+        return null;
+    }
+
+    @Override
+    protected AbstractDrawableComponent move(Coordinate lastMouseLoc,
+            Coordinate mouseLoc, AbstractDrawableComponent object) {
+        return null;
+    }
+
+    @Override
+    protected String getDefaultName() {
+        return null;
+    }
+
+    @Override
+    protected void paintInternal(IGraphicsTarget target,
+            PaintProperties paintProps) throws VizException {
+
+        /*
+         * Paint shaded shapes for hatched areas
+         */
+        drawHatchedAreas(target, paintProps);
+
+        if (ghost != null) {
+            drawGhost(target, paintProps);
+        }
+
+        super.paintInternal(target, paintProps);
+    }
+
+    @Override
+    public boolean handleMouseDown(int x, int y, int mouseButton) {
+        if ((mouseHandler != null) && isEditable()) {
+            return mouseHandler.handleMouseDown(x, y, mouseButton);
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean handleMouseDownMove(int x, int y, int button) {
+        if ((mouseHandler != null) && isEditable()) {
+            return mouseHandler.handleMouseDownMove(x, y, button);
+        }
+        return false;
+
+    }
+
+    @Override
+    public boolean handleMouseUp(int x, int y, int mouseButton) {
+
+        if ((mouseHandler != null) && isEditable()) {
+            return mouseHandler.handleMouseUp(x, y, mouseButton);
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean handleMouseMove(int x, int y) {
+        if ((mouseHandler != null) && isEditable()) {
+            return mouseHandler.handleMouseMove(x, y);
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean handleKeyDown(int key) {
+        if ((mouseHandler != null) && isEditable()) {
+            return mouseHandler.handleKeyDown(key);
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean handleKeyUp(int key) {
+        if ((mouseHandler != null) && isEditable()) {
+            return mouseHandler.handleKeyUp(key);
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean handleMouseEnter(Event event) {
+        if ((mouseHandler != null) && isEditable()) {
+            return mouseHandler.handleMouseEnter(event);
+        } else {
+            return handleMouseMove(event.x, event.y);
+        }
+    }
+
+    @Override
+    public DataTime[] getDataTimes() {
+        if (timeMatchBasis) {
+            /*
+             * We only want to calculate more data times if the user has
+             * selected more frames than there have been in the past.
+             */
+            if (this.descriptor.getNumberOfFrames() > this.maximumFrameCount) {
+                int variance = this.descriptor.getNumberOfFrames()
+                        - this.maximumFrameCount;
+
+                this.maximumFrameCount = this.descriptor.getNumberOfFrames();
+
+                DataTime earliestTime = this.dataTimes.get(0);
+                this.fillDataTimeArray(earliestTime, variance);
+            }
+        } else {
+            FramesInfo info = descriptor.getFramesInfo();
+            dataTimes.clear();
+            this.maximumFrameCount = this.descriptor.getNumberOfFrames();
+            // First time called
+            if (info.getFrameTimes() != null) {
+                for (DataTime dt : info.getFrameTimes()) {
+                    dataTimes.add(dt);
+                }
+            }
+
+            if (dataTimes.size() == 0) {
+                timeMatchBasis = true;
+                // Case where this tool is time match basis or no data loaded
+                DataTime currentTime = null;
+                if (dataTimes.size() > 0) {
+                    currentTime = dataTimes.get(dataTimes.size() - 1);
+                } else {
+                    currentTime = new DataTime(SimulatedTime.getSystemTime()
+                            .getTime());
+                }
+
+                dataTimes.add(currentTime);
+                this.fillDataTimeArray(currentTime,
+                        this.descriptor.getNumberOfFrames() - 1);
+            }
+        }
+        Collections.sort(dataTimes);
+        return dataTimes.toArray(new DataTime[dataTimes.size()]);
+    }
+
+    @Override
+    public ResourceOrder getResourceOrder() {
+        return RenderingOrderFactory.ResourceOrder.HIGHEST;
     }
 
     /**
@@ -429,37 +683,6 @@ public class ToolLayer extends
     }
 
     /**
-     * Clear all events from the spatial display. Takes into account events that
-     * need to be persisted such as a storm track dot.
-     */
-    public void clearEvents() {
-        List<AbstractDrawableComponent> deList = dataManager.getActiveLayer()
-                .getDrawables();
-
-        // Needed to use an array to prevent concurrency issues.
-        AbstractDrawableComponent[] deArray = deList
-                .toArray(new AbstractDrawableComponent[100]);
-
-        for (AbstractDrawableComponent de : deArray) {
-            if (de == null) {
-                break;
-            }
-
-            String eventID = ((IHazardServicesShape) de).getID();
-            List<AbstractDrawableComponent> persistentDrawables = persistentShapeMap
-                    .get(eventID);
-
-            if (persistentDrawables == null
-                    || !persistentDrawables.contains(de)) {
-
-                removeElement(de);
-            }
-        }
-
-        issueRefresh();
-    }
-
-    /**
      * Draws event geometries on the Hazard Services Tool Layer.
      * 
      * @param clearAllEvents
@@ -474,8 +697,8 @@ public class ToolLayer extends
 
         /**
          * TODO For reasons that are not clear to Chris Golden and Dan Schaffer,
-         * this method is called for the old {@link ToolLayer} when you switch
-         * perspectives and create a new {@link ToolLayer}. But part of the
+         * this method is called for the old SpatialDisplay when you switch
+         * perspectives and create a new {@link SpatialDisplay}. But part of the
          * changing perspective process is to nullify the appBuilder so we have
          * to do a check here. It would be good to take some time to understand
          * why this method is called in the old one when you switch
@@ -511,7 +734,7 @@ public class ToolLayer extends
         }
 
         previousEvents = events;
-        selectedHazardIHISLayer = null;
+        selectedHazardLayer = null;
 
         selectedEventIDs.clear();
 
@@ -581,58 +804,6 @@ public class ToolLayer extends
         issueRefresh();
     }
 
-    private void trackPersistentShapes(Boolean isPersistent, String id,
-            List<AbstractDrawableComponent> drawables) {
-        /*
-         * This ensures that a persistent shape with the same id as one that
-         * already exists will override it.
-         */
-
-        if (isPersistent != null && isPersistent) {
-            if (persistentShapeMap.containsKey(id)) {
-                persistentShapeMap.remove(id);
-            }
-
-            if (!drawables.isEmpty()) {
-                persistentShapeMap.put(id, drawables);
-            }
-        }
-    }
-
-    private boolean areEventsChanged(Collection<ObservedHazardEvent> events) {
-        for (IHazardEvent hazardEvent : events) {
-            for (IHazardEvent previousEvent : previousEvents) {
-                if (hazardEvent.getEventID().equals(previousEvent.getEventID())) {
-                    if (!hazardEvent.equals(previousEvent)) {
-                        return false;
-                    }
-                }
-            }
-        }
-        return true;
-    }
-
-    private void filterEventsForTime(Collection<ObservedHazardEvent> events,
-            TimeRange selectedRange, Date selectedTime) {
-        Iterator<ObservedHazardEvent> it = events.iterator();
-        while (it.hasNext()) {
-            IHazardEvent event = it.next();
-
-            /*
-             * Test for unissued storm track operations. These should not be
-             * filtered out by time.
-             */
-            if (!(HazardServicesDrawableBuilder.forModifyingStormTrack(event) && !HazardStatus
-                    .hasEverBeenIssued(event.getStatus()))) {
-
-                if (!doesEventOverlapSelectedTime(event, selectedRange,
-                        selectedTime)) {
-                    it.remove();
-                }
-            }
-        }
-    }
-
     /**
      * Convenience method for testing if the event is contained within the
      * selected time or selected time range.
@@ -655,219 +826,6 @@ public class ToolLayer extends
         }
 
         return overlaps;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.viz.core.rsc.IVizResource#getName()
-     */
-    @Override
-    public String getName() {
-        return DEFAULT_NAME;
-    }
-
-    /**
-     * This is used to initialize the Hazard Services Tool Layer Abstract Viz
-     * Resource. Also, it loads the PGEN line pattern manager. This can take a
-     * few seconds, so it is done at Hazard Services start-up.
-     * 
-     * @see com.raytheon.uf.viz.core.rsc.AbstractVizResource#init(com.raytheon.uf
-     *      .viz.core.IGraphicsTarget)
-     * @param target
-     *            The graphics target which will receive drawables.
-     */
-    @Override
-    public void initInternal(IGraphicsTarget target) throws VizException {
-        // This needs to be done to register this tool's mouse listener with
-        // the Pane Manager.
-        super.initInternal(target);
-
-        // Initialize the line pattern manager here.
-        // This saves time with drawing later.
-        new Job("Loading PGEN LinePatternManager...") {
-
-            @Override
-            protected IStatus run(IProgressMonitor monitor) {
-                LinePatternManager.getInstance();
-                return Status.OK_STATUS;
-            }
-
-        }.schedule();
-
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.viz.core.rsc.IVizResource#isApplicable(com.raytheon.viz.
-     * core.PixelExtent)
-     */
-    public boolean isApplicable(PixelExtent extent) {
-        return true;
-    }
-
-    /**
-     * Draws the ghost of an event that is being created or modified. For
-     * instance, if an event is moved, then ghost of the event is drawn to show
-     * where the event will end up when dropped on the map.
-     * 
-     * @param target
-     *            The target which will receive drawables
-     * @param paintProps
-     *            describes how drawables will be displayed
-     * @param df
-     *            Builds PGEN drawables for display on the target
-     * @return
-     */
-    private void drawGhost(IGraphicsTarget target, PaintProperties paintProps,
-            DisplayElementFactory df) {
-
-        df.setLayerDisplayAttr(false, null, false);
-
-        Iterator<DrawableElement> iterator = ghost.createDEIterator();
-
-        while (iterator.hasNext()) {
-            drawElement(target, paintProps, df, iterator.next());
-        }
-    }
-
-    /**
-     * Used by the drawGhost method. Ghosts are transient, so they are not
-     * preserved once they are drawn.
-     * 
-     * @param target
-     *            The target to draw on.
-     * @param paintProps
-     *            Describes how elements are displayed
-     * @param df
-     *            Factory for creating PGEN drawables
-     * @param el
-     *            The PGEN drawable to be displayed.
-     * @return
-     */
-    private void drawElement(IGraphicsTarget target,
-            PaintProperties paintProps, DisplayElementFactory df,
-            DrawableElement el) {
-
-        AbstractElementContainer dispEl = null;
-
-        dispEl = new DefaultElementContainer(el, descriptor, target);
-        dispEl.draw(target, paintProps, null);
-        dispEl.dispose();
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.viz.core.rsc.IVizResource#dispose()
-     */
-    @Override
-    protected void disposeInternal() {
-        appBuilder = null;
-
-        super.disposeInternal();
-
-        // Fire a spatial display dispose event if the perspective is not
-        // changing, since this means that Hazard Services should close.
-        if (perspectiveChanging == false) {
-            fireSpatialDisplayDisposedActionOccurred();
-        }
-
-        if (hatchedAreaShadedShape != null) {
-            hatchedAreaShadedShape.dispose();
-        }
-
-    }
-
-    /**
-     * When an event is selected on the IHIS display, this method will be called
-     * to notify all listeners.
-     * 
-     * @param eventIDs
-     *            The identifiers of the events selected in the spatial display.
-     */
-    private void fireSelectedEventActionOccurred(String[] eventIDs) {
-        SpatialDisplayAction action = new SpatialDisplayAction(
-                SpatialDisplayAction.ActionType.SELECTED_EVENTS_CHANGED,
-                eventIDs);
-        eventBus.publish(action);
-    }
-
-    /**
-     * 
-     */
-
-    /**
-     * When an item is selected from the right click CAVE context menu notify
-     * all listeners.
-     * 
-     * @param menuLabel
-     *            The label string of the selected context menu item
-     */
-    private void fireContextMenuItemSelected(String menuLabel) {
-        SpatialDisplayAction action = new SpatialDisplayAction(
-                SpatialDisplayAction.ActionType.CONTEXT_MENU_SELECTED, 0,
-                menuLabel);
-        eventBus.publish(action);
-    }
-
-    /**
-     * Sends a notification when the spatial display is disposed of, such as in
-     * a clear action.
-     * 
-     * @param
-     * @return
-     */
-    private void fireSpatialDisplayDisposedActionOccurred() {
-        if (allowDisposeMessage) {
-            final SpatialDisplayAction action = new SpatialDisplayAction(
-                    SpatialDisplayAction.ActionType.DISPLAY_DISPOSED);
-            eventBus.publishAsync(action);
-        }
-    }
-
-    /**
-     * Draws an element on the Spatial Display.
-     * 
-     * @param target
-     *            The target to draw on.
-     * @param paintProps
-     *            Describes how drawables will appear.
-     */
-    private void drawProduct(IGraphicsTarget target,
-            PaintProperties paintProps, AbstractDrawableComponent el) {
-        Layer layer = dataManager.getActiveLayer();
-
-        DisplayProperties dprops = new DisplayProperties();
-        dprops.setLayerMonoColor(layer.isMonoColor());
-        dprops.setLayerColor(layer.getColor());
-        dprops.setLayerFilled(layer.isFilled());
-
-        // Do this to force symbols to redraw themselves.
-        // This ensures that they scale properly as
-        // the user zooms in/out of the display.
-        // Only do this if the user is zooming.
-        if (el instanceof Symbol || el instanceof Text) {
-            if ((paintProps.isZooming())
-                    || (previousZoomLevel != paintProps.getZoomLevel())) {
-                previousZoomLevel = paintProps.getZoomLevel();
-                displayMap.remove(el);
-
-                if (el instanceof HazardServicesText) {
-                    ((HazardServicesText) el).updatePosition();
-                }
-            }
-        }
-
-        if (!displayMap.containsKey(el)) {
-            AbstractElementContainer container = ElementContainerFactory
-                    .createContainer((DrawableElement) el, descriptor, target);
-            displayMap.put(el, container);
-        }
-
-        displayMap.get(el).draw(target, paintProps, dprops);
     }
 
     /**
@@ -928,58 +886,6 @@ public class ToolLayer extends
      */
     public void setGhostLine(AbstractDrawableComponent ghost) {
         this.ghost = ghost;
-    }
-
-    /**
-     * Parses an RGB string and creates a Color object from the resulting
-     * values.
-     * 
-     * @param string
-     *            The RGB string
-     * @return A Color object created from the RGB string
-     */
-    public static Color convertRGBStringToColor(String string) {
-        /*
-         * Set a default color.
-         */
-        Color color = new Color(255, 255, 255);
-
-        int[] values = new int[3];
-        StringTokenizer tokenizer = new StringTokenizer(string);
-
-        if (tokenizer.countTokens() == 3) {
-            int j;
-
-            for (j = 0; tokenizer.hasMoreTokens(); j++) {
-                try {
-                    values[j] = Integer.parseInt(tokenizer.nextToken());
-                } catch (Exception e) {
-                    statusHandler.debug("Could not parse RGB color string "
-                            + string + " Defaulting to White.");
-                    break;
-                }
-
-                if ((values[j] < 0) || (values[j] > 255)) {
-                    break;
-                }
-            }
-
-            if (j == 3) {
-                color = new Color(values[0], values[1], values[2]);
-            }
-        }
-        return color;
-    }
-
-    /**
-     * Creates an RGB string based on a Color object.
-     * 
-     * @param Color
-     *            Represents the color to convert to an RGB string.
-     * @return An RGB string representation of the color.
-     */
-    public static String convertColorToRGBString(Color color) {
-        return color.getRed() + " " + color.getGreen() + " " + color.getBlue();
     }
 
     /**
@@ -1125,17 +1031,6 @@ public class ToolLayer extends
             return elSelected.get(0).getPrimaryDE();
         }
 
-    }
-
-    /**
-     * remove an ADC from the selected list.
-     * 
-     * @param adc
-     */
-    public void removeSelected(AbstractDrawableComponent adc) {
-        if (elSelected.contains(adc)) {
-            elSelected.remove(adc);
-        }
     }
 
     /**
@@ -1309,13 +1204,6 @@ public class ToolLayer extends
         return Lists.reverse(containingSymbolsList);
     }
 
-    private List<AbstractDrawableComponent> getContainingComponents(int x, int y) {
-        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                .getInstance().getActiveEditor());
-        Coordinate loc = editor.translateClick(x, y);
-        return getContainingComponents(loc, x, y);
-    }
-
     /**
      * Replace one drawable element in the product list with another drawable
      * element.
@@ -1351,6 +1239,9 @@ public class ToolLayer extends
 
     }
 
+    /**
+     * TODO This needs to me moved elsewhere - nothing to do with drawing.
+     */
     public void notifyModifiedGeometry(String eventID, Geometry geometry) {
         if (geometry.isValid()) {
             ISessionEventManager<ObservedHazardEvent> sessionEventManager = appBuilder
@@ -1371,69 +1262,13 @@ public class ToolLayer extends
         }
     }
 
+    /**
+     * TODO This needs to me moved elsewhere - nothing to do with drawing.
+     */
     public void notifyModifiedStormTrack(Map<String, Serializable> parameters) {
         ModifyStormTrackAction action = new ModifyStormTrackAction();
         action.setParameters(parameters);
         eventBus.publish(action);
-    }
-
-    @Override
-    public void addContextMenuItems(IMenuManager menuManager, int x, int y) {
-        /**
-         * In here, add the options to delete a vertex and add a vertex, but
-         * only if over a selected hazard and point. Retrieve the list of
-         * context menu items to add...
-         */
-        setCurrentEvent(x, y);
-        List<IAction> actions = getContextMenuActions();
-        for (IAction action : actions) {
-            menuManager.add(action);
-        }
-        menuManager.add(new Separator());
-    }
-
-    /**
-     * Given the specified point in both geographic coordinates and in pixel
-     * coordinates, determine a distance in geographic space that suffices as
-     * "slop" area for hit tests for geometries that are difficult to hit (one-
-     * and two-dimensional entities).
-     * 
-     * @param loc
-     *            Geographic coordinates of point being tested.
-     * @param x
-     *            Pixel X coordinate of point being tested.
-     * @param y
-     *            Pixel Y coordinate of point being tested.
-     * @return Distance in geographic space that suffices as "slop" area, or
-     *         <code>0.0</code> if the distance could not be calculated.
-     */
-    private double getTranslatedHitTestSlopDistance(Coordinate loc, int x, int y) {
-
-        // Find the editor.
-        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                .getInstance().getActiveEditor());
-
-        // Try creating a pixel point at the "slop" distance from the
-        // original pixel point in each of the four cardinal directions;
-        // for each one, see if this yields a translatable point, and
-        // if so, return the distance between that point and the original
-        // geographic point. If this fails, return 0.
-        Coordinate offsetLoc = null;
-        for (int j = 0; j < 4; j++) {
-            offsetLoc = editor
-                    .translateClick(
-                            x
-                                    + (HIT_TEST_SLOP_DISTANCE_PIXELS * ((j % 2) * (j == 1 ? 1
-                                            : -1))),
-                            y
-                                    + (HIT_TEST_SLOP_DISTANCE_PIXELS * (((j + 1) % 2) * (j == 0 ? 1
-                                            : -1))));
-            if (offsetLoc != null) {
-                return Math.sqrt(Math.pow(loc.x - offsetLoc.x, 2.0)
-                        + Math.pow(loc.y - offsetLoc.y, 2.0));
-            }
-        }
-        return 0.0;
     }
 
     /**
@@ -1496,9 +1331,9 @@ public class ToolLayer extends
      *            The selected hazard.
      * @return
      */
-    public void setSelectedHazardIHISLayer(AbstractDrawableComponent comp) {
+    public void setSelectedHazardLayer(AbstractDrawableComponent comp) {
 
-        selectedHazardIHISLayer = comp;
+        selectedHazardLayer = comp;
 
         /*
          * Update the list of world pixels associated with this hazard. We only
@@ -1522,8 +1357,323 @@ public class ToolLayer extends
      * @param
      * @return The selected hazard.
      */
-    public AbstractDrawableComponent getSelectedHazardIHISLayer() {
-        return selectedHazardIHISLayer;
+    public AbstractDrawableComponent getSelectedHazardLayer() {
+        return selectedHazardLayer;
+    }
+
+    /**
+     * Sets flag indicating whether or not to draw handle bars.
+     * 
+     * @param drawSelectedHandleBars
+     *            true - draw handle bars; false - do not draw handlebars.
+     * @return
+     */
+    public void setDrawSelectedHandleBars(boolean drawSelectedHandleBars) {
+        this.drawSelectedHandleBars = drawSelectedHandleBars;
+        issueRefresh();
+    }
+
+    public double[] getSelectedHazardCenterPoint() {
+        AbstractDrawableComponent comp = getSelectedHazardLayer();
+        Point centerPoint = null;
+
+        if ((comp != null) && !(comp instanceof Text)) {
+
+            if (comp instanceof DECollection
+                    && !((DECollection) comp).isEmpty()) {
+                comp = ((DECollection) comp).getItemAt(0);
+            }
+
+            Geometry p = ((IHazardServicesShape) comp).getGeometry();
+
+            if (p != null) {
+                centerPoint = p.getCentroid();
+            }
+        }
+
+        if (centerPoint != null) {
+            return new double[] { centerPoint.getX(), centerPoint.getY() };
+        }
+
+        return null;
+
+    }
+
+    /**
+     * @return the dataManager
+     */
+    public SpatialDisplayDataManager getDataManager() {
+        return dataManager;
+    }
+
+    /**
+     * @param mouseHandler
+     *            the mouseHandler to set
+     */
+    public void setMouseHandler(IInputHandler mouseHandler) {
+        this.mouseHandler = mouseHandler;
+    }
+
+    /**
+     * @param allowDisposeMessage
+     *            the allowDisposeMessage to set
+     */
+    public void setAllowDisposeMessage(boolean allowDisposeMessage) {
+        this.allowDisposeMessage = allowDisposeMessage;
+    }
+
+    /**
+     * @return the geoFactory
+     */
+    public GeometryFactory getGeoFactory() {
+        return geoFactory;
+    }
+
+    /**
+     * When an event is selected on the IHIS display, this method will be called
+     * to notify all listeners.
+     * 
+     * @param eventIDs
+     *            The identifiers of the events selected in the spatial display.
+     */
+    private void fireSelectedEventActionOccurred(String[] eventIDs) {
+        SpatialDisplayAction action = new SpatialDisplayAction(
+                SpatialDisplayAction.ActionType.SELECTED_EVENTS_CHANGED,
+                eventIDs);
+        eventBus.publish(action);
+    }
+
+    /**
+     * Sends a notification when the spatial display is disposed of, such as in
+     * a clear action.
+     * 
+     * @param
+     * @return
+     */
+    private void fireSpatialDisplayDisposedActionOccurred() {
+        if (allowDisposeMessage) {
+            final SpatialDisplayAction action = new SpatialDisplayAction(
+                    SpatialDisplayAction.ActionType.DISPLAY_DISPOSED);
+            eventBus.publishAsync(action);
+        }
+    }
+
+    /**
+     * Draws an element on the Spatial Display.
+     * 
+     * @param target
+     *            The target to draw on.
+     * @param paintProps
+     *            Describes how drawables will appear.
+     */
+    private void drawProduct(IGraphicsTarget target,
+            PaintProperties paintProps, AbstractDrawableComponent el) {
+        Layer layer = dataManager.getActiveLayer();
+
+        DisplayProperties dprops = new DisplayProperties();
+        dprops.setLayerMonoColor(layer.isMonoColor());
+        dprops.setLayerColor(layer.getColor());
+        dprops.setLayerFilled(layer.isFilled());
+
+        // Do this to force symbols to redraw themselves.
+        // This ensures that they scale properly as
+        // the user zooms in/out of the display.
+        // Only do this if the user is zooming.
+        if (el instanceof Symbol || el instanceof Text) {
+            if ((paintProps.isZooming())
+                    || (previousZoomLevel != paintProps.getZoomLevel())) {
+                previousZoomLevel = paintProps.getZoomLevel();
+                displayMap.remove(el);
+
+                if (el instanceof HazardServicesText) {
+                    ((HazardServicesText) el).updatePosition();
+                }
+            }
+        }
+
+        if (!displayMap.containsKey(el)) {
+            AbstractElementContainer container = ElementContainerFactory
+                    .createContainer((DrawableElement) el, descriptor, target);
+            displayMap.put(el, container);
+        }
+
+        displayMap.get(el).draw(target, paintProps, dprops);
+    }
+
+    /**
+     * Given the specified point in both geographic coordinates and in pixel
+     * coordinates, determine a distance in geographic space that suffices as
+     * "slop" area for hit tests for geometries that are difficult to hit (one-
+     * and two-dimensional entities).
+     * 
+     * @param loc
+     *            Geographic coordinates of point being tested.
+     * @param x
+     *            Pixel X coordinate of point being tested.
+     * @param y
+     *            Pixel Y coordinate of point being tested.
+     * @return Distance in geographic space that suffices as "slop" area, or
+     *         <code>0.0</code> if the distance could not be calculated.
+     */
+    private double getTranslatedHitTestSlopDistance(Coordinate loc, int x, int y) {
+
+        // Find the editor.
+        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
+                .getInstance().getActiveEditor());
+
+        // Try creating a pixel point at the "slop" distance from the
+        // original pixel point in each of the four cardinal directions;
+        // for each one, see if this yields a translatable point, and
+        // if so, return the distance between that point and the original
+        // geographic point. If this fails, return 0.
+        Coordinate offsetLoc = null;
+        for (int j = 0; j < 4; j++) {
+            offsetLoc = editor
+                    .translateClick(
+                            x
+                                    + (HIT_TEST_SLOP_DISTANCE_PIXELS * ((j % 2) * (j == 1 ? 1
+                                            : -1))),
+                            y
+                                    + (HIT_TEST_SLOP_DISTANCE_PIXELS * (((j + 1) % 2) * (j == 0 ? 1
+                                            : -1))));
+            if (offsetLoc != null) {
+                return Math.sqrt(Math.pow(loc.x - offsetLoc.x, 2.0)
+                        + Math.pow(loc.y - offsetLoc.y, 2.0));
+            }
+        }
+        return 0.0;
+    }
+
+    /**
+     * Clear all events from the spatial display. Takes into account events that
+     * need to be persisted such as a storm track dot.
+     */
+    private void clearEvents() {
+        List<AbstractDrawableComponent> deList = dataManager.getActiveLayer()
+                .getDrawables();
+
+        // Needed to use an array to prevent concurrency issues.
+        AbstractDrawableComponent[] deArray = deList
+                .toArray(new AbstractDrawableComponent[100]);
+
+        for (AbstractDrawableComponent de : deArray) {
+            if (de == null) {
+                break;
+            }
+
+            String eventID = ((IHazardServicesShape) de).getID();
+            List<AbstractDrawableComponent> persistentDrawables = persistentShapeMap
+                    .get(eventID);
+
+            if (persistentDrawables == null
+                    || !persistentDrawables.contains(de)) {
+
+                removeElement(de);
+            }
+        }
+
+        issueRefresh();
+    }
+
+    private void trackPersistentShapes(Boolean isPersistent, String id,
+            List<AbstractDrawableComponent> drawables) {
+        /*
+         * This ensures that a persistent shape with the same id as one that
+         * already exists will override it.
+         */
+
+        if (isPersistent != null && isPersistent) {
+            if (persistentShapeMap.containsKey(id)) {
+                persistentShapeMap.remove(id);
+            }
+
+            if (!drawables.isEmpty()) {
+                persistentShapeMap.put(id, drawables);
+            }
+        }
+    }
+
+    private boolean areEventsChanged(Collection<ObservedHazardEvent> events) {
+        for (IHazardEvent hazardEvent : events) {
+            for (IHazardEvent previousEvent : previousEvents) {
+                if (hazardEvent.getEventID().equals(previousEvent.getEventID())) {
+                    if (!hazardEvent.equals(previousEvent)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    private void filterEventsForTime(Collection<ObservedHazardEvent> events,
+            TimeRange selectedRange, Date selectedTime) {
+        Iterator<ObservedHazardEvent> it = events.iterator();
+        while (it.hasNext()) {
+            IHazardEvent event = it.next();
+
+            /*
+             * Test for unissued storm track operations. These should not be
+             * filtered out by time.
+             */
+            if (!(HazardServicesDrawableBuilder.forModifyingStormTrack(event) && !HazardStatus
+                    .hasEverBeenIssued(event.getStatus()))) {
+
+                if (!doesEventOverlapSelectedTime(event, selectedRange,
+                        selectedTime)) {
+                    it.remove();
+                }
+            }
+        }
+    }
+
+    /**
+     * Draws the ghost of an event that is being created or modified. For
+     * instance, if an event is moved, then ghost of the event is drawn to show
+     * where the event will end up when dropped on the map.
+     * 
+     * @param target
+     *            The target which will receive drawables
+     * @param paintProps
+     *            describes how drawables will be displayed
+     * @return
+     */
+    private void drawGhost(IGraphicsTarget target, PaintProperties paintProps) {
+
+        Iterator<DrawableElement> iterator = ghost.createDEIterator();
+
+        while (iterator.hasNext()) {
+            drawElement(target, paintProps, iterator.next());
+        }
+    }
+
+    /**
+     * Used by the drawGhost method. Ghosts are transient, so they are not
+     * preserved once they are drawn.
+     * 
+     * @param target
+     *            The target to draw on.
+     * @param paintProps
+     *            Describes how elements are displayed
+     * @param el
+     *            The PGEN drawable to be displayed.
+     * @return
+     */
+    private void drawElement(IGraphicsTarget target,
+            PaintProperties paintProps, DrawableElement el) {
+
+        AbstractElementContainer dispEl = null;
+
+        dispEl = new DefaultElementContainer(el, descriptor, target);
+        dispEl.draw(target, paintProps, null);
+        dispEl.dispose();
+    }
+
+    private List<AbstractDrawableComponent> getContainingComponents(int x, int y) {
+        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
+                .getInstance().getActiveEditor());
+        Coordinate loc = editor.translateClick(x, y);
+        return getContainingComponents(loc, x, y);
     }
 
     /**
@@ -1541,9 +1691,9 @@ public class ToolLayer extends
     private void drawSelected(IGraphicsTarget target, PaintProperties paintProps)
             throws VizException {
 
-        if ((selectedHazardIHISLayer != null) && (drawSelectedHandleBars)) {
-            if ((selectedHazardIHISLayer instanceof IHazardServicesShape)
-                    && ((IHazardServicesShape) selectedHazardIHISLayer)
+        if ((selectedHazardLayer != null) && (drawSelectedHandleBars)) {
+            if ((selectedHazardLayer instanceof IHazardServicesShape)
+                    && ((IHazardServicesShape) selectedHazardLayer)
                             .isEditable()) {
 
                 if (!handleBarPoints.isEmpty()) {
@@ -1625,243 +1775,6 @@ public class ToolLayer extends
     }
 
     /**
-     * Sets flag indicating whether or not to draw handle bars.
-     * 
-     * @param drawSelectedHandleBars
-     *            true - draw handle bars; false - do not draw handlebars.
-     * @return
-     */
-    public void setDrawSelectedHandleBars(boolean drawSelectedHandleBars) {
-        this.drawSelectedHandleBars = drawSelectedHandleBars;
-        issueRefresh();
-    }
-
-    public boolean isDrawSelectedHandleBars() {
-        return drawSelectedHandleBars;
-    }
-
-    public double[] getSelectedHazardCenterPoint() {
-        AbstractDrawableComponent comp = getSelectedHazardIHISLayer();
-        Point centerPoint = null;
-
-        if ((comp != null) && !(comp instanceof Text)) {
-
-            if (comp instanceof DECollection
-                    && !((DECollection) comp).isEmpty()) {
-                comp = ((DECollection) comp).getItemAt(0);
-            }
-
-            Geometry p = ((IHazardServicesShape) comp).getGeometry();
-
-            if (p != null) {
-                centerPoint = p.getCentroid();
-            }
-        }
-
-        if (centerPoint != null) {
-            return new double[] { centerPoint.getX(), centerPoint.getY() };
-        }
-
-        return null;
-
-    }
-
-    @Override
-    public void toolChanged() {
-
-    }
-
-    @Override
-    protected void paint(IGraphicsTarget target, PaintProperties paintProps,
-            AbstractDrawableComponent object,
-            AbstractMovableToolLayer.SelectionStatus status)
-            throws VizException {
-
-        /*
-         * Draw the hazard event
-         */
-        drawProduct(target, paintProps, object);
-
-        /*
-         * Draw the selected polygon
-         */
-        if (selectedHazardIHISLayer != null) {
-            drawSelected(target, paintProps);
-        }
-
-    }
-
-    @Override
-    protected boolean isClicked(IDisplayPaneContainer container,
-            Coordinate mouseLoc, AbstractDrawableComponent object) {
-        return false;
-    }
-
-    @Override
-    protected AbstractDrawableComponent makeLive(
-            AbstractDrawableComponent object) {
-        return null;
-    }
-
-    @Override
-    protected AbstractDrawableComponent move(Coordinate lastMouseLoc,
-            Coordinate mouseLoc, AbstractDrawableComponent object) {
-        return null;
-    }
-
-    @Override
-    protected String getDefaultName() {
-        return null;
-    }
-
-    /**
-     * @return the dataManager
-     */
-    public ToolLayerDataManager getDataManager() {
-        return dataManager;
-    }
-
-    @Override
-    protected void paintInternal(IGraphicsTarget target,
-            PaintProperties paintProps) throws VizException {
-
-        /*
-         * Paint shaded shapes for hatched areas
-         */
-        drawHatchedAreas(target, paintProps);
-
-        /*
-         * Retrieve the a PGEN DisplayElementFactory
-         */
-        DisplayElementFactory df = new DisplayElementFactory(target, descriptor);
-
-        if (ghost != null) {
-            drawGhost(target, paintProps, df);
-        }
-
-        super.paintInternal(target, paintProps);
-    }
-
-    /**
-     * @param mouseHandler
-     *            the mouseHandler to set
-     */
-    public void setMouseHandler(IInputHandler mouseHandler) {
-        this.mouseHandler = mouseHandler;
-    }
-
-    @Override
-    public boolean handleMouseDown(int x, int y, int mouseButton) {
-        if ((mouseHandler != null) && isEditable()) {
-            return mouseHandler.handleMouseDown(x, y, mouseButton);
-        }
-
-        return false;
-    }
-
-    @Override
-    public boolean handleMouseDownMove(int x, int y, int button) {
-        if ((mouseHandler != null) && isEditable()) {
-            return mouseHandler.handleMouseDownMove(x, y, button);
-        }
-        return false;
-
-    }
-
-    @Override
-    public boolean handleMouseUp(int x, int y, int mouseButton) {
-
-        if ((mouseHandler != null) && isEditable()) {
-            return mouseHandler.handleMouseUp(x, y, mouseButton);
-        }
-
-        return false;
-    }
-
-    @Override
-    public boolean handleMouseMove(int x, int y) {
-        if ((mouseHandler != null) && isEditable()) {
-            return mouseHandler.handleMouseMove(x, y);
-        } else {
-            return false;
-        }
-    }
-
-    @Override
-    public boolean handleKeyDown(int key) {
-        if ((mouseHandler != null) && isEditable()) {
-            return mouseHandler.handleKeyDown(key);
-        } else {
-            return false;
-        }
-    }
-
-    @Override
-    public boolean handleKeyUp(int key) {
-        if ((mouseHandler != null) && isEditable()) {
-            return mouseHandler.handleKeyUp(key);
-        } else {
-            return false;
-        }
-    }
-
-    @Override
-    public boolean handleMouseEnter(Event event) {
-        if ((mouseHandler != null) && isEditable()) {
-            return mouseHandler.handleMouseEnter(event);
-        } else {
-            return handleMouseMove(event.x, event.y);
-        }
-    }
-
-    @Override
-    public DataTime[] getDataTimes() {
-        if (timeMatchBasis) {
-            /*
-             * We only want to calculate more data times if the user has
-             * selected more frames than there have been in the past.
-             */
-            if (this.descriptor.getNumberOfFrames() > this.maximumFrameCount) {
-                int variance = this.descriptor.getNumberOfFrames()
-                        - this.maximumFrameCount;
-
-                this.maximumFrameCount = this.descriptor.getNumberOfFrames();
-
-                DataTime earliestTime = this.dataTimes.get(0);
-                this.fillDataTimeArray(earliestTime, variance);
-            }
-        } else {
-            FramesInfo info = descriptor.getFramesInfo();
-            dataTimes.clear();
-            this.maximumFrameCount = this.descriptor.getNumberOfFrames();
-            // First time called
-            if (info.getFrameTimes() != null) {
-                for (DataTime dt : info.getFrameTimes()) {
-                    dataTimes.add(dt);
-                }
-            }
-
-            if (dataTimes.size() == 0) {
-                timeMatchBasis = true;
-                // Case where this tool is time match basis or no data loaded
-                DataTime currentTime = null;
-                if (dataTimes.size() > 0) {
-                    currentTime = dataTimes.get(dataTimes.size() - 1);
-                } else {
-                    currentTime = new DataTime(SimulatedTime.getSystemTime()
-                            .getTime());
-                }
-
-                dataTimes.add(currentTime);
-                this.fillDataTimeArray(currentTime,
-                        this.descriptor.getNumberOfFrames() - 1);
-            }
-        }
-        Collections.sort(dataTimes);
-        return dataTimes.toArray(new DataTime[dataTimes.size()]);
-    }
-
-    /**
      * Initializes datatime frames.
      * 
      * @param startDataTime
@@ -1883,37 +1796,10 @@ public class ToolLayer extends
     }
 
     /**
-     * @param allowDisposeMessage
-     *            the allowDisposeMessage to set
-     */
-    public void setAllowDisposeMessage(boolean allowDisposeMessage) {
-        this.allowDisposeMessage = allowDisposeMessage;
-    }
-
-    /**
-     * @return the allowDisposeMessage
-     */
-    public boolean isAllowDisposeMessage() {
-        return allowDisposeMessage;
-    }
-
-    @Override
-    public ResourceOrder getResourceOrder() {
-        return RenderingOrderFactory.ResourceOrder.HIGHEST;
-    }
-
-    /**
-     * @return the geoFactory
-     */
-    public GeometryFactory getGeoFactory() {
-        return geoFactory;
-    }
-
-    /**
      * @param components
      *            over which the user has clicked.
      */
-    public void setCurrentEvent(
+    private void setCurrentEvent(
             List<AbstractDrawableComponent> containingComponents) {
         ISessionEventManager<ObservedHazardEvent> eventManager = appBuilder
                 .getSessionManager().getEventManager();

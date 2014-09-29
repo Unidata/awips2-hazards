@@ -130,10 +130,10 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
             }
 
             if (points.size() < 2) {
-                getToolLayer().removeGhostLine();
+                getSpatialDisplay().removeGhostLine();
                 points.clear();
 
-                getToolLayer().issueRefresh();
+                getSpatialDisplay().issueRefresh();
 
                 // Indicate that this drawing action is done.
                 getSpatialPresenter().getView().drawingActionComplete();
@@ -157,13 +157,13 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                 ArrayList<Coordinate> reducedPointsList = Lists
                         .newArrayList(reducedPoints);
 
-                getToolLayer().removeGhostLine();
+                getSpatialDisplay().removeGhostLine();
 
                 // Could be LINE_SOLID or LINE_DASHED_4
                 @SuppressWarnings("unused")
                 AbstractDrawableComponent warningBox = def.create(
                         DrawableType.LINE, freeLine, "Line", "LINE_DASHED_4",
-                        reducedPointsList, getToolLayer().getActiveLayer());
+                        reducedPointsList, getSpatialDisplay().getActiveLayer());
 
                 points.clear();
 
@@ -213,14 +213,14 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
 
                 // create the ghost element and put it in the drawing layer
                 AbstractDrawableComponent ghost = def.create(DrawableType.LINE,
-                        freeLine, "Line", "LINE_SOLID", points, getToolLayer()
+                        freeLine, "Line", "LINE_SOLID", points, getSpatialDisplay()
                                 .getActiveLayer());
 
                 List<Coordinate> ghostPts = Lists.newArrayList(points);
                 ((Line) ghost).setLinePoints(ghostPts);
 
-                getToolLayer().setGhostLine(ghost);
-                getToolLayer().issueRefresh();
+                getSpatialDisplay().setGhostLine(ghost);
+                getSpatialDisplay().issueRefresh();
             }
 
             return true;

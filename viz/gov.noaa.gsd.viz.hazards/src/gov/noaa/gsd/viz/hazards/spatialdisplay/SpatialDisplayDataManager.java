@@ -34,7 +34,7 @@ import com.google.common.collect.Lists;
  * 
  * @author Xiangbao Jing
  */
-public class ToolLayerDataManager {
+public class SpatialDisplayDataManager {
 
     private final List<Product> productList;
 
@@ -48,7 +48,7 @@ public class ToolLayerDataManager {
      */
     private Layer activeLayer = null;
 
-    public ToolLayerDataManager() {
+    public SpatialDisplayDataManager() {
         productList = Lists.newArrayList();
         initializeProducts();
     }

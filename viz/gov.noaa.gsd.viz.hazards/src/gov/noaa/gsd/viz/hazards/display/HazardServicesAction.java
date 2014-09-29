@@ -9,8 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayer;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayerResourceData;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplayResourceData;
 
 import java.util.List;
 
@@ -57,18 +57,18 @@ public class HazardServicesAction extends AbstractMapTool {
         ResourceList rscList = editor.getActiveDisplayPane().getDescriptor()
                 .getResourceList();
         List<AbstractVizResource<?, ?>> existingToolLayers = rscList
-                .getResourcesByType(ToolLayer.class);
+                .getResourcesByType(SpatialDisplay.class);
         if (existingToolLayers.isEmpty()) {
             try {
                 IDescriptor desc = editor.getActiveDisplayPane()
                         .getDescriptor();
-                ToolLayerResourceData toolLayerResourceData = new ToolLayerResourceData();
-                toolLayerResourceData.construct(new LoadProperties(), desc);
+                SpatialDisplayResourceData spatialDisplayResourceData = new SpatialDisplayResourceData();
+                spatialDisplayResourceData.construct(new LoadProperties(), desc);
             } catch (VizException e1) {
                 statusHandler.error("Error creating spatial display", e1);
             }
         } else {
-            ((ToolLayer) existingToolLayers.get(0)).getAppBuilder()
+            ((SpatialDisplay) existingToolLayers.get(0)).getAppBuilder()
                     .ensureViewsVisible();
         }
         return null;

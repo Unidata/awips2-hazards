@@ -146,20 +146,20 @@ public class NonDrawingAction extends AbstractMouseHandler {
             // at this time send a message to the IHIS Layer.
             if (button == 1) {
 
-                if (getToolLayer().getSelectedDE() == null) {
+                if (getSpatialDisplay().getSelectedDE() == null) {
                     /*
                      * Get the nearest element and set it as the selected
                      * element. Note: for Contours, we should select the nearest
                      * ContourLine, ContourMinmax or ContourCircle.
                      */
-                    AbstractDrawableComponent nadc = getToolLayer()
+                    AbstractDrawableComponent nadc = getSpatialDisplay()
                             .getContainingComponent(loc, anX, aY);
-                    getToolLayer().setSelectedDE(nadc);
+                    getSpatialDisplay().setSelectedDE(nadc);
 
                     // Remove the label associated with the element.
-                    getToolLayer().removeElementLabel(nadc);
+                    getSpatialDisplay().removeElementLabel(nadc);
 
-                    getToolLayer().issueRefresh();
+                    getSpatialDisplay().issueRefresh();
                 }
 
                 return true;
@@ -186,7 +186,7 @@ public class NonDrawingAction extends AbstractMouseHandler {
                 return false;
             }
 
-            AbstractDrawableComponent elSelected = getToolLayer()
+            AbstractDrawableComponent elSelected = getSpatialDisplay()
                     .getSelectedDE();
 
             Color ghostColor = new java.awt.Color(255, 255, 255);
@@ -230,7 +230,7 @@ public class NonDrawingAction extends AbstractMouseHandler {
                         if (distance < distanceToSelect) {
                             ptSelected = new Coordinate(clickPoint.getX(),
                                     clickPoint.getY());
-                            ghostEl = getToolLayer().getSelectedDE().copy();
+                            ghostEl = getSpatialDisplay().getSelectedDE().copy();
 
                         }
                     }
@@ -266,8 +266,8 @@ public class NonDrawingAction extends AbstractMouseHandler {
                         ghostEl.setColors(new Color[] { ghostColor,
                                 new java.awt.Color(255, 255, 255) });
 
-                        getToolLayer().setGhostLine(ghostEl);
-                        getToolLayer().issueRefresh();
+                        getSpatialDisplay().setGhostLine(ghostEl);
+                        getSpatialDisplay().issueRefresh();
                     }
 
                 }
@@ -292,19 +292,19 @@ public class NonDrawingAction extends AbstractMouseHandler {
 
                 Iterator<DrawableElement> iterator1 = ghostEl
                         .createDEIterator();
-                Iterator<DrawableElement> iterator2 = getToolLayer()
+                Iterator<DrawableElement> iterator2 = getSpatialDisplay()
                         .getSelectedDE().createDEIterator();
 
                 while (iterator1.hasNext() && iterator2.hasNext()) {
                     iterator1.next().setColors(iterator2.next().getColors());
                 }
 
-                getToolLayer().addElement(ghostEl);
+                getSpatialDisplay().addElement(ghostEl);
 
-                getToolLayer().removeGhostLine();
+                getSpatialDisplay().removeGhostLine();
                 ghostEl = null;
-                getToolLayer().setSelectedDE(null);
-                getToolLayer().issueRefresh();
+                getSpatialDisplay().setSelectedDE(null);
+                getSpatialDisplay().issueRefresh();
 
             }
 
@@ -319,7 +319,7 @@ public class NonDrawingAction extends AbstractMouseHandler {
             Coordinate loc = editor.translateClick(x, y);
 
             if (loc != null) {
-                AbstractDrawableComponent nadc = getToolLayer()
+                AbstractDrawableComponent nadc = getSpatialDisplay()
                         .getContainingComponent(loc, x, y);
 
                 // There is a selected element. Is the

@@ -16,7 +16,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayer;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
 
@@ -25,7 +25,6 @@ import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.raytheon.uf.viz.core.map.MapDescriptor;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
@@ -71,11 +70,6 @@ public class SpatialViewForTesting implements ISpatialView {
     }
 
     @Override
-    public MapDescriptor getDescriptor() {
-        return null;
-    }
-
-    @Override
     public void redoTimeMatching() {
     }
 
@@ -85,20 +79,11 @@ public class SpatialViewForTesting implements ISpatialView {
     }
 
     @Override
-    public double[] getDisplayZoomParameters() {
-        return null;
-    }
-
-    @Override
     public void recenterRezoomDisplay() {
     }
 
     @Override
     public void issueRefresh() {
-    }
-
-    @Override
-    public void clearEvents() {
     }
 
     @Override
@@ -134,7 +119,7 @@ public class SpatialViewForTesting implements ISpatialView {
     }
 
     @Override
-    public ToolLayer getSpatialDisplay() {
+    public SpatialDisplay getSpatialDisplay() {
         return null;
     }
 

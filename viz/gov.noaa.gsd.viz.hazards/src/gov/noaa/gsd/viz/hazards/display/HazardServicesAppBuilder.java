@@ -54,8 +54,8 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayer;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayerResourceData;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplayResourceData;
 import gov.noaa.gsd.viz.hazards.timer.HazardServicesTimer;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
@@ -326,7 +326,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     /**
      * Viz resource associated with this builder.
      */
-    private ToolLayer toolLayer;
+    private SpatialDisplay spatialDisplay;
 
     private ISessionManager<ObservedHazardEvent> sessionManager;
 
@@ -370,15 +370,15 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     /**
      * Consruct a standard instance.
      * 
-     * @param toolLayer
+     * @param spatialDisplay
      *            Viz resource associated with this app builder, if a new one is
      *            to be created.
      * @throws VizException
      *             If an exception occurs while attempting to build the Hazard
      *             Services application.
      */
-    public HazardServicesAppBuilder(ToolLayer toolLayer) {
-        initialize(toolLayer);
+    public HazardServicesAppBuilder(SpatialDisplay spatialDisplay) {
+        initialize(spatialDisplay);
 
     }
 
@@ -387,13 +387,13 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     /**
      * Initializes an instance of the HazardServicesAppBuilder
      * 
-     * @param toolLayer
+     * @param spatialDisplay
      *            Tool layer to be used with this builder.
      * @throws VizException
      *             If an error occurs while attempting to initialize.
      */
-    private void initialize(ToolLayer toolLayer) {
-        this.toolLayer = toolLayer;
+    private void initialize(SpatialDisplay spatialDisplay) {
+        this.spatialDisplay = spatialDisplay;
 
         /*
          * Add an error handler so that any uncaught exceptions within message
@@ -422,7 +422,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             }
         });
 
-        ((ToolLayerResourceData) toolLayer.getResourceData())
+        ((SpatialDisplayResourceData) spatialDisplay.getResourceData())
                 .setAppBuilder(this);
 
         PlatformUI.getWorkbench().addWorkbenchListener(this);
@@ -621,7 +621,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          * Create the Spatial Display layer in the active CAVE editor. This is
          * what hazards will be drawn on.
          */
-        createSpatialDisplay(toolLayer);
+        createSpatialDisplay(spatialDisplay);
 
         // Determine whether or not views are to be hidden at first if this
         // app builder is being created as the result of a bundle load.
@@ -848,8 +848,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * <p>
      * We'll have to see if we ever want to recreate it.
      */
-    private void createSpatialDisplay(ToolLayer toolLayer) {
-        SpatialView spatialView = new SpatialView(toolLayer);
+    private void createSpatialDisplay(SpatialDisplay spatialDisplay) {
+        SpatialView spatialView = new SpatialView(spatialDisplay);
         if (spatialPresenter == null) {
             spatialPresenter = new SpatialPresenter(sessionManager, eventBus);
             presenters.add(spatialPresenter);
@@ -1069,14 +1069,14 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         // Get the tool layer data from the old tool layer, and delete the
         // latter.
-        toolLayer.perspectiveChanging();
-        ToolLayerResourceData toolLayerResourceData = (ToolLayerResourceData) toolLayer
+        spatialDisplay.perspectiveChanging();
+        SpatialDisplayResourceData spatialDisplayResourceData = (SpatialDisplayResourceData) spatialDisplay
                 .getResourceData();
-        toolLayer.dispose();
+        spatialDisplay.dispose();
 
         // Create a new tool layer for the new perspective.
         try {
-            toolLayer = toolLayerResourceData.construct(new LoadProperties(),
+            spatialDisplay = spatialDisplayResourceData.construct(new LoadProperties(),
                     ((AbstractEditor) VizWorkbenchManager.getInstance()
                             .getActiveEditor()).getActiveDisplayPane()
                             .getDescriptor());
@@ -1236,7 +1236,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * Add the spatial display to the current perspective.
      */
     private void addSpatialDisplayResourceToPerspective() {
-        createSpatialDisplay(toolLayer);
+        createSpatialDisplay(spatialDisplay);
 
         // Set the default mouse listener; this is the select mouse handler.
         spatialPresenter.getView().setMouseHandler(
@@ -1257,7 +1257,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         }
         disposing = true;
 
-        ((ToolLayerResourceData) toolLayer.getResourceData())
+        ((SpatialDisplayResourceData) spatialDisplay.getResourceData())
                 .setAppBuilder(null);
 
         /*
@@ -1339,8 +1339,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         return spatialPresenter;
     }
 
-    public ToolLayer getToolLayer() {
-        return toolLayer;
+    public SpatialDisplay getSpatialDisplay() {
+        return spatialDisplay;
     }
 
     public HazardDetailPresenter getHazardDetailPresenter() {

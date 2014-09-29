@@ -197,7 +197,7 @@ class MixedHazardStoryFunctionalTest extends
 
                     eventStateChangeCount = 0;
                     checkFirstSelectionIssue();
-                    List<String> contextMenuEntries = convertContextMenuToString(toolLayer
+                    List<String> contextMenuEntries = convertContextMenuToString(spatialDisplay
                             .getContextMenuActions());
                     assertTrue(contextMenuEntries
                             .contains(ContextMenuSelections.REMOVE_POTENTIAL_HAZARDS

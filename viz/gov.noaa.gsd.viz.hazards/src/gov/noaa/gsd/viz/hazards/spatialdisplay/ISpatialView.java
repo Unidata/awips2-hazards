@@ -16,7 +16,6 @@ import gov.noaa.gsd.viz.mvp.IView;
 
 import java.util.Date;
 
-import com.raytheon.uf.viz.core.map.MapDescriptor;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
@@ -70,13 +69,6 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
             boolean areHatchedAreasDisplayed);
 
     /**
-     * Retrieve the descriptor associated with this view.
-     * 
-     * @return A descriptor describing this view.
-     */
-    public MapDescriptor getDescriptor();
-
-    /**
      * Force time matching to be recalculated.
      */
     public void redoTimeMatching();
@@ -95,15 +87,6 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
             double multiplier);
 
     /**
-     * Get the display's current zoom parameters.
-     * 
-     * @return Array of three numbers, the first being the longitude of the zoom
-     *         center point, the second being the latitude of the zoom center
-     *         point, and the third being the zoom multiplier.
-     */
-    public double[] getDisplayZoomParameters();
-
-    /**
      * Recenter and rezoom the display on the currently selected hazard.
      */
     public void recenterRezoomDisplay();
@@ -112,11 +95,6 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
      * Refresh the spatial view.
      */
     public void issueRefresh();
-
-    /**
-     * Clear the displayed events
-     */
-    public void clearEvents();
 
     /**
      * Sets the mouse handler.
@@ -185,7 +163,7 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
      * 
      * @return An instance of the spatial display.
      */
-    public ToolLayer getSpatialDisplay();
+    public SpatialDisplay getSpatialDisplay();
 
     /**
      * Checks to determine if a geometry overlay needs to be loaded for a

@@ -185,7 +185,7 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
                 AbstractDrawableComponent ghost = def.create(DrawableType.LINE,
                         (IAttribute) drawingAttributesForShapeTypes
                                 .get(shapeType), "Line", "LINE_SOLID",
-                        (ArrayList<Coordinate>) points, getToolLayer()
+                        (ArrayList<Coordinate>) points, getSpatialDisplay()
                                 .getActiveLayer());
 
                 List<Coordinate> ghostPts = Lists.newArrayList(points);
@@ -193,8 +193,8 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
 
                 ((Line) ghost).setLinePoints(ghostPts);
 
-                getToolLayer().setGhostLine(ghost);
-                getToolLayer().issueRefresh();
+                getSpatialDisplay().setGhostLine(ghost);
+                getSpatialDisplay().issueRefresh();
             }
 
             return false;
@@ -230,11 +230,11 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
                      */
                     addPointIfNotIdenticalToPreviousPoint(loc);
                     if (points.size() != 0) {
-                        getToolLayer().removeGhostLine();
+                        getSpatialDisplay().removeGhostLine();
                         if (points.size() < (shapeType == GeometryType.POLYGON ? 3
                                 : 2)) {
                             points.clear();
-                            getToolLayer().issueRefresh();
+                            getSpatialDisplay().issueRefresh();
                         } else {
                             createShapeFromCollectedPoints();
                         }

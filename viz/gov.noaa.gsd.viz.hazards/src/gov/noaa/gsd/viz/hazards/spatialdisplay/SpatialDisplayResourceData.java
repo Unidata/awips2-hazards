@@ -25,8 +25,8 @@ import com.raytheon.uf.viz.core.rsc.tools.GenericToolsResourceData;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
- * Description: Tool layer resource data, providing information about the Hazard
- * Services viz resource.
+ * Description: Spatial Display resource data, providing information about the
+ * Hazard Services viz resource.
  * 
  * <pre>
  * 
@@ -39,9 +39,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * @author Chris.Golden
  * @version 1.0
  */
-@XmlType(name = "HazardServicesToolLayerResourceData", factoryMethod = "newDeserializedInstance")
+@XmlType(name = "HazardServicesSpatialDisplayResourceData", factoryMethod = "newDeserializedInstance")
 @XmlAccessorType(XmlAccessType.NONE)
-public class ToolLayerResourceData extends GenericToolsResourceData<ToolLayer> {
+public class SpatialDisplayResourceData extends
+        GenericToolsResourceData<SpatialDisplay> {
 
     // Private Variables
 
@@ -69,8 +70,8 @@ public class ToolLayerResourceData extends GenericToolsResourceData<ToolLayer> {
     /**
      * Create an instance for deserialization purposes.
      */
-    public static ToolLayerResourceData newDeserializedInstance() {
-        return new ToolLayerResourceData(true);
+    public static SpatialDisplayResourceData newDeserializedInstance() {
+        return new SpatialDisplayResourceData(true);
     }
 
     // Public Constructors
@@ -78,7 +79,7 @@ public class ToolLayerResourceData extends GenericToolsResourceData<ToolLayer> {
     /**
      * Construct a brand-new (not deserialized) standard instance.
      */
-    public ToolLayerResourceData() {
+    public SpatialDisplayResourceData() {
         this(false);
     }
 
@@ -92,17 +93,17 @@ public class ToolLayerResourceData extends GenericToolsResourceData<ToolLayer> {
      *            instantiated as a result of deserialization of a previously
      *            serialized object.
      */
-    private ToolLayerResourceData(boolean instantiatedViaDeserialization) {
-        super(ToolLayer.DEFAULT_NAME, ToolLayer.class);
+    private SpatialDisplayResourceData(boolean instantiatedViaDeserialization) {
+        super(SpatialDisplay.DEFAULT_NAME, SpatialDisplay.class);
         this.instantiatedViaDeserialization = instantiatedViaDeserialization;
     }
 
     // Public Methods
 
     @Override
-    public ToolLayer construct(LoadProperties loadProperties,
+    public SpatialDisplay construct(LoadProperties loadProperties,
             IDescriptor descriptor) throws VizException {
-        return new ToolLayer(this, loadProperties,
+        return new SpatialDisplay(this, loadProperties,
                 instantiatedViaDeserialization, appBuilder);
     }
 

@@ -17,7 +17,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.StarDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.StormTrackDotDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.TextPositioner;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayer;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
@@ -304,21 +304,21 @@ public class HazardServicesDrawableBuilder {
     }
 
     public List<AbstractDrawableComponent> buildDrawableComponents(
-            ToolLayer toolLayer, IHazardEvent hazardEvent, Layer activeLayer,
+            SpatialDisplay spatialDisplay, IHazardEvent hazardEvent, Layer activeLayer,
             boolean isEventAreaEditable, boolean drawHazardHatchArea) {
 
         List<AbstractDrawableComponent> result = Lists.newArrayList();
 
         if (forModifyingStormTrack(hazardEvent)) {
             addComponentsForStormTrackModification(hazardEvent, result,
-                    toolLayer, activeLayer);
+                    spatialDisplay, activeLayer);
         } else {
 
             for (int shapeNum = 0; shapeNum < hazardEvent.getGeometry()
                     .getNumGeometries(); shapeNum++) {
 
                 AbstractDrawableComponent drawableComponent = addShapeComponent(
-                        toolLayer, hazardEvent, activeLayer, result,
+                        spatialDisplay, hazardEvent, activeLayer, result,
                         drawHazardHatchArea, shapeNum);
 
                 if (drawableComponent instanceof DECollection) {
@@ -349,7 +349,7 @@ public class HazardServicesDrawableBuilder {
                 }
             }
 
-            addTextComponentAtGeometryCenterPoint(toolLayer, result,
+            addTextComponentAtGeometryCenterPoint(spatialDisplay, result,
                     hazardEvent);
 
         }
@@ -360,7 +360,7 @@ public class HazardServicesDrawableBuilder {
      * Creates the hatched areas associated with the hazard events. Also,
      * creates the hatched area annotations (the "Ws")
      * 
-     * @param toolLayer
+     * @param spatialDisplay
      *            Reference to the Spatial Display tool Layer
      * @param hazardEvent
      *            The hazard event to build the hatched areas for
@@ -376,13 +376,13 @@ public class HazardServicesDrawableBuilder {
      *            displayed.
      * @return
      */
-    public void buildhazardAreas(ToolLayer toolLayer, IHazardEvent hazardEvent,
+    public void buildhazardAreas(SpatialDisplay spatialDisplay, IHazardEvent hazardEvent,
             Layer activeLayer, List<AbstractDrawableComponent> hatchedAreas,
             List<AbstractDrawableComponent> hatchedAreaAnnotations,
             boolean drawHazardHatchArea) {
 
         if (drawHazardHatchArea) {
-            addHazardHatchArea(toolLayer, hazardEvent, activeLayer,
+            addHazardHatchArea(spatialDisplay, hazardEvent, activeLayer,
                     hatchedAreas, hatchedAreaAnnotations);
         }
     }
@@ -394,7 +394,7 @@ public class HazardServicesDrawableBuilder {
     @SuppressWarnings("unchecked")
     private void addComponentsForStormTrackModification(
             IHazardEvent hazardEvent, List<AbstractDrawableComponent> result,
-            ToolLayer toolLayer, Layer activeLayer) {
+            SpatialDisplay spatialDisplay, Layer activeLayer) {
 
         Boolean subduePolygon = false;
 
@@ -411,9 +411,9 @@ public class HazardServicesDrawableBuilder {
          * points.
          */
         AbstractDrawableComponent polygonDrawable = addShapeComponent(
-                toolLayer, hazardEvent, activeLayer, result, false, 0);
+                spatialDisplay, hazardEvent, activeLayer, result, false, 0);
 
-        addTextComponent(toolLayer, hazardEvent.getEventID(), result,
+        addTextComponent(spatialDisplay, hazardEvent.getEventID(), result,
                 polygonDrawable);
 
         if (!HazardStatus.hasEverBeenIssued(hazardEvent.getStatus())
@@ -427,7 +427,7 @@ public class HazardServicesDrawableBuilder {
                     coordinates, activeLayer);
             ((IHazardServicesShape) component).setIsEditable(false);
             result.add(component);
-            toolLayer.addElement(component);
+            spatialDisplay.addElement(component);
             List<Integer> pivotIndices = (List<Integer>) hazardEvent
                     .getHazardAttribute(HazardConstants.PIVOTS);
             List<Map<String, Serializable>> shapes = (List<Map<String, Serializable>>) hazardEvent
@@ -458,7 +458,7 @@ public class HazardServicesDrawableBuilder {
                             activeLayer, colors);
                 }
                 result.add(component);
-                toolLayer.addElement(component);
+                spatialDisplay.addElement(component);
             }
 
             /*
@@ -468,7 +468,7 @@ public class HazardServicesDrawableBuilder {
             TimeRange selectedRange = timeManager.getSelectedTimeRange();
             Date selectedTime = timeManager.getSelectedTime();
 
-            if (!toolLayer.doesEventOverlapSelectedTime(hazardEvent,
+            if (!spatialDisplay.doesEventOverlapSelectedTime(hazardEvent,
                     selectedRange, selectedTime)) {
                 subduePolygon = true;
             }
@@ -545,7 +545,7 @@ public class HazardServicesDrawableBuilder {
         return drawableComponent;
     }
 
-    private AbstractDrawableComponent addShapeComponent(ToolLayer toolLayer,
+    private AbstractDrawableComponent addShapeComponent(SpatialDisplay spatialDisplay,
             IHazardEvent hazardEvent, Layer activeLayer,
             List<AbstractDrawableComponent> drawableComponents,
             boolean drawHazardArea, int shapeNum) {
@@ -561,10 +561,10 @@ public class HazardServicesDrawableBuilder {
          * an event is selected. As a result, you cannot modify the polygons.
          */
         if ((Boolean) hazardEvent.getHazardAttribute(HAZARD_EVENT_SELECTED)) {
-            toolLayer.setSelectedHazardIHISLayer(drawableComponent);
+            spatialDisplay.setSelectedHazardLayer(drawableComponent);
         }
 
-        toolLayer.addElement(drawableComponent);
+        spatialDisplay.addElement(drawableComponent);
         drawableComponents.add(drawableComponent);
         return drawableComponent;
     }
@@ -572,7 +572,7 @@ public class HazardServicesDrawableBuilder {
     /**
      * Builds hatched areas for a hazard event.
      * 
-     * @param toolLayer
+     * @param spatialDisplay
      *            The Hazard Services Spatial Display
      * @param hazardEvent
      *            The hazard event to build hazard areas for
@@ -584,7 +584,7 @@ public class HazardServicesDrawableBuilder {
      *            A list of hatched area annotations
      * @return
      */
-    private void addHazardHatchArea(ToolLayer toolLayer,
+    private void addHazardHatchArea(SpatialDisplay spatialDisplay,
             IHazardEvent hazardEvent, Layer activeLayer,
             List<AbstractDrawableComponent> hatchedAreas,
             List<AbstractDrawableComponent> hatchedAreaAnnotations) {
@@ -684,7 +684,7 @@ public class HazardServicesDrawableBuilder {
      * single label. This helps to reduce the screen clutter which can result
      * when a hazard event has many geometries associated with it.
      * 
-     * @param toolLayer
+     * @param spatialDisplay
      *            The viz resource to draw to.
      * @param drawableComponents
      *            List of drawables to add this text label to.
@@ -693,7 +693,7 @@ public class HazardServicesDrawableBuilder {
      * 
      * @return
      */
-    public void addTextComponentAtGeometryCenterPoint(ToolLayer toolLayer,
+    public void addTextComponentAtGeometryCenterPoint(SpatialDisplay spatialDisplay,
             List<AbstractDrawableComponent> drawableComponents,
             IHazardEvent hazardEvent) {
         if (drawingAttributes.getString() != null
@@ -701,13 +701,13 @@ public class HazardServicesDrawableBuilder {
 
             AbstractDrawableComponent text = buildText(
                     hazardEvent.getGeometry(), hazardEvent.getEventID(),
-                    toolLayer.getActiveLayer(), toolLayer.getGeoFactory());
-            toolLayer.addElement(text);
+                    spatialDisplay.getActiveLayer(), spatialDisplay.getGeoFactory());
+            spatialDisplay.addElement(text);
             drawableComponents.add(text);
         }
     }
 
-    public void addTextComponent(ToolLayer toolLayer, String id,
+    public void addTextComponent(SpatialDisplay spatialDisplay, String id,
             List<AbstractDrawableComponent> drawableComponents,
             AbstractDrawableComponent associatedShape) {
         if (drawingAttributes.getString() != null
@@ -715,8 +715,8 @@ public class HazardServicesDrawableBuilder {
             IHazardServicesShape shape = (IHazardServicesShape) (associatedShape instanceof DECollection ? ((DECollection) associatedShape)
                     .getPrimaryDE() : associatedShape);
             AbstractDrawableComponent text = buildText(shape.getGeometry(), id,
-                    toolLayer.getActiveLayer(), toolLayer.getGeoFactory());
-            toolLayer.addElement(text);
+                    spatialDisplay.getActiveLayer(), spatialDisplay.getGeoFactory());
+            spatialDisplay.addElement(text);
             drawableComponents.add(text);
         }
     }

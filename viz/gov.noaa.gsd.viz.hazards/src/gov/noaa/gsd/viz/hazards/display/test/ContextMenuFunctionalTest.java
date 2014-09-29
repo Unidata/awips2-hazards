@@ -143,7 +143,7 @@ public class ContextMenuFunctionalTest extends
                 break;
 
             case CREATE_NEW_NODE_HAZARD_AREA:
-                List<String> contextMenuEntries = convertContextMenuToString(this.toolLayer
+                List<String> contextMenuEntries = convertContextMenuToString(this.spatialDisplay
                         .getContextMenuActions());
 
                 assertTrue(!contextMenuEntries
