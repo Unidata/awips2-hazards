@@ -40,14 +40,14 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 
 public class ProductModified implements ISessionNotification {
 
-    private final ProductInformation productInformation;
+    private final ProductGeneratorInformation productGeneratorInformation;
 
-    public ProductModified(ProductInformation productInformation) {
-        this.productInformation = productInformation;
+    public ProductModified(ProductGeneratorInformation productGeneratorInformation) {
+        this.productGeneratorInformation = productGeneratorInformation;
     }
 
-    public ProductInformation getProductInformation() {
-        return productInformation;
+    public ProductGeneratorInformation getProductGeneratorInformation() {
+        return productGeneratorInformation;
     }
 
 

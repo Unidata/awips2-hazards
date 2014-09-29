@@ -25,7 +25,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
 
 /**
  * Listener when passing the product data to the update method of product
@@ -51,21 +51,21 @@ public class UpdateListener implements IPythonJobListener<GeneratedProductList> 
 
     private final ISessionNotificationSender notificationSender;
 
-    private ProductInformation information;
+    private ProductGeneratorInformation productGeneratorInformation;
 
-    public UpdateListener(ProductInformation information,
+    public UpdateListener(ProductGeneratorInformation productGeneratorInformation,
             ISessionNotificationSender notificationSender) {
-        this.information = information;
+        this.productGeneratorInformation = productGeneratorInformation;
         this.notificationSender = notificationSender;
     }
 
     @Override
     public void jobFinished(GeneratedProductList generatedProductList) {
         generatedProductList.setCorrectable(true);
-        generatedProductList.setEventSet(information.getProducts()
+        generatedProductList.setEventSet(productGeneratorInformation.getGeneratedProducts()
                 .getEventSet());
-        information.setProducts(generatedProductList);
-        notificationSender.postNotification(new ProductGenerated(information));
+        productGeneratorInformation.setGeneratedProducts(generatedProductList);
+        notificationSender.postNotification(new ProductGenerated(productGeneratorInformation));
     }
 
     @Override

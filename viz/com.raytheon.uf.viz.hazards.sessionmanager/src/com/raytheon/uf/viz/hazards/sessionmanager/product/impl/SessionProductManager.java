@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.product.impl;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -36,6 +37,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.UUID;
+
+import net.engio.mbassy.listener.Handler;
+
+import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -44,6 +50,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HasConflictsRequest;
@@ -54,6 +61,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
 import com.raytheon.uf.common.hazards.productgen.ProductUtils;
+import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -74,10 +82,14 @@ import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSende
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerationComplete;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo.Product;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Geometry;
@@ -181,6 +193,22 @@ public class SessionProductManager implements ISessionProductManager {
 
     private boolean vtecTestMode;
 
+    private final Map<String, ProductGenerationAuditor> productGenerationAuditManager;
+
+    private final Map<Boolean, Collection<ProductGeneratorInformation>> productGeneratorInformationForSelectedHazardsCache;
+
+    private final BoundedReceptionEventBus<Object> eventBus;
+
+    /** CAVE's Mode */
+    private final CAVEMode caveMode = CAVEMode.getMode();
+
+    /** Operational mode flag */
+    private final boolean operationalMode = caveMode == CAVEMode.OPERATIONAL;
+    
+    /** String version of CAVEMode */
+    private final String caveModeStr = caveMode.toString();
+    
+
     public SessionProductManager(SessionManager sessionManager,
             ISessionTimeManager timeManager,
             ISessionConfigurationManager configManager,
@@ -197,19 +225,23 @@ public class SessionProductManager implements ISessionProductManager {
 
         this.vtecMode = "O";
         this.vtecTestMode = false;
+        this.productGenerationAuditManager = new HashMap<>();
+        this.productGeneratorInformationForSelectedHazardsCache = new HashMap<>();
+        this.eventBus = this.sessionManager.getEventBus();
     }
 
     @Override
-    public Collection<ProductInformation> getSelectedProducts(boolean issue) {
-        List<ProductInformation> result = new ArrayList<ProductInformation>();
+    public Collection<ProductGeneratorInformation> getAllProductGeneratorInformationForSelectedHazards(
+            boolean issue) {
+        List<ProductGeneratorInformation> result = new ArrayList<>();
         ProductGeneratorTable pgt = configManager.getProductGeneratorTable();
 
         for (Entry<String, ProductGeneratorEntry> entry : pgt.entrySet()) {
             if (entry.getValue().isReservedNameNotYetImplemented()) {
                 continue;
             }
-            Set<IHazardEvent> productEvents = new HashSet<IHazardEvent>();
-            Set<IHazardEvent> possibleProductEvents = new HashSet<IHazardEvent>();
+            Set<IHazardEvent> productEvents = new HashSet<>();
+            Set<IHazardEvent> possibleProductEvents = new HashSet<>();
 
             for (ObservedHazardEvent e : eventManager.getEvents()) {
                 if (e.getPhenomenon() == null || e.getSignificance() == null) {
@@ -230,7 +262,7 @@ public class SessionProductManager implements ISessionProductManager {
                 }
             }
             if (!productEvents.isEmpty()) {
-                ProductInformation info = new ProductInformation();
+                ProductGeneratorInformation info = new ProductGeneratorInformation();
                 info.setProductGeneratorName(entry.getKey());
                 info.setProductEvents(productEvents);
                 info.setPossibleProductEvents(possibleProductEvents);
@@ -299,12 +331,57 @@ public class SessionProductManager implements ISessionProductManager {
         return unsupportedHazards;
     }
 
-    private boolean isCombinable(IHazardEvent e) {
-        String type = HazardEventUtilities.getHazardType(e);
-        HazardTypes hazardTypes = configManager.getHazardTypes();
-        HazardTypeEntry hazardTypeEntry = hazardTypes.get(type);
-        boolean result = hazardTypeEntry.isCombinableSegments();
-        return result;
+    @Override
+    public void generateReviewableProduct(List<ProductData> allProductData) {
+        ProductGeneratorInformation productGeneratorInformation = new ProductGeneratorInformation();
+        synchronized (this.productGenerationAuditManager) {
+            final String productGenerationTrackingID = UUID.randomUUID()
+                    .toString();
+            ProductGenerationAuditor productGenerationAuditor = new ProductGenerationAuditor(
+                    false, productGenerationTrackingID);
+            productGeneratorInformation
+                    .setGenerationID(productGenerationTrackingID);
+            productGenerationAuditor
+                    .addProductGeneratorInformation(productGeneratorInformation);
+            this.productGenerationAuditManager.put(productGenerationTrackingID,
+                    productGenerationAuditor);
+        }
+
+        if (allProductData.isEmpty() == false) {
+            List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList = new ArrayList<>();
+            EventSet<IEvent> eventSet = new EventSet<>();
+            for (ProductData productData : allProductData) {
+
+                updatedDataList.add(productData.getData());
+
+                if (productGeneratorInformation.getProductGeneratorName() == null) {
+                    String productGeneratorName = productData
+                            .getProductGeneratorName();
+                    productGeneratorInformation
+                            .setProductGeneratorName(productGeneratorName);
+                    productGeneratorInformation
+                            .setProductFormats(sessionManager
+                                    .getConfigurationManager()
+                                    .getProductGeneratorTable()
+                                    .getProductFormats(productGeneratorName));
+
+                    for (Integer eventID : productData.getEventIDs()) {
+                        IHazardEvent hazardEvent = new HazardEvent();
+                        hazardEvent.setStartTime(productData.getStartTime());
+                        hazardEvent.setEventID(String.valueOf(eventID));
+                        eventSet.add(hazardEvent);
+                    }
+
+                    GeneratedProductList generatedProducts = new GeneratedProductList();
+                    generatedProducts.setEventSet(eventSet);
+                    productGeneratorInformation
+                            .setGeneratedProducts(generatedProducts);
+                }
+            }
+
+            generateProductReview(productGeneratorInformation, updatedDataList);
+        }
+
     }
 
     /*
@@ -316,8 +393,9 @@ public class SessionProductManager implements ISessionProductManager {
      * ProductInformation, boolean, boolean)
      */
     @Override
-    public boolean generate(ProductInformation information, boolean issue,
-            boolean confirm) {
+    public boolean generate(
+            ProductGeneratorInformation productGeneratorInformation,
+            boolean issue, boolean confirm) {
 
         /*
          * Just terminate ongoing operation and return if there is nothing to
@@ -337,20 +415,403 @@ public class SessionProductManager implements ISessionProductManager {
             return false;
         }
         String locMgrSite = LocalizationManager.getInstance().getCurrentSite();
-        EventSet<IEvent> events = buildEventSet(information, issue, locMgrSite);
+        EventSet<IEvent> events = buildEventSet(productGeneratorInformation,
+                issue, locMgrSite);
 
-        String product = information.getProductGeneratorName();
-        String[] formats = information.getProductFormats().getPreviewFormats()
-                .toArray(new String[0]);
+        String productGeneratorName = productGeneratorInformation
+                .getProductGeneratorName();
+        String[] productFormats = productGeneratorInformation
+                .getProductFormats().getPreviewFormats().toArray(new String[0]);
         IPythonJobListener<GeneratedProductList> listener = new JobListener(
-                issue, notificationSender, information);
-        productGen.generate(product, events, information.getDialogSelections(),
-                formats, listener);
+                issue, notificationSender, productGeneratorInformation);
+        productGen.generate(productGeneratorName, events,
+                productGeneratorInformation.getDialogSelections(),
+                productFormats, listener);
 
         return true;
     }/* end generate() method */
 
-    private EventSet<IEvent> buildEventSet(ProductInformation information,
+    @Override
+    public void issue(ProductGeneratorInformation productGeneratorInformation) {
+
+        /*
+         * Need to look at all events in the SessionManager because some events
+         * for which products were generated may not have been selected. For
+         * example, two FA.A's, one selected, one not, and the user adds the
+         * second one via the product staging dialog.
+         */
+        for (ObservedHazardEvent sessionEvent : eventManager.getEvents()) {
+            /*
+             * Update Hazard Events with product information returned from the
+             * Product Generators
+             */
+            for (IEvent ev : productGeneratorInformation.getGeneratedProducts()
+                    .getEventSet()) {
+                IHazardEvent updatedEvent = (IHazardEvent) ev;
+                if (checkForConflicts(updatedEvent)) {
+                    statusHandler
+                            .info("There is a grid conflict with the hazard event.");
+                    // TODO It needs to be decided if we should prevent the user
+                    // from issuing a hazard if there is a grid conflict.
+                }
+                if (sessionEvent.getEventID().equals(updatedEvent.getEventID())) {
+
+                    ObservedHazardEvent newEvent = new ObservedHazardEvent(
+                            updatedEvent, (SessionEventManager) eventManager);
+
+                    SessionEventUtilities.mergeHazardEvents(newEvent,
+                            sessionEvent);
+                    /*
+                     * This ensures that the "replaces" string is removed for
+                     * the next generation of a product.
+                     */
+                    sessionEvent
+                            .removeHazardAttribute(HazardConstants.REPLACES);
+
+                    if (updatedEvent.getStatus().equals(HazardStatus.ENDED)) {
+                        eventManager.endEvent(sessionEvent, Originator.OTHER);
+                    } else {
+                        eventManager.issueEvent(sessionEvent, Originator.OTHER);
+                    }
+
+                    break;
+                }
+
+            }
+        }
+
+        disseminate(productGeneratorInformation);
+    }
+
+    @Override
+    public void issueCorrection(
+            ProductGeneratorInformation productGeneratorInformation) {
+        if (areYouSure()) {
+            disseminate(productGeneratorInformation);
+            sessionManager.setIssueOngoing(false);
+        }
+    }
+
+    @Override
+    public void shutdown() {
+        /**
+         * Nothing to do right now.
+         */
+    }
+
+    @Override
+    public boolean validateSelectedHazardsForProductGeneration() {
+
+        Collection<ObservedHazardEvent> selectedEvents = eventManager
+                .getSelectedEvents();
+        Date simulatedTime = SimulatedTime.getSystemTime().getTime();
+        List<String> eventIds = Lists.newArrayList();
+
+        for (IHazardEvent selectedEvent : selectedEvents) {
+
+            /*
+             * Test if the end time of the selected event is in the past.
+             * Products will not be generated for events with end times in the
+             * past.
+             */
+            if (selectedEvent.getEndTime().before(simulatedTime)) {
+                eventIds.add(selectedEvent.getEventID());
+            }
+        }
+
+        if (!eventIds.isEmpty()) {
+            StringBuffer warningMessage = new StringBuffer();
+            warningMessage.append(eventIds.size() > 1 ? "Events " : "Event ");
+
+            for (String eventId : eventIds) {
+                warningMessage.append(eventId);
+                warningMessage.append(", ");
+            }
+
+            warningMessage.deleteCharAt(warningMessage.lastIndexOf(","));
+            warningMessage.append(eventIds.size() > 1 ? "have end times "
+                    : "has an end time ");
+            warningMessage.append("before the CAVE time.\n");
+            warningMessage.append("Product generation halted.");
+            messenger.getWarner().warnUser("Product Error",
+                    warningMessage.toString());
+        }
+
+        return eventIds.isEmpty() ? true : false;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager
+     * #setVTECFormat(java.lang.String, boolean)
+     */
+    @Override
+    public void setVTECFormat(String vtecMode, boolean testMode) {
+        if (CAVEMode.PRACTICE.equals(caveMode)) {
+            this.vtecMode = vtecMode;
+            this.vtecTestMode = testMode;
+        }
+    }
+
+    @Override
+    public void generateProductReview(
+            ProductGeneratorInformation productGeneratorInformation,
+            List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList) {
+        sessionManager.setPreviewOngoing(true);
+        String[] productFormats = productGeneratorInformation
+                .getProductFormats().getPreviewFormats().toArray(new String[0]);
+        UpdateListener listener = new UpdateListener(
+                productGeneratorInformation, notificationSender);
+        /*
+         * Generating a product review does not need to do any comparisons of a
+         * previous version. Instead, the data only needs to be passed to the
+         * formatters.
+         */
+        productGen.update(
+                productGeneratorInformation.getProductGeneratorName(),
+                updatedDataList, null, productFormats, listener);
+    }
+
+    @Override
+    public boolean isProductGenerationRequired(boolean issue) {
+        boolean result = true;
+        Collection<ProductGeneratorInformation> allProductGeneratorInformationForSelectedHazards = getAllProductGeneratorInformationForSelectedHazards(issue);
+        productGeneratorInformationForSelectedHazardsCache.put(issue,
+                allProductGeneratorInformationForSelectedHazards);
+        for (ProductGeneratorInformation productGeneratorInformation : allProductGeneratorInformationForSelectedHazards) {
+            if (productGeneratorInformation.getDialogInfo() != null
+                    && !productGeneratorInformation.getDialogInfo().isEmpty()) {
+                result = false;
+            } else if (productGeneratorInformation.getPossibleProductEvents() != null
+                    && !productGeneratorInformation.getPossibleProductEvents()
+                            .isEmpty()) {
+                result = false;
+            }
+            if (!result) {
+                break;
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public void generateProducts(boolean issue) {
+        List<String> unsupportedHazards = getUnsupportedHazards();
+
+        Collection<ProductGeneratorInformation> allProductGeneratorInformationForSelectedHazards = productGeneratorInformationForSelectedHazardsCache
+                .get(issue);
+
+        boolean continueWithGeneration = true;
+
+        if (!unsupportedHazards.isEmpty()) {
+            StringBuilder message = new StringBuilder(
+                    "Products for the following hazard types are not yet supported: ");
+            for (String type : unsupportedHazards) {
+                message.append(type);
+                message.append(" ");
+            }
+
+            if (!allProductGeneratorInformationForSelectedHazards.isEmpty()) {
+                message.append("\nPress Continue to generate products for the supported hazard types.");
+                continueWithGeneration = messenger.getContinueCanceller()
+                        .getUserAnswerToQuestion("Unsupported HazardTypes",
+                                message.toString());
+            } else {
+                messenger.getWarner().warnUser("Unsupported HazardTypes",
+                        message.toString());
+                continueWithGeneration = false;
+            }
+
+        }
+
+        if (continueWithGeneration) {
+            this.runProductGeneration(
+                    productGeneratorInformationForSelectedHazardsCache
+                            .get(issue), issue);
+        } else {
+            if (issue) {
+                sessionManager.setIssueOngoing(false);
+            } else {
+                sessionManager.setPreviewOngoing(false);
+            }
+        }
+    }
+
+    @Override
+    public void createProductsFromHazardEventSets(boolean issue,
+            List<GeneratedProductList> generatedProductsList) {
+        Collection<ProductGeneratorInformation> allProductGeneratorInformationForSelectedHazards = getAllProductGeneratorInformationForSelectedHazards(issue);
+
+        productGeneratorInformationForSelectedHazardsCache.put(issue,
+                allProductGeneratorInformationForSelectedHazards);
+
+        ProductGeneratorInformation matchingProductGeneratorInformation = null;
+
+        Collection<ProductGeneratorInformation> allMatchingProductGeneratorInformation = new ArrayList<>();
+
+        List<String> selectedEventIDs = new ArrayList<>();
+        for (ObservedHazardEvent selectedEvent : this.sessionManager
+                .getEventManager().getSelectedEvents()) {
+            selectedEventIDs.add(selectedEvent.getEventID());
+        }
+
+        for (GeneratedProductList productList : generatedProductsList) {
+            for (ProductGeneratorInformation productGeneratorInformation : allProductGeneratorInformationForSelectedHazards) {
+                if (productList.getProductInfo().equals(
+                        productGeneratorInformation.getProductGeneratorName())) {
+                    matchingProductGeneratorInformation = productGeneratorInformation;
+                    break;
+                }
+            }
+
+            Set<IHazardEvent> selectedEvents = new HashSet<>();
+            for (IHazardEvent hazardEvent : matchingProductGeneratorInformation
+                    .getProductEvents()) {
+                if (selectedEventIDs.contains(hazardEvent.getEventID())) {
+                    selectedEvents.add(hazardEvent);
+                }
+            }
+            for (IHazardEvent hazardEvent : matchingProductGeneratorInformation
+                    .getPossibleProductEvents()) {
+                if (selectedEventIDs.contains(hazardEvent.getEventID())) {
+
+                    selectedEvents.add(hazardEvent);
+                }
+            }
+
+            matchingProductGeneratorInformation
+                    .setProductEvents(selectedEvents);
+            allMatchingProductGeneratorInformation
+                    .add(matchingProductGeneratorInformation);
+        }
+
+        this.runProductGeneration(allMatchingProductGeneratorInformation, issue);
+    }
+
+    @Override
+    public void createProductsFromProductStagingInfo(boolean issue,
+            ProductStagingInfo productStagingInfo) {
+        Collection<ProductGeneratorInformation> allProductGeneratorInformationForSelectedHazards = productGeneratorInformationForSelectedHazardsCache
+                .get(issue);
+
+        Collection<ProductGeneratorInformation> allMatchingProductGeneratorInformation = new ArrayList<>();
+
+        for (Product stagedProduct : productStagingInfo.getProducts()) {
+            for (ProductGeneratorInformation productGeneratorInformation : allProductGeneratorInformationForSelectedHazards) {
+                if (stagedProduct.getProductGenerator().equals(
+                        productGeneratorInformation.getProductGeneratorName())) {
+
+                    Set<IHazardEvent> selectedEvents = new HashSet<>();
+                    for (String eventID : stagedProduct.getSelectedEventIDs()) {
+                        for (IHazardEvent event : productGeneratorInformation
+                                .getProductEvents()) {
+                            if (event.getEventID().equals(eventID)) {
+                                selectedEvents.add(event);
+                                break;
+                            }
+                        }
+                        for (IHazardEvent event : productGeneratorInformation
+                                .getPossibleProductEvents()) {
+                            if (event.getEventID().equals(eventID)) {
+                                selectedEvents.add(event);
+                                break;
+                            }
+                        }
+                    }
+                    productGeneratorInformation
+                            .setProductEvents(selectedEvents);
+                    productGeneratorInformation
+                            .setDialogSelections(stagedProduct
+                                    .getDialogSelections());
+                    allMatchingProductGeneratorInformation
+                            .add(productGeneratorInformation);
+                }
+            }
+        }
+        this.runProductGeneration(allMatchingProductGeneratorInformation, issue);
+    }
+
+	/**
+	 * Called when product generation is complete.
+	 * 
+	 * @param generated
+	 *            Successful product generation message
+	 */
+    @Handler
+    public void auditProductGeneration(ProductGenerated generated) {
+        ProductGenerationAuditor productGenerationAuditor = null;
+        ProductGeneratorInformation productGeneratorInformation = generated
+                .getProductGeneratorInformation();
+        final String generationID = productGeneratorInformation
+                .getGenerationID();
+        final GeneratedProductList generatedProducts = productGeneratorInformation
+                .getGeneratedProducts();
+        synchronized (this.productGenerationAuditManager) {
+            if (this.productGenerationAuditManager.get(generationID)
+                    .productGenerated(generatedProducts,
+                            productGeneratorInformation) == false) {
+                return;
+            }
+
+            productGenerationAuditor = this.productGenerationAuditManager
+                    .remove(generationID);
+        }
+
+        this.publishGenerationCompletion(productGenerationAuditor);
+    }
+
+	/**
+	 * Called when product generation fails.
+	 * 
+	 * @param failed
+	 *            Product generation failed message
+	 */
+  @Handler
+    public void handleProductGeneratorResult(ProductFailed failed) {
+        ProductGenerationAuditor productGenerationAuditor = null;
+        ProductGeneratorInformation productGeneratorInformation = failed
+                .getProductGeneratorInformation();
+        final String generationID = productGeneratorInformation
+                .getGenerationID();
+        synchronized (this.productGenerationAuditManager) {
+            if (this.productGenerationAuditManager.get(generationID)
+                    .productGenerationFailure(productGeneratorInformation) == false) {
+                return;
+            }
+
+            productGenerationAuditor = this.productGenerationAuditManager
+                    .remove(generationID);
+        }
+
+        this.publishGenerationCompletion(productGenerationAuditor);
+        statusHandler.error("Product Generator "
+                + failed.getProductGeneratorInformation()
+                        .getProductGeneratorName() + " failed.");
+    }
+
+    @Override
+    public Collection<ProductGeneratorInformation> getAllProductGeneratorInformationForSelectedHazardsCache(
+            boolean issue) {
+        return productGeneratorInformationForSelectedHazardsCache.get(issue);
+    }
+
+    @Override
+    public String toString() {
+        return ToStringBuilder.reflectionToString(this);
+    }
+
+    private boolean isCombinable(IHazardEvent e) {
+        String type = HazardEventUtilities.getHazardType(e);
+        HazardTypes hazardTypes = configManager.getHazardTypes();
+        HazardTypeEntry hazardTypeEntry = hazardTypes.get(type);
+        boolean result = hazardTypeEntry.isCombinableSegments();
+        return result;
+    }
+
+    private EventSet<IEvent> buildEventSet(
+            ProductGeneratorInformation productGeneratorInformation,
             boolean issue, String locMgrSite) {
         eventManager.clipSelectedHazardGeometries();
         eventManager.reduceSelectedHazardGeometries();
@@ -365,12 +826,10 @@ public class SessionProductManager implements ISessionProductManager {
                 .getCurrentTime().getTime());
         events.addAttribute(HazardConstants.SITE_ID, configManager.getSiteID());
         events.addAttribute(HazardConstants.BACKUP_SITEID, locMgrSite);
-        String mode = CAVEMode.getMode() == CAVEMode.PRACTICE ? HazardEventManager.Mode.PRACTICE
+        String mode = caveMode == CAVEMode.PRACTICE ? HazardEventManager.Mode.PRACTICE
                 .toString() : HazardEventManager.Mode.OPERATIONAL.toString();
         events.addAttribute(HAZARD_MODE, mode);
-        String runMode = CAVEMode.getMode().toString();
-        events.addAttribute("runMode", runMode);
-        events.addAttribute("vtecMode", "O");
+        events.addAttribute(HazardConstants.RUN_MODE, caveModeStr);
 
         if (issue) {
             events.addAttribute(HazardConstants.ISSUE_FLAG, "True");
@@ -379,22 +838,22 @@ public class SessionProductManager implements ISessionProductManager {
         }
 
         String vtecModeToUse = "O";
-        if (CAVEMode.PRACTICE.equals(CAVEMode.getMode())) {
+        if (CAVEMode.PRACTICE.equals(caveMode)) {
             vtecModeToUse = vtecMode;
         }
-        events.addAttribute("vtecMode", vtecModeToUse);
+        events.addAttribute(HazardConstants.VTEC_MODE, vtecModeToUse);
 
         boolean vtecTestModeToUse = false;
-        if (CAVEMode.OPERATIONAL.equals(CAVEMode.getMode())) {
+        if (CAVEMode.OPERATIONAL.equals(caveMode)) {
             vtecTestModeToUse = false;
-        } else if (CAVEMode.TEST.equals(CAVEMode.getMode())) {
+        } else if (CAVEMode.TEST.equals(caveMode)) {
             vtecTestModeToUse = true;
         } else {
             vtecTestModeToUse = vtecTestMode;
         }
         events.addAttribute("vtecTestMode", vtecTestModeToUse);
 
-        HashMap<String, String> sessionDict = new HashMap<String, String>();
+        HashMap<String, String> sessionDict = new HashMap<>();
         // TODO
         // There is no operational database currently.
         // When this is fixed, then the correct CAVEMode needs to
@@ -404,13 +863,14 @@ public class SessionProductManager implements ISessionProductManager {
         sessionDict.put(HazardConstants.TEST_MODE, "PRACTICE");
         events.addAttribute(HazardConstants.SESSION_DICT, sessionDict);
 
-        if (information.getDialogSelections() != null) {
-            for (Entry<String, Serializable> entry : information
+        if (productGeneratorInformation.getDialogSelections() != null) {
+            for (Entry<String, Serializable> entry : productGeneratorInformation
                     .getDialogSelections().entrySet()) {
                 events.addAttribute(entry.getKey(), entry.getValue());
             }
         }
-        for (IHazardEvent event : information.getProductEvents()) {
+        for (IHazardEvent event : productGeneratorInformation
+                .getProductEvents()) {
             event = new BaseHazardEvent(event);
             for (Entry<String, Serializable> entry : event
                     .getHazardAttributes().entrySet()) {
@@ -422,7 +882,7 @@ public class SessionProductManager implements ISessionProductManager {
             /* Make an ArrayList of any polygon geometries we encounter. */
             /* Later, if non-zero length, will make GeometryCollection with it. */
             Geometry geometryCollection = null;
-            List<Geometry> polygonGeometries = new ArrayList<Geometry>();
+            List<Geometry> polygonGeometries = new ArrayList<>();
 
             String headline = configManager.getHeadline(event);
             event.addHazardAttribute(HazardConstants.HEADLINE, headline);
@@ -489,57 +949,6 @@ public class SessionProductManager implements ISessionProductManager {
         return events;
     }
 
-    @Override
-    public void issue(ProductInformation information) {
-
-        /*
-         * Need to look at all events in the SessionManager because some events
-         * for which products were generated may not have been selected. For
-         * example, two FA.A's, one selected, one not, and the user adds the
-         * second one via the product staging dialog.
-         */
-        for (ObservedHazardEvent sessionEvent : eventManager.getEvents()) {
-            /*
-             * Update Hazard Events with product information returned from the
-             * Product Generators
-             */
-            for (IEvent ev : information.getProducts().getEventSet()) {
-                IHazardEvent updatedEvent = (IHazardEvent) ev;
-                if (checkForConflicts(updatedEvent)) {
-                    statusHandler
-                            .info("There is a grid conflict with the hazard event.");
-                    // TODO It needs to be decided if we should prevent the user
-                    // from issuing a hazard if there is a grid conflict.
-                }
-                if (sessionEvent.getEventID().equals(updatedEvent.getEventID())) {
-
-                    ObservedHazardEvent newEvent = new ObservedHazardEvent(
-                            updatedEvent, (SessionEventManager) eventManager);
-
-                    SessionEventUtilities.mergeHazardEvents(newEvent,
-                            sessionEvent);
-                    /*
-                     * This ensures that the "replaces" string is removed for
-                     * the next generation of a product.
-                     */
-                    sessionEvent
-                            .removeHazardAttribute(HazardConstants.REPLACES);
-
-                    if (updatedEvent.getStatus().equals(HazardStatus.ENDED)) {
-                        eventManager.endEvent(sessionEvent, Originator.OTHER);
-                    } else {
-                        eventManager.issueEvent(sessionEvent, Originator.OTHER);
-                    }
-
-                    break;
-                }
-
-            }
-        }
-
-        disseminate(information);
-    }
-
     private boolean areYouSure() {
         boolean answer = messenger.getQuestionAnswerer()
                 .getUserAnswerToQuestion(
@@ -552,33 +961,27 @@ public class SessionProductManager implements ISessionProductManager {
         return answer;
     }
 
-    @Override
-    public void issueCorrection(ProductInformation information) {
-        if (areYouSure()) {
-            disseminate(information);
-            sessionManager.setIssueOngoing(false);
-        }
-    }
-
-    private void disseminate(ProductInformation information) {
-        boolean operational = CAVEMode.getMode() == CAVEMode.OPERATIONAL;
+    private void disseminate(
+            ProductGeneratorInformation productGeneratorInformation) {
         /*
          * Disseminate the products
          */
-        for (IGeneratedProduct product : information.getProducts()) {
+        for (IGeneratedProduct generatedProduct : productGeneratorInformation
+                .getGeneratedProducts()) {
             /*
              * This is temporary: issueFormats should be user configurable and
              * will be addressed by Issue #691 -- Clean up Configuration Files
              */
-            if (information.getProductFormats() != null
-                    && information.getProductFormats().getIssueFormats() != null) {
-                for (String format : information.getProductFormats()
-                        .getIssueFormats()) {
-                    List<Serializable> objs = product.getEntry(format);
+            if (productGeneratorInformation.getProductFormats() != null
+                    && productGeneratorInformation.getProductFormats()
+                            .getIssueFormats() != null) {
+                for (String format : productGeneratorInformation
+                        .getProductFormats().getIssueFormats()) {
+                    List<Serializable> objs = generatedProduct.getEntry(format);
                     if (objs != null) {
                         for (Serializable obj : objs) {
                             ProductUtils.disseminate(String.valueOf(obj),
-                                    operational);
+                                    operationalMode);
                         }
                     }
                 }
@@ -587,9 +990,9 @@ public class SessionProductManager implements ISessionProductManager {
 
         Date startTime = null;
         boolean ended = false;
-        ArrayList<Integer> eventIDs = new ArrayList<Integer>();
-        Iterator<IEvent> iterator = information.getProducts().getEventSet()
-                .iterator();
+        ArrayList<Integer> eventIDs = new ArrayList<>();
+        Iterator<IEvent> iterator = productGeneratorInformation
+                .getGeneratedProducts().getEventSet().iterator();
         while (iterator.hasNext()) {
             IEvent event = iterator.next();
             if (event instanceof IHazardEvent) {
@@ -604,13 +1007,14 @@ public class SessionProductManager implements ISessionProductManager {
             }
         }
 
-        String mode = CAVEMode.getMode().toString();
-        String productInfo = information.getProducts().getProductInfo();
-        for (IGeneratedProduct product : information.getProducts()) {
+        String productInfo = productGeneratorInformation.getGeneratedProducts()
+                .getProductInfo();
+        for (IGeneratedProduct product : productGeneratorInformation
+                .getGeneratedProducts()) {
             if (ended) {
-                ProductDataUtil.deleteProductData(mode, productInfo, eventIDs);
+                ProductDataUtil.deleteProductData(caveModeStr, productInfo, eventIDs);
             } else {
-                ProductDataUtil.createOrUpdateProductData(mode, productInfo,
+                ProductDataUtil.createOrUpdateProductData(caveModeStr, productInfo,
                         eventIDs, startTime, product.getData());
             }
         }
@@ -618,7 +1022,7 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     private boolean checkForConflicts(IHazardEvent hazardEvent) {
-        HazardEventManager.Mode mode = (CAVEMode.getMode() == CAVEMode.PRACTICE) ? HazardEventManager.Mode.PRACTICE
+        HazardEventManager.Mode mode = (caveMode == CAVEMode.PRACTICE) ? HazardEventManager.Mode.PRACTICE
                 : HazardEventManager.Mode.OPERATIONAL;
 
         boolean hasConflicts = true;
@@ -652,14 +1056,14 @@ public class SessionProductManager implements ISessionProductManager {
 
         private final ISessionNotificationSender notificationSender;
 
-        private final ProductInformation info;
+        private final ProductGeneratorInformation productGeneratorInformation;
 
         public JobListener(boolean issue,
                 ISessionNotificationSender notificationSender,
-                ProductInformation info) {
+                ProductGeneratorInformation productGeneratorInformation) {
             this.issue = issue;
             this.notificationSender = notificationSender;
-            this.info = info;
+            this.productGeneratorInformation = productGeneratorInformation;
         }
 
         @Override
@@ -674,20 +1078,24 @@ public class SessionProductManager implements ISessionProductManager {
                 @Override
                 public void run() {
                     if (result != null) {
-                        info.setProducts(result);
-                        info.getProducts()
+                        productGeneratorInformation
+                                .setGeneratedProducts(result);
+                        productGeneratorInformation
+                                .getGeneratedProducts()
                                 .getEventSet()
                                 .addAttribute(HazardConstants.ISSUE_FLAG, issue);
                         if (issue) {
-                            issue(info);
+                            issue(productGeneratorInformation);
                         }
                         notificationSender
-                                .postNotification(new ProductGenerated(info));
+                                .postNotification(new ProductGenerated(
+                                        productGeneratorInformation));
                     } else {
-                        info.setError(new Throwable(
-                                "GeneratedProduct result from generator is null."));
+                        productGeneratorInformation
+                                .setError(new Throwable(
+                                        "GeneratedProduct result from generator is null."));
                         notificationSender.postNotification(new ProductFailed(
-                                info));
+                                productGeneratorInformation));
                     }
                 }
             });
@@ -700,92 +1108,59 @@ public class SessionProductManager implements ISessionProductManager {
 
                 @Override
                 public void run() {
-                    info.setError(e);
-                    notificationSender
-                            .postNotification(new ProductFailed(info));
+                    productGeneratorInformation.setError(e);
+                    notificationSender.postNotification(new ProductFailed(
+                            productGeneratorInformation));
                 }
             });
         }
 
     }
 
-    @Override
-    public void shutdown() {
-        /**
-         * Nothing to do right now.
-         */
-    }
+    private void runProductGeneration(
+            Collection<ProductGeneratorInformation> allMatchingProductGeneratorInformation,
+            boolean issue) {
+        boolean confirm = issue;
 
-    @Override
-    public boolean validateSelectedHazardsForProductGeneration() {
-
-        Collection<ObservedHazardEvent> selectedEvents = eventManager
-                .getSelectedEvents();
-        Date simulatedTime = SimulatedTime.getSystemTime().getTime();
-        List<String> eventIds = Lists.newArrayList();
-
-        for (IHazardEvent selectedEvent : selectedEvents) {
-
-            /*
-             * Test if the end time of the selected event is in the past.
-             * Products will not be generated for events with end times in the
-             * past.
-             */
-            if (selectedEvent.getEndTime().before(simulatedTime)) {
-                eventIds.add(selectedEvent.getEventID());
-            }
-        }
-
-        if (!eventIds.isEmpty()) {
-            StringBuffer warningMessage = new StringBuffer();
-            warningMessage.append(eventIds.size() > 1 ? "Events " : "Event ");
-
-            for (String eventId : eventIds) {
-                warningMessage.append(eventId);
-                warningMessage.append(", ");
-            }
-
-            warningMessage.deleteCharAt(warningMessage.lastIndexOf(","));
-            warningMessage.append(eventIds.size() > 1 ? "have end times "
-                    : "has an end time ");
-            warningMessage.append("before the CAVE time.\n");
-            warningMessage.append("Product generation halted.");
-            messenger.getWarner().warnUser("Product Error",
-                    warningMessage.toString());
-        }
-
-        return eventIds.isEmpty() ? true : false;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager
-     * #setVTECFormat(java.lang.String, boolean)
-     */
-    @Override
-    public void setVTECFormat(String vtecMode, boolean testMode) {
-        if (CAVEMode.PRACTICE.equals(CAVEMode.getMode())) {
-            this.vtecMode = vtecMode;
-            this.vtecTestMode = testMode;
-        }
-    }
-
-    @Override
-    public void generateProductReview(ProductInformation productInformation,
-            List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList) {
-        sessionManager.setPreviewOngoing(true);
-        String[] formats = productInformation.getProductFormats()
-                .getPreviewFormats().toArray(new String[0]);
-        UpdateListener listener = new UpdateListener(productInformation,
-                notificationSender);
         /*
-         * Generating a product review does not need to do any comparisons of a
-         * previous version. Instead, the data only needs to be passed to the
-         * formatters.
+         * Build an audit trail to keep track of the products that have been /
+         * will need to be generated.
          */
-        productGen.update(productInformation.getProductGeneratorName(),
-                updatedDataList, null, formats, listener);
+        synchronized (this.productGenerationAuditManager) {
+            final String productGenerationTrackingID = UUID.randomUUID()
+                    .toString();
+            ProductGenerationAuditor productGenerationAuditor = new ProductGenerationAuditor(
+                    issue, productGenerationTrackingID);
+            for (ProductGeneratorInformation productGeneratorInformation : allMatchingProductGeneratorInformation) {
+                productGeneratorInformation
+                        .setGenerationID(productGenerationTrackingID);
+                productGenerationAuditor
+                        .addProductGeneratorInformation(productGeneratorInformation);
+            }
+            this.productGenerationAuditManager.put(productGenerationTrackingID,
+                    productGenerationAuditor);
+        }
+
+        for (ProductGeneratorInformation productGeneratorInformation : allMatchingProductGeneratorInformation) {
+            boolean continueGeneration = generate(productGeneratorInformation,
+                    issue, confirm);
+            confirm = false;
+            if (continueGeneration == false) {
+                /*
+                 * Halt product generation, the user indicated that they did not
+                 * want to issue the product(s).
+                 */
+                break;
+            }
+        }
     }
+
+    private void publishGenerationCompletion(
+            ProductGenerationAuditor productGenerationAuditor) {
+        IProductGenerationComplete productGenerationComplete = new ProductGenerationComplete(
+                productGenerationAuditor.isIssue(),
+                productGenerationAuditor.getGeneratedProducts());
+        this.eventBus.publishAsync(productGenerationComplete);
+    }
+
 }

@@ -91,8 +91,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManage
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
@@ -239,9 +240,9 @@ public final class HazardServicesMessageHandler implements
 
     private final ISessionConfigurationManager sessionConfigurationManager;
 
-    private final HazardServicesProductGenerationHandler productGeneratorHandler;
-
     private final BoundedReceptionEventBus<Object> eventBus;
+
+    private final ISessionProductManager sessionProductManager;
 
     // Public Constructors
     /**
@@ -260,9 +261,7 @@ public final class HazardServicesMessageHandler implements
             Date currentTime) {
         this.appBuilder = appBuilder;
         this.sessionManager = appBuilder.getSessionManager();
-
-        this.productGeneratorHandler = new HazardServicesProductGenerationHandler(
-                sessionManager, appBuilder);
+        this.sessionProductManager = sessionManager.getProductManager();
         this.sessionEventManager = sessionManager.getEventManager();
         this.sessionTimeManager = sessionManager.getTimeManager();
         this.sessionConfigurationManager = sessionManager
@@ -628,14 +627,9 @@ public final class HazardServicesMessageHandler implements
      */
     private void issueEvents() {
         if (continueIfThereAreHazardConflicts()) {
-            generateProducts(true);
+            generate(true);
             notifyModelEventsChanged();
         }
-    }
-
-    private void generateProducts(boolean issue) {
-        productGeneratorHandler.generate(issue);
-
     }
 
     /**
@@ -949,11 +943,27 @@ public final class HazardServicesMessageHandler implements
      * Generates products for preview.
      */
     private void preview() {
-        generateProducts(false);
+        generate(false);
+    }
+
+    private void generate(boolean issue) {
+        if (issue) {
+            sessionManager.setIssueOngoing(true);
+        } else {
+            sessionManager.setPreviewOngoing(true);
+        }
+
+        if (sessionProductManager.isProductGenerationRequired(issue)) {
+            sessionProductManager.generateProducts(issue);
+        } else {
+            appBuilder.showProductStagingView(issue, sessionProductManager
+                    .getAllProductGeneratorInformationForSelectedHazardsCache(issue));
+        }
+
     }
 
     public void generateReviewableProduct(List<ProductData> productData) {
-        productGeneratorHandler.generateReviewableProduct(productData);
+        sessionProductManager.generateReviewableProduct(productData);
     }
 
     /**
@@ -1083,7 +1093,7 @@ public final class HazardServicesMessageHandler implements
             break;
         case ISSUE:
             if (this.continueIfThereAreHazardConflicts()) {
-                productGeneratorHandler.createProductsFromHazardEventSets(true,
+                sessionProductManager.createProductsFromHazardEventSets(true,
                         action.getGeneratedProductsList());
                 notifyModelEventsChanged();
             }
@@ -1091,14 +1101,14 @@ public final class HazardServicesMessageHandler implements
         case CORRECT:
             for (GeneratedProductList products : action
                     .getGeneratedProductsList()) {
-                ProductInformation information = new ProductInformation();
-                information.setProductGeneratorName(products.getProductInfo());
+                ProductGeneratorInformation productGeneratorInformation = new ProductGeneratorInformation();
+                productGeneratorInformation.setProductGeneratorName(products.getProductInfo());
                 ProductFormats productFormats = sessionConfigurationManager
                         .getProductGeneratorTable().getProductFormats(
-                                information.getProductGeneratorName());
-                information.setProductFormats(productFormats);
-                information.setProducts(products);
-                sessionManager.getProductManager().issueCorrection(information);
+                                productGeneratorInformation.getProductGeneratorName());
+                productGeneratorInformation.setProductFormats(productFormats);
+                productGeneratorInformation.setGeneratedProducts(products);
+                sessionManager.getProductManager().issueCorrection(productGeneratorInformation);
             }
 
             break;
@@ -1119,7 +1129,7 @@ public final class HazardServicesMessageHandler implements
      */
     private void handleProductDisplayContinueAction(boolean issue,
             ProductStagingInfo productStagingInfo) {
-        productGeneratorHandler.createProductsFromProductStagingInfo(issue,
+        sessionProductManager.createProductsFromProductStagingInfo(issue,
                 productStagingInfo);
         if (!issue) {
             // appBuilder.showProductEditorView(returnDict_json);

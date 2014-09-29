@@ -24,7 +24,9 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.KeyInfo;
+import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 
 /**
  * Manages product generation for a session.
@@ -50,47 +52,55 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 public interface ISessionProductManager {
 
     /**
-     * Returns all products that can be generated based off the current
+     * Returns product generator information appropriate for the current hazard
      * selection.
      * 
      * @return
      */
-    public Collection<ProductInformation> getSelectedProducts(boolean issue);
+    public Collection<ProductGeneratorInformation> getAllProductGeneratorInformationForSelectedHazards(
+            boolean issue);
 
     /**
-     * Generate a product from the given information.
+     * Generate a product from the given {@link ProductGeneratorInformation}
      * 
-     * @param information
+     * @param productGeneratorInformation
      *            the information about the product to generate
      * @param issue
-     *            whether to immediately issue the product or not
+     *            - true if hazard events are being issued; false if previewed
      * @param confim
      *            whether or not to confirm issuance
      * @return whether or not to continue product generation
      */
-    public boolean generate(ProductInformation information, boolean issue,
-            boolean confirm);
+    public boolean generate(
+            ProductGeneratorInformation productGeneratorInformation,
+            boolean issue, boolean confirm);
 
     /**
-     * Generates the issued product from the product information and the
-     * updatedDataList derived from the database.
+     * Generates the issued product from the given
+     * {@link ProductGeneratorInformation} and the updatedDataList derived from
+     * the database.
+     * 
+     * @param productGeneratorInformation
+     * @param updatedDataList
      */
-    public void generateProductReview(ProductInformation productInformation,
+    public void generateProductReview(
+            ProductGeneratorInformation productGeneratorInformation,
             List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList);
 
     /**
      * Issue the corrected product
      * 
-     * @param information
+     * @param productGeneratorInformation
      */
-    public void issueCorrection(ProductInformation information);
+    public void issueCorrection(
+            ProductGeneratorInformation productGeneratorInformation);
 
     /**
      * Issue the provided product and all the events associated with it.
      * 
-     * @param information
+     * @param productGeneratorInformation
      */
-    public void issue(ProductInformation information);
+    public void issue(ProductGeneratorInformation productGeneratorInformation);
 
     /**
      * Execute any shutdown needed.
@@ -100,7 +110,6 @@ public interface ISessionProductManager {
     /**
      * Validate the selected events before product generation.
      * 
-     * @param
      * @return true - the selected events are valid for product generation false
      *         - the selected events are not valid.
      */
@@ -111,7 +120,6 @@ public interface ISessionProductManager {
      * support (i.e. these are hazared types for which product generation cannot
      * generate products).
      * 
-     * @param
      * @return List of unsupported hazard types.
      */
     public List<String> getUnsupportedHazards();
@@ -127,4 +135,67 @@ public interface ISessionProductManager {
      *            generation.
      */
     public void setVTECFormat(String vtecMode, boolean testMode);
+
+    /**
+     * Creates a text version that can be brought up in the product editor after
+     * the product is issued. The product can be brought up to be reviewed and
+     * even corrected and re-issued.
+     * 
+     * @param The
+     *            hibernate representation for the storage of product data to
+     *            retrieve for correction or review.
+     */
+    public void generateReviewableProduct(List<ProductData> productData);
+
+    /**
+     * Generate products from Hazard Event
+     * 
+     * @param issue
+     *            - true if hazard events are being issued; false if previewed
+     * @param generatedProductsList
+     * @return
+     */
+    public void createProductsFromHazardEventSets(boolean issue,
+            List<GeneratedProductList> generatedProductsList);
+
+    /**
+     * Generates products from the product staging info edited by the user.
+     * 
+     * @param issue
+     *            - true if hazard events are being issued; false if previewed
+     * @param productStagingInfo
+     *            - information used to populate the product staging dialog
+     * @return
+     */
+    public void createProductsFromProductStagingInfo(boolean issue,
+            ProductStagingInfo productStagingInfo);
+
+    /**
+     * Determines if product generation is needed.
+     * 
+     * @param issue
+     *            - true if hazard events are being issued; false if previewed
+     * @return true if product generation is required
+     */
+    public boolean isProductGenerationRequired(boolean issue);
+
+    /**
+     * Get the cached {@link ProductGeneratorInformation} depending on whether
+     * an issue or preview is occurring.
+     * 
+     * @param issue
+     *            - true if hazard events are being issued; false if previewed
+     * @return cached product information used for optimization.
+     */
+    public Collection<ProductGeneratorInformation> getAllProductGeneratorInformationForSelectedHazardsCache(
+            boolean issue);
+
+    /**
+     * Generate the products
+     * 
+     * @param issue
+     *            - true if hazard events are being issued; false if previewed
+     * @return
+     */
+    public void generateProducts(boolean issue);
 }

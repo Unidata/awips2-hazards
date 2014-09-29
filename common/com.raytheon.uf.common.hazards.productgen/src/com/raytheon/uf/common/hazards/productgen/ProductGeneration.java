@@ -74,7 +74,7 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      * Generates the eventSet into different formats. The job is performed
      * asynchronously and will be passed to the session manager.
      * 
-     * @param product
+     * @param productGeneratorName
      *            name of the product generator. "ExampleFFW" refers to the
      *            python class "ExampleFFW.py" which should be in the
      *            /common_static/base/python/events/productgen/products
@@ -82,19 +82,19 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      * @param eventSet
      *            the EventSet<IEvent> object that will provide the information
      *            for the product generator
-     * @param formats
+     * @param productFormats
      *            array of formats to be generated (i.e. "XML", "ASCII")
      * @param listener
      *            the listener to the aysnc job
      */
-    public void generate(String product, EventSet<IEvent> eventSet,
-            Map<String, Serializable> dialogInfo, String[] formats,
+    public void generate(String productGeneratorName, EventSet<IEvent> eventSet,
+            Map<String, Serializable> dialogInfo, String[] productFormats,
             IPythonJobListener<GeneratedProductList> listener) {
         // Validates the parameter values
-        validate(formats, product, eventSet, listener);
+        validate(productFormats, productGeneratorName, eventSet, listener);
 
         IPythonExecutor<ProductScript, GeneratedProductList> executor = new ProductScriptExecutor(
-                product, eventSet, dialogInfo, formats);
+                productGeneratorName, eventSet, dialogInfo, productFormats);
 
         try {
             coordinator.submitAsyncJob(executor, listener);
@@ -107,17 +107,17 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      * Accepts an updated data list and passes it to the 'executeFrom' of the
      * product generator.
      * 
-     * @param product
+     * @param productGeneratorName
      * @param updatedDataList
-     * @param formats
+     * @param productFormats
      * @param listener
      */
-    public void update(String product,
+    public void update(String productGeneratorName,
             List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList,
             List<LinkedHashMap<KeyInfo, Serializable>> prevDataList,
-            String[] formats, IPythonJobListener<GeneratedProductList> listener) {
+            String[] productFormats, IPythonJobListener<GeneratedProductList> listener) {
         IPythonExecutor<ProductScript, GeneratedProductList> executor = new ProductScriptUpdater(
-                product, updatedDataList, prevDataList, formats);
+                productGeneratorName, updatedDataList, prevDataList, productFormats);
 
         try {
             coordinator.submitAsyncJob(executor, listener);

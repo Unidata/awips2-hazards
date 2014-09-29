@@ -421,4 +421,11 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
         eventBus.publish(new SessionModified(Originator.OTHER));
     }
 
+    /**
+     * @return the eventBus
+     */
+    public BoundedReceptionEventBus<Object> getEventBus() {
+        return eventBus;
+    }
+
 }

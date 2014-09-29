@@ -41,12 +41,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 public class ProductFailed extends ProductModified implements
         ISessionNotification {
 
-    public ProductFailed(ProductInformation productInformation) {
-        super(productInformation);
+    public ProductFailed(ProductGeneratorInformation productGeneratorInformation) {
+        super(productGeneratorInformation);
     }
     
     public Throwable getError() {
-        return getProductInformation().getError();
+        return getProductGeneratorInformation().getError();
     }
     
 

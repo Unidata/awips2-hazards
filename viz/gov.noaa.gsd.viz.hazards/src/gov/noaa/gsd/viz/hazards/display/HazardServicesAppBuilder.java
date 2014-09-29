@@ -115,7 +115,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -975,12 +975,13 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * @param issueFlag
      *            Whether or not this is being called as a result of an issue
      *            action.
-     * @param productInformation
+     * @param allProductGeneratorInformationForSelectedHazards
      */
-    public void showProductStagingView(boolean issueFlag,
-            Collection<ProductInformation> productInformation) {
+    public void showProductStagingView(
+            boolean issueFlag,
+            Collection<ProductGeneratorInformation> allProductGeneratorInformationForSelectedHazards) {
         productStagingPresenter.showProductStagingDetail(issueFlag,
-                productInformation);
+                allProductGeneratorInformationForSelectedHazards);
     }
 
     public void showProductEditorView(

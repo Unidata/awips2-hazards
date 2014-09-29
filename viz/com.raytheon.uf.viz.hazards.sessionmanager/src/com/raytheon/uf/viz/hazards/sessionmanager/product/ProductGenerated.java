@@ -43,12 +43,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 public class ProductGenerated extends ProductModified implements
         ISessionNotification {
 
-    public ProductGenerated(ProductInformation productInformation) {
-        super(productInformation);
+    public ProductGenerated(ProductGeneratorInformation productGeneratorInformation) {
+        super(productGeneratorInformation);
     }
 
-    public GeneratedProductList getProducts() {
-        return getProductInformation().getProducts();
+    public GeneratedProductList getGeneratedProducts() {
+        return getProductGeneratorInformation().getGeneratedProducts();
     }
 
 }

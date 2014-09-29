@@ -370,6 +370,16 @@ public final class HazardConstants {
     public static final String HAZARD_EVENT_VTEC_MODE = "VTECmode";
 
     /**
+     * EventSet attribute key for vtecMode
+     */
+    public static final String VTEC_MODE = "vtecMode";
+    
+    /**
+     * EventSet attribute key for runMode
+     */
+    public static final String RUN_MODE = "runMode";
+    
+    /**
      * End time key in hazard
      */
     public static final String ISSUE_TIME = "issueTime";

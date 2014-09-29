@@ -48,7 +48,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * @author bsteffen
  * @version 1.0
  */
-public class ProductInformation {
+public class ProductGeneratorInformation {
 
     private String productGeneratorName;
 
@@ -62,7 +62,7 @@ public class ProductInformation {
 
     private ProductFormats productFormats;
 
-    private GeneratedProductList products;
+    private GeneratedProductList generatedProducts;
 
     private Throwable error;
 
@@ -116,12 +116,12 @@ public class ProductInformation {
         this.productFormats = productFormats;
     }
 
-    public GeneratedProductList getProducts() {
-        return products;
+    public GeneratedProductList getGeneratedProducts() {
+        return generatedProducts;
     }
 
-    public void setProducts(GeneratedProductList products) {
-        this.products = products;
+    public void setGeneratedProducts(GeneratedProductList generatedProducts) {
+        this.generatedProducts = generatedProducts;
     }
 
     public Throwable getError() {

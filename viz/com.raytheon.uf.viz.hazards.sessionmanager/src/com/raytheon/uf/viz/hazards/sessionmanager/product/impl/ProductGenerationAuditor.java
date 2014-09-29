@@ -17,14 +17,14 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package gov.noaa.gsd.viz.hazards.display;
+package com.raytheon.uf.viz.hazards.sessionmanager.product.impl;
 
 import java.util.List;
 import java.util.LinkedList;
 import java.util.ArrayList;
 
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
 
 /**
  * Used to track which products need to be generated and which products have
@@ -51,7 +51,7 @@ public class ProductGenerationAuditor {
 
     private List<GeneratedProductList> generatedProducts;
 
-    private List<ProductInformation> productsToBeGenerated;
+    private List<ProductGeneratorInformation> allProductGeneratorInformation;
 
     /**
      * 
@@ -61,35 +61,35 @@ public class ProductGenerationAuditor {
         this.issue = issue;
         this.productGenerationTrackingID = productGenerationTrackingID;
         this.generatedProducts = new LinkedList<GeneratedProductList>();
-        this.productsToBeGenerated = new ArrayList<ProductInformation>();
+        this.allProductGeneratorInformation = new ArrayList<ProductGeneratorInformation>();
     }
 
-    public void addProductToBeGenerated(ProductInformation productInformation) {
-        this.productsToBeGenerated.add(productInformation);
+    public void addProductGeneratorInformation(ProductGeneratorInformation productGeneratorInformation) {
+        this.allProductGeneratorInformation.add(productGeneratorInformation);
     }
 
     public synchronized boolean productGenerated(
             GeneratedProductList generatedProductList,
-            ProductInformation productInformation) {
-        if (this.productsToBeGenerated.contains(productInformation) == false) {
+            ProductGeneratorInformation productGeneratorInformation) {
+        if (this.allProductGeneratorInformation.contains(productGeneratorInformation) == false) {
             // unlikely case
             return false;
         }
 
-        this.productsToBeGenerated.remove(productInformation);
+        this.allProductGeneratorInformation.remove(productGeneratorInformation);
         this.generatedProducts.add(generatedProductList);
-        return this.productsToBeGenerated.isEmpty();
+        return this.allProductGeneratorInformation.isEmpty();
     }
 
     public synchronized boolean productGenerationFailure(
-            ProductInformation productInformation) {
-        if (this.productsToBeGenerated.contains(productInformation) == false) {
+            ProductGeneratorInformation productGeneratorInformation) {
+        if (this.allProductGeneratorInformation.contains(productGeneratorInformation) == false) {
             // unlikely case
             return false;
         }
 
-        this.productsToBeGenerated.remove(productInformation);
-        return this.productsToBeGenerated.isEmpty();
+        this.allProductGeneratorInformation.remove(productGeneratorInformation);
+        return this.allProductGeneratorInformation.isEmpty();
     }
 
     public boolean isIssue() {
@@ -118,12 +118,12 @@ public class ProductGenerationAuditor {
         this.generatedProducts = generatedProducts;
     }
 
-    public List<ProductInformation> getProductsToBeGenerated() {
-        return productsToBeGenerated;
+    public List<ProductGeneratorInformation> getAllProductGeneratorInformation() {
+        return allProductGeneratorInformation;
     }
 
-    public void setProductsToBeGenerated(
-            List<ProductInformation> productsToBeGenerated) {
-        this.productsToBeGenerated = productsToBeGenerated;
+    public void setAllProductGeneratorInformation(
+            List<ProductGeneratorInformation> allProductGeneratorInformation) {
+        this.allProductGeneratorInformation = allProductGeneratorInformation;
     }
 }

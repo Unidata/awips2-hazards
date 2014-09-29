@@ -32,7 +32,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
 
 /**
@@ -210,13 +210,13 @@ public class ProductStagingPresenter extends
      * 
      * @param issueFlag
      *            Whether or not this is a result of an issue action
-     * @param productInformation
+     * @param allProductGeneratorInformationForSelectedHazards
      * @param productStagingInfo
      */
     public final void showProductStagingDetail(boolean issueFlag,
-            Collection<ProductInformation> productInformation) {
+            Collection<ProductGeneratorInformation> allProductGeneratorInformationForSelectedHazards) {
         getView().showProductStagingDetail(issueFlag,
-                buildProductStagingInfo(issueFlag, productInformation));
+                buildProductStagingInfo(issueFlag, allProductGeneratorInformationForSelectedHazards));
         bind();
     }
 
@@ -265,22 +265,22 @@ public class ProductStagingPresenter extends
      * @param issue
      *            Flag indicating whether this is for an issue or preview
      *            action.
-     * @param productInformation
+     * @param allProductGeneratorInformationForSelectedHazards
      * @return Product staging info that has been put together.
      */
     @SuppressWarnings("unchecked")
     private ProductStagingInfo buildProductStagingInfo(boolean issue,
-            Collection<ProductInformation> productInformation) {
+            Collection<ProductGeneratorInformation> allProductGeneratorInformationForSelectedHazards) {
         ProductStagingInfo result = new ProductStagingInfo();
-        for (ProductInformation info : productInformation) {
+        for (ProductGeneratorInformation productGeneratorInformation : allProductGeneratorInformationForSelectedHazards) {
             ProductStagingInfo.Product product = new ProductStagingInfo.Product(
-                    info.getProductGeneratorName());
+                    productGeneratorInformation.getProductGeneratorName());
 
             result.addProducts(product);
-            for (IHazardEvent event : info.getProductEvents()) {
+            for (IHazardEvent event : productGeneratorInformation.getProductEvents()) {
                 product.addSelectedEventIDs(event.getEventID());
             }
-            Map<String, Serializable> dialogInfo = info.getDialogInfo();
+            Map<String, Serializable> dialogInfo = productGeneratorInformation.getDialogInfo();
             if (dialogInfo.isEmpty() == false) {
 
                 List<Map<String, Serializable>> allFieldParameters = (List<Map<String, Serializable>>) dialogInfo
@@ -293,7 +293,7 @@ public class ProductStagingPresenter extends
 
             }
 
-            if (info.getPossibleProductEvents().isEmpty() == false) {
+            if (productGeneratorInformation.getPossibleProductEvents().isEmpty() == false) {
 
                 Map<String, Object> field = new HashMap<>();
                 product.addField(field);
@@ -325,11 +325,11 @@ public class ProductStagingPresenter extends
                 subField.put(
                         CheckListSpecifier.MEGAWIDGET_VISIBLE_LINES,
                         Math.min(10,
-                                Math.max(info.getProductEvents().size(), 5)));
+                                Math.max(productGeneratorInformation.getProductEvents().size(), 5)));
 
                 List<IHazardEvent> eventChoices = new ArrayList<IHazardEvent>();
-                eventChoices.addAll(info.getProductEvents());
-                eventChoices.addAll(info.getPossibleProductEvents());
+                eventChoices.addAll(productGeneratorInformation.getProductEvents());
+                eventChoices.addAll(productGeneratorInformation.getPossibleProductEvents());
 
                 List<Map<String, Object>> choices = new ArrayList<>();
                 subField.put(CheckListSpecifier.MEGAWIDGET_VALUE_CHOICES,
