@@ -5,7 +5,7 @@ Bundle-SymbolicName: com.raytheon.uf.viz.recommenders;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: com.raytheon.uf.viz.recommenders.Activator
 Bundle-Vendor: RAYTHEON
-Eclipse-BuddyPolicy: registered, ext, global
+Eclipse-BuddyPolicy: registered, global
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.swt,
  org.jep;bundle-version="1.0.0",
