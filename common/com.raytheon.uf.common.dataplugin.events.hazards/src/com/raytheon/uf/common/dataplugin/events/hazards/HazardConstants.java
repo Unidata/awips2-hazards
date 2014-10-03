@@ -57,6 +57,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Aug 15, 2014 4243      Chris.Golden  Changed megawidget-metadata-fetching related constants.
  * Sep 04, 2014 4560      Chris.Golden  Added constant for metadata-reload-triggering megawidgets.
  * Sep 09, 2014 4042      Chris.Golden  Added constant for UI scrolling increment.
+ * Oct 03, 2014 4918      Robert.Blum   Added constant for hazard metadata.
  * </pre>
  * 
  * @author mnash
@@ -949,6 +950,8 @@ public final class HazardConstants {
     public static final String HAZARD_SERVICES_LOCALIZATION_DIR = "hazardServices";
 
     public static final String HAZARD_TYPES_LOCALIZATION_DIR = "hazardTypes";
+
+    public static final String HAZARD_METADATA_DIR = "hazardMetaData";
 
     public static final String UGC_PARTS_OF_COUNTY = "ugcPortions";
 

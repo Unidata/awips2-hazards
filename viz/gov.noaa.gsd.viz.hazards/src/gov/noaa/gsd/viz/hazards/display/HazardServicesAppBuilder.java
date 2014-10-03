@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_METADATA_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_SERVICES_LOCALIZATION_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_TYPES_LOCALIZATION_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_BRIDGE_DIR;
@@ -180,6 +181,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             path to work with recommender scripts.
  * Sep 09, 2014 4042       Chris.Golden        Moved product staging info generation to
  *                                             the product staging presenter.
+ * Oct 03, 2014 4918       Robert.Blum         Added the metadata path to the Python include path.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -471,14 +473,17 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 HAZARD_SERVICES_LOCALIZATION_DIR).getPath();
         String hazardTypesPath = FileUtil.join(hazardServicesPath,
                 HAZARD_TYPES_LOCALIZATION_DIR);
+        String hazardMetaDataPath = FileUtil.join(hazardServicesPath,
+                HAZARD_METADATA_DIR);
         PythonSideEffectsApplier.initialize(PyUtil.buildJepIncludePath(
                 pythonPath, localizationUtilitiesPath, logUtilitiesPath,
                 vtecUtilitiesPath, geoUtilitiesPath, shapeUtilitiesPath,
                 textUtilitiesPath, dataStoragePath, eventsPath,
                 eventsUtilitiesPath, bridgePath, hazardServicesPath,
-                hazardTypesPath, gfePath, timePath, generalUtilitiesPath,
-                trackUtilitiesPath, dataAccessPath, recommendersPath,
-                recommendersConfigPath), getClass().getClassLoader());
+                hazardTypesPath, hazardMetaDataPath, gfePath, timePath,
+                generalUtilitiesPath, trackUtilitiesPath, dataAccessPath,
+                recommendersPath, recommendersConfigPath), getClass()
+                .getClassLoader());
 
         /*
          * For testing and demos, force DRT for operational mode start HS
