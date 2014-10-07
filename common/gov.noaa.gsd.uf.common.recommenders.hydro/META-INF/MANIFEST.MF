@@ -10,5 +10,6 @@ Require-Bundle: com.google.guava;bundle-version="1.0.0",
  com.raytheon.uf.common.dataaccess;bundle-version="1.14.0",
  com.raytheon.uf.common.hazards.hydro;bundle-version="1.0.0"
 Bundle-ActivationPolicy: lazy
+Eclipse-BuddyPolicy: global
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Export-Package: gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender

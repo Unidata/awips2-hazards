@@ -41,6 +41,7 @@ Export-Package: gov.noaa.gsd.viz.hazards.display,
  gov.noaa.gsd.viz.hazards.jsonutilities,
  gov.noaa.gsd.viz.hazards.console,
  gov.noaa.gsd.viz.hazards.spatialdisplay
+Eclipse-BuddyPolicy: global
 Bundle-ActivationPolicy: lazy
 Import-Package: com.raytheon.uf.common.colormap,
  com.raytheon.uf.common.dataaccess,
