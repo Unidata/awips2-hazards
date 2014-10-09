@@ -3,13 +3,13 @@ Bundle-ManifestVersion: 2
 Bundle-Name: Hydro
 Bundle-SymbolicName: gov.noaa.gsd.uf.common.recommenders.hydro
 Bundle-Version: 1.0.0.qualifier
-Eclipse-RegisterBuddy: com.raytheon.uf.viz.recommenders  
+Eclipse-RegisterBuddy: com.raytheon.uf.viz.recommenders, com.raytheon.viz.core
 Require-Bundle: com.google.guava;bundle-version="1.0.0",
  com.raytheon.uf.common.dataplugin.events.hazards;bundle-version="1.0.0",
  com.raytheon.uf.common.dataplugin.events;bundle-version="1.0.0",
  com.raytheon.uf.common.dataaccess;bundle-version="1.14.0",
  com.raytheon.uf.common.hazards.hydro;bundle-version="1.0.0"
 Bundle-ActivationPolicy: lazy
-Eclipse-BuddyPolicy: global
+Eclipse-BuddyPolicy: ext, global
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Export-Package: gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender

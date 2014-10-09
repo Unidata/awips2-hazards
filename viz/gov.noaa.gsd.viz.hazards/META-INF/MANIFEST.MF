@@ -6,7 +6,7 @@ Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: gov.noaa.gsd.viz.hazards.display.HazardServicesActivator
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-Vendor: GSD
-Eclipse-RegisterBuddy: com.raytheon.uf.viz.core.rsc 
+Eclipse-RegisterBuddy: com.raytheon.uf.common.serialization, com.raytheon.viz.awipstools, com.raytheon.viz.core, com.raytheon.uf.viz.core.rsc 
 Require-Bundle: com.raytheon.viz.core,
  com.raytheon.viz.ui,
  org.eclipse.ui,
@@ -41,7 +41,7 @@ Export-Package: gov.noaa.gsd.viz.hazards.display,
  gov.noaa.gsd.viz.hazards.jsonutilities,
  gov.noaa.gsd.viz.hazards.console,
  gov.noaa.gsd.viz.hazards.spatialdisplay
-Eclipse-BuddyPolicy: global
+Eclipse-BuddyPolicy: ext, global
 Bundle-ActivationPolicy: lazy
 Import-Package: com.raytheon.uf.common.colormap,
  com.raytheon.uf.common.dataaccess,
