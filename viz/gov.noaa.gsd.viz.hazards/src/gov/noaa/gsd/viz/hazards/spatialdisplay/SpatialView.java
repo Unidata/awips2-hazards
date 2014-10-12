@@ -624,8 +624,8 @@ public class SpatialView implements
             @Override
             public void run() {
                 if (spatialDisplay != null) {
-                    ((SpatialDisplayResourceData) spatialDisplay.getResourceData())
-                            .setSettings(settings);
+                    ((SpatialDisplayResourceData) spatialDisplay
+                            .getResourceData()).setSettings(settings);
                 }
             }
         });
@@ -750,7 +750,6 @@ public class SpatialView implements
                     new SeparatorAction(), moveAndSelectChoiceAction,
                     drawVertexBasedPolygonChoiceAction,
                     drawFreehandPolygonChoiceAction,
-                    drawVertexPathChoiceAction, drawPointChoiceAction,
                     selectByAreaMapsPulldownAction, new SeparatorAction(),
                     addGeometryToSelectedAction);
         }
