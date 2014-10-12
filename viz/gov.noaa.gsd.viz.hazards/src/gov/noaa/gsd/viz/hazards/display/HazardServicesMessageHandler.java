@@ -956,8 +956,11 @@ public final class HazardServicesMessageHandler implements
         if (sessionProductManager.isProductGenerationRequired(issue)) {
             sessionProductManager.generateProducts(issue);
         } else {
-            appBuilder.showProductStagingView(issue, sessionProductManager
-                    .getAllProductGeneratorInformationForSelectedHazardsCache(issue));
+            appBuilder
+                    .showProductStagingView(
+                            issue,
+                            sessionProductManager
+                                    .getAllProductGeneratorInformationForSelectedHazardsCache(issue));
         }
 
     }
@@ -1096,19 +1099,24 @@ public final class HazardServicesMessageHandler implements
                 sessionProductManager.createProductsFromHazardEventSets(true,
                         action.getGeneratedProductsList());
                 notifyModelEventsChanged();
+            } else {
+                sessionManager.setIssueOngoing(false);
             }
             break;
         case CORRECT:
             for (GeneratedProductList products : action
                     .getGeneratedProductsList()) {
                 ProductGeneratorInformation productGeneratorInformation = new ProductGeneratorInformation();
-                productGeneratorInformation.setProductGeneratorName(products.getProductInfo());
+                productGeneratorInformation.setProductGeneratorName(products
+                        .getProductInfo());
                 ProductFormats productFormats = sessionConfigurationManager
                         .getProductGeneratorTable().getProductFormats(
-                                productGeneratorInformation.getProductGeneratorName());
+                                productGeneratorInformation
+                                        .getProductGeneratorName());
                 productGeneratorInformation.setProductFormats(productFormats);
                 productGeneratorInformation.setGeneratedProducts(products);
-                sessionManager.getProductManager().issueCorrection(productGeneratorInformation);
+                sessionManager.getProductManager().issueCorrection(
+                        productGeneratorInformation);
             }
 
             break;
