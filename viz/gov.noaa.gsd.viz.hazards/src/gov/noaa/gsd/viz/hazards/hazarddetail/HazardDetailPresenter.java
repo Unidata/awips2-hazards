@@ -121,6 +121,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           megawidgets.
  * Sep 16, 2014    4753    Chris.Golden      Changed event script running to include
  *                                           mutable properties.
+ * Oct 15, 2014    3498    Chris.Golden      Fixed bug where HID disappeared when
+ *                                           switching perspectives, and could not
+ *                                           be made visible again without bouncing
+ *                                           H.S. (and sometimes CAVE).
  * </pre>
  * 
  * @author Chris.Golden
@@ -933,24 +937,7 @@ public class HazardDetailPresenter extends
      * Show a view providing setting detail for the current hazard events.
      */
     public final void showHazardDetail() {
-
-        /*
-         * Do nothing unless there are events selected and the detail view is
-         * currently hidden.
-         */
-        if (detailViewShowing) {
-            return;
-        }
-
-        /*
-         * Show the detail view.
-         */
-        getView().getDetailViewVisibilityChanger().setState(null, true);
-
-        /*
-         * Fill in all the information the view should display.
-         */
-        updateEntireView(getModel().getEventManager().getSelectedEvents());
+        showHazardDetail(false);
     }
 
     /**
@@ -979,7 +966,9 @@ public class HazardDetailPresenter extends
          * Show the detail view if appropriate.
          */
         if (getModel().getEventManager().getSelectedEvents().size() > 0) {
-            showHazardDetail();
+            showHazardDetail(true);
+        } else {
+            hideHazardDetail();
         }
 
         /*
@@ -1009,6 +998,34 @@ public class HazardDetailPresenter extends
     }
 
     // Private Methods
+
+    /**
+     * Show a view providing setting detail for the current hazard events.
+     * 
+     * @param force
+     *            Flag indicating whether or not to force the showing of the
+     *            hazard detail, even if it appears to already be showing.
+     */
+    private void showHazardDetail(boolean force) {
+
+        /*
+         * Do nothing unless there are events selected and the detail view is
+         * currently hidden.
+         */
+        if (detailViewShowing && (force == false)) {
+            return;
+        }
+
+        /*
+         * Show the detail view.
+         */
+        getView().getDetailViewVisibilityChanger().setState(null, true);
+
+        /*
+         * Fill in all the information the view should display.
+         */
+        updateEntireView(getModel().getEventManager().getSelectedEvents());
+    }
 
     /**
      * Determine the visible event identifier.

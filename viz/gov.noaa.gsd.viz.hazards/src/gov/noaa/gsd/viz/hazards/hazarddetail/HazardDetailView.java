@@ -107,6 +107,10 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                           megawidgets.
  * Sep 16, 2014   4753     Chris.Golden      Changed event script running to include
  *                                           mutable properties.
+ * Oct 15, 2014   3498     Chris.Golden      Fixed bug where HID disappeared when
+ *                                           switching perspectives, and could not
+ *                                           be made visible again without bouncing
+ *                                           H.S. (and sometimes CAVE).
  * </pre>
  * 
  * @author Chris.Golden
@@ -601,16 +605,7 @@ public class HazardDetailView extends
         executeOnCreatedViewPart(new Runnable() {
             @Override
             public void run() {
-
-                /*
-                 * If undocked, hide the view part, since it is empty;
-                 * otherwise, initialize the view part.
-                 */
-                if (isViewPartDocked() == false) {
-                    hideViewPart(false);
-                } else {
-                    initializeViewPart();
-                }
+                initializeViewPart();
             }
         });
     }
