@@ -690,8 +690,8 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
                                     MegawidgetPropertyException exception) {
                                 statusHandler
                                         .error("Error occurred while attempting to "
-                                                + "apply megawidget interdependencies",
-                                                exception);
+                                                + "apply megawidget interdependencies: "
+                                                + exception, exception);
                             }
                         }, minimumVisibleTime, maximumVisibleTime);
                 scrolledCompositesForMegawidgetManagers.put(megawidgetManager,
@@ -700,7 +700,7 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
             } catch (MegawidgetException e) {
                 statusHandler.error(
                         "unexpected problem creating metadata megawidgets for product "
-                                + productName, e);
+                                + productName + ": " + e, e);
             }
             tabItem.setControl(scrolledComposite);
         }

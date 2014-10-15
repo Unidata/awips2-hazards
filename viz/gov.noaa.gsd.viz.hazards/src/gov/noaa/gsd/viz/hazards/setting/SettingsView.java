@@ -360,7 +360,8 @@ public class SettingsView implements
                 } catch (MegawidgetException e) {
                     statusHandler.error(
                             "Unable to create megawidget manager due to "
-                                    + "megawidget construction problem.", e);
+                                    + "megawidget construction problem: " + e,
+                            e);
                 } catch (Exception e) {
                     statusHandler
                             .error("Failed to convert the Current Settings to Java map.",
@@ -379,8 +380,8 @@ public class SettingsView implements
                 } catch (MegawidgetStateException e) {
                     statusHandler.error(
                             "SettingsView.FiltersPulldownAction.doGetMenu(): Failed to "
-                                    + "accept new current setting parameters.",
-                            e);
+                                    + "accept new current setting parameters: "
+                                    + e, e);
                 } catch (Exception e) {
                     statusHandler
                             .error("Failed to convert the Current Settings to a Java Map!",

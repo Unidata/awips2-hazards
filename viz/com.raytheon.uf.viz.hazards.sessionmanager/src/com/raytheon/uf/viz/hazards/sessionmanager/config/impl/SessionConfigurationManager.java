@@ -178,9 +178,9 @@ public class SessionConfigurationManager implements
                     Collections.<Map<String, Object>> emptyList(),
                     ISpecifier.class);
         } catch (Exception e) {
-            statusHandler
-                    .error("unexpected error while creating empty megawidget specifier manager",
-                            e);
+            statusHandler.error(
+                    "unexpected error while creating empty megawidget specifier manager: "
+                            + e, e);
         }
         EMPTY_MEGAWIDGET_SPECIFIER_MANAGER = manager;
     }
@@ -592,7 +592,7 @@ public class SessionConfigurationManager implements
                     eventModifyingFunctionNamesForIdentifiers);
         } catch (MegawidgetSpecificationException e) {
             statusHandler.error("Could not get hazard metadata for event ID = "
-                    + hazardEvent.getEventID() + ".", e);
+                    + hazardEvent.getEventID() + ":" + e, e);
             return EMPTY_HAZARD_EVENT_METADATA;
         }
     }

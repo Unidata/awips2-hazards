@@ -486,7 +486,8 @@ class ToolDialog extends BasicDialog {
                                 MegawidgetPropertyException exception) {
                             statusHandler
                                     .error("ToolDialog.MegawidgetManager error occurred "
-                                            + "while attempting to apply megawidget interdependencies",
+                                            + "while attempting to apply megawidget "
+                                            + "interdependencies: " + exception,
                                             exception);
                         }
 
@@ -495,8 +496,8 @@ class ToolDialog extends BasicDialog {
         } catch (MegawidgetException e) {
             statusHandler
                     .error("ToolDialog.createDialogArea(): Unable to create megawidget "
-                            + "manager due to megawidget construction problem.",
-                            e);
+                            + "manager due to megawidget construction problem: "
+                            + e, e);
         }
 
         /*

@@ -272,7 +272,7 @@ public class MegawidgetGeneratorDemo extends Dialog {
                         }
                     });
         } catch (MegawidgetException e) {
-            System.err.println("Error creating megawidgets.");
+            System.err.println("Error creating megawidgets: " + e);
             e.printStackTrace(System.err);
         }
 

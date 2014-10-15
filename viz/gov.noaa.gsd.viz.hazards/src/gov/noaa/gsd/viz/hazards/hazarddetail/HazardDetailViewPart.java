@@ -2485,17 +2485,16 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                         MegawidgetPropertyException exception) {
                                     statusHandler
                                             .error("HazardDetailViewPart.MegawidgetManager error occurred "
-                                                    + "while attempting to apply megawidget interdependencies.",
-                                                    exception);
+                                                    + "while attempting to apply megawidget interdependencies: "
+                                                    + exception, exception);
                                 }
 
                             }, minimumVisibleTime, maximumVisibleTime);
                 } catch (Exception e) {
-                    statusHandler
-                            .error("Could not create hazard metadata megawidgets "
-                                    + "for event ID = "
-                                    + eventIdentifier
-                                    + ": " + e.getMessage());
+                    statusHandler.error(
+                            "Could not create hazard metadata megawidgets "
+                                    + "for event ID = " + eventIdentifier
+                                    + ": " + e, e);
                     panel.dispose();
                     panel = null;
                 }
@@ -2566,9 +2565,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             try {
                 manager.setMutableProperties(mutableProperties);
             } catch (Exception e) {
-                statusHandler
-                        .error("Error while trying to set metadata mutable properties",
-                                e);
+                statusHandler.error(
+                        "Error while trying to set metadata mutable properties: "
+                                + e, e);
             }
         }
     }
@@ -2643,7 +2642,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                             .getStateElement(metadataIdentifier);
                 } catch (Exception e) {
                     statusHandler.error("Error while trying to get metadata \""
-                            + metadataIdentifier + "\"", e);
+                            + metadataIdentifier + "\": " + e, e);
                 }
             }
         }
@@ -2741,7 +2740,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     manager.modifyState(map);
                 } catch (Exception e) {
                     statusHandler.error("Error while trying to set metadata \""
-                            + metadataIdentifier + "\" to " + value, e);
+                            + metadataIdentifier + "\" to " + value + ": " + e,
+                            e);
                 }
             }
         }
@@ -2776,7 +2776,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     manager.modifyState(valuesForIdentifiers);
                 } catch (Exception e) {
                     statusHandler.error(
-                            "Error while trying to set metadata values", e);
+                            "Error while trying to set metadata values: " + e,
+                            e);
                 }
             }
         }

@@ -2172,8 +2172,8 @@ class TemporalDisplay {
                             statusHandler
                                     .error(getClass().getName()
                                             + " Unable to create megawidget "
-                                            + "manager due to megawidget construction problem.",
-                                            e);
+                                            + "manager due to megawidget construction problem: "
+                                            + e, e);
                         }
 
                         // Associate this header menu with the column
@@ -2884,7 +2884,7 @@ class TemporalDisplay {
                                 statusHandler
                                         .error("TemporalDisplay.createTable().MenuDetectListener."
                                                 + "menuDetected(): Unable to set megawidget manager "
-                                                + "state.", exception);
+                                                + "state: " + e, exception);
                             }
                         }
                         table.setMenu(menu);

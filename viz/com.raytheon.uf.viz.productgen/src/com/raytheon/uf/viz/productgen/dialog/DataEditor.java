@@ -210,7 +210,7 @@ public class DataEditor {
             }
 
         } catch (MegawidgetException e) {
-            handler.error("Error creating megawidets", e);
+            handler.error("Error creating megawidgets: " + e, e);
         }
 
         scrollerComposite.setExpandHorizontal(true);
@@ -308,7 +308,8 @@ public class DataEditor {
         try {
             manager.setState(state);
         } catch (MegawidgetStateException exception) {
-            handler.error("Error trying to reset megawidget state ", exception);
+            handler.error("Error trying to reset megawidget state: "
+                    + exception, exception);
         }
     }
 

@@ -141,7 +141,7 @@ public class MegawidgetPropertyException extends MegawidgetException {
             builder.append(" (" + MegawidgetSpecifier.MEGAWIDGET_TYPE + " = "
                     + getType() + ",");
         }
-        builder.append(" property name = \"" + name + "\"");
+        builder.append(" property name = \"" + name + "\")");
         if (getBadValue() != null) {
             builder.append(": invalid value \"" + getBadValue() + "\"");
         }

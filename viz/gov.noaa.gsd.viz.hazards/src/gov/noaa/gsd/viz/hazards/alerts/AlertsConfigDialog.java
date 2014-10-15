@@ -289,8 +289,8 @@ class AlertsConfigDialog extends BasicDialog {
         } catch (MegawidgetException e) {
             statusHandler
                     .error("AlertDialog.createDialogArea(): Unable to create megawidget "
-                            + "manager due to megawidget construction problem.",
-                            e);
+                            + "manager due to megawidget construction problem: "
+                            + e, e);
         }
 
         // Return the created client area.

@@ -214,7 +214,7 @@ public class MegawidgetTest extends Dialog {
                         public void sideEffectMutablePropertyChangeErrorOccurred(
                                 MegawidgetManager manager,
                                 MegawidgetPropertyException exception) {
-                            System.err.println("Error: ");
+                            System.err.println("Error: " + exception);
                             exception.printStackTrace(System.err);
                         }
 
@@ -230,7 +230,7 @@ public class MegawidgetTest extends Dialog {
                             : new PythonSideEffectsApplier(new File(PATH_PREFIX
                                     + scriptFilePath))));
         } catch (Exception e) {
-            System.err.println("Error: Megawidget improperly specified:");
+            System.err.println("Error: Megawidget improperly specified: " + e);
             e.printStackTrace(System.err);
             PythonSideEffectsApplier.prepareForShutDown();
             System.exit(1);

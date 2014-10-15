@@ -273,7 +273,7 @@ class SettingDialog extends BasicDialog {
                     .settingsPOJOToMap(settings));
         } catch (MegawidgetStateException e) {
             statusHandler.error("SettingDialog.setState(): Error: Failed to "
-                    + "accept new setting parameters.", e);
+                    + "accept new setting parameters: " + e, e);
         } catch (Exception e) {
             statusHandler.error(
                     "Failed to convert the Current Settings to a Java Map!", e);
@@ -358,8 +358,8 @@ class SettingDialog extends BasicDialog {
         } catch (MegawidgetException e) {
             statusHandler
                     .error("SettingDialog.createDialogArea(): Unable to create "
-                            + "megawidget manager due to megawidget construction problem.",
-                            e);
+                            + "megawidget manager due to megawidget construction problem: "
+                            + e, e);
         } catch (Exception e) {
             statusHandler.error(
                     "Failed to convert the Current Settings to a Java Map!", e);
