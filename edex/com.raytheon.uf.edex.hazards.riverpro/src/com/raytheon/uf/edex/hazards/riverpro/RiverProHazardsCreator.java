@@ -71,6 +71,7 @@ import com.vividsolutions.jts.geom.Point;
  * ------------ ---------- ----------- --------------------------
  * Jul 11, 2013            mnash       Initial creation
  * Mar  3, 2014 3034       bkowal      Prevent Null Pointer Exception for Geometry
+ * Aug 11, 2014 2826       jsanchez    Improved interoperability hazard comparison.
  * 
  * </pre>
  * 
@@ -117,6 +118,10 @@ public class RiverProHazardsCreator {
             if (uris.length > 0) {
                 vals.putAll(RequestConstraint.toConstraintMapping(DataURIUtil
                         .createDataURIMap(uris[0])));
+            } else {
+                statusHandler
+                        .warn("Empty Practice Data URI Notification Received!");
+                return;
             }
             DbQueryRequest request = new DbQueryRequest(vals);
             DbQueryResponse response = (DbQueryResponse) RequestRouter

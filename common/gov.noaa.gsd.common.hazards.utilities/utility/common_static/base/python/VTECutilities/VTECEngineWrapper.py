@@ -94,11 +94,17 @@ class VTECEngineWrapper(object):
             self.vtecRecordType = "testVtecRecords"
             
         self.vtecProduct = vtecProduct
+        
+        # check for Viz test mode
+        automatedTestsFlag = os.environ.get('HAZARD_SERVICES_AUTO_TESTS_ENABLED', False)    
+        if automatedTestsFlag is not False:    
+            automatedTestsFlag = automatedTestsFlag in [ 'true', 'True' ]
             
         # Access to VTEC Table and VTEC records
-        self.bridge = bridge
-        self._io = VTECTableIO.getInstance(self.vtecRecordType=="vtecRecords", testHarnessMode)
-        vtecRecords = self._io.getVtecRecords() if self.vtecProduct else []
+        self.bridge = bridge        
+        self._io = VTECTableIO.getInstance(siteID4, self.vtecRecordType=="vtecRecords", testHarnessMode, automatedTestsFlag)
+        reqInfo = {'hazardEvents':hazardEvents}
+        vtecRecords = self._io.getVtecRecords(reqInfo) if self.vtecProduct else []
         
         if self.bridge is not None:
             

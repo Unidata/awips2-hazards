@@ -20,10 +20,11 @@
 package com.raytheon.uf.edex.hazards.interoperability.util;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
@@ -34,9 +35,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEvent
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
+import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_KEYS;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityRecordManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardsInteroperability;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.IHazardsInteroperabilityRecord;
@@ -116,14 +117,27 @@ public final class InteroperabilityUtil {
                     .getEventsByFilter(builder.getQuery());
             if (hazardEventsMap != null && hazardEventsMap.isEmpty() == false
                     && hazardEventsMap.containsKey(hazardEventID)) {
-                int index = hazardEventsMap.get(hazardEventID).size() - 1;
 
                 /*
                  * Retrieve the most recent hazard from the history list.
                  */
-                IHazardEvent hazardEvent = hazardEventsMap.get(hazardEventID)
-                        .get(index);
-                retrievedHazardEvents.add(hazardEvent);
+                HazardHistoryList historyList = hazardEventsMap
+                        .get(hazardEventID);
+                if (historyList != null && historyList.isEmpty() == false) {
+                    IHazardEvent mostRecentEvent = historyList.get(0);
+                    Long latestTime = getLatestTime(mostRecentEvent
+                            .getHazardAttribute(HazardConstants.PERSIST_TIME));
+                    for (int count = 1; count < historyList.size(); count++) {
+                        IHazardEvent hazardEvent = historyList.get(count);
+                        Long hazardTime = getLatestTime(hazardEvent
+                                .getHazardAttribute(HazardConstants.PERSIST_TIME));
+                        if (hazardTime > latestTime) {
+                            latestTime = hazardTime;
+                            mostRecentEvent = hazardEvent;
+                        }
+                    }
+                    retrievedHazardEvents.add(mostRecentEvent);
+                }
             }
         }
 
@@ -132,6 +146,22 @@ public final class InteroperabilityUtil {
         }
 
         return retrievedHazardEvents;
+    }
+
+    private static Long getLatestTime(Serializable serializable) {
+        if (serializable instanceof Date) {
+            return ((Date) serializable).getTime();
+        } else {
+            return (Long) serializable;
+        }
+    }
+
+    public static void newOrUpdateInteroperabilityRecord(
+            final IHazardEvent hazardEvent, final String etn,
+            final INTEROPERABILITY_TYPE type) {
+        IHazardsInteroperabilityRecord record = HazardInteroperabilityRecordManager
+                .constructInteroperabilityRecord(hazardEvent, etn, type);
+        HazardInteroperabilityRecordManager.storeRecord(record);
     }
 
     public static IHazardEvent associatedExistingHazard(
@@ -185,14 +215,6 @@ public final class InteroperabilityUtil {
         }
 
         return null;
-    }
-
-    public static void newOrUpdateInteroperabilityRecord(
-            final IHazardEvent hazardEvent, final String etn,
-            final INTEROPERABILITY_TYPE type) {
-        IHazardsInteroperabilityRecord record = HazardInteroperabilityRecordManager
-                .constructInteroperabilityRecord(hazardEvent, etn, type);
-        HazardInteroperabilityRecordManager.storeRecord(record);
     }
 
     public static String padEtnString(String etn) {

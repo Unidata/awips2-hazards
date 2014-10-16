@@ -12,7 +12,8 @@ Require-Bundle: com.raytheon.uf.common.serialization;bundle-version="1.12.1174",
  com.raytheon.uf.common.dataplugin.events,
  com.raytheon.uf.common.dataaccess;bundle-version="1.0.0",
  org.apache.commons.lang;bundle-version="2.3.0",
- org.apache.commons.beanutils;bundle-version="1.8.3"
+ org.apache.commons.beanutils;bundle-version="1.8.3",
+ com.raytheon.uf.common.activetable;bundle-version="1.14.0"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-ActivationPolicy: lazy
 Import-Package: com.google.common.base,
@@ -32,4 +33,5 @@ Export-Package: com.raytheon.uf.common.dataplugin.events.hazards,
  com.raytheon.uf.common.dataplugin.events.hazards.event.collections,
  com.raytheon.uf.common.dataplugin.events.hazards.interoperability,
  com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests,
+ com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.test,
  com.raytheon.uf.common.dataplugin.events.hazards.requests

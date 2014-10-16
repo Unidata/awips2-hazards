@@ -270,10 +270,11 @@ public class SessionProductManager implements ISessionProductManager {
                 EventSet<IEvent> eventSet = buildEventSet(info, issue,
                         LocalizationManager.getInstance().getCurrentSite());
 
-                Map<String, Serializable> dialogInfo = productGen
-                        .getDialogInfo(entry.getKey(), eventSet);
-
-                info.setDialogInfo(dialogInfo);
+                if (issue == false) {
+                    Map<String, Serializable> dialogInfo = productGen
+                            .getDialogInfo(entry.getKey(), eventSet);
+                    info.setDialogInfo(dialogInfo);
+                }
                 info.setProductFormats(configManager.getProductGeneratorTable()
                         .getProductFormats(info.getProductGeneratorName()));
                 result.add(info);
@@ -733,12 +734,12 @@ public class SessionProductManager implements ISessionProductManager {
         this.runProductGeneration(allMatchingProductGeneratorInformation, issue);
     }
 
-	/**
-	 * Called when product generation is complete.
-	 * 
-	 * @param generated
-	 *            Successful product generation message
-	 */
+    /**
+     * Called when product generation is complete.
+     * 
+     * @param generated
+     *            Successful product generation message
+     */
     @Handler
     public void auditProductGeneration(ProductGenerated generated) {
         ProductGenerationAuditor productGenerationAuditor = null;
@@ -762,13 +763,13 @@ public class SessionProductManager implements ISessionProductManager {
         this.publishGenerationCompletion(productGenerationAuditor);
     }
 
-	/**
-	 * Called when product generation fails.
-	 * 
-	 * @param failed
-	 *            Product generation failed message
-	 */
-  @Handler
+    /**
+     * Called when product generation fails.
+     * 
+     * @param failed
+     *            Product generation failed message
+     */
+    @Handler
     public void handleProductGeneratorResult(ProductFailed failed) {
         ProductGenerationAuditor productGenerationAuditor = null;
         ProductGeneratorInformation productGeneratorInformation = failed
@@ -1012,10 +1013,11 @@ public class SessionProductManager implements ISessionProductManager {
         for (IGeneratedProduct product : productGeneratorInformation
                 .getGeneratedProducts()) {
             if (ended) {
-                ProductDataUtil.deleteProductData(caveModeStr, productInfo, eventIDs);
+                ProductDataUtil.deleteProductData(caveModeStr, productInfo,
+                        eventIDs);
             } else {
-                ProductDataUtil.createOrUpdateProductData(caveModeStr, productInfo,
-                        eventIDs, startTime, product.getData());
+                ProductDataUtil.createOrUpdateProductData(caveModeStr,
+                        productInfo, eventIDs, startTime, product.getData());
             }
         }
 

@@ -28,6 +28,10 @@ from Pil import Pil
 import Logger as LogStream
 import ProductGenEtnProvider
 import VTECConstants
+import JUtil
+
+from com.raytheon.uf.common.dataplugin.events.hazards.requests import GetHazardsConflictDictRequest
+from com.raytheon.uf.common.serialization.comm import RequestRouter    
 
 
 # Define several named tuples for cleaner code
@@ -148,6 +152,9 @@ class VTECEngine(VTECTableUtil):
           self._getProposedTable(hazardEvents, limitGeoZones,
           combinableSegments)
 
+        request = GetHazardsConflictDictRequest()
+        response = RequestRouter.route(request)
+        self._hazardsConflictDict = JUtil.javaObjToPyVal(response)     
         self._allGEOVtecRecords, self._activeVtecRecords, zonesA = \
           self._getCurrentTable(rawVtecRecords, limitGeoZones, limitEventIDs)
 
@@ -824,7 +831,6 @@ class VTECEngine(VTECTableUtil):
 
             #sort the etn cache by (start, end, etn, ...)
             self._etnCache[(phen, sig)].sort()  #sort the start,end,etns
-
             # keep track of the ids that have been given each etn
             coverage = {}
 
@@ -1588,6 +1594,11 @@ class VTECEngine(VTECTableUtil):
 
         Returns the modified vtecRecords.
         '''
+        # In practice mode, WarnGen uses the productClass 'T'
+        phensig = self._hazardEvents[0].getPhenomenon() + '.' + self._hazardEvents[0].getSignificance()
+        if self._operationalMode == False and phensig not in self._hazardsConflictDict:
+            testMode = True       
+            
         if testMode:
             return [a for a in vtecRecords if a['vtecstr'][0:3] == '/T.']
         else:
@@ -2812,10 +2823,12 @@ class VTECEngine(VTECTableUtil):
         LogStream.logDebug('Analyzed Table -- After checkForCANEXPUPG:', 
           self.printVtecRecords(pTable, combine=True))
 
-        # Check for EXA/EXB
-        pTable = self._checkForEXAEXB(pTable, activeVtecRecords)
-        LogStream.logDebug('Analyzed Table -- After checkForEXAEXB:', 
-          self.printVtecRecords(pTable, combine=True))
+        # Check for EXA/EXB, applicable for GHG products
+        phensig = self._hazardEvents[0].getPhenomenon() + '.' + self._hazardEvents[0].getSignificance()
+        if phensig in self._hazardsConflictDict:
+            pTable = self._checkForEXAEXB(pTable, activeVtecRecords)
+            LogStream.logDebug('Analyzed Table -- After checkForEXAEXB:', 
+                self.printVtecRecords(pTable, combine=True))
 
         # Assign NEW to remaining records
         pTable = self._checkForNEW(pTable, activeVtecRecords, combinableSegments)

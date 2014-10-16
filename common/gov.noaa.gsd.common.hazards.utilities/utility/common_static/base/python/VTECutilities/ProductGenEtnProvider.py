@@ -60,7 +60,7 @@ class ProductGenEtnProvider(object):
         # UNLESS, your site is PGUM, then you issue all ETNs locally
         if phensig not in self.__tpcKeys or self.__siteID4 == 'PGUM':
             # determine the last ETN
-            etn_base = ProductGenVtecUtil.getNextEtn(self.__siteID4, '.'.join(phensig), issueFlag, operationalMode) - 1                                    
+            etn_base = ProductGenVtecUtil.getNextEtn(self.__siteID4, '.'.join(phensig), issueFlag, operationalMode) - 1                                  
 
         return etn_base
 

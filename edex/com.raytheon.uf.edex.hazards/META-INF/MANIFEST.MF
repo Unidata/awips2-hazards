@@ -12,7 +12,13 @@ Require-Bundle: com.raytheon.uf.common.serialization.comm;bundle-version="1.12.1
  com.raytheon.uf.common.registry.schemas.ebxml;bundle-version="1.0.0",
  org.hibernate;bundle-version="1.0.0",
  com.raytheon.uf.edex.core;bundle-version="1.12.1174",
- org.apache.commons.lang;bundle-version="2.3.0"
+ org.apache.commons.lang;bundle-version="2.3.0",
+ com.raytheon.uf.common.dataplugin.warning;bundle-version="1.14.0",
+ com.raytheon.uf.common.dataquery;bundle-version="1.14.0",
+ com.raytheon.uf.common.activetable;bundle-version="1.14.0",
+ com.raytheon.uf.edex.activetable;bundle-version="1.14.0",
+ com.raytheon.uf.common.hazards.configuration;bundle-version="1.0.0",
+ com.raytheon.uf.common.localization;bundle-version="1.14.1"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-ActivationPolicy: lazy
 Import-Package: com.raytheon.uf.common.dataplugin.events,

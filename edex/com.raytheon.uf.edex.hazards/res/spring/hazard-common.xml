@@ -50,4 +50,37 @@
 			value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.RecordRetrieveRequest" />
 		<constructor-arg ref="getInteroperabilityHandler" />
 	</bean>	
+    <bean id="getVtecInteroperabilityActiveTableHandler"
+        class="com.raytheon.uf.edex.hazards.interoperability.handlers.VtecInteroperabilityActiveTableHandler" /> 
+	<bean factory-bean="handlerRegistry" factory-method="register">	
+        <constructor-arg value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.VtecInteroperabilityActiveTableRequest" />	
+		<constructor-arg ref="getVtecInteroperabilityActiveTableHandler" />	
+	</bean>
+    <bean id="getVtecInteroperabilityWarningHandler"
+        class="com.raytheon.uf.edex.hazards.interoperability.handlers.VtecInteroperabilityWarningHandler" /> 
+    <bean factory-bean="handlerRegistry" factory-method="register"> 
+           <constructor-arg value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.VtecInteroperabilityWarningRequest" /> 
+     <constructor-arg ref="getVtecInteroperabilityWarningHandler" /> 
+    </bean>
+			      	
+    <bean id="purgePracticeWarningHandler"	
+          class="com.raytheon.uf.edex.hazards.database.PurgePracticeWarningHandler" />	
+    <bean factory-bean="handlerRegistry" factory-method="register">	
+          <constructor-arg	
+                value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeWarningRequest" />	
+			            <constructor-arg ref="purgePracticeWarningHandler" />	
+	</bean>	
+			      	
+     <!-- TEST ONLY! NOT FOR OPERATIONAL USE! -->	
+     <bean id="testPracticeVtecStorageHandler"	
+           class="com.raytheon.uf.edex.hazards.interoperability.handlers.test.TestPracticeVtecStorageHandler" />	
+     <bean factory-bean="handlerRegistry" factory-method="register">	
+            <constructor-arg value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.test.TestPracticeVtecStorageRequest" />	
+	        <constructor-arg ref="testPracticeVtecStorageHandler" />      	
+	 </bean>
+     <bean id="gridValidator" class="com.raytheon.uf.edex.hazards.gfe.GridValidator" /> 
+     <bean factory-bean="handlerRegistry" factory-method="register"> 
+            <constructor-arg value="com.raytheon.uf.common.dataplugin.events.hazards.requests.GetHazardsConflictDictRequest" /> 
+            <constructor-arg ref="gridValidator" /> 
+    </bean>
 </beans>

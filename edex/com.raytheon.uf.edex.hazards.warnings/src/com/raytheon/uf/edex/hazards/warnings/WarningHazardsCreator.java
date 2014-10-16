@@ -33,8 +33,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventM
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.message.PracticeDataURINotificationMessage;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
+import com.raytheon.uf.common.dataplugin.message.PracticeDataURINotificationMessage;
 import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
 import com.raytheon.uf.common.dataplugin.warning.PracticeWarningRecord;
 import com.raytheon.uf.common.dataquery.requests.DbQueryRequest;
@@ -46,6 +46,8 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.hazards.interoperability.util.InteroperabilityUtil;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
 
 /**
  * Allows for warning compatibility with interoperability. Creates IHazardEvent
@@ -94,6 +96,10 @@ public class WarningHazardsCreator {
             if (uris.length > 0) {
                 vals.putAll(RequestConstraint.toConstraintMapping(DataURIUtil
                         .createDataURIMap(uris[0])));
+            } else {
+                statusHandler
+                        .warn("Empty Practice Data URI Notification Received!");
+                return;
             }
             DbQueryRequest request = new DbQueryRequest(vals);
             DbQueryResponse response = (DbQueryResponse) RequestRouter
@@ -110,6 +116,7 @@ public class WarningHazardsCreator {
 
     public void createHazards(List<PluginDataObject> objects) {
         if (objects.isEmpty() == false) {
+            GeometryFactory gf = new GeometryFactory();
             for (PluginDataObject ob : objects) {
                 if (ob instanceof AbstractWarningRecord) {
                     Mode mode = ob instanceof PracticeWarningRecord ? Mode.PRACTICE
@@ -158,7 +165,9 @@ public class WarningHazardsCreator {
                     event.setEndTime(record.getEndTime().getTime());
                     event.setStartTime(record.getStartTime().getTime());
                     event.setCreationTime(record.getIssueTime().getTime());
-                    event.setGeometry(record.getGeometry());
+                    event.setGeometry(gf
+                            .createGeometryCollection(new Geometry[] { record
+                                    .getGeometry() }));
                     event.setPhenomenon(record.getPhen());
                     event.setSignificance(record.getSig());
                     event.setSiteID(record.getXxxid());
@@ -235,8 +244,7 @@ public class WarningHazardsCreator {
                                 + record.getEtn() + " with Hazard Event "
                                 + existingEvent.getEventID());
                         InteroperabilityUtil.newOrUpdateInteroperabilityRecord(
-                                existingEvent, record.getEtn(),
-                                INTEROPERABILITY_TYPE.WARNGEN);
+                                existingEvent, record.getEtn(), null);
                         continue;
                     }
 

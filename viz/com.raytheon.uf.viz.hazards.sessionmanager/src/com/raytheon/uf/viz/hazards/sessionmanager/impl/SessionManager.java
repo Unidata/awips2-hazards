@@ -24,11 +24,13 @@ import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import java.util.Collection;
 import java.util.Iterator;
 
+import com.raytheon.uf.common.activetable.request.ClearPracticeVTECTableRequest;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeWarningRequest;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
@@ -36,8 +38,13 @@ import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.localization.exception.LocalizationOpFailedException;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
+import com.raytheon.uf.common.serialization.comm.IServerRequest;
+import com.raytheon.uf.common.site.SiteMap;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.core.exception.VizException;
+import com.raytheon.uf.viz.core.requests.ThriftClient;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.AllHazardsFilterStrategy;
@@ -287,6 +294,23 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
         }
 
         hazardManager.removeAllEvents();
+
+        try {
+            IServerRequest clearTableReq = new ClearPracticeVTECTableRequest(
+                    SiteMap.getInstance().getSite4LetterId(
+                            configManager.getSiteID()), VizApp.getWsId());
+            ThriftClient.sendRequest(clearTableReq);
+        } catch (VizException e) {
+            statusHandler
+                    .error("Error clearing practice VTEC active table.", e);
+        }
+
+        try {
+            IServerRequest purgeWarningReq = new PurgePracticeWarningRequest();
+            ThriftClient.sendRequest(purgeWarningReq);
+        } catch (VizException e) {
+            statusHandler.error("Error clearing practice warning table.", e);
+        }
 
         /*
          * Reset the VTEC information in the VTEC files. This needs to be done.

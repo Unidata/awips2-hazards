@@ -24,23 +24,27 @@ import random
 import stat
 import tempfile
 import time
+import JUtil
 
 import Logger as LogStream
 
 
-def getInstance(operationalMode=True, testHarness=False):
+def getInstance(siteID4, operationalMode=True, testHarness=False, automatedTest=False):
     """Returns the necessary VTECTableIO implementation.
         
     Keyword arguments:
+    siteID4 -- 4-character site identifier.
     operationalMode -- Whether we're operating against the operational or practice table.
     testHarness -- Whether we're executing within the test framework or not.
     """    
-    if not testHarness:
-        return _JsonVTECTableIO(operationalMode)
+    if not testHarness and not automatedTest:
+        return _EdexVTECTableIO(siteID4, operationalMode)
     else:
-        return _MockVTECTableIO()
-
-
+        if testHarness:
+            return _MockVTECTableIO()
+        else:
+            return _TestEdexVTECTableIO(siteID4, operationalMode)
+            
 class VTECTableIO(object):
     """An interface that defines access to the VTEC active table."""
     
@@ -104,99 +108,194 @@ class _MockVTECTableIO(VTECTableIO):
         self.putVtecRecords([])
 
 
-class _JsonVTECTableIO(VTECTableIO):
-    """A VTECTableIO implementation that is backed by a JSON file."""
+class _EdexVTECTableIO(VTECTableIO):
+    """A VTECTableIO implementation that makes thrift requests to retrieve VTEC data from EDEX."""
 
-    def __init__(self, operationalMode):
-        operationalMode = bool(operationalMode)
-        recordsFileName = "vtecRecords.json" if operationalMode else "testVtecRecords.json"
-        lockFileName = "vtecRecords.lock" if operationalMode else "testVtecRecords.lock"
+    def __init__(self, siteID, operationalMode):
+        self.siteID = siteID
+        self.operationalMode = bool(operationalMode)
+        self.hazardsConflictDict = None
+        self.queryPracticeWarningTable = False
         
-        import PathManager
-        pathMgr = PathManager.PathManager()
-        lf = pathMgr.getLocalizationFile("hazardServices", 'CAVE_STATIC', 'USER')
-        basepath = lf.getPath()
-        
-        self.__vtecRecordsLocPath = os.path.join("hazardServices", recordsFileName)
-        self.__vtecRecordsFilename = os.path.join(basepath, recordsFileName)
-        self.__vtecRecordsLockname = os.path.join(basepath, lockFileName)
-        self.__vtecRecordsLockFD = None
-
     def getVtecRecords(self, reqInfo={}):
-        try:
-            self._lockVtecDatabase()
-            dictTable = self._readVtecDatabase()
-        finally:
-            if reqInfo.get("lock") != "True" and self.__vtecRecordsLockFD:
-                self._unlockVtecDatabase()
-        return dictTable
+        import JUtil        
+        from com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests import VtecInteroperabilityActiveTableRequest
+        from com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests import VtecInteroperabilityWarningRequest
+        from com.raytheon.uf.common.dataplugin.events.hazards.requests import GetHazardsConflictDictRequest
+        from com.raytheon.uf.common.serialization.comm import RequestRouter     
+        
+        phensig = None
+        if 'hazardEvents' in reqInfo:
+            if self.hazardsConflictDict is None:
+                request = GetHazardsConflictDictRequest()
+                response = RequestRouter.route(request)
+                self.hazardsConflictDict = JUtil.javaObjToPyVal(response)
+            
+            hazardEvents = reqInfo['hazardEvents']
+            phensig = hazardEvents[0].getPhenomenon() + '.' + hazardEvents[0].getSignificance()
+            if phensig not in self.hazardsConflictDict and self.operationalMode == False:
+                self.queryPracticeWarningTable = True
+            else:
+                self.queryPracticeWarningTable = False
+
+        if self.queryPracticeWarningTable:
+            request = VtecInteroperabilityWarningRequest()
+            # TODO This problem occurs because PGF gets called twice.
+            # Fix the workflow so product generation gets called only once
+            if phensig == None:
+                phensig = 'FF.W'
+            request.setPhensig(phensig)
+        else:
+            request = VtecInteroperabilityActiveTableRequest()
+            
+        request.setSiteID(self.siteID)
+        request.setPractice(self.operationalMode == False)
+        response = RequestRouter.route(request)
+        
+        if not response.isSuccess():
+            # Notify a client that an error has occurred and halt product generation.
+            raise Exception(response.getExceptionText())
+        
+        vtecMapList = []
+        
+        #return response.getActiveTable()
+        i = 0
+        while i < response.getResults().size():
+            jVtecMap = response.getResults().get(i)
+            vtecMap = JUtil.javaMapToPyDict(jVtecMap)
+            if vtecMap is not None:
+                vtecMapList.append(vtecMap)
+            i += 1
+                
+        return vtecMapList
     
     def putVtecRecords(self, vtecRecords, reqInfo={}):
-        import PathManager
-        pathMgr = PathManager.PathManager()
-        vtecLF = pathMgr.getLocalizationFile(self.__vtecRecordsLocPath, 'CAVE_STATIC', 'USER')
-        fd = None
-        try:
-            fd = vtecLF.getFile("w")
-            json.dump(vtecRecords, fd)
-        finally:
-            if fd:
-                fd.close()
-            vtecLF.save()
-            if reqInfo.get("lock") != "True" and self.__vtecRecordsLockFD:
-                self._unlockVtecDatabase()
+        # product transmission/interoperability handles updating active table
+        # in this implementation. No need for client to send updated records
+        # back to EDEX. 
+        pass
     
     def clearVtecTable(self):
-        self.putVtecRecords([])
-        
-    def _readVtecDatabase(self):
-        import PathManager
-        pathMgr = PathManager.PathManager()
-        vtecLF = pathMgr.getLocalizationFile(self.__vtecRecordsLocPath, 'CAVE_STATIC', 'USER')
-        fd = None
-        vtecRecords = []
-        try:
-            fd = vtecLF.getFile("r")
-            vtecRecords = json.load(fd)
-        except:
-            vtecRecords = []
-        finally:
-            if fd:
-                fd.close()
-        return vtecRecords
+        if not self.operationalMode:
+            from com.raytheon.uf.common.activetable.request import ClearPracticeVTECTableRequest
+            from com.raytheon.uf.viz.core.requests import ThriftClient
+            from com.raytheon.uf.viz.core import VizApp
+            request = ClearPracticeVTECTableRequest(self.siteID, VizApp.getWsId())
+            ThriftClient.sendRequest(request)
+
+# Used for CAVE Automated Tests            
+class _TestEdexVTECTableIO(_EdexVTECTableIO):
+    """A VTECTableIO implementation that makes thrift requests to retrieve VTEC data from EDEX."""
+
+    def __init__(self, siteID, operationalMode):
+        super(_TestEdexVTECTableIO, self).__init__(siteID, operationalMode)
     
-    def _lockVtecDatabase(self):
-        assert self.__vtecRecordsLockname is not None, "lockAT without filename"
-        assert self.__vtecRecordsLockFD is None, "Attempted to double lock VTEC table file."
+    #override
+    def putVtecRecords(self, vtecRecords, reqInfo={}):
+        from java.util import Date as JDate
+        from java.util import ArrayList as JArrayList
+        from com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.test import TestVtecInteroperabilityRelation
+        relationList = JArrayList()
+        for vtecRecord in vtecRecords:                
+            record = self._buildVtecRecord(vtecRecord)
+            
+            relation = TestVtecInteroperabilityRelation()
+            relation.setRecord(record)
+            relation.setEventID(str(vtecRecord['eventID']))
+            relation.setHazardType(vtecRecord['key'])
+            
+            relationList.add(relation)
+            
+        from com.raytheon.uf.common.serialization.comm import RequestRouter
+        from com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.test import TestPracticeVtecStorageRequest
+        request = TestPracticeVtecStorageRequest()
+        request.setRelations(relationList)
+        response = RequestRouter.route(request)
+    
+    def _buildVtecRecord(self, vtecRecord):
+        from com.raytheon.uf.common.activetable import PracticeActiveTableRecord
 
-        self.__vtecRecordsLockFD = open(self.__vtecRecordsLockname, 'a+')
-        try:
-            os.chmod(self.__vtecRecordsLockname, 0664)
-        except:
-            pass
-
-        locked = False
-        while not locked:
-            try:
-                fcntl.lockf(self.__vtecRecordsLockFD.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                fcntl.lockf(self.__vtecRecordsLockFD.fileno(), fcntl.LOCK_EX)
-                locked = True
-            except IOError:
-                time.sleep(random.SystemRandom().random())
-                
-        # if file doesn't exist or zero length, create it (first time)
-        if not os.path.isfile(self.__vtecRecordsFilename) or \
-          os.stat(self.__vtecRecordsFilename)[stat.ST_SIZE] == 0:
-            LogStream.logDebug("Creating new active table.")
-            with open(self.__vtecRecordsFilename, "w+") as fd:
-                json.dump([], fd)
-            try:
-                os.chmod(self.__vtecRecordsFilename, 0664)
-            except:
-                pass
+        endTime = self._convertPyDateToGMTJCalendar(vtecRecord['endTime'])
+        issueTime = self._convertPyDateToGMTJCalendar(vtecRecord['issueTime'])
+        startTime = self._convertPyDateToGMTJCalendar(vtecRecord['startTime'])
+        purgeTime = self._makePurgeTime()
         
-    def _unlockVtecDatabase(self):
-        assert self.__vtecRecordsLockFD is not None, "Attempted to unlock VTEC table file without previously locking."
-        fcntl.lockf(self.__vtecRecordsLockFD.fileno(), fcntl.LOCK_UN)
-        self.__vtecRecordsLockFD.close()
-        self.__vtecRecordsLockFD = None
+        floodRecordStatus = None
+        floodSeverity = None
+        immediateCause = None
+        if 'hvtec' in vtecRecord.keys() and vtecRecord['hvtec']:
+            floodRecordStatus = vtecRecord['hvtec']['floodRecord']
+            floodSeverity = vtecRecord['hvtec']['floodSeverity']
+            immediateCause = vtecRecord['hvtec']['immediateCause']
+        
+        if not floodRecordStatus: 
+            floodRecordStatus = '00'
+
+        if not floodSeverity:
+            floodSeverity = '0'        
+            
+        record = PracticeActiveTableRecord()
+        record.setAct(vtecRecord['act'])
+        record.setCountyheader(str(vtecRecord['id']))
+        record.setEndTime(endTime)
+        record.setEtn(self._padETN(str(vtecRecord['etn'])))
+        record.setFloodRecordStatus(str(floodRecordStatus))
+        record.setFloodSeverity(str(floodSeverity))
+        record.setImmediateCause(immediateCause)
+        record.setIssueTime(issueTime)
+        record.setOfficeid(vtecRecord['officeid'])
+        record.setOverviewText(vtecRecord['hdln'])
+        record.setPhen(vtecRecord['phen'])
+        record.setPhensig(vtecRecord['phensig'])
+        #record.setPil(vtecRecord['phen'] + vtecRecord['sig'])
+        record.setPurgeTime(purgeTime)
+        record.setSeg(vtecRecord['seg'])
+        if 'hvtecstr' in vtecRecord.keys():
+            record.setSegText(vtecRecord['hvtecstr'])
+        record.setSig(vtecRecord['sig'])
+        record.setStartTime(startTime)
+        record.setUfn(vtecRecord['ufn'])
+        record.setUgcZone(str(vtecRecord['id']))
+        record.setVtecstr(vtecRecord['vtecstr'])
+        record.setXxxid(vtecRecord['officeid'][1:])
+        
+        return record
+        
+    # utility functions
+    def _makePurgeTime(self):
+        from java.util import Calendar as JCalendar
+        
+        jCalendar = JCalendar.getInstance()
+        jCalendar.add(JCalendar.YEAR, 1)
+        
+        return jCalendar
+    
+    def _padETN(self, etnStr):
+        desiredETNLength = 4
+        currentETNLength = len(etnStr)
+        requiredETNLength = desiredETNLength - currentETNLength
+        if requiredETNLength > 0:
+            prefix = ''
+            count = 0
+            while count < requiredETNLength:
+                prefix = prefix + '0'
+                count += 1
+            return prefix + etnStr
+        else:
+            return etnStr
+    
+    def _convertPyDateToGMTJCalendar(self, pySeconds):
+        from java.util import Calendar as JCalendar
+        
+        timeStruct = time.gmtime(pySeconds)
+        yyyy = timeStruct.tm_year
+        MM = timeStruct.tm_mon - 1
+        dd = timeStruct.tm_mday
+        hh = timeStruct.tm_hour
+        mm = timeStruct.tm_min
+        ss = timeStruct.tm_sec
+        jCalendar = JCalendar.getInstance()
+        jCalendar.clear()
+        jCalendar.set(yyyy, MM, dd, hh, mm, ss)
+        
+        return jCalendar

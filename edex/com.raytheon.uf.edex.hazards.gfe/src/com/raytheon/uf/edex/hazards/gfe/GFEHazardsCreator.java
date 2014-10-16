@@ -21,11 +21,11 @@ package com.raytheon.uf.edex.hazards.gfe;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Date;
 
 import org.opengis.referencing.operation.TransformException;
 
@@ -152,6 +152,10 @@ public class GFEHazardsCreator {
             if (uris.length > 0) {
                 vals.putAll(RequestConstraint.toConstraintMapping(DataURIUtil
                         .createDataURIMap(uris[0])));
+            } else {
+                statusHandler
+                        .warn("Empty Practice Data URI Notification Received!");
+                return;
             }
             DbQueryRequest request = new DbQueryRequest(vals);
             DbQueryResponse response = (DbQueryResponse) RequestRouter
@@ -353,6 +357,7 @@ public class GFEHazardsCreator {
                     request.addIdentifier(TABLE, MAPDATA_STATES);
                     request.addIdentifier(GEOM_FIELD, THE_GEOM);
                     request.addIdentifier(STATE, state);
+                    request.setParameters(FIPS);
                     request.addIdentifier(LOCATION_FIELD, FIPS);
                     String[] data = DataAccessLayer
                             .getAvailableLocationNames(request);
