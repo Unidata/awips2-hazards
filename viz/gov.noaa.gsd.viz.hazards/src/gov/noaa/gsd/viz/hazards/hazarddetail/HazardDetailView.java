@@ -111,6 +111,7 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                           switching perspectives, and could not
  *                                           be made visible again without bouncing
  *                                           H.S. (and sometimes CAVE).
+ * Oct 20, 2014   5047     mpduff            Add Null Check.
  * </pre>
  * 
  * @author Chris.Golden
@@ -777,7 +778,9 @@ public class HazardDetailView extends
                 if (hazardDetailToggleAction != null) {
                     hazardDetailToggleAction.setChecked(true);
                 }
-                detailViewVisibilityChangeHandler.stateChanged(null, true);
+                if (detailViewVisibilityChangeHandler != null) {
+                    detailViewVisibilityChangeHandler.stateChanged(null, true);
+                }
             }
 
             /*
