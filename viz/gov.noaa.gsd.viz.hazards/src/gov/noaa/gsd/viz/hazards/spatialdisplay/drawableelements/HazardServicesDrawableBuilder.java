@@ -14,10 +14,10 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.LineDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PointDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.StarDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.StormTrackDotDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.TextPositioner;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
@@ -304,8 +304,9 @@ public class HazardServicesDrawableBuilder {
     }
 
     public List<AbstractDrawableComponent> buildDrawableComponents(
-            SpatialDisplay spatialDisplay, IHazardEvent hazardEvent, Layer activeLayer,
-            boolean isEventAreaEditable, boolean drawHazardHatchArea) {
+            SpatialDisplay spatialDisplay, IHazardEvent hazardEvent,
+            Layer activeLayer, boolean isEventAreaEditable,
+            boolean drawHazardHatchArea) {
 
         List<AbstractDrawableComponent> result = Lists.newArrayList();
 
@@ -376,8 +377,9 @@ public class HazardServicesDrawableBuilder {
      *            displayed.
      * @return
      */
-    public void buildhazardAreas(SpatialDisplay spatialDisplay, IHazardEvent hazardEvent,
-            Layer activeLayer, List<AbstractDrawableComponent> hatchedAreas,
+    public void buildhazardAreas(SpatialDisplay spatialDisplay,
+            IHazardEvent hazardEvent, Layer activeLayer,
+            List<AbstractDrawableComponent> hatchedAreas,
             List<AbstractDrawableComponent> hatchedAreaAnnotations,
             boolean drawHazardHatchArea) {
 
@@ -436,16 +438,30 @@ public class HazardServicesDrawableBuilder {
             DataTime currentFrame = HazardServicesEditorUtilities
                     .currentFrame();
 
-            for (int timeIndex = 0; timeIndex < trackLineString.getNumPoints(); timeIndex++) {
+            /*
+             * Artifically loop one past the natural end of the loop to force
+             * the current frame /* to paint last, therefore putting it on top.
+             */
+            int currentFrameIndex = -1;
+            for (int workIdx = 0; workIdx <= trackLineString.getNumPoints(); workIdx++) {
+                boolean currentFrameNow = workIdx == trackLineString
+                        .getNumPoints();
+                int timeIndex = currentFrameNow ? currentFrameIndex : workIdx;
+                if (timeIndex < 0) {
+                    break;
+                }
                 Coordinate centerPoint = trackLineString
                         .getCoordinateN(timeIndex);
                 Map<String, Serializable> shape = shapes.get(timeIndex);
                 Long pointID = (Long) shape.get(HazardConstants.POINTID);
                 Date pointDate = new Date(pointID);
                 Color[] colors;
-                if (currentFrame != null
-                        && pointDate.equals(currentFrame.getRefTime())) {
+                if (currentFrameNow) {
                     colors = new Color[] { Color.WHITE, Color.WHITE };
+                } else if (currentFrame != null
+                        && pointDate.equals(currentFrame.getRefTime())) {
+                    currentFrameIndex = workIdx;
+                    continue;
                 } else {
                     colors = new Color[] { Color.GRAY, Color.GRAY };
                 }
@@ -456,6 +472,9 @@ public class HazardServicesDrawableBuilder {
                 } else {
                     component = buildDot(centerPoint, pointID, 0, hazardEvent,
                             activeLayer, colors);
+                }
+                if (!currentFrameNow) {
+                    ((HazardServicesSymbol) component).setMovable(false);
                 }
                 result.add(component);
                 spatialDisplay.addElement(component);
@@ -538,15 +557,16 @@ public class HazardServicesDrawableBuilder {
 
         } catch (VizException e) {
             statusHandler.error(
-                    "HazardServicesDrawableBuilder.buildStar(): build "
+                    "HazardServicesDrawableBuilder.buildDot(): build "
                             + "of shape failed.", e);
         }
 
         return drawableComponent;
     }
 
-    private AbstractDrawableComponent addShapeComponent(SpatialDisplay spatialDisplay,
-            IHazardEvent hazardEvent, Layer activeLayer,
+    private AbstractDrawableComponent addShapeComponent(
+            SpatialDisplay spatialDisplay, IHazardEvent hazardEvent,
+            Layer activeLayer,
             List<AbstractDrawableComponent> drawableComponents,
             boolean drawHazardArea, int shapeNum) {
         AbstractDrawableComponent drawableComponent;
@@ -693,7 +713,8 @@ public class HazardServicesDrawableBuilder {
      * 
      * @return
      */
-    public void addTextComponentAtGeometryCenterPoint(SpatialDisplay spatialDisplay,
+    public void addTextComponentAtGeometryCenterPoint(
+            SpatialDisplay spatialDisplay,
             List<AbstractDrawableComponent> drawableComponents,
             IHazardEvent hazardEvent) {
         if (drawingAttributes.getString() != null
@@ -701,7 +722,8 @@ public class HazardServicesDrawableBuilder {
 
             AbstractDrawableComponent text = buildText(
                     hazardEvent.getGeometry(), hazardEvent.getEventID(),
-                    spatialDisplay.getActiveLayer(), spatialDisplay.getGeoFactory());
+                    spatialDisplay.getActiveLayer(),
+                    spatialDisplay.getGeoFactory());
             spatialDisplay.addElement(text);
             drawableComponents.add(text);
         }
@@ -715,7 +737,8 @@ public class HazardServicesDrawableBuilder {
             IHazardServicesShape shape = (IHazardServicesShape) (associatedShape instanceof DECollection ? ((DECollection) associatedShape)
                     .getPrimaryDE() : associatedShape);
             AbstractDrawableComponent text = buildText(shape.getGeometry(), id,
-                    spatialDisplay.getActiveLayer(), spatialDisplay.getGeoFactory());
+                    spatialDisplay.getActiveLayer(),
+                    spatialDisplay.getGeoFactory());
             spatialDisplay.addElement(text);
             drawableComponents.add(text);
         }

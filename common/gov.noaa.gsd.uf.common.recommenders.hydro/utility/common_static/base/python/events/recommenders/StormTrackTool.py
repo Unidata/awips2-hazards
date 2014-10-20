@@ -10,11 +10,13 @@ import RecommenderTemplate
 import datetime
 import time
 import math
+import copy
+import sys
 from PointTrack import *
 from GeneralConstants import *
-from Bridge import Bridge
+import TrackToolCommon
 
-class Recommender(RecommenderTemplate.Recommender):
+class Recommender(TrackToolCommon.TrackToolCommon):
 
     def __init__(self):
         return
@@ -71,39 +73,23 @@ class Recommender(RecommenderTemplate.Recommender):
             tryIndex = tryIndex+1
         return closestIndex
 
-    def getInitialEventDuration(self, phenSig, subType) :
+    def getInitialEventDuration(self, eventSetAttributes) :
         '''
         @summary: Focal points can customize this method to change the initial
                   duration of the event.
-        @param phenSig: The phenomenon and significance of an event, e.g. FF.W 
-        @param subType:  The subtype of an event, e.g. Convective. May be None or an
-                         empty string.
+        @param eventSetAttributes: sessionAttributes
         @return: Initial length of Hazard Event.
         '''
-        if subType is not None and len(subType) > 0:          
-            hazardType = phenSig + "." + subType
-        else:
-            hazardType = phenSig    
-
-        bridge = Bridge()
-        hazardTypeEntry = bridge.getHazardTypes(hazardType)
-        
-        if hazardTypeEntry is not None:
-           initialDuration = hazardTypeEntry.get("defaultDuration", MILLIS_PER_HOUR)
-           
-           if initialDuration > 3 * MILLIS_PER_HOUR :
-              initialDuration = 3 * MILLIS_PER_HOUR
-
-        else:
-           initialDuration = 3 * MILLIS_PER_HOUR
-           
-        
-        # Use the default duration for the current setting, but also assume it
+        # Use the default duration for the current hazard, but also assume it
         # does not make much sense for an event associated with a tracked
         # object to last more than three hours.
+        initialDuration = eventSetAttributes.get( \
+                             "defaultDuration", 3 * MILLIS_PER_HOUR )
+        if initialDuration > 3 * MILLIS_PER_HOUR :
+            initialDuration = 3 * MILLIS_PER_HOUR
         return initialDuration
 
-    def getInitialWxEventMovement(self, duration) :
+    def getInitialWxEventMovement(self, duration, phenomena, significance, subType) :
         '''
         @summary: Focal points can customize this method to change the initial
                   motion of the weather event.
@@ -113,6 +99,8 @@ class Recommender(RecommenderTemplate.Recommender):
         # For now default the initial motion and bearing.  The longer the
         # initial duration, the slower our initial motion.
         defaultSpeed = 20  # kts
+        if phenomena[0]=="F" :
+            defaultSpeed = 0
         motion = {}
         motion["speed"] = defaultSpeed * 30 * MILLIS_PER_MINUTE / duration
         motion["bearing"] = 225  # from SW
@@ -126,13 +114,27 @@ class Recommender(RecommenderTemplate.Recommender):
         @return: A tuple containing the phenomena, significance, subtype,
                  and phensig.
         '''
-        # Eventually we want the hazard type to be totally undefined when
-        # we fire up the tracker.  However, for now we hardcode it to convective
+        # Pickup the hazard type stuff from the event that was passed in
+        # if that was possible.  Otherwise, for now we default it to convective
         # flash flood warning.
         phenomena = "FF"
         significance = "W"
         subType = "Convective"
-        phenSig = "FF.W"
+        if "phenomena" in sessionAttributes :
+            val = sessionAttributes["phenomena"]
+            if isinstance(val, str) and val != "" :
+                phenomena = val
+                subType = ""
+        if "significance" in sessionAttributes :
+            val = sessionAttributes["significance"]
+            if isinstance(val, str) and val != "" :
+                significance = val
+                subType = ""
+        if "subType" in sessionAttributes :
+            val = sessionAttributes["subType"]
+            if isinstance(val, str) and val != "" :
+                subType = val
+        phenSig = phenomena+"."+significance
         return ( phenomena, significance, subType, phenSig )
 
     def updateEventAttributes(self, sessionAttributes, dialogInputMap, \
@@ -150,11 +152,10 @@ class Recommender(RecommenderTemplate.Recommender):
         # for hazard. This is a reasonable thing for a focal point to customize.
         ( phenomena, significance, subType, phenSig ) = \
                  self.initializeTypeOfEvent(sessionAttributes)
-        
-        
+
         # Call method that sets the initial event duration in milliseconds.
         # This is a reasonable thing for a focal point to customize.
-        initialDuration = self.getInitialEventDuration(phenSig, subType)
+        initialDuration = self.getInitialEventDuration(sessionAttributes)
 
         # Pull the rest of the time info we need out of the session info.
         framesInfo = sessionAttributes.get("framesInfo")
@@ -178,7 +179,8 @@ class Recommender(RecommenderTemplate.Recommender):
 
         # Call method that sets the initial motion of the weather event.
         # This is a reasonable thing for a focal point to customize.
-        stormMotion = self.getInitialWxEventMovement(initialDuration)
+        stormMotion = self.getInitialWxEventMovement(\
+             initialDuration, phenomena, significance, subType)
 
         # Construct a PointTrack object, and reinitialize it with the default
         # motion located where our starting point was dragged to.
@@ -193,10 +195,14 @@ class Recommender(RecommenderTemplate.Recommender):
         pivotList = [ pivotIndex ]
         trackCoordinates = []
 
-        # Create a list of tracking points for each frame.
+        # Create a list of tracking points for each frame. Reuse the lat/lon for
+        # consecutive frames less than a minute apart, mostly to deal with All
+        # Tilts radar.
         shapeList = []
+        prevTime = None
         for frameTime in sessionFrameTimes :
-            frameLatLon = pointTrack.trackPoint(frameTime)
+            if not self.sameMinute(frameTime, prevTime) :
+                frameLatLon = pointTrack.trackPoint(self.minuteOf(frameTime))
             trackPointShape = {}
             trackPointShape["pointType"] = "tracking"
             trackPointShape["shapeType"] = "point"
@@ -208,17 +214,28 @@ class Recommender(RecommenderTemplate.Recommender):
         # Reacquire the motion from the start of the event instead of the
         # last frame.  In most cases wont make much difference, but can once
         # we start supporting non-linear tracking.
-        motion0 = pointTrack.speedAndAngleOf(startTime)
-        stormMotion["speed"] = motion0.speed
-        stormMotion["bearing"] = motion0.bearing
+        if stormMotion["speed"] != 0 :
+            motion0 = pointTrack.speedAndAngleOf(startTime)
+            stormMotion["speed"] = motion0.speed
+            stormMotion["bearing"] = motion0.bearing
+
+        # Compute a working frame count, ignoring frames with a less than
+        # a minute separating them, mostly to deal with All Tilts radar.
+        lastWorkingFrameIndex = -1
+        prevTime = None
+        for sesFrTime in sessionFrameTimes :
+            if not self.sameMinute(sesFrTime, prevTime) :
+                lastWorkingFrameIndex += 1
+            prevTime = sesFrTime
 
         # Compute a working delta time between frames.
-        if lastFrameIndex < 1 :
-            frameTimeStep = endTime - startTime
+        if lastWorkingFrameIndex < 1 :
+            frameTimeStep = self.minuteOf(endTime) - self.minuteOf(startTime)
         else :
             frameTimeSpan = \
-                 sessionFrameTimes[lastFrameIndex] - sessionFrameTimes[0]
-            frameTimeStep = frameTimeSpan / lastFrameIndex
+                 self.minuteOf(sessionFrameTimes[lastFrameIndex]) - \
+                 self.minuteOf(sessionFrameTimes[0])
+            frameTimeStep = frameTimeSpan / lastWorkingFrameIndex
 
         # Make a list of times for projected points for the track that are shown
         # to the user.  We want the last future time to be exactly at the end of
@@ -244,7 +261,11 @@ class Recommender(RecommenderTemplate.Recommender):
             trackCoordinates.append([futureLatLon.lon, futureLatLon.lat])
 
         # now get the polygon
-        latLonPoly = pointTrack.polygonDef(startTime, endTime)
+        if stormMotion["speed"] != 0 :
+            latLonPoly = pointTrack.polygonDef(startTime, endTime)
+        else :
+            latLonPoly = pointTrack.enclosedBy(startTime, endTime, \
+                                               15.0, 15.0, 15.0, 15.0)
         hazardPolygon = []
         for latLonVertex in latLonPoly :
             hazardPolygon.append([latLonVertex.lon, latLonVertex.lat])
@@ -284,6 +305,7 @@ class Recommender(RecommenderTemplate.Recommender):
         forJavaObj["hazardPolygon"] = hazardPolygon
         resultDict["forJavaObj"] = forJavaObj
 
+
         return resultDict
 
     def execute(self, eventSet, dialogInputMap, spatialInputMap):
@@ -302,9 +324,68 @@ class Recommender(RecommenderTemplate.Recommender):
         import EventFactory
         import GeometryFactory
 
+        # Pick up the existing event from what is passed in.  If there is an event
+        # we assume WarnGen type workflow, otherwise we will define a default event
+        # type in here.
+        layerEventId = spatialInputMap.get("eventID")
+        events = eventSet.getEvents()
+        haveEvent = False
+        for event in events :
+            if event.getEventID() == layerEventId :
+                hazardEvent = event
+                haveEvent = True
+                break
+
+        # Artificially inject the initial hazard type into the attributes.
+        sessionAttributes = eventSet.getAttributes()
+        if haveEvent :
+            try :
+                sessionAttributes["phenomena"] = hazardEvent.getPhenomenon()
+            except :
+                pass
+            try :
+                sessionAttributes["significance"] = hazardEvent.getSignificance()
+            except :
+                pass
+            try :
+                sessionAttributes["subType"] = hazardEvent.getSubType()
+            except :
+                pass
+
+        # It is no longer possible to get the default event duration from the event
+        # set attributes, so we get that from the Bridge here and push it in.
+        try :
+            ( phenomena, significance, subType, phenSig ) = \
+                 self.initializeTypeOfEvent(sessionAttributes)
+            import Bridge
+            bridge = Bridge.Bridge()
+            if subType is not None and len(subType) > 0:
+                hazardTypeEntry = bridge.getHazardTypes( phenSig + "." + subType)
+            else :
+                hazardTypeEntry = bridge.getHazardTypes( phenSig )
+            try :
+                dur = hazardTypeEntry['defaultDuration']
+            except :
+                dur = MILLIS_PER_HOUR
+            sessionAttributes["defaultDuration"] = dur
+        except :
+            import traceback
+            import sys
+            tbData = traceback.format_exc()
+            sys.stderr.write(tbData)
+            sessionAttributes["defaultDuration"] = 3 * MILLIS_PER_HOUR
+
+        # Presence of java backed objects in the attributes complicates unit testing,
+        # so unravel any of these.
+        try :
+            sessionAttributes["framesInfo"]["currentFrame"] = \
+              str(sessionAttributes["framesInfo"]["currentFrame"])
+        except :
+            del sessionAttributes["framesInfo"]["currentFrame"]
+
         # updateEventAttributes does all the stuff we can safely do in a unit
         # test, basically whatever does not require Jep
-        resultDict = self.updateEventAttributes(eventSet.getAttributes(), \
+        resultDict = self.updateEventAttributes(sessionAttributes, \
                                       dialogInputMap, spatialInputMap)
 
         # Peel out stuff that is piggybacking on the attributes but is really
@@ -315,24 +396,27 @@ class Recommender(RecommenderTemplate.Recommender):
         # Start creating our HazardEvent object, which is really backed by a
         # Java object.  str cast accounts for occasional json promotion of ascii
         # strings to unicode strings, which makes JEP barf.
-        hazardEvent = EventFactory.createEvent()
-        hazardEvent.setEventID("")
-        hazardEvent.setSiteID(str(forJavaObj["SiteID"]))
-        hazardEvent.setHazardStatus("PENDING")
+        if not haveEvent :
+            hazardEvent = EventFactory.createEvent()
+            hazardEvent.setEventID("")
+            hazardEvent.setSiteID(str(forJavaObj["SiteID"]))
+            hazardEvent.setHazardStatus("PENDING")
 
         # New recommender framework requires some datetime objects, which must
         # be in units of seconds.
-        hazardEvent.setCreationTime(datetime.datetime.fromtimestamp(\
-          forJavaObj["currentTime"] / MILLIS_PER_SECOND))
-        hazardEvent.setStartTime(datetime.datetime.fromtimestamp(\
-          forJavaObj["startTime"] / MILLIS_PER_SECOND))
-        hazardEvent.setEndTime(datetime.datetime.fromtimestamp(\
-          forJavaObj["endTime"] / MILLIS_PER_SECOND))
+        if not haveEvent :
+            hazardEvent.setCreationTime(datetime.datetime.fromtimestamp(\
+              forJavaObj["currentTime"] / MILLIS_PER_SECOND))
+            hazardEvent.setStartTime(datetime.datetime.fromtimestamp(\
+              forJavaObj["startTime"] / MILLIS_PER_SECOND))
+            hazardEvent.setEndTime(datetime.datetime.fromtimestamp(\
+              forJavaObj["endTime"] / MILLIS_PER_SECOND))
 
-        hazardEvent.setPhenomenon(forJavaObj["phenomena"])
-        if forJavaObj["subType"] != "" :
-            hazardEvent.setSubType(forJavaObj["subType"])
-        hazardEvent.setSignificance(forJavaObj["significance"])
+        if not haveEvent :
+            hazardEvent.setPhenomenon(forJavaObj["phenomena"])
+            if forJavaObj["subType"] != "" :
+                hazardEvent.setSubType(forJavaObj["subType"])
+            hazardEvent.setSignificance(forJavaObj["significance"])
 
         #
         # The track should not be considered to be an actual hazard geometry.
@@ -346,7 +430,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
         hazardEvent.setHazardMode("O")
         hazardEvent.setHazardAttributes(resultDict)
-        
+
         return hazardEvent
 
     def toString(self):

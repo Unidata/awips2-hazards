@@ -13,8 +13,9 @@ import time
 import math
 from PointTrack import *
 from GeneralConstants import *
+import TrackToolCommon
 
-class Recommender(RecommenderTemplate.Recommender):
+class Recommender(TrackToolCommon.TrackToolCommon):
 
     def __init__(self):
         return
@@ -82,6 +83,7 @@ class Recommender(RecommenderTemplate.Recommender):
         definedSpatialInfo() routine
         @return: updated session attributes.
         '''
+
         eventDict = eventAttributes
         modifyDict = spatialInputMap
 
@@ -136,13 +138,23 @@ class Recommender(RecommenderTemplate.Recommender):
                     shapeList[-1]["pointID"] = frameTime
                     break
  
+        # Compute a working frame count, ignoring frames with a less than
+        # a minute separating them, mostly to deal with All Tilts radar.
+        lastWorkingFrameIndex = -1
+        prevTime = None
+        for sesFrTime in sessionFrameTimes :
+            if not self.sameMinute(sesFrTime, prevTime) :
+                lastWorkingFrameIndex += 1
+            prevTime = sesFrTime
+
         # Compute a working delta time between frames.
         endFrameTime = sessionFrameTimes[lastFrameIndex]
-        if lastFrameIndex<1 :
-            frameTimeStep = endTime-startTime
+        if lastWorkingFrameIndex<1 :
+            frameTimeStep = self.minuteOf(endTime)-self.minuteOf(startTime)
         else :
-            frameTimeSpan = endFrameTime-sessionFrameTimes[0]
-            frameTimeStep = frameTimeSpan/lastFrameIndex
+            frameTimeSpan = self.minuteOf(endFrameTime) -\
+                            self.minuteOf(sessionFrameTimes[0])
+            frameTimeStep = frameTimeSpan/lastWorkingFrameIndex
 
         # Note cases where we force ourselves back to the previous state.
         revert = False
@@ -157,7 +169,9 @@ class Recommender(RecommenderTemplate.Recommender):
         pointTrack = PointTrack()
         if revert :
             pointTrack.twoLatLonOrigTimeInit_( \
-                         latLon1, time1, latLon2, time2, startTime)
+                         latLon1, self.minuteOf(time1), \
+                         latLon2, self.minuteOf(time2), \
+                         self.minuteOf(startTime) )
 
         # Try to match up our pivots with our points.
         inputPivotTimes = eventDict.get("pivotTimes", [])
@@ -222,12 +236,15 @@ class Recommender(RecommenderTemplate.Recommender):
             latLon2 = pivotLatLonWorking[i]
             time2 = pivotTimeWorking[i]
             pointTrack.twoLatLonOrigTimeInit_( \
-                 latLon0, draggedPointTime, latLon2, time2, startTime)
+                 latLon0, self.minuteOf(draggedPointTime), \
+                 latLon2, self.minuteOf(time2), \
+                 self.minuteOf(startTime) )
             pivotTimeList = [draggedPointTime, time2 ]
             pivotLatLonList = [latLon0, latLon2 ]
         else :
             pointTrack.latLonMotionOrigTimeInit_( \
-                 latLon0, draggedPointTime, motion0, startTime)
+                 latLon0, self.minuteOf(draggedPointTime), \
+                 motion0, self.minuteOf(startTime))
             pivotTimeList = [draggedPointTime]
             pivotLatLonList = [latLon0]
         pivotList = []
@@ -235,11 +252,14 @@ class Recommender(RecommenderTemplate.Recommender):
             pivotList.append( \
               self.indexOfClosest(pivotTime, sessionFrameTimes) )
 
-        # Create points for our frames.
+        # Create points for our frames. Reuse the lat/lon for consecutive frames
+        # less than a minute apart, mostly to deal with All Tilts radar.
         shapeList = []
         trackCoordinates = []
+        prevTime = None
         for frameTime in sessionFrameTimes :
-            frameLatLon = pointTrack.trackPoint(frameTime)
+            if not self.sameMinute(frameTime, prevTime) :
+                frameLatLon = pointTrack.trackPoint(self.minuteOf(frameTime))
             trackPointShape = {}
             trackPointShape["pointType"] = "tracking"
             trackPointShape["shapeType"] = "point"
@@ -251,7 +271,7 @@ class Recommender(RecommenderTemplate.Recommender):
         # Reacquire the motion from the start of the event instead of the
         # last frame.  In most cases wont make much difference, but can once
         # we start supporting non-linear tracking.
-        motion0 = pointTrack.speedAndAngleOf(startTime)
+        motion0 = pointTrack.speedAndAngleOf(self.minuteOf(startTime))
         stormMotion["speed"] = motion0.speed
         stormMotion["bearing"] = motion0.bearing
 
@@ -286,7 +306,11 @@ class Recommender(RecommenderTemplate.Recommender):
         if revert :
             polyModified = True
         if not polyModified:
-            latLonPoly = pointTrack.polygonDef(startTime, endTime)
+            if stormMotion["speed"] != 0 :
+                latLonPoly = pointTrack.polygonDef(startTime, endTime)
+            else :
+                latLonPoly = pointTrack.enclosedBy(startTime, endTime, \
+                                               15.0, 15.0, 15.0, 15.0)
             hazardPolygon = []
             for latLonVertex in latLonPoly :
                 hazardPolygon.append([latLonVertex.lon, latLonVertex.lat])
@@ -306,6 +330,7 @@ class Recommender(RecommenderTemplate.Recommender):
         forJavaObj["track"] = trackCoordinates
         forJavaObj["hazardPolygon"] = hazardPolygon
         eventDict["forJavaObj"] = forJavaObj
+
 
         return eventDict
     

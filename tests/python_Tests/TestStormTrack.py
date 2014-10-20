@@ -8,7 +8,7 @@ from testCaseSupportRoutines import defaultRecommenderSetup
 from testCaseSupportRoutines import UnitTestFramework
 
 # This is a unit test of the track initializer, StormTrackTool.
-class TestStormTrack(UnitTestFramework):
+class TestStormTrack(UnitTestFramework) :
 
     def setUp(self) :
         defaultRecommenderSetup(__file__)
