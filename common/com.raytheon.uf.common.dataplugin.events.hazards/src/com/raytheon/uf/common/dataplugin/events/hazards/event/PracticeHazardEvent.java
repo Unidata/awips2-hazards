@@ -85,6 +85,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      set the type components atomically, or
  *                                      the start and end time atomically.
  * Jun 30, 2014 3512       Chris.Golden Added addHazardAttributes() method.
+ * Oct 21, 2014   5051     mpduff      Change to support Hibernate upgrade.
  * </pre>
  * 
  * @author mnash
@@ -164,7 +165,7 @@ public class PracticeHazardEvent extends PersistableDataObject<String>
     private ProductClass hazardMode;
 
     @Column(name = "geometry", columnDefinition = "geometry")
-    @Type(type = "org.hibernatespatial.GeometryUserType")
+    @Type(type = "org.hibernate.spatial.GeometryType")
     @XmlJavaTypeAdapter(value = GeometryAdapter.class)
     @DynamicSerializeElement
     @XmlElement

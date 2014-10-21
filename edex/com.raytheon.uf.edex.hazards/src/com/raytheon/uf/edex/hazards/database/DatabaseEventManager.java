@@ -68,6 +68,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                  events so that the returned events will not
  *                                  be associated with an open session.
  * Mar 24, 2014 #3323    bkowal     Include the mode in the hazard notification.
+ * Oct 21, 2014   5051     mpduff      Change to support Hibernate upgrade.
  * 
  * </pre>
  * 
@@ -298,8 +299,7 @@ public class DatabaseEventManager implements
             }
         }
         criteria.setResultTransformer(CriteriaSpecification.DISTINCT_ROOT_ENTITY);
-        List<PracticeHazardEvent> events = dao.getHibernateTemplate()
-                .findByCriteria(criteria);
+        List<PracticeHazardEvent> events = criteria.getExecutableCriteria(dao.getSession()).list();
         Map<String, HazardHistoryList> mapEvents = new HashMap<String, HazardHistoryList>();
 
         // group them for use later

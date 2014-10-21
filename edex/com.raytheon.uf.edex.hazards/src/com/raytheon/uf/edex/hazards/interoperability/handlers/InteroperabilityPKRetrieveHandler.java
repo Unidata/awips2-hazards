@@ -35,7 +35,8 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 2, 2014            bkowal     Initial creation
+ * Apr 02, 2014            bkowal      Initial creation
+ * Oct 21, 2014   5051     mpduff      Change to support Hibernate upgrade.
  * 
  * </pre>
  * 
@@ -58,7 +59,7 @@ public class InteroperabilityPKRetrieveHandler implements
     @Override
     public Object handleRequest(RecordRetrievePKRequest request)
             throws Exception {
-        Object record = this.dao.getHibernateTemplate().get(
+        Object record = this.dao.getSession().get(
                 request.getEntityClass(), request.getKey());
         if (record instanceof IHazardsInteroperabilityRecord == false) {
             /*

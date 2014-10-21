@@ -54,7 +54,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 1, 2014            bkowal     Initial creation
+ * Apr 01, 2014            bkowal      Initial creation
+ * Oct 21, 2014   5051     mpduff      Change to support Hibernate upgrade.
  * 
  * </pre>
  * 
@@ -80,7 +81,7 @@ public class HazardsInteroperabilityGFE extends PersistableDataObject<String>
     private String parmID;
 
     @Column(name = HazardInteroperabilityConstants.GEOMETRY, columnDefinition = "geometry", nullable = false)
-    @Type(type = "org.hibernatespatial.GeometryUserType")
+    @Type(type = "org.hibernate.spatial.GeometryType")
     @DynamicSerializeElement
     private Geometry geometry;
 

@@ -43,7 +43,8 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 2, 2014            bkowal     Initial creation
+ * Apr 02, 2014            bkowal      Initial creation
+ * Oct 21, 2014   5051     mpduff      Change to support Hibernate upgrade.
  * 
  * </pre>
  * 
@@ -76,9 +77,7 @@ public class InteroperabilityRetrieveHandler implements
 
             criteria.add(Restrictions.eq(field, value));
         }
-
-        List<?> results = this.dao.getHibernateTemplate().findByCriteria(
-                criteria);
+        List<?> results = criteria.getExecutableCriteria(dao.getSession()).list();
         if (results.isEmpty()) {
             return new RecordRetrieveResponse(null);
         }
