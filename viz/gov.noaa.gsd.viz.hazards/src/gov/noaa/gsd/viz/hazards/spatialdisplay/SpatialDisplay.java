@@ -72,6 +72,7 @@ import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.core.AbstractTimeMatcher;
 import com.raytheon.uf.viz.core.IDisplayPaneContainer;
 import com.raytheon.uf.viz.core.IGraphicsTarget;
 import com.raytheon.uf.viz.core.IGraphicsTarget.PointStyle;
@@ -86,6 +87,7 @@ import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory;
 import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory.ResourceOrder;
 import com.raytheon.uf.viz.core.rsc.tools.AbstractMovableToolLayer;
+import com.raytheon.uf.viz.d2d.core.time.D2DTimeMatcher;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
@@ -147,6 +149,7 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  *                                        test for PENDING when testing whether or not to show
  *                                        End Selected Hazard context menu item.
  * Sep 09, 2014  3994     Robert.Blum     Added handleMouseEnter to reset the cursor type.
+ * Oct 20, 2014  4780     Robert.Blum     Made fix to Time Matching to update to the Time Match Basis.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -222,6 +225,8 @@ public class SpatialDisplay extends
     private SpatialDisplayDataManager dataManager = null;
 
     private boolean timeMatchBasis = false;
+
+    private boolean prevTimeMatchBasis = false;
 
     private int maximumFrameCount = -1;
 
@@ -606,6 +611,22 @@ public class SpatialDisplay extends
 
     @Override
     public DataTime[] getDataTimes() {
+
+        // Save off previous state
+        prevTimeMatchBasis = timeMatchBasis;
+
+        // Determine if this rsc is the time match basis.
+        AbstractTimeMatcher time = this.getDescriptor().getTimeMatcher();
+        if (time instanceof D2DTimeMatcher) {
+            if (((D2DTimeMatcher) time).getTimeMatchBasis() == this) {
+                timeMatchBasis = true;
+            } else {
+                timeMatchBasis = false;
+            }
+        }
+
+        DataTime currentTime = null;
+        FramesInfo info = descriptor.getFramesInfo();
         if (timeMatchBasis) {
             /*
              * We only want to calculate more data times if the user has
@@ -620,21 +641,29 @@ public class SpatialDisplay extends
                 DataTime earliestTime = this.dataTimes.get(0);
                 this.fillDataTimeArray(earliestTime, variance);
             }
+
+            // Just switched Time Match Basis update frames
+            if (prevTimeMatchBasis == false && timeMatchBasis == true) {
+                dataTimes.clear();
+                currentTime = new DataTime(SimulatedTime.getSystemTime()
+                        .getTime());
+
+                dataTimes.add(currentTime);
+                this.fillDataTimeArray(currentTime,
+                        this.descriptor.getNumberOfFrames() - 1);
+            }
         } else {
-            FramesInfo info = descriptor.getFramesInfo();
             dataTimes.clear();
-            this.maximumFrameCount = this.descriptor.getNumberOfFrames();
             // First time called
             if (info.getFrameTimes() != null) {
                 for (DataTime dt : info.getFrameTimes()) {
                     dataTimes.add(dt);
                 }
+                this.descriptor.getTimeMatchingMap().put(this,
+                        info.getFrameTimes());
             }
-
             if (dataTimes.size() == 0) {
-                timeMatchBasis = true;
                 // Case where this tool is time match basis or no data loaded
-                DataTime currentTime = null;
                 if (dataTimes.size() > 0) {
                     currentTime = dataTimes.get(dataTimes.size() - 1);
                 } else {
