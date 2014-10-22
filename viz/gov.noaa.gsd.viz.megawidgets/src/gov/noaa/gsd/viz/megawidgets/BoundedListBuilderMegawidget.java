@@ -82,6 +82,8 @@ import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
  * Jun 24, 2014   4023     Chris.Golden      Changed to prune old state to new
  *                                           choices when available choices are
  *                                           changed.
+ * Oct 22, 2014   5050     Chris.Golden      Minor change: Used "or" instead of
+ *                                           addition for SWT flags.
  * </pre>
  * 
  * @author Chris.Golden
@@ -984,8 +986,8 @@ public class BoundedListBuilderMegawidget extends
          * Create the list. A table is used because tables offer functionality
          * like being able to determine what row lies under a given point.
          */
-        Table table = new Table(parent, SWT.BORDER + SWT.MULTI
-                + SWT.FULL_SELECTION);
+        Table table = new Table(parent, SWT.BORDER | SWT.MULTI
+                | SWT.FULL_SELECTION);
         table.setHeaderVisible(false);
         table.setLinesVisible(false);
         table.setEnabled(specifier.isEnabled());

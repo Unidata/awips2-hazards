@@ -42,6 +42,8 @@ import com.google.common.collect.ImmutableSet;
  * Jun 30, 2014   3512     Chris.Golden      Added method to notify state change
  *                                           listeners of multiple simultaneous
  *                                           state changes.
+ * Oct 22, 2014   5050     Chris.Golden      Minor change: Fixed building of
+ *                                           MUTABLE_PROPERTY_NAMES.
  * </pre>
  * 
  * @author Chris.Golden
@@ -58,8 +60,7 @@ public abstract class StatefulMegawidget extends Megawidget implements
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = new HashSet<>(
-                NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = new HashSet<>(Megawidget.MUTABLE_PROPERTY_NAMES);
         names.add(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };

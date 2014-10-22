@@ -71,6 +71,8 @@ import com.google.common.collect.ImmutableSet;
  *                                           thrown if too small a minimum or
  *                                           maximum value was specified relative
  *                                           to the displayable time units.
+ * Oct 22, 2014   5050     Chris.Golden      Minor change: Used "or" instead of
+ *                                           addition for SWT flags.
  * </pre>
  * 
  * @author Chris.Golden
@@ -169,7 +171,7 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
          * Create the spinner.
          */
         onlySendEndStateChanges = !specifier.isSendingEveryChange();
-        spinner = new Spinner(panel, SWT.BORDER + SWT.WRAP);
+        spinner = new Spinner(panel, SWT.BORDER | SWT.WRAP);
         int numChars = Math.max(
                 getDigitsForValue(getMinimumValue(), specifier.getUnits()
                         .get(0)),

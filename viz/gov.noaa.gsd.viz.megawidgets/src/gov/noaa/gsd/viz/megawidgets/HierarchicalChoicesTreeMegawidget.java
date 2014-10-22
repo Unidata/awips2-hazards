@@ -57,8 +57,10 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
- * Jun 17, 2014    3982    Chris.Golden      Changed to deselect any selected
+ * Jun 17, 2014   3982     Chris.Golden      Changed to deselect any selected
  *                                           items before being disabled.
+ * Oct 22, 2014   5050     Chris.Golden      Minor change: Used "or" instead of
+ *                                           addition for SWT flags.
  * </pre>
  * 
  * @author Chris.Golden
@@ -190,7 +192,7 @@ public class HierarchicalChoicesTreeMegawidget extends
          * Create a tree to hold the checkable choices hierarchy, and add said
          * choices.
          */
-        tree = new Tree(panel, SWT.BORDER + SWT.CHECK);
+        tree = new Tree(panel, SWT.BORDER | SWT.CHECK);
         tree.setLinesVisible(false);
         tree.setHeaderVisible(false);
         tree.setEnabled(specifier.isEnabled());

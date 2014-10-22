@@ -74,6 +74,8 @@ import com.google.common.collect.ImmutableSet;
  *                                           the scale bar is not too narrow,
  *                                           but do not stretch across all
  *                                           available space.
+ * Oct 22, 2014   5050     Chris.Golden      Minor change: Used "or" instead of
+ *                                           addition for SWT flags.
  * </pre>
  * 
  * @author Chris.Golden
@@ -180,7 +182,7 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
          * minimum width may be figured below.
          */
         onlySendEndStateChanges = !specifier.isSendingEveryChange();
-        spinner = new Spinner(panel, SWT.BORDER + SWT.WRAP);
+        spinner = new Spinner(panel, SWT.BORDER | SWT.WRAP);
         spinner.setMaximum(9);
         int oneDigitSpinnerWidthPixels = spinner.computeSize(SWT.DEFAULT,
                 SWT.DEFAULT).x;

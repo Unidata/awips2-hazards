@@ -1,0 +1,37 @@
+[
+ {
+  "fieldType": "ComboBox",
+  "fieldName": "source",
+  "label": "Source:",
+  "expandHorizontally": true,
+  "choices": [
+  	"Doppler",
+  	"Doppler Gauges",
+  	"Spotter",
+  	"Public",
+  	"Law Enforcement",
+  	"Emergency Management",
+  	"Satellite",
+  	"Satellite Gauges",
+  	"Gauges"
+  ]
+ },
+ {
+  "fieldType": "ComboBox",
+  "fieldName": "type",
+  "label": "Type:",
+  "expandHorizontally": true,
+  "choices": [
+  	"Thunder",
+  	"Rain",
+  	"Flooding",
+  	"Generic Flooding"
+  ]
+ },
+ {
+  "fieldType": "HiddenField",
+  "fieldName": "result",
+  "values": [ "Doppler Gauges", "Generic Flooding" ]
+ }
+]
+ 

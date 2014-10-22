@@ -63,6 +63,8 @@ import com.google.common.collect.ImmutableSet;
  *                                           children when it is disabled.
  * Jun 24, 2014    4010    Chris.Golden      Changed to no longer be a subclass
  *                                           of NotifierMegawidget.
+ * Oct 22, 2014   5050     Chris.Golden      Minor change: Fixed building of
+ *                                           MUTABLE_PROPERTY_NAMES.
  * </pre>
  * 
  * @author Chris.Golden
@@ -80,7 +82,7 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
         Set<String> names = new HashSet<>(
-                MultipleBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES_WITHOUT_CHOICES);
+                StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
