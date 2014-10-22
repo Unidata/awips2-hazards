@@ -7,6 +7,8 @@
     April 5, 2013            Tracy.L.Hansen      Initial creation    
     Nov      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents, simplifying product
                                                  dictionary
+    Oct 22, 2014   5052      mpduff              Fix code error
+    
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
     '''
@@ -53,11 +55,13 @@ class Product(Legacy_ProductGenerator.Product):
           
         # Check for Cancel
         cancelFields = self._checkForCancel(eventSet)
-        if cancelFields:
-            cancelFields = metaDataList
-        else:
-            cancelFields = []
-
+        
+        #if cancelFields:
+        #    cancelFields = metaDataList
+        #else:
+        #    cancelFields = []
+        cancelFields = []
+        
         fields = productLevelFields + cancelFields
         if fields:
             dialogDict['fields'] = fields
