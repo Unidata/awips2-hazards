@@ -35,8 +35,10 @@ def getHazardMetaData(datatype, phenomenon, significance, subType = None) :
                     if subType is None or (subType is not None and subType in hazardType):
                         metaDataEntry = metaDataDict[CLASS_METADATA]                        
                         if type(metaDataEntry) is types.StringType:
+                            locPath = "hazardServices/hazardMetaData/CommonMetaData.py"
+                            importModule(locPath)
                             locPath = "hazardServices/hazardMetaData/" + metaDataEntry + ".py"
-                            result = importModule(locPath) 
+                            result = importModule(locPath)
                             m = result.MetaData()
                             return m, locPath
                         elif metaDataEntry is None:

@@ -218,6 +218,10 @@ public class SessionConfigurationManager implements
 
     private String siteId;
 
+    private LocalizationFile metaDataDir;
+
+    private ILocalizationFileObserver metaDataDirObserver;
+
     /**
      * Python job coordinator that handles both metadata fetching scripts and
      * event modifying scripts.
@@ -245,10 +249,11 @@ public class SessionConfigurationManager implements
         settingsDir
                 .addFileUpdatedObserver(new SettingsDirectoryUpdateObserver());
 
-        LocalizationFile metaDataDir = pathManager.getLocalizationFile(
-                commonStaticBase, "hazardServices/hazardMetaData/");
-        metaDataDir
-                .addFileUpdatedObserver(new MetaDataDirectoryUpdateObserver());
+        metaDataDir = pathManager.getLocalizationFile(commonStaticBase,
+                "hazardServices/hazardMetaData/");
+
+        metaDataDirObserver = new MetaDataDirectoryUpdateObserver();
+        metaDataDir.addFileUpdatedObserver(metaDataDirObserver);
 
         loadAllSettings();
 
@@ -957,6 +962,9 @@ public class SessionConfigurationManager implements
 
     @Override
     public void shutdown() {
+        /* Remove file observer when Hazard Services is closed */
+        metaDataDir.removeFileUpdatedObserver(metaDataDirObserver);
+
         coordinator.shutdown();
     }
 
