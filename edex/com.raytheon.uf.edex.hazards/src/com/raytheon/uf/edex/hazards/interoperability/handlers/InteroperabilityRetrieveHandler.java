@@ -19,11 +19,12 @@
  **/
 package com.raytheon.uf.edex.hazards.interoperability.handlers;
 
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ArrayList;
-import java.io.Serializable;
 
+import org.hibernate.Session;
 import org.hibernate.criterion.DetachedCriteria;
 import org.hibernate.criterion.Restrictions;
 
@@ -45,6 +46,7 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * ------------ ---------- ----------- --------------------------
  * Apr 02, 2014            bkowal      Initial creation
  * Oct 21, 2014   5051     mpduff      Change to support Hibernate upgrade.
+ * 10/28/2014   5051     bphillip   Change to support Hibernate upgrade
  * 
  * </pre>
  * 
@@ -77,7 +79,15 @@ public class InteroperabilityRetrieveHandler implements
 
             criteria.add(Restrictions.eq(field, value));
         }
-        List<?> results = criteria.getExecutableCriteria(dao.getSession()).list();
+        Session session = dao.getSession();
+        List<?> results = null;
+        try{
+            results = criteria.getExecutableCriteria(session).list();
+        }finally{
+            if(session != null){
+                session.close();
+            }
+        }
         if (results.isEmpty()) {
             return new RecordRetrieveResponse(null);
         }

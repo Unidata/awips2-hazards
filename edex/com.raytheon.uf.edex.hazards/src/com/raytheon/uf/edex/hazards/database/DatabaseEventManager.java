@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.hibernate.Session;
 import org.hibernate.criterion.Conjunction;
 import org.hibernate.criterion.CriteriaSpecification;
 import org.hibernate.criterion.DetachedCriteria;
@@ -69,6 +70,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                  be associated with an open session.
  * Mar 24, 2014 #3323    bkowal     Include the mode in the hazard notification.
  * Oct 21, 2014   5051     mpduff      Change to support Hibernate upgrade.
+ * 10/28/2014   5051     bphillip   Change to support Hibernate upgrade
  * 
  * </pre>
  * 
@@ -299,19 +301,27 @@ public class DatabaseEventManager implements
             }
         }
         criteria.setResultTransformer(CriteriaSpecification.DISTINCT_ROOT_ENTITY);
-        List<PracticeHazardEvent> events = criteria.getExecutableCriteria(dao.getSession()).list();
-        Map<String, HazardHistoryList> mapEvents = new HashMap<String, HazardHistoryList>();
+        Session session = dao.getSession();
+        try{
+            List<PracticeHazardEvent> events = criteria.getExecutableCriteria(
+                    session).list();
+            Map<String, HazardHistoryList> mapEvents = new HashMap<String, HazardHistoryList>();
 
-        // group them for use later
-        for (PracticeHazardEvent event : events) {
-            if (mapEvents.containsKey(event.getEventID())) {
-                mapEvents.get(event.getEventID()).add(event);
-            } else {
-                HazardHistoryList list = new HazardHistoryList();
-                list.add(event);
-                mapEvents.put(event.getEventID(), list);
+            // group them for use later
+            for (PracticeHazardEvent event : events) {
+                if (mapEvents.containsKey(event.getEventID())) {
+                    mapEvents.get(event.getEventID()).add(event);
+                } else {
+                    HazardHistoryList list = new HazardHistoryList();
+                    list.add(event);
+                    mapEvents.put(event.getEventID(), list);
+                }
+            }
+            return mapEvents;
+        } finally {
+            if(session != null){
+                session.close();
             }
         }
-        return mapEvents;
     }
 }

@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.hazards.interoperability.handlers;
 
+import org.hibernate.Session;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.IHazardsInteroperabilityRecord;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.RecordRetrievePKRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.RecordRetrievePKResponse;
@@ -37,6 +39,7 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * ------------ ---------- ----------- --------------------------
  * Apr 02, 2014            bkowal      Initial creation
  * Oct 21, 2014   5051     mpduff      Change to support Hibernate upgrade.
+ * 10/28/2014   5051     bphillip   Change to support Hibernate upgrade
  * 
  * </pre>
  * 
@@ -59,8 +62,16 @@ public class InteroperabilityPKRetrieveHandler implements
     @Override
     public Object handleRequest(RecordRetrievePKRequest request)
             throws Exception {
-        Object record = this.dao.getSession().get(
-                request.getEntityClass(), request.getKey());
+        Session session = null;
+        Object record = null;
+        try {
+            session = this.dao.getSession();
+            record = session.get(request.getEntityClass(), request.getKey());
+        } finally {
+            if (session != null) {
+                session.close();
+            }
+        }
         if (record instanceof IHazardsInteroperabilityRecord == false) {
             /*
              * This scenario is extremely unlikely (theoretically impossible)
