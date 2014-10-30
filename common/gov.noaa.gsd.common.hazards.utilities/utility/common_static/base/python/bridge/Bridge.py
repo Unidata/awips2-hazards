@@ -32,6 +32,7 @@
  February 14, 2014 2979  bkowal      Created, separate named methods with
                                      specific parameters for retrieving 
                                      different types of hazard information.
+ Oct 29, 2014    5070    mpduff      Fix SiteCFG.py that was moved 
 ''' 
 
 import ast, types, time, traceback, os
@@ -88,6 +89,7 @@ class Bridge:
         self.logger.setLevel(logging.INFO)         
         
         self.textUtilityRoot = TEXT_UTILITY_ROOT
+        self.siteCfgRoot = SITE_CFG_ROOT
         self.caveEdexRepo = {}
 
 ###################################################################################
@@ -248,7 +250,7 @@ class Bridge:
         if siteInfo:
             return siteInfo
         
-        siteInfo = self._getLocalizationData('SiteCFG.py', self.textUtilityRoot, 'CAVE_STATIC')
+        siteInfo = self._getLocalizationData('SiteCFG.py', self.siteCfgRoot, 'COMMON_STATIC')
         if siteInfo is None:
             msg = 'No data at all for type: SiteInfo'
             self.logger.error(msg)

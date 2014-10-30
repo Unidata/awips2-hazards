@@ -14,6 +14,7 @@
                                                  "interdependencies".
     August 15, 2014  4243   Chris.Golden         Changed metadata-
                                                  fetching constants.
+    Oct 29, 2014     5070   mpduff               Added SITE_CFG_ROOT for move of SiteCFG.py
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 """
@@ -179,6 +180,7 @@ kmPerDegLat = R_EARTH*PI/180.0
 #################################
 # Localization Relative Paths
 TEXT_UTILITY_ROOT = "gfe/userPython/textUtilities/regular/"
+SITE_CFG_ROOT = "python/gfe/"
 
 #################################
 # Product Generation

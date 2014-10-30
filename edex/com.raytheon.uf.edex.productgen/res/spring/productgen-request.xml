@@ -4,17 +4,14 @@
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 	
 	
-	<bean id="productgenProperties" class="com.raytheon.uf.common.dataplugin.PluginProperties">
-		<property name="pluginName" value="productgen" />
-		<property name="pluginFQN" value="com.raytheon.uf.common.hazards.productgen.editable" />
-		<property name="record"
-			value="com.raytheon.uf.common.hazards.productgen.editable.ProductText" />
+	<bean id="productgenProperties" class="com.raytheon.uf.edex.database.DatabasePluginProperties">
+		<property name="pluginFQN" value="com.raytheon.uf.common.hazards.productgen" />
+		<property name="database" value="metadata" />
 	</bean>
 
-	<bean id="productgenRegistered" factory-bean="pluginRegistry"
-		factory-method="register">
-		<constructor-arg value="productgen" />
-		<constructor-arg ref="productgenProperties" />
+	<bean factory-bean="dbPluginRegistry" factory-method="register">
+		<constructor-arg value="com.raytheon.uf.common.hazards.productgen"/>
+		<constructor-arg ref="productgenProperties"/>
 	</bean>
 
 	<bean id="getProductTextHandler"
@@ -26,17 +23,6 @@
 		<constructor-arg ref="getProductTextHandler" />
 	</bean>
 	
-	  <bean id="productDataProperties" class="com.raytheon.uf.common.dataplugin.PluginProperties">
-		<property name="pluginName" value="productdata" />
-		<property name="pluginFQN" value="com.raytheon.uf.common.hazards.productgen.data" />
-		<property name="record" value="com.raytheon.uf.common.hazards.productgen.data.ProductData" />
-	</bean>
-
-	<bean id="productdataRegistered" factory-bean="pluginRegistry" factory-method="register">
-		<constructor-arg value="productdata" />
-		<constructor-arg ref="productDataProperties" />
-	</bean>
-		
 	<bean id="productDataHandler" class="com.raytheon.uf.edex.productgen.ProductDataHandler" />
 		
 	<bean factory-bean="handlerRegistry" factory-method="register">
