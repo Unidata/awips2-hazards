@@ -34,6 +34,8 @@
 #                                                 Hazard Event conversion capabilities with JUtil.
 #    01/20/14        2766          bkowal         Updated to use the Python Overrider
 #    10/10/14        3790          Robert.Blum    Reverted to use the RollbackMasterInterface.
+#    10/24/14        4934          mpduff         Additional metadata actions.
+# 
 #
 import RollbackMasterInterface
 import JUtil, importlib
@@ -59,20 +61,19 @@ from EventSet import EventSet as PythonEventSet
 from KeyInfo import KeyInfo
 
 class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
-    
+
     def __init__(self, scriptPath, localizationPath):
         super(ProductInterface, self).__init__(scriptPath)
         self.importModules()
         self.logger = logging.getLogger("ProductInterface")
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             "com.raytheon.uf.common.hazards.productgen", "ProductInterface", level=logging.INFO))
-        self.logger.setLevel(logging.INFO)         
-    
-    def execute(self, moduleName, className, **kwargs):        
+        self.logger.setLevel(logging.INFO)
+
+    def execute(self, moduleName, className, **kwargs):
         javaDialogInput = kwargs['dialogInputMap']
         if javaDialogInput is not None :
             kwargs['dialogInputMap'] = JUtil.javaObjToPyVal(javaDialogInput)
-        
         formats = kwargs.pop('formats')
         kwargs['eventSet'] = PythonEventSet(kwargs['eventSet'])
         dataList, events = self.runMethod(moduleName, className, 'execute', **kwargs)
@@ -84,15 +85,14 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
         # eventSet and dialogInputMap no longer needed for executeFrom method
         kwargs.pop('eventSet')
         kwargs.pop('dialogInputMap')
-        
+
         genProdList = self.executeFrom(moduleName, className, **kwargs)
         
         javaEventSet = EventSet()
         javaEventSet.addAll(JUtil.pyValToJavaObj(events))
         genProdList.setEventSet(javaEventSet)
-        
-        return genProdList       
-    
+        return genProdList
+
     def executeFrom(self, moduleName, className, **kwargs):
         genProdList = GeneratedProductList()
         
@@ -159,9 +159,12 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
         
         for data in dataList:
             if isinstance(data, OrderedDict):
-                wmoHeader = data.get('wmoHeader') 
-                if wmoHeader:
-                    productID = wmoHeader.get('productID')
+                if 'productID' in data:
+                    productID = data.get('productID')
+                else:
+                    wmoHeader = data.get('wmoHeader') 
+                    if wmoHeader:
+                        productID = wmoHeader.get('productID')
                   
                 generatedProduct = GeneratedProduct(productID)
                 productDict = {}

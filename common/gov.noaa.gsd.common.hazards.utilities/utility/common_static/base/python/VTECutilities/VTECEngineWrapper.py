@@ -9,6 +9,7 @@
 #  Aug  6, 2014   2826     jsanchez     Added boolean flag for issuing.
 #  Dec 08, 2014   2826     dgilling     Remove automated tests' special 
 #                                       VTECTableIO implementation.
+#  Nov 18, 2014   4933     Robert.Blum  Added parameter for product generator name.
 #
 
 from VTECEngine import VTECEngine
@@ -68,7 +69,7 @@ import VTECTableIO
 class VTECEngineWrapper(object):
     def __init__(self, bridge, productCategory, siteID4, hazardEvents = [],
       vtecMode='O', issueTime=None, limitGeoZones=None, operationalMode=True,
-      testHarnessMode=False, vtecProduct=True, issueFlag=True):
+      testHarnessMode=False, vtecProduct=True, issueFlag=True, productGeneratorName=None):
         '''Constructor for VTEC Engine Wrapper
         Once instantiated, it will run the VTEC Engine.  Then the user can
         access the output through different functions.
@@ -124,8 +125,13 @@ class VTECEngineWrapper(object):
         self._issueTime = issueTime
 
         # Get the list of allowedHazards from the ProductGeneratorTable
-        pgtKey = "{p}_ProductGenerator".format(p=productCategory)
-        allowedHazards = ProductGeneratorTable[pgtKey]['allowedHazards']            
+        if productGeneratorName:
+            allowedHazards = ProductGeneratorTable[productGeneratorName]['allowedHazards']
+        else:
+            pgtKey = "{p}_ProductGenerator".format(p=productCategory)
+            allowedHazards = ProductGeneratorTable[pgtKey]['allowedHazards']
+        
+
 
         # Assemble a tuple containing the hazardTypes, upgrade table,
         # and downgrade table.

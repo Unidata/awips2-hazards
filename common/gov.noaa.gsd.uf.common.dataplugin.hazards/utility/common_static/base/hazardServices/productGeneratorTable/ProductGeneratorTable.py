@@ -4,7 +4,7 @@ ProductGeneratorTable = {
             "allowedHazards": [
              ('FF.A', "Flood"),
              ('FA.A', "Flood"),
-             ('FL.A', "Flood1"),                                                   
+             ('FL.A', "Flood1"),
              ],
             "previewFormatters": ["Legacy"],
             "issueFormatters": ["Legacy"], 
@@ -13,22 +13,31 @@ ProductGeneratorTable = {
             "allowedHazards": [
              ('FA.W', "Flood1"),
              ('FA.Y', "Flood2"),
-             ('FL.W', "Flood3"),             
-             ('FL.Y', "Flood4"),             
+             ('FL.W', "Flood3"),
+             ('FL.Y', "Flood4"),
              ('HY.S', "Flood5"),
             ],
             "previewFormatters": ["Legacy"],
             "issueFormatters": ["Legacy"],  
             },
-        "FFW_FFS_ProductGenerator" : {
+#         "FFW_FFS_ProductGenerator" : {
+#             "allowedHazards": [
+#              ('FF.W.Convective',     "Flood"),
+#              ('FF.W.NonConvective',  "Flood"),
+#              ('FF.W.BurnScar',  "Flood"),
+#              ],
+#             "previewFormatters": ["Legacy"],
+#             "issueFormatters": ["Legacy"],
+#             },
+        "FFW_FFS_ProductGenerator_v3" : {
             "allowedHazards": [
              ('FF.W.Convective',     "Flood"),
-             ('FF.W.NonConvective',  "Flood"),             
-             ('FF.W.BurnScar',  "Flood"),             
+             ('FF.W.NonConvective',  "Flood"),
+             ('FF.W.BurnScar',  "Flood"),
              ],
-            "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy"],   
-            }, 
+            "previewFormatters": ["Legacy_FFW_FFS_Formatter"],
+            "issueFormatters": ["Legacy_FFW_FFS_Formatter"],
+            },
         "ESF_ProductGenerator": {
             "allowedHazards": [
              ('HY.O',     "Flood"),           

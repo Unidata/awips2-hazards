@@ -6,6 +6,7 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     4/14         1633       thansen   Initial creation.
+    11/10        4933       Robert.Blum    Added endSegment part for FFS
     
 '''
 import types, collections
@@ -92,7 +93,8 @@ class HydroProductParts():
                     # TODO Example doesn't match directive
                     #  Example: Has CR for wmoHeader - pg 26
                     #  Directive does not - pg 31
-                    'wmoHeader_noCR',
+                    #  The CR is needed to pass the WarningDecoder.
+                    'wmoHeader',
                     ('segments', segmentParts),
                     ]
                 }
@@ -126,8 +128,9 @@ class HydroProductParts():
             partsList.append('easMessage')
             
         partsList += [
-                    'productHeader', 
-                    'CR',                      
+                    'productHeader',
+                    'CR',
+                    'emergencyHeadline',
                     ('sections', sectionParts),
                     'callsToAction', # optional
                     'polygonText',
@@ -147,7 +150,7 @@ class HydroProductParts():
                 'firstBullet',
                 'timeBullet',
                 'basisBullet',
-                'emergencyHeadline',
+                'emergencyStatement',
                 'locationsAffected',
                 ]
 
@@ -221,8 +224,9 @@ class HydroProductParts():
                     'issuanceTimeDate',
                     'CR',
                     'summaryHeadlines',
-                    ('sections', sectionParts), # Sections so not have information displayed, but need to call section_setUp                    
-                    ] + parts
+                    ('sections', sectionParts), # Sections so not have information displayed, but need to call section_setUp 
+                    ] + parts +
+                    ['endSegment']
                 }
 
     def _pointSectionPartsList_FFS(self, pointRecord):

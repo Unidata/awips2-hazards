@@ -5,8 +5,8 @@
 import VTECConstants
 from LocalizationInterface import LocalizationInterface
 
-class MetaData():
-    
+class MetaData(object):
+
     def initialize(self, hazardEvent, metaDict):    
         self.hazardEvent = hazardEvent
         self.metaDict = metaDict
@@ -88,7 +88,7 @@ class MetaData():
         return {"identifier":"MC", "displayString":"MC (Other Multiple Causes)"}
     def immediateCauseUU(self):
         return {"identifier":"UU", "displayString":"UU (Unknown)"}
-     
+
     def getEventSpecificSource(self):
         return {
                "fieldType":"Group",
@@ -99,6 +99,25 @@ class MetaData():
                        self.getEventType(),
                        ]
                }
+
+    def hydrologicCauseMapping(self, hydrologicCause, key):
+        mapping = {
+            'dam':          {'immediateCause': 'DM', 'typeOfFlooding':'A dam failure in...'},
+            'siteImminent': {'immediateCause': 'DM', 'typeOfFlooding':'A dam break in...'},
+            'siteFailed':   {'immediateCause': 'DM', 'typeOfFlooding':'A dam break in...'},
+            'levee':        {'immediateCause': 'DM', 'typeOfFlooding':'A levee failure in...'},
+            'floodgate':    {'immediateCause': 'DR', 'typeOfFlooding':'A dam floodgate release in...'},
+            'glacier':      {'immediateCause': 'GO', 'typeOfFlooding':'A glacier-dammed lake outburst in...'},
+            'icejam':       {'immediateCause': 'IJ', 'typeOfFlooding':'An ice jam in...'},
+            'snowMelt':     {'immediateCause': 'RS', 'typeOfFlooding':'Extremely rapid snowmelt in...'},
+            'volcano':      {'immediateCause': 'SM', 'typeOfFlooding':'Extremely rapid snowmelt caused by volcanic eruption in...'},
+            'volcanoLahar': {'immediateCause': 'SM', 'typeOfFlooding':'Volcanic induced debris flow in...'},
+            'default':      {'immediateCause': 'ER', 'typeOfFlooding':'Excessive rain in...'}
+            }
+        if mapping.has_key(hydrologicCause):
+            return mapping[hydrologicCause][key]
+        else:
+            return mapping['default'][key]
 
     def getFloodSeverity(self):
         return {
@@ -362,12 +381,12 @@ class MetaData():
     def listOfDrainages(self):
         return {"identifier":"listOfDrainages", 
                 "displayString": "Automated list of drainages", 
-                "productString": "ARBITRARY ARGUMENTS USED BY DRAINAGES LIST GENERATOR." }
+                "productString": "Affected drainages include..." }
     def additionalRain(self):
         return  {"identifier":"addtlRain",
                  "displayString": "Additional rainfall", 
                  "productString": 
-                    '''Additional rainfall amounts of #additionalInfoAddtlRainInches# inches are possible in the
+                    '''Additional rainfall amounts of#additionalRainLowerBound# to#additionalRainUpperBound# inches are possible in the
                        warned area.''',
                  "detailFields": [
                             {
@@ -405,12 +424,16 @@ class MetaData():
                       }
     def floodMoving(self):
         return {"identifier":"floodMoving",
-                "displayString": "Flooding is occurring in:",
+                "displayString": "Flood waters are moving down",
+                "productString":
+                '''Flood waters are moving down #riverName# from #upstreamLocation# to 
+                #floodLocation#. The flood crest is expected to reach #downstreamLocation# by 
+                #additionalInfoFloodMovingTime#.''',
                 "detailFields": [
                             {
-                             "fieldName":"floodLocationName",
-                             "fieldType":"Text",
-                             "label": ""
+                             "fieldName":"additionalInfoFloodMovingTime",
+                             "fieldType":"Time",
+                             "label": "by:"
                             }
                       ]
                      }

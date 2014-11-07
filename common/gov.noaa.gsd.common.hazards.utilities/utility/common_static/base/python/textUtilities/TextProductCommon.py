@@ -1,16 +1,19 @@
 '''
-Description: Provides classes and methods for Product Generation
+   Description: Provides classes and methods for Product Generation
+   
+   SOFTWARE HISTORY
+   Date         Ticket#      Engineer             Description
+   ------------ ---------- ----------- --------------------------
+   April 5, 2013            Tracy.L.Hansen      Initial creation
+   Feb 14, 2013    2161     Chris.Golden        Added use of UFN_TIME_VALUE_SECS constant
+                                                instead of hardcoded value.
+   May 06, 2014   1328      jramer              Remove reference to deprecated MapInfo class.
+   Dec 1, 2014    4373      Dan Schaffer        HID Template migration for warngen
+   Dec 08, 2014   2826      dgilling            Fix extraneous whitespsace in formatDatetime().
+   Dec 10, 2014   4933      Robert.Blum         Fixed getProductStrings to account for replacing
+                                                float values.
 
-SOFTWARE HISTORY
-Date         Ticket#      Engineer             Description
------------- ---------- ----------- --------------------------
-April 5, 2013            Tracy.L.Hansen      Initial creation
-Feb 14, 2013    2161     Chris.Golden        Added use of UFN_TIME_VALUE_SECS constant
-                                             instead of hardcoded value.
-May 06, 2014   1328      jramer              Remove reference to deprecated MapInfo class.
-Dec 1, 2014    4373      Dan Schaffer        HID Template migration for warngen
-
-@author Tracy.L.Hansen@noaa.gov
+    @author Tracy.L.Hansen@noaa.gov
 '''
 
 import cPickle, os, types, string, copy
@@ -24,6 +27,8 @@ import JUtil
 import VTECConstants
 from KeyInfo import KeyInfo
 import ProductTextUtil
+from shapely.geometry import Polygon
+from ufpy.dataaccess import DataAccessLayer
 
 import json
 import traceback
@@ -573,7 +578,8 @@ class TextProductCommon(object):
 
     ###########
     #  Accessing MetaData
-    def getProductStrings(self, hazardEvent, metaData, fieldName, productStringIdentifier=None, choiceIdentifier=None):
+    def getProductStrings(self, hazardEvent, metaData, fieldName, productStringIdentifier=None, choiceIdentifier=None,
+                          precision=0):
         '''
         Translates the entries from the Hazard Information Dialog into product strings.
         @param hazardEvent: hazard event with user choices
@@ -588,7 +594,6 @@ class TextProductCommon(object):
         @param choiceIdentifier: for checkbox fields (rather than bullet), specifying the choice for which to retrieve the
            productString, e.g. 'particularStream' choice within 'additionalInformation' field
            IF no choiceIdentifier is specified, then a list of productStrings will be returned
-           
         @return the associated productString.  If a productString is not given, return the displayString.
             If no value is specified in the hazardEvent, return empty string.
         
@@ -612,7 +617,6 @@ class TextProductCommon(object):
         else:
             return self.getMetaDataValue(hazardEvent, metaData, fieldName, value)
 
-        
     def getEmbeddedDict(self, node, keyValue, search):
         """
         Recursive method to extract an embedded megawidget within a nested list/dict based
@@ -635,11 +639,7 @@ class TextProductCommon(object):
                 if result is not None:
                    return result
 
-
-
-
-
-    def getMetaDataValue(self, hazardEvent, metaData, fieldName, value):                     
+    def getMetaDataValue(self, hazardEvent, metaData, fieldName, value):
         '''
         Given a value, return the corresponding productString (or displayString) from the metaData. 
         @param hazardEvent: hazard event with user choices
@@ -703,14 +703,14 @@ class TextProductCommon(object):
             else:
                 replaceVal = self.frame(hashTag)
             returnVal = returnVal.replace('#' + hashTag + '#', " " + self.formatAsNecessary(replaceVal))
-        
+
         return returnVal
     def formatAsNecessary(self, val):
         if (self.is_number(val)):
             return "{:2.1f}".format(val)
         else:
             return val
-            
+
     # TODO Should use fastnumbers
     def is_number(self, val):
         return bool(float_match(str(val)))
@@ -1296,7 +1296,7 @@ class TextProductCommon(object):
                                            
         while len(hList) > 0:
             vtecRecord = hList[0]
-            
+
             # Can't make phrases with vtecRecords with no 'hdln' entry 
             if vtecRecord['hdln'] == '':
                 hList.remove(vtecRecord)
@@ -1356,7 +1356,7 @@ class TextProductCommon(object):
             hList.remove(vtecRecord)
             
         return headlineStr, headlines, sections
-        
+
     def getTimingPhrase(self, vtecRecord, hazardEvents, issueTime, stype=None, etype=None):
         '''
         vtecRecord has times converted to ms

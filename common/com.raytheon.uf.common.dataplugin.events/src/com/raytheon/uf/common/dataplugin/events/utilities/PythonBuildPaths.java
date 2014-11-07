@@ -48,6 +48,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * Oct 10, 2014 3790      Robert.Blum  Fixed bug that would put two colons side by side
  *                                     in the JEP include path if the directories path was
  *                                     a empty string.
+ * Oct 24, 2014 4934      mpduff       Added metaDataPath to includePath.
  * 
  * </pre>
  * 
@@ -148,6 +149,8 @@ public class PythonBuildPaths {
         String utilitiesPath = FileUtil.join(eventsPath, "utilities");
         String gfePath = FileUtil.join(pythonPath, "gfe");
         String productGenPath = FileUtil.join(eventsPath, "productgen");
+        String metadataPath = manager.getFile(baseContext,
+                "hazardServices/hazardMetaData").getPath();
 
         for (int i = 0; i < directories.length; i++) {
             directories[i] = buildLocalizationDirectory(directories[i])
@@ -156,7 +159,7 @@ public class PythonBuildPaths {
         String directoryPaths = PyUtil.buildJepIncludePath(directories);
         String includePath = PyUtil.buildJepIncludePath(pythonPath,
                 dataAccessPath, dataTimePath, eventsPath, utilitiesPath,
-                gfePath, productGenPath);
+                gfePath, metadataPath, productGenPath);
         if (directoryPaths.equals("")) {
             return PyUtil.buildJepIncludePath(includePath);
         }

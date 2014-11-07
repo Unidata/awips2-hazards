@@ -74,7 +74,8 @@ class MetaData(CommonMetaData.MetaData):
                     ]  
         else:
             metaData = [
-                    self.getEndingSynopsis(), 
+                    self.getEndingSynopsis(),
+                    self.getAdditionalInfo(),
                     ]
             return metaData
         
@@ -154,7 +155,6 @@ class MetaData(CommonMetaData.MetaData):
         return {"identifier":"dam", "displayString":"Dam failure - generic"}
     def immediateCauseSiteImminent(self):
         return {"identifier":"siteImminent", "displayString":"Dam break - site specific - imminent failure"}
-                
     def immediateCauseSiteFailed(self):
         return {"identifier":"siteFailed", "displayString":"Dam - site specific - failure has occurred"}
     def immediateCauseLevee(self):
@@ -173,8 +173,6 @@ class MetaData(CommonMetaData.MetaData):
         return {"identifier":"volcanoLahar", "displayString":"Volcano induced lahar/debris flow"}
 
     def sourceChoices(self, immediateCause):
-        
-        
         addDam = [
                   self.immediateCauseDam()["identifier"],
                   self.immediateCauseSiteImminent()["identifier"],
@@ -219,10 +217,10 @@ class MetaData(CommonMetaData.MetaData):
                     }
 
     def getAdditionalInfo(self):
-            result = CommonMetaData.MetaData.getAdditionalInfo(self)
-            result["values"] = "listOfDrainages"
-            return result
-             
+        result = super(MetaData, self).getAdditionalInfo()
+        result["values"] = "listOfDrainages"
+        return result
+
     def additionalInfoChoices(self):
         return [ 
             self.listOfDrainages(),

@@ -63,6 +63,8 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Apr  4, 2013            jsanchez     Handled dissemination differently for operational mode and practice mode.
  * Dec 09, 2014 2826       dgilling     Ensure all necessary fields are set on
  *                                      SendPracticeProductRequest.
+ * Dec 10, 2014 4933       Robert.Blum  Changes to allow for mixed case in the
+ *                                      legacy product.
  * 
  * </pre>
  * 
@@ -197,7 +199,7 @@ public class ProductUtils {
             sb.append("\n");
         }
 
-        return sb.toString().toUpperCase();
+        return sb.toString();
     }
 
     /**

@@ -5,12 +5,16 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     April 5, 2013            Tracy.L.Hansen      Initial creation
+    Nov 10, 2014   4933     Robert.Blum    Added abstract method for returning MetaData.
     
     @author Tracy.L.Hansen@noaa.gov
 '''
 import abc
 
-class Product(object):    
+class Product(object):
+    
+    metadata = None
+    
     def __init__(self):
         return
     
@@ -51,3 +55,7 @@ class Product(object):
     def executeFrom(self, dataList, prevDataList=None):
         
         return
+
+    @abc.abstractmethod
+    def getMetadata(self):
+        return None 

@@ -11,7 +11,8 @@
 #  Feb 24, 2014  #2826     dgilling     Initial Creation.
 #  Dec 08, 2014  #2826     dgilling     Remove _TestEdexVTECTableIO, reinstate
 #                                       _JsonVTECTableIO.
-#
+#  Dec 11, 2014  #4933     dgilling     _JsonVTECTableIO now encodes using utf-8
+#                                        removing unicode.
 #
 
 
@@ -109,7 +110,6 @@ class _MockVTECTableIO(VTECTableIO):
     def clearVtecTable(self):
         self.putVtecRecords([])
 
-
 class _JsonVTECTableIO(VTECTableIO):
     """A VTECTableIO implementation that is backed by a JSON file."""
 
@@ -164,6 +164,7 @@ class _JsonVTECTableIO(VTECTableIO):
         try:
             fd = vtecLF.getFile("r")
             vtecRecords = json.load(fd)
+            vtecRecords = self.as_str(vtecRecords)
         except:
             vtecRecords = []
         finally:
@@ -207,6 +208,16 @@ class _JsonVTECTableIO(VTECTableIO):
         self.__vtecRecordsLockFD.close()
         self.__vtecRecordsLockFD = None
 
+    @staticmethod
+    def as_str(obj):
+        if isinstance(obj, dict):
+            return {_JsonVTECTableIO.as_str(key):_JsonVTECTableIO.as_str(value) for key,value in obj.items()}
+        elif isinstance(obj, list):
+            return [_JsonVTECTableIO.as_str(value) for value in obj]
+        elif isinstance(obj, unicode):
+            return obj.encode('utf-8')
+        else:
+            return obj
 
 class _EdexVTECTableIO(VTECTableIO):
     """A VTECTableIO implementation that makes thrift requests to retrieve VTEC data from EDEX."""
