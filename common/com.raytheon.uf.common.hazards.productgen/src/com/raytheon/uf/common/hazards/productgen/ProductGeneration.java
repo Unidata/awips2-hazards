@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.hazards.productgen;
 
+import java.io.File;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,6 +37,8 @@ import com.raytheon.uf.common.hazards.productgen.executors.ProductScriptExecutor
 import com.raytheon.uf.common.hazards.productgen.executors.ProductScriptUpdater;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScriptFactory;
+import com.raytheon.uf.common.localization.IPathManager;
+import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.python.concurrent.PythonJobCoordinator;
@@ -56,6 +59,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Sep 19, 2013 2046       mnash        Update for less dependencies.
  * Nov  5, 2013 2266       jsanchez     Removed unused method and used GeneratedProductList.
  * Apr 23, 2014 1480       jsanchez     Passed correction flag to update method.
+ * Oct 03, 2014 4042       Chris.Golden Added ability to get product script file path.
  * </pre>
  * 
  * @author jsanchez
@@ -63,12 +67,21 @@ import com.raytheon.uf.common.status.UFStatus;
  */
 public class ProductGeneration implements IDefineDialog, IProvideMetadata {
 
+    private static final String PRODUCT_GENERATOR_RELATIVE_PATH = "python"
+            + File.separator + "events" + File.separator + "productgen"
+            + File.separator + "products" + File.separator;
+
+    private static final String PYTHON_FILENAME_SUFFIX = ".py";
+
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductGeneration.class);
 
     /** Manages ProductScriptExecutor jobs */
     private final PythonJobCoordinator<ProductScript> coordinator = PythonJobCoordinator
             .newInstance(new ProductScriptFactory());
+
+    private final IPathManager pathManager = PathManagerFactory
+            .getPathManager();
 
     /**
      * Generates the eventSet into different formats. The job is performed
@@ -87,8 +100,9 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      * @param listener
      *            the listener to the aysnc job
      */
-    public void generate(String productGeneratorName, EventSet<IEvent> eventSet,
-            Map<String, Serializable> dialogInfo, String[] productFormats,
+    public void generate(String productGeneratorName,
+            EventSet<IEvent> eventSet, Map<String, Serializable> dialogInfo,
+            String[] productFormats,
             IPythonJobListener<GeneratedProductList> listener) {
         // Validates the parameter values
         validate(productFormats, productGeneratorName, eventSet, listener);
@@ -115,9 +129,11 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
     public void update(String productGeneratorName,
             List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList,
             List<LinkedHashMap<KeyInfo, Serializable>> prevDataList,
-            String[] productFormats, IPythonJobListener<GeneratedProductList> listener) {
+            String[] productFormats,
+            IPythonJobListener<GeneratedProductList> listener) {
         IPythonExecutor<ProductScript, GeneratedProductList> executor = new ProductScriptUpdater(
-                productGeneratorName, updatedDataList, prevDataList, productFormats);
+                productGeneratorName, updatedDataList, prevDataList,
+                productFormats);
 
         try {
             coordinator.submitAsyncJob(executor, listener);
@@ -139,6 +155,19 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
         }
 
         return retVal;
+    }
+
+    /**
+     * Get the file holding the script for the specified product.
+     * 
+     * @param product
+     *            Product for which to find the script file.
+     * @return Script file.
+     */
+    public File getScriptFile(String product) {
+        return pathManager.getStaticLocalizationFile(
+                PRODUCT_GENERATOR_RELATIVE_PATH + product
+                        + PYTHON_FILENAME_SUFFIX).getFile();
     }
 
     @Override

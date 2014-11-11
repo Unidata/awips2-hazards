@@ -7,6 +7,8 @@
     April 5, 2013            Tracy.L.Hansen      Initial creation
     Nov      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents, simplifying product
                                                  dictionary
+    Oct  08, 2014  4042      Chris.Golden        Uncommented returning of metadata fields in defineDialog()
+                                                 and added apply interdependencies script.
     
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
@@ -16,6 +18,9 @@ import os, types, copy, sys, json, collections
 import Legacy_ProductGenerator
 from HydroProductParts import HydroProductParts
 from Bridge import Bridge
+
+# Bring in the interdependencies script from the metadata file.
+import MetaData_FFA_FLW_FLS
 
 class Product(Legacy_ProductGenerator.Product):
     
@@ -43,13 +48,11 @@ class Product(Legacy_ProductGenerator.Product):
         # TODO -- set up hazardEvents and productID's
         self.bridge = Bridge() 
         metaData =   self.getMetaData([], {'productID': 'FLW_FLS'}, 'MetaData_FFA_FLW_FLS')
-        # TODO After Product Staging dialog can handle scripts, change this to:
-        # return metaData  
-        dialogDict = {}
-        fields = metaData.get('metadata')
-        if fields:
-            dialogDict['fields'] = fields
-        return dialogDict
+
+        # TODO: Uncomment this return and eliminate the line below it once
+        # metadata megawidgets have been finalized.
+        # return metaData
+        return {}
 
     def _initialize(self):
         # TODO Fix problem in framework which does not re-call the constructor
@@ -303,4 +306,9 @@ class Product(Legacy_ProductGenerator.Product):
         if prevDataList is not None:
             dataList = self.correctProduct(dataList, prevDataList, True)
         return dataList
+     
+
+# Allow interdependencies for the dialog's megawidgets to work.     
+def applyInterdependencies(triggerIdentifiers, mutableProperties):
+    return MetaData_FFA_FLW_FLS.applyInterdependencies(triggerIdentifiers, mutableProperties)
 

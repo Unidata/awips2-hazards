@@ -95,6 +95,10 @@ import com.raytheon.uf.common.util.FileUtil;
  *                                           in which the entry point function
  *                                           references other functions in the same
  *                                           or another module.
+ * Oct 10, 2014    4042    Chris.Golden      Fixed bug that caused any trigger
+ *                                           identifiers to not be deserialized
+ *                                           properly on the Python side in some
+ *                                           cases.
  * </pre>
  * 
  * @author Chris.Golden
@@ -123,11 +127,13 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
      */
     private static final String DEFINE_APPLY_INTERDEPENDENCIES_WRAPPER_FUNCTION = "def "
             + NAME_APPLY_INTERDEPENDENCIES_WRAPPER
-            + "(triggerIdentifier, mutableProperties, mutablePropertiesChanged):\n"
+            + "(triggerIdentifiers, mutableProperties, mutablePropertiesChanged):\n"
             + "   global _megawidgetMutableProperties_\n"
+            + "   if triggerIdentifiers is not None:\n"
+            + "      triggerIdentifiers = json.loads(triggerIdentifiers)\n"
             + "   if mutablePropertiesChanged:\n"
             + "      _megawidgetMutableProperties_ = json.loads(mutableProperties)\n"
-            + "   result = applyInterdependencies(triggerIdentifier, _megawidgetMutableProperties_)\n"
+            + "   result = applyInterdependencies(triggerIdentifiers, _megawidgetMutableProperties_)\n"
             + "   if result is not None:\n"
             + "      for identifier in result:\n"
             + "         for name in result[identifier]:\n"

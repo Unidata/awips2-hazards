@@ -499,7 +499,6 @@ class MixedHazardStoryFunctionalTest extends
         try {
             switch (hazardDetailAction.getActionType()) {
             case PREVIEW:
-                assertFalse(mockProductStagingView.isToBeIssued());
                 break;
 
             default:

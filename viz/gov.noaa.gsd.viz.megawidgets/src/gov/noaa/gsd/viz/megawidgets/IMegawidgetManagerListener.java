@@ -42,7 +42,9 @@ public interface IMegawidgetManagerListener {
      * @param manager
      *            Megawidget manager that experienced the invocation.
      * @param identifier
-     *            Identifier of the command.
+     *            Identifier of the command. If a subcommand was invoked, the
+     *            identifier will be of the form
+     *            <code>&lt;command&gt;.&lt;subcommand&gt</code>.
      */
     public void commandInvoked(MegawidgetManager manager, String identifier);
 

@@ -58,6 +58,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Sep 04, 2014 4560      Chris.Golden  Added constant for metadata-reload-triggering megawidgets.
  * Sep 09, 2014 4042      Chris.Golden  Added constant for UI scrolling increment.
  * Oct 03, 2014 4918      Robert.Blum   Added constant for hazard metadata.
+ * Oct 08, 2014 4042      Chris.Golden  Added constants for productgen-related Python import path.
  * </pre>
  * 
  * @author mnash
@@ -374,12 +375,12 @@ public final class HazardConstants {
      * EventSet attribute key for vtecMode
      */
     public static final String VTEC_MODE = "vtecMode";
-    
+
     /**
      * EventSet attribute key for runMode
      */
     public static final String RUN_MODE = "runMode";
-    
+
     /**
      * End time key in hazard
      */
@@ -936,6 +937,12 @@ public final class HazardConstants {
     public static final String PYTHON_LOCALIZATION_LOG_UTILITIES_DIR = "logUtilities";
 
     public static final String PYTHON_LOCALIZATION_RECOMMENDERS_DIR = "recommenders";
+
+    public static final String PYTHON_LOCALIZATION_PRODUCTGEN_DIR = "productgen";
+
+    public static final String PYTHON_LOCALIZATION_PRODUCTS_DIR = "products";
+
+    public static final String PYTHON_LOCALIZATION_FORMATS_DIR = "formats";
 
     public static final String PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR = "shapeUtilities";
 

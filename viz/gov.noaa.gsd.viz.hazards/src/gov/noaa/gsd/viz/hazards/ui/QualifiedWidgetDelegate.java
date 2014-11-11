@@ -41,11 +41,10 @@ import com.raytheon.uf.common.status.UFStatus;
  * {@link QualifiedPrincipalCallableTask} instances that encapsulate whatever
  * task must be run on the principal and whatever value must be returned, and
  * then pass them to {@link #callTask(QualifiedPrincipalCallableTask)}. In
- * contrast to <code>
- * runOrScheduleTask()</code>, <code>callTask()</code> executes the task
- * synchronously on the main UI thread, but only if the principal exists; if it
- * does not, it simply returns <code>null</code> instead of scheduling execution
- * to occur after the principal becomes available.
+ * contrast to <code>runOrScheduleTask()</code>, <code>callTask()</code>
+ * executes the task synchronously on the main UI thread, but only if the
+ * principal exists; if it does not, it simply returns <code>null</code> instead
+ * of scheduling execution to occur after the principal becomes available.
  * </p>
  * 
  * <pre>

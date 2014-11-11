@@ -54,6 +54,8 @@ import org.eclipse.swt.widgets.Event;
  *                                           megawidgets as details to throw an
  *                                           exception when they notified this
  *                                           megawidget of a state change.
+ * Oct 10, 2014    4042    Chris.Golden      Changed to work with subcommands
+ *                                           received by notification listeners.
  * </pre>
  * 
  * @author Chris.Golden
@@ -187,7 +189,7 @@ public class BoundedChoicesDetailChildrenManager implements
     }
 
     @Override
-    public void megawidgetInvoked(INotifier megawidget) {
+    public void megawidgetInvoked(INotifier megawidget, String subcommand) {
 
         /*
          * If the invoked megawidget is not stateful, first fire off a selection
@@ -203,7 +205,7 @@ public class BoundedChoicesDetailChildrenManager implements
         /*
          * Notify the real notification listener of the invocation.
          */
-        notificationListener.megawidgetInvoked(megawidget);
+        notificationListener.megawidgetInvoked(megawidget, subcommand);
     }
 
     @Override

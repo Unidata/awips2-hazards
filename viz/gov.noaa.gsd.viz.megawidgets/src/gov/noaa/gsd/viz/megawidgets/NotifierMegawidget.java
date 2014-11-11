@@ -28,6 +28,8 @@ import java.util.Map;
  * Jun 23, 2014   4010     Chris.Golden      Changed to no longer include the
  *                                           extra callback information in any
  *                                           method invocations.
+ * Oct 10, 2014   4042     Chris.Golden      Added subcommand information for
+ *                                           invocations.
  * </pre>
  * 
  * @author Chris.Golden
@@ -66,12 +68,24 @@ public abstract class NotifierMegawidget extends Megawidget implements
     // Protected Methods
 
     /**
-     * Notify the notification listener, if it is appropriate. This method
-     * should be called by subclasses whenever the latter are invoked.
+     * Notify the notification listener of an invocation, if it is appropriate.
+     * This method should be called by subclasses whenever the latter are
+     * invoked.
      */
     protected final void notifyListener() {
         if (notificationListener != null) {
-            notificationListener.megawidgetInvoked(this);
+            notificationListener.megawidgetInvoked(this, null);
+        }
+    }
+
+    /**
+     * Notify the notification listener of a subcommand invocation, if it is
+     * appropriate. This method should be called by subclasses whenever the
+     * latter have subcommands that are invoked.
+     */
+    protected final void notifyListener(String subcommand) {
+        if (notificationListener != null) {
+            notificationListener.megawidgetInvoked(this, subcommand);
         }
     }
 }

@@ -28,10 +28,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Apr 1, 2014            mnash     Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Apr 01, 2014            mnash        Initial creation
+ * Oct 09, 2014    4042    Chris.Golden Added product staging dialog.
  * </pre>
  * 
  * @author mnash
@@ -39,5 +39,5 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  */
 
 public enum UIOriginator implements IOriginator {
-    SPATIAL_DISPLAY, HAZARD_INFORMATION_DIALOG, SETTINGS_DIALOG, CONSOLE;
+    SPATIAL_DISPLAY, HAZARD_INFORMATION_DIALOG, STAGING_DIALOG, SETTINGS_DIALOG, CONSOLE;
 }

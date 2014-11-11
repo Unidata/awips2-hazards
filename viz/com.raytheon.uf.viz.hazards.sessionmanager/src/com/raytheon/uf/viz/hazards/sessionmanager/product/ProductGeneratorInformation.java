@@ -19,7 +19,10 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
@@ -42,7 +45,8 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  *                                     ProductInformation with a product generation
  *                                     request.
  * Mar 18, 2014 2917       jsanchez    Added getter/setters for ProductFormats.
- * 
+ * Oct 03, 2014 4042       Chris.Golden Changed dialog info (list of maps specifying
+ *                                      megawidgets) to megawidget specifier manager.
  * </pre>
  * 
  * @author bsteffen
@@ -56,9 +60,9 @@ public class ProductGeneratorInformation {
 
     private Set<IHazardEvent> possibleProductEvents;
 
-    private Map<String, Serializable> dialogInfo;
+    private MegawidgetSpecifierManager stagingMegawidgetSpecifierManager;
 
-    private Map<String, Serializable> dialogSelections;
+    private Map<String, Serializable> dialogSelections = Collections.emptyMap();
 
     private ProductFormats productFormats;
 
@@ -92,12 +96,13 @@ public class ProductGeneratorInformation {
         this.possibleProductEvents = possibleProductEvents;
     }
 
-    public Map<String, Serializable> getDialogInfo() {
-        return dialogInfo;
+    public MegawidgetSpecifierManager getStagingDialogMegawidgetSpecifierManager() {
+        return stagingMegawidgetSpecifierManager;
     }
 
-    public void setDialogInfo(Map<String, Serializable> dialogInfo) {
-        this.dialogInfo = dialogInfo;
+    public void setStagingDialogMegawidgetSpecifierManager(
+            MegawidgetSpecifierManager stagingMegawidgetSpecifierManager) {
+        this.stagingMegawidgetSpecifierManager = stagingMegawidgetSpecifierManager;
     }
 
     public Map<String, Serializable> getDialogSelections() {

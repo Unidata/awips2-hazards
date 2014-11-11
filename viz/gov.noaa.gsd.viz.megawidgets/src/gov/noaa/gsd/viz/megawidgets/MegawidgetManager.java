@@ -135,6 +135,7 @@ import com.google.common.collect.Lists;
  *                                           notifications.
  * Aug 19, 2014    4098     Chris.Golden     Changed to provide a method for accessing
  *                                           SWT wrapper megawidgets.
+ * Oct 10, 2014    4042     Chris.Golden     Changed to work with notifier subcommands.
  * </pre>
  * 
  * @author Chris.Golden
@@ -225,14 +226,15 @@ public class MegawidgetManager {
     private final INotificationListener notificationListener = new INotificationListener() {
 
         @Override
-        public void megawidgetInvoked(INotifier megawidget) {
+        public void megawidgetInvoked(INotifier megawidget, String subcommand) {
 
             /*
              * Send out notification of the invocation.
              */
             if (managerListener != null) {
                 managerListener.commandInvoked(MegawidgetManager.this,
-                        megawidget.getSpecifier().getIdentifier());
+                        megawidget.getSpecifier().getIdentifier()
+                                + (subcommand != null ? "." + subcommand : ""));
             }
 
             /*
@@ -245,7 +247,8 @@ public class MegawidgetManager {
             if ((sideEffectsApplier != null)
                     && ((megawidget instanceof IStateful) == false)) {
                 applySideEffects(Lists.newArrayList(megawidget.getSpecifier()
-                        .getIdentifier()), false);
+                        .getIdentifier()
+                        + (subcommand != null ? "." + subcommand : "")), false);
             }
         }
     };
@@ -691,7 +694,8 @@ public class MegawidgetManager {
      *         latter maps the mutable property names to their current values.
      */
     public final Map<String, Map<String, Object>> getMutableProperties() {
-        Map<String, Map<String, Object>> mutableProperties = new HashMap<>();
+        Map<String, Map<String, Object>> mutableProperties = new HashMap<>(
+                megawidgetsForIdentifiers.size(), 1.0f);
         for (String identifier : megawidgetsForIdentifiers.keySet()) {
             mutableProperties.put(identifier,
                     megawidgetsForIdentifiers.get(identifier)
@@ -919,7 +923,8 @@ public class MegawidgetManager {
      *         extra data maps.
      */
     public final Map<String, Map<String, Object>> getExtraData() {
-        Map<String, Map<String, Object>> extraDataMap = new HashMap<>();
+        Map<String, Map<String, Object>> extraDataMap = new HashMap<>(
+                megawidgetsForIdentifiers.size(), 1.0f);
         for (String identifier : megawidgetsForIdentifiers.keySet()) {
             Map<String, Object> extraData = megawidgetsForIdentifiers.get(
                     identifier).getExtraData();
@@ -1072,7 +1077,7 @@ public class MegawidgetManager {
          * parameters to megawidgets created via megawidget specifiers at the
          * megawidgets' creation time.
          */
-        Map<String, Object> megawidgetCreationParams = new HashMap<>();
+        Map<String, Object> megawidgetCreationParams = new HashMap<>(6, 1.0f);
         megawidgetCreationParams.put(INotifier.NOTIFICATION_LISTENER,
                 notificationListener);
         megawidgetCreationParams.put(IStateful.STATE_CHANGE_LISTENER,
@@ -1171,7 +1176,7 @@ public class MegawidgetManager {
          * are being changed part of their mutable property changes.
          */
         Map<String, Object> valuesForChangedStates = new HashMap<>(
-                mutableProperties.size());
+                mutableProperties.size(), 1.0f);
         for (String identifier : mutableProperties.keySet()) {
 
             /*
@@ -1216,7 +1221,7 @@ public class MegawidgetManager {
                                         + "megawidget.setMutableProperties()");
                     }
                 } else {
-                    map = new HashMap<>();
+                    map = new HashMap<>(1, 1.0f);
                     map.put(identifier, values);
                 }
 

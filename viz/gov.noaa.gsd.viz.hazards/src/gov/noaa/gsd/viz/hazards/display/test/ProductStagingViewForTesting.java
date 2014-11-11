@@ -9,16 +9,20 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
+import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.productstaging.IProductStagingView;
+import gov.noaa.gsd.viz.hazards.productstaging.IProductStagingViewDelegate;
+import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter.Command;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
-
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
+import org.eclipse.jface.action.Action;
 
 /**
  * Description: Mock {@link IProductStagingView} used for testing.
@@ -34,80 +38,152 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
  * May 18, 2014  2925      Chris.Golden      Changed to work with new MVP framework.
- * Jun 30, 2014 3512    Chris.Golden         Changed to work with changes to
+ * Jun 30, 2014  3512      Chris.Golden      Changed to work with changes to
  *                                           ICommandInvoker.
+ * Oct 02, 2014  4042      Chris.Golden      Changed to support two-step product
+ *                                           staging dialog.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-@SuppressWarnings("rawtypes")
-public class ProductStagingViewForTesting implements IProductStagingView {
+public class ProductStagingViewForTesting implements
+        IProductStagingViewDelegate<Action, RCPMainUserInterfaceElement> {
 
-    private boolean toBeIssued;
+    private List<String> productNames;
 
-    private ProductStagingInfo productStagingInfo;
+    private Map<String, List<String>> possibleEventIdsForProductNames;
 
-    private final ICommandInvoker<String> commandInvoker = new ICommandInvoker<String>() {
+    private Map<String, List<String>> possibleEventDescriptionsForProductNames;
 
-        @Override
-        public void setEnabled(String identifier, boolean enable) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void setCommandInvocationHandler(
-                ICommandInvocationHandler<String> handler) {
-
-            /*
-             * This is deliberate. It seems weird, but essentially what is being
-             * done here is that as soon as the mock dialog is brought up, the
-             * presenter's process of binding event handlers to the dialog
-             * causes the dialog to immediately fire the invocation handler
-             * supplied. This allows the mock product editor to come up, which
-             * in turn causes a ProductGenerationComplete notification to go
-             * out, which can in turn be caught by the functional test using
-             * this mock view.
-             */
-            handler.commandInvoked(HazardConstants.CONTINUE_BUTTON);
-        }
-    };
+    private Map<String, List<String>> selectedEventIdsForProductNames;
 
     @Override
     public void dispose() {
 
+        /*
+         * No action.
+         */
     }
 
     @Override
-    public List contributeToMainUI(Enum type) {
+    public List<Action> contributeToMainUI(RCPMainUserInterfaceElement type) {
         throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void showProductStagingDetail(boolean toBeIssued,
-            ProductStagingInfo productStagingInfo) {
-        this.toBeIssued = toBeIssued;
-        this.productStagingInfo = productStagingInfo;
-
-    }
-
-    @Override
-    public ICommandInvoker getCommandInvoker() {
-        return commandInvoker;
-    }
-
-    @Override
-    public boolean isToBeIssued() {
-        return toBeIssued;
-    }
-
-    @Override
-    public ProductStagingInfo getProductStagingInfo() {
-        return productStagingInfo;
     }
 
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
+    }
+
+    @Override
+    public void setAssociatedEventsChangeHandler(
+            IStateChangeHandler<String, List<String>> handler) {
+
+        /*
+         * No action.
+         */
+    }
+
+    @Override
+    public void setProductMetadataChangeHandler(
+            IQualifiedStateChangeHandler<String, String, Object> handler) {
+
+        /*
+         * No action.
+         */
+    }
+
+    @Override
+    public void setButtonInvocationHandler(
+            ICommandInvocationHandler<Command> handler) {
+
+        /*
+         * This is weird but deliberate. It seems weird, but essentially what is
+         * being done here is that as soon as the mock dialog is brought up, the
+         * presenter's process of binding event handlers to the dialog causes
+         * the dialog to immediately fire the invocation handler supplied. This
+         * allows the mock product editor to come up, which in turn causes a
+         * ProductGenerationComplete notification to go out, which can in turn
+         * be caught by the functional test using this mock view.
+         */
+        handler.commandInvoked(Command.CONTINUE);
+    }
+
+    @Override
+    public void showFirstStep(List<String> productNames,
+            Map<String, List<String>> possibleEventIdsForProductNames,
+            Map<String, List<String>> possibleEventDescriptionsForProductNames,
+            Map<String, List<String>> selectedEventIdsForProductNames) {
+        this.productNames = productNames;
+        this.possibleEventIdsForProductNames = possibleEventIdsForProductNames;
+        this.possibleEventDescriptionsForProductNames = possibleEventDescriptionsForProductNames;
+        this.selectedEventIdsForProductNames = selectedEventIdsForProductNames;
+    }
+
+    @Override
+    public void showSecondStep(
+            List<String> productNames,
+            Map<String, MegawidgetSpecifierManager> megawidgetSpecifierManagersForProductNames,
+            long minimumVisibleTime, long maximumVisibleTime,
+            boolean firstStepSkipped) {
+
+        /*
+         * No action.
+         */
+    }
+
+    @Override
+    public void hide() {
+
+        /*
+         * No action.
+         */
+    }
+
+    /**
+     * Get the names of the products being staged.
+     * 
+     * @return Product names.
+     */
+    public List<String> getProductNames() {
+        return productNames;
+    }
+
+    /**
+     * Get the list of all possible event identifiers for the specified product.
+     * 
+     * @param productName
+     *            Product name.
+     * @return List of all possible event identifiers.
+     */
+    public List<String> getAllPossibleEventIdentifiersForProductName(
+            String productName) {
+        return possibleEventIdsForProductNames.get(productName);
+    }
+
+    /**
+     * Get the list of all possible event descriptions for the specified
+     * product.
+     * 
+     * @param productName
+     *            Product name.
+     * @return List of all possible event descriptions.
+     */
+    public List<String> getAllPossibleEventDescriptionsForProductName(
+            String productName) {
+        return possibleEventDescriptionsForProductNames.get(productName);
+    }
+
+    /**
+     * Get the list of selected event identifiers for the specified product.
+     * 
+     * @param productName
+     *            Product name.
+     * @return List of selected event identifiers.
+     */
+    public List<String> getSelectedEventIdentifiersForProductName(
+            String productName) {
+        return selectedEventIdsForProductNames.get(productName);
     }
 }

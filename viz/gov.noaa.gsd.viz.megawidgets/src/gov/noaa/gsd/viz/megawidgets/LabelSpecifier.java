@@ -33,6 +33,7 @@ import java.util.Map;
  *                                           comments.
  * Jun 17, 2014    3982    Chris.Golden      Changed "isFullWidthOfColumn"
  *                                           property to "isFullWidthOfDetailPanel".
+ * Oct 10, 2014    4042    Chris.Golden      Added "preferredWidth" parameter.
  * </pre>
  * 
  * @author Chris.Golden
@@ -52,6 +53,17 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
      * false</code>.
      */
     public static final String LABEL_WRAP = "wrap";
+
+    /**
+     * Preferred width parameter name; a megawidget may include a positive
+     * integer associated with this name to indicate what the preferred width
+     * (measured in average character width for the font the label is using) is.
+     * If provided, the megawidget will request that its parent be that wide if
+     * possible; if not, it will request that the parent be wide enough to show
+     * all of its text. This is intended to be used only when
+     * {@link #LABEL_WRAP} is <code>true</code>.
+     */
+    public static final String LABEL_PREFERRED_WIDTH = "preferredWidth";
 
     /**
      * Bold flag parameter name; a megawidget may include a boolean value
@@ -75,6 +87,12 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
      * Flag indicating whether or not wrapping should occur.
      */
     private final boolean wrap;
+
+    /**
+     * Preferred width (in average character width); if 0, it is assumed to be
+     * the length of the text.
+     */
+    private final int preferredWidth;
 
     /**
      * Flag indicating whether or not a bold font is to be used.
@@ -117,6 +135,19 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
                 LABEL_WRAP, false);
 
         /*
+         * Ensure that the preferred width, if present, is acceptable.
+         */
+        preferredWidth = ConversionUtilities
+                .getSpecifierIntegerValueFromObject(getIdentifier(), getType(),
+                        parameters.get(LABEL_PREFERRED_WIDTH),
+                        LABEL_PREFERRED_WIDTH, 0);
+        if (preferredWidth < 0) {
+            throw new MegawidgetSpecificationException(getIdentifier(),
+                    getType(), LABEL_PREFERRED_WIDTH, preferredWidth,
+                    "must be positive integer");
+        }
+
+        /*
          * Ensure that the bold and italic flags, if present, are acceptable.
          */
         bold = ConversionUtilities.getSpecifierBooleanValueFromObject(
@@ -137,6 +168,16 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
      */
     public boolean isToWrap() {
         return wrap;
+    }
+
+    /**
+     * Get the preferred width (in units equivalent to average character size).
+     * If 0, the preferred width is assumed to be the length of the text.
+     * 
+     * @return Preferred width.
+     */
+    public int getPreferredWidth() {
+        return preferredWidth;
     }
 
     /**

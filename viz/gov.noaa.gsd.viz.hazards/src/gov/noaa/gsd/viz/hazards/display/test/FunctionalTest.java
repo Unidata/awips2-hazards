@@ -20,7 +20,7 @@ import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
 import gov.noaa.gsd.viz.hazards.hazarddetail.IHazardDetailViewDelegate;
 import gov.noaa.gsd.viz.hazards.producteditor.IProductEditorView;
 import gov.noaa.gsd.viz.hazards.producteditor.ProductEditorPresenter;
-import gov.noaa.gsd.viz.hazards.productstaging.IProductStagingView;
+import gov.noaa.gsd.viz.hazards.productstaging.IProductStagingViewDelegate;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
@@ -114,7 +114,7 @@ public abstract class FunctionalTest<E extends Enum<E>> {
 
     private IToolsView<?, ?> realToolsView;
 
-    private IProductStagingView<?, ?> realProductStagingView;
+    private IProductStagingViewDelegate<?, ?> realProductStagingView;
 
     private IProductEditorView<?, ?> realProductEditorView;
 

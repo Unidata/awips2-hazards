@@ -41,6 +41,7 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Oct 10, 2014    4042    Chris.Golden      Added "preferredWidth" parameter.
  * </pre>
  * 
  * @author Chris.Golden
@@ -125,11 +126,15 @@ public class LabelMegawidget extends Megawidget implements IControl {
          * Place the widget in the grid. If the widget may end up wrapping, then
          * it must be registered as a listener for its parent's resize events so
          * that it can have its width hint set each time the parent is resized.
+         * Use the preferred width if one was specified.
          */
         GridData gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         gridData.horizontalSpan = specifier.getWidth();
         if (specifier.isToWrap()) {
             specifier.ensureChildIsResizedWithParent(parent, label);
+        }
+        if (specifier.getPreferredWidth() > 0) {
+            gridData.widthHint = specifier.getPreferredWidth();
         }
         gridData.verticalIndent = specifier.getSpacing();
         label.setLayoutData(gridData);

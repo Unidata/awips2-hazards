@@ -8,7 +8,9 @@
     Nov      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents, simplifying product
                                                  dictionary
     Oct 22, 2014   5052      mpduff              Fix code error
-    
+    Oct 22, 2014   4042      Chris.Golden        Uncommented returning of metadata fields in defineDialog()
+                                                 and added apply interdependencies script.
+
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
     '''
@@ -16,6 +18,9 @@ import os, types, copy, sys, json, collections
 import Legacy_ProductGenerator
 from HydroProductParts import HydroProductParts
 from Bridge import Bridge
+
+# Bring in the interdependencies script from the metadata file.
+import MetaData_FFA_FLW_FLS
 
 class Product(Legacy_ProductGenerator.Product):
     
@@ -39,33 +44,20 @@ class Product(Legacy_ProductGenerator.Product):
         '''
         @return: dialog definition to solicit user input before running tool
         '''  
-         #  Here is an example of a dialog definition which you could use
-         #  as a starting point if you want to add information to be
-         #  solicited from the user:
+        #  Here is an example of a dialog definition which you could use
+        #  as a starting point if you want to add information to be
+        #  solicited from the user:
         self._initialize()
 
         # TODO -- set up hazardEvents and productID's 
         # Get Product Level Meta Data
         self.bridge = Bridge() 
         metaData =   self.getMetaData([], {'productID': 'FFA'}, 'MetaData_FFA_FLW_FLS')
-        # TODO After Product Staging dialog can handle scripts, change this to:
-        # return metaData  
-        dialogDict = {}
-        productLevelFields = metaData.get('metadata')
-          
-        # Check for Cancel
-        cancelFields = self._checkForCancel(eventSet)
         
-        #if cancelFields:
-        #    cancelFields = metaDataList
-        #else:
-        #    cancelFields = []
-        cancelFields = []
-        
-        fields = productLevelFields + cancelFields
-        if fields:
-            dialogDict['fields'] = fields
-        return dialogDict
+        # TODO: Uncomment this return and eliminate the line below it once
+        # metadata megawidgets have been finalized.
+        # return metaData
+        return {}
                 
     def _initialize(self):
         # TODO Fix problem in framework which does not re-call the constructor
@@ -154,4 +146,9 @@ class Product(Legacy_ProductGenerator.Product):
     def getBasisPhrase(self, vtecRecord, hazardEvent, metaData, lineLength=69):
         # Basis bullet
         return hazardEvent.get('basis')
-            
+    
+
+# Allow interdependencies for the dialog's megawidgets to work.     
+def applyInterdependencies(triggerIdentifiers, mutableProperties):
+    return MetaData_FFA_FLW_FLS.applyInterdependencies(triggerIdentifiers, mutableProperties)
+

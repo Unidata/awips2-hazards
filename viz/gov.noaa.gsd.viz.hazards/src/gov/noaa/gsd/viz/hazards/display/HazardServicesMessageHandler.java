@@ -25,7 +25,6 @@ import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardServicesCloseAction;
 import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
-import gov.noaa.gsd.viz.hazards.display.action.ProductStagingAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
@@ -94,7 +93,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComp
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingRequired;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.viz.core.mode.CAVEMode;
@@ -180,6 +179,14 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            dialog for a recommender.
  * Sep 09, 2014  4042      Chris.Golden       Moved product staging info generation to
  *                                            the product staging presenter.
+ * Oct 02, 2014  4042      Chris.Golden       Changed to support two-step product
+ *                                            staging dialog (first step allows user to
+ *                                            select additional events to be included in
+ *                                            products, second step allows the inputting
+ *                                            of additional product-specific information
+ *                                            using megawidgets). Also continued slow
+ *                                            process of moving functionality from here
+ *                                            into the session manager as appropriate.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -627,7 +634,7 @@ public final class HazardServicesMessageHandler implements
      */
     private void issueEvents() {
         if (continueIfThereAreHazardConflicts()) {
-            generate(true);
+            sessionManager.generate(true);
             notifyModelEventsChanged();
         }
     }
@@ -943,26 +950,7 @@ public final class HazardServicesMessageHandler implements
      * Generates products for preview.
      */
     private void preview() {
-        generate(false);
-    }
-
-    private void generate(boolean issue) {
-        if (issue) {
-            sessionManager.setIssueOngoing(true);
-        } else {
-            sessionManager.setPreviewOngoing(true);
-        }
-
-        if (sessionProductManager.isProductGenerationRequired(issue)) {
-            sessionProductManager.generateProducts(issue);
-        } else {
-            appBuilder
-                    .showProductStagingView(
-                            issue,
-                            sessionProductManager
-                                    .getAllProductGeneratorInformationForSelectedHazardsCache(issue));
-        }
-
+        sessionManager.generate(false);
     }
 
     public void generateReviewableProduct(List<ProductData> productData) {
@@ -1125,24 +1113,6 @@ public final class HazardServicesMessageHandler implements
         }
 
         appBuilder.closeProductEditorView();
-    }
-
-    /**
-     * Handles the product display dialog continue action.
-     * 
-     * @param issue
-     *            Flag indicating whether or not this is the result of an issue.
-     * @param productStagingInfo
-     * 
-     */
-    private void handleProductDisplayContinueAction(boolean issue,
-            ProductStagingInfo productStagingInfo) {
-        sessionProductManager.createProductsFromProductStagingInfo(issue,
-                productStagingInfo);
-        if (!issue) {
-            // appBuilder.showProductEditorView(returnDict_json);
-            notifyModelEventsChanged();
-        }
     }
 
     /**
@@ -1583,25 +1553,20 @@ public final class HazardServicesMessageHandler implements
     }
 
     /**
-     * Handle a received product staging action. This method is called
-     * implicitly by the event bus when actions of this type are sent across the
-     * latter.
+     * Handle a product staging required notification.
      * 
-     * @param productStagingAction
-     *            Action received.
+     * TODO: When the app builder is turned into an app controller during the
+     * last stages of MVP refactoring, this handler should be within the app
+     * controller. For now, it resides here with many other handlers that will
+     * themselves either be removed or relocated.
+     * 
+     * @param notification
+     *            Notification received.
      */
     @Handler
-    public void productStagingActionOccurred(
-            final ProductStagingAction productStagingAction) {
-
-        // If the action equals Continue, that means we have to generate
-        // product and make sure that we will issue those products or not.
-        // Thus we need a return message that contains issueFlag and revised
-        // productList
-        handleProductDisplayContinueAction(productStagingAction.getIssueFlag()
-                .equals(Boolean.TRUE.toString()),
-                productStagingAction.getProductStagingInfo());
-
+    public void productStagingRequired(final ProductStagingRequired notification) {
+        appBuilder.showProductStagingView(notification.isIssue(),
+                notification.getStagingRequired());
     }
 
     @Handler

@@ -21,11 +21,10 @@ package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
-import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 
 /**
@@ -42,7 +41,13 @@ import com.raytheon.uf.common.hazards.productgen.data.ProductData;
  *                                     whether or not product generation has been cancelled.
  * Apr 17, 2014  696       dgilling    Added setVTECFormat().
  * Apr 29, 2014 1480       jsanchez    Added generateCorrectionProduct and issueCorrection.
- * 
+ * Oct 02, 2014 4042       Chris.Golden Changed to support two-step product staging dialog
+ *                                      (first step allows user to select additional events
+ *                                      to be included in products, second step allows the
+ *                                      inputting of additional product-specific information
+ *                                      using megawidgets). Also made many public, interface-
+ *                                      specified methods private, as they are only to be
+ *                                      used internally by this class.
  * </pre>
  * 
  * @author bsteffen
@@ -52,55 +57,11 @@ import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 public interface ISessionProductManager {
 
     /**
-     * Returns product generator information appropriate for the current hazard
-     * selection.
-     * 
-     * @return
+     * Types of possible staging required when attempting to generate products.
      */
-    public Collection<ProductGeneratorInformation> getAllProductGeneratorInformationForSelectedHazards(
-            boolean issue);
-
-    /**
-     * Generate a product from the given {@link ProductGeneratorInformation}
-     * 
-     * @param productGeneratorInformation
-     *            the information about the product to generate
-     * @param issue
-     *            - true if hazard events are being issued; false if previewed
-     * @param confim
-     *            whether or not to confirm issuance
-     * @return whether or not to continue product generation
-     */
-    public boolean generate(
-            ProductGeneratorInformation productGeneratorInformation,
-            boolean issue, boolean confirm);
-
-    /**
-     * Generates the issued product from the given
-     * {@link ProductGeneratorInformation} and the updatedDataList derived from
-     * the database.
-     * 
-     * @param productGeneratorInformation
-     * @param updatedDataList
-     */
-    public void generateProductReview(
-            ProductGeneratorInformation productGeneratorInformation,
-            List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList);
-
-    /**
-     * Issue the corrected product
-     * 
-     * @param productGeneratorInformation
-     */
-    public void issueCorrection(
-            ProductGeneratorInformation productGeneratorInformation);
-
-    /**
-     * Issue the provided product and all the events associated with it.
-     * 
-     * @param productGeneratorInformation
-     */
-    public void issue(ProductGeneratorInformation productGeneratorInformation);
+    public enum StagingRequired {
+        NO_APPLICABLE_EVENTS, NONE, POSSIBLE_EVENTS, PRODUCT_SPECIFIC_INFO
+    };
 
     /**
      * Execute any shutdown needed.
@@ -108,17 +69,9 @@ public interface ISessionProductManager {
     public void shutdown();
 
     /**
-     * Validate the selected events before product generation.
-     * 
-     * @return true - the selected events are valid for product generation false
-     *         - the selected events are not valid.
-     */
-    public boolean validateSelectedHazardsForProductGeneration();
-
-    /**
-     * Return a list of hazard types which product generation currently does not
-     * support (i.e. these are hazared types for which product generation cannot
-     * generate products).
+     * Get a list of hazard types which product generation currently does not
+     * support. The latter are hazard types for which product generation cannot
+     * generate products.
      * 
      * @return List of unsupported hazard types.
      */
@@ -137,12 +90,21 @@ public interface ISessionProductManager {
     public void setVTECFormat(String vtecMode, boolean testMode);
 
     /**
-     * Creates a text version that can be brought up in the product editor after
+     * Issue the specified corrected product.
+     * 
+     * @param productGeneratorInformation
+     *            Information about the product being corrected.
+     */
+    public void issueCorrection(
+            ProductGeneratorInformation productGeneratorInformation);
+
+    /**
+     * Create a text version that can be brought up in the product editor after
      * the product is issued. The product can be brought up to be reviewed and
      * even corrected and re-issued.
      * 
-     * @param The
-     *            hibernate representation for the storage of product data to
+     * @param productData
+     *            Hibernate representation for the storage of product data to
      *            retrieve for correction or review.
      */
     public void generateReviewableProduct(List<ProductData> productData);
@@ -151,51 +113,77 @@ public interface ISessionProductManager {
      * Generate products from Hazard Event
      * 
      * @param issue
-     *            - true if hazard events are being issued; false if previewed
+     *            Flag indicating whether or not the generation is the result of
+     *            an issue command; if false, it is the result of a preview
+     *            command.
      * @param generatedProductsList
-     * @return
+     *            List of generated products to be created.
      */
     public void createProductsFromHazardEventSets(boolean issue,
             List<GeneratedProductList> generatedProductsList);
 
     /**
-     * Generates products from the product staging info edited by the user.
+     * Generate products, or request product staging if it is required before
+     * generation can occur.
      * 
      * @param issue
-     *            - true if hazard events are being issued; false if previewed
-     * @param productStagingInfo
-     *            - information used to populate the product staging dialog
-     * @return
+     *            Flag indicating whether or not the generation is the result of
+     *            an issue command; if false, it is the result of a preview
+     *            command.
      */
-    public void createProductsFromProductStagingInfo(boolean issue,
-            ProductStagingInfo productStagingInfo);
+    public void generateProducts(boolean issue);
 
     /**
-     * Determines if product generation is needed.
+     * Get the product generation information associated with the most recent
+     * issuance or preview attempt.
+     * <p>
+     * <strong>Note</strong>: This method must only be called after calling
+     * {@link #generateProducts(boolean)} with the same value for
+     * <code>issue</code>.
      * 
      * @param issue
-     *            - true if hazard events are being issued; false if previewed
-     * @return true if product generation is required
+     *            Flag indicating whether or not the hazard events are to be
+     *            issued. If false, they are to be previewed.
+     * @return Product generation information.
      */
-    public boolean isProductGenerationRequired(boolean issue);
-
-    /**
-     * Get the cached {@link ProductGeneratorInformation} depending on whether
-     * an issue or preview is occurring.
-     * 
-     * @param issue
-     *            - true if hazard events are being issued; false if previewed
-     * @return cached product information used for optimization.
-     */
-    public Collection<ProductGeneratorInformation> getAllProductGeneratorInformationForSelectedHazardsCache(
+    public Collection<ProductGeneratorInformation> getAllProductGeneratorInformationForSelectedHazards(
             boolean issue);
 
     /**
-     * Generate the products
+     * Generate products from the preliminary product staging information edited
+     * by the user if possible, or return a value indicating that further
+     * information must be collected before generation can commence.
+     * <p>
+     * <strong>Note</strong>: This method must only be called after calling
+     * {@link #generateProducts(boolean)} with the same value for
+     * <code>issue</code>.
      * 
      * @param issue
-     *            - true if hazard events are being issued; false if previewed
-     * @return
+     *            Flag indicating whether or not the hazard events are to be
+     *            issued. If false, they are to be previewed.
+     * @param selectedEventIdentifiersForProductGeneratorNames
+     *            Map of product generator names to the lists of event
+     *            identifiers that are to be incorporated into the associated
+     *            products.
+     * @return True if the second stage of the product staging dialog is
+     *         required to allow users to fill in product-specific information,
+     *         false if product generation has commenced.
      */
-    public void generateProducts(boolean issue);
+    public boolean createProductsFromPreliminaryProductStaging(
+            boolean issue,
+            Map<String, List<String>> selectedEventIdentifiersForProductGeneratorNames);
+
+    /**
+     * Generate products from the final product staging information edited by
+     * the user.
+     * 
+     * @param issue
+     *            Flag indicating whether or not the hazard events are to be
+     *            issued. If false, they are to be previewed.
+     * @param metadataMapsForProductGeneratorNames
+     *            Map of product generator names to associated metadata maps.
+     */
+    public void createProductsFromFinalProductStaging(
+            boolean issue,
+            Map<String, Map<String, Serializable>> metadataMapsForProductGeneratorNames);
 }

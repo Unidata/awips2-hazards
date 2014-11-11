@@ -30,6 +30,10 @@ package gov.noaa.gsd.viz.megawidgets;
  * Jun 23, 2014    4010    Chris.Golden      Changed to no longer include the
  *                                           extra callback information in any
  *                                           method invocations.
+ * Oct 10, 2014    4042    Chris.Golden      Changed to include subcommand
+ *                                           information, since notifier
+ *                                           megawidgets may have subcommands
+ *                                           (such as MenuButton).
  * </pre>
  * 
  * @author Chris.Golden
@@ -45,6 +49,9 @@ public interface INotificationListener {
      * 
      * @param megawidget
      *            Megawidget that was invoked.
+     * @param subcommand
+     *            Subcommand, if any, that was invoked. If <code>null</code>,
+     *            there is no subcommand.
      */
-    public void megawidgetInvoked(INotifier megawidget);
+    public void megawidgetInvoked(INotifier megawidget, String subcommand);
 }

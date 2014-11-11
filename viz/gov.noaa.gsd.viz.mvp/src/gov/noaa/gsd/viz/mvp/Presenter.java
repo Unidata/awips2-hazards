@@ -40,6 +40,12 @@ import java.util.Set;
  *                                        that views are not set before the
  *                                        constructor, and subclass constructors,
  *                                        finish executing.
+ * Oct 07, 2014    4042    Chris.Golden   Deprecated methods for firing off events
+ *                                        intended for the model on the event bus,
+ *                                        and receiving model-changed notifications
+ *                                        (since presenters should manipulate the
+ *                                        model directly, and should be notified of
+ *                                        changes to the model via @Handler methods.
  * </pre>
  * 
  * @author Chris.Golden
@@ -128,20 +134,30 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
 
     /**
      * Fire an action off to listeners.
+     * <p>
+     * <strong>Note</strong>: This method has been deprecated. Presenters should
+     * receive notifications of model changes via <code>@Handler</code> methods,
+     * since they subscribe to the event bus.
      * 
      * @param action
      *            Action.
      */
+    @Deprecated
     public final void fireAction(A action) {
         eventBus.publish(action);
     }
 
     /**
      * Receive notification of a model change.
+     * <p>
+     * <strong>Note</strong>: This method has been deprecated. Presenters should
+     * receive notifications of model changes via <code>@Handler</code> methods,
+     * since they subscribe to the event bus.
      * 
      * @param changed
      *            Set of elements within the model that have changed.
      */
+    @Deprecated
     public abstract void modelChanged(EnumSet<E> changed);
 
     /**

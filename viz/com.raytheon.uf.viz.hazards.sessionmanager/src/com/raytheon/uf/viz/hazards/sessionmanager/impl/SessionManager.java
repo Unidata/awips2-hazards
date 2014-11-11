@@ -88,6 +88,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * May 12, 2014 2925       C. Golden   Added supplying of time manager to configuration
  *                                     manager, and the firing of auto-check-conflicts-
  *                                     changed messages when the toggle changes state.
+ * Oct 08, 2014 4042       C. Golden   Added generate method (moved from message handler).
  * </pre>
  * 
  * @author bsteffen
@@ -452,4 +453,13 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
         return eventBus;
     }
 
+    @Override
+    public void generate(boolean issue) {
+        if (issue) {
+            setIssueOngoing(true);
+        } else {
+            setPreviewOngoing(true);
+        }
+        productManager.generateProducts(issue);
+    }
 }

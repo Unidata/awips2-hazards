@@ -52,6 +52,8 @@ import com.raytheon.viz.ui.dialogs.CaveJFACEDialog;
  * Jun 04, 2013            Chris.Golden      Changed to subclass CaveJFACEDialog.
  * May 10, 2013    2925    Chris.Godlen      Moved to its own package and cleaned
  *                                           up the Javadoc and in-method comments.
+ * Oct 10, 2014    4042    Chris.Golden      Made constants protected so that they
+ *                                           may be used by subclasses.
  * </pre>
  * 
  * @author Chris.Golden
@@ -59,35 +61,35 @@ import com.raytheon.viz.ui.dialogs.CaveJFACEDialog;
  */
 public class BasicDialog extends CaveJFACEDialog {
 
-    // Private Static Constants
+    // Protected Static Constants
 
     /**
      * Copied from org.eclipse.jface.Dialog:
      * 
      * The dialog settings key name for stored dialog x location.
      */
-    private static final String DIALOG_ORIGIN_X = "DIALOG_X_ORIGIN"; //$NON-NLS-1$
+    protected static final String DIALOG_ORIGIN_X = "DIALOG_X_ORIGIN"; //$NON-NLS-1$
 
     /**
      * Copied from org.eclipse.jface.Dialog:
      * 
      * The dialog settings key name for stored dialog y location.
      */
-    private static final String DIALOG_ORIGIN_Y = "DIALOG_Y_ORIGIN"; //$NON-NLS-1$
+    protected static final String DIALOG_ORIGIN_Y = "DIALOG_Y_ORIGIN"; //$NON-NLS-1$
 
     /**
      * Copied from org.eclipse.jface.Dialog:
      * 
      * The dialog settings key name for stored dialog width.
      */
-    private static final String DIALOG_WIDTH = "DIALOG_WIDTH"; //$NON-NLS-1$
+    protected static final String DIALOG_WIDTH = "DIALOG_WIDTH"; //$NON-NLS-1$
 
     /**
      * Copied from org.eclipse.jface.Dialog:
      * 
      * The dialog settings key name for stored dialog height.
      */
-    private static final String DIALOG_HEIGHT = "DIALOG_HEIGHT"; //$NON-NLS-1$
+    protected static final String DIALOG_HEIGHT = "DIALOG_HEIGHT"; //$NON-NLS-1$
 
     /**
      * Copied from org.eclipse.jface.Dialog:
@@ -95,7 +97,7 @@ public class BasicDialog extends CaveJFACEDialog {
      * The dialog settings key name for the font used when the dialog height and
      * width was stored.
      */
-    private static final String DIALOG_FONT_DATA = "DIALOG_FONT_NAME"; //$NON-NLS-1$
+    protected static final String DIALOG_FONT_DATA = "DIALOG_FONT_NAME"; //$NON-NLS-1$
 
     // Public Constructors
 

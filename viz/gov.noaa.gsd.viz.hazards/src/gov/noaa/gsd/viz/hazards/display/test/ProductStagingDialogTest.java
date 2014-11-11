@@ -14,11 +14,8 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.EVENT_BUIL
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLASH_FLOOD_WATCH_PHEN_SIG;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLOOD_WATCH_PRODUCT_ID;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.megawidgets.CheckListSpecifier;
-import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
 
 import java.util.List;
-import java.util.Map;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -37,8 +34,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModifie
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo.Product;
 
 /**
  * Description: {@link FunctionalTest} of the product staging dialog.
@@ -60,6 +55,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo.Pro
  *                                      base class.
  * Sep 09, 2014 4042       Chris.Golden Changed to work with megawidgets specified by
  *                                      maps instead of the Field class.
+ * Oct 02, 2014 4042       Chris.Golden Changed to support two-step product staging
+ *                                      dialog.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -159,27 +156,36 @@ public class ProductStagingDialogTest extends
         }
     }
 
-    @SuppressWarnings("unchecked")
     @Handler(priority = -1)
     public void handleProductGeneratorResult(
             final IProductGenerationComplete productGenerationComplete) {
         try {
             if (step == Steps.PREVIEW) {
-                ProductStagingInfo productStagingInfo = mockProductStagingView
-                        .getProductStagingInfo();
-                assertTrue(productStagingInfo != null);
-                assertTrue(productStagingInfo.getProducts() != null);
-                assertEquals(productStagingInfo.getProducts().size(), 1);
-                Product product = productStagingInfo.getProducts().get(0);
-                assertEquals(product.getSelectedEventIDs().size(), 1);
-                List<Map<String, Object>> fields = product.getFields();
-                Map<String, Object> field = ((List<Map<String, Object>>) fields
-                        .get(0).get(GroupSpecifier.CHILD_MEGAWIDGETS)).get(0);
-                List<?> choices = (List<?>) field
-                        .get(CheckListSpecifier.MEGAWIDGET_VALUE_CHOICES);
-                assertEquals(choices.size(), 2);
-                checkChoice(choices.get(0));
-                checkChoice(choices.get(1));
+
+                /*
+                 * Ensure that one product was staged.
+                 */
+                List<String> productNames = mockProductStagingView
+                        .getProductNames();
+                assertEquals(productNames.size(), 1);
+                String name = productNames.get(0);
+
+                /*
+                 * Ensure it has one selected event identifier.
+                 */
+                List<String> selectedEventIdentifiers = mockProductStagingView
+                        .getSelectedEventIdentifiersForProductName(name);
+                assertEquals(selectedEventIdentifiers.size(), 1);
+
+                /*
+                 * Ensure that there are two events of the appropriate types.
+                 */
+                List<String> eventDescriptions = mockProductStagingView
+                        .getAllPossibleEventDescriptionsForProductName(name);
+                assertEquals(eventDescriptions.size(), 2);
+                checkChoice(eventDescriptions.get(0));
+                checkChoice(eventDescriptions.get(1));
+
                 assertEquals(productGenerationComplete.getGeneratedProducts()
                         .size(), 1);
                 GeneratedProductList products = productGenerationComplete
@@ -191,8 +197,8 @@ public class ProductStagingDialogTest extends
                 EventSet<IEvent> eventSet = products.getEventSet();
                 assertEquals(eventSet.size(), 1);
                 IHazardEvent event = (IHazardEvent) eventSet.iterator().next();
-                assertEquals(event.getEventID(), product.getSelectedEventIDs()
-                        .get(0));
+                assertEquals(event.getEventID(),
+                        selectedEventIdentifiers.get(0));
                 assertEquals(event.getPhenomenon(), "FF");
                 assertEquals(event.getSignificance(), "A");
                 assertEquals(event.getStatus(),
@@ -211,12 +217,9 @@ public class ProductStagingDialogTest extends
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private void checkChoice(Object choice) {
-        String displayString = (String) ((Map<String, Object>) choice)
-                .get(CheckListSpecifier.CHOICE_NAME);
-        boolean validType = displayString.contains(AREAL_FLOOD_WATCH_PHEN_SIG)
-                || displayString.contains(FLASH_FLOOD_WATCH_PHEN_SIG);
+    private void checkChoice(String choice) {
+        boolean validType = (choice.contains(AREAL_FLOOD_WATCH_PHEN_SIG) || choice
+                .contains(FLASH_FLOOD_WATCH_PHEN_SIG));
         assertTrue(validType);
     }
 

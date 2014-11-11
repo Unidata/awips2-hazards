@@ -12,7 +12,6 @@ package gov.noaa.gsd.viz.hazards.ui;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
 import java.util.Map;
 
@@ -32,6 +31,11 @@ import org.eclipse.swt.widgets.Widget;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 15, 2014    4243    Chris.Golden Initial creation.
+ * Oct 03, 2014    4042    Chris.Golden Promoted handler inner class to public
+ *                                      top-level class so that it may be used
+ *                                      in cases where the presenter only needs
+ *                                      to be notified by the view, and never
+ *                                      needs to configure the widget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -40,63 +44,6 @@ import org.eclipse.swt.widgets.Widget;
 public class QualifiedStateChangerDelegate<Q, I, S, W extends IQualifiedStateChanger<Q, I, S>>
         extends QualifiedWidgetDelegate<Q, I, W> implements
         IQualifiedStateChanger<Q, I, S> {
-
-    // Private Classes
-
-    /**
-     * State change handler delegate, used to provide thread-safe access to
-     * state change handlers from {@link IStateChanger} instances that run
-     * within the main SWT UI thread.
-     */
-    private class QualifiedStateChangeHandlerDelegate implements
-            IQualifiedStateChangeHandler<Q, I, S> {
-
-        // Private Constants
-
-        /**
-         * Principal for which this is acting as a delegate.
-         */
-        private final IQualifiedStateChangeHandler<Q, I, S> principal;
-
-        // Public Constructors
-
-        /**
-         * Construct a standard instance.
-         * 
-         * @param principal
-         *            Principal for which to act as a delegate.
-         */
-        public QualifiedStateChangeHandlerDelegate(
-                IQualifiedStateChangeHandler<Q, I, S> principal) {
-            this.principal = principal;
-        }
-
-        // Public Methods
-
-        @Override
-        public void stateChanged(final Q qualifier, final I identifier,
-                final S value) {
-            getHandlerInvocationScheduler().schedule(new Runnable() {
-
-                @Override
-                public void run() {
-                    principal.stateChanged(qualifier, identifier, value);
-                }
-            });
-        }
-
-        @Override
-        public void statesChanged(final Q qualifier,
-                final Map<I, S> valuesForIdentifiers) {
-            getHandlerInvocationScheduler().schedule(new Runnable() {
-
-                @Override
-                public void run() {
-                    principal.statesChanged(qualifier, valuesForIdentifiers);
-                }
-            });
-        }
-    }
 
     // Public Constructors
 
@@ -176,7 +123,8 @@ public class QualifiedStateChangerDelegate<Q, I, S, W extends IQualifiedStateCha
             @Override
             public void run() {
                 getPrincipal().setStateChangeHandler(
-                        new QualifiedStateChangeHandlerDelegate(handler));
+                        new QualifiedStateChangeHandlerDelegate<Q, I, S>(
+                                handler, getHandlerInvocationScheduler()));
             }
         }, true);
     }

@@ -36,6 +36,11 @@ import org.eclipse.swt.widgets.Widget;
  *                                      the handler may be called upon to
  *                                      receive notification of multiple
  *                                      simultaneous state changes.
+ * Oct 03, 2014    4042    Chris.Golden Promoted handler inner class to public
+ *                                      top-level class so that it may be used
+ *                                      in cases where the presenter only needs
+ *                                      to be notified by the view, and never
+ *                                      needs to configure the widget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -43,60 +48,6 @@ import org.eclipse.swt.widgets.Widget;
  */
 public class StateChangerDelegate<I, S, W extends IStateChanger<I, S>> extends
         WidgetDelegate<I, W> implements IStateChanger<I, S> {
-
-    // Private Classes
-
-    /**
-     * State change handler delegate, used to provide thread-safe access to
-     * state change handlers from {@link IStateChanger} instances that run
-     * within the main SWT UI thread.
-     */
-    private class StateChangeHandlerDelegate implements
-            IStateChangeHandler<I, S> {
-
-        // Private Constants
-
-        /**
-         * Principal for which this is acting as a delegate.
-         */
-        private final IStateChangeHandler<I, S> principal;
-
-        // Public Constructors
-
-        /**
-         * Construct a standard instance.
-         * 
-         * @param principal
-         *            Principal for which to act as a delegate.
-         */
-        public StateChangeHandlerDelegate(IStateChangeHandler<I, S> principal) {
-            this.principal = principal;
-        }
-
-        // Public Methods
-
-        @Override
-        public void stateChanged(final I identifier, final S value) {
-            getHandlerInvocationScheduler().schedule(new Runnable() {
-
-                @Override
-                public void run() {
-                    principal.stateChanged(identifier, value);
-                }
-            });
-        }
-
-        @Override
-        public void statesChanged(final Map<I, S> valuesForIdentifiers) {
-            getHandlerInvocationScheduler().schedule(new Runnable() {
-
-                @Override
-                public void run() {
-                    principal.statesChanged(valuesForIdentifiers);
-                }
-            });
-        }
-    }
 
     // Public Constructors
 
@@ -172,7 +123,8 @@ public class StateChangerDelegate<I, S, W extends IStateChanger<I, S>> extends
             @Override
             public void run() {
                 getPrincipal().setStateChangeHandler(
-                        new StateChangeHandlerDelegate(handler));
+                        new StateChangeHandlerDelegate<I, S>(handler,
+                                getHandlerInvocationScheduler()));
             }
         }, true);
     }

@@ -47,7 +47,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * ------------ ---------- ----------- --------------------------
  * Feb 18, 2013            jsanchez     Initial creation
  * May 23, 2014 3790       jsanchez     Used DEFAULT_PRODUCT_GENERATION_JOB_COORDINATOR.
- * 
+ * Nov 05, 2014 4042       Chris.Golden Added new directories to Python include path.
  * </pre>
  * 
  * @author jsanchez
@@ -58,14 +58,33 @@ public class ProductScriptFactory extends
         AbstractPythonScriptFactory<ProductScript> {
 
     /**
-     * Contains all of the Hazard Services specific utility directories which
-     * must be added to the jep path for the product generation framework and
-     * product generators
+     * Name of the python utility directory in which to find the subdirectories
+     * given by {@link #PYTHON_UTILITY_SUBDIRECTORIES}.
      */
-    private final static String[] hazardServicesSpecificUtilityDirs = {
-            "bridge", "dataStorage", "logUtilities", "shapeUtilities",
-            "textUtilities", "VTECutilities", "geoUtilities",
-            "localizationUtilities" };
+    private static final String PYTHON_UTILITY_DIRECTORY = "python";
+
+    /**
+     * All of the utility directories off of the
+     * {@link PYTHON_UTILITY_DIRECTORY} directory which must be added to the Jep
+     * path for the product generation framework and product generators.
+     */
+    private final static String[] PYTHON_UTILITY_SUBDIRECTORIES = { "bridge",
+            "dataStorage", "logUtilities", "shapeUtilities", "textUtilities",
+            "VTECutilities", "geoUtilities", "localizationUtilities" };
+
+    /**
+     * Name of the Hazard Services utility directory in which to find the
+     * subdirectories given by {@link #HAZARD_SERVICES_UTILITY_SUBDIRECTORIES}.
+     */
+    private static final String HAZARD_SERVICES_UTILITY_DIRECTORY = "hazardServices";
+
+    /**
+     * All of the utility directories off of the
+     * {@link HAZARD_SERVICES_UTILITY_DIRECTORY} directory which must be added
+     * to the Jep path for the product generation framework and product
+     * generators.
+     */
+    private final static String[] HAZARD_SERVICES_UTILITY_SUBDIRECTORIES = { "hazardMetaData" };
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductScriptFactory.class);
@@ -97,20 +116,25 @@ public class ProductScriptFactory extends
             IPathManager manager = PathManagerFactory.getPathManager();
             LocalizationContext baseContext = manager.getContext(
                     LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-            String pythonPath = manager.getFile(baseContext, "python")
-                    .getPath();
+            List<String> utilityPathList = new ArrayList<String>();
 
-            List<String> hazardServicesUtilityPathList = new ArrayList<String>();
-            hazardServicesUtilityPathList.add(pythonPath);
+            String pythonPath = manager.getFile(baseContext,
+                    PYTHON_UTILITY_DIRECTORY).getPath();
+            utilityPathList.add(pythonPath);
+            for (String utilityDir : PYTHON_UTILITY_SUBDIRECTORIES) {
+                utilityPathList.add(FileUtil.join(pythonPath, utilityDir));
+            }
 
-            for (String utilityDir : hazardServicesSpecificUtilityDirs) {
-                hazardServicesUtilityPathList.add(FileUtil.join(pythonPath,
+            String hazardServicesPath = manager.getFile(baseContext,
+                    HAZARD_SERVICES_UTILITY_DIRECTORY).getPath();
+            utilityPathList.add(hazardServicesPath);
+            for (String utilityDir : HAZARD_SERVICES_UTILITY_SUBDIRECTORIES) {
+                utilityPathList.add(FileUtil.join(hazardServicesPath,
                         utilityDir));
             }
 
-            String includePath = PyUtil
-                    .buildJepIncludePath(hazardServicesUtilityPathList
-                            .toArray(new String[0]));
+            String includePath = PyUtil.buildJepIncludePath(utilityPathList
+                    .toArray(new String[0]));
 
             return new ProductScript(includePath);
         } catch (JepException e) {

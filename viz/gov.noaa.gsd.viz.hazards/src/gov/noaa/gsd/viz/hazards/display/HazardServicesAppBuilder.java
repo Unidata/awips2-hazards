@@ -16,10 +16,13 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.P
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_DATA_STORAGE_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_EVENTS_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_FORMATS_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_GENERAL_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_GEO_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_GFE_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_PRODUCTGEN_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_PRODUCTS_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_RECOMMENDERS_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR;
@@ -51,11 +54,11 @@ import gov.noaa.gsd.viz.hazards.setting.SettingsPresenter;
 import gov.noaa.gsd.viz.hazards.setting.SettingsView;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplayResourceData;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplayResourceData;
 import gov.noaa.gsd.viz.hazards.timer.HazardServicesTimer;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
@@ -65,7 +68,6 @@ import gov.noaa.gsd.viz.mvp.IMainUiContributor;
 import gov.noaa.gsd.viz.mvp.IView;
 
 import java.io.Serializable;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
@@ -116,7 +118,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager.StagingRequired;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -182,6 +184,11 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Sep 09, 2014 4042       Chris.Golden        Moved product staging info generation to
  *                                             the product staging presenter.
  * Oct 03, 2014 4918       Robert.Blum         Added the metadata path to the Python include path.
+ * Oct 06, 2014 4042       Chris.Golden        Changed to support two-step product staging
+ *                                             dialog (first step allows user to select
+ *                                             additional events to be included in products,
+ *                                             second step allows the inputting of additional
+ *                                             product-specific information using megawidgets).
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -446,6 +453,13 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         String recommendersPath = FileUtil.join(pythonPath,
                 PYTHON_LOCALIZATION_EVENTS_DIR,
                 PYTHON_LOCALIZATION_RECOMMENDERS_DIR);
+        String generatorsPath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_EVENTS_DIR,
+                PYTHON_LOCALIZATION_PRODUCTGEN_DIR);
+        String generatorsProductsPath = FileUtil.join(generatorsPath,
+                PYTHON_LOCALIZATION_PRODUCTS_DIR);
+        String generatorsFormatsPath = FileUtil.join(generatorsPath,
+                PYTHON_LOCALIZATION_FORMATS_DIR);
         String recommendersConfigPath = FileUtil.join(pythonPath,
                 PYTHON_LOCALIZATION_EVENTS_DIR,
                 PYTHON_LOCALIZATION_RECOMMENDERS_DIR,
@@ -482,7 +496,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 eventsUtilitiesPath, bridgePath, hazardServicesPath,
                 hazardTypesPath, hazardMetaDataPath, gfePath, timePath,
                 generalUtilitiesPath, trackUtilitiesPath, dataAccessPath,
-                recommendersPath, recommendersConfigPath), getClass()
+                recommendersPath, recommendersConfigPath, generatorsPath,
+                generatorsProductsPath, generatorsFormatsPath), getClass()
                 .getClassLoader());
 
         /*
@@ -978,15 +993,15 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * Show the product staging dialog.
      * 
      * @param issueFlag
-     *            Whether or not this is being called as a result of an issue
-     *            action.
-     * @param allProductGeneratorInformationForSelectedHazards
+     *            Flag indicating whether or not this is being called as a
+     *            result of an issue action; if false, it is a preview.
+     * @param stagingRequired
+     *            Type of product staging required.
      */
-    public void showProductStagingView(
-            boolean issueFlag,
-            Collection<ProductGeneratorInformation> allProductGeneratorInformationForSelectedHazards) {
+    public void showProductStagingView(boolean issueFlag,
+            StagingRequired stagingRequired) {
         productStagingPresenter.showProductStagingDetail(issueFlag,
-                allProductGeneratorInformationForSelectedHazards);
+                stagingRequired);
     }
 
     public void showProductEditorView(
@@ -1076,10 +1091,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         // Create a new tool layer for the new perspective.
         try {
-            spatialDisplay = spatialDisplayResourceData.construct(new LoadProperties(),
-                    ((AbstractEditor) VizWorkbenchManager.getInstance()
-                            .getActiveEditor()).getActiveDisplayPane()
-                            .getDescriptor());
+            spatialDisplay = spatialDisplayResourceData.construct(
+                    new LoadProperties(), ((AbstractEditor) VizWorkbenchManager
+                            .getInstance().getActiveEditor())
+                            .getActiveDisplayPane().getDescriptor());
         } catch (VizException e1) {
             statusHandler.error("Error creating spatial display", e1);
         }

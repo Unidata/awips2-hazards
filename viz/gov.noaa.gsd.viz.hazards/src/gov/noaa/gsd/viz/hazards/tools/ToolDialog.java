@@ -323,10 +323,6 @@ class ToolDialog extends BasicDialog {
         }
     }
 
-    /**
-     * Button
-     */
-
     // Protected Methods
 
     @Override

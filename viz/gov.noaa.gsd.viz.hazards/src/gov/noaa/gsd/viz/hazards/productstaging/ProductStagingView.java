@@ -9,22 +9,30 @@
  */
 package gov.noaa.gsd.viz.hazards.productstaging;
 
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter.Command;
+import gov.noaa.gsd.viz.hazards.ui.CommandInvocationHandlerDelegate;
+import gov.noaa.gsd.viz.hazards.ui.QualifiedStateChangeHandlerDelegate;
+import gov.noaa.gsd.viz.hazards.ui.StateChangeHandlerDelegate;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IWidget;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.ui.PlatformUI;
 
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
+import com.raytheon.uf.viz.core.VizApp;
 
 /**
- * Description: Settings view, an implementation of ISettingsView that provides
- * an SWT-based view.
+ * Description: Product staging view, which creates and uses a
+ * {@link ProductStagingDialog}, acting as the latter's delegate.
  * 
  * <pre>
  * 
@@ -38,22 +46,47 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingInfo;
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
  * May 08, 2014   2925     Chris.Golden      Changed to work with MVP framework changes.
+ * Oct 07, 2014   4042     Chris.Golden      Completely refactored to work with a two-step
+ *                                           dialog, with the first stage allowing the
+ *                                           user to choose additional events to go into
+ *                                           each of the products (if applicable), and
+ *                                           the second step allowing the user to change
+ *                                           any product-generator-specific parameters
+ *                                           specified for the products (again, if
+ *                                           applicable).
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
 public class ProductStagingView implements
-        IProductStagingView<Action, RCPMainUserInterfaceElement> {
+        IProductStagingViewDelegate<Action, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
 
     /**
-     * Logging mechanism.
+     * Scheduler to be used to make {@link IWidget} handlers get get executed on
+     * the main thread. For now, the main thread is the UI thread; when this is
+     * changed, this will be rendered obsolete, as at that point there will need
+     * to be a blocking queue of {@link Runnable} instances available to allow
+     * the new worker thread to be fed jobs. At that point, this should be
+     * replaced with an object that enqueues the <code>Runnable</code>s,
+     * probably a singleton that may be accessed by the various components in
+     * gov.noaa.gsd.viz.hazards and perhaps elsewhere.
      */
-    @SuppressWarnings("unused")
-    private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(ProductStagingView.class);
+    @Deprecated
+    private static final IRunnableAsynchronousScheduler RUNNABLE_ASYNC_SCHEDULER = new IRunnableAsynchronousScheduler() {
+
+        @Override
+        public void schedule(Runnable runnable) {
+
+            /*
+             * Since the UI thread is currently the thread being used for nearly
+             * everything, just run any asynchronous tasks there.
+             */
+            VizApp.runAsync(runnable);
+        }
+    };
 
     // Private Variables
 
@@ -69,15 +102,16 @@ public class ProductStagingView implements
      */
     public ProductStagingView() {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     // Public Methods
 
     @Override
     public final void dispose() {
-        closeProductStagingDialog();
-        productStagingDialog = null;
+        closeDialog();
     }
 
     @Override
@@ -87,47 +121,83 @@ public class ProductStagingView implements
     }
 
     @Override
-    public void showProductStagingDetail(boolean toBeIssued,
-            ProductStagingInfo productStagingInfo) {
-
-        // Close the dialog if it is already open.
-        if (productStagingDialog != null) {
-            closeProductStagingDialog();
+    public void showFirstStep(List<String> productNames,
+            Map<String, List<String>> possibleEventIdsForProductNames,
+            Map<String, List<String>> possibleEventDescriptionsForProductNames,
+            Map<String, List<String>> selectedEventIdsForProductNames) {
+        if (productStagingDialog == null) {
+            createDialog();
         }
-
-        // Create the dialog from scratch.
-        productStagingDialog = new ProductStagingDialog(PlatformUI
-                .getWorkbench().getActiveWorkbenchWindow().getShell());
-        productStagingDialog.initialize(toBeIssued, productStagingInfo);
-        productStagingDialog.setBlockOnOpen(false);
+        productStagingDialog.initializeFirstStep(productNames,
+                possibleEventIdsForProductNames,
+                possibleEventDescriptionsForProductNames,
+                selectedEventIdsForProductNames);
         productStagingDialog.open();
     }
 
     @Override
-    public ICommandInvoker<String> getCommandInvoker() {
-        return productStagingDialog.getCommandInvoker();
+    public void showSecondStep(
+            List<String> productNames,
+            Map<String, MegawidgetSpecifierManager> megawidgetSpecifierManagersForProductNames,
+            long minimumVisibleTime, long maximumVisibleTime,
+            boolean firstStepSkipped) {
+        if (productStagingDialog == null) {
+            createDialog();
+        }
+        productStagingDialog.initializeSecondStep(productNames,
+                megawidgetSpecifierManagersForProductNames, minimumVisibleTime,
+                maximumVisibleTime, firstStepSkipped);
+        productStagingDialog.open();
     }
 
     @Override
-    public boolean isToBeIssued() {
-        return productStagingDialog.isToBeIssued();
+    public void hide() {
+        closeDialog();
     }
 
     @Override
-    public ProductStagingInfo getProductStagingInfo() {
-        return productStagingDialog.getProductStagingInfo();
+    public void setAssociatedEventsChangeHandler(
+            IStateChangeHandler<String, List<String>> handler) {
+        productStagingDialog
+                .setAssociatedEventsChangeHandler(new StateChangeHandlerDelegate<String, List<String>>(
+                        handler, RUNNABLE_ASYNC_SCHEDULER));
+    }
+
+    @Override
+    public void setProductMetadataChangeHandler(
+            IQualifiedStateChangeHandler<String, String, Object> handler) {
+        productStagingDialog
+                .setProductMetadataChangeHandler(new QualifiedStateChangeHandlerDelegate<String, String, Object>(
+                        handler, RUNNABLE_ASYNC_SCHEDULER));
+    }
+
+    @Override
+    public void setButtonInvocationHandler(
+            ICommandInvocationHandler<Command> handler) {
+        productStagingDialog
+                .setButtonInvocationHandler(new CommandInvocationHandlerDelegate<Command>(
+                        handler, RUNNABLE_ASYNC_SCHEDULER));
     }
 
     // Private Methods
 
     /**
+     * Create the product staging dialog.
+     */
+    private void createDialog() {
+        productStagingDialog = new ProductStagingDialog(PlatformUI
+                .getWorkbench().getActiveWorkbenchWindow().getShell());
+    }
+
+    /**
      * Close the product staging dialog.
      */
-    private void closeProductStagingDialog() {
+    private void closeDialog() {
         if ((productStagingDialog != null)
                 && (productStagingDialog.getShell() != null)
                 && (!productStagingDialog.getShell().isDisposed())) {
             productStagingDialog.close();
+            productStagingDialog = null;
         }
     }
 }

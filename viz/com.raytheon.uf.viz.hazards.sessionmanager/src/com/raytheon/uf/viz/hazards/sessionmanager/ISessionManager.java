@@ -48,7 +48,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
  * Nov 19, 2013  1463      blawrenc    Added state of automatic hazard conflict testing.
  * Nov 23, 2013  1462      blawrenc    Added state of hatched area drawing
- * 
+ * Oct 08, 2014  4042      Chris.Golden Added generate method (moved from message handler).
  * </pre>
  * 
  * @author bsteffen
@@ -188,4 +188,18 @@ public interface ISessionManager<E extends IHazardEvent> extends IUndoRedoable {
      */
     public void setIssueOngoing(boolean isOngoing);
 
+    /**
+     * Generate products based upon the currently selected events.
+     * <p>
+     * TODO: Rethink whether this method should actually be within the session
+     * product manager. For now, it is here because the
+     * {@link #setPreviewOngoing(boolean)} and {@link #setIssueOngoing(boolean)}
+     * methods are, but maybe those belong in the product manager too.
+     * 
+     * @param issue
+     *            Flag indicating whether or not the generation is occurring as
+     *            a result of an issue command. If false, then a preview command
+     *            initiated the generation.
+     */
+    public void generate(boolean issue);
 }

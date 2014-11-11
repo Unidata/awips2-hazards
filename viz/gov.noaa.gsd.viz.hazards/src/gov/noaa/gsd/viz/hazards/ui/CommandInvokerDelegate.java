@@ -30,6 +30,11 @@ import org.eclipse.swt.widgets.Widget;
  * May 09, 2014    2925    Chris.Golden Initial creation.
  * Jun 30, 2014    3512    Chris.Golden Changed to work with changes to
  *                                      ICommandInvoker.
+ * Oct 03, 2014    4042    Chris.Golden Promoted handler inner class to public
+ *                                      top-level class so that it may be used
+ *                                      in cases where the presenter only needs
+ *                                      to be notified by the view, and never
+ *                                      needs to configure the widget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -37,50 +42,6 @@ import org.eclipse.swt.widgets.Widget;
  */
 public class CommandInvokerDelegate<I, W extends ICommandInvoker<I>> extends
         WidgetDelegate<I, W> implements ICommandInvoker<I> {
-
-    // Private Classes
-
-    /**
-     * Command invocation handler delegate, used to provide thread-safe access
-     * to command invocation handlers from {@link ICommandInvoker} instances
-     * that run within the main SWT UI thread.
-     */
-    private class CommandInvocationHandlerDelegate implements
-            ICommandInvocationHandler<I> {
-
-        // Private Constants
-
-        /**
-         * Principal for which this is acting as a delegate.
-         */
-        private final ICommandInvocationHandler<I> principal;
-
-        // Public Constructors
-
-        /**
-         * Construct a standard instance.
-         * 
-         * @param principal
-         *            Principal for which to act as a delegate.
-         */
-        public CommandInvocationHandlerDelegate(
-                ICommandInvocationHandler<I> principal) {
-            this.principal = principal;
-        }
-
-        // Public Methods
-
-        @Override
-        public void commandInvoked(final I identifier) {
-            getHandlerInvocationScheduler().schedule(new Runnable() {
-
-                @Override
-                public void run() {
-                    principal.commandInvoked(identifier);
-                }
-            });
-        }
-    }
 
     // Public Constructors
 
@@ -113,7 +74,8 @@ public class CommandInvokerDelegate<I, W extends ICommandInvoker<I>> extends
             @Override
             public void run() {
                 getPrincipal().setCommandInvocationHandler(
-                        new CommandInvocationHandlerDelegate(handler));
+                        new CommandInvocationHandlerDelegate<I>(handler,
+                                getHandlerInvocationScheduler()));
             }
         }, true);
     }

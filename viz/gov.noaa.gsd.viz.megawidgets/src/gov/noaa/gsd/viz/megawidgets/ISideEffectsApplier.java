@@ -51,7 +51,11 @@ public interface ISideEffectsApplier {
      *            List of identifiers of the megawidgets that were invoked or
      *            had their states changed, thus precipitating this method call.
      *            If <code>null</code>, this means that this call is being made
-     *            to initialize the megawidgets.
+     *            to initialize the megawidgets. Otherwise, if any of the items
+     *            in the list are of the form
+     *            <code>&lt;identifier&gt;.&lt;subcommand&gt</code>, this
+     *            indicates that that subcommand of the megawidget given by that
+     *            identifier was the trigger.
      * @param mutableProperties
      *            Map of megawidget identifiers to submaps holding those
      *            megawidgets' mutable properties. The latter map the mutable
