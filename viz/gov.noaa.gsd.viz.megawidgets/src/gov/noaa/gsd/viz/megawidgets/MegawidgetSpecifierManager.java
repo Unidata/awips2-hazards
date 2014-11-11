@@ -12,12 +12,14 @@ package gov.noaa.gsd.viz.megawidgets;
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 
 /**
  * Megawidget specifier manager class, used to instantiate megawidget
@@ -32,6 +34,11 @@ import com.google.common.collect.ImmutableList;
  * Mar 07, 2014    2925    Chris.Golden Initial creation.
  * May 12, 2014    2925    Chris.Golden Changed to include current time
  *                                      provider.
+ * Oct 20, 2014    4818    Chris.Golden Added static methods for wrapping
+ *                                      raw megawidget specifiers in a
+ *                                      scrollable megawidget, or making any
+ *                                      wrapping, potentially-scrollable
+ *                                      megawidget specifier scrollable.
  * </pre>
  * 
  * @author Chris.Golden
@@ -39,6 +46,36 @@ import com.google.common.collect.ImmutableList;
  * @see MegawidgetSpecifier
  */
 public class MegawidgetSpecifierManager {
+
+    // Private Static Constants
+
+    /**
+     * Megawidget identifier to be used for a scrollable megawidget that is
+     * wrapped around a list of raw specifiers by
+     * {@link #makeRawSpecifiersScrollable(List, Map)} and
+     * {@link #makeRawSpecifiersScrollable(List)}.
+     */
+    private static final String SCROLLABLE_WRAPPER_IDENTIFIER = "__scrollableWrapper__";
+
+    /**
+     * Megawidget type to be used for a scrollable megawidget that is wrapped
+     * around a list of raw specifiers by
+     * {@link #makeRawSpecifiersScrollable(List)}.
+     */
+    private static final String SCROLLABLE_WRAPPER_TYPE = "Composite";
+
+    /**
+     * Specifier parameters for a scrollable megawidget that is wrapped around a
+     * list of raw specifiers by {@link #makeRawSpecifiersScrollable(List)}.
+     */
+    private static final ImmutableMap<String, Object> SCROLLABLE_WRAPPER_PARAMETERS;
+    static {
+        Map<String, Object> map = new HashMap<>();
+        map.put(ISpecifier.MEGAWIDGET_TYPE, SCROLLABLE_WRAPPER_TYPE);
+        map.put(CompositeSpecifier.EXPAND_HORIZONTALLY, true);
+        map.put(CompositeSpecifier.EXPAND_VERTICALLY, true);
+        SCROLLABLE_WRAPPER_PARAMETERS = ImmutableMap.copyOf(map);
+    }
 
     // Private Variables
 
@@ -57,6 +94,118 @@ public class MegawidgetSpecifierManager {
      * megawidgets.
      */
     private final ISideEffectsApplier sideEffectsApplier;
+
+    // Public Static Methods
+
+    /**
+     * Ensure the given list of raw megawidget specifiers is scrollable. If the
+     * list consists of a single raw specifier for a scrollable megawidget,
+     * simply make that megawidget scrollable. Otherwise, create a new
+     * single-element list, with the single element being a raw specifier for a
+     * {@link CompositeMegawidget} that is scrollable, with the specified
+     * margins around its client area.
+     * 
+     * @param rawSpecifiers
+     *            Raw specifiers to be made scrollable.
+     * @param leftMargin
+     *            Margin in pixels to be placed to the left of the scrollable's
+     *            client area.
+     * @param topMargin
+     *            Margin in pixels to be placed above the scrollable's client
+     *            area.
+     * @param rightMargin
+     *            Margin in pixels to be placed to the right of the scrollable's
+     *            client area.
+     * @param bottomMargin
+     *            Margin in pixels to be placed below the scrollable's client
+     *            area.
+     * @return List of provided raw specifiers made scrollable.
+     */
+    public static List<Map<String, Object>> makeRawSpecifiersScrollable(
+            List<Map<String, Object>> rawSpecifiers, int leftMargin,
+            int topMargin, int rightMargin, int bottomMargin) {
+        Map<String, Object> scrollableRawSpecifier = new HashMap<>(
+                SCROLLABLE_WRAPPER_PARAMETERS);
+        scrollableRawSpecifier.put(CompositeSpecifier.LEFT_MARGIN, leftMargin);
+        scrollableRawSpecifier.put(CompositeSpecifier.TOP_MARGIN, topMargin);
+        scrollableRawSpecifier
+                .put(CompositeSpecifier.RIGHT_MARGIN, rightMargin);
+        scrollableRawSpecifier.put(CompositeSpecifier.BOTTOM_MARGIN,
+                bottomMargin);
+        return makeRawSpecifiersScrollable(rawSpecifiers,
+                scrollableRawSpecifier);
+    }
+
+    /**
+     * Ensure the given list of raw megawidget specifiers is scrollable. If the
+     * list consists of a single raw specifier for a scrollable megawidget,
+     * simply make that megawidget scrollable. Otherwise, create a new
+     * single-element list, with the single element being a copy of the given
+     * raw specifier for a scrollable single-page megawidget (i.e. one that
+     * specifies a subclass of {@link SinglePageMegawidgetSpecifier}. Note that
+     * no checking of the latter is done to ensure it is valid.
+     * 
+     * @param rawSpecifiers
+     *            Raw specifiers to be made scrollable.
+     * @param scrollableRawSpecifier
+     *            Raw specifier for a single-page container megawidget that is
+     *            to be used to wrap <code>rawSpecifiers</code> if they are not
+     *            already wrapped in a scrollable megawidget specifier. This
+     *            specifier does not need to have an entry for
+     *            {@link ISpecifier#MEGAWIDGET_IDENTIFIER},
+     *            {@link IPotentiallyScrollableContainerSpecifier#SCROLLABLE},
+     *            or {@link SinglePageMegawidgetSpecifier#CHILD_MEGAWIDGETS};
+     *            these parameters are filled in by this method.
+     * @return List of provided raw specifiers made scrollable.
+     */
+    public static List<Map<String, Object>> makeRawSpecifiersScrollable(
+            List<Map<String, Object>> rawSpecifiers,
+            Map<String, Object> scrollableRawSpecifier) {
+
+        /*
+         * Determine whether or not the raw specifiers consist at the top level
+         * of a single scrollable megawidget.
+         */
+        boolean singleScrollable = false;
+        Map<String, Object> topSpecifier = null;
+        if (rawSpecifiers.size() == 1) {
+            topSpecifier = rawSpecifiers.get(0);
+            try {
+                String specifierType = MegawidgetSpecifierManager.class
+                        .getPackage().getName()
+                        + "."
+                        + topSpecifier.get(ISpecifier.MEGAWIDGET_TYPE)
+                        + "Specifier";
+                Class<?> specifierClass = Class.forName(specifierType);
+                singleScrollable = IPotentiallyScrollableContainerSpecifier.class
+                        .isAssignableFrom(specifierClass);
+            } catch (Exception e) {
+
+                /*
+                 * No action; it is not this method's responsibility to worry
+                 * about whether the specifiers are valid.
+                 */
+            }
+        }
+
+        /*
+         * If the list holds a single potentially scrollable megawidget, make it
+         * scrollable; otherwise, wrap the specifiers in the list in a composite
+         * megawidget that is scrollable.
+         */
+        if (singleScrollable == false) {
+            topSpecifier = new HashMap<>(scrollableRawSpecifier);
+            topSpecifier.put(ISpecifier.MEGAWIDGET_IDENTIFIER,
+                    SCROLLABLE_WRAPPER_IDENTIFIER);
+            topSpecifier.put(SinglePageMegawidgetSpecifier.CHILD_MEGAWIDGETS,
+                    rawSpecifiers);
+            rawSpecifiers = new ArrayList<>(1);
+            rawSpecifiers.add(topSpecifier);
+        }
+        topSpecifier.put(IPotentiallyScrollableContainerSpecifier.SCROLLABLE,
+                Boolean.TRUE);
+        return rawSpecifiers;
+    }
 
     // Public Constructors
 

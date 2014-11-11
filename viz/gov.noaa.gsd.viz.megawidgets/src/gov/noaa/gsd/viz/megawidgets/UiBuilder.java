@@ -9,20 +9,31 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IMultiPageScrollSettings;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.ISinglePageScrollSettings;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.events.ControlAdapter;
+import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.events.KeyEvent;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
+import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 
 import com.google.common.collect.ImmutableList;
@@ -66,6 +77,9 @@ import com.google.common.collect.Lists;
  *                                           CheckBoxMegawidget).
  * Jul 23, 2014    4122    Chris.Golden      Added methods extracted from
  *                                           ContainerMegawidget.
+ * Oct 20, 2014    4818    Chris.Golden      Added methods for building scrolled
+ *                                           composites for both single- and
+ *                                           multi-page megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -81,6 +95,23 @@ public class UiBuilder {
      */
     public static final int NO_SELECTION = -1;
 
+    // Private Static Constants
+
+    /**
+     * Increment by which to move when a scrollbar button is depressed.
+     */
+    private static final int SCROLLBAR_BUTTON_INCREMENT = 16;
+
+    /**
+     * Key of the page-increment-changing flag for a scrolled composite.
+     */
+    private static final String PAGE_INCREMENT_CHANGING_KEY = "__pageIncrementChanging__";
+
+    /**
+     * Key of the area-changing flag for a scrolled composite.
+     */
+    private static final String AREA_CHANGING_KEY = "__areaChanging__";
+
     // Public Enumerated Types
 
     /**
@@ -88,6 +119,65 @@ public class UiBuilder {
      */
     public enum CompositeType {
         SINGLE_ROW, MULTI_ROW_VERTICALLY_CONSTRAINED, MULTI_ROW_VERTICALLY_EXPANDING
+    }
+
+    // Private Static Classes
+
+    // Private Classes
+
+    /**
+     * Resize listener associated with a scrolled composite.
+     */
+    private static class ScrolledResizeListener implements IResizeListener {
+
+        // Private Variables
+
+        /**
+         * Megawidget to which the scrolled composite belongs.
+         */
+        private final IResizer megawidget;
+
+        /**
+         * Scrolled composite to be adjusted in response to child megawidget
+         * resizes.
+         */
+        private final ScrolledComposite scrolledComposite;
+
+        /**
+         * Resize listener to be notified when this megawidget experiences a
+         * size change.
+         */
+        private final IResizeListener resizeListener;
+
+        // Public Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param megawidget
+         *            Megawidget to which the scrolled composite belongs.
+         * @param scrolledComposite
+         *            Scrolled composite to be adjusted in response to child
+         *            megawidget resizes.
+         * @param resizeListener
+         *            Resize listener to be notified when this megawidget
+         *            experiences a size change.
+         */
+        public ScrolledResizeListener(IResizer megawidget,
+                ScrolledComposite scrolledComposite,
+                IResizeListener resizeListener) {
+            this.megawidget = megawidget;
+            this.scrolledComposite = scrolledComposite;
+            this.resizeListener = resizeListener;
+        }
+
+        // Public Methods
+
+        @Override
+        public void sizeChanged(IResizer megawidget) {
+            UiBuilder.updateScrolledAreaSize(scrolledComposite);
+            resizeListener.sizeChanged(this.megawidget);
+        }
     }
 
     // Public Static Methods
@@ -126,6 +216,141 @@ public class UiBuilder {
         gridData.verticalIndent = specifier.getSpacing();
         panel.setLayoutData(gridData);
         return panel;
+    }
+
+    /**
+     * Build a scrolled composite for a single-page megawidget containing a
+     * child composite in which to lay out megawidget components. The child
+     * composite is not assigned a layout. The resulting scrolled composite
+     * handles size changes it experiences by recalculating its page increments,
+     * as well as dealing with size changes of any child megawidgets it contains
+     * by resizing its client area (the latter only if the <code>paramMap</code>
+     * passed in is passed to said child megawidgets upon their creation).
+     * 
+     * @param megawidget
+     *            Megawidget for which to build the scrolled composite.
+     * @param parent
+     *            Parent composite.
+     * @param scrollSettings
+     *            Scroll display settings to be updated each time the scroll
+     *            origin changes.
+     * @param paramMap
+     *            Copy of the map of creation-time parameter names to values
+     *            provided to the megawidget. This must be a copy, because it
+     *            will be altered by this method to hold a resize listener
+     *            created herein to update the scrolled composite's client area.
+     *            Thus, when this method is called and then
+     *            <code>paramMap</code> is later passed to child megawidgets
+     *            upon their creation, the latter will notify the scrolled
+     *            composite of their size changes, and it will in turn notify
+     *            the original resize listener registered with
+     *            <code>paramMap</code> before this method was called.
+     * @return New scrolled composite.
+     */
+    public static ScrolledComposite buildScrolledComposite(IResizer megawidget,
+            Composite parent,
+            final ISinglePageScrollSettings<Point> scrollSettings,
+            Map<String, Object> paramMap) {
+        final ScrolledComposite scrolledComposite = buildScrolledComposite(
+                megawidget, parent, paramMap);
+
+        /*
+         * Add a listener to the horizontal and vertical scroll bars of the
+         * scrolled composite to record the origin each time scrolling occurs.
+         */
+        SelectionListener scrollListener = new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (scrolledComposite.getData(AREA_CHANGING_KEY) == null) {
+                    scrollSettings.setScrollOrigin(scrolledComposite
+                            .getOrigin());
+                }
+            }
+        };
+        scrolledComposite.getHorizontalBar().addSelectionListener(
+                scrollListener);
+        scrolledComposite.getVerticalBar().addSelectionListener(scrollListener);
+        return scrolledComposite;
+    }
+
+    /**
+     * Build a scrolled composite for a multi-page megawidget containing a child
+     * composite in which to lay out megawidget components. The child composite
+     * is not assigned a layout. The resulting scrolled composite handles size
+     * changes it experiences by recalculating its page increments, as well as
+     * dealing with size changes of any child megawidgets it contains by
+     * resizing its client area (the latter only if the <code>paramMap</code>
+     * passed in is passed to said child megawidgets upon their creation).
+     * 
+     * @param megawidget
+     *            Megawidget for which to build the scrolled composite.
+     * @param parent
+     *            Parent composite.
+     * @param scrollSettings
+     *            Scroll display settings to be updated each time the scroll
+     *            origin changes.
+     * @param pageIdentifier
+     *            Identifier of the page with which this scrolled composite is
+     *            to be associated in <code>scrollSettings</code>.
+     * @param paramMap
+     *            Copy of the map of creation-time parameter names to values
+     *            provided to the megawidget. This must be a copy, because it
+     *            will be altered by this method to hold a resize listener
+     *            created herein to update the scrolled composite's client area.
+     *            Thus, when this method is called and then
+     *            <code>paramMap</code> is later passed to child megawidgets
+     *            upon their creation, the latter will notify the scrolled
+     *            composite of their size changes, and it will in turn notify
+     *            the original resize listener registered with
+     *            <code>paramMap</code> before this method was called.
+     * @return New scrolled composite.
+     */
+    public static ScrolledComposite buildScrolledComposite(IResizer megawidget,
+            Composite parent,
+            final IMultiPageScrollSettings<Point> scrollSettings,
+            final String pageIdentifier, Map<String, Object> paramMap) {
+        final ScrolledComposite scrolledComposite = buildScrolledComposite(
+                megawidget, parent, paramMap);
+
+        /*
+         * Add a listener to the horizontal and vertical scroll bars of the
+         * scrolled composite to record the origin each time scrolling occurs.
+         */
+        SelectionListener scrollListener = new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (scrolledComposite.getData(AREA_CHANGING_KEY) == null) {
+                    scrollSettings.setScrollOriginForPage(pageIdentifier,
+                            scrolledComposite.getOrigin());
+                }
+            }
+        };
+        scrolledComposite.getHorizontalBar().addSelectionListener(
+                scrollListener);
+        scrolledComposite.getVerticalBar().addSelectionListener(scrollListener);
+        return scrolledComposite;
+    }
+
+    /**
+     * Update the specified scrolled composite's scrolled area based upon the
+     * size of its content.
+     * 
+     * @param scrolledComposite
+     *            Scrolled composite to have its scrolled area updated.
+     */
+    public static void updateScrolledAreaSize(
+            ScrolledComposite scrolledComposite) {
+        if (scrolledComposite.isDisposed()
+                || (scrolledComposite.getData(AREA_CHANGING_KEY) != null)) {
+            return;
+        }
+        scrolledComposite.setData(AREA_CHANGING_KEY, Boolean.TRUE);
+        Point size = scrolledComposite.getContent().computeSize(SWT.DEFAULT,
+                SWT.DEFAULT);
+        scrolledComposite.getContent().setSize(size);
+        scrolledComposite.setMinSize(size);
+        updateScrollPageIncrement(scrolledComposite);
+        scrolledComposite.setData(AREA_CHANGING_KEY, null);
     }
 
     /**
@@ -523,5 +748,124 @@ public class UiBuilder {
      */
     public static boolean isDateTimeValueChanger(KeyEvent event) {
         return ((event.keyCode == SWT.ARROW_UP) || (event.keyCode == SWT.ARROW_DOWN));
+    }
+
+    // Private Static Methods
+
+    /**
+     * Build a scrolled composite containing a child composite in which to lay
+     * out megawidget components. The child composite is not assigned a layout.
+     * The resulting scrolled composite handles size changes it experiences by
+     * recalculating its page increments, as well as dealing with size changes
+     * of any child megawidgets it contains by resizing its client area (the
+     * latter only if the <code>paramMap</code> passed in is passed to said
+     * child megawidgets upon their creation).
+     * 
+     * @param megawidget
+     *            Megawidget for which to build the scrolled composite.
+     * @param parent
+     *            Parent composite.
+     * @param paramMap
+     *            Copy of the map of creation-time parameter names to values
+     *            provided to the megawidget. This must be a copy, because it
+     *            will be altered by this method to hold a resize listener
+     *            created herein to update the scrolled composite's client area.
+     *            Thus, when this method is called and then
+     *            <code>paramMap</code> is later passed to child megawidgets
+     *            upon their creation, the latter will notify the scrolled
+     *            composite of their size changes, and it will in turn notify
+     *            the original resize listener registered with
+     *            <code>paramMap</code> before this method was called.
+     * @return New scrolled composite.
+     */
+    private static ScrolledComposite buildScrolledComposite(
+            IResizer megawidget, Composite parent, Map<String, Object> paramMap) {
+        /*
+         * Create the scrolled composite and its child. Note that the scrolled
+         * composite's computeSize() method is overridden to ensure that the
+         * width and height each have the scrollbars' widths subtracted from
+         * them. This is because the base scrolled composite class always adds
+         * adds the widths of the scrollbars to what it is requesting in both
+         * dimensions.
+         */
+        final ScrolledComposite scrolledComposite = new ScrolledComposite(
+                parent, SWT.H_SCROLL | SWT.V_SCROLL) {
+            @Override
+            public Point computeSize(int wHint, int hHint, boolean changed) {
+                Point size = super.computeSize(wHint, hHint, changed);
+                Rectangle trimSize = computeTrim(0, 0, 0, 0);
+                size.x -= trimSize.width;
+                size.y -= trimSize.height;
+                return size;
+            }
+        };
+        Composite composite = new Composite(scrolledComposite, SWT.NONE);
+        scrolledComposite.setContent(composite);
+        scrolledComposite.setExpandHorizontal(true);
+        scrolledComposite.setExpandVertical(true);
+        scrolledComposite.getHorizontalBar().setIncrement(
+                SCROLLBAR_BUTTON_INCREMENT);
+        scrolledComposite.getVerticalBar().setIncrement(
+                SCROLLBAR_BUTTON_INCREMENT);
+
+        /*
+         * Ensure that the scrolled composite responds to being resized by
+         * updating its page increments.
+         */
+        scrolledComposite.addControlListener(new ControlAdapter() {
+            @Override
+            public void controlResized(ControlEvent e) {
+
+                /*
+                 * Schedule a resize of the page increment to happen after the
+                 * laying out of the panels is complete. The latter must be done
+                 * asynchronously to ensure the laying out is done before it
+                 * proceeds, otherwise it gets the wrong information from the
+                 * scrollbars.
+                 */
+                Display.getDefault().asyncExec(new Runnable() {
+                    @Override
+                    public void run() {
+                        updateScrollPageIncrement(scrolledComposite);
+                    }
+                });
+            }
+        });
+
+        /*
+         * Ensure that the scrolled composite has its area's size changed when a
+         * child megawidget changes by placing a new resize listener in the
+         * creation-time parameters map, which can then be passed to child
+         * megawidgets.
+         */
+        IResizeListener resizeListener = (IResizeListener) paramMap
+                .get(IResizer.RESIZE_LISTENER);
+        paramMap.put(IResizer.RESIZE_LISTENER, new ScrolledResizeListener(
+                megawidget, scrolledComposite, resizeListener));
+
+        /*
+         * Return the result.
+         */
+        return scrolledComposite;
+    }
+
+    /**
+     * Update the specified scrolled composite's page increment.
+     * 
+     * @param scrolledComposite
+     *            Scrolled composite to have its page increment updated.
+     */
+    private static void updateScrollPageIncrement(
+            ScrolledComposite scrolledComposite) {
+        if (scrolledComposite.isDisposed()
+                || (scrolledComposite.getData(PAGE_INCREMENT_CHANGING_KEY) != null)) {
+            return;
+        }
+        scrolledComposite.setData(PAGE_INCREMENT_CHANGING_KEY, Boolean.TRUE);
+        scrolledComposite.getHorizontalBar().setPageIncrement(
+                scrolledComposite.getHorizontalBar().getThumb());
+        scrolledComposite.getVerticalBar().setPageIncrement(
+                scrolledComposite.getVerticalBar().getThumb());
+        scrolledComposite.setData(PAGE_INCREMENT_CHANGING_KEY, null);
     }
 }

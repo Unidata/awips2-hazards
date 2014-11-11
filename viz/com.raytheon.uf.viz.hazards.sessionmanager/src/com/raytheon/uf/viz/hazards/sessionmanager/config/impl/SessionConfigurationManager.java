@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_SITES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_STATES;
+import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
@@ -45,6 +46,7 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 import org.eclipse.swt.widgets.Display;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -146,6 +148,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * Sep 23, 2014  3790      Robert.Blum  Added a file observer to the Hazard Metadata directory
  *                                      to reload the localization files when needed so that 
  *                                      cave does not need to be restarted.
+ * Oct 20, 2014  4818      Chris.Golden Added wrapping of metadata megawidget specifiers in
+ *                                      a scrollable megawidget.
  * </pre>
  * 
  * @author bsteffen
@@ -161,6 +165,34 @@ public class SessionConfigurationManager implements
      * the generation of metadata for an event.
      */
     private static final Map<String, Serializable> ENVIRONMENT = new HashMap<>();
+
+    /**
+     * Metadata group megawidget type.
+     */
+    private static final String METADATA_GROUP_TYPE = "Group";
+
+    /**
+     * Metadata group megawidget label.
+     */
+    private static final String METADATA_GROUP_TEXT = "Details";
+
+    /**
+     * Specifier parameters for the metadata group megawidget, used to wrap
+     * metadata megawidgets.
+     */
+    private static final ImmutableMap<String, Object> METADATA_GROUP_SPECIFIER_PARAMETERS;
+    static {
+        Map<String, Object> map = new HashMap<>();
+        map.put(GroupSpecifier.MEGAWIDGET_TYPE, METADATA_GROUP_TYPE);
+        map.put(GroupSpecifier.MEGAWIDGET_LABEL, METADATA_GROUP_TEXT);
+        map.put(GroupSpecifier.LEFT_MARGIN, 10);
+        map.put(GroupSpecifier.RIGHT_MARGIN, 10);
+        map.put(GroupSpecifier.TOP_MARGIN, 2);
+        map.put(GroupSpecifier.BOTTOM_MARGIN, 8);
+        map.put(GroupSpecifier.EXPAND_HORIZONTALLY, true);
+        map.put(GroupSpecifier.EXPAND_VERTICALLY, true);
+        METADATA_GROUP_SPECIFIER_PARAMETERS = ImmutableMap.copyOf(map);
+    }
 
     public static final String ALERTS_CONFIG_PATH = FileUtil.join(
             "hazardServices", "alerts", "HazardAlertsConfig.xml");
@@ -572,7 +604,7 @@ public class SessionConfigurationManager implements
                         .get(HazardConstants.EVENT_MODIFIERS_KEY);
             }
         }
-        List<?> specifiersList = (List<?>) result
+        List<Map<String, Object>> specifiersList = (List<Map<String, Object>>) result
                 .get(HazardConstants.METADATA_KEY);
         if (specifiersList.isEmpty()) {
             return (eventModifyingFunctionNamesForIdentifiers == null ? EMPTY_HAZARD_EVENT_METADATA
@@ -581,12 +613,15 @@ public class SessionConfigurationManager implements
                             Collections.<String> emptySet(), scriptFile,
                             eventModifyingFunctionNamesForIdentifiers));
         }
+        specifiersList = MegawidgetSpecifierManager
+                .makeRawSpecifiersScrollable(specifiersList,
+                        METADATA_GROUP_SPECIFIER_PARAMETERS);
+
         Set<String> refreshTriggeringMetadataKeys = getMegawidgetIdentifiersWithParameter(
                 specifiersList, HazardConstants.METADATA_RELOAD_TRIGGER);
         try {
             return new HazardEventMetadata(new MegawidgetSpecifierManager(
-                    (List<Map<String, Object>>) specifiersList,
-                    IControlSpecifier.class,
+                    specifiersList, IControlSpecifier.class,
                     timeManager.getCurrentTimeProvider(), sideEffectsApplier),
                     refreshTriggeringMetadataKeys, scriptFile,
                     eventModifyingFunctionNamesForIdentifiers);

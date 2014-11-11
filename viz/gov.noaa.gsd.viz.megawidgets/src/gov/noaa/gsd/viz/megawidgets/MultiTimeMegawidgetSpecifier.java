@@ -35,6 +35,8 @@ import com.google.common.collect.ImmutableMap;
  * ------------ ---------- ------------ --------------------------
  * Jun 27, 2014   3512     Chris.Golden Initial creation (refactored from
  *                                      TimeScaleSpecifier).
+ * Oct 20, 2014   4818     Chris.Golden Changed to always take up the full
+ *                                      width of a details panel.
  * </pre>
  * 
  * @author Chris.Golden
@@ -134,7 +136,8 @@ public class MultiTimeMegawidgetSpecifier extends TimeMegawidgetSpecifier
     public MultiTimeMegawidgetSpecifier(Map<String, Object> parameters,
             String minimumIntervalKey) throws MegawidgetSpecificationException {
         super(parameters, new BoundedMultiLongValidator(parameters,
-                minimumIntervalKey, 0L, Long.MAX_VALUE / 2L));
+                minimumIntervalKey, 0L, Long.MAX_VALUE / 2L),
+                ControlSpecifierOptionsManager.BooleanSource.TRUE);
 
         /*
          * Ensure that the editability flags, if present, are acceptable.

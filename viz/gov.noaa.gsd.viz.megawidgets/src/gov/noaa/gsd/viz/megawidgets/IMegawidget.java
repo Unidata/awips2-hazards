@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
+
 import java.util.Map;
 import java.util.Set;
 
@@ -25,6 +27,10 @@ import java.util.Set;
  * Oct 23, 2013   2168     Chris.Golden      Removed methods that belonged in
  *                                           new IControl interface.
  * Jun 24, 2014   4009     Chris.Golden      Added extra data functionality.
+ * Oct 20, 2014   4818     Chris.Golden      Added use of display settings,
+ *                                           allowing implementations to save and
+ *                                           restore display state (scroll
+ *                                           position, etc.).
  * </pre>
  * 
  * @author Chris.Golden
@@ -130,4 +136,20 @@ public interface IMegawidget {
      *            New extra data map.
      */
     public void setExtraData(Map<String, Object> extraData);
+
+    /**
+     * Get the display settings for this megawidget.
+     * 
+     * @return Display settings.
+     */
+    public IDisplaySettings getDisplaySettings();
+
+    /**
+     * Set the display settings for this megawidget to those specified. If the
+     * display settings are incompatible with this megawidget, they are ignored.
+     * 
+     * @param displaySettings
+     *            New display settings.
+     */
+    public void setDisplaySettings(IDisplaySettings displaySettings);
 }

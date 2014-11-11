@@ -66,6 +66,14 @@ import com.google.common.collect.ImmutableSet;
  *                                           called upon to display with its
  *                                           original minimum, maximum, and
  *                                           precision parameters.
+ * Oct 20, 2014   4818     Chris.Golden      Changed to only stretch across the
+ *                                           available horizontal space if it is
+ *                                           configured to expand horizontally.
+ *                                           If not, and if it is configured to
+ *                                           show a scale widget, ensure that
+ *                                           the scale bar is not too narrow,
+ *                                           but do not stretch across all
+ *                                           available space.
  * </pre>
  * 
  * @author Chris.Golden
@@ -159,9 +167,11 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
          */
         Composite panel = UiBuilder.buildComposite(parent, 2, SWT.NONE,
                 UiBuilder.CompositeType.SINGLE_ROW, specifier);
-        boolean expandHorizontally = (specifier.isHorizontalExpander() || specifier
-                .isShowScale());
-        ((GridData) panel.getLayoutData()).grabExcessHorizontalSpace = expandHorizontally;
+        ((GridData) panel.getLayoutData()).grabExcessHorizontalSpace = specifier
+                .isHorizontalExpander();
+        if (specifier.isHorizontalExpander() == false) {
+            ((GridData) panel.getLayoutData()).horizontalAlignment = SWT.LEFT;
+        }
         label = UiBuilder.buildLabel(panel, specifier);
 
         /*
@@ -191,8 +201,9 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
         /*
          * Place the spinner in the parent's grid.
          */
-        GridData gridData = new GridData((expandHorizontally ? SWT.FILL
-                : SWT.LEFT), SWT.CENTER, true, false);
+        GridData gridData = new GridData((specifier.isHorizontalExpander()
+                || specifier.isShowScale() ? SWT.FILL : SWT.LEFT), SWT.CENTER,
+                true, false);
         gridData.horizontalSpan = (label == null ? 2 : 1);
         gridData.minimumWidth = oneDigitSpinnerWidthPixels
                 + ((maxNumCharacters - 1) * digitWidthPixels);
@@ -217,6 +228,7 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
              */
             gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
             gridData.horizontalSpan = 2;
+            gridData.minimumWidth = 10 * digitWidthPixels;
             scale.setLayoutData(gridData);
         } else {
             scale = null;

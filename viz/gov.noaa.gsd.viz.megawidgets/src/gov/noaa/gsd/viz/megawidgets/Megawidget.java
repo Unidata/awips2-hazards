@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -54,6 +56,9 @@ import com.google.common.collect.ImmutableSet;
  *                                           package, updated Javadoc and other
  *                                           comments.
  * Jun 24, 2014   4009     Chris.Golden      Added extra data functionality.
+ * Oct 20, 2014   4818     Chris.Golden      Added default implemenations of the
+ *                                           methods used to save and restore
+ *                                           display state.
  * </pre>
  * 
  * @author Chris.Golden
@@ -204,6 +209,35 @@ public abstract class Megawidget implements IMegawidget {
     public final void setExtraData(Map<String, Object> extraData) {
         this.extraData.clear();
         this.extraData.putAll(extraData);
+    }
+
+    /**
+     * Get the display settings for this megawidget. This implementation simply
+     * returns {@link IDisplaySettings#NULL_DISPLAY_SETTINGS}; subclasses must
+     * override this if they are to allow their display settings to be queried.
+     * 
+     * @return Display settings.
+     */
+    @Override
+    public IDisplaySettings getDisplaySettings() {
+        return IDisplaySettings.NULL_DISPLAY_SETTINGS;
+    }
+
+    /**
+     * Set the display settings for this megawidget to those specified. If the
+     * display settings are incompatible with this megawidget, they are ignored.
+     * This implementation ignores the display settings regardless; subclasses
+     * must override this if they are to allow their display settings to be set.
+     * 
+     * @param displaySettings
+     *            New display settings.
+     */
+    @Override
+    public void setDisplaySettings(IDisplaySettings displaySettings) {
+
+        /*
+         * No action.
+         */
     }
 
     // Protected Methods

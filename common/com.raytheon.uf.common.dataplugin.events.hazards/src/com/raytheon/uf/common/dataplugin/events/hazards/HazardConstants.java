@@ -38,7 +38,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Sep 12, 2012            mnash     Initial creation
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
  * Aug 10, 2013  1265      blawrenc  Added more constants. This helps
- *                                   to clean up the use of strings
+ *                                   to clean up the use of stings
  *                                   as keys in other code modules.
  * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
@@ -59,6 +59,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Sep 09, 2014 4042      Chris.Golden  Added constant for UI scrolling increment.
  * Oct 03, 2014 4918      Robert.Blum   Added constant for hazard metadata.
  * Oct 08, 2014 4042      Chris.Golden  Added constants for productgen-related Python import path.
+ * Oct 22, 2014 4818      Chris.Golden  Removed constant for UI scrolling increment (moved to
+ *                                      UiBuilder).
  * </pre>
  * 
  * @author mnash
@@ -583,11 +585,6 @@ public final class HazardConstants {
      * Maximum initial height key.
      */
     public static final String MAX_INITIAL_HEIGHT_KEY = "maxInitialHeight";
-
-    /*
-     * The following are related to UI elements.
-     */
-    public static final int SCROLLBAR_BUTTON_INCREMENT = 16;
 
     /*
      * The following are related to hazard geometries and their supporting meta

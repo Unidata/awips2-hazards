@@ -25,6 +25,8 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jul 23, 2014    4122    Chris.Golden Initial creation.
+ * Oct 20, 2014    4818    Chris.Golden Added option of providing a scrollable
+ *                                      panel for child megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -33,7 +35,7 @@ import java.util.Map;
  */
 public class DetailedComboBoxSpecifier extends
         FlatChoicesWithDetailMegawidgetSpecifier<String> implements
-        IContainerSpecifier<IControlSpecifier> {
+        IPotentiallyScrollableContainerSpecifier<IControlSpecifier> {
 
     // Public Static Constants
 
@@ -64,6 +66,11 @@ public class DetailedComboBoxSpecifier extends
      */
     private final boolean headerExpandHorizontally;
 
+    /**
+     * Flag indicating whether or not the client area is to be scrollable.
+     */
+    private final boolean scrollable;
+
     // Public Constructors
 
     /**
@@ -92,6 +99,13 @@ public class DetailedComboBoxSpecifier extends
                 .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
                         parameters.get(HEADER_EXPAND_HORIZONTALLY),
                         HEADER_EXPAND_HORIZONTALLY, false);
+
+        /*
+         * Ensure that the scrollable flag, if present, is valid.
+         */
+        scrollable = ConversionUtilities.getSpecifierBooleanValueFromObject(
+                getIdentifier(), getType(), parameters.get(SCROLLABLE),
+                SCROLLABLE, false);
     }
 
     @Override
@@ -127,6 +141,11 @@ public class DetailedComboBoxSpecifier extends
     @Override
     public boolean isVerticalExpander() {
         return containerOptionsManager.isVerticalExpander();
+    }
+
+    @Override
+    public final boolean isScrollable() {
+        return scrollable;
     }
 
     /**

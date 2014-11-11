@@ -648,7 +648,6 @@ class MetaData:
                "fieldType": "ExpandBar",
                "fieldName": "CTABar",
                "expandHorizontally": True,
-               "expandVertically": True,
                "pages": [
                             {
                              "pageName": "Calls to Action",
@@ -870,7 +869,6 @@ class MetaData:
                "fieldType": "ExpandBar",
                "fieldName": "CAPBar",
                "expandHorizontally": True,
-               "expandVertically": True,
                "pages": [
                             {
                              "pageName": "CAP",

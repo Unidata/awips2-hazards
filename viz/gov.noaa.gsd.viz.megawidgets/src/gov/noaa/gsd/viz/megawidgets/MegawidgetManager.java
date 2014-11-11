@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -136,6 +137,10 @@ import com.google.common.collect.Lists;
  * Aug 19, 2014    4098     Chris.Golden     Changed to provide a method for accessing
  *                                           SWT wrapper megawidgets.
  * Oct 10, 2014    4042     Chris.Golden     Changed to work with notifier subcommands.
+ * Oct 20, 2014    4818     Chris.Golden     Added methods for getting and setting
+ *                                           megawidgets' display settings, allowing the
+ *                                           saving and restoring of display state
+ *                                           (scroll position, etc.).
  * </pre>
  * 
  * @author Chris.Golden
@@ -951,6 +956,43 @@ public class MegawidgetManager {
             }
             megawidgetsForIdentifiers.get(identifier).setExtraData(
                     extraDataMap.get(identifier));
+        }
+    }
+
+    /**
+     * Get a mapping of megawidget identifiers to their display settings.
+     * 
+     * @return Map of the megawidget identifiers to their display settings.
+     */
+    public final Map<String, IDisplaySettings> getDisplaySettings() {
+        Map<String, IDisplaySettings> displaySettingsForIdentifiers = new HashMap<>(
+                megawidgetsForIdentifiers.size(), 1.0f);
+        for (Map.Entry<String, IMegawidget> entry : megawidgetsForIdentifiers
+                .entrySet()) {
+            displaySettingsForIdentifiers.put(entry.getKey(), entry.getValue()
+                    .getDisplaySettings());
+        }
+        return displaySettingsForIdentifiers;
+    }
+
+    /**
+     * Set the display settings of the specified megawidget.
+     * 
+     * @param displaySettingsForIdentifiers
+     *            Map of the megawidget identifiers to the display settings to
+     *            be used. Any megawidgets for which display settings are not
+     *            found, or for which the specified display settings are not
+     *            appropriate, do not have their display settings modified.
+     */
+    public final void setDisplaySettings(
+            Map<String, IDisplaySettings> displaySettingsForIdentifiers) {
+        for (Map.Entry<String, IDisplaySettings> entry : displaySettingsForIdentifiers
+                .entrySet()) {
+            IMegawidget megawidget = megawidgetsForIdentifiers.get(entry
+                    .getKey());
+            if (megawidget != null) {
+                megawidget.setDisplaySettings(entry.getValue());
+            }
         }
     }
 

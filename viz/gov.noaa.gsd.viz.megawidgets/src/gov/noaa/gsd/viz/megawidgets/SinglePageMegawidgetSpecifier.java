@@ -28,6 +28,9 @@ import java.util.Map;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Oct 20, 2014    4818    Chris.Golden      Added option of providing a
+ *                                           scrollable panel for child
+ *                                           megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -35,7 +38,8 @@ import java.util.Map;
  * @see ContainerMegawidget
  */
 public abstract class SinglePageMegawidgetSpecifier extends
-        ContainerMegawidgetSpecifier<IControlSpecifier> {
+        ContainerMegawidgetSpecifier<IControlSpecifier> implements
+        IPotentiallyScrollableContainerSpecifier<IControlSpecifier> {
 
     // Public Static Constants
 
@@ -63,6 +67,11 @@ public abstract class SinglePageMegawidgetSpecifier extends
      * lay themselves out.
      */
     private final int columnCount;
+
+    /**
+     * Flag indicating whether or not the client area is to be scrollable.
+     */
+    private final boolean scrollable;
 
     // Public Constructors
 
@@ -93,6 +102,13 @@ public abstract class SinglePageMegawidgetSpecifier extends
                     getType(), MEGAWIDGET_COLUMN_COUNT, columnCount,
                     "must be positive integer");
         }
+
+        /*
+         * Ensure that the scrollable flag, if present, is valid.
+         */
+        scrollable = ConversionUtilities.getSpecifierBooleanValueFromObject(
+                getIdentifier(), getType(), parameters.get(SCROLLABLE),
+                SCROLLABLE, false);
 
         /*
          * Ensure that child list, if present, is acceptable, and store it.
@@ -128,5 +144,10 @@ public abstract class SinglePageMegawidgetSpecifier extends
      */
     public final int getColumnCount() {
         return columnCount;
+    }
+
+    @Override
+    public boolean isScrollable() {
+        return scrollable;
     }
 }

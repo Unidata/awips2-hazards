@@ -29,6 +29,8 @@ import java.util.Map;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Oct 20, 2014    4818    Chris.Golden      Changed to never stretch across
+ *                                           the full width of a details panel.
  * </pre>
  * 
  * @author Chris.Golden
@@ -60,7 +62,8 @@ public class TimeSpecifier extends TimeMegawidgetSpecifier implements
     public TimeSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
         super(parameters, new BoundedComparableValidator<Long>(parameters,
-                null, null, Long.class, 0L, Long.MAX_VALUE / 2L));
+                null, null, Long.class, 0L, Long.MAX_VALUE / 2L),
+                ControlSpecifierOptionsManager.BooleanSource.FALSE);
 
         /*
          * Get the horizontal expansion flag if available.

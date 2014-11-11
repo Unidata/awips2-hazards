@@ -21,6 +21,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 
@@ -33,12 +34,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.ScrolledComposite;
-import org.eclipse.swt.events.ControlAdapter;
-import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
-import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
@@ -121,6 +118,9 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                           display the megawidgets. Also added maximum
  *                                           size constraints that may be specified as
  *                                           part of the dialog options.
+ * Oct 20, 2014   4818     Chris.Golden      Removed scrolled composite from the dialog,
+ *                                           since scrolling is now handled by the
+ *                                           megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -195,28 +195,6 @@ class ToolDialog extends BasicDialog {
      * none cause such invocations.
      */
     private final List<String> runToolTriggerIdentifiers;
-
-    /**
-     * Scrolled composite, used to hold the megawidget panel.
-     */
-    private ScrolledComposite scrolledComposite;
-
-    /**
-     * Megawidget holding panel.
-     */
-    private Composite megawidgetPanel;
-
-    /**
-     * Flag indicating whether the scrolled composite's contents are currently
-     * changing.
-     */
-    private boolean scrolledCompositeContentsChanging = false;
-
-    /**
-     * Flag indicating whether the scrolled composite page increment is
-     * currently changing.
-     */
-    private boolean scrolledCompositePageIncrementChanging = false;
 
     // Public Constructors
 
@@ -370,45 +348,6 @@ class ToolDialog extends BasicDialog {
         }
 
         /*
-         * Create the scrollable and its content panel to hold the megawidgets.
-         */
-        scrolledComposite = new ScrolledComposite(top, SWT.H_SCROLL
-                | SWT.V_SCROLL);
-        megawidgetPanel = new Composite(scrolledComposite, SWT.NONE);
-        gridLayout = new GridLayout(1, false);
-        gridLayout.marginWidth = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_MARGIN);
-        gridLayout.marginHeight = 0;
-        gridLayout.marginTop = convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_MARGIN);
-        megawidgetPanel.setLayout(gridLayout);
-        scrolledComposite.setContent(megawidgetPanel);
-        scrolledComposite.setExpandHorizontal(true);
-        scrolledComposite.getHorizontalBar().setIncrement(
-                HazardConstants.SCROLLBAR_BUTTON_INCREMENT);
-        scrolledComposite.getVerticalBar().setIncrement(
-                HazardConstants.SCROLLBAR_BUTTON_INCREMENT);
-        scrolledComposite.addControlListener(new ControlAdapter() {
-            @Override
-            public void controlResized(ControlEvent e) {
-
-                /*
-                 * Schedule a resize of the page increment to happen after the
-                 * laying out of the panels is complete. The latter must be done
-                 * asynchronously to ensure the laying out is done before it
-                 * proceeds, otherwise it gets the wrong information from the
-                 * scrollbars.
-                 */
-                Display.getDefault().asyncExec(new Runnable() {
-                    @Override
-                    public void run() {
-                        recalculateScrolledCompositePageIncrement();
-                    }
-                });
-            }
-        });
-        scrolledComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true,
-                true));
-
-        /*
          * Get the minimum and maximum visible times for any time scale
          * megawidgets that might be created.
          */
@@ -434,6 +373,22 @@ class ToolDialog extends BasicDialog {
         }
 
         /*
+         * Convert the specifiers list into one of the proper type, and ensure
+         * it is scrollable.
+         */
+        List<Map<String, Object>> megawidgetSpecifiersList = new ArrayList<>();
+        for (Object specifier : megawidgetSpecifiers) {
+            megawidgetSpecifiersList.add((Dict) specifier);
+        }
+        int horizontalMargin = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_MARGIN);
+        megawidgetSpecifiersList = MegawidgetSpecifierManager
+                .makeRawSpecifiersScrollable(
+                        megawidgetSpecifiersList,
+                        horizontalMargin,
+                        convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_MARGIN),
+                        horizontalMargin, 0);
+
+        /*
          * Create a megawidget manager, which will create the megawidgets and
          * manage their displaying, and allowing of manipulation, of the the
          * dictionary values. Invocations are interpreted as tools to be run,
@@ -442,10 +397,6 @@ class ToolDialog extends BasicDialog {
          * the dialog parameters, create a Python side effects applier object
          * and pass it to the megawidget manager.
          */
-        List<Dict> megawidgetSpecifiersList = new ArrayList<>();
-        for (Object specifier : megawidgetSpecifiers) {
-            megawidgetSpecifiersList.add((Dict) specifier);
-        }
         try {
             PythonSideEffectsApplier sideEffectsApplier = null;
             if (PythonSideEffectsApplier
@@ -454,7 +405,7 @@ class ToolDialog extends BasicDialog {
                         pythonSideEffectsScriptFile);
             }
             megawidgetManager = new MegawidgetManager(
-                    megawidgetPanel,
+                    top,
                     megawidgetSpecifiersList,
                     valuesDict,
                     new MegawidgetManagerAdapter() {
@@ -477,7 +428,11 @@ class ToolDialog extends BasicDialog {
                         @Override
                         public void sizeChanged(MegawidgetManager manager,
                                 String identifier) {
-                            recalculateScrolledCompositeClientArea();
+
+                            /*
+                             * No action; size changes of any children should be
+                             * handled by the scrollable wrapper megawidget.
+                             */
                         }
 
                         @Override
@@ -499,11 +454,6 @@ class ToolDialog extends BasicDialog {
                             + "manager due to megawidget construction problem: "
                             + e, e);
         }
-
-        /*
-         * Set up the scrolled composite's client area.
-         */
-        recalculateScrolledCompositeClientArea();
 
         /*
          * Return the created area.
@@ -559,14 +509,6 @@ class ToolDialog extends BasicDialog {
         }
         if (max < size.y) {
             size.y = max;
-        } else {
-
-            /*
-             * For some reason, if given free rein, the scrolled composite will
-             * ask for additional height for its horizontal scrollbar even if it
-             * is not needed. So, that height is subtracted here.
-             */
-            size.y -= scrolledComposite.computeTrim(0, 0, 0, 0).height;
         }
 
         /*
@@ -591,39 +533,6 @@ class ToolDialog extends BasicDialog {
     }
 
     // Private Methods
-
-    /**
-     * Recalculate the scrolled composite's client area.
-     */
-    private void recalculateScrolledCompositeClientArea() {
-        if (scrolledCompositeContentsChanging) {
-            return;
-        }
-        scrolledCompositeContentsChanging = true;
-        Point size = megawidgetPanel.computeSize(SWT.DEFAULT, SWT.DEFAULT);
-        megawidgetPanel.setSize(size);
-        scrolledComposite.setMinSize(size);
-        recalculateScrolledCompositePageIncrement();
-        scrolledCompositeContentsChanging = false;
-    }
-
-    /**
-     * Recalculate the scrolled composite's page increment.
-     */
-    private void recalculateScrolledCompositePageIncrement() {
-        if (scrolledComposite.isDisposed()) {
-            return;
-        }
-        if (scrolledCompositePageIncrementChanging) {
-            return;
-        }
-        scrolledCompositePageIncrementChanging = true;
-        scrolledComposite.getHorizontalBar().setPageIncrement(
-                scrolledComposite.getHorizontalBar().getThumb());
-        scrolledComposite.getVerticalBar().setPageIncrement(
-                scrolledComposite.getVerticalBar().getThumb());
-        scrolledCompositePageIncrementChanging = false;
-    }
 
     /**
      * Fire the specified action.

@@ -30,6 +30,10 @@ import java.util.Map;
  *                                           comments.
  * Jun 17, 2014    3982    Chris.Golden      Changed "isFullWidthOfColumn"
  *                                           property to "isFullWidthOfDetailPanel".
+ * Oct 20, 2014    4818    Chris.Golden      Changed to allow subclasses to
+ *                                           determine whether or not to stretch
+ *                                           across the full width of a details
+ *                                           panel.
  * </pre>
  * 
  * @author Chris.Golden
@@ -88,15 +92,19 @@ public abstract class TimeMegawidgetSpecifier extends
      *            pairs.
      * @param stateValidator
      *            State validator.
+     * @param howToSetFullWidthOption
+     *            Indicator of how to set the full-width-of-detail-panel
+     *            variable.
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
      */
     public TimeMegawidgetSpecifier(Map<String, Object> parameters,
-            StateValidator stateValidator)
+            StateValidator stateValidator,
+            ControlSpecifierOptionsManager.BooleanSource howToSetFullWidthOption)
             throws MegawidgetSpecificationException {
         super(parameters, stateValidator);
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
-                ControlSpecifierOptionsManager.BooleanSource.FALSE);
+                howToSetFullWidthOption);
 
         /*
          * Ensure that the rapid change notification flag, if provided, is

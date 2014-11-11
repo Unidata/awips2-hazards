@@ -42,6 +42,8 @@ import java.util.Map;
  * Jun 17, 2014   3982     Chris.Golden      Changed "isFullWidthOfColumn"
  *                                           property to "isFullWidthOfDetailPanel".
  * Aug 06, 2014   3777     Chris.Golden      Added "spellcheck" boolean property.
+ * Oct 20, 2014   4818     Chris.Golden      Changed to only stretch across the full
+ *                                           width of a details panel if multi-line.
  * </pre>
  * 
  * @author Chris.Golden
@@ -131,8 +133,6 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
     public TextSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
         super(parameters, new TextValidator(parameters, MEGAWIDGET_MAX_CHARS));
-        optionsManager = new ControlSpecifierOptionsManager(this, parameters,
-                ControlSpecifierOptionsManager.BooleanSource.FALSE);
 
         /*
          * Ensure that the rapid change notification flag, if provided, is
@@ -156,6 +156,16 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
                     getType(), MEGAWIDGET_VISIBLE_LINES, numVisibleLines,
                     "must be positive integer");
         }
+
+        /*
+         * Create the options manager, now that the number of visible lines is
+         * known.
+         */
+        optionsManager = new ControlSpecifierOptionsManager(
+                this,
+                parameters,
+                (numVisibleLines > 1 ? ControlSpecifierOptionsManager.BooleanSource.TRUE
+                        : ControlSpecifierOptionsManager.BooleanSource.FALSE));
 
         /*
          * Ensure that the visible length, if present, is acceptable.

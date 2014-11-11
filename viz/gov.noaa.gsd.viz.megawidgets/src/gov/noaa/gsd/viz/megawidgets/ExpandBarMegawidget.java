@@ -9,6 +9,9 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.MultiSelectSettings;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +36,9 @@ import org.eclipse.swt.widgets.ExpandItem;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jun 20, 2014    4010    Chris.Golden Initial creation.
+ * Oct 20, 2014    4818    Chris.Golden Added use of display settings, allowing
+ *                                      the saving and restoring of expansion
+ *                                      state for pages.
  * </pre>
  * 
  * @author Chris.Golden
@@ -45,6 +51,11 @@ public class ExpandBarMegawidget extends ContainerMegawidget implements
     // Private Variables
 
     /**
+     * Expand bar.
+     */
+    private final ExpandBar expandBar;
+
+    /**
      * Grid layout data of the expand bar.
      */
     private final GridData gridData;
@@ -53,6 +64,12 @@ public class ExpandBarMegawidget extends ContainerMegawidget implements
      * Resize listener.
      */
     private final IResizeListener resizeListener;
+
+    /**
+     * Display settings.
+     */
+    private final MultiSelectSettings<String> displaySettings = new MultiSelectSettings<>(
+            getClass());
 
     // Protected Constructors
 
@@ -76,7 +93,7 @@ public class ExpandBarMegawidget extends ContainerMegawidget implements
         /*
          * Create the expand bar to put the pages in, and grid it.
          */
-        ExpandBar expandBar = new ExpandBar(parent, SWT.NONE);
+        expandBar = new ExpandBar(parent, SWT.NONE);
         expandBar.setEnabled(specifier.isEnabled());
         gridContainerPanel(expandBar);
         setComposite(expandBar);
@@ -138,6 +155,38 @@ public class ExpandBarMegawidget extends ContainerMegawidget implements
         });
     }
 
+    // Public Methods
+
+    @Override
+    public IDisplaySettings getDisplaySettings() {
+        return displaySettings;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void setDisplaySettings(IDisplaySettings displaySettings) {
+        if ((displaySettings.getMegawidgetClass() == getClass())
+                && (displaySettings instanceof MultiSelectSettings)
+                && (expandBar.isDisposed() == false)) {
+            MultiSelectSettings<String> multiSelectSettings = (MultiSelectSettings<String>) displaySettings;
+            boolean changed = false;
+            for (ExpandItem item : expandBar.getItems()) {
+                boolean wasVisible = item.getExpanded();
+                item.setExpanded(multiSelectSettings.isSelected(item.getText()));
+                if (wasVisible != item.getExpanded()) {
+                    recalculateHeight(item, !wasVisible);
+                    changed = true;
+                }
+            }
+            this.displaySettings.clearSelectedItems();
+            this.displaySettings.addSelectedItems(multiSelectSettings
+                    .getSelectedItems());
+            if (changed && (resizeListener != null)) {
+                resizeListener.sizeChanged(this);
+            }
+        }
+    }
+
     // Private Methods
 
     /**
@@ -149,12 +198,30 @@ public class ExpandBarMegawidget extends ContainerMegawidget implements
      *            Flag indicating whether or not the page is now visible.
      */
     private void itemVisibilityChanged(ExpandItem expandItem, boolean visible) {
+        recalculateHeight(expandItem, visible);
+        if (visible) {
+            displaySettings.addSelectedItem(expandItem.getText());
+        } else {
+            displaySettings.removeSelectedItem(expandItem.getText());
+        }
+        if (resizeListener != null) {
+            resizeListener.sizeChanged(this);
+        }
+    }
+
+    /**
+     * Recalculate the height given the specified item's page's expansion or
+     * collapse.
+     * 
+     * @param expandItem
+     *            Item whose page was expanded or collapsed.
+     * @param visible
+     *            Flag indicating whether or not the page is now visible.
+     */
+    private void recalculateHeight(ExpandItem expandItem, boolean visible) {
         gridData.minimumHeight += expandItem.getControl().computeSize(
                 SWT.DEFAULT, SWT.DEFAULT).y
                 * (visible ? 1 : -1);
         gridData.heightHint = gridData.minimumHeight;
-        if (resizeListener != null) {
-            resizeListener.sizeChanged(this);
-        }
     }
 }

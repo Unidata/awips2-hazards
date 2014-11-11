@@ -161,6 +161,8 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      using megawidgets). Also made many public, interface-
  *                                      specified methods private, as they are only to be
  *                                      used internally by this class.
+ * Oct 20, 2014 4818       Chris.Golden Added wrapping of product staging dialog megawidget
+ *                                      specifiers in a scrollable megawidget.
  * </pre>
  * 
  * @author bsteffen
@@ -383,12 +385,24 @@ public class SessionProductManager implements ISessionProductManager {
                     List<Map<String, Serializable>> dialogInfoFields = (List<Map<String, Serializable>>) dialogInfo
                             .get(HazardConstants.METADATA_KEY);
                     if (dialogInfoFields.isEmpty() == false) {
+
+                        /*
+                         * Get the raw specifiers, and ensure they are
+                         * scrollable.
+                         */
                         List<Map<String, Object>> rawSpecifiers = new ArrayList<>(
                                 dialogInfoFields.size());
                         for (Map<String, Serializable> rawSpecifier : dialogInfoFields) {
                             rawSpecifiers.add(new HashMap<String, Object>(
                                     rawSpecifier));
                         }
+                        rawSpecifiers = MegawidgetSpecifierManager
+                                .makeRawSpecifiersScrollable(rawSpecifiers, 10,
+                                        5, 10, 5);
+
+                        /*
+                         * Get the side effects applier, if any.
+                         */
                         ISideEffectsApplier sideEffectsApplier = null;
                         File scriptFile = productGen.getScriptFile(info
                                 .getProductGeneratorName());
@@ -397,6 +411,10 @@ public class SessionProductManager implements ISessionProductManager {
                             sideEffectsApplier = new PythonSideEffectsApplier(
                                     scriptFile);
                         }
+
+                        /*
+                         * Create the megawidget specifier manager.
+                         */
                         try {
                             info.setStagingDialogMegawidgetSpecifierManager(new MegawidgetSpecifierManager(
                                     rawSpecifiers, IControlSpecifier.class,

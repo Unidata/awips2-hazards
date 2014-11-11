@@ -23,6 +23,7 @@ import gov.noaa.gsd.viz.hazards.ui.StateChangerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.ViewPartDelegateView;
 import gov.noaa.gsd.viz.hazards.ui.ViewPartQualifiedWidgetDelegateHelper;
 import gov.noaa.gsd.viz.hazards.ui.ViewPartWidgetDelegateHelper;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
 import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
@@ -38,7 +39,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.preference.IPreferenceStore;
-import org.eclipse.swt.graphics.Point;
 import org.eclipse.ui.IPartListener2;
 import org.eclipse.ui.IWorkbenchPartReference;
 import org.eclipse.ui.internal.WorkbenchPage;
@@ -112,6 +112,10 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                           be made visible again without bouncing
  *                                           H.S. (and sometimes CAVE).
  * Oct 20, 2014   5047     mpduff            Add Null Check.
+ * Oct 20, 2014   4818     Chris.Golden      Changed from tracking of raw metadata
+ *                                           scroll origins for each hazard event to
+ *                                           more comprehensive megawidget display
+ *                                           settings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -285,24 +289,28 @@ public class HazardDetailView extends
     };
 
     /**
-     * Map of hazard event identifiers to their scroll origins; the latter are
-     * forwarded to this object by the principal each time the latter detects
-     * that one has changed as a result of the user moving the scrollbars.
+     * Map of hazard event identifiers to their metadata megawidgets' display
+     * settings; the latter are forwarded to this object by the principal
+     * whenever the latter is about to delete a megawidget manager, so that the
+     * same display settings for that event may be restored if that event is
+     * shown again.
      */
-    private final Map<String, Point> scrollOriginsForEventIds = new HashMap<>();
+    private final Map<String, Map<String, IDisplaySettings>> megawidgetDisplaySettingsForEventIds = new HashMap<>();
 
     /**
-     * Scroll origin change handler.
+     * Metadata megawidgets' display settings change handler.
      */
-    private final IStateChangeHandler<String, Point> scrollOriginChangeHandler = new IStateChangeHandler<String, Point>() {
+    private final IStateChangeHandler<String, Map<String, IDisplaySettings>> megawidgetDisplaySettingsChangeHandler = new IStateChangeHandler<String, Map<String, IDisplaySettings>>() {
 
         @Override
-        public void stateChanged(String identifier, Point value) {
-            scrollOriginsForEventIds.put(identifier, value);
+        public void stateChanged(String identifier,
+                Map<String, IDisplaySettings> value) {
+            megawidgetDisplaySettingsForEventIds.put(identifier, value);
         }
 
         @Override
-        public void statesChanged(Map<String, Point> valuesForIdentifiers) {
+        public void statesChanged(
+                Map<String, Map<String, IDisplaySettings>> valuesForIdentifiers) {
             throw new UnsupportedOperationException();
         }
     };
@@ -733,16 +741,17 @@ public class HazardDetailView extends
                 extraDataForEventIdentifiers);
 
         /*
-         * Register the scroll origin change handler with the view part, so that
-         * notifications of scroll origin changes for event identifiers are sent
-         * to this object and they can be recorded to be available for a new
-         * view part if the old one is closed. Then send the accumulated scroll
-         * origins to the new view part to initialize it.
+         * Register the megawidget display settings change handler with the view
+         * part, so that notifications of megawidget display settings changes
+         * for event identifiers are sent to this object and they can be
+         * recorded to be available for a new view part if the old one is
+         * closed. Then send the accumulated megawidget display settings to the
+         * new view part to initialize it.
          */
-        getViewPart().getScrollOriginChanger().setStateChangeHandler(
-                scrollOriginChangeHandler);
-        getViewPart().getScrollOriginChanger().setStates(
-                scrollOriginsForEventIds);
+        getViewPart().getMegawidgetDisplaySettingsChanger()
+                .setStateChangeHandler(megawidgetDisplaySettingsChangeHandler);
+        getViewPart().getMegawidgetDisplaySettingsChanger().setStates(
+                megawidgetDisplaySettingsForEventIds);
     }
 
     /**

@@ -27,13 +27,17 @@ import java.util.Map;
  *                                           (composition over inheritance).
  * Jun 17, 2014    3982    Chris.Golden      Changed "isFullWidthOfColumn"
  *                                           property to "isFullWidthOfDetailPanel".
+ * Oct 20, 2014    4818    Chris.Golden      Added option of providing a scrollable
+ *                                           panel for each page of child
+ *                                           megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see TabbedCompositeMegawidget
  */
-public class TabbedCompositeSpecifier extends MultiPageMegawidgetSpecifier {
+public class TabbedCompositeSpecifier extends MultiPageMegawidgetSpecifier
+        implements IPotentiallyScrollableContainerSpecifier<IControlSpecifier> {
 
     // Private Variables
 
@@ -41,6 +45,11 @@ public class TabbedCompositeSpecifier extends MultiPageMegawidgetSpecifier {
      * Control options manager.
      */
     private final ControlSpecifierOptionsManager optionsManager;
+
+    /**
+     * Flag indicating whether or not the client area is to be scrollable.
+     */
+    private final boolean scrollable;
 
     // Public Constructors
 
@@ -59,6 +68,13 @@ public class TabbedCompositeSpecifier extends MultiPageMegawidgetSpecifier {
         super(parameters);
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.TRUE);
+
+        /*
+         * Ensure that the scrollable flag, if present, is valid.
+         */
+        scrollable = ConversionUtilities.getSpecifierBooleanValueFromObject(
+                getIdentifier(), getType(), parameters.get(SCROLLABLE),
+                SCROLLABLE, false);
     }
 
     // Public Methods
@@ -81,5 +97,10 @@ public class TabbedCompositeSpecifier extends MultiPageMegawidgetSpecifier {
     @Override
     public final int getSpacing() {
         return optionsManager.getSpacing();
+    }
+
+    @Override
+    public final boolean isScrollable() {
+        return scrollable;
     }
 }

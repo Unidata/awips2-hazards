@@ -372,6 +372,7 @@
   "headerExpandHorizontally": true,
   "autocomplete": false,
   "values": "southbridge",
+  "scrollable": true,
   "choices": [
    {
     "identifier": "oxbow",
@@ -421,6 +422,75 @@
       "fieldName": "evacuateSmith",
       "label": "Evacuate Smith College",
       "values": true
+     },
+     {
+      "fieldType": "ExpandBar",
+      "fieldName": "container1",
+      "leftMargin": 5,
+      "rightMargin": 5,
+      "topMargin": 5,
+      "bottomMargin": 5,
+      "expandHorizontally": true,
+      "expandVertically": true,
+      "pages": [
+       {
+        "pageName": "First Bar",
+        "pageFields": [
+         {
+          "fieldType": "Label",
+          "fieldName": "label1",
+          "label": "This is the first bar's page...",
+          "italic": true
+         },
+         {
+          "fieldName": "riseAbove:crest:fallBelow",
+          "fieldType": "TimeScale",
+          "valueLabels": {
+           "riseAbove": "Rise Above Time:",
+           "crest": "Crest Time:",
+           "fallBelow": "Fall Below Time:"
+          },
+          "minimumTimeInterval": 60000,
+          "detailFields": {
+           "fallBelow": [
+            {
+             "fieldType": "CheckBox",
+             "fieldName": "outputLocalTime",
+             "label": "Output local time"
+            }
+           ]
+          },
+          "values": {
+           "riseAbove": 1402401000000,
+           "crest": 1402401600000,
+           "fallBelow": 1402402200000
+          }
+         }
+        ]
+       },
+       {
+        "pageName": "Second Bar",
+        "pageFields": [
+         {
+          "fieldType": "Label",
+          "fieldName": "label2",
+          "label": "... and this is the second bar's page.",
+          "italic": true
+         }
+        ]
+       },
+       {
+        "pageName": "Third Bar",
+        "pageFields": [
+         {
+          "fieldType": "Label",
+          "fieldName": "label3",
+          "label": "Each page may hold zero or more child megawidgets.",
+          "italic": true
+         }
+        ]
+       }
+      ]
      }
     ]
    },

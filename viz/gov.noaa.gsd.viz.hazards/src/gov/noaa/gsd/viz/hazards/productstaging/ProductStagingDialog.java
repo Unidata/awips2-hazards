@@ -41,10 +41,6 @@ import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
-import org.eclipse.swt.custom.ScrolledComposite;
-import org.eclipse.swt.events.ControlAdapter;
-import org.eclipse.swt.events.ControlEvent;
-import org.eclipse.swt.events.ControlListener;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridLayout;
@@ -55,7 +51,6 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 
 import com.google.common.collect.ImmutableMap;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -110,6 +105,9 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                     any product-generator-specific parameters
  *                                     specified for the products (again, if
  *                                     applicable).
+ * Oct 20, 2014   4818     Chris G.    Removed scrolled composite from step 2 of
+ *                                     the dialog, since scrolling is now handled
+ *                                     by the megawidgets.
  * </pre>
  * 
  * @author shouming.wei
@@ -198,33 +196,6 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
     };
 
     /**
-     * Listener for window resizing events that change the scrolled composites'
-     * sizes.
-     */
-    private final ControlListener scrollableResizeListener = new ControlAdapter() {
-        @Override
-        public void controlResized(ControlEvent e) {
-
-            /*
-             * Schedule a resize of the page increment for each scrolled
-             * composite to happen after the laying out of the panels is
-             * complete. The latter must be done asynchronously to ensure the
-             * laying out is done before it proceeds, otherwise it gets the
-             * wrong information from the scrollbars.
-             */
-            Display.getDefault().asyncExec(new Runnable() {
-                @Override
-                public void run() {
-                    for (ScrolledComposite scrolledComposite : scrolledCompositesForMegawidgetManagers
-                            .values()) {
-                        recalculateScrolledCompositePageIncrement(scrolledComposite);
-                    }
-                }
-            });
-        }
-    };
-
-    /**
      * Megawidget creation time parameter map.
      */
     private final Map<String, Object> associatedEventsCreationTimeParams = new HashMap<>(
@@ -278,15 +249,9 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
     private Map<String, MegawidgetSpecifierManager> megawidgetSpecifierManagersForProductNames;
 
     /**
-     * Map of megawidget managers for different products to the associated
-     * scrollable composites (used for the second step).
+     * Set of megawidget managers.
      */
-    private final Map<MegawidgetManager, ScrolledComposite> scrolledCompositesForMegawidgetManagers = new HashMap<>();
-
-    /**
-     * Set of scrollable composites whose contents are currently changing.
-     */
-    private final Set<ScrolledComposite> scrolledCompositesUndergoingChange = new HashSet<>();
+    private final Set<MegawidgetManager> megawidgetManagers = new HashSet<>();
 
     /**
      * Minimum visible time for graphical time megawidgets.
@@ -577,7 +542,7 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
         for (String productName : productNames) {
             CTabItem tabItem = new CTabItem(tabFolder, SWT.NONE);
             tabItem.setText(productName);
-            Composite composite = createTabPageComposite(tabFolder);
+            Composite composite = createTabPageComposite(tabFolder, true);
             Map<String, Object> rawSpecifier = new HashMap<>(
                     ASSOCIATED_EVENTS_SPECIFIER_PARAMETERS);
             rawSpecifier.put(ISpecifier.MEGAWIDGET_IDENTIFIER,
@@ -625,19 +590,7 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
         for (final String productName : productNames) {
             CTabItem tabItem = new CTabItem(tabFolder, SWT.NONE);
             tabItem.setText(productName);
-
-            ScrolledComposite scrolledComposite = new ScrolledComposite(
-                    tabFolder, SWT.H_SCROLL | SWT.V_SCROLL);
-            Composite composite = createTabPageComposite(scrolledComposite);
-            scrolledComposite.setContent(composite);
-            scrolledComposite.setExpandHorizontal(true);
-            scrolledComposite.setExpandVertical(true);
-            scrolledComposite.getHorizontalBar().setIncrement(
-                    HazardConstants.SCROLLBAR_BUTTON_INCREMENT);
-            scrolledComposite.getVerticalBar().setIncrement(
-                    HazardConstants.SCROLLBAR_BUTTON_INCREMENT);
-            scrolledComposite.addControlListener(scrollableResizeListener);
-
+            Composite composite = createTabPageComposite(tabFolder, false);
             MegawidgetSpecifierManager specifierManager = megawidgetSpecifierManagersForProductNames
                     .get(productName);
             Map<String, Object> startingStates = new HashMap<>();
@@ -680,8 +633,12 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
                             @Override
                             public void sizeChanged(MegawidgetManager manager,
                                     String identifier) {
-                                recalculateScrolledCompositeClientArea(scrolledCompositesForMegawidgetManagers
-                                        .get(manager));
+
+                                /*
+                                 * No action; size changes of any children
+                                 * should be handled by scrollable wrapper
+                                 * megawidget.
+                                 */
                             }
 
                             @Override
@@ -694,15 +651,13 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
                                                 + exception, exception);
                             }
                         }, minimumVisibleTime, maximumVisibleTime);
-                scrolledCompositesForMegawidgetManagers.put(megawidgetManager,
-                        scrolledComposite);
-                recalculateScrolledCompositeClientArea(scrolledComposite);
+                megawidgetManagers.add(megawidgetManager);
             } catch (MegawidgetException e) {
                 statusHandler.error(
                         "unexpected problem creating metadata megawidgets for product "
                                 + productName + ": " + e, e);
             }
-            tabItem.setControl(scrolledComposite);
+            tabItem.setControl(composite);
         }
         tabFolder.setSelection(0);
         getShell().setCursor(null);
@@ -716,66 +671,30 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
         for (CTabItem item : tabFolder.getItems()) {
             item.dispose();
         }
-        scrolledCompositesForMegawidgetManagers.clear();
-        scrolledCompositesUndergoingChange.clear();
+        megawidgetManagers.clear();
     }
 
     /**
      * Create the composite to be used to hold the contents of a tab page.
      * 
      * @param parent
-     *            Parent of the content
-     * @param product
-     *            Product for this tab page.
+     *            Parent of the content composite.
+     * @param pad
+     *            Flag indicating whether or not to add padding around the
+     *            composite.
      * @return Created tab folder page.
      */
-    private Composite createTabPageComposite(Composite parent) {
+    private Composite createTabPageComposite(Composite parent, boolean pad) {
         Composite composite = new Composite(parent, SWT.NONE);
         GridLayout layout = new GridLayout(1, true);
-        layout.marginLeft = layout.marginRight = layout.marginTop = layout.marginBottom = 0;
-        layout.marginWidth = 10;
-        layout.marginHeight = 5;
+        if (pad) {
+            layout.marginLeft = layout.marginRight = layout.marginTop = layout.marginBottom = 0;
+            layout.marginWidth = 10;
+            layout.marginHeight = 5;
+        } else {
+            layout.marginWidth = layout.marginHeight = 0;
+        }
         composite.setLayout(layout);
         return composite;
-    }
-
-    /**
-     * Recalculate the specified scrolled composite's client area.
-     * 
-     * @param scrolledComposite
-     *            Scrolled composite that is to have its client area size
-     *            recalculated.
-     */
-    private void recalculateScrolledCompositeClientArea(
-            ScrolledComposite scrolledComposite) {
-        if (scrolledCompositesUndergoingChange.contains(scrolledComposite)
-                || scrolledComposite.isDisposed()) {
-            return;
-        }
-        scrolledCompositesUndergoingChange.add(scrolledComposite);
-        Control content = scrolledComposite.getContent();
-        Point size = content.computeSize(SWT.DEFAULT, SWT.DEFAULT);
-        content.setSize(size);
-        scrolledComposite.setMinSize(size);
-        recalculateScrolledCompositePageIncrement(scrolledComposite);
-        scrolledCompositesUndergoingChange.remove(scrolledComposite);
-    }
-
-    /**
-     * Recalculate the specified scrolled composite's page increment.
-     * 
-     * @param scrolledComposite
-     *            Scrolled composite that is to have its page increment
-     *            recalculated.
-     */
-    private void recalculateScrolledCompositePageIncrement(
-            ScrolledComposite scrolledComposite) {
-        if (scrolledComposite.isDisposed()) {
-            return;
-        }
-        scrolledComposite.getHorizontalBar().setPageIncrement(
-                scrolledComposite.getHorizontalBar().getThumb());
-        scrolledComposite.getVerticalBar().setPageIncrement(
-                scrolledComposite.getVerticalBar().getThumb());
     }
 }

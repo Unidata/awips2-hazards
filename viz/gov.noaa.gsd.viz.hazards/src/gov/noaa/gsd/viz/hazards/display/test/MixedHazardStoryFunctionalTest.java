@@ -49,6 +49,8 @@ import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.DamBreakUrgencyLevels;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
+import gov.noaa.gsd.viz.megawidgets.IContainerSpecifier;
+import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.megawidgets.TextSpecifier;
@@ -109,6 +111,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComp
  *                                      CAVE time so that when an FL.W is created from it,
  *                                      the latter has an end time after the current CAVE
  *                                      time.
+ * Oct 21, 2014 4818       Chris.Golden Fixed to work with newest version of metadata
+ *                                      megawidgets, which are now always wrapped in a
+ *                                      scrollable container megawidget.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -250,6 +255,7 @@ class MixedHazardStoryFunctionalTest extends
 
     }
 
+    @SuppressWarnings("unchecked")
     @Handler(priority = -1)
     public void sessionEventMetadataModifiedOccurred(
             SessionEventMetadataModified action) {
@@ -266,7 +272,8 @@ class MixedHazardStoryFunctionalTest extends
             List<ISpecifier> specifiers = mgr.getSpecifiers();
             assertEquals(specifiers.size(), 1);
 
-            TextSpecifier textSpecifier = (TextSpecifier) mgr.getSpecifiers()
+            TextSpecifier textSpecifier = (TextSpecifier) ((IContainerSpecifier<IControlSpecifier>) mgr
+                    .getSpecifiers().get(0)).getChildMegawidgetSpecifiers()
                     .get(0);
             assertEquals(textSpecifier.getIdentifier(), ENDING_SYNOPSIS);
 

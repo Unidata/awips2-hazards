@@ -195,7 +195,6 @@ public class TimeRangeMegawidget extends MultiTimeMegawidget {
             throws MegawidgetException {
         super(specifier, paramMap);
         createWidgetComponents(specifier, parent, paramMap, 0L);
-        List<String> stateIdentifiers = specifier.getStateIdentifiers();
         durationChoicesValidator = specifier.getDurationChoicesValidator()
                 .copyOf();
         synchronizeIntervalLockingWithState();

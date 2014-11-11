@@ -37,8 +37,11 @@ import java.util.Map;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
- * Jun 17, 2014    3982    Chris.Golden      Changed "isFullWidthOfColumn"
+ * Jun 17, 2014   3982     Chris.Golden      Changed "isFullWidthOfColumn"
  *                                           property to "isFullWidthOfDetailPanel".
+ * Oct 20, 2014   4818     Chris.Golden      Changed to only stretch across the
+ *                                           full width of a details panel if
+ *                                           configured to show a scale widget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -111,8 +114,6 @@ public abstract class SpinnerSpecifier<T extends Number & Comparable<T>>
             BoundedComparableValidator<T> stateValidator)
             throws MegawidgetSpecificationException {
         super(parameters, stateValidator);
-        optionsManager = new ControlSpecifierOptionsManager(this, parameters,
-                ControlSpecifierOptionsManager.BooleanSource.FALSE);
 
         /*
          * Ensure that the rapid change notification flag, if provided, is
@@ -138,6 +139,14 @@ public abstract class SpinnerSpecifier<T extends Number & Comparable<T>>
                 getIdentifier(), getType(),
                 parameters.get(MEGAWIDGET_SHOW_SCALE), MEGAWIDGET_SHOW_SCALE,
                 false);
+
+        /*
+         * Create the options manager, now that the show-scale flag value is
+         * known.
+         */
+        optionsManager = new ControlSpecifierOptionsManager(this, parameters,
+                (showScale ? ControlSpecifierOptionsManager.BooleanSource.TRUE
+                        : ControlSpecifierOptionsManager.BooleanSource.FALSE));
     }
 
     // Public Methods

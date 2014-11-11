@@ -9,6 +9,9 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.MultiPageScrollSettings;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -19,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FormAttachment;
@@ -27,6 +31,7 @@ import org.eclipse.swt.layout.FormLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 
@@ -43,6 +48,11 @@ import com.google.common.collect.ImmutableSet;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jul 23, 2014    4122    Chris.Golden Initial creation.
+ * Oct 20, 2014    4818    Chris.Golden Added option of providing scrollable
+ *                                      detail panels for child megawidgets.
+ *                                      Also added use of display settings,
+ *                                      allowing the saving and restoring of
+ *                                      scroll origins.
  * </pre>
  * 
  * @author Chris.Golden
@@ -50,7 +60,7 @@ import com.google.common.collect.ImmutableSet;
  * @see DetailedComboBoxSpecifier
  */
 public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
-        implements IControl, IContainer<IControl> {
+        implements IControl, IContainer<IControl>, IResizer {
 
     // Protected Static Constants
 
@@ -65,6 +75,14 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
 
+    // Private Static Constants
+
+    /**
+     * Placeholder text to be used for the group label in order to get SWT to
+     * make the group have rounded corners.
+     */
+    private static final String PLACEHOLDER_TEXT = "-";
+
     // Private Variables
 
     /**
@@ -77,6 +95,12 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
      * megawidget.
      */
     private final ComboBoxComponentHelper comboBoxHelper;
+
+    /**
+     * Display settings.
+     */
+    private final MultiPageScrollSettings<Point> displaySettings = new MultiPageScrollSettings<>(
+            getClass());
 
     /**
      * Map of choice identifiers to their names.
@@ -93,6 +117,18 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
      * detail panel will still have an entry here giving it an empty panel.
      */
     private final Map<String, Composite> choicePanelsForIdentifiers = new HashMap<>();
+
+    /**
+     * Map of detail panels to their primary choice identifiers, meaning the
+     * first choice identifiers with which the detail panels were associated.
+     */
+    private final Map<Composite, String> choiceIdentifiersForPanels = new HashMap<>();
+
+    /**
+     * Map of choice identifiers to their scrolled composites. If this
+     * megawidget is not scrollable, this will be <code>null</code>.
+     */
+    private final Map<String, ScrolledComposite> choiceScrolledCompositesForIdentifiers;
 
     /**
      * Details panel, holding whichever choice panel is associated with the
@@ -115,6 +151,31 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
      * Control component helper.
      */
     private final ControlComponentHelper helper;
+
+    /**
+     * Header height in pixels.
+     */
+    private final int headerHeight;
+
+    /**
+     * Group border width in pixels.
+     */
+    private final int groupBorderWidth;
+
+    /**
+     * Header width hint in pixels.
+     */
+    private final int headerWidthHint;
+
+    /**
+     * Grid layout data for the main panel.
+     */
+    private final GridData mainGridData;
+
+    /**
+     * Resize listener supplied at creation time.
+     */
+    private final IResizeListener resizeListener;
 
     // Protected Constructors
 
@@ -147,7 +208,7 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
          */
         Composite panel = new Composite(parent, SWT.NONE);
         panel.setLayout(new FormLayout());
-        GridData mainGridData = new GridData(SWT.FILL, SWT.FILL,
+        mainGridData = new GridData(SWT.FILL, SWT.FILL,
                 specifier.isHorizontalExpander(),
                 specifier.isVerticalExpander());
         mainGridData.horizontalSpan = specifier.getWidth();
@@ -170,8 +231,14 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
          * Create the combo box, and create bidirectional associations between
          * the choice names and their identifiers before adding the choice names
          * to the combo box.
+         * 
+         * Note: For some reason, the background color of the combo box's panel
+         * needs to be set to something non-null, otherwise the label does not
+         * show up. SWT bug?
          */
         Composite comboBoxPanel = new Composite(panel, SWT.NONE);
+        comboBoxPanel.setBackground(Display.getDefault().getSystemColor(
+                SWT.COLOR_WIDGET_BACKGROUND));
         GridLayout comboBoxLayout = new GridLayout(1, false);
         comboBoxLayout.marginWidth = comboBoxLayout.marginHeight = 0;
         comboBoxPanel.setLayout(comboBoxLayout);
@@ -201,7 +268,7 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
          * should look like other labeled groups.
          */
         Group group = new Group(panel, SWT.NONE);
-        group.setText("-");
+        group.setText(PLACEHOLDER_TEXT);
         GridLayout groupLayout = new GridLayout(1, false);
         groupLayout.marginWidth = groupLayout.marginHeight = 0;
         group.setLayout(groupLayout);
@@ -225,9 +292,16 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
          * their text at the same vertical point, and the group's top border
          * running under the vertical center of the label and combo box.
          */
-        int labelVerticalOffset = 0, comboBoxVerticalOffset = 0, headerHeight;
-        Point labelSize = (label != null ? label.computeSize(SWT.DEFAULT,
-                SWT.DEFAULT) : new Point(0, 0));
+        int labelVerticalOffset = 0, comboBoxVerticalOffset = 0;
+        Point labelSize;
+        if (label != null) {
+            labelSize = label.computeSize(SWT.DEFAULT, SWT.DEFAULT);
+        } else {
+            Label tempLabel = new Label(panel, SWT.NONE);
+            tempLabel.setText(PLACEHOLDER_TEXT);
+            labelSize = tempLabel.computeSize(SWT.DEFAULT, SWT.DEFAULT);
+            tempLabel.dispose();
+        }
         Point comboBoxSize = comboBoxHelper.getComboBox().computeSize(
                 SWT.DEFAULT, SWT.DEFAULT);
         if (labelSize.y > comboBoxSize.y) {
@@ -255,6 +329,7 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
             labelFormData.left = new FormAttachment(0, 5);
             labelFormData.top = new FormAttachment(0, labelVerticalOffset);
             labelFormData.right = new FormAttachment(0, labelSize.x + 5);
+            labelFormData.height = labelSize.y;
             label.setLayoutData(labelFormData);
         }
 
@@ -279,7 +354,6 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
         }
         comboFormData.height = comboBoxSize.y;
         comboBoxPanel.setLayoutData(comboFormData);
-        // comboBoxHelper.getComboBox().setLayoutData(comboFormData);
 
         /*
          * Configure the group to take up the whole area of the parent, except
@@ -294,6 +368,27 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
         group.setLayoutData(groupFormData);
 
         /*
+         * Remember the resize listener passed in, then create a copy of the
+         * creation-time parameters map, so that alterations to its resize
+         * listener do not affect the original. Then alter the copy to hold a
+         * reference to a new resize listener that allows this megawidget to
+         * adjust its preferred size before passing on notifications of a size
+         * change to the original listener.
+         */
+        resizeListener = (IResizeListener) paramMap.get(RESIZE_LISTENER);
+        paramMap = new HashMap<>(paramMap);
+        paramMap.put(RESIZE_LISTENER, new IResizeListener() {
+
+            @Override
+            public void sizeChanged(IResizer megawidget) {
+                updateRequestedSize();
+                if (resizeListener != null) {
+                    resizeListener.sizeChanged(DetailedComboBoxMegawidget.this);
+                }
+            }
+        });
+
+        /*
          * Iterate through the choices, creating detail megawidget panels for
          * each choice that has associated detail fields. An identity hash map
          * is used to track choice panels that have already been created and
@@ -303,51 +398,105 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
          * same megawidgets again. While creating the panels, keep track of the
          * largest width and height needed to encompass any of them.
          */
+        choiceScrolledCompositesForIdentifiers = (specifier.isScrollable() ? new HashMap<String, ScrolledComposite>()
+                : null);
         Map<List<IControlSpecifier>, Composite> choicePanelsForSpecifierLists = new IdentityHashMap<>();
         List<IControl> allChildren = new ArrayList<>();
         Point neededDimensions = new Point(0, 0);
         Composite emptyPanel = new Composite(detailsPanel, SWT.NONE);
         choicePanelsForIdentifiers.put(null, emptyPanel);
         for (String identifier : choiceIdentifiers) {
+
+            /*
+             * Get the specifiers for the detail fields for this choice; if
+             * there are none, use an empty panel for this choice's details
+             * panel.
+             */
             List<IControlSpecifier> specifiers = specifier
                     .getDetailFieldsForChoice(identifier);
             if (specifiers == null) {
                 choicePanelsForIdentifiers.put(identifier, emptyPanel);
                 continue;
             }
+
+            /*
+             * See if the choice panel has already been created for this list of
+             * specifiers; if it has not, create it now.
+             */
             Composite choicePanel = choicePanelsForSpecifierLists
                     .get(specifiers);
             if (choicePanel == null) {
-                choicePanel = new Composite(detailsPanel, SWT.NONE);
-                List<IControl> children = UiBuilder.createChildMegawidgets(
-                        specifier, choicePanel, 1, specifier.isEnabled(),
-                        specifier.isEditable(), specifiers, paramMap);
-                allChildren.addAll(children);
-                Point choicePanelSize = choicePanel.computeSize(SWT.DEFAULT,
-                        SWT.DEFAULT);
-                if (neededDimensions.x < choicePanelSize.x) {
-                    neededDimensions.x = choicePanelSize.x;
+
+                /*
+                 * If the megawidget is to be scrollable, create a scrolled
+                 * composite and use its client area composite as the choice
+                 * panel. Otherwise, just create the choice panel directly.
+                 */
+                final ScrolledComposite scrolledComposite;
+                Map<String, Object> choicePanelParamMap;
+                if (specifier.isScrollable()) {
+                    choicePanelParamMap = new HashMap<>(paramMap);
+                    scrolledComposite = UiBuilder.buildScrolledComposite(this,
+                            detailsPanel, displaySettings, identifier,
+                            choicePanelParamMap);
+                    choiceScrolledCompositesForIdentifiers.put(identifier,
+                            scrolledComposite);
+                    choicePanel = (Composite) scrolledComposite.getContent();
+                } else {
+                    choicePanelParamMap = paramMap;
+                    choicePanel = new Composite(detailsPanel, SWT.NONE);
+                    scrolledComposite = null;
                 }
-                if (neededDimensions.y < choicePanelSize.y) {
-                    neededDimensions.y = choicePanelSize.y;
+
+                /*
+                 * Create the child megawidgets to be the detail fields for this
+                 * choice, and see if this results in this choice panel being
+                 * larger in either dimension than the previously largest one;
+                 * if so, record the new dimensions.
+                 */
+                List<IControl> children = UiBuilder
+                        .createChildMegawidgets(specifier, choicePanel, 1,
+                                specifier.isEnabled(), specifier.isEditable(),
+                                specifiers, choicePanelParamMap);
+                allChildren.addAll(children);
+                if (scrolledComposite != null) {
+                    choicePanel = scrolledComposite;
+                }
+                choiceIdentifiersForPanels.put(choicePanel, identifier);
+                updateSizeToEncompassComposite(neededDimensions, choicePanel);
+
+                /*
+                 * If this choice panel is scrollable, give the scrolled
+                 * composite a chance to determine its client area's dimensions.
+                 */
+                if (scrolledComposite != null) {
+                    Display.getDefault().asyncExec(new Runnable() {
+                        @Override
+                        public void run() {
+                            UiBuilder.updateScrolledAreaSize(scrolledComposite);
+                        }
+                    });
                 }
             }
+
+            /*
+             * Associate the choice panel with this list of specifiers, and with
+             * this choice.
+             */
             choicePanelsForSpecifierLists.put(specifiers, choicePanel);
             choicePanelsForIdentifiers.put(identifier, choicePanel);
         }
         this.children = Collections.unmodifiableList(allChildren);
 
         /*
-         * Ensure that the main panel requests a width at least large enough to
-         * hold the label and combo box, plus some padding, but also large
-         * enough to hold the widest and tallest detail choice panels.
+         * Remember the group border width and the hint as to what the header
+         * needs for width. Then ensure that the main panel is large enough to
+         * hold the header and the largest dimensions of the detail area.
          */
-        int groupBorderWidth = group.computeTrim(0, 0, 0, 0).width / 2;
-        mainGridData.minimumWidth = mainGridData.widthHint = Math.max(
-                (label != null ? labelSize.x + 5 : 0) + 10 + comboBoxSize.x,
-                neededDimensions.x + (groupBorderWidth * 2));
-        mainGridData.minimumHeight = mainGridData.heightHint = neededDimensions.y
-                + groupBorderWidth + headerHeight;
+        groupBorderWidth = group.computeTrim(0, 0, 0, 0).width / 2;
+        headerWidthHint = (label != null ? labelSize.x + 5 : 0) + 10
+                + comboBoxSize.x;
+        updateMainGridLayoutData(neededDimensions);
 
         /*
          * Render the components uneditable if necessary.
@@ -433,6 +582,42 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
         return children;
     }
 
+    @Override
+    public IDisplaySettings getDisplaySettings() {
+        return displaySettings;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void setDisplaySettings(final IDisplaySettings displaySettings) {
+        Display.getDefault().asyncExec(new Runnable() {
+
+            @Override
+            public void run() {
+                if ((displaySettings.getMegawidgetClass() == DetailedComboBoxMegawidget.this
+                        .getClass())
+                        && (displaySettings instanceof MultiPageScrollSettings)) {
+                    if (choiceScrolledCompositesForIdentifiers != null) {
+                        Map<String, Point> scrollOriginsForDetailPages = ((MultiPageScrollSettings<Point>) displaySettings)
+                                .getScrollOriginsForPages();
+                        for (Map.Entry<String, Point> entry : scrollOriginsForDetailPages
+                                .entrySet()) {
+                            ScrolledComposite scrolledComposite = choiceScrolledCompositesForIdentifiers
+                                    .get(entry.getKey());
+                            if ((scrolledComposite != null)
+                                    && (scrolledComposite.isDisposed() == false)) {
+                                scrolledComposite.setOrigin(entry.getValue());
+                                DetailedComboBoxMegawidget.this.displaySettings
+                                        .setScrollOriginForPage(entry.getKey(),
+                                                entry.getValue());
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     // Protected Methods
 
     @Override
@@ -499,6 +684,67 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
     }
 
     /**
+     * Update the specified size to be big enough to encompass the specified
+     * composite, if it is not already big enough to do so.
+     * 
+     * @param size
+     *            Size to be updated.
+     * @param composite
+     *            Composite to ensure that the size is large enough to hold.
+     */
+    private void updateSizeToEncompassComposite(Point size, Composite composite) {
+        Point choicePanelSize = composite.computeSize(SWT.DEFAULT, SWT.DEFAULT);
+        if (size.x < choicePanelSize.x) {
+            size.x = choicePanelSize.x;
+        }
+        if (size.y < choicePanelSize.y) {
+            size.y = choicePanelSize.y;
+        }
+    }
+
+    /**
+     * Update the main grid layout data to able to encompass the specified
+     * needed dimensions.
+     * 
+     * @param neededDimensions
+     *            Dimensions that the main grid layout data must be able to
+     *            encompass.
+     */
+    private void updateMainGridLayoutData(Point neededDimensions) {
+        mainGridData.widthHint = Math.max(headerWidthHint, neededDimensions.x
+                + (groupBorderWidth * 2));
+        mainGridData.heightHint = neededDimensions.y + groupBorderWidth
+                + headerHeight;
+    }
+
+    /**
+     * Update the requested size for the megawidget's UI component.
+     */
+    private void updateRequestedSize() {
+
+        /*
+         * Go through the choice detail panels, determining the greatest width
+         * and the greatest height needed to display them all without scrolling.
+         */
+        Point neededDimensions = new Point(0, 0);
+        Set<Composite> alreadyProcessed = new HashSet<>(
+                choicePanelsForIdentifiers.size());
+        for (Composite choicePanel : choicePanelsForIdentifiers.values()) {
+            if (alreadyProcessed.contains(choicePanel)) {
+                continue;
+            }
+            alreadyProcessed.add(choicePanel);
+            updateSizeToEncompassComposite(neededDimensions, choicePanel);
+        }
+
+        /*
+         * Ensure that the main panel is large enough.
+         */
+        updateMainGridLayoutData(neededDimensions);
+
+    }
+
+    /**
      * Handle the combo box's selection having changed to that specified.
      * 
      * @param value
@@ -543,6 +789,14 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
         if (detailsLayout.topControl != choicePanel) {
             detailsLayout.topControl = choicePanel;
             detailsPanel.layout();
+            if (choicePanel instanceof ScrolledComposite) {
+                Point origin = displaySettings
+                        .getScrollOriginForPage(choiceIdentifiersForPanels
+                                .get(choicePanel));
+                if (origin != null) {
+                    ((ScrolledComposite) choicePanel).setOrigin(origin);
+                }
+            }
         }
     }
 }

@@ -37,6 +37,7 @@ import gov.noaa.gsd.viz.megawidgets.TimeRangeMegawidget;
 import gov.noaa.gsd.viz.megawidgets.TimeRangeSpecifier;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleMegawidget;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
 import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
@@ -56,16 +57,11 @@ import java.util.Set;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
-import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StackLayout;
-import org.eclipse.swt.events.ControlAdapter;
-import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Resource;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
@@ -211,6 +207,12 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           scrollbar page increments.
  * Sep 16, 2014   4753     Chris.Golden      Changed event script running to include
  *                                           mutable properties.
+ * Oct 20, 2014   4818     Chris.Golden      Changed from tracking of raw metadata scroll
+ *                                           origins for each hazard event to more
+ *                                           comprehensive megawidget display settings.
+ *                                           Also removed scrolled composite from metadata
+ *                                           panel, since scrolling is now handled by the
+ *                                           megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -326,11 +328,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * state for the end time.
      */
     private static final String UNTIL_FURTHER_NOTICE_VALUE_TEXT = "N/A";
-
-    /**
-     * Details section text.
-     */
-    private static final String DETAILS_SECTION_TEXT = "Details";
 
     /**
      * Preview button text.
@@ -616,47 +613,26 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             2);
 
     /**
-     * Metadata group panel.
+     * Metadata panel.
      */
-    private Group metadataGroup;
+    private Composite metadataPanel;
 
     /**
-     * Grid layout data for the metadata group panel.
+     * Grid layout data for the {@link #metadataPanel}.
      */
-    private GridData metadataGroupLayoutData;
+    private GridData metadataPanelLayoutData;
 
     /**
-     * Scrolled composite used to hold the metadata megawidgets.
+     * Layout manager for the {@link #metadataPanel}.
      */
-    private ScrolledComposite scrolledComposite;
+    private StackLayout metadataPanelLayout;
 
     /**
-     * Map of hazard event identifiers to the scrolled composite origins; the
-     * latter are recorded each time the scrolled composite is scrolled.
+     * Map of hazard event identifiers to their metadata megawidgets' display
+     * settings; the latter are recorded whenever a metadata megawidget manager
+     * is destroyed.
      */
-    private final Map<String, Point> scrollOriginsForEventIds = new HashMap<>();
-
-    /**
-     * Flag indicating whether or not the scrolled composite is having its
-     * contents changed.
-     */
-    private boolean scrolledCompositeContentsChanging;
-
-    /**
-     * Flag indicating whether or not the scrolled composite is having its size
-     * changed.
-     */
-    private boolean scrolledCompositePageIncrementChanging;
-
-    /**
-     * Content panel that holds whichever metadata panel is currently displayed.
-     */
-    private Composite metadataContentPanel;
-
-    /**
-     * Layout manager for the {@link #metadataContentPanel}.
-     */
-    private StackLayout metadataContentLayout;
+    private final Map<String, Map<String, IDisplaySettings>> megawidgetDisplaySettingsForEventIds = new HashMap<>();
 
     /**
      * List of hazard category identifiers.
@@ -762,16 +738,17 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             Command.class);
 
     /**
-     * Scroll position state change handler. The identifier is that of the
-     * hazard event having its scroll position changed.
+     * Metadata megawidgets' display settings state change handler. The
+     * identifier is that of the hazard event having its display settings
+     * changed.
      */
-    private IStateChangeHandler<String, Point> scrollOriginChangeHandler;
+    private IStateChangeHandler<String, Map<String, IDisplaySettings>> megawidgetDisplaySettingsChangeHandler;
 
     /**
-     * Scroll position state changer. The identifier is that of the hazard
-     * event.
+     * Metadata megawidgets' display settings state changer. The identifier is
+     * that of the hazard event.
      */
-    private final IStateChanger<String, Point> scrollOriginChanger = new IStateChanger<String, Point>() {
+    private final IStateChanger<String, Map<String, IDisplaySettings>> megawidgetdisplaySettingsChanger = new IStateChanger<String, Map<String, IDisplaySettings>>() {
 
         @Override
         public void setEnabled(String identifier, boolean enable) {
@@ -786,24 +763,26 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         @Override
-        public Point getState(String identifier) {
-            return scrollOriginsForEventIds.get(identifier);
+        public Map<String, IDisplaySettings> getState(String identifier) {
+            return megawidgetDisplaySettingsForEventIds.get(identifier);
         }
 
         @Override
-        public void setState(String identifier, Point value) {
-            scrollOriginsForEventIds.put(identifier, value);
+        public void setState(String identifier,
+                Map<String, IDisplaySettings> value) {
+            megawidgetDisplaySettingsForEventIds.put(identifier, value);
         }
 
         @Override
-        public void setStates(Map<String, Point> valuesForIdentifiers) {
-            scrollOriginsForEventIds.putAll(valuesForIdentifiers);
+        public void setStates(
+                Map<String, Map<String, IDisplaySettings>> valuesForIdentifiers) {
+            megawidgetDisplaySettingsForEventIds.putAll(valuesForIdentifiers);
         }
 
         @Override
         public void setStateChangeHandler(
-                IStateChangeHandler<String, Point> handler) {
-            scrollOriginChangeHandler = handler;
+                IStateChangeHandler<String, Map<String, IDisplaySettings>> handler) {
+            megawidgetDisplaySettingsChangeHandler = handler;
         }
     };
 
@@ -1373,7 +1352,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     public void dispose() {
         for (Map.Entry<String, MegawidgetManager> entry : megawidgetManagersForEventIds
                 .entrySet()) {
-            recordExtraDataForEvent(entry.getKey(), entry.getValue());
+            recordDisplaySettingsAndExtraDataForEvent(entry.getKey(),
+                    entry.getValue());
         }
         for (Resource resource : resources) {
             resource.dispose();
@@ -1550,82 +1530,19 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         timeGroup.layout();
 
         /*
-         * Create the group holding the metadata, and hide it to begin with. It
-         * is hidden whenever the visible event has no metadata. Within it,
-         * create a scrollable composite to allow scrolling of the metadata
-         * panel if the latter is too large to be displayed within the area
-         * allotted to it. Within that, in turn, create a panel to show the
-         * metadata; it contains a stack of panels, one per tab with metadata,
-         * which will always have the topmost (visible) panel be the one that
-         * goes with the currently visible tab.
+         * Create the panel holding the metadata, and hide it to begin with. It
+         * is hidden whenever the visible event has no metadata. Give it a stack
+         * layout manager, so that it shows only one of its children at a time.
+         * The visible child will be the panel that holds the megawidgets for
+         * the currently displayed event.
          */
-        metadataGroup = new Group(tabPagePanel, SWT.NONE);
-        metadataGroup.setText(DETAILS_SECTION_TEXT);
-        metadataGroupLayoutData = new GridData(SWT.FILL, SWT.FILL, true, true);
-        metadataGroupLayoutData.exclude = true;
-        metadataGroup.setVisible(false);
-        metadataGroup.setLayoutData(metadataGroupLayoutData);
-        metadataGroup.setLayout(new FillLayout());
-        scrolledComposite = new ScrolledComposite(metadataGroup, SWT.H_SCROLL
-                | SWT.V_SCROLL);
-        metadataContentPanel = new Composite(scrolledComposite, SWT.NONE);
-        metadataContentLayout = new StackLayout();
-        metadataContentPanel.setLayout(metadataContentLayout);
-        scrolledComposite.setContent(metadataContentPanel);
-        scrolledComposite.setExpandHorizontal(true);
-        scrolledComposite.getHorizontalBar().setIncrement(
-                HazardConstants.SCROLLBAR_BUTTON_INCREMENT);
-        scrolledComposite.getVerticalBar().setIncrement(
-                HazardConstants.SCROLLBAR_BUTTON_INCREMENT);
-
-        /*
-         * Add a listener to the horizontal and vertical scroll bars of the
-         * scrolled composite to record the origin each time scrolling occurs,
-         * and to forward the new origin onto the handler for such things, if
-         * one exists.
-         */
-        SelectionListener scrollListener = new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                if ((scrolledCompositeContentsChanging == false)
-                        && (visibleEventIdentifier != null)) {
-                    scrollOriginsForEventIds.put(visibleEventIdentifier,
-                            scrolledComposite.getOrigin());
-                    if (scrollOriginChangeHandler != null) {
-                        scrollOriginChangeHandler.stateChanged(
-                                visibleEventIdentifier,
-                                scrolledComposite.getOrigin());
-                    }
-                }
-            }
-        };
-        scrolledComposite.getHorizontalBar().addSelectionListener(
-                scrollListener);
-        scrolledComposite.getVerticalBar().addSelectionListener(scrollListener);
-
-        /*
-         * Add a listener to the scrolled composite to make it resize its page
-         * increment whenever it changes size.
-         */
-        scrolledComposite.addControlListener(new ControlAdapter() {
-            @Override
-            public void controlResized(ControlEvent e) {
-
-                /*
-                 * Schedule a resize of the page increment to happen after the
-                 * laying out of the panels is complete. The latter must be done
-                 * asynchronously to ensure the laying out is done before it
-                 * proceeds, otherwise it gets the wrong information from the
-                 * scrollbars.
-                 */
-                Display.getDefault().asyncExec(new Runnable() {
-                    @Override
-                    public void run() {
-                        recalculateScrolledCompositePageIncrement();
-                    }
-                });
-            }
-        });
+        metadataPanel = new Composite(tabPagePanel, SWT.NONE);
+        metadataPanelLayoutData = new GridData(SWT.FILL, SWT.FILL, true, true);
+        metadataPanelLayoutData.exclude = true;
+        metadataPanel.setVisible(false);
+        metadataPanel.setLayoutData(metadataPanelLayoutData);
+        metadataPanelLayout = new StackLayout();
+        metadataPanel.setLayout(metadataPanelLayout);
 
         /*
          * Pack the main tab folder.
@@ -1672,8 +1589,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * 
      * @return Detail view scroll origin state changer.
      */
-    public IStateChanger<String, Point> getScrollOriginChanger() {
-        return scrollOriginChanger;
+    public IStateChanger<String, Map<String, IDisplaySettings>> getMegawidgetDisplaySettingsChanger() {
+        return megawidgetdisplaySettingsChanger;
     }
 
     @Override
@@ -1885,7 +1802,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         boolean conflictExists = false;
         if (recreateTabs) {
             tabsBeingChanged = true;
-            scrolledCompositeContentsChanging = true;
             for (CTabItem tabItem : tabItems) {
                 tabItem.dispose();
             }
@@ -1896,7 +1812,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 tabItem.setData(choices.get(j));
                 tabItem.setControl(tabPagePanel);
             }
-            scrolledCompositeContentsChanging = false;
             tabsBeingChanged = false;
         } else {
             for (int j = 0; j < choiceDisplayables.size(); j++) {
@@ -2371,7 +2286,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          * redraws for the moment.
          */
         if (eventIdentifier.equals(visibleEventIdentifier)) {
-            metadataContentPanel.setRedraw(false);
+            metadataPanel.setRedraw(false);
         }
 
         /*
@@ -2418,10 +2333,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
              * extra data was taken from the old megawidget manager (if any)
              * above, merge it with the new manager's megawidgets' extra data.
              * This allows any interdependency scripts that may be looking for
-             * saved values in the extra data to continue to function.
+             * saved values in the extra data to continue to function. Finally,
+             * apply any saved display settings to the megawidget manager.
              */
             if (specifierManager.getSpecifiers().isEmpty() == false) {
-                panel = new Composite(metadataContentPanel, SWT.NONE);
+                panel = new Composite(metadataPanel, SWT.NONE);
+                GridLayout layout = new GridLayout(1, false);
+                layout.marginWidth = layout.marginHeight = 0;
+                panel.setLayout(layout);
                 Map<String, Object> map = new HashMap<String, Object>(
                         metadataStates);
                 try {
@@ -2476,7 +2395,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                 public void sizeChanged(
                                         MegawidgetManager manager,
                                         String identifier) {
-                                    metadataPanelResized();
+
+                                    /*
+                                     * No action; size changes of any children
+                                     * should be handled by scrollable wrapper
+                                     * megawidget.
+                                     */
                                 }
 
                                 @Override
@@ -2521,6 +2445,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         }
                         megawidgetManager.setExtraData(newExtraDataMap);
                     }
+                    Map<String, IDisplaySettings> displaySettings = megawidgetDisplaySettingsForEventIds
+                            .get(eventIdentifier);
+                    if (displaySettings != null) {
+                        megawidgetManager.setDisplaySettings(displaySettings);
+                    }
                     megawidgetManagersForEventIds.put(eventIdentifier,
                             megawidgetManager);
                 }
@@ -2537,8 +2466,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         if (eventIdentifier.equals(visibleEventIdentifier)) {
             setEndTimeUntilFurtherNotice(metadataStates
                     .get(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE));
-            layoutMetadataGroup(panel);
-            metadataContentPanel.setRedraw(true);
+            layoutMetadataPanel(panel);
+            metadataPanel.setRedraw(true);
         }
     }
 
@@ -2583,22 +2512,32 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      */
     private void prepareMegawidgetManagerForRemoval(String eventIdentifier,
             MegawidgetManager megawidgetManager) {
-        recordExtraDataForEvent(eventIdentifier, megawidgetManager);
+        recordDisplaySettingsAndExtraDataForEvent(eventIdentifier,
+                megawidgetManager);
         megawidgetManager.getParent().dispose();
     }
 
     /**
-     * Record the specified event identifier's extra data from the specified
-     * megawidget manager, if any extra data is found.
+     * Record the specified event identifier's metadata megawidgets' display
+     * settings and extra data from the specified megawidget manager.
      * 
      * @param eventIdentifier
      *            Event identifier with which the megawidget manager is
      *            associated.
      * @param megawidgetManager
-     *            Megawidget manager to have its extra data recorded.
+     *            Megawidget manager to have its display settings and extra data
+     *            recorded.
      */
-    private void recordExtraDataForEvent(String eventIdentifier,
-            MegawidgetManager megawidgetManager) {
+    private void recordDisplaySettingsAndExtraDataForEvent(
+            String eventIdentifier, MegawidgetManager megawidgetManager) {
+        Map<String, IDisplaySettings> displaySettings = megawidgetManager
+                .getDisplaySettings();
+        megawidgetDisplaySettingsForEventIds.put(eventIdentifier,
+                displaySettings);
+        if (megawidgetDisplaySettingsChangeHandler != null) {
+            megawidgetDisplaySettingsChangeHandler.stateChanged(
+                    eventIdentifier, displaySettings);
+        }
         Map<String, Map<String, Object>> extraData = megawidgetManager
                 .getExtraData();
         if (extraData.isEmpty() == false) {
@@ -2800,139 +2739,31 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Layout the metadata group widget to display the specified panel, if any.
+     * Layout the metadata widget to display the specified panel, if any.
      * 
      * @param panel
-     *            Panel to be displayed within the metadata group widget, or
+     *            Panel to be displayed within the metadata widget, or
      *            <code>null</code> if there is no panel to display.
      */
-    private void layoutMetadataGroup(Composite panel) {
+    private void layoutMetadataPanel(Composite panel) {
 
         /*
          * If a panel was provided, set up its containers to display it
          * properly; otherwise, hide the metadata group.
          */
         if (panel != null) {
-
-            /*
-             * Ensure the metadata group is showing, and that its topmost
-             * control is this panel.
-             */
-            metadataGroupLayoutData.exclude = false;
-            metadataGroup.setVisible(true);
-            metadataContentLayout.topControl = panel;
-            metadataContentPanel.layout();
-
-            /*
-             * Set the flag indicating that the scrolled composite's contents
-             * are changing, so that any events it generates are ignored.
-             */
-            scrolledCompositeContentsChanging = true;
-
-            /*
-             * Recalculate the client area's size.
-             */
-            recalculateScrolledCompositeClientArea(panel);
-
-            /*
-             * If the event that is showing has a previously-recorded scrolling
-             * origin, use it so that the top-left portion of the event's panel
-             * that was visible last time it was looked at is made visible
-             * again. This must be done asynchronously, since otherwise SWT
-             * seems to not use the origin correctly in all cases. Because it is
-             * asynchronous, a check is done when setting the origin to ensure
-             * that the same event is still visible. If there is no recorded
-             * scrolling origin for this event, synchronously set it to the top
-             * left, which for reasons passing understanding works fine.
-             */
-            final Point origin = scrollOriginsForEventIds
-                    .get(visibleEventIdentifier);
-            if (origin != null) {
-                final String originIdentifier = visibleEventIdentifier;
-                Display.getDefault().asyncExec(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (isAlive()
-                                && (originIdentifier
-                                        .equals(visibleEventIdentifier))) {
-                            scrolledComposite.setOrigin(origin);
-                        }
-                    }
-                });
-            } else {
-                scrolledComposite.setOrigin(new Point(0, 0));
-            }
-
-            /*
-             * Reset the flag indicating that the scrolled composite's contents
-             * are no longer changing.
-             */
-            scrolledCompositeContentsChanging = false;
+            metadataPanelLayoutData.exclude = false;
+            metadataPanel.setVisible(true);
+            metadataPanelLayout.topControl = panel;
+            metadataPanel.layout();
         } else {
-            metadataGroupLayoutData.exclude = true;
-            metadataGroup.setVisible(false);
+            metadataPanelLayoutData.exclude = true;
+            metadataPanel.setVisible(false);
         }
 
         /*
          * Redo the layout of the tab page.
          */
         tabPagePanel.layout();
-    }
-
-    /**
-     * Respond to a potential resize of the metadata panel because a megawidget
-     * changed its size.
-     */
-    private void metadataPanelResized() {
-        scrolledCompositeContentsChanging = true;
-        Composite panel = megawidgetManagersForEventIds.get(
-                visibleEventIdentifier).getParent();
-        recalculateScrolledCompositeClientArea(panel);
-        scrolledCompositeContentsChanging = false;
-    }
-
-    /**
-     * Recalculate the scrolled copmosite's client area, that is, its size.
-     * 
-     * @param panel
-     *            Panel that is displayed within the metadata group widget.
-     */
-    private void recalculateScrolledCompositeClientArea(Composite panel) {
-
-        /*
-         * Determine the required width and height of the metadata panel.
-         */
-        Point metadataSize = panel.computeSize(SWT.DEFAULT, SWT.DEFAULT);
-
-        /*
-         * Set the enclosing content panel's size to be appropriate for the new
-         * metadata panel, and tell the scrolled composite that in turn holds it
-         * of its new size.
-         */
-        metadataContentPanel.setSize(metadataSize);
-        scrolledComposite.setMinSize(metadataSize);
-
-        /*
-         * Recalculate the scrolled composite's page size.
-         */
-        recalculateScrolledCompositePageIncrement();
-    }
-
-    /**
-     * Recalculate the scrolled composite page increment.
-     */
-    private void recalculateScrolledCompositePageIncrement() {
-        if (scrolledComposite.isDisposed()) {
-            return;
-        }
-        if (scrolledCompositePageIncrementChanging) {
-            return;
-        }
-        scrolledCompositePageIncrementChanging = true;
-        scrolledComposite.getHorizontalBar().setPageIncrement(
-                scrolledComposite.getHorizontalBar().getThumb());
-        scrolledComposite.getVerticalBar().setPageIncrement(
-                scrolledComposite.getVerticalBar().getThumb());
-        scrolledCompositePageIncrementChanging = false;
     }
 }
