@@ -64,6 +64,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                     id generation.
  * Apr 08, 2014 3357       bkowal    Updated to use the new interoperability tables.
  * Apr 23, 2014 3357       bkowal    Improved interoperability hazard comparison to prevent duplicate hazard creation.
+ * Nov 17, 2014 2826       mpduff      Changed back to pass Warngen for interoperability type of new hazards.  
  * 
  * </pre>
  * 
@@ -244,7 +245,7 @@ public class WarningHazardsCreator {
                                 + record.getEtn() + " with Hazard Event "
                                 + existingEvent.getEventID());
                         InteroperabilityUtil.newOrUpdateInteroperabilityRecord(
-                                existingEvent, record.getEtn(), null);
+                                existingEvent, record.getEtn(), INTEROPERABILITY_TYPE.WARNGEN);
                         continue;
                     }
 
