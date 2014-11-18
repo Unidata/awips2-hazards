@@ -6,7 +6,7 @@ ProductGeneratorTable = {
              ('FA.A', "Flood"),
              ('FL.A', "Flood1"),                                                   
              ],
-            "previewFormatters": ["Legacy", "XML", "CAP"],
+            "previewFormatters": ["Legacy"],
             "issueFormatters": ["Legacy"], 
             },
         "FLW_FLS_ProductGenerator" : {
@@ -17,7 +17,7 @@ ProductGeneratorTable = {
              ('FL.Y', "Flood4"),             
              ('HY.S', "Flood5"),
             ],
-            "previewFormatters": ["Legacy", "XML", "CAP"],
+            "previewFormatters": ["Legacy"],
             "issueFormatters": ["Legacy"],  
             },
         "FFW_FFS_ProductGenerator" : {
@@ -26,14 +26,14 @@ ProductGeneratorTable = {
              ('FF.W.NonConvective',  "Flood"),             
              ('FF.W.BurnScar',  "Flood"),             
              ],
-            "previewFormatters": ["Legacy", "XML", "CAP"],
+            "previewFormatters": ["Legacy"],
             "issueFormatters": ["Legacy"],   
             }, 
         "ESF_ProductGenerator": {
             "allowedHazards": [
              ('HY.O',     "Flood"),           
              ],
-            "previewFormatters": ["Legacy", "XML", "CAP"],
+            "previewFormatters": ["Legacy"],
             "issueFormatters": ["Legacy"],   
             },           
 #         "FFW_FFS_Convective_ProductGenerator" : {
