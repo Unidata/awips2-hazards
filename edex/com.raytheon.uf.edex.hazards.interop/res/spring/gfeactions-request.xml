@@ -1,0 +1,37 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+	
+	<bean id="hasConflictsHandler" class="com.raytheon.uf.edex.hazards.interop.gfe.HasConflictsHandler"/>
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg value="com.raytheon.uf.common.dataplugin.events.hazards.requests.HasConflictsRequest"/>
+        <constructor-arg ref="hasConflictsHandler"/>
+    </bean>
+
+	<bean id="hazardEventHandler"
+		class="com.raytheon.uf.edex.hazards.interop.gfe.HazardEventHandler" factory-method="getInstance" depends-on="getGridParmInfoRequestRegister, gfeSitesActiveRequest, getGridInventoryRequestRegister, getGridHistoryRequestRegister"/>
+
+	<camelContext id="gfeactions-camel" xmlns="http://camel.apache.org/schema/spring" errorHandlerRef="errorHandler">
+		<route id="hazardNotificationRoute">
+			<from uri="jms-generic:topic:edex.alerts.hazards" />	
+            <doTry>
+    			<bean ref="hazardEventHandler" method="handleNotification" />				
+                <doCatch>
+                    <exception>java.lang.Throwable</exception>
+                    <to uri="log:activeTable?level=ERROR"/>
+                </doCatch>
+            </doTry>
+		</route>
+    </camelContext>
+	
+	<camelContext id="gfeactions-camel2" xmlns="http://camel.apache.org/schema/spring" errorHandlerRef="errorHandler">
+		<route id="gfeNotifyHazard">
+			<from uri="jms-generic:topic:edex.alerts.gfe"/>
+			<doTry>
+				<bean ref="serializationUtil" method="transformFromThrift"/>
+				<bean ref="hazardEventHandler" method="handleGridNotification" />
+			</doTry>
+		</route>
+	</camelContext>
+</beans>

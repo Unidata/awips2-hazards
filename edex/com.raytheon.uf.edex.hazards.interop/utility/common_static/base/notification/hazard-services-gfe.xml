@@ -1,0 +1,15 @@
+<pluginNotificationList>
+    <pluginNotification>
+        <endpointName>hazards.gfeIngest</endpointName>
+        <format>PDO</format>
+        <endpointType>VM</endpointType>
+        <metadataMap>
+            <mapping key="pluginName">
+                <constraint constraintValue="warning,practicewarning" constraintType="IN"/>
+            </mapping>
+            <mapping key="phensig">
+                <constraint constraintValue="FF.A,FL.A,FA.A" constraintType="IN"/>
+            </mapping>
+        </metadataMap>
+    </pluginNotification>
+</pluginNotificationList>

@@ -78,7 +78,7 @@
             <constructor-arg value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.test.TestPracticeVtecStorageRequest" />	
 	        <constructor-arg ref="testPracticeVtecStorageHandler" />      	
 	 </bean>
-     <bean id="gridValidator" class="com.raytheon.uf.edex.hazards.gfe.GridValidator" /> 
+     <bean id="gridValidator" class="com.raytheon.uf.edex.hazards.interop.gfe.GridValidator" /> 
      <bean factory-bean="handlerRegistry" factory-method="register"> 
             <constructor-arg value="com.raytheon.uf.common.dataplugin.events.hazards.requests.GetHazardsConflictDictRequest" /> 
             <constructor-arg ref="gridValidator" /> 

@@ -309,6 +309,7 @@ public class ProductUtils {
             } else {
                 SendPracticeProductRequest req = new SendPracticeProductRequest();
                 req.setProductText(product);
+                req.setNotifyGFE(true);
                 RequestRouter.route(req);
             }
         } catch (Exception e) {

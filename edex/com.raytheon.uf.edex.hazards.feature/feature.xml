@@ -74,13 +74,6 @@
          unpack="false"/>
 
    <plugin
-         id="com.raytheon.uf.edex.hazards.riverpro"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
-
-   <plugin
          id="com.raytheon.uf.edex.recommenders"
          download-size="0"
          install-size="0"
@@ -102,20 +95,6 @@
          unpack="false"/>
 
    <plugin
-         id="com.raytheon.uf.edex.hazards.gfe"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
-
-   <plugin
-         id="com.raytheon.uf.edex.hazards.warnings"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
-
-   <plugin
          id="com.raytheon.uf.common.hazards.hydro"
          download-size="0"
          install-size="0"
@@ -128,5 +107,11 @@
          install-size="0"
          version="0.0.0"
          unpack="false"/>
-         
+
+   <plugin
+         id="com.raytheon.uf.edex.hazards.interop"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
 </feature>

@@ -1,0 +1,15 @@
+<pluginNotificationList>
+    <pluginNotification>
+        <endpointName>hazards.riverproIngest</endpointName>
+        <format>PDO</format>
+        <endpointType>VM</endpointType>
+        <metadataMap>
+            <mapping key="pluginName">
+                <constraint constraintValue="warning,practicewarning" constraintType="IN"/>
+            </mapping>
+            <mapping key="phensig">
+                <constraint constraintValue="FA.W,FA.Y,FL.W,FL.Y,HY.S,HY.O" constraintType="IN"/>
+            </mapping>
+        </metadataMap>
+    </pluginNotification>
+</pluginNotificationList>

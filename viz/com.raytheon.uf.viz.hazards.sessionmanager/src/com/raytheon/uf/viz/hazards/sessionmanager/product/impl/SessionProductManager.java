@@ -163,6 +163,8 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      used internally by this class.
  * Oct 20, 2014 4818       Chris.Golden Added wrapping of product staging dialog megawidget
  *                                      specifiers in a scrollable megawidget.
+ * Dec 04, 2014 2826       dgilling     Ensure proper order of operations for 
+ *                                      product dissemination to avoid duplicate events.
  * </pre>
  * 
  * @author bsteffen
@@ -1296,30 +1298,29 @@ public class SessionProductManager implements ISessionProductManager {
     private void disseminate(
             ProductGeneratorInformation productGeneratorInformation) {
         /*
-         * Disseminate the products
+         * Disseminate the products for operational mode before writing to
+         * database
          */
-        for (IGeneratedProduct generatedProduct : productGeneratorInformation
-                .getGeneratedProducts()) {
-            /*
-             * This is temporary: issueFormats should be user configurable and
-             * will be addressed by Issue #691 -- Clean up Configuration Files
-             */
-            if (productGeneratorInformation.getProductFormats() != null
-                    && productGeneratorInformation.getProductFormats()
-                            .getIssueFormats() != null) {
-                for (String format : productGeneratorInformation
-                        .getProductFormats().getIssueFormats()) {
-                    List<Serializable> objs = generatedProduct.getEntry(format);
-                    if (objs != null) {
-                        for (Serializable obj : objs) {
-                            ProductUtils.disseminate(String.valueOf(obj),
-                                    operationalMode);
+        if (operationalMode) {
+            for (IGeneratedProduct generatedProduct : productGeneratorInformation
+                    .getGeneratedProducts()) {
+                if (productGeneratorInformation.getProductFormats() != null
+                        && productGeneratorInformation.getProductFormats()
+                                .getIssueFormats() != null) {
+                    for (String format : productGeneratorInformation
+                            .getProductFormats().getIssueFormats()) {
+                        List<Serializable> objs = generatedProduct
+                                .getEntry(format);
+                        if (objs != null) {
+                            for (Serializable obj : objs) {
+                                ProductUtils.disseminate(String.valueOf(obj),
+                                        operationalMode);
+                            }
                         }
                     }
                 }
             }
         }
-
         Date startTime = null;
         boolean ended = false;
         ArrayList<Integer> eventIDs = new ArrayList<>();
@@ -1352,6 +1353,31 @@ public class SessionProductManager implements ISessionProductManager {
             }
         }
 
+        /*
+         * Send practice products after writing to database. Moved the practice
+         * dissemination here to prevent the phantom hazards from being created
+         * by ingest getting the data before it is written to the db
+         */
+        if (!operationalMode) {
+            for (IGeneratedProduct generatedProduct : productGeneratorInformation
+                    .getGeneratedProducts()) {
+                if (productGeneratorInformation.getProductFormats() != null
+                        && productGeneratorInformation.getProductFormats()
+                                .getIssueFormats() != null) {
+                    for (String format : productGeneratorInformation
+                            .getProductFormats().getIssueFormats()) {
+                        List<Serializable> objs = generatedProduct
+                                .getEntry(format);
+                        if (objs != null) {
+                            for (Serializable obj : objs) {
+                                ProductUtils.disseminate(String.valueOf(obj),
+                                        false);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private boolean checkForConflicts(IHazardEvent hazardEvent) {
