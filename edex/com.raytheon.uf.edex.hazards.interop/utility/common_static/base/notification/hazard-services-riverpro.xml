@@ -1,3 +1,7 @@
+<!--  FIXME: Uncomment out below XML when interoperability for RiverPro products is fixed. -->
+
+
+<!--
 <pluginNotificationList>
     <pluginNotification>
         <endpointName>hazards.riverproIngest</endpointName>
@@ -5,7 +9,7 @@
         <endpointType>VM</endpointType>
         <metadataMap>
             <mapping key="pluginName">
-                <constraint constraintValue="warning,practicewarning" constraintType="IN"/>
+                <constraint constraintValue="practicewarning" constraintType="IN"/>
             </mapping>
             <mapping key="phensig">
                 <constraint constraintValue="FA.W,FA.Y,FL.W,FL.Y,HY.S,HY.O" constraintType="IN"/>
@@ -13,3 +17,4 @@
         </metadataMap>
     </pluginNotification>
 </pluginNotificationList>
+-->

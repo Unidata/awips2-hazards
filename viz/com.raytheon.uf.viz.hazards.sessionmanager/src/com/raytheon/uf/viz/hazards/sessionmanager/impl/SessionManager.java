@@ -30,6 +30,7 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeInteropRecordsRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeWarningRequest;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
 import com.raytheon.uf.common.localization.IPathManager;
@@ -89,6 +90,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                     manager, and the firing of auto-check-conflicts-
  *                                     changed messages when the toggle changes state.
  * Oct 08, 2014 4042       C. Golden   Added generate method (moved from message handler).
+ * Dec 08, 2014 2826       dgilling    Clear interoperability tables on reset events.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -311,6 +314,13 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
             ThriftClient.sendRequest(purgeWarningReq);
         } catch (VizException e) {
             statusHandler.error("Error clearing practice warning table.", e);
+        }
+
+        try {
+            IServerRequest purgeInteropRequest = new PurgePracticeInteropRecordsRequest();
+            ThriftClient.sendRequest(purgeInteropRequest);
+        } catch (VizException e) {
+            statusHandler.error("Error clearing interoperability records.", e);
         }
 
         /*

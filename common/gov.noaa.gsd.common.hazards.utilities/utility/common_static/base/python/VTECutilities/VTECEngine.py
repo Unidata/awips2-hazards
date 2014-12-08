@@ -16,7 +16,9 @@ segments, VTEC codes, HVTEC codes, and vtecRecords.
 #                                                 hazardEvents.
 #    01/16/14        2462          dgilling       Rewrite to use GetNextEtnRequest.    
 #    Feb 14, 2013    2161        Chris.Golden     Added use of UFN_TIME_VALUE_SECS constant
-#    Aug  6, 2014    2826        jsanchez         Added boolean flags for issuing and operational mode.                                            instead of hardcoded value.
+#    Aug  6, 2014    2826        jsanchez         Added boolean flags for issuing and operational mode
+#                                                 instead of hardcoded value.
+#    12/09/14        2826          dgilling       Revert previous changes.
 #
     
 
@@ -28,10 +30,6 @@ from Pil import Pil
 import Logger as LogStream
 import ProductGenEtnProvider
 import VTECConstants
-import JUtil
-
-from com.raytheon.uf.common.dataplugin.events.hazards.requests import GetHazardsConflictDictRequest
-from com.raytheon.uf.common.serialization.comm import RequestRouter    
 
 
 # Define several named tuples for cleaner code
@@ -152,9 +150,13 @@ class VTECEngine(VTECTableUtil):
           self._getProposedTable(hazardEvents, limitGeoZones,
           combinableSegments)
 
-        request = GetHazardsConflictDictRequest()
-        response = RequestRouter.route(request)
-        self._hazardsConflictDict = JUtil.javaObjToPyVal(response)     
+# TODO: determine if use of this code is necessary for interoperability
+#         from com.raytheon.uf.common.dataplugin.events.hazards.requests import GetHazardsConflictDictRequest
+#         from com.raytheon.uf.common.serialization.comm import RequestRouter 
+#         request = GetHazardsConflictDictRequest()
+#         response = RequestRouter.route(request)        
+#         self._hazardsConflictDict = JUtil.javaObjToPyVal(response)
+             
         self._allGEOVtecRecords, self._activeVtecRecords, zonesA = \
           self._getCurrentTable(rawVtecRecords, limitGeoZones, limitEventIDs)
 
@@ -1594,10 +1596,11 @@ class VTECEngine(VTECTableUtil):
 
         Returns the modified vtecRecords.
         '''
-        # In practice mode, WarnGen uses the productClass 'T'
-        phensig = self._hazardEvents[0].getPhenomenon() + '.' + self._hazardEvents[0].getSignificance()
-        if self._operationalMode == False and phensig not in self._hazardsConflictDict:
-            testMode = True       
+# TODO: Re-instate when interoperability has stabilized        
+# In practice mode, WarnGen uses the productClass 'T'
+#         phensig = self._hazardEvents[0].getPhenomenon() + '.' + self._hazardEvents[0].getSignificance()
+#         if self._operationalMode == False and phensig not in self._hazardsConflictDict:
+#             testMode = True
             
         if testMode:
             return [a for a in vtecRecords if a['vtecstr'][0:3] == '/T.']
@@ -2823,12 +2826,14 @@ class VTECEngine(VTECTableUtil):
         LogStream.logDebug('Analyzed Table -- After checkForCANEXPUPG:', 
           self.printVtecRecords(pTable, combine=True))
 
-        # Check for EXA/EXB, applicable for GHG products
-        phensig = self._hazardEvents[0].getPhenomenon() + '.' + self._hazardEvents[0].getSignificance()
-        if phensig in self._hazardsConflictDict:
-            pTable = self._checkForEXAEXB(pTable, activeVtecRecords)
-            LogStream.logDebug('Analyzed Table -- After checkForEXAEXB:', 
-                self.printVtecRecords(pTable, combine=True))
+# TODO: Reinstate if necessary for interoperability
+# Check for EXA/EXB, applicable for GHG products
+#         phensig = self._hazardEvents[0].getPhenomenon() + '.' + self._hazardEvents[0].getSignificance()
+#         if phensig in self._hazardsConflictDict:
+
+        pTable = self._checkForEXAEXB(pTable, activeVtecRecords)
+        LogStream.logDebug('Analyzed Table -- After checkForEXAEXB:', 
+            self.printVtecRecords(pTable, combine=True))
 
         # Assign NEW to remaining records
         pTable = self._checkForNEW(pTable, activeVtecRecords, combinableSegments)

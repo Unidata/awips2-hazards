@@ -21,6 +21,7 @@ package com.raytheon.uf.common.hazards.productgen;
 
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
@@ -60,6 +61,8 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Jun 20, 2013 1122       jsanchez     Added a disseminate method.
  * Sep 12, 2013 717        jsanchez     Changed disseminate to return void type.
  * Apr  4, 2013            jsanchez     Handled dissemination differently for operational mode and practice mode.
+ * Dec 09, 2014 2826       dgilling     Ensure all necessary fields are set on
+ *                                      SendPracticeProductRequest.
  * 
  * </pre>
  * 
@@ -310,6 +313,14 @@ public class ProductUtils {
                 SendPracticeProductRequest req = new SendPracticeProductRequest();
                 req.setProductText(product);
                 req.setNotifyGFE(true);
+                if (!SimulatedTime.getSystemTime().isRealTime()) {
+                    DateFormat dateFormatter = new SimpleDateFormat(
+                            "yyyyMMdd_HHmm");
+                    dateFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
+                    req.setDrtString(dateFormatter.format(SimulatedTime
+                            .getSystemTime().getTime()));
+                }
+
                 RequestRouter.route(req);
             }
         } catch (Exception e) {

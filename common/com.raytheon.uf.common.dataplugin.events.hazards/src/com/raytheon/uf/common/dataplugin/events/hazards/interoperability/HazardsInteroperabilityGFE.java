@@ -21,11 +21,11 @@ package com.raytheon.uf.common.dataplugin.events.hazards.interoperability;
 
 import java.util.Date;
 
-import javax.persistence.Entity;
-import javax.persistence.Table;
-import javax.persistence.JoinColumn;
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
+import javax.persistence.Entity;
+import javax.persistence.JoinColumn;
+import javax.persistence.Table;
 
 import org.hibernate.annotations.Type;
 
@@ -36,8 +36,8 @@ import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * An interoperability record type specific to GFE records. The records are
- * accessed and updated by the EDEX request instance. They are associated with
- * a particular GFE grid and a hazard. An additional record type is used for GFE
+ * accessed and updated by the EDEX request instance. They are associated with a
+ * particular GFE grid and a hazard. An additional record type is used for GFE
  * Hazard Events because the events can exist before a product is generated and
  * ingested and, therefore, before the hazard event has an associated etn.
  * 
@@ -56,6 +56,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * ------------ ---------- ----------- --------------------------
  * Apr 01, 2014            bkowal      Initial creation
  * Oct 21, 2014   5051     mpduff      Change to support Hibernate upgrade.
+ * Dec 08, 2014   2826     dgilling    Rename db table to better indicate this is for
+ *                                     practice only.
  * 
  * </pre>
  * 
@@ -64,7 +66,7 @@ import com.vividsolutions.jts.geom.Geometry;
  */
 
 @Entity
-@Table(name = "hazards_interoperability_gfe")
+@Table(name = "practice_hazards_interoperability_gfe")
 @DynamicSerialize
 public class HazardsInteroperabilityGFE extends PersistableDataObject<String>
         implements IHazardsInteroperabilityRecord {
@@ -188,33 +190,44 @@ public class HazardsInteroperabilityGFE extends PersistableDataObject<String>
      */
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         HazardsInteroperabilityGFE other = (HazardsInteroperabilityGFE) obj;
         if (creationDate == null) {
-            if (other.creationDate != null)
+            if (other.creationDate != null) {
                 return false;
-        } else if (!creationDate.equals(other.creationDate))
+            }
+        } else if (!creationDate.equals(other.creationDate)) {
             return false;
+        }
         if (geometry == null) {
-            if (other.geometry != null)
+            if (other.geometry != null) {
                 return false;
-        } else if (!geometry.equals(other.geometry))
+            }
+        } else if (!geometry.equals(other.geometry)) {
             return false;
+        }
         if (key == null) {
-            if (other.key != null)
+            if (other.key != null) {
                 return false;
-        } else if (!key.equals(other.key))
+            }
+        } else if (!key.equals(other.key)) {
             return false;
+        }
         if (parmID == null) {
-            if (other.parmID != null)
+            if (other.parmID != null) {
                 return false;
-        } else if (!parmID.equals(other.parmID))
+            }
+        } else if (!parmID.equals(other.parmID)) {
             return false;
+        }
         return true;
     }
 }

@@ -65,6 +65,8 @@ import com.vividsolutions.jts.geom.Point;
  * Mar  3, 2014 3034       bkowal      Prevent Null Pointer Exception for Geometry
  * Aug 11, 2014 2826       jsanchez    Improved interoperability hazard comparison.
  * Dec 04, 2014 2826       dgilling    Remove unneeded methods.
+ * Dec 08, 2014 2826       dgilling    Remove unnecessary phen/sig validation from
+ *                                     RiverPro database.
  * 
  * </pre>
  * 
@@ -84,10 +86,6 @@ public class RiverProHazardsCreator {
 
     private static final String PHENOM = "phenom";
 
-    private static final String VTEC_SIGNIF = "vtecsignif";
-
-    private static final String VTEC_PHENOM = "vtecphenom";
-
     private static final String IMMED_CAUSE = "immedCause";
 
     private static final String SELECT_GAUGE_STRING = "select lid,lat,lon from location;";
@@ -102,7 +100,7 @@ public class RiverProHazardsCreator {
     private static final AfosToAwipsDao a2aDao = new AfosToAwipsDao();
 
     public void createHazards(List<PluginDataObject> objects) {
-        if (objects.isEmpty() == false) {
+        if (!objects.isEmpty()) {
             // find the gauge locations from the table
             Map<String, Point> gaugeLocations = null;
             try {
@@ -112,116 +110,101 @@ public class RiverProHazardsCreator {
                         .error("Unable to query for gauge data, events will not be interoperable with RiverPro");
                 return;
             }
-            // retrieve the available phenomenons for RiverPro
-            Map<String, String> phens = retrieveAvailable(PHENOM, VTEC_PHENOM);
-            // retrieve the available significances for RiverPro
-            Map<String, String> sigs = retrieveAvailable(SIGNIF, VTEC_SIGNIF);
-            // loop over each record
+
             for (PluginDataObject obj : objects) {
                 AbstractWarningRecord warning = null;
                 if (obj instanceof AbstractWarningRecord) {
                     warning = (AbstractWarningRecord) obj;
                 } else {
+                    statusHandler
+                            .warn("Invalid PDO sent to Hazard Services interoperability processing. Skipping record of type "
+                                    + obj.getClass().getCanonicalName() + ".");
                     continue;
                 }
 
                 if (warning.getGeometry() == null) {
+                    statusHandler.warn("Skipping product " + warning.getPil()
+                            + " because it has invalid geometry.");
                     continue;
                 }
 
-                // are are we doing a correct phen and sig, if not, continue on
-                if (phens.containsKey(warning.getPhen())
-                        && sigs.containsKey(warning.getSig())) {
-
-                    // loop over all gauge locations
-                    for (Entry<String, Point> pt : gaugeLocations.entrySet()) {
-                        // only create a record, if the gauge is in the area
-                        if (warning.getGeometry().contains(pt.getValue())) {
-                            // query the afos_to_awips table to get the product
-                            // id
-                            String productId = "";
-                            try {
-                                String xxxId = warning.getOfficeid();
-                                String wmottaaii = warning.getWmoid()
-                                        .split(" ")[0];
-                                List<AfosToAwips> list = a2aDao.lookupAfosId(
-                                        wmottaaii, xxxId).getIdList();
-                                for (AfosToAwips a2a : list) {
-                                    if (a2a.getAfosid().contains(
-                                            warning.getPil())) {
-                                        productId = a2a.getAfosid();
-                                        break;
-                                    }
+                // loop over all gauge locations
+                for (Entry<String, Point> pt : gaugeLocations.entrySet()) {
+                    // only create a record, if the gauge is in the area
+                    if (warning.getGeometry().contains(pt.getValue())) {
+                        // query the afos_to_awips table to get the product
+                        // id
+                        String productId = "";
+                        try {
+                            String xxxId = warning.getOfficeid();
+                            String wmottaaii = warning.getWmoid().split(" ")[0];
+                            List<AfosToAwips> list = a2aDao.lookupAfosId(
+                                    wmottaaii, xxxId).getIdList();
+                            for (AfosToAwips a2a : list) {
+                                if (a2a.getAfosid().contains(warning.getPil())) {
+                                    productId = a2a.getAfosid();
+                                    break;
                                 }
-                            } catch (DataAccessLayerException e) {
-                                statusHandler
-                                        .handle(Priority.PROBLEM,
-                                                "Unable to query afos_to_awips table for afosId",
-                                                e);
                             }
-                            // testing whether it should go to the practice
-                            // table, or to the regular table.
-                            if (obj instanceof PracticeWarningRecord) {
-                                VtecpracticeId id = new VtecpracticeId(
-                                        pt.getKey(), productId, warning
-                                                .getIssueTime().getTime());
-                                Vtecpractice event = new Vtecpractice(id);
-                                event.setBegintime(warning.getStartTime()
-                                        .getTime());
-                                event.setEndtime(warning.getEndTime().getTime());
-                                Calendar floodCrestTime = warning
-                                        .getFloodCrest();
-                                if (floodCrestTime != null) {
-                                    event.setCresttime(floodCrestTime.getTime());
-                                }
-                                event.setRecord(warning.getFloodRecordStatus());
-                                event.setEtn(Short.parseShort(warning.getEtn()));
-                                event.setOfficeId(warning.getOfficeid());
-                                event.setPhenom(warning.getPhen());
-                                event.setSeverity(warning.getFloodSeverity());
-                                event.setSignif(warning.getSig());
-                                event.setAction(warning.getAct());
-                                event.setImmedCause(warning.getImmediateCause());
-                                event.setProductmode(warning.getProductClass());
-                                event.setRecord(warning.getFloodRecordStatus());
-                                dao.create(event);
-                            } else {
-                                VteceventId id = new VteceventId(pt.getKey(),
-                                        productId, warning.getIssueTime()
-                                                .getTime());
-                                Vtecevent event = new Vtecevent(id);
-                                event.setBegintime(warning.getStartTime()
-                                        .getTime());
-                                event.setEndtime(warning.getEndTime().getTime());
-                                Calendar floodCrestTime = warning
-                                        .getFloodCrest();
-                                if (floodCrestTime != null) {
-                                    event.setCresttime(floodCrestTime.getTime());
-                                }
-                                event.setEtn(Short.parseShort(warning.getEtn()));
-                                event.setOfficeId(warning.getOfficeid());
-                                event.setProductmode(warning.getProductClass());
-
-                                event.setVteccause(retrieveVtecObject(
-                                        warning.getImmediateCause(),
-                                        IMMED_CAUSE, Vteccause.class));
-                                event.setVtecaction(retrieveVtecObject(
-                                        warning.getAct(), ACTION,
-                                        Vtecaction.class));
-                                event.setVtecphenom(retrieveVtecObject(
-                                        warning.getPhen(), PHENOM,
-                                        Vtecphenom.class));
-                                event.setVtecsignif(retrieveVtecObject(
-                                        warning.getSig(), SIGNIF,
-                                        Vtecsignif.class));
-                                event.setVtecsever(retrieveVtecObject(
-                                        warning.getFloodSeverity(), SEVERITY,
-                                        Vtecsever.class));
-                                event.setVtecrecord(retrieveVtecObject(
-                                        warning.getFloodRecordStatus(), RECORD,
-                                        Vtecrecord.class));
-                                dao.create(event);
+                        } catch (DataAccessLayerException e) {
+                            statusHandler
+                                    .handle(Priority.PROBLEM,
+                                            "Unable to query afos_to_awips table for afosId",
+                                            e);
+                        }
+                        // testing whether it should go to the practice
+                        // table, or to the regular table.
+                        if (obj instanceof PracticeWarningRecord) {
+                            VtecpracticeId id = new VtecpracticeId(pt.getKey(),
+                                    productId, warning.getIssueTime().getTime());
+                            Vtecpractice event = new Vtecpractice(id);
+                            event.setBegintime(warning.getStartTime().getTime());
+                            event.setEndtime(warning.getEndTime().getTime());
+                            Calendar floodCrestTime = warning.getFloodCrest();
+                            if (floodCrestTime != null) {
+                                event.setCresttime(floodCrestTime.getTime());
                             }
+                            event.setRecord(warning.getFloodRecordStatus());
+                            event.setEtn(Short.parseShort(warning.getEtn()));
+                            event.setOfficeId(warning.getOfficeid());
+                            event.setPhenom(warning.getPhen());
+                            event.setSeverity(warning.getFloodSeverity());
+                            event.setSignif(warning.getSig());
+                            event.setAction(warning.getAct());
+                            event.setImmedCause(warning.getImmediateCause());
+                            event.setProductmode(warning.getProductClass());
+                            event.setRecord(warning.getFloodRecordStatus());
+                            dao.create(event);
+                        } else {
+                            VteceventId id = new VteceventId(pt.getKey(),
+                                    productId, warning.getIssueTime().getTime());
+                            Vtecevent event = new Vtecevent(id);
+                            event.setBegintime(warning.getStartTime().getTime());
+                            event.setEndtime(warning.getEndTime().getTime());
+                            Calendar floodCrestTime = warning.getFloodCrest();
+                            if (floodCrestTime != null) {
+                                event.setCresttime(floodCrestTime.getTime());
+                            }
+                            event.setEtn(Short.parseShort(warning.getEtn()));
+                            event.setOfficeId(warning.getOfficeid());
+                            event.setProductmode(warning.getProductClass());
+
+                            event.setVteccause(retrieveVtecObject(
+                                    warning.getImmediateCause(), IMMED_CAUSE,
+                                    Vteccause.class));
+                            event.setVtecaction(retrieveVtecObject(
+                                    warning.getAct(), ACTION, Vtecaction.class));
+                            event.setVtecphenom(retrieveVtecObject(
+                                    warning.getPhen(), PHENOM, Vtecphenom.class));
+                            event.setVtecsignif(retrieveVtecObject(
+                                    warning.getSig(), SIGNIF, Vtecsignif.class));
+                            event.setVtecsever(retrieveVtecObject(
+                                    warning.getFloodSeverity(), SEVERITY,
+                                    Vtecsever.class));
+                            event.setVtecrecord(retrieveVtecObject(
+                                    warning.getFloodRecordStatus(), RECORD,
+                                    Vtecrecord.class));
+                            dao.create(event);
                         }
                     }
                 }
@@ -253,26 +236,6 @@ public class RiverProHazardsCreator {
             gaugeLocations.put(id, point);
         }
         return gaugeLocations;
-    }
-
-    /**
-     * Helps to retrieve values from the database. Could probably be smarter,
-     * this only allows for tables with two columns (which seem to show up a lot
-     * in IHFS)
-     * 
-     * @param col
-     * @param table
-     * @return
-     */
-    private Map<String, String> retrieveAvailable(String col, String table) {
-        Map<String, String> vals = new HashMap<String, String>();
-        List<Object[]> objects = DatabaseQueryUtil.executeDatabaseQuery(
-                QUERY_MODE.MODE_SQLQUERY, "select " + col + ",name from "
-                        + table + ";", IHFS_DB, table);
-        for (Object[] obj : objects) {
-            vals.put((String) obj[0], (String) obj[1]);
-        }
-        return vals;
     }
 
     /**

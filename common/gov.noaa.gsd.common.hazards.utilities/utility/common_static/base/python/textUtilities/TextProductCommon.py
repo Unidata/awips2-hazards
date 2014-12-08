@@ -1,16 +1,18 @@
 '''
-10    Description: Provides classes and methods for Product Generation
-12    
-13    SOFTWARE HISTORY
-14    Date         Ticket#      Engineer             Description
-15    ------------ ---------- ----------- --------------------------
-16    April 5, 2013            Tracy.L.Hansen      Initial creation
-17    Feb 14, 2013    2161     Chris.Golden        Added use of UFN_TIME_VALUE_SECS constant
-18                                                 instead of hardcoded value.
-      May 06, 2014   1328      jramer              Remove reference to deprecated MapInfo class.
-19
-20    @author Tracy.L.Hansen@noaa.gov
-21    '''
+   Description: Provides classes and methods for Product Generation
+   
+   SOFTWARE HISTORY
+   Date         Ticket#      Engineer             Description
+   ------------ ---------- ----------- --------------------------
+   April 5, 2013            Tracy.L.Hansen      Initial creation
+   Feb 14, 2013    2161     Chris.Golden        Added use of UFN_TIME_VALUE_SECS constant
+                                                instead of hardcoded value.
+   May 06, 2014   1328      jramer              Remove reference to deprecated MapInfo class.
+   Dec 08, 2014   2826      dgilling            Fix extraneous whitespsace in formatDatetime().
+
+
+   @author Tracy.L.Hansen@noaa.gov
+'''
 
 import cPickle, os, types, string, copy
 import sys, gzip, time, re
@@ -330,10 +332,10 @@ class TextProductCommon(object):
         if timeZone is not None:
             to_zone = tz.gettz(timeZone)
             new_time = new_time.astimezone(to_zone)
-        if format == 'ISO':
-            return new_time.isoformat()
-        else:
-            return new_time.strftime(format)  
+            
+        strTime = new_time.isoformat() if format == 'ISO' else new_time.strftime(format)
+        strTime = re.sub(r"\s+", " ", strTime)
+        return strTime  
                          
     def reversePolygon(self, polygon):
         '''

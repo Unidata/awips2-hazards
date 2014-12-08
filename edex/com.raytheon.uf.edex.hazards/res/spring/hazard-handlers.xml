@@ -10,4 +10,12 @@
 			value="com.raytheon.uf.common.dataplugin.events.hazards.requests.RegionLookupRequest" />
 		<constructor-arg ref="regionLookupRequestHandler" />
 	</bean>
+	
+	<bean id="purgePracticeInteropHandler"
+		class="com.raytheon.uf.edex.hazards.interoperability.handlers.PurgePracticeInteropRecordsHandler" />
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeInteropRecordsRequest" />
+		<constructor-arg ref="purgePracticeInteropHandler" />
+	</bean>
 </beans>

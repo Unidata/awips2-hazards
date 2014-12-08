@@ -21,13 +21,13 @@ package com.raytheon.uf.common.dataplugin.events.hazards.interoperability;
 
 import java.util.Date;
 
+import javax.persistence.Column;
+import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
-import javax.persistence.Table;
 import javax.persistence.JoinColumn;
-import javax.persistence.Column;
-import javax.persistence.EmbeddedId;
+import javax.persistence.Table;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
 import com.raytheon.uf.common.dataplugin.persist.PersistableDataObject;
@@ -36,8 +36,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * An interoperability record. Created and/or checked by ingest whenever an
- * interoperability product is ingested. This data type will be mapped to
- * a particular hazard to answer the existence question.
+ * interoperability product is ingested. This data type will be mapped to a
+ * particular hazard to answer the existence question.
  * 
  * <pre>
  * 
@@ -45,7 +45,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 1, 2014            bkowal     Initial creation
+ * Apr 01, 2014            bkowal      Initial creation
+ * Dec 08, 2014   2826     dgilling    Rename db table to better indicate this is for
+ *                                     practice only.
  * 
  * </pre>
  * 
@@ -54,7 +56,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 
 @Entity
-@Table(name = "hazards_interoperability")
+@Table(name = "practice_hazards_interoperability")
 @DynamicSerialize
 public class HazardsInteroperability extends PersistableDataObject<String>
         implements IHazardsInteroperabilityRecord {
@@ -70,7 +72,7 @@ public class HazardsInteroperability extends PersistableDataObject<String>
     @DynamicSerializeElement
     @Enumerated(EnumType.STRING)
     private INTEROPERABILITY_TYPE interoperabilityType;
-    
+
     @Column(name = HazardInteroperabilityConstants.CREATION_DATE, nullable = false)
     @DynamicSerializeElement
     private Date creationDate;
@@ -92,7 +94,6 @@ public class HazardsInteroperability extends PersistableDataObject<String>
         return this.key.getHazardEventID();
     }
 
-
     /**
      * @return the interoperabilityType
      */
@@ -108,7 +109,7 @@ public class HazardsInteroperability extends PersistableDataObject<String>
             INTEROPERABILITY_TYPE interoperabilityType) {
         this.interoperabilityType = interoperabilityType;
     }
-    
+
     @Override
     public Date getCreationDate() {
         return creationDate;
@@ -119,7 +120,9 @@ public class HazardsInteroperability extends PersistableDataObject<String>
         this.creationDate = creationDate;
     }
 
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see java.lang.Object#hashCode()
      */
     @Override
@@ -136,30 +139,40 @@ public class HazardsInteroperability extends PersistableDataObject<String>
         return result;
     }
 
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see java.lang.Object#equals(java.lang.Object)
      */
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         HazardsInteroperability other = (HazardsInteroperability) obj;
         if (creationDate == null) {
-            if (other.creationDate != null)
+            if (other.creationDate != null) {
                 return false;
-        } else if (!creationDate.equals(other.creationDate))
+            }
+        } else if (!creationDate.equals(other.creationDate)) {
             return false;
-        if (interoperabilityType != other.interoperabilityType)
+        }
+        if (interoperabilityType != other.interoperabilityType) {
             return false;
+        }
         if (key == null) {
-            if (other.key != null)
+            if (other.key != null) {
                 return false;
-        } else if (!key.equals(other.key))
+            }
+        } else if (!key.equals(other.key)) {
             return false;
+        }
         return true;
     }
 }

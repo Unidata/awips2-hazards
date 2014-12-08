@@ -17,16 +17,14 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.test;
-
-import java.util.List;
+package com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
- * Used to request the storage of test vtec data.
+ * Request to clear the hazard services interoperability tables to get the
+ * practice mode system back to a clean state.
  * 
  * <pre>
  * 
@@ -34,28 +32,18 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 11, 2014 2826      jsanchez     Initial creation
+ * Dec 08, 2014  #2826     dgilling     Initial creation
  * 
  * </pre>
  * 
- * @author jsanchez
+ * @author dgilling
  * @version 1.0
  */
+
 @DynamicSerialize
-public class TestPracticeVtecStorageRequest implements IServerRequest {
+public class PurgePracticeInteropRecordsRequest implements IServerRequest {
 
-    @DynamicSerializeElement
-    private List<TestVtecInteroperabilityRelation> relations;
+    public PurgePracticeInteropRecordsRequest() {
 
-    public TestPracticeVtecStorageRequest() {
-
-    }
-
-    public List<TestVtecInteroperabilityRelation> getRelations() {
-        return relations;
-    }
-
-    public void setRelations(List<TestVtecInteroperabilityRelation> relations) {
-        this.relations = relations;
     }
 }
