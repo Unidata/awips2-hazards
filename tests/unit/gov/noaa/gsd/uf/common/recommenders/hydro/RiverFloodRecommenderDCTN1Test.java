@@ -233,14 +233,12 @@ public class RiverFloodRecommenderDCTN1Test {
         recommender.getRecommendation(sessionAttributeMap, dialogInputMap,
                 spatialInputMap);
 
-        EventSet<IHazardEvent> results = recommender.getPotentialRiverHazards(
-                true, false);
+        EventSet<IHazardEvent> results = recommender
+                .getPotentialRiverHazards(false);
         assertEquals(1, results.size());
         IHazardEvent recommendation = results.iterator().next();
         Map<String, Serializable> attributeMap = recommendation
                 .getHazardAttributes();
-        assertEquals("FL", recommendation.getPhenomenon());
-        assertEquals("W", recommendation.getSignificance());
         assertEquals(1297106124943L, recommendation.getStartTime().getTime());
         assertEquals(1297292869566L, recommendation.getEndTime().getTime());
         assertEquals(1297188000000L, attributeMap.get("crest"));

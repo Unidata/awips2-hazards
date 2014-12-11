@@ -233,15 +233,12 @@ public class RiverFloodRecommenderNEBN1Test {
         recommender.getRecommendation(sessionAttributeMap, dialogInputMap,
                 spatialInputMap);
 
-        EventSet<IHazardEvent> results = recommender.getPotentialRiverHazards(
-                true, false);
+        EventSet<IHazardEvent> results = recommender
+                .getPotentialRiverHazards(false);
         assertEquals(1, results.size());
         IHazardEvent recommendation = results.iterator().next();
         Map<String, Serializable> attributeMap = recommendation
                 .getHazardAttributes();
-
-        assertEquals("FL", recommendation.getPhenomenon());
-        assertEquals("W", recommendation.getSignificance());
 
         assertEquals(1354952880000L, recommendation.getStartTime().getTime());
         assertEquals(1354996080000L, recommendation.getEndTime().getTime());

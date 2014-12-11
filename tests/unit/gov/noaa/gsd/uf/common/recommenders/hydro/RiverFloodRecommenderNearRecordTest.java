@@ -235,14 +235,12 @@ public class RiverFloodRecommenderNearRecordTest {
         recommender.getRecommendation(sessionAttributeMap, dialogInputMap,
                 spatialInputMap);
 
-        EventSet<IHazardEvent> results = recommender.getPotentialRiverHazards(
-                true, false);
+        EventSet<IHazardEvent> results = recommender
+                .getPotentialRiverHazards(false);
         assertEquals(1, results.size());
         IHazardEvent recommendation = results.iterator().next();
         Map<String, Serializable> attributeMap = recommendation
                 .getHazardAttributes();
-        assertEquals("FL", recommendation.getPhenomenon());
-        assertEquals("W", recommendation.getSignificance());
 
         assertEquals(1354941556951L, recommendation.getStartTime().getTime());
         assertEquals(1355225575680L, recommendation.getEndTime().getTime());

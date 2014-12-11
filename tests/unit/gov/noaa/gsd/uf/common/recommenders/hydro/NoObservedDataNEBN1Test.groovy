@@ -11,11 +11,11 @@ package gov.noaa.gsd.uf.common.recommenders.hydro;
 
 import static org.junit.Assert.*
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverProFloodRecommender
-import com.raytheon.uf.common.hazards.hydro.RiverProDataManager
 import spock.lang.*
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
-import com.raytheon.uf.common.hazards.hydro.HazardSettings;
+import com.raytheon.uf.common.hazards.hydro.HazardSettings
+import com.raytheon.uf.common.hazards.hydro.RiverProDataManager
 
 /**
  * Description: Tests to make sure that adjustments to the
@@ -500,7 +500,7 @@ class NoObservedDataNEBN1Test extends spock.lang.Specification {
 
         then: "One hazard should be recommended"
 
-        Set<IHazardEvent> resultSet = recommender.getPotentialRiverHazards(true, false)
+        Set<IHazardEvent> resultSet = recommender.getPotentialRiverHazards(false)
         resultSet.size() == 1
 
         and: "There should be no rise above time"

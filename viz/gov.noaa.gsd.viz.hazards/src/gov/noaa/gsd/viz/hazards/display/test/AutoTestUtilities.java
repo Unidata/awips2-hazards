@@ -165,13 +165,7 @@ public class AutoTestUtilities {
 
     static final String DAM_NAME = "damName";
 
-    static final double FORECAST_CONFIDENCE_VALUE = 50.0;
-
-    static final String SET_CONFIDENCE = "Set confidence:";
-
     static final String FORECAST_TYPE = "forecastType";
-
-    static final String FORECAST_CONFIDENCE_PERCENTAGE = "forecastConfidencePercentage";
 
     private final HazardServicesAppBuilder appBuilder;
 

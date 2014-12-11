@@ -11,11 +11,11 @@ package gov.noaa.gsd.uf.common.recommenders.hydro;
 
 import static org.junit.Assert.*
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverProFloodRecommender
-import com.raytheon.uf.common.hazards.hydro.RiverProDataManager
 import spock.lang.*
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
-import com.raytheon.uf.common.hazards.hydro.HazardSettings;
+import com.raytheon.uf.common.hazards.hydro.HazardSettings
+import com.raytheon.uf.common.hazards.hydro.RiverProDataManager
 
 
 /**
@@ -604,7 +604,7 @@ class EndTime0ShiftHoursTest extends spock.lang.Specification {
                 spatialInputMap)
 
         then: "One hazard should be recommended"
-        Set<IHazardEvent> resultSet = recommender.getPotentialRiverHazards(true, false)
+        Set<IHazardEvent> resultSet = recommender.getPotentialRiverHazards(false)
         resultSet.size() == 1
 
         and: "The hazard end time should equal the fall below time"

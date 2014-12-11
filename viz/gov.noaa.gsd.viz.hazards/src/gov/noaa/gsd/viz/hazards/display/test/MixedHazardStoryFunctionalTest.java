@@ -31,13 +31,10 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLOOD_WATC
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLOOD_WATCH_PHEN_SIG;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLOOD_WATCH_PRODUCT_ID;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLW_FULL_TEXT;
-import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FORECAST_CONFIDENCE_PERCENTAGE;
-import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FORECAST_CONFIDENCE_VALUE;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FORECAST_TYPE;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.INCLUDE;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.NEW_VTEC_STRING;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.OAX;
-import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.SET_CONFIDENCE;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.SEV2;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
@@ -122,6 +119,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComp
 class MixedHazardStoryFunctionalTest extends
         FunctionalTest<MixedHazardStoryFunctionalTest.Steps> {
 
+    private static final String INCLUDE_NON_FLOOD_POINTS = "includePointsBelowAdvisory";
+
+    private static final String WARNING_THRESHOLD = "warningThreshold";
+
+    private static final String FORECAST_TYPE_WATCH = "Watch";
+
     /**
      * 
      */
@@ -159,7 +162,7 @@ class MixedHazardStoryFunctionalTest extends
         TEST_ENDED
     }
 
-    private static final int NUM_EVENTS_GENERATED_BY_FLOOD_RECOMMENDER = 7;
+    private static final int NUM_EVENTS_GENERATED_BY_FLOOD_RECOMMENDER = 4;
 
     private Set<String> waitingToBeSelected;
 
@@ -454,9 +457,10 @@ class MixedHazardStoryFunctionalTest extends
                 case RUN_FLOOD:
 
                     Map<String, Serializable> riverFloodInfo = new HashMap<>();
-                    riverFloodInfo.put(FORECAST_CONFIDENCE_PERCENTAGE,
-                            FORECAST_CONFIDENCE_VALUE);
-                    riverFloodInfo.put(FORECAST_TYPE, SET_CONFIDENCE);
+                    riverFloodInfo.put(FORECAST_TYPE, FORECAST_TYPE_WATCH);
+                    riverFloodInfo.put(INCLUDE_NON_FLOOD_POINTS, false);
+                    riverFloodInfo.put(WARNING_THRESHOLD, 24);
+
                     eventBus.publishAsync(new ToolAction(
                             ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
                             RIVER_FLOOD_RECOMMENDER, riverFloodInfo));

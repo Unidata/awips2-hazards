@@ -83,6 +83,7 @@ import com.raytheon.uf.common.util.FileUtil;
  *                                      the recommender incase a update was made. 
  *                                      Also reloading next localization level if a
  *                                      recommender is deleted.
+ * Dec 12, 2014 4124       Kevin.Manross Add "textUtilities" to python/JEP include path
  * </pre>
  * 
  * @author mnash
@@ -238,13 +239,14 @@ public abstract class AbstractRecommenderScriptManager extends
         String localizationUtilitiesPath = FileUtil.join(pythonPath,
                 "localizationUtilities");
         String dataStoragePath = FileUtil.join(pythonPath, "dataStorage");
+        String textUtilitiesPath = FileUtil.join(pythonPath, "textUtilities");
 
         String includePath = PyUtil.buildJepIncludePath(pythonPath,
                 recommenderConfigPath, recommenderUserPath,
                 recommenderSitePath, recommenderDirPath, dataAccessPath,
                 dataTimePath, eventsPath, utilitiesPath, gfePath, bridgePath,
                 trackUtilPath, geoUtilPath, genUtilPath, logUtilPath,
-                localizationUtilitiesPath, dataStoragePath);
+                localizationUtilitiesPath, dataStoragePath, textUtilitiesPath);
         return includePath;
     }
 
