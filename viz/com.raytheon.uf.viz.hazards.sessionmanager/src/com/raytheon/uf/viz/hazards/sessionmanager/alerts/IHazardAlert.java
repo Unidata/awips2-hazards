@@ -20,6 +20,10 @@ import java.util.Date;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 19, 2013   1325    daniel.s.schaffer@noaa.gov      Initial creation
+ * Dec  1, 2014 3249       Dan Schaffer Issue #3249.  Fixed problem where stale 
+ *                                                    alerts would appear when 
+ *                                                    you leave hazard services 
+ *                                                    and come back much later.
  * 
  * </pre>
  * 
@@ -44,5 +48,9 @@ public interface IHazardAlert {
     Date getActivationTime();
 
     void setActivationTime(Date activationTime);
+
+    Date getDeactivationTime();
+
+    void setDeactivationTime(Date deactivationTime);
 
 }

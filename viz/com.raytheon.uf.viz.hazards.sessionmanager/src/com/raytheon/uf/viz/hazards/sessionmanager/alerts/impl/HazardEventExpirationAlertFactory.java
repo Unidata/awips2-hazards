@@ -37,6 +37,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 19, 2013  1325      daniel.s.schaffer@noaa.gov      Initial creation
+ * Dec  1, 2014 3249       Dan Schaffer Issue #3249.  Fixed problem where stale 
+ *                                                    alerts would appear when 
+ *                                                    you leave hazard services 
+ *                                                    and come back much later.
  * 
  * </pre>
  * 
@@ -140,6 +144,17 @@ public class HazardEventExpirationAlertFactory {
         result.setHazardExpiration(hazardExpiration);
         Date activationTime = computeActivationTime(alertCriterion, hazardEvent);
         result.setActivationTime(activationTime);
+        /**
+         * For now, the alert is deactivated when the hazard expires. So,
+         * suppose a hazard expiration time is 11/26/14 at 7am. Now suppose the
+         * forecaster exits hazard services and then restarts it at 11/26/14 at
+         * 7:10am. The alert is deactivated and so will not appear. Now it is
+         * possible that focal points will want to change this algorithm so that
+         * the alert is not deactivated until N minutes after hazard expiration.
+         * So, if N is 15 then in the above example, the alert would appear. We
+         * will come back to this question as needed based on user feedback.
+         */
+        result.setDeactivationTime(hazardExpiration);
     }
 
     private Date computeExpirationTime(IHazardEvent hazardEvent) {

@@ -24,6 +24,10 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 26, 2013  1325     daniel.s.schaffer@noaa.gov      Initial creation
+ * Dec  1, 2014 3249       Dan Schaffer Issue #3249.  Fixed problem where stale 
+ *                                                    alerts would appear when 
+ *                                                    you leave hazard services 
+ *                                                    and come back much later.
  * 
  * </pre>
  * 
@@ -35,6 +39,8 @@ public class HazardAlert implements IHazardAlert {
     protected HazardAlertState state;
 
     private Date activationTime;
+
+    private Date deactivationTime;
 
     /**
      * 
@@ -90,6 +96,23 @@ public class HazardAlert implements IHazardAlert {
     @Override
     public void setState(HazardAlertState state) {
         this.state = state;
+    }
+
+    /**
+     * @return the deactivationTime
+     */
+    @Override
+    public Date getDeactivationTime() {
+        return deactivationTime;
+    }
+
+    /**
+     * @param deactivationTime
+     *            the deactivationTime to set
+     */
+    @Override
+    public void setDeactivationTime(Date deactivationTime) {
+        this.deactivationTime = deactivationTime;
     }
 
 }

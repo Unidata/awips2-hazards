@@ -58,6 +58,10 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                                    Also, fix to issue 2448
  * March 19, 2014 3277     bkowal      Eliminate false errors due to standard
  *                                     and expected interoperability actions.
+ * Dec  1, 2014 3249       Dan Schaffer Issue #3249.  Fixed problem where stale 
+ *                                                    alerts would appear when 
+ *                                                    you leave hazard services 
+ *                                                    and come back much later.
  * 
  * </pre>
  * 
@@ -222,10 +226,22 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
 
         }
         alertFactory.addImmediateAlertsAsNecessary(hazardEvent, alerts);
+        removeStaleAlerts(alerts);
         removeSupercededAlerts(alerts);
         for (IHazardEventAlert alert : alerts) {
             alertsManager.scheduleAlert(alert);
         }
+    }
+
+    private void removeStaleAlerts(List<IHazardEventAlert> alerts) {
+        List<IHazardEventAlert> alertsToRemove = Lists.newArrayList();
+        for (IHazardEventAlert alert : alerts) {
+            if (alert.getDeactivationTime().before(
+                    sessionTimeManager.getCurrentTime())) {
+                alertsToRemove.add(alert);
+            }
+        }
+        alerts.removeAll(alertsToRemove);
     }
 
     private void removeSupercededAlerts(List<IHazardEventAlert> alerts) {
