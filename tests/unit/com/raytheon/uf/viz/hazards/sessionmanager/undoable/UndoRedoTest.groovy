@@ -24,6 +24,7 @@ import com.vividsolutions.jts.geom.LinearRing
  * ------------ ---------- ----------- --------------------------
  * August 9, 2013  1265    blawrence    Initial creation in response
  *                                      to code review.
+ * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
  *
  * </pre>
  *
@@ -185,13 +186,10 @@ class UndoRedoTest extends spock.lang.Specification {
 
     /**
      * Creates a mocked session event manager.
-     * For these tests, we always want the method
-     * canChangeGeometry to return true.
      * @param
      * @return
      */
     private mockSessionEventManager() {
         sessionEventManager = mock(SessionEventManager.class)
-        when(sessionEventManager.canChangeGeometry(anyObject())).thenReturn(true)
     }
 }

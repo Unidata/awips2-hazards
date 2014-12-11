@@ -56,6 +56,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Aug 20, 2014 4243       Chris.Golden Added implementation of
  *                                      new method to run scripts.
  * Sep 16, 2014 4753       Chris.Golden Added mutable properties to event scripts.
+ * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
  * </pre>
  * 
  * @author bsteffen
@@ -127,11 +128,6 @@ public class SimpleSessionEventManager implements
     @Override
     public Collection<ObservedHazardEvent> getEvents() {
         return events;
-    }
-
-    @Override
-    public boolean canChangeGeometry(ObservedHazardEvent event) {
-        return canChangeGeometry;
     }
 
     @Override
@@ -310,6 +306,12 @@ public class SimpleSessionEventManager implements
 
     @Override
     public boolean isSelected(ObservedHazardEvent event) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean isValidGeometryChange(Geometry geometry,
+            ObservedHazardEvent hazardEvent) {
         throw new UnsupportedOperationException();
     }
 

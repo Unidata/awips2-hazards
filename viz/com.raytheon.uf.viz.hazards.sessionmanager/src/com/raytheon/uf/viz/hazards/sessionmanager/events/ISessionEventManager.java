@@ -31,6 +31,7 @@ import java.util.Set;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -64,6 +65,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Aug 20, 2014 4243       Chris.Golden Added new method to receive notification of a script
  *                                      command having been invoked.
  * Sep 16, 2014 4753       Chris.Golden Changed event script to include mutable properties.
+ * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
  * </pre>
  * 
  * @author bsteffen
@@ -247,14 +249,6 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public Collection<E> getCheckedEvents();
 
     public Collection<E> getEventsForCurrentSettings();
-
-    /**
-     * Tests whether it is valid to change a hazards geometry.
-     * 
-     * @param event
-     * @return
-     */
-    public boolean canChangeGeometry(E event);
 
     /**
      * Tests whether it is valid to change a hazards start or end time
@@ -480,5 +474,14 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @return true if the event is selected
      */
     public boolean isSelected(E event);
+
+    /**
+     * @param geometry
+     * @param hazardEvent
+     * @return true if the geometry of the given hazardEvent can be modified to
+     *         the given geometry
+     */
+    public boolean isValidGeometryChange(Geometry geometry,
+            ObservedHazardEvent hazardEvent);
 
 }

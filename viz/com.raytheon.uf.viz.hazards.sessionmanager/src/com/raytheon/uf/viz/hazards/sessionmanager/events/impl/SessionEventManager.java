@@ -117,6 +117,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.operation.valid.IsValidOp;
 import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
 
 /**
@@ -205,6 +206,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      megawidgets.
  * Sep 16, 2014  4753      Chris.Golden Changed event script to include mutable
  *                                      properties.
+ * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
  * </pre>
  * 
  * @author bsteffen
@@ -1665,21 +1667,6 @@ public class SessionEventManager implements
     }
 
     @Override
-    public boolean canChangeGeometry(ObservedHazardEvent event) {
-        if (hasEverBeenIssued(event)) {
-            HazardTypes hts = configManager.getHazardTypes();
-            HazardTypeEntry ht = hts.get(HazardEventUtilities
-                    .getHazardType(event));
-            if (ht != null) {
-                if (!ht.isAllowAreaChange()) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    @Override
     public boolean canChangeTimeRange(ObservedHazardEvent event) {
         if (hasEverBeenIssued(event)) {
             HazardTypes hts = configManager.getHazardTypes();
@@ -2228,9 +2215,8 @@ public class SessionEventManager implements
     private boolean canBeClipped(ObservedHazardEvent selectedEvent,
             HazardTypeEntry hazardType) {
         return !HazardStatus.hasEverBeenIssued(selectedEvent.getStatus())
-                || (HazardStatus.issuedButNotEnded(selectedEvent.getStatus())
-                        && hazardType.isAllowAreaChange() && selectedEvent
-                            .isModified());
+                || (HazardStatus.issuedButNotEnded(selectedEvent.getStatus()) && selectedEvent
+                        .isModified());
     }
 
     @Override
@@ -2313,18 +2299,7 @@ public class SessionEventManager implements
 
     @Override
     public boolean canEventAreaBeChanged(ObservedHazardEvent hazardEvent) {
-        HazardTypes hazardTypes = configManager.getHazardTypes();
-
-        HazardTypeEntry hazardTypeEntry = hazardTypes.get(hazardEvent
-                .getHazardType());
-
-        if (hazardTypeEntry != null
-                && HazardStatus.issuedButNotEnded(hazardEvent.getStatus())) {
-            return hazardTypeEntry.isAllowAreaChange();
-        } else {
-            return true;
-        }
-
+        return hazardEvent.getStatus() != HazardStatus.ENDED;
     }
 
     @Override
@@ -2370,39 +2345,42 @@ public class SessionEventManager implements
             String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
 
             if (hazardType != null) {
-                String mapDBtableName = configManager.getHazardTypes()
-                        .get(hazardType).getHazardHatchArea();
-
-                String mapLabelParameter = configManager.getHazardTypes()
-                        .get(hazardType).getHazardHatchLabel();
-
-                String cwa = configManager.getSiteID();
-
-                Set<IGeometryData> hazardArea;
-
-                if (mapDBtableName.equals(HazardConstants.POLYGON_TYPE)) {
-                    hazardArea = HatchingUtilities
-                            .getIntersectingMapGeometries(
-                                    HazardConstants.MAPDATA_COUNTY,
-                                    mapLabelParameter, cwa, true,
-                                    configManager, hazardEvent);
-                } else {
-                    hazardArea = HatchingUtilities.buildHatchedAreaForEvent(
-                            mapDBtableName, mapLabelParameter, cwa,
-                            hazardEvent, configManager);
-                }
-
-                /*
-                 * TODO Will need to support user-additions/removals to/from UGC
-                 * List.
-                 */
-                IUGCBuilder ugcBuilder = getUGCBuilder(mapDBtableName);
-                List<String> ugcList = ugcBuilder.buildUGCList(hazardArea);
+                List<String> ugcList = buildUGCs(hazardEvent);
                 hazardEvent.addHazardAttribute(HazardConstants.UGCS,
                         (Serializable) ugcList);
             }
         }
 
+    }
+
+    private List<String> buildUGCs(IHazardEvent hazardEvent) {
+        String hazardType = hazardEvent.getHazardType();
+        String mapDBtableName = configManager.getHazardTypes().get(hazardType)
+                .getHazardHatchArea();
+
+        String mapLabelParameter = configManager.getHazardTypes()
+                .get(hazardType).getHazardHatchLabel();
+
+        String cwa = configManager.getSiteID();
+
+        Set<IGeometryData> hazardArea;
+
+        if (mapDBtableName.equals(HazardConstants.POLYGON_TYPE)) {
+            hazardArea = HatchingUtilities.getIntersectingMapGeometries(
+                    HazardConstants.MAPDATA_COUNTY, mapLabelParameter, cwa,
+                    true, configManager, hazardEvent);
+        } else {
+            hazardArea = HatchingUtilities.buildHatchedAreaForEvent(
+                    mapDBtableName, mapLabelParameter, cwa, hazardEvent,
+                    configManager);
+        }
+
+        /*
+         * TODO Will need to support user-additions/removals to/from UGC List.
+         */
+        IUGCBuilder ugcBuilder = getUGCBuilder(mapDBtableName);
+        List<String> ugcList = ugcBuilder.buildUGCList(hazardArea);
+        return ugcList;
     }
 
     /**
@@ -2423,5 +2401,41 @@ public class SessionEventManager implements
                     + geoTableName);
             return new NullUGCBuilder();
         }
+    }
+
+    @Override
+    public boolean isValidGeometryChange(Geometry geometry,
+            ObservedHazardEvent hazardEvent) {
+        boolean result = true;
+        if (!geometry.isValid()) {
+            IsValidOp op = new IsValidOp(geometry);
+            statusHandler.warn("Invalid Geometry: "
+                    + op.getValidationError().getMessage()
+                    + ": Geometry modification undone");
+            result = false;
+
+        } else if (hasEverBeenIssued(hazardEvent)) {
+            HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes()
+                    .get(HazardEventUtilities.getHazardType(hazardEvent));
+            if (hazardTypeEntry != null) {
+                if (!hazardTypeEntry.isAllowAreaChange()) {
+                    @SuppressWarnings("unchecked")
+                    List<String> oldUGCs = (List<String>) hazardEvent
+                            .getHazardAttribute(HazardConstants.UGCS);
+                    ObservedHazardEvent eventWithNewGeometry = new ObservedHazardEvent(
+                            hazardEvent, this);
+                    eventWithNewGeometry.setGeometry(geometry);
+                    List<String> newUGCs = buildUGCs(eventWithNewGeometry);
+                    newUGCs.removeAll(oldUGCs);
+
+                    if (!newUGCs.isEmpty()) {
+                        statusHandler
+                                .warn("This hazard event cannot be expanded in area.  Please create a new hazard event for the new areas.");
+                        result = false;
+                    }
+                }
+            }
+        }
+        return result;
     }
 }

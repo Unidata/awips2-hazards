@@ -85,6 +85,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      Also changed a few methods that were
  *                                      public that should have been protected
  *                                      like the other notify-taking methods.
+ * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
  * </pre>
  * 
  * @author bsteffen
@@ -577,26 +578,22 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     protected void setGeometry(Geometry geom, boolean notify,
             IOriginator originator) {
         if (changed(getGeometry(), geom)) {
-            if (eventManager.canChangeGeometry(this)) {
-                pushToStack("setGeometry", Geometry.class, getGeometry());
-                delegate.setGeometry(geom);
-                /*
-                 * Reset the clipped and point reduction flags when the geometry
-                 * changes. This indicates that clipping and point reduction may
-                 * need to be redone on this event.
-                 */
-                this.clipped = false;
-                this.reduced = false;
+            pushToStack("setGeometry", Geometry.class, getGeometry());
+            delegate.setGeometry(geom);
+            /*
+             * Reset the clipped and point reduction flags when the geometry
+             * changes. This indicates that clipping and point reduction may
+             * need to be redone on this event.
+             */
+            this.clipped = false;
+            this.reduced = false;
 
-                if (notify) {
-                    eventManager
-                            .hazardEventModified(new SessionEventGeometryModified(
-                                    eventManager, this, originator));
-                }
-            } else {
-                this.modified = false;
-                throw new IllegalEventModificationException("geometry");
+            if (notify) {
+                eventManager
+                        .hazardEventModified(new SessionEventGeometryModified(
+                                eventManager, this, originator));
             }
+
         }
     }
 

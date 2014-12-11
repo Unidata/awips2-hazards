@@ -150,6 +150,7 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  *                                        End Selected Hazard context menu item.
  * Sep 09, 2014  3994     Robert.Blum     Added handleMouseEnter to reset the cursor type.
  * Oct 20, 2014  4780     Robert.Blum     Made fix to Time Matching to update to the Time Match Basis.
+ * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1272,22 +1273,14 @@ public class SpatialDisplay extends
      * TODO This needs to me moved elsewhere - nothing to do with drawing.
      */
     public void notifyModifiedGeometry(String eventID, Geometry geometry) {
-        if (geometry.isValid()) {
-            ISessionEventManager<ObservedHazardEvent> sessionEventManager = appBuilder
-                    .getSessionManager().getEventManager();
+        ISessionEventManager<ObservedHazardEvent> sessionEventManager = appBuilder
+                .getSessionManager().getEventManager();
 
-            ObservedHazardEvent hazardEvent = sessionEventManager
-                    .getEventById(eventID);
+        ObservedHazardEvent hazardEvent = sessionEventManager
+                .getEventById(eventID);
+
+        if (sessionEventManager.isValidGeometryChange(geometry, hazardEvent)) {
             hazardEvent.setGeometry(geometry);
-            SessionEventGeometryModified action = new SessionEventGeometryModified(
-                    sessionEventManager, hazardEvent, this);
-            eventBus.publish(action);
-        } else {
-            IsValidOp op = new IsValidOp(geometry);
-            statusHandler.warn("Invalid Geometry: "
-                    + op.getValidationError().getMessage()
-                    + ": Geometry modification undone");
-
         }
     }
 
