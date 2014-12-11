@@ -1,3 +1,6 @@
+'''
+    Description: Hazard Information Dialog Metadata for hazard type FA.W
+'''
 import CommonMetaData
 from HazardConstants import *
 
@@ -5,103 +8,130 @@ class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-        metaData = [
-                    self.getInclude(),
-                    self.getImmediateCauseMessage(),
+        if self.hazardStatus == "ending":
+            metaData = [
+                        self.getEndingOption(),
+                        self.getEndingSynopsis(),
+                        ]
+        else:
+            metaData = [
+                    self.getWarningType(),
                     self.getImmediateCause(),
+                    self.getEventSpecificSource(),
                     self.getRainAmt(),
-                    self.getBasis(),
                     self.getAdditionalInfo(),
-                    self.getCTAs(),                    
-                    self.getCAP_Fields([
-                                        ("urgency", "Expected"),
-                                        ("severity", "Severe"),
-                                        ("certainty", "Likely"),
-                                        ("responseType", "None"),
-                                       ])
+                    self.getCTAs(),  
+                    # Preserving CAP defaults for future reference.                  
+#                     self.getCAP_Fields([
+#                                         ("urgency", "Expected"),
+#                                         ("severity", "Severe"),
+#                                         ("certainty", "Likely"),
+#                                         ("responseType", "None"),
+#                                        ]),
                     ]
         return {
                 METADATA_KEY: metaData
-                }    
+                }
+        
+    def getWarningType(self):
+        return {   
+             "fieldType":"RadioButtons",
+             "fieldName": "warningType",
+             "label":"Type of Warning:",
+             "values": "genericFloodWarning",
+             "choices": self.warningChoices(),
+             "editable" : self.editableWhenNew(),
+             }    
     
-    # INCLUDE  
-    def includeChoices(self):
+    def warningChoices(self):
         return [
-            self.includeSmallStreams(),
-            self.includeUrbanAreasSmallStreams(),
-            ] 
+            self.genericFloodWarning(),
+            self.smallStreamsWarning(),
+            self.urbanSmallStreamsWarning(),
+            ]
         
-    def getImmediateCauseMessage(self): 
-        return {
-             "fieldName": "miscLabel",
-             "fieldType":"Label",
-             "wrap": True,
-             "label":"If either 'include small streams' or 'include urban areas and small streams' above was selected, 'floodgate opening' in immediate cause below should not be selected.  If 'floodgate opening' is the desired option, do not select 'include small streams' or 'include urban areas and small streams'. ",
-            }
+    def genericFloodWarning(self):
+                return {"identifier":"genericFloodWarning",
+                        "displayString": "Flood warning: generic",
+                        "productString":"Flood Warning"
+                 }
+                
+    def smallStreamsWarning(self):
+                return {"identifier":"smallStreamsWarning","displayString": "Flood warning for small streams",
+                        "productString":"Flood Warning For Small Streams"
+                 }
+    def urbanSmallStreamsWarning(self):
+                return {"identifier":"urbanSmallStreamsWarning",
+                        "displayString": "Flood warning for urban areas and small streams",
+                        "productString":"Flood Warning For Urban"
+                 }
         
-    def getImmediateCause(self):
-        return {
-            "fieldName": "immediateCause",
-            "fieldType":"ComboBox",
-            "label":"Immediate Cause:",
-            "expandHorizontally": True,
-            "values": "ER",
-            "choices": [
+    def immediateCauseChoices(self):
+        return [
                 self.immediateCauseER(),
                 self.immediateCauseSM(),
                 self.immediateCauseRS(),
-                self.immediateCauseDM(),
-                self.immediateCauseDR(),
-                self.immediateCauseGO(),
                 self.immediateCauseIJ(),
                 self.immediateCauseIC(),
                 self.immediateCauseMC(),
                 self.immediateCauseUU(),
-                ]
-                }
-
-      # BASIS
-    def basisChoices(self):
-        return [  
-            self.basisDoppler(),
-            self.basisDopplerThunderstorm(),
-            self.basisDopplerGauges(),
-            self.basisDopplerGaugesThunderstorm(),            
-            self.basisSpotter(),
-            self.basisSpotterHeavyRain(),
-            self.basisSpotterThunderstorm(),
-            self.basisLawEnforcement(),
-            self.basisLawEnforcementHeavyRain(),
-            self.basisLawEnforcementThunderstorm(),
-            self.basisEmergencyManagement(),
-            self.basisEmergencyManagementHeavyRain(),
-            self.basisEmergencyManagementThunderstorm(),
-            self.basisPublic(),
-            self.basisPublicHeavyRain(),
-            self.basisPublicThunderstorm(),
-            self.basisSatellite(),
-            self.basisSatelliteGauges(),
-            ] 
+                self.immediateCauseDM(),
+                self.immediateCauseDR(),
+                self.immediateCauseGO(),
+            ]
+         
+    def getSource(self):
+        choices = [
+            self.dopplerSource(),
+            self.dopplerGaugesSource(),
+            self.trainedSpottersSource(),
+            self.publicSource(),
+            self.localLawEnforcementSource(),
+            self.emergencyManagementSource(),
+            self.satelliteSource(),
+            self.satelliteGaugesSource(),
+            self.gaugesSource(),
+                    ]
         
-    # ADDITIONAL INFORMATION
+        return {
+             "fieldName": "source",
+            "fieldType":"RadioButtons",
+            "label":"Source:",
+            "values": self.defaultValue(choices),
+            "choices": choices,                
+                }  
+
+    def getEventType(self):
+        return {
+                "fieldType": "Composite",
+                # TODO Eliminate this wrapper when RM 5037 is addressed.
+                "fieldName": "eventTypeWrapper",
+                "fields": [
+                    {
+                     "fieldType":"ComboBox",
+                     "fieldName": "eventType",
+                     "label": "Event type:",
+                     "values": "thunderEvent",
+                     "choices": [
+                            self.eventTypeThunder(),
+                            self.eventTypeRain(),
+                            self.eventTypeFlooding(),
+                            self.eventTypeGenericFlooding(),
+                            ]
+                        }
+                    ]
+            }  
+        
     def additionalInfoChoices(self):
-        if self.hazardStatus == "ending":
-            return [ 
-                self.recedingWater(),
-                self.rainEnded(),
-                ]
-        else:
-            return [ 
-                self.listOfCities(),
-                self.listOfDrainages(),
-                self.additionalRain(),
-                self.floodMoving(),
-                ]
+        return [ 
+            self.listOfCities(),
+            self.listOfDrainages(),
+            self.additionalRain(),
+            self.floodMoving(),
+            ]
  
-    # CALLS TO ACTION
     def getCTA_Choices(self):
         return [
-            self.ctaNoCTA(),
             self.ctaFloodWarningMeans(),
             self.ctaTurnAround(),
             self.ctaUrbanFlooding(),
@@ -115,3 +145,7 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaReportFlooding(),
             ]
         
+def applyInterdependencies(triggerIdentifiers, mutableProperties):
+    propertyChanges = CommonMetaData.applyInterdependencies(triggerIdentifiers, mutableProperties)
+    return propertyChanges
+

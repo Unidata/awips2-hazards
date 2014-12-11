@@ -1,0 +1,37 @@
+[
+{
+"startTime":"2011-02-08T04:00:00.000Z",
+
+"endTime":"2011-02-08T12:00:00.000Z",
+
+"phen":"FL",
+
+"sig":"Y",
+
+"shapes":[
+  {"shapeType":"polygon",
+    "points":[[-95.94, 41.12],
+              [-95.87, 41.00],
+              [-95.99, 41.09],
+              [-95.94, 41.12]]
+  }
+],
+
+"attributes": {
+    "headline":"FLOOD ADVISORY", 
+    "fallBelow":1297166400000, 
+    "riseAbove":1297137600000, 
+    "cta":["doNotDriveCTA"], 
+    "ugcs":["NEC053"], 
+    "ugcPartsOfState":{"NEC053":"East Central"}, 
+    "floodRecord":"NO", 
+    "ugcPortions":{"NEC053":"Central"}, 
+    "immediateCause":"ER", 
+    "fallBelowUntilFurtherNotice":false, 
+    "geoType":"area", 
+    "crest":1297152000000, 
+    "rainAmt":"rainNull", 
+    "floodSeverity":"U", 
+    "rainAmtRainEditInches":0.0
+    }}
+]

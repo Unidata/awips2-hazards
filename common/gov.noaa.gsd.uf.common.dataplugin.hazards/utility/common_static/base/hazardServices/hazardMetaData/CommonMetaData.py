@@ -1,14 +1,11 @@
 """
     Description: Common Meta Data shared among hazard types.
-    TODO -- Organize this file to be easy to follow and work with 
-    This will encourage best practices...
-        
 """
 
 import VTECConstants
 from LocalizationInterface import LocalizationInterface
 
-class MetaData:
+class MetaData():
     
     def initialize(self, hazardEvent, metaDict):    
         self.hazardEvent = hazardEvent
@@ -18,25 +15,31 @@ class MetaData:
         else:
             self.hazardStatus = "pending"
     
-    # POINT ID
+            
+    def editableWhenNew(self):
+        return self.hazardStatus == "pending"
+    
     def getPointID(self):
         return {
              "fieldName": "pointID",
              "fieldType": "Text",
              "label": "Forecast Point:",
              "maxChars": 5,
-             #"values": "XXXXX"
             }
         
-    # IMMEDIATE CAUSE
     def getImmediateCause(self):
         return {
             "fieldName": "immediateCause",
             "fieldType":"ComboBox",
             "label":"Immediate Cause:",
             "values": "ER",
-            "expandHorizontally": True,
-            "choices": [
+            "expandHorizontally": False,
+            "choices": self.immediateCauseChoices(),
+            "editable" : self.editableWhenNew(),
+                }
+        
+    def immediateCauseChoices(self):
+        return [
                 self.immediateCauseER(),
                 self.immediateCauseSM(),
                 self.immediateCauseRS(),
@@ -52,85 +55,57 @@ class MetaData:
                 self.immediateCauseOT(),
                 self.immediateCauseMC(),
                 self.immediateCauseUU(),
-                ]
-                }
-    def immediateCauseER(self):
-        return {"identifier":"ER", "productString":"ER", "displayString":"ER (Excessive Rainfall)"}
-    def immediateCauseSM(self):
-        return {"identifier":"SM", "productString":"SM", "displayString":"SM (Snow Melt)"}
-    def immediateCauseRS(self):
-        return {"identifier":"RS", "productString":"RS", "displayString":"RS (Rain and Snow Melt)"}
-    def immediateCauseDM(self):
-        return {"identifier":"DM", "productString":"DM", "displayString":"DM (Dam or Levee Failure)"}
-    def immediateCauseDR(self):
-        return {"identifier":"DR", "productString":"DR", "displayString":"DR (Upstream Dam Release)"}
-    def immediateCauseGO(self):
-        return {"identifier":"GO", "productString":"GO", "displayString":"GO (Glacier-Dammed Lake Outburst)"}
-    def immediateCauseIJ(self):
-        return {"identifier":"IJ", "productString":"IJ", "displayString":"IJ (Ice Jam)"}
-    def immediateCauseIC(self):
-        return {"identifier":"IC", "productString":"IC", "displayString":"IC (Rain and/or Snow melt and/or Ice Jam)"}
-    def immediateCauseFS(self):
-        return {"identifier":"FS", "productString":"FS", "displayString":"FS (Upstream Flooding plus Storm Surge)"}
-    def immediateCauseFT(self):
-        return {"identifier":"FT", "productString":"FT", "displayString":"FT (Upstream Flooding plus Tidal Effects)"}
-    def immediateCauseET(self):
-        return {"identifier":"ET", "productString":"ET", "displayString":"ET (Elevated Upstream Flow plus Tidal Effects)"}
-    def immediateCauseWT(self):
-        return {"identifier":"WT", "productString":"WT", "displayString":"WT (Wind and/or Tidal Effects)"}
-    def immediateCauseOT(self):
-        return {"identifier":"OT", "productString":"OT", "displayString":"OT (Other Effects)"}
-    def immediateCauseMC(self):
-        return {"identifier":"MC", "productString":"MC", "displayString":"MC (Other Multiple Causes)"}
-    def immediateCauseUU(self):
-        return {"identifier":"UU", "productString":"UU", "displayString":"UU (Unknown)"}
-     
- 
-    # HYDROLOGIC CAUSE 
-    def getHydrologicCause(self):
-        return {   
-            # The immediate cause will be automatically assigned based on the hydrologic cause chosen.  
-             "fieldType":"RadioButtons",
-             "fieldName": "hydrologicCause",
-             "label":"Hydrologic Cause:",
-             "values": "snowMelt",
-             "choices": self.hydrologicCauseChoices(),
-             }
-    def hydrologicCauseChoices(self):
-        return [
-            self.hydrologicCauseSnowMelt(),
-            self.hydrologicCauseRainSnow(),
-            self.hydrologicCauseIceJam(),
-            self.hydrologicCauseFloodGate(),
-            self.hydrologicCauseGlacialOutburst(),
-            self.hydrologicCauseGroundWater(),
-            self.hydrologicCauseRiverRises(),
-            self.hydrologicCauseBadDrainage(),
+
             ]
-    def hydrologicCauseSnowMelt(self):
-        return {"identifier":"snowMelt", "displayString":"Melting snow", "productString":"Melting snow"}
-    def hydrologicCauseRainSnow(self):
-        return {"identifier":"rainSnow", "displayString":"Rain and melting snow", "productString":"Rain and melting snow"}
-    def hydrologicCauseIceJam(self):
-        return {"identifier":"iceJam", "displayString":"Ice Jam Flooding", "productString":"Ice Jam Flooding"}
-    def hydrologicCauseFloodGate(self):
-        return {"identifier":"floodGate",  "displayString":"Floodgate Release", "productString":"A dam floodgate release"}
-    def hydrologicCauseGlacialOutburst(self):
-        return {"identifier":"glacialOutburst", "displayString":"Glacier-dammed lake outburst", "productString":"A glacier-dammed lake outburst"}
-    def hydrologicCauseGroundWater(self):
-        return {"identifier":"groundWater", "displayString":"Ground Water Flooding", "productString":"Ground water flooding"}
-    def hydrologicCauseRiverRises(self):
-        return {"identifier":"riverRises", "displayString":"Rapid River Rises", "productString":"Rapid river rises"}
-    def hydrologicCauseBadDrainage(self):
-        return {"identifier":"badDrainage", "displayString":"Poor Drainage Areas", "productString":"Minor flooding of poor drainage areas"}
- 
-    # FLOOD SEVERITY
+        
+    def immediateCauseER(self):
+        return {"identifier":"ER", "displayString":"ER (Excessive Rainfall)"}
+    def immediateCauseSM(self):
+        return {"identifier":"SM", "displayString":"SM (Snow Melt)"}
+    def immediateCauseRS(self):
+        return {"identifier":"RS", "displayString":"RS (Rain and Snow Melt)"}
+    def immediateCauseDM(self):
+        return {"identifier":"DM", "displayString":"DM (Dam or Levee Failure)"}
+    def immediateCauseDR(self):
+        return {"identifier":"DR", "displayString":"DR (Upstream Dam Release)"}
+    def immediateCauseGO(self):
+        return {"identifier":"GO", "displayString":"GO (Glacier-Dammed Lake Outburst)"}
+    def immediateCauseIJ(self):
+        return {"identifier":"IJ", "displayString":"IJ (Ice Jam)"}
+    def immediateCauseIC(self):
+        return {"identifier":"IC", "displayString":"IC (Rain and/or Snow melt and/or Ice Jam)"}
+    def immediateCauseFS(self):
+        return {"identifier":"FS", "displayString":"FS (Upstream Flooding plus Storm Surge)"}
+    def immediateCauseFT(self):
+        return {"identifier":"FT", "displayString":"FT (Upstream Flooding plus Tidal Effects)"}
+    def immediateCauseET(self):
+        return {"identifier":"ET", "displayString":"ET (Elevated Upstream Flow plus Tidal Effects)"}
+    def immediateCauseWT(self):
+        return {"identifier":"WT", "displayString":"WT (Wind and/or Tidal Effects)"}
+    def immediateCauseOT(self):
+        return {"identifier":"OT", "displayString":"OT (Other Effects)"}
+    def immediateCauseMC(self):
+        return {"identifier":"MC", "displayString":"MC (Other Multiple Causes)"}
+    def immediateCauseUU(self):
+        return {"identifier":"UU", "displayString":"UU (Unknown)"}
+     
+    def getEventSpecificSource(self):
+        return {
+               "fieldType":"Group",
+               "fieldName":"eventSpecificSource",
+               "numColumns":2,
+               "fields" : [
+                       self.getSource(),
+                       self.getEventType(),
+                       ]
+               }
+
     def getFloodSeverity(self):
         return {
              "fieldName": "floodSeverity",
              "fieldType":"ComboBox",
              "label":"Flood Severity:",
-             "expandHorizontally": True,
+             "expandHorizontally": False,
              "values": "U",
              "choices": self.floodSeverityChoices()
             }        
@@ -156,9 +131,6 @@ class MetaData:
     def floodSeverityUnknown(self):
         return {"displayString": "U (Unknown)","identifier": "U","productString": ""}
 
-
-
-    # FLOOD RECORD    
     def getFloodRecord(self):
         return {
              "fieldName":"floodRecord",
@@ -173,7 +145,6 @@ class MetaData:
                      ],
             }
          
-    # RISE CREST FALL
     def getRiseCrestFall(self):
         return {
             "fieldName":"riseAbove:crest:fallBelow",
@@ -194,14 +165,14 @@ class MetaData:
                }
            }
    
-    # INCLUDE
     def getInclude(self):
         return {
              "fieldType":"CheckBoxes",
              "fieldName": "include",
              "label": "Include:",
              "choices": self.includeChoices()
-             }        
+             }
+                
     def includeEmergency(self):
         return { 
                 "identifier": "ffwEmergency",
@@ -209,80 +180,53 @@ class MetaData:
                 "productString": "...Flash flood emergency for #includeEmergencyLocation#...",
                 "detailFields": [
                             {
-                             "fieldType": "Text",
-                             "fieldName": "includeEmergencyLocation",
+                             "fieldType": "Composite",
+                             "fieldName": "includeEmergencyLocationWrapper",
+                             "fullWidthOfDetailPanel": True,
                              "expandHorizontally": True,
-                             "maxChars": 40,
-                             "visibleChars": 12,
-                             #"values": "|* Enter Location *|"
-                             "values": "Enter Location"
-                            }]
- 
-                }            
-    def includeSnowMelt(self):
-        return {
-                "identifier":"+SM", "displayString":"Also Snow Melt",
-                "productString":"Rapid snow melt is causing flooding."
-                }
-    def includeFlooding(self):
-        return  {
-                 "identifier":"-FL", "displayString": "Flooding not directly reported, only heavy rain",
-                 "productString": "Flooding is not directly reported, only heavy rains.",
-                 }                
-    def includeSmallStreams(self):
-        return {"identifier":"+SS","displayString": "Small streams","productString":"Small Stream Flooding "
-                 }
-    def includeUrbanAreas(self):
-        return {"identifier":"+US",
-                  "displayString": "Urban areas and small streams",
-                  "productString":"Urban and Small Stream "
-                  }
-    def includeUrbanAreasSmallStreams(self):
-        return  {"identifier":"+US","displayString": "Urban areas and small streams",
-                 "productString":"Urban and Small Stream Flooding "
-                 }
-    def includeArroyoSmallStreams(self):
-        return {"identifier":"+AS","displayString": "Arroyo and small streams",
-                  "productString":"Arroyo and Small Stream Flooding "
-                 }
-    def includeHydrologic(self):
-        return {"identifier":"+HA", "displayString": "Hydrologic Flooding",
-                  "productString":"Minor Flooding "
-                  }
- 
-                 
-    # EVENT TYPE    
-    def getEventType(self):
-        return {
-                 "fieldType":"RadioButtons",
-                 "fieldName": "eventType",
-                 "label": "Event type (Choose 1):",
-                 "values": "thunderEvent",
-                 "choices": [
-                        self.eventTypeThunder(),
-                        self.eventTypeRain(),
-                        self.eventTypeUndef(),
-                        ]
-            }  
-                          
+                             "fields": [
+                                        {
+                                         "fieldType": "Text",
+                                         "fieldName": "includeEmergencyLocation",
+                                         "expandHorizontally": True,
+                                         "maxChars": 40,
+                                         "visibleChars": 12,
+                                         "values": "Enter Location"
+                                         }
+                                        ]
+                             }
+                            ]
+                } 
+                           
     def eventTypeThunder(self):
         return {
-                "identifier":"thunderEvent", "displayString":"Thunderstorm(s)",
-                "productString":"thunderstorms producing heavy rain",
+                "identifier":"thunderEvent", "displayString":"Thunderstorm(s)"
                 }
     def eventTypeRain(self):
         return {
-                "identifier":"rainEvent", "displayString": "Due to only heavy rain",
-                "productString": "heavy rain",
+                "identifier":"rainEvent", "displayString": "Heavy rainfall (no thunder)"
                 }
-    def eventTypeUndef(self):
+        
+    def eventTypeMinorFlooding(self):
         return {
-                "identifier":"undefEvent", "displayString": "Flash flooding occurring",
-                "productString": "flash flooding occurring",
+                "identifier":"minorFlooding", "displayString": "Minor flooding occurring"
                 }
- 
-                                               
-    # RAIN SO FAR    
+        
+    def eventTypeFlooding(self):
+        return {
+                "identifier":"flooding", "displayString": "Flooding occurring"
+                }
+        
+    def eventTypeGenericFlooding(self):
+        return {
+                "identifier":"genericFlooding", "displayString": "Generic (provide reasoning)"
+                }
+        
+    def eventTypeFlashFlooding(self):
+        return {
+                "identifier":"flashFlooding", "displayString": "Flash flooding occurring"
+                }
+                                           
     def getRainAmt(self):
         return {
                "fieldType":"RadioButtons",
@@ -290,34 +234,25 @@ class MetaData:
                "fieldName": "rainAmt",
                "choices": [
                     self.rain_amount_unknown(),
-                    self.one_inch(),
-                    self.two_inches(),
-                    self.three_inches(),
                     self.enterAmount(),
                     ]
                 }
         
     def rain_amount_unknown(self):
-        return {"identifier":"rainNull", "displayString":"Unknown",
+        return {"identifier":"rainUnknown", "displayString":"Unknown",
                 "productString":"",}
 
-
-    def one_inch(self):
-        return {"identifier":"rain1", "displayString":"One inch so far",
-                "productString":"up to one inch of rain has already fallen.",}
-    def two_inches(self):
-         return {"identifier":"rain2", "displayString":"Two inches so far",
-                 "productString":"up to two inches of rain has already fallen.",}
-    def three_inches(self):
-        return  {"identifier":"rain3", "displayString":"Three inches so far",
-                 "productString":"up to three inches of rain has already fallen.",}
     def enterAmount(self):                
-        return  {"identifier":"rainEdit", "displayString":"",
-                 "productString":"#rainAmtRainEditInches# inches of rain have fallen.",
+        return  {"identifier":"rainKnown", "displayString":"",
                  "detailFields": [
                        {
+                        "fieldType": "Label",
+                        "fieldName": "rainAmtPrefix",
+                        "label": "Between"
+                       },
+                       {
                         "fieldType": "FractionSpinner",
-                        "fieldName": "rainAmtRainEditInches",
+                        "fieldName": "rainSoFarLowerBound",
                         "minValue": 0,
                         "maxValue": 99,
                         "incrementDelta": 1,
@@ -325,176 +260,76 @@ class MetaData:
                        },
                        {
                         "fieldType": "Label",
-                        "fieldName": "rainAmtRainEditLabel",
+                        "fieldName": "rainAmtAnd",
+                        "label": "and"
+                       },
+                       {
+                        "fieldType": "FractionSpinner",
+                        "fieldName": "rainSoFarUpperBound",
+                        "minValue": 0,
+                        "maxValue": 99,
+                        "incrementDelta": 1,
+                        "precision": 1
+                       },
+                       {
+                        "fieldType": "Label",
+                        "fieldName": "rainAmtSuffix",
                         "label": "inches of rain have fallen"
                        }
                  ]
                 }
  
-    # BASIS
-    def getBasis(self, hydrologicCause=None):
-        
-        if hydrologicCause is not None:
-            choices = self.basisChoices(hydrologicCause)
-        else:
-            choices = self.basisChoices()
-        
-        return {
-            "fieldName": "basis",
-            "fieldType":"ComboBox",
-            "label":"Basis:",
-            "values": self.basisDefaultValue(choices),
-            "choices": choices,
-            } 
     # Takes the first one listed as the default
     #  This can be overridden by listing a specific default
-    def basisDefaultValue(self, choices):
+    def defaultValue(self, choices):
         for choice in choices:
             return choice.get('identifier')       
-    def basisCountyDispatch(self):
-        return {"identifier":"county", 
-                "displayString": "County dispatch",
-                "productString": "County dispatch reported flooding in #floodLocation#"}
-    def basisCorpsOfEngineers(self):
-        return {"identifier":"corpsOfEngineers", 
-                "displayString": "Corps of engineers",
-                "productString": "Corps of engineers reported flooding in #floodLocation#"}
-    def basisDamOperator(self):
-        return {"identifier":"damOperator", 
-                "displayString": "Dam operator",
-                "productString": "Dam operators reported flooding in #floodLocation#"}
-    def basisBureauOfReclamation(self):
-        return {"identifier":"bureauOfReclamation", 
-                "displayString": "Bureau of reclamation",
-                "productString": "The Bureau of Reclamation reported flooding in #floodLocation#"}
-    def basisCivilAirPatrol(self):
-        return {"identifier":"civilAirPatrol", 
-                "displayString": "Civil Air Patrol",
-                "productString": "The Civil Air Patrol reported flooding in #floodLocation#"}
-    def basisAlaskaVolcanoObservatory(self):
-        return {"identifier":"alaskaVolcano", 
-                "displayString": "Alaska Volcano Observatory",
-                "productString": "The Alaska Volcano Observatory reported flooding in #floodLocation#"}
-    def basisCascadesVolcanoObservatory(self):
-        return {"identifier":"cascadesVolcano", 
-                "displayString": "Cascades Volcano Observatory",
-                "productString": "The Cascades Volcano Observatory reported flooding in #floodLocation#"}
-    def basisDoppler(self):
-        return {"identifier":"radInd", 
-                "displayString": "Doppler Radar indicated...", 
-                "productString": "Doppler Radar indicated"}
-    def basisDopplerThunderstorm(self):
-        return {"identifier":"radarTS", 
-                "displayString": "Radar indicated thunderstorm...", 
-                "productString": '''Doppler radar indicated thunderstorms producing heavy
-                                    rain which will cause flooding.'''}
-    def basisDopplerGauges(self):
-        return {"identifier":"radGagInd", 
-                "displayString": "Doppler Radar and automated gauges", 
-                "productString": '''Doppler Radar and automated rain gauges indicated heavy rain
-                                was falling over the area. That heavy rain will cause flooding.'''}
-    def basisDopplerGaugesThunderstorm(self):
-        return {"identifier":"radGagTS", 
-                "displayString": "Radar and gauges with thunderstorm", 
-                "productString": '''Doppler radar and automated rain gauges indicated thunderstorms
-                        with heavy rain over the area. That rain will cause flooding.'''}
-    def basisGauges(self):
-        return {"identifier":"radGagInd", 
-                "displayString": "Automated gauges", 
-                "productString": '''Automated rain gauges indicated heavy rainwas falling over the area.'''}
-    def basisSpotter(self):
-        return {"identifier":"wxSpot", 
-                "displayString": "Weather spotters report flooding in", 
-                "productString": "Trained weather spotters reported flooding in #floodLocation#"}
-    def basisSpotterHeavyRain(self):
-        return {"identifier":"wxSpotHR", 
-                "displayString": "Weather spotters report heavy rain in", 
-                "productString": '''Trained weather spotters reported heavy rain in #floodLocation# 
-                                          that will cause flooding.'''}
-    def basisSpotterThunderstorm(self):
-        return {"identifier":"wxSpotTS", 
-                "displayString": "Weather spotters report thunderstorm in", 
-                "productString": '''Trained weather spotters reported heavy rain in #floodLocation# 
-                                          due to thunderstorms that will cause flooding'''}
-    def basisSpotterIncipientFlooding(self):
-        return {"identifier":"wxSpotInc",
-                "displayString": "Weather spotters report incipient flooding in", 
-                "productString": '''Trained weather spotters reported !**HYDROLOGIC CAUSE**! in #floodLocation# 
-                                       that will cause !**ADV TYPE**!'''}
-    def basisLawEnforcement(self):
-        return {"identifier":"lawEnf", 
-                "displayString": "Law enforcement report flooding in",
-                "productString": "Local law enforcement reported flooding in #floodLocation#"}
-    def basisLawEnforcementHeavyRain(self):
-        return {"identifier":"lawEnfHR", 
-                "displayString": "Law enforcement report heavy rain in",
-                "productString": '''Local law enforcement reported heavy rain in #floodLocation#
-                                    that will cause flooding'''}
-    def basisLawEnforcementThunderstorm(self):
-        return {"identifier":"lawEnfTS", 
-                "displayString": "Law enforcement report thunderstorm in",
-                "productString": '''Local law enforcement reported thunderstorms with heavy rain
-                                          over #floodLocation# that will cause flooding'''}
-    def basisLawEnforcementIncipientFlooding(self):
-        return {"identifier":"lawEnfInc", 
-                "displayString": "Law enforcement report incipient flooding in",
-                "productString": '''Local law enforcement reported !**HYROLOGIC CAUSE**! in
-                                          # floodLocation# that will cause !**ADV TYPE**!'''}
-    def basisEmergencyManagement(self):
-        return {"identifier":"emerMgmt", 
-                "displayString": "Emergency Mgmt report flooding in",
-                "productString": "Emergency management reported flooding in #floodLocation#"}
-    def basisEmergencyManagementHeavyRain(self):
-        return {"identifier":"emerMgmtHR", 
-                "displayString": "Emergency Mgmt report heavy rain",
-                "productString": '''Emergency management reported heavy rain in #floodLocation#. The
-                                          heavy rain will cause flooding'''}
-    def basisEmergencyManagementThunderstorm(self):
-        return {"identifier":"emerMgmtTS", 
-                "displayString": "Emergency Mgmt report thunderstorm in",
-                "productString": '''Emergency management reported thunderstorms with heavy rain
-                                          in #floodLocation#. The heavy rain will cause flooding'''}
-    def basisEmergencyManagementIncipientFlooding(self):
-        return {"identifier":"emerMgmtInc", 
-                "displayString": "Emergency Mgmt report incipient flooding in",
-                "productString": '''Emergency management reported !**HY CAUSE**! in
-                                          #floodLocation# that will cause !**ADV TYPE**!'''}
-    def basisPublic(self):
-        return {"identifier":"public", 
-                "displayString": "Public report flooding in",
-                "productString": "The public reported flooding in #floodLocation#"}
-    def basisPublicHeavyRain(self):
-        return {"identifier":"publicHR", 
-                "displayString": "Public report heavy rain in",
-                "productString": '''The public reported heavy rain in #floodLocation#. That
-                                          heavy rain will cause flooding'''}
-    def basisPublicThunderstorm(self):
-        return {"identifier":"publicTS", 
-                "displayString": "Public report thunderstorm in",
-                "productString": '''The public reported thunderstorms with heavy rain in
-                                          #floodLocation#. The heavy rain will cause flooding'''}
-    def basisPublicIncipientFlooding(self):
-        return {"identifier":"publicInc", 
-                "displayString": "Public report incipient flooding in",
-                "productString": '''The public reported !**HY CAUSE**! in
-                                          #floodLocation# that will cause !**ADV TYPE**!'''}
-    def basisSatellite(self):
-        return {"identifier":"satInd", 
-                "displayString": "Satellite estimates indicate heavy rain in", 
-                "productString": '''Satellite estimates indicate heavy rain in #floodLocation#.
-                                          That heavy rain will cause flooding'''}
-    def basisSatelliteGauges(self):
-        return {"identifier":"satGagInd", 
-                "displayString": "Satellite estimates and automated gauges", 
-                "productString": '''Satellite estimates and rain gauge data indicate heavy 
-                                rainfall that will cause flooding in the warning area.'''
-                                }        
-    def basisHeavyRain(self):
-        return {"identifier": "heavyRain",
-                "displayString": "Flooding due to heavy rain is possible...",
-                "productString": '''Flooding due to heavy rain is possible. The exact amount...intensity...timing...and location 
-                    of the rain that will occur is still uncertain. Once there is more certainty...a flood warning or advisory will be issued.''',
-                      }        
+
+    def dopplerSource(self):
+        return {"identifier":"dopplerSource", 
+                "displayString": "Doppler Radar indicated",
+        }
+        
+    def dopplerGaugesSource(self):
+        return {"identifier":"dopplerGaugesSource", 
+                "displayString": "Doppler Radar and automated gauges",
+        }
+        
+    def trainedSpottersSource(self):
+        return {"identifier":"trainedSpottersSource", 
+                "displayString": "Trained spotters reported",
+        }
+    def publicSource(self):
+        return {"identifier":"publicSource", 
+                "displayString": "Public reported",
+        }
+        
+    def localLawEnforcementSource(self):
+        return {"identifier":"localLawEnforcementSource", 
+                "displayString": "Local law enforcement reported",
+        }
+        
+    def emergencyManagementSource(self):
+        return {"identifier":"emergencyManagementSource", 
+                "displayString": "Emergency management reported",
+        }
+        
+    def satelliteSource(self):
+        return {"identifier":"satelliteSource", 
+                "displayString": "Satellite estimates",
+        }
+        
+    def satelliteGaugesSource(self):
+        return {"identifier":"satelliteGaugesSource", 
+                "displayString": "Satellite estimates and gauge reports",
+        }
+        
+    def gaugesSource(self):
+        return {"identifier":"gaugesSource", 
+                "displayString": "Gauge reports",
+        }             
+
+        
     def basisEnteredText(self):
         return {"identifier": "basisEnteredText",
                 "displayString": "Enter basis statement...",
@@ -505,56 +340,20 @@ class MetaData:
                              "fieldName": "basisEnteredText",
                              "expandHorizontally": True,
                              "visibleChars": 12,
-                             #"values": "|* Enter Location *|"
                              "values": "Enter basis text",
                             }]
  
                 }
  
-    # DEBRIS FLOW OPTIONS
-    def getDebrisFlowOptions(self):
-        return {
-                 "fieldType":"RadioButtons",
-                 "fieldName": "debrisFlows",
-                 "label": "Debris Flow Info:",
-                 "choices": [
-                        self.debrisBurnScar(),
-                        self.debrisMudSlide(),
-                        ]
-                }        
-    def debrisBurnScar(self):
-        return {"identifier":"burnScar", 
-                "displayString": "Burn scar area with debris flow", 
-                "productString": 
-                '''Excessive rainfall over the burn scar will result in debris flow moving
-                through the #debrisBurnScarDrainage#. The debris flow can consist of 
-                rock...mud...vegetation and other loose materials.''',
-                "detailFields": [
-                            {
-                             "fieldType": "Text",
-                             "fieldName": "debrisBurnScarDrainage",
-                             "expandHorizontally": True,
-                             "visibleChars": 12,
-                             #"values": "|* Enter drainage *|",
-                             "values": "Enter drainage",
-                            }]
-}
-    def debrisMudSlide(self):
-        return {"identifier":"mudSlide",
-                "displayString": "Mud Slides", 
-                "productString": 
-                '''Excessive rainfall over the warning area will cause mud slides near steep
-                terrain. The mud slide can consist of rock...mud...vegetation and other
-                loose materials.''',}
- 
-    # ADDITIONAL INFORMATION
     def getAdditionalInfo(self):
             return {
-                     "fieldType":"CheckList",
+                     "fieldType":"CheckBoxes",
                      "fieldName": "additionalInfo",
+                     "showAllNoneButtons" : False,
                      "label": "Additional Info:",
                      "choices": self.additionalInfoChoices(),
-                     "lines": 2
+                     "values":"listOfCities",
+                     "lines": 3
                     }                    
     def listOfCities(self):
         return {"identifier":"listOfCities", 
@@ -566,14 +365,32 @@ class MetaData:
                 "productString": "ARBITRARY ARGUMENTS USED BY DRAINAGES LIST GENERATOR." }
     def additionalRain(self):
         return  {"identifier":"addtlRain",
-                 "displayString": "Additional rainfall of", 
+                 "displayString": "Additional rainfall", 
                  "productString": 
                     '''Additional rainfall amounts of #additionalInfoAddtlRainInches# inches are possible in the
                        warned area.''',
                  "detailFields": [
                             {
+                            "fieldType": "Label",
+                            "fieldName": "additionalRainPrefix",
+                            "label": "of"
+                            },
+                            {
                              "fieldType": "FractionSpinner",
-                             "fieldName": "additionalInfoAddtlRainInches",
+                             "fieldName": "additionalRainLowerBound",
+                             "minValue": 0,
+                             "maxValue": 99,
+                             "incrementDelta": 1,
+                             "precision": 1
+                            },
+                            {
+                            "fieldType": "Label",
+                            "fieldName": "additionalRainTo",
+                            "label": "to"
+                            },
+                            {
+                             "fieldType": "FractionSpinner",
+                             "fieldName": "additionalRainUpperBound",
                              "minValue": 0,
                              "maxValue": 99,
                              "incrementDelta": 1,
@@ -581,35 +398,29 @@ class MetaData:
                             },
                             {
                              "fieldType": "Label",
-                             "fieldName": "additionalInfoAddtlRainLabel",
-                             "label": "inches expected"
+                             "fieldName": "additionalRainSuffix",
+                             "label": "inches is expected"
                             }
                        ]
                       }
     def floodMoving(self):
         return {"identifier":"floodMoving",
-                "displayString": "Flood waters are moving down",
-                "productString": 
-                      '''Flood waters are moving down #riverName# from #upstreamLocation# to 
-                       #floodLocation#. The flood crest is expected to reach #downstreamLocation# by
-                       #additionalInfoFloodMovingTime#.''',
+                "displayString": "Flooding is occurring in:",
                 "detailFields": [
                             {
-                             "fieldName":"additionalInfoFloodMovingTime",
-                             "fieldType":"Time",
-                             "label": "by:"
+                             "fieldName":"floodLocationName",
+                             "fieldType":"Text",
+                             "label": ""
                             }
                       ]
                      }
-    def specificPlace(self):
-        return {"identifier":"specificPlace",
-                "displayString": "Specify location of minor flooding:", 
-                "productString": 
-                    '''!**IMPACTED LOCATION**! is the most likely place to experience minor flooding. ''',
+    def floodLocation(self):
+        return {"identifier":"floodLocation",
+                "displayString": "Specify location of flooding:", 
                 "detailFields": [
                         {
                          "fieldType": "Text",
-                         "fieldName": "additionalInfoSpecificPlaceLocation",
+                         "fieldName": "floodLocation",
                          "expandHorizontally": True,
                          "maxChars": 40,
                          "visibleChars": 12
@@ -628,14 +439,13 @@ class MetaData:
                 '''The heavy rain has ended...and flooding is no longer expected to pose a threat.''',}
  
         
-    # CALLS TO ACTION
-    # Make collapsable
     def getCTAs(self,values=None):
  
         pageFields = { 
                          "fieldType":"CheckList",
                          "label":"Calls to Action (1 or more):",
                          "fieldName": "cta",
+                         "showAllNoneButtons" : False,
                          "choices": self.getCTA_Choices()
                      }
          
@@ -658,10 +468,6 @@ class MetaData:
 
                        
                        
-    def ctaNoCTA(self):
-        return {"identifier": "noCTA", 
-                "displayString": "No call to action",
-                "productString": ""}
     def ctaFloodWatchMeans(self):
         return {"displayString": "A Flood Watch means...", "identifier": "FloodWatch",
                 "productString":  '''A Flood Watch means there is a potential for flooding
@@ -683,7 +489,7 @@ class MetaData:
                  If you are in the advisory area remain alert to possible flooding... or the possibility of the advisory being upgraded to a warning.''',
                 }
     def ctaFloodWarningMeans(self):
-        return {"identifier": "floodWwarningMeansCTA",
+        return {"identifier": "floodWarningMeansCTA",
                "displayString": "A Flood Warning means...",
                "productString": 
               '''A flood warning means that flooding is imminent or has been reported. Stream rises
@@ -859,8 +665,23 @@ class MetaData:
          'fieldType':'Text',
          'label':'Enter Ending Synopsis',
          'values': '',
+         'lines': 2,
+         'visibleChars': 40,
          'length': 90,
          }
+        
+    def getEndingOption(self):
+        choices = [
+                    "Water is receding",
+                    "Heavy rain ended",
+                    ]
+        return {
+             "fieldType":"RadioButtons",
+             "fieldName": "endingOption",
+             "label":"Ending Option:",
+             "values": choices[0],
+             "choices": choices,
+                }
         
     # CAP FIELDS
     def getCAP_Fields(self,tupleList=None):
@@ -1048,3 +869,14 @@ def applyRiseCrestFallUntilFurtherNoticeInterdependencies(triggerIdentifiers, mu
     else:
         return None
 
+def applyInterdependencies(triggerIdentifiers, mutableProperties):
+
+    propertyChanges = {}
+    if (triggerIdentifiers == None or "endingOption" in triggerIdentifiers) and \
+        "endingOption" in mutableProperties:
+        endingOption = mutableProperties["endingOption"]["values"]
+        propertyChanges["endingSynopsis"] = {
+                        "values" : endingOption,                        
+                        }        
+    return propertyChanges
+                

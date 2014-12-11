@@ -1,16 +1,16 @@
 '''
-10    Description: Product Generator for the FFW and FFS products.
-12    
-13    SOFTWARE HISTORY
-14    Date         Ticket#    Engineer    Description
-15    ------------ ---------- ----------- --------------------------
-16    April 5, 2013            Tracy.L.Hansen      Initial creation
-      Nov      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents, simplifying product
+    Description: Product Generator for the FFW and FFS products.
+    SOFTWARE HISTORY
+    Date         Ticket#    Engineer    Description
+    ------------ ---------- ----------- --------------------------
+    April 5, 2013            Tracy.L.Hansen      Initial creation
+    Nov      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents, simplifying product
                                                  dictionary
-17    
-18    @author Tracy.L.Hansen@noaa.gov
-19    @version 1.0
-20    '''
+    Dec 1, 2014    4373      Dan Schaffer        HID Template migration for warngen
+
+    @author Tracy.L.Hansen@noaa.gov
+    @version 1.0
+'''
 
 import os, types, copy, sys, json, collections
 import Legacy_ProductGenerator
@@ -86,15 +86,6 @@ class Product(Legacy_ProductGenerator.Product):
         productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._inputHazardEvents) 
         return productDicts, hazardEvents  
     
-    def _preProcessHazardEvents(self, hazardEvents):
-        '''
-        Set Immediate Cause for FF.W.NonConvective prior to VTEC processing
-        '''
-        for hazardEvent in hazardEvents:
-            if hazardEvent.getHazardType() == 'FF.W.NonConvective':
-                immediateCause = self.hydrologicCauseMapping(hazardEvent.get('hydrologicCause'), 'immediateCause')
-                hazardEvent.set('immediateCause', immediateCause)
-              
     def _groupSegments(self, segments):
         '''
          Group the segments into the products
@@ -149,11 +140,14 @@ class Product(Legacy_ProductGenerator.Product):
             return self.floodBasisPhrase(vtecRecord, hazardEvent, metaData, 'Flash Flooding', lineLength)
 
     def nonConvectiveBasisPhrase(self, vtecRecord, hazardEvent, metaData, floodDescription, lineLength=69):
+        # TODO Can this method now be consolidated with the floodBasis method?
         eventTime = vtecRecord.get('startTime')            
         eventTime = self._tpc.getFormattedTime(eventTime, '%I%M %p %Z ', stripLeading=True, timeZones=self._productSegment.timeZones)
         para = 'At ' + eventTime + ' '
-        basis = self._tpc.getProductStrings(hazardEvent, metaData, 'basis')
-        para += basis + '.'
+        basis = self.basisFromHazardEvent(hazardEvent)
+        if basis is None :
+            basis = ' '+floodDescription+' was reported'
+        para += basis
         return para
     
     def getImpactsPhrase(self, vtecRecord, hazardEvent, metaData, lineLength=69):       

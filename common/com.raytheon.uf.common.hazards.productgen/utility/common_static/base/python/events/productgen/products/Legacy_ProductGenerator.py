@@ -21,6 +21,7 @@
     Apr 20, 2014   2925      Chris.Golden        Changed to work with new hazard event metadata.
     May 06, 2014   1328      jramer              Remove reference to deprecated MapInfo class.
     Aug 15, 2014   4243      Chris.Golden        Changed to work with latest version of hazard event metadata.
+    Dec 1, 2014    4373      Dan Schaffer        HID Template migration for warnge
     @author Tracy.L.Hansen@noaa.gov
 '''
 
@@ -57,6 +58,7 @@ from shapely import geometry
 from KeyInfo import KeyInfo
 import ProductTextUtil
 from com.raytheon.uf.common.time import SimulatedTime
+from BasisText import BasisText
 
 from abc import *
 
@@ -135,6 +137,7 @@ class Product(ProductTemplate.Product):
         self._vtecProduct = True       
         self._vtecEngine = None
         self._productCategory = ''
+        self.basisText = BasisText()
 
     def defineScriptMetadata(self):
         metadata = collections.OrderedDict()
@@ -261,20 +264,18 @@ class Product(ProductTemplate.Product):
             vtecMode = str(vtecMode)
         self._vtecMode = vtecMode
         self._vtecTestMode = bool(metaDict.get('vtecTestMode'))
-        
-        self._preProcessHazardEvents(self._inputHazardEvents)
-        
-    def _preProcessHazardEvents(self, hazardEvents):
-        '''
-        Can be overridden to preprocess the hazard events
-        For example, the Immediate Cause is derived from the Hydrologic Cause for
-        an FF.W.NonConvective and needs to be set prior to VTEC processing
-        
-        @param hazardEvents: hazard events
-        '''
-        pass
-
+        self._preProcessHazardEvents(self._inputHazardEvents)        
+                    
+    def _preProcessHazardEvents(self, hazardEvents):        
+        '''        
+        Can be overridden to preprocess the hazard events        
+        For example, the Immediate Cause is derived from the Hydrologic Cause for        
+        an FF.W.NonConvective and needs to be set prior to VTEC processing        
                 
+        @param hazardEvents: hazard events        
+        '''        
+        pass        
+    
     def _makeProducts_FromHazardEvents(self, hazardEvents): 
         '''        
         Make the products
@@ -2572,23 +2573,32 @@ class Product(ProductTemplate.Product):
         except :
             eventTime = vtecRecord.get('startTime')            
 
-        eventTime = self._tpc.getFormattedTime(eventTime, '%I%M %p %Z ', stripLeading=True,
+        eventTime = self._tpc.getFormattedTime(eventTime, '%I%M %p %Z', stripLeading=True,
                                                 timeZones=self._productSegment.timeZones)
         para = 'At ' + eventTime
-        basis = self._tpc.getProductStrings(hazardEvent, metaData, 'basis')
-        if basis is None :
-            basis = ' '+floodDescription+' was reported'
-        para += basis + ' '+floodDescription+' '+ self.basisLocation(hazardEvent)
+        # TODO Need to handle these cases properly
+        if hazardEvent.getHazardType() == "FL.W" or hazardEvent.getHazardType() == "HY.S":
+            basis = ' '+floodDescription+' '+ self.basisLocation(hazardEvent) + '.'
+        else:
+            basis = self.basisFromHazardEvent(hazardEvent)        
+        para += basis
         motion = self.wxHazardMotion(hazardEvent, \
-                  still='. This storm was stationary', \
-                  slow='. This storm was nearly stationary')
+                  still='This storm was stationary', \
+                  slow='. This storm was nearly stationary.')
 
-        if motion is None :
-            para += '.'
-        else :
-            para += motion + '.'
+        if motion is not None :
+            para += motion
         return para
     
+    def basisFromHazardEvent(self, hazardEvent):
+        hazardType = hazardEvent.getHazardType()
+        hazardEventAttributes = hazardEvent.getHazardAttributes()
+        result = self.basisText.getBulletText(hazardType, hazardEventAttributes)
+        result = self._tpc.substituteParameters(hazardEvent, result)
+        return result
+    
+    def floodLocation(self, hazardEvent, floodDescription):
+        return ' '+floodDescription+' '+ self.basisLocation(hazardEvent)
     
     def getImpactsPhrase(self, vtecRecord, hazardEvent, metaData, lineLength=69):       
         # Impacts bullet

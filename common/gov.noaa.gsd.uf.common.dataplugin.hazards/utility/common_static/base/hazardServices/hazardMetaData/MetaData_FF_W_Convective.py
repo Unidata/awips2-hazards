@@ -1,3 +1,6 @@
+'''
+    Description: Hazard Information Dialog Metadata for hazard type FF.W.Convective
+'''
 import CommonMetaData
 from HazardConstants import *
 
@@ -7,67 +10,91 @@ class MetaData(CommonMetaData.MetaData):
         self.initialize(hazardEvent, metaDict)
         if self.hazardStatus == "ending":
                 metaData = [
+                            self.getEndingOption(),
                             self.getEndingSynopsis(), 
                     ]
         else:
             metaData = [
-                    self.getImmediateCause(),
                     self.getInclude(),
-                    self.getEventType(),
+                    self.getImmediateCause(),
+                    self.getEventSpecificSource(),
                     self.getRainAmt(),
-                    self.getBasis(),
-                    self.getDebrisFlowOptions(),
                     self.getAdditionalInfo(),
-                    self.getCTAs(),                    
-                    self.getCAP_Fields([
-                                        ("urgency", "Immediate"),
-                                        ("severity", "Severe"),
-                                        ("certainty", "Likely"),
-                                        ("responseType", "Avoid"),
-                                       ])
+                    self.getCTAs(),   
+                    # Preserving CAP defaults for future reference.                 
+#                     self.getCAP_Fields([
+#                                         ("urgency", "Immediate"),
+#                                         ("severity", "Severe"),
+#                                         ("certainty", "Likely"),
+#                                         ("responseType", "Avoid"),
+#                                        ])
                     ]
         return {
                 METADATA_KEY: metaData
                 }    
         
-    # INCLUDE  
     def includeChoices(self):
         return [
             self.includeEmergency(),
-            self.includeSnowMelt(),
-            self.includeFlooding(),
-            ]      
+            ]     
+         
+    def getSource(self):
+        choices = [
+            self.dopplerSource(),
+            self.dopplerGaugesSource(),
+            self.trainedSpottersSource(),
+            self.publicSource(),
+            self.localLawEnforcementSource(),
+            self.emergencyManagementSource(),
+            self.satelliteSource(),
+            self.satelliteGaugesSource(),
+            self.gaugesSource(),
+                    ]
         
-    # BASIS
-    def basisChoices(self):
-        return [  
-            self.basisDoppler(),
-            self.basisDopplerGauges(),
-            self.basisSpotter(),
-            self.basisPublic(),
-            self.basisLawEnforcement(),
-            self.basisEmergencyManagement()
-            ]  
+        return {
+             "fieldName": "source",
+            "fieldType":"RadioButtons",
+            "label":"Source:",
+            "values": self.defaultValue(choices),
+            "choices": choices,                
+                }  
 
-    # ADDITIONAL INFORMATION
+    def getEventType(self):
+        return {
+                "fieldType": "Composite",
+                # TODO Eliminate this wrapper when RM 5037 is addressed.
+                "fieldName": "eventTypeWrapper",
+                "fields": [
+                    {
+                     "fieldType":"ComboBox",
+                     "fieldName": "eventType",
+                     "label": "Event type:",
+                     "values": "thunderEvent",
+                     "choices": [
+                            self.eventTypeThunder(),
+                            self.eventTypeRain(),
+                            self.eventTypeFlashFlooding(),
+                            ]
+                        }
+                    ]
+            }  
+
     def additionalInfoChoices(self):
-        if self.hazardStatus == "ending":
-            return [ 
-                self.recedingWater(),
-                self.rainEnded(),
-                ]
-        else:
-            return [ 
-                self.listOfCities(),
-                self.listOfDrainages(),
-                self.additionalRain(),
-                self.floodMoving(),
-                ]
-
-    # CALLS TO ACTION
+        return [ 
+            self.listOfCities(),
+            self.listOfDrainages(),
+            self.additionalRain(),
+            self.floodMoving(),
+            ]
+            
+    def immediateCauseChoices(self):
+        return [
+                self.immediateCauseER(),
+                self.immediateCauseRS(),
+            ]
+        
     def getCTA_Choices(self):
         return [
-            self.ctaNoCTA(),
             self.ctaFlashFloodWarningMeans(),
             self.ctaActQuickly(),
             self.ctaChildSafety(),
@@ -88,4 +115,8 @@ class MetaData(CommonMetaData.MetaData):
        
     def CAP_WEA_Text(self):
         return "Flash Flood Warning this area til %s. Avoid flooded areas. Check local media. -NWS"
-    
+
+def applyInterdependencies(triggerIdentifiers, mutableProperties):
+    propertyChanges = CommonMetaData.applyInterdependencies(triggerIdentifiers, mutableProperties)
+    return propertyChanges
+

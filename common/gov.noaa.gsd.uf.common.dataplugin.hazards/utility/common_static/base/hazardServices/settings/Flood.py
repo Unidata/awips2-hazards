@@ -7,12 +7,15 @@ Flood = {
         "FF.A", 
         "FF.W.Convective", 
         "FF.W.NonConvective", 
+        "FF.W.BurnScar", 
         "FA.Y", 
         "FA.A", 
         "FA.W", 
         "FL.Y", 
         "FL.A", 
-        "FL.W"
+        "FL.W",
+        "HY.O",
+        "HY.S"
     ], 
     "hazardCategoriesAndTypes": [
         {
@@ -21,6 +24,7 @@ Flood = {
                 "FF.A", 
                 "FF.W.Convective", 
                 "FF.W.NonConvective", 
+                "FF.W.BurnScar", 
                 "FA.Y", 
                 "FA.A", 
                 "FA.W", 

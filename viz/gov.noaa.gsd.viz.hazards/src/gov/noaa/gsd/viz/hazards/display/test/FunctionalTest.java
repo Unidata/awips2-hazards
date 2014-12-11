@@ -23,8 +23,8 @@ import gov.noaa.gsd.viz.hazards.producteditor.ProductEditorPresenter;
 import gov.noaa.gsd.viz.hazards.productstaging.IProductStagingViewDelegate;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.tools.IToolsView;
 import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
@@ -70,6 +70,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * May 18, 2014 2925       Chris.Golden                    More changes to get it to work with the new HID.
  *                                                         Also moved the subclasses' steps enums into this
  *                                                         class.
+ * Dec 1, 2014    4373     daniel.s.schaffer@noaa.gov      HID Template migration for warngen
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -291,8 +292,14 @@ public abstract class FunctionalTest<E extends Enum<E>> {
 
     protected void handleException(Exception e) {
         StringBuilder sb = new StringBuilder();
-        sb.append(TEST_ERROR + " at step " + getCurrentStep() + "\n");
-        sb.append(e.getMessage() + "\n");
+        sb.append(TEST_ERROR);
+        if (step != null) {
+            sb.append(" at step ");
+            sb.append(step);
+            sb.append("\n");
+        }
+        sb.append(e.getMessage());
+        sb.append("\n");
         if (e.getCause() != null) {
             sb.append(Utils.stackTraceAsString(e.getCause()));
         } else {
@@ -316,30 +323,34 @@ public abstract class FunctionalTest<E extends Enum<E>> {
     }
 
     protected void endTest(boolean success) {
-        toolsPresenter.setView(realToolsView);
+        if (toolsPresenter != null) {
+            toolsPresenter.setView(realToolsView);
 
-        consolePresenter.setView(realConsoleView);
+            consolePresenter.setView(realConsoleView);
 
-        productStagingPresenter.setView(realProductStagingView);
+            productStagingPresenter.setView(realProductStagingView);
 
-        spatialPresenter.setView(realSpatialView);
+            spatialPresenter.setView(realSpatialView);
 
-        hazardDetailPresenter.setView(realHazardDetailView);
+            hazardDetailPresenter.setView(realHazardDetailView);
 
-        productEditorPresenter.setView(realProductEditorView);
+            productEditorPresenter.setView(realProductEditorView);
 
-        appBuilder.setQuestionAnswerer(realQuestionAnswerer);
+            appBuilder.setQuestionAnswerer(realQuestionAnswerer);
 
-        if (appBuilder.getSessionManager().isPreviewOngoing()
-                || appBuilder.getSessionManager().isIssueOngoing()) {
-            statusHandler.error("Preview or issue left ongoing by this test.",
-                    new IllegalStateException("Preview ongoing = "
-                            + appBuilder.getSessionManager().isPreviewOngoing()
-                            + ", issue ongoing = "
-                            + appBuilder.getSessionManager().isIssueOngoing()));
-            success = false;
+            if (appBuilder.getSessionManager().isPreviewOngoing()
+                    || appBuilder.getSessionManager().isIssueOngoing()) {
+                statusHandler.error(
+                        "Preview or issue left ongoing by this test.",
+                        new IllegalStateException("Preview ongoing = "
+                                + appBuilder.getSessionManager()
+                                        .isPreviewOngoing()
+                                + ", issue ongoing = "
+                                + appBuilder.getSessionManager()
+                                        .isIssueOngoing()));
+                success = false;
+            }
         }
-
         unRegisterForEvents();
         if (success) {
             System.out.println(String.format("%s Successful", this.getClass()
@@ -369,7 +380,7 @@ public abstract class FunctionalTest<E extends Enum<E>> {
 
     }
 
-    private void unRegisterForEvents() {
+    protected void unRegisterForEvents() {
         this.eventBus.unsubscribe(this);
     }
 

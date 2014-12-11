@@ -41,6 +41,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.math.NumberUtils;
 import org.joda.time.DateTime;
 
+import com.google.gson.JsonSyntaxException;
 import com.raytheon.uf.common.activetable.request.ClearPracticeVTECTableRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
@@ -68,6 +69,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 14, 2014  3525       daniel.s.schaffer@noaa.gov      Initial creation
+ * Dec 1, 2014    4373      daniel.s.schaffer@noaa.gov      HID Template migration for warngen
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -75,6 +77,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  */
 public class ProductGenerationTest extends
         FunctionalTest<ProductGenerationTest.Steps> {
+
+    private static final String BASE_CONFIG_FILENAME = "base.json";
 
     private static final String HAZARD_SERVICES_SOURCE = "HAZARD_SERVICES_SOURCE";
 
@@ -136,7 +140,11 @@ public class ProductGenerationTest extends
             String testConfigFilename = FileUtil.join(baseTestDir,
                     productGeneratorName, PRODUCT_GENERATOR_TESTS_FILENAME);
             String testsAsString = Utils.textFileAsString(testConfigFilename);
-            this.tests = DictList.getInstance(testsAsString);
+            try {
+                this.tests = DictList.getInstance(testsAsString);
+            } catch (JsonSyntaxException e) {
+                handleSyntaxError(PRODUCT_GENERATOR_TESTS_FILENAME, e);
+            }
             this.newHazard = true;
             this.expectedAnswers = new StringBuilder();
             this.actualAnswers = new StringBuilder();
@@ -145,6 +153,15 @@ public class ProductGenerationTest extends
             handleException(e);
         }
 
+    }
+
+    /**
+     * @param
+     * @return
+     */
+    private void handleSyntaxError(String fileName, JsonSyntaxException e) {
+        String message = " Could not parse " + fileName + "\n" + e.getMessage();
+        throw new RuntimeException(message);
     }
 
     @Override
@@ -290,33 +307,41 @@ public class ProductGenerationTest extends
     }
 
     private IHazardEvent buildBaseHazardEvent() throws InvalidGeometryException {
-        String json = Utils.textFileAsString(
-                FileUtil.join(baseTestDir, productGeneratorName, "base.json"),
-                true);
-        DictList dl = DictList.getInstance(json);
-        Dict dict = (Dict) dl.get(0);
-        List<Coordinate> coordinates = coordinatesFromShapes(dict);
-        IHazardEvent hazardEvent = hazardEventBuilder
-                .buildPolygonHazardEvent(coordinates);
-        Date date = extractDate(dict, HazardConstants.HAZARD_EVENT_START_TIME);
-        hazardEvent.setStartTime(date);
-        date = extractDate(dict, HazardConstants.HAZARD_EVENT_END_TIME);
-        hazardEvent.setEndTime(date);
-        String str = dict
-                .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_PHEN);
-        hazardEvent.setPhenomenon(str);
-        str = dict.getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_SIG);
-        hazardEvent.setSignificance(str);
-        str = dict
-                .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_SUB_TYPE);
-        hazardEvent.setSubType(str);
-        hazardEvent.setSiteID("OAX");
-        Dict attributes = dict.getDynamicallyTypedValue("attributes");
-        for (Entry<String, Object> entry : attributes.entrySet()) {
-            hazardEvent.addHazardAttribute(entry.getKey(),
-                    (Serializable) entry.getValue());
+        try {
+            String json = Utils.textFileAsString(FileUtil.join(baseTestDir,
+                    productGeneratorName, BASE_CONFIG_FILENAME), true);
+            DictList dl;
+            dl = DictList.getInstance(json);
+
+            Dict dict = (Dict) dl.get(0);
+            List<Coordinate> coordinates = coordinatesFromShapes(dict);
+            IHazardEvent hazardEvent = hazardEventBuilder
+                    .buildPolygonHazardEvent(coordinates);
+            Date date = extractDate(dict,
+                    HazardConstants.HAZARD_EVENT_START_TIME);
+            hazardEvent.setStartTime(date);
+            date = extractDate(dict, HazardConstants.HAZARD_EVENT_END_TIME);
+            hazardEvent.setEndTime(date);
+            String str = dict
+                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_PHEN);
+            hazardEvent.setPhenomenon(str);
+            str = dict
+                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_SIG);
+            hazardEvent.setSignificance(str);
+            str = dict
+                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_SUB_TYPE);
+            hazardEvent.setSubType(str);
+            hazardEvent.setSiteID("OAX");
+            Dict attributes = dict.getDynamicallyTypedValue("attributes");
+            for (Entry<String, Object> entry : attributes.entrySet()) {
+                hazardEvent.addHazardAttribute(entry.getKey(),
+                        (Serializable) entry.getValue());
+            }
+            return hazardEvent;
+        } catch (JsonSyntaxException e) {
+            handleSyntaxError(BASE_CONFIG_FILENAME, e);
+            return null;
         }
-        return hazardEvent;
     }
 
     @SuppressWarnings("unchecked")

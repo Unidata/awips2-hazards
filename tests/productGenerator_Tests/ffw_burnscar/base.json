@@ -8,7 +8,7 @@
 
 "sig":"W",
 
-"subType":"Convective",
+"subType":"BurnScar",
 
 "shapes":[
   {"shapeType":"polygon", 
@@ -23,7 +23,22 @@
 
 "debrisBurnScarDrainage":"Enter drainage",
 
-"debrisFlows":"burnScar",
+"debrisFlows":[],
+
+"ugcs":[
+  	"NEC023", 
+	"NEC141"
+	],
+
+"ugcPartsOfState" : {
+   	"NEC023":"East Central",
+   	"NEC141":"Northeast"
+	},
+
+"ugcPortions" : {
+   	"NEC023":"Northeastern",
+   	"NEC141":"Eastern"
+	},
 
 "activateWEA":["WEA_activated"],
 

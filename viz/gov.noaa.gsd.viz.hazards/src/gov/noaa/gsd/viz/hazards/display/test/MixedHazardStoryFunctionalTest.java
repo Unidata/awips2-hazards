@@ -638,14 +638,6 @@ class MixedHazardStoryFunctionalTest extends
         assertTrue(legacy0.contains(NEW_VTEC_STRING + "."
                 + FLOOD_WATCH_PHEN_SIG));
         assertTrue(legacy0.contains(FLOOD_WATCH));
-        final String xml0 = generatedProduct0.getEntries()
-                .get(ProductConstants.XML_PRODUCT_KEY)
-                .get(NumberUtils.INTEGER_ZERO).toString();
-        assertTrue(xml0.contains(FLOOD_WATCH));
-        final String cap0 = generatedProduct0.getEntries()
-                .get(ProductConstants.CAP_PRODUCT_KEY)
-                .get(NumberUtils.INTEGER_ZERO).toString();
-        assertTrue(cap0.contains(FLOOD_WATCH));
 
         IGeneratedProduct generatedProduct1 = generatedProductList
                 .get(NumberUtils.INTEGER_ONE);

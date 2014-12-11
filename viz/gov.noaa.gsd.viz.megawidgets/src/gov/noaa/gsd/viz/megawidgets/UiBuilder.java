@@ -80,6 +80,7 @@ import com.google.common.collect.Lists;
  * Oct 20, 2014    4818    Chris.Golden      Added methods for building scrolled
  *                                           composites for both single- and
  *                                           multi-page megawidgets.
+ * Dec 1, 2014    4373     Dan Schaffer      HID Template migration for warngen
  * </pre>
  * 
  * @author Chris.Golden
@@ -526,6 +527,7 @@ public class UiBuilder {
         /*
          * For each value, add a choice button.
          */
+        ((GridLayout) parent.getLayout()).verticalSpacing = 0;
         int buttonWidth = -1;
         boolean radioButtons = ((buttonFlags & SWT.RADIO) != 0);
         List<ChoiceButtonComponent> buttons = new ArrayList<>();

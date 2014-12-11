@@ -1,17 +1,16 @@
 '''
-   Description: Provides classes and methods for Product Generation
-   
-   SOFTWARE HISTORY
-   Date         Ticket#      Engineer             Description
-   ------------ ---------- ----------- --------------------------
-   April 5, 2013            Tracy.L.Hansen      Initial creation
-   Feb 14, 2013    2161     Chris.Golden        Added use of UFN_TIME_VALUE_SECS constant
-                                                instead of hardcoded value.
-   May 06, 2014   1328      jramer              Remove reference to deprecated MapInfo class.
-   Dec 08, 2014   2826      dgilling            Fix extraneous whitespsace in formatDatetime().
+Description: Provides classes and methods for Product Generation
 
+SOFTWARE HISTORY
+Date         Ticket#      Engineer             Description
+------------ ---------- ----------- --------------------------
+April 5, 2013            Tracy.L.Hansen      Initial creation
+Feb 14, 2013    2161     Chris.Golden        Added use of UFN_TIME_VALUE_SECS constant
+                                             instead of hardcoded value.
+May 06, 2014   1328      jramer              Remove reference to deprecated MapInfo class.
+Dec 1, 2014    4373      Dan Schaffer        HID Template migration for warngen
 
-   @author Tracy.L.Hansen@noaa.gov
+@author Tracy.L.Hansen@noaa.gov
 '''
 
 import cPickle, os, types, string, copy
@@ -28,6 +27,9 @@ import ProductTextUtil
 
 import json
 import traceback
+
+import re
+float_match = re.compile(r'[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?$').match
 
 # The size of the buffer for default flood polygons.
 DEFAULT_POLYGON_BUFFER = 0.05
@@ -634,6 +636,9 @@ class TextProductCommon(object):
                    return result
 
 
+
+
+
     def getMetaDataValue(self, hazardEvent, metaData, fieldName, value):                     
         '''
         Given a value, return the corresponding productString (or displayString) from the metaData. 
@@ -685,17 +690,31 @@ class TextProductCommon(object):
                     returnVal = returnVal.replace('  ', '')
                     returnVal = returnVal.replace('\n', ' ')
                     returnVal = returnVal.replace('</br>', '\n')
-                    # Search for #...# values  e.g. floodLocation
-                    hashTags = self.getFramedValues(returnVal, '#', '#')
-                    for hashTag in hashTags:
-                        eventValue = hazardEvent.get(hashTag)
-                        if eventValue is not None:
-                            replaceVal = eventValue
-                        else:
-                            replaceVal = self.frame(hashTag)
-                        returnVal = returnVal.replace('#'+hashTag+'#', replaceVal) 
+                    returnVal = self.substituteParameters(hazardEvent, returnVal) 
         return returnVal
     
+    def substituteParameters(self, hazardEvent, returnVal):
+        # Search for #...# values  e.g. floodLocation
+        hashTags = self.getFramedValues(returnVal, '#', '#')
+        for hashTag in hashTags:
+            eventValue = hazardEvent.get(hashTag)
+            if eventValue is not None:
+                replaceVal = eventValue
+            else:
+                replaceVal = self.frame(hashTag)
+            returnVal = returnVal.replace('#' + hashTag + '#', " " + self.formatAsNecessary(replaceVal))
+        
+        return returnVal
+    def formatAsNecessary(self, val):
+        if (self.is_number(val)):
+            return "{:2.1f}".format(val)
+        else:
+            return val
+            
+    # TODO Should use fastnumbers
+    def is_number(self, val):
+        return bool(float_match(str(val)))
+
     def getFramedValues(self, text, beginStr='|* ', endStr=' *|'):
         '''
         @param text -- text string 

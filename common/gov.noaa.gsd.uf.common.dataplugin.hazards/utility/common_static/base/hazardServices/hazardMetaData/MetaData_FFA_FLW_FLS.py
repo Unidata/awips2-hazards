@@ -1,3 +1,6 @@
+'''
+    Description: Product staging dialog metadata.
+'''
 import CommonMetaData
 from HazardConstants import *
 
@@ -125,7 +128,6 @@ class MetaData(CommonMetaData.MetaData):
                     ]
         else:
             return [
-                self.ctaNoCTA(),
                 self.ctaFloodWarningMeans(),
                 self.ctaDoNotDrive(),
                 self.ctaRiverBanks(),
@@ -142,7 +144,6 @@ class MetaData(CommonMetaData.MetaData):
 
     def getCTA_Choices(self):
         return [
-            self.ctaNoCTA(),
             self.ctaFloodAdvisoryMeans(),
             self.ctaDoNotDrive(),
             self.ctaRiverBanks(),
@@ -166,16 +167,13 @@ MetaData.synopsisProductStringsFromIdentifiers = MetaData.createSynopsisProductS
 # user chooses a new choice from the canned synopses dropdown, the text in the synopsis
 # text area is changed to match.
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
-	
-	# See if the trigger identifiers list contains any of the identifiers from the
-	# synopsis canned choices; if so, change the text's value to match the associated
-	# canned choice text.
-	if triggerIdentifiers is not None and not set(triggerIdentifiers).isdisjoint(MetaData.synopsisProductStringsFromIdentifiers.keys()):
-		return {
-			"overviewSynopsisText": {
-									"values": MetaData.synopsisProductStringsFromIdentifiers[set(triggerIdentifiers).intersection(set(MetaData.synopsisProductStringsFromIdentifiers.keys())).pop()]
-									}
-			}
-	return None
-
-
+    # See if the trigger identifiers list contains any of the identifiers from the
+    # synopsis canned choices; if so, change the text's value to match the associated
+    # canned choice text.
+    if triggerIdentifiers is not None and not set(triggerIdentifiers).isdisjoint(MetaData.synopsisProductStringsFromIdentifiers.keys()):
+        return {
+        "overviewSynopsisText": {
+        "values": MetaData.synopsisProductStringsFromIdentifiers[set(triggerIdentifiers).intersection(set(MetaData.synopsisProductStringsFromIdentifiers.keys())).pop()]
+        }
+    }
+    return None

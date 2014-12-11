@@ -12,13 +12,14 @@ class MetaData(CommonMetaData.MetaData):
                     self.getFloodRecord(),
                     self.getRiseCrestFall(),
                     self.getRainAmt(),
-                    self.getCTAs("doNotDriveCTA"),                    
-                    self.getCAP_Fields([
-                                        ("urgency", "Expected"),
-                                        ("severity", "Minor"),
-                                        ("certainty", "Observed"),
-                                        ("responseType", "Avoid"),
-                                       ])
+                    self.getCTAs("doNotDriveCTA"),
+                    # Preserving CAP defaults for future reference.                    
+#                     self.getCAP_Fields([
+#                                         ("urgency", "Expected"),
+#                                         ("severity", "Minor"),
+#                                         ("certainty", "Observed"),
+#                                         ("responseType", "Avoid"),
+#                                        ])
                     ]
         return {
                 METADATA_KEY: metaData
@@ -27,7 +28,6 @@ class MetaData(CommonMetaData.MetaData):
         
     def getCTA_Choices(self):
         return [
-            self.ctaNoCTA(),
             self.ctaFloodAdvisoryMeans(),
             self.ctaDoNotDrive(),
             self.ctaRiverBanks(),

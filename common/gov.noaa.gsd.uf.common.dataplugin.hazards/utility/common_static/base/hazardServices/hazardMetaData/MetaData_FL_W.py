@@ -1,3 +1,6 @@
+'''
+    Description: Hazard Information Dialog Metadata for hazard type FL.W
+'''
 import CommonMetaData
 from HazardConstants import *
 
@@ -46,15 +49,16 @@ class MetaData(CommonMetaData.MetaData):
                                     "pageFields": impacts
                                    },
                                   {
-                                    "pageName": "CTA and CAP",
+                                    "pageName": "CTA",
                                     "pageFields": [
                                                    self.getCTAs(["stayTunedCTA"]),
-                                                   self.getCAP_Fields([
-                                                                       ("urgency", "Expected"),
-                                                                       ("severity", "Severe"),
-                                                                       ("certainty", "Likely"),
-                                                                       ("responseType", "None"),
-                                                                       ]) 
+                                                   # Preserving CAP defaults for future reference.
+#                                                    self.getCAP_Fields([
+#                                                                        ("urgency", "Expected"),
+#                                                                        ("severity", "Severe"),
+#                                                                        ("certainty", "Likely"),
+#                                                                        ("responseType", "None"),
+#                                                                        ]) 
                                                    ]
                                    }
                             ]
@@ -564,29 +568,10 @@ class MetaData(CommonMetaData.MetaData):
                 "expandHorizontally": False,
             }
         
-        return impactsTextField
-
-
-    
-    # BASIS
-    def getBasis(self):
-        return {
-            "fieldName": "basis",
-            "fieldType":"RadioButtons",
-            "label":"Basis:",
-            "values": "basisEnteredText",
-            "choices": self.basisChoices(),
-            }        
-
-    def basisChoices(self):
-        return [
-                self.basisEnteredText()
-                ]
-        
+        return impactsTextField      
                 
     def getCTA_Choices(self):
         return [
-            self.ctaNoCTA(),
             self.ctaFloodWarningMeans(),
             self.ctaDoNotDrive(),
             self.ctaRiverBanks(),

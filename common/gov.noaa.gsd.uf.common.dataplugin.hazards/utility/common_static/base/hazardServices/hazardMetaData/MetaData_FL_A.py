@@ -1,3 +1,6 @@
+'''
+    Description: Hazard Information Dialog Metadata for hazard type FL.A
+'''
 import CommonMetaData
 from HazardConstants import *
 
@@ -15,14 +18,14 @@ class MetaData(CommonMetaData.MetaData):
                      self.getImmediateCause(),
                      self.getFloodSeverity(),
                      self.getFloodRecord(),
-                     self.getDebrisFlowOptions(),
-                     self.getCTAs("stayTunedCTA"),                    
-                     self.getCAP_Fields([
-                                         ("urgency", "Future"),
-                                         ("severity", "Severe"),
-                                         ("certainty", "Possible"),
-                                         ("responseType", "Prepare"),
-                                        ])
+                     self.getCTAs("stayTunedCTA"),    
+                     # Preserving CAP defaults for future reference.                
+#                      self.getCAP_Fields([
+#                                          ("urgency", "Future"),
+#                                          ("severity", "Severe"),
+#                                          ("certainty", "Possible"),
+#                                          ("responseType", "Prepare"),
+#                                         ])
                     ]
         return {
                 METADATA_KEY: metaData
@@ -30,7 +33,6 @@ class MetaData(CommonMetaData.MetaData):
                 
     def getCTA_Choices(self):
         return [
-            self.ctaNoCTA(),
             self.ctaFloodWatchMeans(),
             self.ctaStayTuned(),
             self.ctaReportFlooding(),

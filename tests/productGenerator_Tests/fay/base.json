@@ -1,0 +1,68 @@
+[
+{
+"startTime" : "2011-02-08T04:00:00.000Z",
+
+"endTime" : "2011-02-08T12:00:00.000Z",
+
+"phen" : "FA",
+
+"sig" : "Y",
+
+"shapes" : [
+  {"shapeType" : "polygon", 
+    "points" : [[-95.94, 41.12],
+              [-95.87, 41.00],
+  	      [-95.99, 41.09],
+  	      [-95.94, 41.12]]
+  }
+],
+
+"attributes" : {
+"headline" : "AREAL FLOOD ADVISORY", 
+"immediateCause" : "SM", 
+"source" : "trainedSpottersSource", 
+"eventType" : "minorFlooding", 
+"advisoryType" : "generalMinorFlooding", 
+"floodLocation" : "Boulder Creek",
+"additionalInfoAddtlRainInches" : 1.4, 
+"cta" : 	[
+  	"floodAdvisoryMeansCTA"
+	], 
+"additionalInfo" :  [
+	"listOfCities"
+	], 
+"ugcs" : 	[
+	"NEC039", 
+	"NEC023", 
+	"NEC155", 
+	"NEC037", 
+	"NEC021", 
+	"NEC053", 
+	"NEC159", 
+	"NEC141"], 
+"ugcPartsOfState" : {
+	"NEC053" : "East Central", 
+	"NEC023" : "East Central", 
+	"NEC159" : "Southeast", 
+	"NEC021" : "East Central", 
+	"NEC155" : "East Central", 
+	"NEC141" : "Northeast", 
+	"NEC037" : "Northeast", 
+	"NEC039" : "Northeast"
+	}, 
+"ugcPortions" : 	{
+	"NEC053" : "Western", 
+	"NEC023" : "Central", 
+	"NEC159" : "Northern", 
+	"NEC021" : "West Central", 
+	"NEC155" : "Northwestern", 
+	"NEC141" : "Southern", 
+	"NEC037" : "Central", 
+	"NEC039" : "Southeastern"
+	}, 
+"optionalSpecificType" : "rapidRiverRises", 
+"geoType" : "area", 
+"rainAmt" : "rainEdit", 
+"rainAmtRainEditInches" : 0.3
+}}
+]

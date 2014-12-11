@@ -9,6 +9,7 @@
                                                  dictionary
     Oct  08, 2014  4042      Chris.Golden        Uncommented returning of metadata fields in defineDialog()
                                                  and added apply interdependencies script.
+    Dec 1, 2014    4373      Dan Schaffer        HID Template migration for warngen
     
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
@@ -299,7 +300,12 @@ class Product(Legacy_ProductGenerator.Product):
     def getBasisPhrase(self, vtecRecord, hazardEvent, metaData, lineLength=69):
         # Basis bullet
         return self.floodBasisPhrase(vtecRecord, hazardEvent, metaData, 'Flooding', lineLength)
-     
+    
+    def floodLocation(self, hazardEvent, floodDescription):
+        return ''     
+    
+    def rainAmount(self, hazardEvent, metaData):
+        return self._tpc.getProductStrings(hazardEvent, metaData, 'rainAmt')
     #########################################
     
     def executeFrom(self, dataList, prevDataList=None):
