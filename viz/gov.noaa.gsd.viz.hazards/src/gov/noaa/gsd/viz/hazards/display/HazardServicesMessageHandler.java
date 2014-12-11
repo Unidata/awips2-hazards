@@ -187,6 +187,9 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            using megawidgets). Also continued slow
  *                                            process of moving functionality from here
  *                                            into the session manager as appropriate.
+ * Oct 02, 2014  4763      Dan Schaffer       Fixing bug in which issuing proposed hazards fails to 
+ *                                            change the state to issued.  Also discovered and fixed bug 
+ *                                            whereby the HID disappears when you propose a hazard.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -557,7 +560,9 @@ public final class HazardServicesMessageHandler implements
                     IHazardEvent hazardEvent = (IHazardEvent) event;
                     ObservedHazardEvent oEvent = sessionEventManager
                             .getEventById(hazardEvent.getEventID());
-                    if (oEvent.getStatus().equals(HazardStatus.PENDING)) {
+                    HazardStatus hazardStatus = oEvent.getStatus();
+                    if (hazardStatus.equals(HazardStatus.PENDING)
+                            || hazardStatus.equals(HazardStatus.PROPOSED)) {
                         oEvent.setStatus(HazardStatus.ISSUED);
                         oEvent.clearUndoRedo();
                         oEvent.setModified(false);
@@ -625,7 +630,6 @@ public final class HazardServicesMessageHandler implements
         }
 
         notifyModelEventsChanged();
-        appBuilder.hideHazardDetail();
         appBuilder.closeProductEditorView();
     }
 
