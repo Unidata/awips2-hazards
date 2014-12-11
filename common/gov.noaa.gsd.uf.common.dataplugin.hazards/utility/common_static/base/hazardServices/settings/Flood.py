@@ -7,7 +7,7 @@ Flood = {
         "FF.A", 
         "FF.W.Convective", 
         "FF.W.NonConvective", 
-        "FF.W.BurnScar", 
+        "FF.W.BurnScar",
         "FA.Y", 
         "FA.A", 
         "FA.W", 
@@ -23,8 +23,8 @@ Flood = {
             "children": [
                 "FF.A", 
                 "FF.W.Convective", 
-                "FF.W.NonConvective", 
-                "FF.W.BurnScar", 
+                "FF.W.NonConvective",
+                 "FF.W.BurnScar",
                 "FA.Y", 
                 "FA.A", 
                 "FA.W", 
@@ -171,6 +171,10 @@ Flood = {
         {
             "toolName": "DamBreakFloodRecommender", 
             "displayName": "Dam/Levee Break Flood Recommender"
+        }, 
+        {
+            "toolName": "BurnScarFloodRecommender", 
+            "displayName": "Burn Scar Flood Recommender"
         }, 
         {
             "toolName": "RiverFloodRecommender", 

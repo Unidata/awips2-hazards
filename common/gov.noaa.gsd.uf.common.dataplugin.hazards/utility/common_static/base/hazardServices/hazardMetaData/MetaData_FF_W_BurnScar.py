@@ -1,6 +1,3 @@
-'''
-    Description: Hazard Information Dialog Metadata for hazard type FF.W.BurnScar
-'''
 import CommonMetaData
 from HazardConstants import *
 
@@ -16,6 +13,7 @@ class MetaData(CommonMetaData.MetaData):
         else:
            metaData = [
                      self.getInclude(),
+                     self.setBurnScarNameLabel(hazardEvent),
                      self.getImmediateCause(),
                      self.getEventSpecificSource(),
                      self.getDebrisFlowOptions(),                                       
@@ -39,6 +37,38 @@ class MetaData(CommonMetaData.MetaData):
                 self.immediateCauseER(),
                 self.immediateCauseRS(),
             ]
+ 
+    def setBurnScarNameLabel(self, hazardEvent):
+        attrs = hazardEvent.getHazardAttributes()
+        bsName = attrs.get('burnScarName')
+       
+        if bsName is None:
+            bsName = "Unnamed"
+        
+        label = {
+            "fieldName": "burnScarLabel",
+            "fieldType":"Label",
+            "label": bsName,
+            "bold": True,
+            "italic": True
+                }  
+        
+        group = {
+                    "fieldType": "Group",
+                    "fieldName": "burnScarGroup",
+                    "label": "BurnScar: ",
+                    "leftMargin": 10,
+                    "rightMargin": 10,
+                    "topMargin": 10,
+                    "bottomMargin": 10,
+                    "expandHorizontally": True,
+                    "expandVertically": True,
+                    "fields": [label]
+                }
+        
+        
+        return group
+        
  
     def includeChoices(self):
         return [
@@ -100,7 +130,7 @@ class MetaData(CommonMetaData.MetaData):
 
     def debrisFlowUnknown(self):
         return {"identifier":"debrisFlowUnknown",
-        "displayString": "Unknown"
+                "displayString": "Unknown"
         }
  
     def debrisFlowBurnScar(self):
@@ -118,7 +148,7 @@ class MetaData(CommonMetaData.MetaData):
     def debrisFlowMudSlide(self):
         return {"identifier":"debrisFlowMudSlide",
                 "displayString": "Mud Slides"
-        }
+		}
  
     def additionalInfoChoices(self):
         return [ 
