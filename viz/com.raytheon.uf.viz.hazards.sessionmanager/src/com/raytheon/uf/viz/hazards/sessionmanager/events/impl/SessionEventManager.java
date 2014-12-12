@@ -207,6 +207,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Sep 16, 2014  4753      Chris.Golden Changed event script to include mutable
  *                                      properties.
  * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
+ * Dec 13, 2014 4486       Dan Schaffer Eliminating effect of changed CAVE time on hazard status
  * </pre>
  * 
  * @author bsteffen
@@ -1614,9 +1615,6 @@ public class SessionEventManager implements
                 }
 
                 for (ObservedHazardEvent event : events) {
-                    if (event.getStatus() == HazardStatus.ENDED) {
-                        event.setStatus(HazardStatus.ISSUED);
-                    }
                     scheduleExpirationTask(event);
                 }
             }
