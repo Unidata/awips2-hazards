@@ -25,6 +25,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNo
  * ------------ ---------- ----------- --------------------------
  * Mar 19, 2014 2925       Chris.Golden    Initial creation.
  * May 10, 2014 2925       Chris.Golden    Added originator.
+ * Nov 18, 2014 4124       Chris.Golden    Changed to work with revamped time
+ *                                         manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -41,6 +43,6 @@ public class VisibleTimeRangeChanged extends OriginatedSessionNotification {
     }
 
     public TimeRange getVisibleTimeRange() {
-        return timeManager.getVisibleRange();
+        return timeManager.getVisibleTimeRange();
     }
 }

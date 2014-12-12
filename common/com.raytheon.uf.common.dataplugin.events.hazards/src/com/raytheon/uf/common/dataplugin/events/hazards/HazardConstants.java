@@ -61,6 +61,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Oct 08, 2014 4042      Chris.Golden  Added constants for productgen-related Python import path.
  * Oct 22, 2014 4818      Chris.Golden  Removed constant for UI scrolling increment (moved to
  *                                      UiBuilder).
+ * Nov 18, 2014 4124      Chris.Golden  Removed unused change element.
  * </pre>
  * 
  * @author mnash
@@ -180,9 +181,7 @@ public final class HazardConstants {
      * Enumeration of all types of changes that may occur within the model.
      */
     public static enum Element {
-        EVENTS, CAVE_TIME, CURRENT_TIME, SELECTED_TIME, SELECTED_TIME_RANGE,
-
-        VISIBLE_TIME_DELTA, VISIBLE_TIME_RANGE, SETTINGS, CURRENT_SETTINGS, TOOLS, SITE;
+        EVENTS, CAVE_TIME, CURRENT_TIME, SELECTED_TIME_RANGE, VISIBLE_TIME_DELTA, VISIBLE_TIME_RANGE, SETTINGS, CURRENT_SETTINGS, TOOLS, SITE;
     }
 
     /**

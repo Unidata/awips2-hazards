@@ -43,6 +43,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                            point values to be interpreted
  *                                            as long integers when doing
  *                                            conversions to/from JSON.
+ * Nov 18, 2014  4124       Chris.Golden      Adapted to new time manager.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -112,7 +113,7 @@ public class DeprecatedUtilities {
             }
             TimeRange hetr = new TimeRange(hevent.getStartTime(),
                     hevent.getEndTime());
-            Date time = timeManager.getSelectedTime();
+            Date time = new Date(timeManager.getLowerSelectedTimeInMillis());
             if (time != null && !hetr.contains(time)) {
                 jsonEvents[i]
                         .setShapes(new gov.noaa.gsd.viz.hazards.jsonutilities.DeprecatedShape[0]);

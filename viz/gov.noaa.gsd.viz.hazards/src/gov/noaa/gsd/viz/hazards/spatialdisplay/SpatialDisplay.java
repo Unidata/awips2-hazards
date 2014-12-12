@@ -70,7 +70,6 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.common.time.SimulatedTime;
-import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.core.AbstractTimeMatcher;
 import com.raytheon.uf.viz.core.IDisplayPaneContainer;
@@ -95,6 +94,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryMod
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.viz.awipstools.IToolChangedListener;
 import com.raytheon.viz.core.rsc.jts.JTSCompiler;
 import com.raytheon.viz.ui.VizWorkbenchManager;
@@ -150,6 +150,7 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  *                                        End Selected Hazard context menu item.
  * Sep 09, 2014  3994     Robert.Blum     Added handleMouseEnter to reset the cursor type.
  * Oct 20, 2014  4780     Robert.Blum     Made fix to Time Matching to update to the Time Match Basis.
+ * Nov 18, 2014  4124     Chris.Golden    Adapted to new time manager.
  * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
  * </pre>
  * 
@@ -745,10 +746,8 @@ public class SpatialDisplay extends
         Collection<ObservedHazardEvent> events = eventManager
                 .getCheckedEvents();
         ISessionTimeManager timeManager = sessionManager.getTimeManager();
-        TimeRange selectedRange = timeManager.getSelectedTimeRange();
-        Date selectedTime = timeManager.getSelectedTime();
-        filterEventsForTime(events, selectedRange, selectedTime);
-
+        SelectedTime selectedRange = timeManager.getSelectedTime();
+        filterEventsForTime(events, selectedRange);
         if (previousEvents != null) {
             if (!areEventsChanged(events)) {
                 /*
@@ -836,26 +835,15 @@ public class SpatialDisplay extends
 
     /**
      * Convenience method for testing if the event is contained within the
-     * selected time or selected time range.
+     * selected time range.
      * 
      * @param
      * @return
      */
     public Boolean doesEventOverlapSelectedTime(IHazardEvent event,
-            TimeRange selectedRange, Date selectedTime) {
-
-        TimeRange eventRange = new TimeRange(event.getStartTime(),
-                event.getEndTime());
-        Boolean overlaps = true;
-        if (selectedRange == null || !selectedRange.isValid()) {
-            if (!eventRange.contains(selectedTime)) {
-                overlaps = false;
-            }
-        } else if (!eventRange.overlaps(selectedRange)) {
-            overlaps = false;
-        }
-
-        return overlaps;
+            SelectedTime selectedRange) {
+        return selectedRange.intersects(event.getStartTime().getTime(), event
+                .getEndTime().getTime());
     }
 
     /**
@@ -1629,7 +1617,7 @@ public class SpatialDisplay extends
     }
 
     private void filterEventsForTime(Collection<ObservedHazardEvent> events,
-            TimeRange selectedRange, Date selectedTime) {
+            SelectedTime selectedRange) {
         Iterator<ObservedHazardEvent> it = events.iterator();
         while (it.hasNext()) {
             IHazardEvent event = it.next();
@@ -1641,8 +1629,7 @@ public class SpatialDisplay extends
             if (!(HazardServicesDrawableBuilder.forModifyingStormTrack(event) && !HazardStatus
                     .hasEverBeenIssued(event.getStatus()))) {
 
-                if (!doesEventOverlapSelectedTime(event, selectedRange,
-                        selectedTime)) {
+                if (!doesEventOverlapSelectedTime(event, selectedRange)) {
                     it.remove();
                 }
             }

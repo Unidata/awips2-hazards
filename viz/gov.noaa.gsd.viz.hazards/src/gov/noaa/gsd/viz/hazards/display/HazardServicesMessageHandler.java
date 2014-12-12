@@ -95,7 +95,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingRequired;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
 
@@ -187,9 +188,14 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            using megawidgets). Also continued slow
  *                                            process of moving functionality from here
  *                                            into the session manager as appropriate.
- * Oct 02, 2014  4763      Dan Schaffer       Fixing bug in which issuing proposed hazards fails to 
- *                                            change the state to issued.  Also discovered and fixed bug 
- *                                            whereby the HID disappears when you propose a hazard.
+ * Oct 02, 2014  4763      Dan Schaffer       Fixing bug in which issuing proposed hazards
+ *                                            fails to change the state to issued.  Also
+ *                                            discovered and fixed bug whereby the HID
+ *                                            disappears when you propose a hazard.
+ * Nov 18, 2014  4124      Chris.Golden       Changed to no longer have both selected
+ *                                            time instant and selected time range; only
+ *                                            one or the other is used. Also adapted to
+ *                                            new time manager.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -211,21 +217,6 @@ public final class HazardServicesMessageHandler implements
     private final String RETURN_TYPE = "returnType";
 
     private final String POINT_RETURN_TYPE = "Point";
-
-    /**
-     * Indicates that a range of selected times has been updated.
-     */
-    private final String RANGE_OF_SELECTED_TIMES = "Range";
-
-    /**
-     * Indicates that a single selected time has been updated.
-     */
-    private final String SINGLE_SELECTED_TIME = "Single";
-
-    /**
-     * Indicates that no selected time has been updated.
-     */
-    private final String NO_SELECTED_TIME = "None";
 
     // Private Static Constants
 
@@ -307,38 +298,17 @@ public final class HazardServicesMessageHandler implements
      */
     public void updateSelectedEvents(final List<String> eventIDs,
             IOriginator originator) throws VizException {
-        String updateTime = setSelectedEvents(eventIDs, originator);
-
-        if (updateTime.contains(SINGLE_SELECTED_TIME)) {
-            appBuilder.notifyModelChanged(EnumSet
-                    .of(HazardConstants.Element.SELECTED_TIME));
-            updateCaveSelectedTime();
-        }
-        if (updateTime.contains(RANGE_OF_SELECTED_TIMES)) {
-            appBuilder.notifyModelChanged(EnumSet
-                    .of(HazardConstants.Element.SELECTED_TIME_RANGE));
-        }
-
+        setSelectedEvents(eventIDs, originator);
+        updateCaveSelectedTime();
         notifyModelEventsChanged();
-
         if (originator != UIOriginator.SPATIAL_DISPLAY) {
             appBuilder.recenterRezoomDisplay();
         }
-
     }
 
-    private String setSelectedEvents(List<String> eventIDs,
-            IOriginator originator) {
+    private void setSelectedEvents(List<String> eventIDs, IOriginator originator) {
         Collection<ObservedHazardEvent> selectedEvents = fromIDs(eventIDs);
-        Date selectedTime = sessionTimeManager.getSelectedTime();
-
         sessionEventManager.setSelectedEvents(selectedEvents, originator);
-        if ((originator == UIOriginator.CONSOLE)
-                && !selectedTime.equals(sessionTimeManager.getSelectedTime())) {
-            return SINGLE_SELECTED_TIME;
-        } else {
-            return NO_SELECTED_TIME;
-        }
     }
 
     private Collection<ObservedHazardEvent> fromIDs(List<String> eventIDs) {
@@ -731,25 +701,21 @@ public final class HazardServicesMessageHandler implements
     }
 
     /**
-     * Updates the selected time either in CAVE or the Console. Selected time
-     * updates in CAVE appear in the Console. Selected time updates in the
-     * Console appear in CAVE.
+     * Updates the selected time in the Console as a result of a change to the
+     * CAVE frame time.
      * 
      * @param selectedTime
-     * @param UIOriginator
+     *            New selected time.
      */
-    private void updateSelectedTime(Date selectedTime, IOriginator originator)
-            throws VizException {
-        sessionTimeManager.setSelectedTime(selectedTime);
-
-        if (originator == Originator.OTHER) {
-            appBuilder.notifyModelChanged(EnumSet
-                    .of(HazardConstants.Element.SELECTED_TIME));
-        }
-
-        if (originator == UIOriginator.CONSOLE) {
-            updateCaveSelectedTime();
-        }
+    private void updateSelectedTimeFromCave(Date selectedTime) {
+        long delta = sessionTimeManager.getUpperSelectedTimeInMillis()
+                - sessionTimeManager.getLowerSelectedTimeInMillis();
+        SelectedTime timeRange = new SelectedTime(selectedTime.getTime(),
+                selectedTime.getTime() + delta);
+        sessionTimeManager.setSelectedTime(timeRange, Originator.OTHER);
+        appBuilder.notifyModelChanged(
+                EnumSet.of(HazardConstants.Element.SELECTED_TIME_RANGE),
+                Originator.OTHER);
     }
 
     /**
@@ -762,11 +728,13 @@ public final class HazardServicesMessageHandler implements
      */
     private void updateSelectedTimeRange(String selectedTimeStart_ms,
             String selectedTimeEnd_ms) {
-        TimeRange selectedRange = new TimeRange(toDate(selectedTimeStart_ms),
-                toDate(selectedTimeEnd_ms));
-        sessionTimeManager.setSelectedTimeRange(selectedRange);
-        appBuilder.notifyModelChanged(EnumSet
-                .of(HazardConstants.Element.SELECTED_TIME_RANGE));
+        SelectedTime selectedRange = new SelectedTime(
+                Long.valueOf(selectedTimeStart_ms),
+                Long.valueOf(selectedTimeEnd_ms));
+        sessionTimeManager.setSelectedTime(selectedRange, UIOriginator.CONSOLE);
+        appBuilder.notifyModelChanged(
+                EnumSet.of(HazardConstants.Element.SELECTED_TIME_RANGE),
+                UIOriginator.CONSOLE);
     }
 
     private Date toDate(String timeInMillisAsLongAsString) {
@@ -780,9 +748,8 @@ public final class HazardServicesMessageHandler implements
     private void updateVisibleTimeRange(String jsonStartTime, String jsonEndTime) {
         TimeRange visibleRange = new TimeRange(toDate(jsonStartTime),
                 toDate(jsonEndTime));
-        sessionTimeManager.setVisibleRange(visibleRange, UIOriginator.CONSOLE);
-        appBuilder.notifyModelChanged(EnumSet
-                .of(HazardConstants.Element.VISIBLE_TIME_RANGE));
+        sessionTimeManager.setVisibleTimeRange(visibleRange,
+                UIOriginator.CONSOLE);
     }
 
     /**
@@ -994,12 +961,8 @@ public final class HazardServicesMessageHandler implements
             List<Long> dataTimeList = frameDict
                     .getDynamicallyTypedValue(HazardServicesEditorUtilities.FRAME_TIMES);
             if ((frameCount > 0) && (frameIndex != -1)) {
-                try {
-                    updateSelectedTime(new Date(dataTimeList.get(frameIndex)),
-                            Originator.OTHER);
-                } catch (VizException e) {
-                    statusHandler.error("HazardServicesMessageHandler:", e);
-                }
+                updateSelectedTimeFromCave(new Date(
+                        dataTimeList.get(frameIndex)));
             }
         }
 
@@ -1263,14 +1226,17 @@ public final class HazardServicesMessageHandler implements
     }
 
     /**
-     * This will no longer be needed once presenters listen directly for session
-     * events.
+     * Handle the visible time range changing. This may be removed once
+     * presenters handle this directly.
+     * 
+     * @param change
+     *            Change that occurred.
      */
     @Handler
     @Deprecated
-    public void selectedTimeChanged(SelectedTimeChanged notification) {
+    public void visibleTimeRangeChanged(VisibleTimeRangeChanged change) {
         appBuilder.notifyModelChanged(EnumSet
-                .of(HazardConstants.Element.SELECTED_TIME));
+                .of(HazardConstants.Element.VISIBLE_TIME_RANGE));
     }
 
     /**
@@ -1421,17 +1387,6 @@ public final class HazardServicesMessageHandler implements
             }
             break;
 
-        case SELECTED_TIME_CHANGED:
-            try {
-                updateSelectedTime(consoleAction.getNewTime(),
-                        UIOriginator.CONSOLE);
-            } catch (VizException e) {
-                statusHandler.error("HazardServicesMessageListener."
-                        + "consoleActionOccurred(): Unable to update "
-                        + "selected time.", e);
-            }
-            break;
-
         case VISIBLE_TIME_RANGE_CHANGED:
             updateVisibleTimeRange(consoleAction.getStartTime(),
                     consoleAction.getEndTime());
@@ -1440,6 +1395,7 @@ public final class HazardServicesMessageHandler implements
         case SELECTED_TIME_RANGE_CHANGED:
             updateSelectedTimeRange(consoleAction.getStartTime(),
                     consoleAction.getEndTime());
+            updateCaveSelectedTime();
             break;
 
         case CHECK_BOX: {

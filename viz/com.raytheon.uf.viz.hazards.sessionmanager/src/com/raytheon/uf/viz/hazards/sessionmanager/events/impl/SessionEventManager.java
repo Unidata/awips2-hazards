@@ -204,10 +204,13 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      invoked.
  * Sep 04, 2014 4560       Chris.Golden Added code to find metadata-reload-triggering
  *                                      megawidgets.
- * Sep 16, 2014  4753      Chris.Golden Changed event script to include mutable
+ * Sep 16, 2014 4753       Chris.Golden Changed event script to include mutable
  *                                      properties.
- * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
- * Dec 13, 2014 4486       Dan Schaffer Eliminating effect of changed CAVE time on hazard status
+ * Nov 18, 2014 4124       Chris.Golden Changed to work with revamped time manager.
+ * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded
+ *                                      when appropriate.
+ * Dec 13, 2014 4486       Dan Schaffer Eliminating effect of changed CAVE time on
+ *                                      hazard status.
  * </pre>
  * 
  * @author bsteffen
@@ -1304,11 +1307,10 @@ public class SessionEventManager implements
         }
         if (oevent.getStartTime() == null) {
             Date timeToUse = timeManager.getCurrentTime();
-            if (timeManager.getSelectedTime().after(
-                    timeManager.getCurrentTime())) {
-                timeToUse = timeManager.getSelectedTime();
-            } else {
-                timeManager.setSelectedTime(timeToUse);
+            Date selectedTime = new Date(timeManager.getSelectedTime()
+                    .getLowerBound());
+            if (selectedTime.after(timeManager.getCurrentTime())) {
+                timeToUse = selectedTime;
             }
             oevent.setStartTime(timeToUse, false, originator);
         }

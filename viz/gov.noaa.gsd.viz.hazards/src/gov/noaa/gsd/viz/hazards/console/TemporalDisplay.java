@@ -230,6 +230,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           that displays on the correct monitor.
  * Sep 12, 2014   3511     Robert.Blum       Changed the format/timezone of the 
  *                                           Console time to match CAVE time.
+ * Nov 18, 2014    4124    Chris.Golden      Changed to only show one of the selected
+ *                                           time options at once (either a single
+ *                                           selected time instant, or a selected
+ *                                           time range).
  * </pre>
  * 
  * @author Chris.Golden
@@ -611,21 +615,22 @@ class TemporalDisplay {
     private long currentTime;
 
     /**
-     * Selected time as epoch time in milliseconds.
+     * Start time of the selected time range, as epoch time in milliseconds.
      */
-    private long selectedTime;
+    private long selectedTimeStart;
 
     /**
-     * Start time of the time range, as epoch time in milliseconds. The time
-     * range is only used if in time range mode.
+     * End time of the selected time range, as epoch time in milliseconds. If
+     * the mode is "single" and not "range", this will be equal to
+     * {@link #selectedTimeStart}.
      */
-    private long timeRangeStart = -1;
+    private long selectedTimeEnd;
 
     /**
-     * End time of the time range, as epoch time in milliseconds. The time range
-     * is only used if in time range mode.
+     * Delta between the lower and upper bounds of the selected time range, as
+     * recorded before the last switch was made to single-selected-time mode.
      */
-    private long timeRangeEnd = -1;
+    private long lastSelectedTimeRangeDelta = 0L;
 
     /**
      * Amount of time visible at once in the time line as an epoch time range in
@@ -1478,7 +1483,7 @@ class TemporalDisplay {
         }
 
         // Remember the time values.
-        this.selectedTime = selectedTime.getTime();
+        this.selectedTimeStart = this.selectedTimeEnd = selectedTime.getTime();
         this.currentTime = currentTime.getTime();
         this.visibleTimeRange = visibleTimeRange;
 
@@ -1499,7 +1504,7 @@ class TemporalDisplay {
                 ConsoleAction.ActionType.VISIBLE_TIME_RANGE_CHANGED,
                 Long.toString(lowerTime), Long.toString(upperTime)));
         ruler.setFreeMarkedValues(this.currentTime);
-        ruler.setFreeThumbValues(this.selectedTime);
+        ruler.setFreeThumbValues(this.selectedTimeStart);
 
         // Use the provided hazard events, clearing the old ones first
         // in case this is a re-initialization.
@@ -1620,48 +1625,17 @@ class TemporalDisplay {
     }
 
     /**
-     * Update the selected time.
-     * 
-     */
-    public void updateSelectedTime(Date selectedTime) {
-
-        // Only set the selected time if it has changed.
-        long time = selectedTime.getTime();
-        if (ruler.getFreeThumbValue(0) == time) {
-            return;
-        }
-        ruler.setFreeThumbValue(0, time);
-
-        // Ensure that the selected time is visible, and not just at
-        // the edge of the ruler.
-        long lower = ruler.getLowerVisibleValue();
-        long upper = ruler.getUpperVisibleValue();
-        long range = upper + 1L - lower;
-        if ((time < lower + (range / 8L)) || (time > upper - (range / 8L))) {
-            lower = time - (range / 2L);
-            upper = lower + range - 1L;
-            setVisibleTimeRange(lower, upper, true);
-        }
-    }
-
-    /**
      * Update the selected time range.
      * 
-     * @param range
-     *            JSON string holding a list with two elements: the start time
-     *            of the selected time range epoch time in milliseconds, and the
-     *            end time of the selected time range epoch time in
-     *            milliseconds.
+     * @param start
+     *            Start time of the selected time range, or <code>null</code> if
+     *            there is no selected time range.
+     * @param end
+     *            End time of the selected time range, or <code>null</code> if
+     *            there is no selected time range.
      */
-    public void updateSelectedTimeRange(String range) {
-        DictList rangeList = DictList.getInstance(range);
-        String startTimeStr = rangeList.getDynamicallyTypedValue(0);
-        long startTime = Long.parseLong(startTimeStr);
-        String endTimeStr = rangeList.getDynamicallyTypedValue(1);
-        long endTime = Long.parseLong(endTimeStr);
-        if ((startTime != -1L) && (endTime != -1L)) {
-            ruler.setConstrainedThumbValues(startTime, endTime);
-        }
+    public void updateSelectedTimeRange(Date start, Date end) {
+        setSelectedTimeRange(start.getTime(), end.getTime());
     }
 
     /**
@@ -1996,35 +1970,27 @@ class TemporalDisplay {
         }
         selectedTimeMode = mode;
         if (mode.equals(SELECTED_TIME_MODE_SINGLE)) {
-            ruler.setConstrainedThumbValues();
-            for (TableEditor tableEditor : tableEditorsForIdentifiers.values()) {
-                ((MultiValueScale) tableEditor.getEditor())
-                        .setConstrainedMarkedValues();
-            }
-            fireConsoleActionOccurred(new ConsoleAction(
-                    ConsoleAction.ActionType.SELECTED_TIME_RANGE_CHANGED,
-                    Long.toString(-1L), Long.toString(-1L)));
-        } else {
-            if (timeRangeStart == -1) {
-                timeRangeStart = selectedTime;
-                timeRangeEnd = selectedTime + (HOUR_INTERVAL * 4L);
-            }
-            ruler.setConstrainedThumbValues(timeRangeStart, timeRangeEnd);
-            ruler.setConstrainedThumbColor(0, timeRangeEdgeColor);
-            ruler.setConstrainedThumbColor(1, timeRangeEdgeColor);
-            ruler.setConstrainedThumbRangeColor(1, timeRangeFillColor);
+            lastSelectedTimeRangeDelta = selectedTimeEnd - selectedTimeStart;
+            selectedTimeEnd = selectedTimeStart;
             for (TableEditor tableEditor : tableEditorsForIdentifiers.values()) {
                 MultiValueScale scale = (MultiValueScale) tableEditor
                         .getEditor();
-                scale.setConstrainedMarkedValues(timeRangeStart, timeRangeEnd);
-                scale.setConstrainedMarkedValueColor(0, timeRangeEdgeColor);
-                scale.setConstrainedMarkedValueColor(1, timeRangeEdgeColor);
-                scale.setConstrainedMarkedRangeColor(1, timeRangeFillColor);
+                scale.setConstrainedMarkedValues();
+                scale.setFreeMarkedValues(currentTime, selectedTimeStart);
+                scale.setFreeMarkedValueColor(1, selectedTimeColor);
             }
-            fireConsoleActionOccurred(new ConsoleAction(
-                    ConsoleAction.ActionType.SELECTED_TIME_RANGE_CHANGED,
-                    Long.toString(timeRangeStart), Long.toString(timeRangeEnd)));
+            ruler.setConstrainedThumbValues();
+            ruler.setFreeThumbValues(selectedTimeStart);
+            ruler.setFreeThumbColor(0, selectedTimeColor);
+        } else {
+            if (selectedTimeStart == selectedTimeEnd) {
+                selectedTimeEnd = selectedTimeStart
+                        + (lastSelectedTimeRangeDelta > 0L ? lastSelectedTimeRangeDelta
+                                : HOUR_INTERVAL * 4L);
+            }
+            setSelectedTimeRange(selectedTimeStart, selectedTimeEnd);
         }
+        notifyPresenterOfSelectedTimeRangeChange();
     }
 
     // Private Methods
@@ -2254,6 +2220,77 @@ class TemporalDisplay {
         ignoreResize = lastIgnoreResize;
         ignoreMove = lastIgnoreMove;
         visibleColumnCountChanged();
+    }
+
+    /**
+     * Set the selected time range to that specified, showing it if it is
+     * hidden.
+     * 
+     * @param startTime
+     *            Start time of the selected range.
+     * @param endTime
+     *            End time of the selected range.
+     */
+    private void setSelectedTimeRange(long startTime, long endTime) {
+
+        /*
+         * Remember the new values.
+         */
+        selectedTimeStart = startTime;
+        selectedTimeEnd = endTime;
+
+        /*
+         * Determine whether the selected time mode was single or range, and if
+         * it was single, whether it needs to be changed to range due to the new
+         * values.
+         */
+        boolean singleMode = (ruler.getFreeThumbValueCount() != 0);
+        boolean newSingleMode = ((startTime == endTime) && singleMode);
+
+        /*
+         * If the selected time mode must be changed to range, reconfigure the
+         * ruler as appropriate, as well as the time scales for the events. Also
+         * change the drop-down selector to show the new mode.
+         */
+        if (singleMode && (startTime != endTime)) {
+            ruler.setFreeThumbValues();
+            for (TableEditor tableEditor : tableEditorsForIdentifiers.values()) {
+                ((MultiValueScale) tableEditor.getEditor())
+                        .setFreeMarkedValues(currentTime);
+            }
+            selectedTimeMode = SELECTED_TIME_MODE_RANGE;
+            if ((selectedTimeModeCombo != null)
+                    && (selectedTimeModeCombo.isDisposed() == false)) {
+                selectedTimeModeCombo.setText(selectedTimeMode);
+            }
+            if (selectedTimeModeAction != null) {
+                selectedTimeModeAction.setSelectedChoice(selectedTimeMode);
+            }
+        }
+
+        /*
+         * Set the ruler to show the new time range. If it has just changed to
+         * range mode from single mode, configure the ruler some more, as well
+         * as the event time scales.
+         */
+        if (newSingleMode) {
+            ruler.setFreeThumbValues(startTime);
+        } else {
+            ruler.setConstrainedThumbValues(startTime, endTime);
+            if (singleMode) {
+                ruler.setConstrainedThumbColor(0, timeRangeEdgeColor);
+                ruler.setConstrainedThumbColor(1, timeRangeEdgeColor);
+                ruler.setConstrainedThumbRangeColor(1, timeRangeFillColor);
+                for (TableEditor tableEditor : tableEditorsForIdentifiers
+                        .values()) {
+                    MultiValueScale scale = (MultiValueScale) tableEditor
+                            .getEditor();
+                    scale.setConstrainedMarkedValueColor(0, timeRangeEdgeColor);
+                    scale.setConstrainedMarkedValueColor(1, timeRangeEdgeColor);
+                    scale.setConstrainedMarkedRangeColor(1, timeRangeFillColor);
+                }
+            }
+        }
     }
 
     private Dict settingsAsDict() {
@@ -2582,17 +2619,20 @@ class TemporalDisplay {
         scale.setMinimumDeltaBetweenConstrainedThumbs(TIME_RANGE_MINIMUM_INTERVAL);
         scale.setConstrainedThumbValues(startTime, endTime);
         scale.setConstrainedThumbRangeColor(1, color);
-        scale.setFreeMarkedValues(currentTime, selectedTime);
         if (endTimeUntilFurtherNotice) {
             scale.setConstrainedThumbEditable(1, false);
         }
-        scale.setFreeMarkedValueColor(0, currentTimeColor);
-        scale.setFreeMarkedValueColor(1, selectedTimeColor);
         if (selectedTimeMode.equals(SELECTED_TIME_MODE_RANGE)) {
-            scale.setConstrainedMarkedValues(timeRangeStart, timeRangeEnd);
+            scale.setFreeMarkedValues(currentTime);
+            scale.setFreeMarkedValueColor(0, currentTimeColor);
+            scale.setConstrainedMarkedValues(selectedTimeStart, selectedTimeEnd);
             scale.setConstrainedMarkedValueColor(0, timeRangeEdgeColor);
             scale.setConstrainedMarkedValueColor(1, timeRangeEdgeColor);
             scale.setConstrainedMarkedRangeColor(1, timeRangeFillColor);
+        } else {
+            scale.setFreeMarkedValues(currentTime, selectedTimeStart);
+            scale.setFreeMarkedValueColor(0, currentTimeColor);
+            scale.setFreeMarkedValueColor(1, selectedTimeColor);
         }
         scale.addMultiValueLinearControlListener(timeScaleListener);
         return scale;
@@ -3441,7 +3481,7 @@ class TemporalDisplay {
         }
         ruler.setVisibleValueRange(lowerTime, upperTime);
         ruler.setFreeMarkedValues(currentTime);
-        ruler.setFreeThumbValues(selectedTime);
+        ruler.setFreeThumbValues(selectedTimeStart);
 
         currentTimeColor = new Color(Display.getCurrent(), 50, 130, 50);
         resources.add(currentTimeColor);
@@ -3452,9 +3492,9 @@ class TemporalDisplay {
         selectedTimeColor = new Color(Display.getCurrent(), 170, 56, 56);
         resources.add(selectedTimeColor);
         ruler.setFreeThumbColor(0, selectedTimeColor);
-        timeRangeEdgeColor = new Color(Display.getCurrent(), 56, 56, 170);
+        timeRangeEdgeColor = new Color(Display.getCurrent(), 170, 56, 56);
         resources.add(timeRangeEdgeColor);
-        timeRangeFillColor = new Color(Display.getCurrent(), 190, 190, 224);
+        timeRangeFillColor = new Color(Display.getCurrent(), 224, 190, 190);
         resources.add(timeRangeFillColor);
         ruler.setConstrainedThumbsDrawnAsBookends(true);
 
@@ -3474,20 +3514,14 @@ class TemporalDisplay {
                 if (values.length == 0) {
                     return;
                 }
-                timeRangeStart = values[0];
-                timeRangeEnd = values[1];
+                selectedTimeStart = values[0];
+                selectedTimeEnd = values[1];
                 for (TableEditor tableEditor : tableEditorsForIdentifiers
                         .values()) {
                     ((MultiValueScale) tableEditor.getEditor())
                             .setConstrainedMarkedValues(values);
                 }
-                if ((source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_ONGOING)
-                        || (source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_COMPLETE)) {
-                    fireConsoleActionOccurred(new ConsoleAction(
-                            ConsoleAction.ActionType.SELECTED_TIME_RANGE_CHANGED,
-                            Long.toString(timeRangeStart), Long
-                                    .toString(timeRangeEnd)));
-                }
+                notifyPresenterOfSelectedTimeRangeChange(source);
             }
 
             @Override
@@ -3496,18 +3530,13 @@ class TemporalDisplay {
                 if (values.length == 0) {
                     return;
                 }
-                selectedTime = values[0];
+                selectedTimeStart = selectedTimeEnd = values[0];
                 for (TableEditor tableEditor : tableEditorsForIdentifiers
                         .values()) {
                     ((MultiValueScale) tableEditor.getEditor())
-                            .setFreeMarkedValue(1, selectedTime);
+                            .setFreeMarkedValue(1, selectedTimeStart);
                 }
-                if ((source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_ONGOING)
-                        || (source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_COMPLETE)) {
-                    fireConsoleActionOccurred(new ConsoleAction(
-                            ConsoleAction.ActionType.SELECTED_TIME_CHANGED,
-                            Long.toString(selectedTime)));
-                }
+                notifyPresenterOfSelectedTimeRangeChange(source);
             }
         });
 
@@ -3540,6 +3569,30 @@ class TemporalDisplay {
         // bounds of the time ruler are needed to continue.
         temporalDisplayPanel.pack(true);
         repackRuler();
+    }
+
+    /**
+     * Notify the presenter of a change in the selected time range if it is due
+     * to user manipulation of the GUI.
+     * 
+     * @param source
+     *            Source of the change.
+     */
+    private void notifyPresenterOfSelectedTimeRangeChange(ChangeSource source) {
+        if ((source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_ONGOING)
+                || (source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_COMPLETE)) {
+            notifyPresenterOfSelectedTimeRangeChange();
+        }
+    }
+
+    /**
+     * Notify the presenter of a change in the selected time range.
+     */
+    private void notifyPresenterOfSelectedTimeRangeChange() {
+        fireConsoleActionOccurred(new ConsoleAction(
+                ConsoleAction.ActionType.SELECTED_TIME_RANGE_CHANGED,
+                Long.toString(selectedTimeStart),
+                Long.toString(selectedTimeEnd)));
     }
 
     /**

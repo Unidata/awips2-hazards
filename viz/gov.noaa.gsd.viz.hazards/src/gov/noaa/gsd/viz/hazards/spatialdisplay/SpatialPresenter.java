@@ -47,6 +47,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                           protected as it is called by setView().
  * Aug 28, 2014 2532       Robert.Blum       Commented out zooming when settings are
  *                                           changed.
+ * Nov 18, 2014  4124      Chris.Golden      Adapted to new time manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -137,8 +138,7 @@ public class SpatialPresenter extends
      * @return
      */
     public void updateCaveSelectedTime() {
-        Date selectedTime = getModel().getTimeManager().getSelectedTime();
-        getView().manageViewFrames(selectedTime);
+        getView().manageViewFrames(getSelectedTime());
     }
 
     /**
@@ -147,7 +147,8 @@ public class SpatialPresenter extends
      * @return Selected time.
      */
     public Date getSelectedTime() {
-        return getModel().getTimeManager().getSelectedTime();
+        return new Date(getModel().getTimeManager().getSelectedTime()
+                .getLowerBound());
     }
 
     // Protected Methods

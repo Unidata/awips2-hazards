@@ -26,6 +26,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Initial creation
  * Apr 09, 2014    2925  Chris.Golden Fixed to work with new HID event propagation.
  * May 18, 2014    2925  Chris.Golden More changes to get it to work with the new HID.
+ * Nov 18, 2014    4124  Chris.Golden Changed to work with new version of IConsoleView.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -79,12 +80,7 @@ public class ConsoleViewForTesting implements IConsoleView {
     }
 
     @Override
-    public void updateSelectedTime(Date jsonSelectedTime) {
-
-    }
-
-    @Override
-    public void updateSelectedTimeRange(String jsonRange) {
+    public void updateSelectedTimeRange(Date start, Date end) {
 
     }
 
@@ -162,5 +158,4 @@ public class ConsoleViewForTesting implements IConsoleView {
     ImmutableList getActiveAlerts() {
         return activeAlerts;
     }
-
 }

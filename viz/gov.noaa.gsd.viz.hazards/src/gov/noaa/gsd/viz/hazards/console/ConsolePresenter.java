@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.hazards.console;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.JSONConverter;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.deprecated.DeprecatedUtilities;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DeprecatedEvent;
@@ -18,6 +19,7 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -28,13 +30,14 @@ import net.engio.mbassy.listener.Handler;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Console;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 
 /**
  * Console presenter, used to manage the console view.
@@ -58,9 +61,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                           return false. Also added passing of
  *                                           set of events allowing "until further
  *                                           notice" to the view during initialization.
- * May 17, 2014 2925       Chris.Golden      Added newly required implementation of
+ * May 17, 2014    2925    Chris.Golden      Added newly required implementation of
  *                                           reinitialize(), and made initialize()
  *                                           protected as it is called by setView().
+ * Nov 18, 2014    4124    Chris.Golden      Changed to use a handler method to watch
+ *                                           for selected time changes, and adapted to
+ *                                           new time manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -102,21 +108,28 @@ public class ConsolePresenter extends
 
     // Public Methods
 
+    /**
+     * Respond to the selected time changing.
+     * 
+     * @change Change that occurred.
+     */
+    @Handler
+    public void selectedTimeChanged(SelectedTimeChanged change) {
+        if (change.getOriginator() != UIOriginator.CONSOLE) {
+            SelectedTime selectedTime = getModel().getTimeManager()
+                    .getSelectedTime();
+            getView().updateSelectedTimeRange(
+                    new Date(selectedTime.getLowerBound()),
+                    new Date(selectedTime.getUpperBound()));
+        }
+    }
+
     @Override
+    @Deprecated
     public final void modelChanged(EnumSet<HazardConstants.Element> changed) {
         ISessionTimeManager timeManager = getModel().getTimeManager();
         if (changed.contains(HazardConstants.Element.CURRENT_TIME)) {
             getView().updateCurrentTime(timeManager.getCurrentTime());
-        }
-        if (changed.contains(HazardConstants.Element.SELECTED_TIME)) {
-            getView().updateSelectedTime(timeManager.getSelectedTime());
-        }
-        if (changed.contains(HazardConstants.Element.SELECTED_TIME_RANGE)) {
-            TimeRange range = timeManager.getSelectedTimeRange();
-            String updateTimeRange = jsonConverter.toJson(new String[] {
-                    jsonConverter.fromDate(range.getStart()),
-                    jsonConverter.fromDate(range.getEnd()) });
-            getView().updateSelectedTimeRange(updateTimeRange);
         }
         if (changed.contains(HazardConstants.Element.VISIBLE_TIME_DELTA)) {
             String timeDelta = Long.toString(getModel()
@@ -126,9 +139,9 @@ public class ConsolePresenter extends
         }
         if (changed.contains(HazardConstants.Element.VISIBLE_TIME_RANGE)) {
             String earliestTime = jsonConverter.fromDate(timeManager
-                    .getVisibleRange().getStart());
+                    .getVisibleTimeRange().getStart());
             String latestTime = jsonConverter.fromDate(timeManager
-                    .getVisibleRange().getEnd());
+                    .getVisibleTimeRange().getEnd());
             getView().updateVisibleTimeRange(earliestTime, latestTime);
         }
         if (changed.contains(HazardConstants.Element.SETTINGS)) {
@@ -185,11 +198,12 @@ public class ConsolePresenter extends
          * Initialize the view.
          */
         ISessionTimeManager timeManager = getModel().getTimeManager();
-        view.initialize(this, timeManager.getSelectedTime(), timeManager
-                .getCurrentTime(), getModel().getConfigurationManager()
-                .getSettings().getDefaultTimeDisplayDuration(), eventsAsDicts,
-                getModel().getConfigurationManager().getSettings(), getModel()
-                        .getConfigurationManager().getAvailableSettings(),
+        view.initialize(this, new Date(timeManager.getSelectedTime()
+                .getLowerBound()), timeManager.getCurrentTime(), getModel()
+                .getConfigurationManager().getSettings()
+                .getDefaultTimeDisplayDuration(), eventsAsDicts, getModel()
+                .getConfigurationManager().getSettings(), getModel()
+                .getConfigurationManager().getAvailableSettings(),
                 jsonConverter.toJson(getModel().getConfigurationManager()
                         .getFilterConfig()), getModel().getAlertsManager()
                         .getActiveAlerts(), getModel().getEventManager()

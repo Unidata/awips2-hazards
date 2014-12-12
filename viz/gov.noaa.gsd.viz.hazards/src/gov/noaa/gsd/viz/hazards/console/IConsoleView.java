@@ -35,6 +35,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * Aug 22, 2013    1936    Chris.Golden      Added console countdown timers.
  * Feb 19, 2014    2161    Chris.Golden      Added passing of set of events allowing
  *                                           "until further notice" to the view.
+ * Nov 18, 2014    4124    Chris.Golden      Adapted to new time manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -110,23 +111,16 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
     public void updateCurrentTime(Date currentTime);
 
     /**
-     * Update the selected time.
-     * 
-     * @param selectedTime
-     *            New selected time.
-     */
-    public void updateSelectedTime(Date selectedTime);
-
-    /**
      * Update the selected time range.
      * 
-     * @param jsonRange
-     *            JSON string holding a list with two elements: the start time
-     *            of the selected time range epoch time in milliseconds, and the
-     *            end time of the selected time range epoch time in
-     *            milliseconds.
+     * @param start
+     *            Start time of the selected time range, or <code>null</code> if
+     *            there is no selected time range.
+     * @param end
+     *            End time of the selected time range, or <code>null</code> if
+     *            there is no selected time range.
      */
-    public void updateSelectedTimeRange(String jsonRange);
+    public void updateSelectedTimeRange(Date start, Date end);
 
     /**
      * Update the visible time delta.

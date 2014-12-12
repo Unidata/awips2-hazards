@@ -125,6 +125,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           switching perspectives, and could not
  *                                           be made visible again without bouncing
  *                                           H.S. (and sometimes CAVE).
+ * Nov 18, 2014    4124    Chris.Golden      Adapted to new time manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -956,7 +957,7 @@ public class HazardDetailPresenter extends
         /*
          * Initialize the view.
          */
-        TimeRange timeRange = getModel().getTimeManager().getVisibleRange();
+        TimeRange timeRange = getModel().getTimeManager().getVisibleTimeRange();
         getView().initialize(categories, timeRange.getStart().getTime(),
                 timeRange.getEnd().getTime(),
                 getModel().getTimeManager().getCurrentTimeProvider(),
@@ -1122,7 +1123,7 @@ public class HazardDetailPresenter extends
      * Update the view to use the currently visible time range.
      */
     private void updateViewVisibleTimeRange() {
-        TimeRange timeRange = getModel().getTimeManager().getVisibleRange();
+        TimeRange timeRange = getModel().getTimeManager().getVisibleTimeRange();
         getView().getVisibleTimeRangeChanger().setState(
                 null,
                 new TimeRange(timeRange.getStart().getTime(), timeRange

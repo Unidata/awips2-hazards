@@ -81,6 +81,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInform
  *                                           product-generator-specific parameters
  *                                           specified for the products (again, if
  *                                           applicable).
+ * Nov 18, 2014   4124     Chris.Golden      Adapted to new time manager.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -414,7 +415,7 @@ public class ProductStagingPresenter extends
              */
             assert (productNames.isEmpty() == false);
             TimeRange visibleTimeRange = getModel().getTimeManager()
-                    .getVisibleRange();
+                    .getVisibleTimeRange();
             getView().showSecondStep(productNames,
                     megawidgetSpecifierManagersForProductNames,
                     visibleTimeRange.getStart().getTime(),

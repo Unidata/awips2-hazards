@@ -40,6 +40,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                     range change notification, and
  *                                     added current time provider and
  *                                     getter.
+ * Nov 18, 2014 4124       C. Golden   Reorganized and changed over to
+ *                                     use a SelectedTime object to
+ *                                     represent both single selected
+ *                                     time instances, and selected
+ *                                     time ranges.
  * </pre>
  * 
  * @author bsteffen
@@ -49,42 +54,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 public interface ISessionTimeManager {
 
     /**
-     * get the current time the user has selected.
-     * 
-     * @return
-     */
-    public Date getSelectedTime();
-
-    /**
-     * Get the current time range the user has selected, in single selection
-     * mode this will be an invalid range.
-     * 
-     * @return
-     */
-    public TimeRange getSelectedTimeRange();
-
-    /**
-     * set the current time the user has selected.
-     * 
-     * @param selectedTime
-     */
-    public void setSelectedTime(Date selectedTime);
-
-    /**
-     * Set the current time range the user has selected
-     * 
-     * @param selectedTimeRange
-     */
-    public void setSelectedTimeRange(TimeRange selectedTimeRange);
-
-    /**
-     * Get the current system time.
-     * 
-     * @return
-     */
-    public Date getCurrentTime();
-
-    /**
      * Get the current time provider.
      * 
      * @return
@@ -92,19 +61,89 @@ public interface ISessionTimeManager {
     public ICurrentTimeProvider getCurrentTimeProvider();
 
     /**
-     * Set the range of times that should be visible to the user.
+     * Get the current system time, as an epoch time in milliseconds.
      * 
-     * @param range
-     * @param originator
+     * @return Current system time, as an epoch time in milliseconds.
      */
-    public void setVisibleRange(TimeRange range, IOriginator originator);
+    public long getCurrentTimeInMillis();
+
+    /**
+     * Get the current system time.
+     * 
+     * @return Current system time.
+     */
+    public Date getCurrentTime();
+
+    /**
+     * Get the lower bound of the selected time range, as an epoch time in
+     * milliseconds.
+     * 
+     * @return Lower bound of the selected time range, as an epoch time in
+     *         milliseconds.
+     */
+    public long getLowerSelectedTimeInMillis();
+
+    /**
+     * Get the upper bound of the selected time range, as an epoch time in
+     * milliseconds.
+     * 
+     * @return Upper bound of the selected time range, as an epoch time in
+     *         milliseconds.
+     */
+    public long getUpperSelectedTimeInMillis();
+
+    /**
+     * Get the selected time.
+     * 
+     * @return Selected time.
+     */
+    public SelectedTime getSelectedTime();
+
+    /**
+     * Set the selected time.
+     * 
+     * @param selectedTime
+     *            New selected time.
+     * @param originator
+     *            Originator of the action.
+     */
+    public void setSelectedTime(SelectedTime selectedTime,
+            IOriginator originator);
+
+    /**
+     * Get the lower bound of the visible time range, as an epoch time in
+     * milliseconds.
+     * 
+     * @return Lower bound of the visible time range, as an epoch time in
+     *         milliseconds.
+     */
+    public long getLowerVisibleTimeInMillis();
+
+    /**
+     * Get the upper bound of the visible time range, as an epoch time in
+     * milliseconds.
+     * 
+     * @return Upper bound of the visible time range, as an epoch time in
+     *         milliseconds.
+     */
+    public long getUpperVisibleTimeInMillis();
 
     /**
      * Get the range of times that should be visible to the user.
      * 
-     * @param range
+     * @return Range of times that should be visible to the user.
      */
-    public TimeRange getVisibleRange();
+    public TimeRange getVisibleTimeRange();
+
+    /**
+     * Set the range of times that should be visible to the user.
+     * 
+     * @param timeRange
+     *            New range of times that should be visible to the user.
+     * @param originator
+     *            Originator of the action.
+     */
+    public void setVisibleTimeRange(TimeRange timeRange, IOriginator originator);
 
     /**
      * Execute any shutdown needed.

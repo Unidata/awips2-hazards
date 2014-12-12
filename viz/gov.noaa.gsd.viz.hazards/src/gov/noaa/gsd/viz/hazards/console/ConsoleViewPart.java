@@ -52,6 +52,7 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Feb 19, 2014   2161     Chris.Golden      Added passing of set of events allowing
  *                                           "until further notice" to the temporal
  *                                           display.
+ * Nov 18, 2014   4124     Chris.Golden      Adapted to new time manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -261,26 +262,17 @@ public class ConsoleViewPart extends DockTrackingViewPart {
     }
 
     /**
-     * Update the selected time.
-     * 
-     * @param selectedTime
-     *            JSON string holding the selected time.
-     */
-    public void updateSelectedTime(Date selectedTime) {
-        temporalDisplay.updateSelectedTime(selectedTime);
-    }
-
-    /**
      * Update the selected time range.
      * 
-     * @param range
-     *            JSON string holding a list with two elements: the start time
-     *            of the selected time range epoch time in milliseconds, and the
-     *            end time of the selected time range epoch time in
-     *            milliseconds.
+     * @param start
+     *            Start time of the selected time range, or <code>null</code> if
+     *            there is no selected time range.
+     * @param end
+     *            End time of the selected time range, or <code>null</code> if
+     *            there is no selected time range.
      */
-    public void updateSelectedTimeRange(String range) {
-        temporalDisplay.updateSelectedTimeRange(range);
+    public void updateSelectedTimeRange(Date start, Date end) {
+        temporalDisplay.updateSelectedTimeRange(start, end);
     }
 
     /**

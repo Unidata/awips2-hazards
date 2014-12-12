@@ -83,6 +83,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                           "until further notice" to the view part.
  * Apr 15, 2014     696    David.Gillingham  Add ChangeVtecFormatAction to menu.
  * Apr 23, 2014    1480    jsanchez          Added a Correct menu to the console.
+ * Nov 18, 2014    4124    Chris.Golden      Adapted to new time manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -728,7 +729,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             Action reviewAction = new ReviewAction(presenter);
             List<Action> actions = Lists.newArrayList(resetEventsCommandAction,
                     sep, checkHazardConflictsAction,
-                    autoCheckHazardConflictsAction, showHatchedAreaAction, sep, reviewAction);
+                    autoCheckHazardConflictsAction, showHatchedAreaAction, sep,
+                    reviewAction);
             if (CAVEMode.PRACTICE.equals(CAVEMode.getMode())) {
                 Action changeVtecFormat = new ChangeVtecFormatAction(presenter
                         .getSessionManager().getProductManager());
@@ -764,21 +766,11 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     }
 
     @Override
-    public final void updateSelectedTime(final Date selectedTime) {
+    public final void updateSelectedTimeRange(final Date start, final Date end) {
         executeOnCreatedViewPart(new Runnable() {
             @Override
             public void run() {
-                getViewPart().updateSelectedTime(selectedTime);
-            }
-        });
-    }
-
-    @Override
-    public final void updateSelectedTimeRange(final String jsonRange) {
-        executeOnCreatedViewPart(new Runnable() {
-            @Override
-            public void run() {
-                getViewPart().updateSelectedTimeRange(jsonRange);
+                getViewPart().updateSelectedTimeRange(start, end);
             }
         });
     }

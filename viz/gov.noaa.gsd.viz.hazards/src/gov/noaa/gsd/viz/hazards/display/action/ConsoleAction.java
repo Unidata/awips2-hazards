@@ -28,7 +28,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 public class ConsoleAction {
 
     public enum ActionType {
-        RESET, CHANGE_MODE, SELECTED_TIME_CHANGED, VISIBLE_TIME_RANGE_CHANGED,
+        RESET, CHANGE_MODE, VISIBLE_TIME_RANGE_CHANGED,
 
         SELECTED_TIME_RANGE_CHANGED, CHECK_BOX, SELECTED_EVENTS_CHANGED,
 

@@ -38,12 +38,12 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
-import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.hatching.HatchingUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -74,6 +74,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Sep  6, 2013    752     bryon.lawrence      Refactored storm track display logic.
  * Nov 18, 2013 1462       bryon.lawrence      Added hazard area hatching.
  * Nov 23, 2013 1462       bryon.lawrence      Changed polygons to be drawn with no fill by default.
+ * Nov 18, 2014 4124       Chris.Golden        Adapted to new time manager.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -484,11 +485,10 @@ public class HazardServicesDrawableBuilder {
              * Test whether or not the polygon should be subdued.
              */
             ISessionTimeManager timeManager = sessionManager.getTimeManager();
-            TimeRange selectedRange = timeManager.getSelectedTimeRange();
-            Date selectedTime = timeManager.getSelectedTime();
+            SelectedTime selectedRange = timeManager.getSelectedTime();
 
             if (!spatialDisplay.doesEventOverlapSelectedTime(hazardEvent,
-                    selectedRange, selectedTime)) {
+                    selectedRange)) {
                 subduePolygon = true;
             }
 

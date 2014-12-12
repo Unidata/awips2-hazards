@@ -19,10 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.time;
 
-import java.util.Date;
-
-import com.raytheon.uf.common.time.TimeRange;
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
 
 /**
  * A Notification that will be sent out through the SessionManager to notify all
@@ -35,28 +33,25 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 11, 2013 1257       bsteffen    Initial creation
- * 
+ * Nov 18, 2014 4124       Chris.Golden Changed to use originator and work
+ *                                      with revamped time manager.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 
-public class SelectedTimeChanged implements
-        ISessionNotification {
+public class SelectedTimeChanged extends OriginatedSessionNotification {
 
     private final ISessionTimeManager timeManager;
 
-    public SelectedTimeChanged(ISessionTimeManager timeManager) {
+    public SelectedTimeChanged(ISessionTimeManager timeManager,
+            IOriginator originator) {
+        super(originator);
         this.timeManager = timeManager;
     }
 
-    public Date getSelectedTime() {
+    public SelectedTime getSelectedTime() {
         return timeManager.getSelectedTime();
     }
-
-    public TimeRange getSelectedTimeRange() {
-        return timeManager.getSelectedTimeRange();
-    }
-
 }
