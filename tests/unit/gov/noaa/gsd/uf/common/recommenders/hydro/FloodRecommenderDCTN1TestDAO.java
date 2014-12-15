@@ -19,6 +19,7 @@ import com.raytheon.uf.common.hazards.hydro.HazardSettings;
 import com.raytheon.uf.common.hazards.hydro.IFloodDAO;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastGroup;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastPoint;
+import com.raytheon.uf.common.util.Pair;
 
 /**
  * Description: TODO
@@ -421,16 +422,39 @@ public class FloodRecommenderDCTN1TestDAO implements IFloodDAO {
     }
 
     @Override
-    public List<Object[]> getFlowCrestHistory(String lid) {
-        List<Object[]> crestResults = Lists.newArrayList();
+    public List<Pair<Integer, Date>> getFlowCrestHistory(String lid,
+            String crestTypes) {
+        List<Pair<Integer, Date>> crestResults = Lists.newArrayList();
+        crestResults.add(new Pair<>(new Integer(1), new Date()));
         return crestResults;
     }
 
     @Override
-    public List<Object[]> getStageCrestHistory(String lid) {
-        List<Object[]> crestResults = Lists.newArrayList();
-        crestResults.add(new Object[] { 43.5d });
+    public List<Pair<Integer, Date>> getFlowCrestHistory(String lid) {
+        List<Pair<Integer, Date>> crestResults = Lists.newArrayList();
+        crestResults.add(new Pair<>(new Integer(1), new Date()));
         return crestResults;
+    }
+
+    @Override
+    public List<Pair<Double, Date>> getStageCrestHistory(String lid) {
+        List<Pair<Double, Date>> crestResults = Lists.newArrayList();
+        crestResults.add(new Pair<>(new Double(1), new Date()));
+        return crestResults;
+    }
+
+    @Override
+    public List<Pair<Double, Date>> getStageCrestHistory(String lid,
+            String crestTypes) {
+        List<Pair<Double, Date>> crestResults = Lists.newArrayList();
+        crestResults.add(new Pair<>(new Double(1), new Date()));
+        return crestResults;
+    }
+
+    @Override
+    public List<Pair<Double, String>> getImpactValues(String lid, int month,
+            int day) {
+        return null;
     }
 
     @Override
@@ -478,6 +502,7 @@ public class FloodRecommenderDCTN1TestDAO implements IFloodDAO {
                         "NGVD 1929", null, 33, 1010, "2013-02-17", null, 0, "T" });
         return riverStatInfo;
     }
+
     @Override
     public String getPhysicalElement(String lid, String physicalElement,
             int duration, String typeSource, String extremum, String timeArg,

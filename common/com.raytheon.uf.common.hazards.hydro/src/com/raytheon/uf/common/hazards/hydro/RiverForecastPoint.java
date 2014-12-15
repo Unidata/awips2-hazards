@@ -9,6 +9,7 @@ import java.util.Map;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.common.util.Pair;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
@@ -21,6 +22,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * ------------ ---------- ----------- --------------------------
  * July 2012               Bryon.Lawrence    Initial creation
  * May 1, 2014  3581       bkowal      Relocate to common hazards hydro
+ * Sep 19, 2014   2394     mpduff for nash  interface changes
+ * Dec 17, 2014 2394       Ramer/Manross    Updated Interface
  * 
  * </pre>
  * 
@@ -551,8 +554,7 @@ public class RiverForecastPoint {
      * @param floodDAO
      *            data accessor object
      */
-    public RiverForecastPoint(Object[] forecastPointInfo,
-            IFloodDAO floodDAO) {
+    public RiverForecastPoint(Object[] forecastPointInfo, IFloodDAO floodDAO) {
         this.floodDAO = floodDAO;
         loadForecastPointData(forecastPointInfo);
     }
@@ -754,12 +756,11 @@ public class RiverForecastPoint {
          * primary_pe for the station and store as a categorical value.
          */
         if (peFirstChar != 'Q') {
-            List<Object[]> crestResults = floodDAO
-                    .getStageCrestHistory(this.id);
+            List<Pair<Double, Date>> crestResults = floodDAO
+                    .getStageCrestHistory(this.id, "R");
 
             if (crestResults != null && crestResults.size() > 0) {
-                Object[] record = crestResults.get(0);
-                double stage = (Double) record[0];
+                double stage = crestResults.get(0).getFirst();
 
                 if (stage != 0) {
                     this.floodCategory[HydroFloodCategories.RECORD_FLOOD_CATEGORY
@@ -770,11 +771,11 @@ public class RiverForecastPoint {
         } else if (peSecondChar != 'B' && peSecondChar != 'C'
                 && peSecondChar != 'E' && peSecondChar != 'F'
                 && peSecondChar != 'V') {
-            List<Object[]> crestResults = floodDAO.getFlowCrestHistory(this.id);
+            List<Pair<Integer, Date>> crestResults = floodDAO
+                    .getFlowCrestHistory(this.id, "R");
 
             if (crestResults != null && crestResults.size() > 0) {
-                Object[] record = crestResults.get(0);
-                Double q = (Double) record[0];
+                Integer q = crestResults.get(0).getFirst();
 
                 if (q != 0) {
                     this.floodCategory[HydroFloodCategories.RECORD_FLOOD_CATEGORY

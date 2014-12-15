@@ -74,7 +74,7 @@ class VTECTestHarness(object):
         '''
         self._scriptName = scriptName
         self._scripts = scripts
-        self._io = VTECTableIO.getInstance(True, True)
+        self._io = VTECTableIO.getInstance("KTBW", True, True)
         self._eventNum = 0       
 
     def runTest(self):

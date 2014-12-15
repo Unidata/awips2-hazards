@@ -260,8 +260,6 @@ public class RiverFloodRecommenderOMHN1Test {
         assertEquals(32.0, attributeMap.get("currentStage"));
         assertEquals(0, attributeMap.get("riseAbove"));
         assertEquals(1355200865754L, attributeMap.get("fallBelow"));
-        assertEquals("NO", attributeMap.get("floodRecord"));
-        assertEquals("1", attributeMap.get("floodSeverity"));
         assertEquals("ER", attributeMap.get("immediateCause"));
         assertEquals("OMHN1", attributeMap.get("pointID"));
         assertEquals(27.0, attributeMap.get("actionStage"));

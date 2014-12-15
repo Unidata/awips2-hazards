@@ -656,8 +656,6 @@ class NoForecastDataOMHN1Test extends spock.lang.Specification {
         attributeMap.fallBelow == 0
         recommendation.getStartTime().getTime() == 1355320215000
         attributeMap.crestStage == 33.28
-        attributeMap.floodRecord == "NO"
-        attributeMap.floodSeverity == "1"
         attributeMap.immediateCause == "ER"
         attributeMap.currentStage == 33.28
         attributeMap.pointID == "OMHN1"

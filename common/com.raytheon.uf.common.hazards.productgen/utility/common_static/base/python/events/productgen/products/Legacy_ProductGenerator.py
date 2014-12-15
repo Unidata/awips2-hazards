@@ -856,7 +856,9 @@ class Product(ProductTemplate.Product):
         #
         if not self._rfp:
             from RiverForecastPoints import RiverForecastPoints
-            self._rfp = RiverForecastPoints()
+            millis = SimulatedTime.getSystemTime().getMillis()
+            currentTime = datetime.datetime.fromtimestamp(millis / 1000)
+            self._rfp = RiverForecastPoints(currentTime)
         locationPhrases = []  
         areaGroups = []
         # There could be multiple points sharing a VTEC code e.g. NEW     
@@ -1243,7 +1245,9 @@ class Product(ProductTemplate.Product):
         # Import RiverForecastPoints if not there
         if not self._rfp:
             from RiverForecastPoints import RiverForecastPoints
-            self._rfp = RiverForecastPoints()
+            millis = SimulatedTime.getSystemTime().getMillis()
+            currentTime = datetime.datetime.fromtimestamp(millis / 1000)
+            self._rfp = RiverForecastPoints(currentTime)
         
         # Gather information\
         pointID = self._productSegment.pointID
@@ -1256,7 +1260,7 @@ class Product(ProductTemplate.Product):
         
         # Maximum Forecast Stage       
         self._section.primaryPE = self._rfp.getPrimaryPhysicalElement(pointID)
-        self._section.maximumForecastStage, shefQualityCode = self._rfp.getMaximumForecastLevel(pointID, self._section.primaryPE)
+        self._section.maximumForecastStage = self._rfp.getMaximumForecastLevel(pointID, self._section.primaryPE)
         self._section.maximumForecastTime_ms = self._rfp.getMaximumForecastTime(pointID)
         self._section.maximumForecastTime_str = self._getFormattedTime(self._section.maximumForecastTime_ms, emptyValue='at time unknown', timeZones=timeZones)
         
@@ -1662,6 +1666,7 @@ class Product(ProductTemplate.Product):
         floodStage = self._rfp.getFloodStage(self._productSegment.pointID)
         if floodStage != self._rfp.MISSING_VALUE:
             # FLOOD STAGE IS <FldStg> <StgFlowUnits>.
+            self._stageFlowUnits = self._rfp.getStageFlowUnits(self._productSegment.pointID)
             bulletContent = 'Flood stage is ' + `floodStage` + ' ' + self._stageFlowUnits + '.'
         else:
             bulletContent = ''
@@ -2099,32 +2104,58 @@ class Product(ProductTemplate.Product):
                          productCategory=self._productCategory, productID=self._product.productID)
     
     def _pointImpactsBullet(self, sectionDict, productSegmentGroup, arguments):
-        impacts = self._section.hazardEvent.get('impactsStringForStageFlowTextArea')
+        # Pull out the list of chosen impact text fields
+        hazardEvent = self._section.hazardEvent
         
-        productSegment_tuple, vtecRecord, formatArgs = arguments
+        impacts = []
+        validVals = hazardEvent.get('impactCheckBoxes')
         
-        bulletContent = ''
-        if self._productSegment.ctas:
-            bulletContent = ' '.join(self._productSegment.ctas)
-            
-        if impacts:
-           impactsString = impacts + ' ' + bulletContent
+        if validVals is None:
+            return None
+        
+        for key in validVals:
+            if key.startswith('impactCheckBox_'):
+                height, impactValue = self._parseImpactKey(key)
+                value = hazardEvent.get(key)
+                textFieldName = 'impactTextField_'+impactValue
+                impacts.append((height, hazardEvent.get(textFieldName)))
+                    
+                    
+        impactStrings = []
+        for height, textField in impacts:  
+            impactString = '* Impact...At ' + height + ' feet...'+textField
+            impactStrings.append(impactString)
+        if impactStrings:
+            impactBulletsString = '\n'.join(impactStrings)
         else:
-           impactsString = bulletContent
-           
-        self._tpc.setVal(sectionDict, 'pointImpactsBullet', impactsString, formatMethod=self._section.bulletFormat, formatArgs='Impact...',
-                         productCategory=self._productCategory, productID=self._product.productID) 
-    
+            impactBulletsString = ''
+        self._tpc.setVal(sectionDict, 'pointImpactsBullet', impactBulletsString, 
+                  productCategory=self._productCategory, productID=self._product.productID)          
+               
+             
+    def _parseImpactKey(self, key):
+       parts = key.rsplit('_')
+       if len(parts) > 1:
+           impactValue = parts[1]
+           height = impactValue.rsplit('-')[0]
+       else:
+           impactValue = ''
+           height = ''
+       return height, impactValue
+   
     def _floodHistoryBullet(self, sectionDict, productSegmentGroup, arguments):
         '''
         FLOOD HISTORY...THIS CREST COMPARES TO A PREVIOUS CREST OF <HistCrestStg> <ImpCompUnits> on <HistCrestDate>.
         '''
+        
+        pointID = self._productSegment.pointID
+        units = self._rfp.getImpactCompUnits(pointID)
         productSegment_tuple, vtecRecord, formatArgs = arguments
         crestString = ''
         crestContents = self._section.hazardEvent.get('crestsSelectedForecastPointsComboBox')
         if crestContents is not None:
-            crest, crestDate = crestContents.split(' :: ')
-            crestString = "This crest compares to a previous crest of " + crest + " <ImpCompUnits> on " + crestDate + "."
+            crest,crestDate = crestContents.split(' ')
+            crestString = "This crest compares to a previous crest of " + crest + " " + units + " on " + crestDate +"."
         self._tpc.setVal(sectionDict, 'floodHistoryBullet', crestString, formatMethod=self._section.bulletFormat, formatArgs='FLOOD HISTORY...',
                          productCategory=self._productCategory, productID=self._product.productID) 
            

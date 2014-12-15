@@ -163,6 +163,11 @@ Flood = {
             "fieldName": "pointID", 
             "type": "string"
         },
+        "River Mile": {
+            "sortDir": "none", 
+            "fieldName": "riverMile", 
+            "type": "number"
+        },
         "Stream": {
             "sortDir": "none", 
             "fieldName": "streamName", 

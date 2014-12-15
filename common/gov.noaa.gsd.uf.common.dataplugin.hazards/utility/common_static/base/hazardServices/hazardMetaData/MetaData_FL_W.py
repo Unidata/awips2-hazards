@@ -1,13 +1,24 @@
-'''
-    Description: Hazard Information Dialog Metadata for hazard type FL.W
-'''
 import CommonMetaData
+import datetime
+import json
 from HazardConstants import *
+from RiverForecastPoints import RiverForecastPoints
+from com.raytheon.uf.common.time import SimulatedTime
+import sys
+from collections import OrderedDict
+
 
 class MetaData(CommonMetaData.MetaData):
     
+    _basedOnLookupPE = '{:15s}'.format('YES')
+    
     def execute(self, hazardEvent=None, metaDict=None):
+
         self.initialize(hazardEvent, metaDict)
+
+        millis = SimulatedTime.getSystemTime().getMillis()
+        currentTime = datetime.datetime.fromtimestamp(millis / 1000)
+        self._rfp = RiverForecastPoints(currentTime)
 
         if self.hazardStatus == "ending":
             metaData = [
@@ -50,27 +61,29 @@ class MetaData(CommonMetaData.MetaData):
                                     "pageFields": impacts
                                    },
                                   {
-                                    "pageName": "CTA",
+                                    "pageName": "CTA and CAP",
                                     "pageFields": [
                                                    self.getCTAs(["stayTunedCTA"]),
                                                    # Preserving CAP defaults for future reference.
-#                                                    self.getCAP_Fields([
-#                                                                        ("urgency", "Expected"),
-#                                                                        ("severity", "Severe"),
-#                                                                        ("certainty", "Likely"),
-#                                                                        ("responseType", "None"),
-#                                                                        ]) 
+                                                   #self.getCAP_Fields([
+                                                   #                    ("urgency", "Expected"),
+                                                   #                    ("severity", "Severe"),
+                                                   #                    ("certainty", "Likely"),
+                                                   #                    ("responseType", "None"),
+                                                   #                    ]) 
                                                    ]
                                    }
                             ]
                      
                     }
                ]
-        
-        return {
+
+
+        retStuff = {
                 METADATA_KEY: metaData,
-                EVENT_MODIFIERS_KEY: { "crestsApplyButton": "testScript" }
-                }    
+                } 
+
+        return retStuff
 
 
     def getCrestsOrImpacts(self,parm):
@@ -111,16 +124,15 @@ class MetaData(CommonMetaData.MetaData):
             "bottomMargin": 10,
             "expandHorizontally": True,
             "expandVertically": False,
-            "width":2,
             "pages": [{ "pageName": parm.capitalize() + " Search Parameters", "pageFields": [expandGroup]}]
         }
         
-        fields = [expandBar,selectedPoints,fcstPoints]
+        fields = [expandBar,fcstPoints,selectedPoints]
         
         label = "Crest Comparison"
+        
         if parm == "impacts":
             label = "Impacts Statement"
-            fields.append(self.getImpactsTextField())
             
         
         field = {
@@ -133,16 +145,13 @@ class MetaData(CommonMetaData.MetaData):
             "bottomMargin": 10,
             "expandHorizontally": True,
             "expandVertically": False,
-            "numColumns":2,
             "fields": fields
         }
-        
+
         return field
-    
 
 
     def getSearchFieldsSection(self, parm):
-        
         
         ### Get Ref/Stg Flow Combo
         refStageFlow = self.getRefStgFlow(parm)
@@ -185,42 +194,53 @@ class MetaData(CommonMetaData.MetaData):
     
 
     def getForecastPointsSection(self,parm):
-        from collections import OrderedDict
+        millis = SimulatedTime.getSystemTime().getMillis()
+        currentTime = datetime.datetime.fromtimestamp(millis / 1000)
+        pointID = self.hazardEvent.get("pointID")
         
+        PE = self._rfp.getPrimaryPhysicalElement(pointID)
+        riverPointID = self._rfp.getRiverPointIdentifier(pointID)
+        riverName = self._rfp.getRiverPointName(pointID)
+        curObs = self._rfp.getObservedLevel(pointID)
+        if isinstance(curObs, (tuple,list)):
+            curObs = curObs[0]
+        maxFcst = self._rfp.getMaximumForecastLevel(pointID, PE)
+        if isinstance(maxFcst, (tuple,list)):
+            maxFcst = maxFcst[0]
+        (fldStg, fldFlow) = self._rfp.getFloodLevels(pointID)
+
         crestOrImpact = "Crest"
         label = "\tCurObs\tMaxFcst\tFldStg\tFldFlow\t|\tPE\tBased on PE"
         
-        ### FIXME: Get River from recommender or DB 
-        river = "Potomac, Rappahannock, and Shena"
-        ### FIXME: Get River from recommender or DB 
-        point = "\tKITM2\t- Kitzmiller"
+        riverGrp = self._rfp.getGroupName(pointID) 
         
-        ### FIXME: Get values from DB!!!
-        values = OrderedDict()
-        values['CurObs'] ='3.00'
-        values['MaxFcst'] = '3.20'
-        values['FldStg'] = '9.00'
-        values['FldFlow'] = '10510.00'
-        values['Lookup PE'] = 'HG'
-        values['Based On Lookup PE'] = 'YES'
+        point = "\t" + riverPointID + "\t- " + riverName
 
+        values = OrderedDict()
+        values['CurObs'] = '{:<15.2f}'.format(curObs)
+        values['MaxFcst'] = '{:<15.2f}'.format(maxFcst)
+        values['FldStg'] = '{:<15.2f}'.format(fldStg)
+        values['FldFlow'] = '{:<15.2f}'.format(fldFlow)
+        values['Lookup PE'] = '{:15s}'.format(PE)
+        values['Based On Lookup PE'] = self._basedOnLookupPE
+        
         riverLabel = {
                       "fieldType": "Label",
                       "fieldName": parm + "ForecastPointsRiverLabel",
-                      "label": river,
+                      "label": riverGrp,
                       "bold": True
                   }
         
         headerLabel = {
                        "fieldType": "Label",
                        "fieldName": parm + "ForecastPointsHeaderLabel",
-                       "label": ('{:20s}'*len(values.keys())).format(*values.keys()),
+                       "label": ('{:15s}'*len(values.keys())).format(*values.keys()),
                   }
         
         valuesLabel = {
                        "fieldType": "Label",
                        "fieldName": parm + "ForecastPointsValuesLabel",
-                       "label": ('{:20s}'*len(values.values())).format(*values.values()),
+                       "label": ''.join(values.values()),
                        }
 
         
@@ -237,34 +257,6 @@ class MetaData(CommonMetaData.MetaData):
         return group
     
     
-    
-    def getSelectedPointsMods(self,parm):
-        
-        
-        ### Get LookupPE
-        lookupPE = self.getLookupPE(parm)
-        
-        ### Get Based on LookupPE
-        basedOnLookupPE = self.getLookupPE(parm,True)
-        
-        mods = [lookupPE,basedOnLookupPE]
-        ### !!! Impacts ONLY !!! Get Text for Stage/Flow  
-        if parm == "impacts":
-            textStageFlow = self.getTextForStageFlow(parm)
-            mods.append(textStageFlow)
-       
-        selectedPointsMods = {
-            "fieldName": parm + "Mods",
-            "fieldType":"Group",
-            "label": '',
-            "expandHorizontally": True,
-            "expandVertically": False,
-            "numColumns": 3,
-            "fields": mods
-        }
-        
-        return selectedPointsMods
-    
     def getRefStgFlow(self, parm):
         refStageFlow = {
                             "fieldType": "ComboBox",
@@ -272,9 +264,8 @@ class MetaData(CommonMetaData.MetaData):
                             "label": "Reference Stage Flow",
                             "choices": ["Current Observed", "Max Forecast", "Current Obs/Max Fcst"],
                             "values": "Current Observed",
-                            "expandHorizontally": True
+                            "expandHorizontally": True 
                         }
-        
         return refStageFlow
 
 
@@ -283,25 +274,21 @@ class MetaData(CommonMetaData.MetaData):
                         "fieldType": "IntegerSpinner",
                         "fieldName": parm + "YearLookbackSpinner",
                         "label": "Year Lookback",
-                        "minValue": -50, ### TODO: Find actual values used
+                        "minValue": -150,
                         "maxValue": -1,
                         "values": -10,
                         "expandHorizontally": True,
                         "showScale": True
                     } 
-        
-        
-
-        
         return lookback
 
     def getApplyButton(self,parm):
         apply = {
-                    "fieldType": "Button",
+                    "fieldType": "CheckBox",
                     "fieldName": parm + "ApplyButton",
-                    "label": "Apply Parameters"
+                    "label": "Toggle to Apply Parameters",
+                     "refreshMetadata": True
                 }
-        
         return apply
             
         
@@ -325,7 +312,7 @@ class MetaData(CommonMetaData.MetaData):
                "label": "Search Type",
                "choices": choices,
                "values": values,
-               "expandHorizontally": True
+               "expandHorizontally": True 
             }
         
     # Stage Widow search criteria widgets (sliders and text fields)
@@ -365,7 +352,7 @@ class MetaData(CommonMetaData.MetaData):
                         "fieldType": "IntegerSpinner",
                         "fieldName": parm + "maxDepthBelowFloodStage",
                         "label": "Maximum Depth Below Flood Stage",
-                        "minValue": -10, ### TODO: Find actual values used
+                        "minValue": -10, 
                         "maxValue": 0,
                         "values": -3,
                         "width": 2,
@@ -407,41 +394,6 @@ class MetaData(CommonMetaData.MetaData):
         }
                 
         
-    """
-    Text for Stage/Flow
-    """
-    def getTextForStageFlow(self,parm):
-        return {
-                "fieldName": parm + "TextForStageFlowGroup",
-                "fieldType":"Group",
-                "label": "",
-                "leftMargin": 5,
-                "rightMargin": 5,
-                "topMargin": 10,
-                "bottomMargin": 10,
-                "expandHorizontally": True,
-                "expandVertically": False,
-                "numColumns": 2,
-                "fields": [ 
-                            {
-                                "fieldType": "Label",
-                                "fieldName": parm + "TextForStageFlowLabel",
-                                "label": "Text for Stage/Flow",
-                            },
-                            {
-                                "fieldType": "Text",
-                                "fieldName": parm + "ValueForStageFlowText",
-                                "label": "",
-                                ### FIXME: will need to be dynamic based on Imapcts/Stg Flow start/end selected
-                                "values": "7.00",
-                                "visibleChars": 5,
-                                "lines": 1,
-                                "expandHorizontally": True,
-                            }
-                           
-                        ]
-        }
-        
 
     """
     The 'Lookup PE' and 'Based on Lookup PE' fields are very similar. Reuse code 
@@ -467,9 +419,8 @@ class MetaData(CommonMetaData.MetaData):
                 "rightMargin": 5,
                 "topMargin": 10,
                 "bottomMargin": 10,
-                "expandHorizontally": False,
+                "expandHorizontally": True,
                 "expandVertically": False,
-                "numColumns": 2,
                 "fields": [ 
                             {
                                 "fieldType": "Label",
@@ -489,34 +440,70 @@ class MetaData(CommonMetaData.MetaData):
         }
 
 
-
-
-
     """
     Create a radio button list for user to select the "Settings for Selected Forecast Point"
     """        
     def getSelectedForecastPoints(self,parm):
         
-        headerLabel = "Crest to Use"
-        selectionLabel = "CrestStg/Flow :: CrestDate"
+        filters = {}
+        if self.hazardEvent.get(parm+"ReferenceStageFlow"):
+            filters = scrapeSearchParms(self.hazardEvent, parm)
+            
+            
+        else:
+            filters['Reference Type'] = self.getRefStgFlow(parm)['values']
+            filters['Search Type'] = self.getSearchType(parm)['values']
+            
+            stageWindowFields = self.getStageWindow(parm)['fields']
+            swfDict = {}
+            for k in  stageWindowFields:
+                swfDict[k['fieldName']] = k['values']
+            
+            filters['Stage Window Lower'] = swfDict[parm+"StageWindowSpinnerLow"]
+            filters['Stage Window Upper'] = swfDict[parm+"StageWindowSpinnerHi"]
+            filters['Depth Below Flood Stage'] = swfDict[parm+"maxDepthBelowFloodStage"]
+            filters['Flow Window Lower'] = swfDict[parm+"FlowWindow1"]
+            filters['Flow Window Upper'] = swfDict[parm+"FlowWindow2"]
+            filters['Flow Stage Window'] = swfDict[parm+"MaxOffsetBelowFloodFlow"]
+            
+            
+            if parm == 'crests':
+                filters['Year Lookback'] = self.getYearLookbackSlider(parm)['values']
         
-        ### FIXME: Values should be obtained from database via RiverForecastPoints
-        choices = [
-                       "16.50 :: 10/15/1954",
-                       "14.85 :: 11/05/1985",
-                       "13.40 :: 09/06/1996",
-                       "12.88 :: 01/19/1996",
-                       "12.80 :: 08/18/1955",
-                    ]
+        pointID = self.hazardEvent.get("pointID")
         
-        
+        impactsTextField = None
         if parm == "impacts":
             headerLabel = "Impacts to Use"
-            selectionLabel = "ImpactStg/Flow :: Start :: End :: Tendency"
-            choices = [
-                       "7.00 :: 01/01 :: 12/31 :: Rising",
-                       "5.00 :: 01/01 :: 12/31 :: Rising",
-            ]
+            selectionLabel = "ImpactStg/Flow - Start - End - Tendency"
+            characterizations, descriptions = self._rfp.getImpacts(pointID, filters)
+            charDescDict = dict(zip(characterizations, descriptions))
+            impactChoices, values = self._makeImpactsChoices(charDescDict)
+            
+            selectedForecastPoints = {
+                                      "fieldType":"CheckBoxes",
+                                      "fieldName": "impactCheckBoxes",
+                                      "label": "Impacts",
+                                      "choices": impactChoices,
+                                      "values" : values,
+                                      "extraData" : { "origList" : values },
+                                      }
+                
+        else:
+            headerLabel = "Crest to Use"
+            selectionLabel = "CrestStg/Flow - CrestDate"
+            defCrest, crestList = self._rfp.getHistoricalCrest(pointID, filters)
+            choices = crestList
+            value = defCrest
+            selectedForecastPoints = {
+                    "fieldType": "ComboBox",
+                    "fieldName": parm + "SelectedForecastPointsComboBox",
+                    "choices": choices,
+                    "values": value,
+                    "expandHorizontally": True,
+                    "expandVertically": True
+            }
+            
         
         groupHeaderLabel  = {
                        
@@ -535,41 +522,35 @@ class MetaData(CommonMetaData.MetaData):
                        "label": selectionLabel,
                        
                        }
-
-        selectedForecastPoints = {
-                "fieldType": "ComboBox",
-                "fieldName": parm + "SelectedForecastPointsComboBox",
-                "choices": choices,
-                "expandHorizontally": True,
-                "expandVertically": True
-        }
+        
+        fields = [ groupHeaderLabel,selectionHeaderLabel,selectedForecastPoints ]
         
         grp = {
-            "fieldName": parm+"ImpactsPointsAndTextFieldGroup",
+            "fieldName": parm+"PointsAndTextFieldGroup",
             "fieldType":"Group",
             "label": "",
             "expandHorizontally": True,
             "expandVertically": True,
-            "fields": [ groupHeaderLabel,selectionHeaderLabel,selectedForecastPoints ]
+            "fields": fields
             }
         
-           
         return grp
 
+    # BASIS
+    def getBasis(self):
+        return {
+            "fieldName": "basis",
+            "fieldType":"RadioButtons",
+            "label":"Basis:",
+            "values": "basisEnteredText",
+            "choices": self.basisChoices(),
+            }        
 
-    def getImpactsTextField(self):
-        impactsTextField = {
-                "fieldType": "Text",
-                "fieldName": "impactsStringForStageFlowTextArea",
-                "label": "",
-                "values": " ENTERING TEXT FOR STAGE/FLOW HERE ",
-                "visibleChars": 72,
-                "lines": 5,
-                "width": 2,
-                "expandHorizontally": False,
-            }
+    def basisChoices(self):
+        return [
+                self.basisEnteredText()
+                ]
         
-        return impactsTextField      
                 
     def getCTA_Choices(self):
         return [
@@ -587,6 +568,34 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaReportFlooding(),
             ]
 
+    def _makeImpactsChoices(self, charDescDict):
+        choices = []
+        values = []
+        
+        sortedCharsAsKeys = sorted(charDescDict.keys())
+        
+        for char in sortedCharsAsKeys:
+            id = "impactCheckBox_"+str(char)
+            desc = charDescDict.get(char)
+            entry = {
+                     "identifier": id,
+                     "displayString":str(char) ,
+                    "detailFields": [ 
+                                     {
+                                     "fieldType": "Text",
+                                     "fieldName": "impactTextField_"+str(char),
+                                     "expandHorizontally": False,
+                                     "visibleChars": 35,
+                                     "lines":2,
+                                     "values": desc,
+                                     "enabled": True
+                                     }
+                                   ]
+                     }
+            choices.append(entry)
+            values.append(id)
+        return choices, values
+        
         
 # Interdependency script entry point.
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
@@ -594,26 +603,42 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
     # Get any changes required for fall-below until-further-notice interaction.
     ufnChanges = CommonMetaData.applyRiseCrestFallUntilFurtherNoticeInterdependencies(triggerIdentifiers, mutableProperties)
 
-    parm = "impacts"
-    ### FIXME: very specific hard coding here.  Need to make more flexible.
-    triggerFieldName = parm + "SelectedForecastPointsComboBox"
-    mutableFieldName = parm + "StringForStageFlowTextArea"
+    ### originalList is used in multiple cases.  Assign it only once
+    oListTemp = mutableProperties.get("impactCheckBoxes")
+    if oListTemp:
+        originalList = oListTemp['extraData']['origList']
+    else:
+        originalList = None
     
+
     ### For Impacts and Crests interaction
     impactsCrestsChanges = None
-    if triggerIdentifiers is not None and triggerFieldName in triggerIdentifiers:
-             
-            if triggerFieldName in mutableProperties and "values" in mutableProperties[triggerFieldName]:
-                line = mutableProperties[triggerFieldName]["values"]
-                vals = filter(None,line.split('::'))
-                impactsCrestsChanges = {
-                                       "impactsStringForStageFlowTextArea": { "values" : vals[0] }
-                                       }
+    if triggerIdentifiers is not None:# and any(ti.startswith('impactCheckBox_') for ti in mutableProperties):
+        impactsCrestsChanges = {}
+
+        if originalList:
+            currentVals = mutableProperties["impactCheckBoxes"]['values']
+            textFields = [tf for tf in mutableProperties if tf.startswith('impactTextField_')]
+            
+            for tf in textFields:
+                impactsCrestsChanges[tf] = { "enable" : True}
+            
+            offCheckList = list(set(originalList).difference(currentVals))
     
+            for off in offCheckList:
+                offText = 'impactTextField_'+off.split('_')[-1]
+                impactsCrestsChanges[offText] = { "enable" : False}
+        
+        
+    if triggerIdentifiers is None:
+        impactsCrestsChanges = {}
+        if originalList:
+            impactsCrestsChanges["impactCheckBoxes"] = { "values": originalList }
+
     # Return None if no changes were needed for until-further-notice or for
     # impacts and crests; if changes were needed for only one of these,
     # return those changes; and if changes were needed for both, merge the
-    # two dictionaries together and return the resut.            
+    # two dictionaries together and return the result.
     if ufnChanges == None:
         return impactsCrestsChanges
     elif impactsCrestsChanges == None:
@@ -622,30 +647,17 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
         impactsCrestsChanges.update(ufnChanges)
         return impactsCrestsChanges
 
-
-# Sample event-modifying script entry point
-#
-# TODO: This is a testing script only; obviously we need something more
-# useful here.
-def testScript(hazardEvent, data):
-    
-    # Change point ID to an example value, to show it can be done.
-    hazardEvent.addHazardAttribute("pointID", "DONE!");
-    
-    # Change the immediate cause to one of the new choice values from below.
-    hazardEvent.addHazardAttribute("immediateCause", "Script");
-    
-    # Put together the mutable properties to be changed, again just to show
-    # it can be done. The corresponding attribute is changed above to match
-    # the new "values" value so that the hazard event is in sync with the
-    # values available for immediate cause. 
-    data = {
-            "immediateCause": {
-                               "choices": [ "Script", "Run", "Successfully" ],
-                               "values": "Script"
-                               }
-            }
-    
-    # Return the two as a tuple.
-    return (hazardEvent, data)
+def scrapeSearchParms(hazardEvent, parm):
+    filters = {}
+    filters['Reference Type'] = hazardEvent.get(parm+"ReferenceStageFlow")
+    filters['Stage Window Lower'] = hazardEvent.get(parm+"StageWindowSpinnerLow")
+    filters['Stage Window Upper'] = hazardEvent.get(parm+"StageWindowSpinnerHi")
+    filters['Depth Below Flood Stage'] = hazardEvent.get(parm+"maxDepthBelowFloodStage")
+    filters['Flow Window Lower'] = hazardEvent.get(parm+"FlowWindow1")
+    filters['Flow Window Upper'] = hazardEvent.get(parm+"FlowWindow2")
+    filters['Flow Stage Window'] = hazardEvent.get(parm+"MaxOffsetBelowFloodFlow")
+    filters['Search Type'] = hazardEvent.get(parm+"SearchType")
+    if parm == 'crests':
+        filters['Year Lookback'] = hazardEvent.get(parm+"YearLookbackSpinner")
+    return filters
 

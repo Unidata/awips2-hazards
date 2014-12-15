@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -74,6 +75,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
  *                                           newly parameterized config manager. Also
  *                                           added in code to ignore changes that
  *                                           originated with this presenter.
+ * Jan 08, 2015    2394    Chris.Golden      Added code to ensure that the river mile
+ *                                           hazard attribute is always included in
+ *                                           the dictionaries sent to the view when it
+ *                                           is present in the original events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -90,6 +95,14 @@ public class ConsolePresenter extends
     @SuppressWarnings("unused")
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(ConsolePresenter.class);
+
+    /**
+     * River mile key in hazard attributes; this will not be needed once the
+     * console refactor has been done and hazard events no longer need to be
+     * converted to dictionaries.
+     */
+    @Deprecated
+    private static final String RIVER_MILE = "riverMile";
 
     // Private Variables
 
@@ -248,6 +261,7 @@ public class ConsolePresenter extends
                 getModel().getConfigurationManager(), getModel()
                         .getTimeManager());
         List<Dict> result = new ArrayList<>();
+        Iterator<ObservedHazardEvent> eventsIterator = currentEvents.iterator();
         for (DeprecatedEvent event : jsonEvents) {
             Dict dict = Dict.getInstance(jsonConverter.toJson(event));
 
@@ -267,6 +281,16 @@ public class ConsolePresenter extends
                 dict.put(HazardConstants.FALL_BELOW, ((Number) dict
                         .get(HazardConstants.FALL_BELOW)).longValue());
             }
+
+            /*
+             * Add the river mile to the dictionary, if it is present.
+             */
+            ObservedHazardEvent originalEvent = eventsIterator.next();
+            Object riverMile = originalEvent.getHazardAttribute(RIVER_MILE);
+            if (riverMile != null) {
+                dict.put(RIVER_MILE, riverMile);
+            }
+
             result.add(dict);
         }
         return result;

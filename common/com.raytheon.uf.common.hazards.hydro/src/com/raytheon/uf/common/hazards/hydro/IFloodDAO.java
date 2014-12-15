@@ -13,6 +13,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
+import com.raytheon.uf.common.util.Pair;
+
 /**
  * Description:
  * 
@@ -31,6 +33,8 @@ import java.util.List;
  * ------------ ---------- ----------- --------------------------
  * Nov 27, 2012            bryon.lawrence      Initial creation
  * May 1, 2014  3581       bkowal      Relocate to common hazards hydro
+ * Sep 19, 2014   2394     mpduff for nash  interface changes
+ * Dec 17, 2014 2394       Ramer/Manross    Updated Interface
  * 
  * 
  * </pre>
@@ -39,6 +43,9 @@ import java.util.List;
  * @version 1.0
  */
 public interface IFloodDAO {
+
+    public static final String RO = "RO";
+
     /**
      * Retrieves a list of river forecast points.
      * 
@@ -319,19 +326,54 @@ public interface IFloodDAO {
      * 
      * @param lid
      *            River forecast point identifier
+     * @param crestTypes
+     *            A string containing possible list of crest types to filter on.
+     *            P=preliminary, O=official, R=record. Empty string means take
+     *            all types.
      * @return A list of Object[], each of which contains a single double value
      *         representing a flow crest
      */
-    public List<Object[]> getFlowCrestHistory(String lid);
+    public List<Pair<Integer, Date>> getFlowCrestHistory(String lid,
+            String crestTypes);
+
+    /**
+     * Define "RO" as the default crest types.
+     */
+    public List<Pair<Integer, Date>> getFlowCrestHistory(String lid);
 
     /**
      * 
      * @param lid
      *            River forecast point identifier
+     * @param crestTypes
+     *            A string containing possible list of crest types to filter on.
+     *            P=preliminary, O=official, R=record. Empty string means take
+     *            all types.
      * @return A list of Object[], each of which contains a single double value
      *         representing a stage crest
      */
-    public List<Object[]> getStageCrestHistory(String lid);
+    public List<Pair<Double, Date>> getStageCrestHistory(String lid,
+            String crestTypes);
+
+    /**
+     * Define "RO" as the default crest types.
+     */
+    public List<Pair<Double, Date>> getStageCrestHistory(String lid);
+
+    /**
+     * 
+     * @param lid
+     *            River forecast point identifier
+     * @param month
+     *            1-12 month of the year.
+     * @param day
+     *            1-31 day of the month.
+     * @return A list of Pair objects, each of which contains a double for the
+     *         stage/flow threshold for an impact, and a string describing the
+     *         impact.
+     */
+    public List<Pair<Double, String>> getImpactValues(String lid, int month,
+            int day);
 
     /**
      * This methods allows the flood recommender to run displaced in

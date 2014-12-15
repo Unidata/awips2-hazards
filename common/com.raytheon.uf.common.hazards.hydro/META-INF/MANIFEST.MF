@@ -14,4 +14,5 @@ Require-Bundle: com.raytheon.uf.common.status;bundle-version="1.12.1174",
  com.google.guava;bundle-version="11.0.2",
  com.raytheon.uf.common.dataaccess;bundle-version="1.14.0",
  com.raytheon.uf.common.ohd;bundle-version="1.12.1174",
- com.raytheon.uf.common.dataplugin.events.hazards;bundle-version="1.0.0"
+ com.raytheon.uf.common.dataplugin.events.hazards;bundle-version="1.0.0",
+ com.raytheon.uf.common.util;bundle-version="1.14.1"

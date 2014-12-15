@@ -238,6 +238,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           two levels, primary and secondary sort,
  *                                           for now, but it could be expanded by simply
  *                                           expanding the menus).
+ * Jan 08, 2015   2394     Chris.Golden      Fixed bug that caused column cell values
+ *                                           that were not strings or dates to throw an
+ *                                           exception. Also changed number-populated
+ *                                           columns to be right-adjusted.
  * </pre>
  * 
  * @author Chris.Golden
@@ -3677,7 +3681,9 @@ class TemporalDisplay {
         if (index == -1) {
             index = table.getColumnCount();
         }
-        TableColumn column = new TableColumn(table, SWT.NONE, index);
+        TableColumn column = new TableColumn(table, (columnDefinition.getType()
+                .equals(SETTING_COLUMN_TYPE_NUMBER) ? SWT.RIGHT : SWT.NONE),
+                index);
         column.setText(name);
         if (spacerImage != null) {
             column.setImage(spacerImage);
@@ -4819,8 +4825,10 @@ class TemporalDisplay {
             } else {
                 return getDateTimeString(0L);
             }
+        } else if (value != null) {
+            return value.toString();
         } else {
-            return (String) value;
+            return null;
         }
     }
 

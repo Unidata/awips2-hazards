@@ -21,6 +21,7 @@ import com.raytheon.uf.common.ohd.AppsDefaults;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.common.util.Pair;
 
 /**
  * Description: Product data accessor implementation of the IFloodDAO.
@@ -34,6 +35,8 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * April 17, 2013          bryon.lawrence      Made a Singleton based on 
  *                                             code review feedback.
  * May 1, 2014  3581       bkowal              Relocate to common hazards hydro
+ * Sep 19, 2014   2394     mpduff for nash     Updated for interface changes
+ * Dec 17, 2014 2394       Ramer               Updated Interface
  * 
  * 
  * </pre>
@@ -46,6 +49,10 @@ public class FloodDAO implements IFloodDAO {
     private static final String IHFS = "ihfs";
 
     private static final String MISSING_VALUE = "-9999";
+
+    private static final String COLUMN_STAGE = "stage";
+
+    private static final String COLUMN_Q = "q";
 
     /**
      * For logging...
@@ -1039,40 +1046,174 @@ public class FloodDAO implements IFloodDAO {
         return locationResults;
     }
 
-    /**
-     * 
-     * @param lid
-     *            River forecast point identifier
-     * @return A list of Object[], each of which contains a single double value
-     *         representing a flow crest
-     */
-    @Override
-    public List<Object[]> getFlowCrestHistory(String lid) {
-        String query = "SELECT q FROM Crest WHERE lid = '" + lid
-                + "' AND prelim = 'R' AND stage is NOT NULL";
+    public List<Object[]> getCrestHistory(String lid, String crestTypes,
+            String pe) {
 
-        List<Object[]> crestResults = DatabaseQueryUtil.executeDatabaseQuery(
-                QUERY_MODE.MODE_SQLQUERY, query.toString(), IHFS, "IHFS Crest");
+        /* Build the query depending on the crest types we want. */
+        String query = "SELECT " + pe + ", datcrst FROM Crest WHERE lid = '"
+                + lid + "' ";
+        if (crestTypes.length() == 1) {
+            query += "AND prelim = '" + crestTypes + "' ";
+        } else if (crestTypes.length() == 2) {
+            query += "AND ( prelim = '" + crestTypes.substring(0, 1)
+                    + "' OR prelim = '" + crestTypes.substring(1, 2) + "' ) ";
+        }
+        query += "AND " + pe + " is NOT NULL";
+
+        List<Object[]> crestResults = null;
+        if (pe.equals(COLUMN_STAGE.toString())) {
+            crestResults = DatabaseQueryUtil.executeDatabaseQuery(
+                    QUERY_MODE.MODE_SQLQUERY, query.toString(), IHFS,
+                    "IHFS crest table");
+        } else {
+            crestResults = DatabaseQueryUtil.executeDatabaseQuery(
+                    QUERY_MODE.MODE_SQLQUERY, query.toString(), IHFS,
+                    "IHFS Crest");
+        }
 
         return crestResults;
+
     }
 
     /**
      * 
      * @param lid
      *            River forecast point identifier
-     * @return A list of Object[], each of which contains a single double value
-     *         representing a stage crest
+     * @param crestTypes
+     *            A string containing possible list of crest types to filter on.
+     *            P=preliminary, O=official, R=record. Empty string means take
+     *            all types.
+     * @return A list of Pair objects, each of which contains a double
+     *         representing a historical flow crest and its date.
      */
     @Override
-    public List<Object[]> getStageCrestHistory(String lid) {
-        String query = "SELECT stage FROM Crest WHERE lid = '" + lid
-                + "' AND prelim = 'R' AND stage is NOT NULL";
+    public List<Pair<Integer, Date>> getFlowCrestHistory(String lid,
+            String crestTypes) {
 
-        List<Object[]> crestResults = DatabaseQueryUtil.executeDatabaseQuery(
-                QUERY_MODE.MODE_SQLQUERY, query, IHFS, "IHFS crest table");
+        /* Build the query depending on the crest types we want. */
+        List<Object[]> crestResults = getCrestHistory(lid, crestTypes, COLUMN_Q);
 
-        return crestResults;
+        List<Pair<Integer, Date>> list = new ArrayList<>(crestResults.size());
+
+        for (Object[] ob : crestResults) {
+
+            Integer q = (Integer) ob[0];
+            Date datcrst = new java.util.Date(((Date) ob[1]).getTime());
+            Pair<Integer, Date> pair = new Pair<>(q, datcrst);
+            list.add(pair);
+        }
+        return list;
+    }
+
+    /**
+     * Define "RO" as the default crest types.
+     */
+    @Override
+    public List<Pair<Integer, Date>> getFlowCrestHistory(String lid) {
+        return this.getFlowCrestHistory(lid, RO);
+    }
+
+    /**
+     * 
+     * @param lid
+     *            River forecast point identifier
+     * @param crestTypes
+     *            A string containing possible list of crest types to filter on.
+     *            P=preliminary, O=official, R=record. Empty string means take
+     *            all types.
+     * @return A list of Pair objects, each of which contains a double
+     *         representing a historical stage crest and its date.
+     */
+    @Override
+    public List<Pair<Double, Date>> getStageCrestHistory(String lid,
+            String crestTypes) {
+
+        /* Build the query depending on the crest types we want. */
+        List<Object[]> crestResults = getCrestHistory(lid, crestTypes,
+                COLUMN_STAGE);
+
+        List<Pair<Double, Date>> list = new ArrayList<>(crestResults.size());
+
+        for (Object[] ob : crestResults) {
+
+            Double q = (Double) ob[0];
+            Date datcrst = new java.util.Date(((Date) ob[1]).getTime());
+            Pair<Double, Date> pair = new Pair<>(q, datcrst);
+            list.add(pair);
+        }
+        return list;
+    }
+
+    /**
+     * Define "RO" as the default crest types.
+     */
+    @Override
+    public List<Pair<Double, Date>> getStageCrestHistory(String lid) {
+        return this.getStageCrestHistory(lid, RO);
+    }
+
+    /**
+     * 
+     * @param lid
+     *            River forecast point identifier
+     * @param month
+     *            1-12 month of the year.
+     * @param day
+     *            1-31 day of the month.
+     * @return A list of Pair objects, each of which contains a double for the
+     *         stage/flow threshold for an impact, and a string describing the
+     *         impact.
+     */
+    @Override
+    public List<Pair<Double, String>> getImpactValues(String lid, int month,
+            int day) {
+
+        int reqcmp = month * 100 + day;
+        /*
+         * Build the query to get the database columns we want.
+         * 
+         * Looking for impacts for the full year (01/01 - 12/31) as opposed to
+         * cold season only (01/01 - 03/31) or warm season only (04/01 - 11/01)
+         * [per Mark Armstrong email dated Dec 2, 2014]
+         * 
+         * Comparison below is a method to find all dates between 01/01 - 12/31
+         * by turning the dates into digit, such as 01/01 = 101 and 12/31 = 1231
+         */
+        String query = "SELECT impact_value,datestart,dateend,rf,statement"
+                + " FROM floodstmt WHERE lid = '" + lid + "' ";
+
+        List<Object[]> impactResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, query, IHFS, "IHFS floodstmt table");
+
+        List<Pair<Double, String>> list = new ArrayList<>(impactResults.size());
+        for (Object[] ob : impactResults) {
+            String[] startmmdd = ob[1].toString().split("/");
+            if (startmmdd.length != 2) {
+                continue;
+            }
+            int startcmp = (Integer.parseInt(startmmdd[0]) * 100 + (Integer
+                    .parseInt(startmmdd[1])));
+            String[] endmmdd = ob[2].toString().split("/");
+            if (endmmdd.length != 2) {
+                continue;
+            }
+            int endcmp = (new Integer(endmmdd[0])).intValue() * 100
+                    + (new Integer(endmmdd[1])).intValue();
+            if (startcmp != 101 && endcmp != 1231) {
+                if (reqcmp < startcmp || reqcmp > endcmp) {
+                    continue;
+                }
+            }
+            Double value = Double.parseDouble(ob[0].toString());
+            String impact = ob[3].toString().equals("R") ? "-Rising||"
+                    : "-Falling||";
+            impact = "-" + ob[1].toString() + "-" + ob[2].toString() + impact
+                    + ob[4].toString();
+            Pair<Double, String> pair = new Pair<>(value, impact);
+            list.add(pair);
+        }
+
+        return list;
     }
 
     /**
@@ -1133,4 +1274,5 @@ public class FloodDAO implements IFloodDAO {
         }
         return null;
     }
+
 }

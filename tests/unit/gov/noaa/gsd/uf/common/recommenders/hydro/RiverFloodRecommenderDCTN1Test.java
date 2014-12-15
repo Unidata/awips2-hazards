@@ -246,8 +246,6 @@ public class RiverFloodRecommenderDCTN1Test {
         assertEquals(39.04, attributeMap.get("currentStage"));
         assertEquals(1297106124943L, attributeMap.get("riseAbove"));
         assertEquals(1297228069566L, attributeMap.get("fallBelow"));
-        assertEquals("NO", attributeMap.get("floodRecord"));
-        assertEquals("2", attributeMap.get("floodSeverity"));
         assertEquals("ER", attributeMap.get("immediateCause"));
         assertEquals("DCTN1", attributeMap.get("pointID"));
         assertEquals(33.0, attributeMap.get("actionStage"));

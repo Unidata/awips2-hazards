@@ -248,8 +248,6 @@ public class RiverFloodRecommenderBRON1Test {
         assertEquals(21.95, attributeMap.get("currentStage"));
         assertEquals(1354941556951L, attributeMap.get("riseAbove"));
         assertEquals(1355148953643L, attributeMap.get("fallBelow"));
-        assertEquals("NO", attributeMap.get("floodRecord"));
-        assertEquals("1", attributeMap.get("floodSeverity"));
         assertEquals("ER", attributeMap.get("immediateCause"));
         assertEquals("BRON1", attributeMap.get("pointID"));
         assertEquals(30.0, attributeMap.get("actionStage"));

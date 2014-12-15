@@ -29,6 +29,22 @@ from sets import Set
 
 import math
 import JUtil
+import JUtilHandler
+import sys
+import datetime
+import time
+
+CATEGORY = 'CATEGORY'
+TIME = 'TIME'
+CATEGORY_NAME = 'CATEGORYNAME'
+VALUE = 'VALUE'
+
+MAJOR = 'MAJOR'
+MINOR = 'MINOR'
+MODERATE = 'MODERATE'
+RECORD = 'RECORD'
+PE_H = 'H'
+PE_Q = 'Q'
 
 class RiverForecastPoints(object):
     
@@ -36,23 +52,24 @@ class RiverForecastPoints(object):
     MISSING_SHEF_QUALITY_CODE = 'Z'
 
     RIVERSTAT_PRIMARY_PE_FIELD_POSITION = 1
+    RIVERSTAT_RIVERMILE_FIELD_POSITION = 11
     RIVERSTAT_LATITUDE_FIELD_POSITION = 15
     RIVERSTAT_LONGITUDE_FIELD_POSITION = 16
     RIVERSTAT_ZERO_DATUM_FIELD_POSITION = 26
     
-    FLOOD_CATEGORY_VALUE_DICT = {-1: 'UNKNOWN',
-                                  0: 'NONFLOOD',
-                                  1: 'MINOR',
-                                  2: 'MODERATE',
-                                  3: 'MAJOR',
-                                  4: 'RECORD'}
+    FLOOD_CATEGORY_VALUE_DICT = {-1: 'Unknown',
+                                  0: 'NonFlood',
+                                  1: 'Minor',
+                                  2: 'Moderate',
+                                  3: 'Major',
+                                  4: 'Record'}
     
-    TREND_VALUE_DESCRIPTION_DICT = {  'RISE': 'RISING',
-                                      'UNCHANGED': 'STEADY',
-                                      'FALL': 'FALLING',
-                                      'MISSING': 'UNKNOWN'}
-    
-    def __init__(self, floodDataAccessObject=None):
+    TREND_VALUE_DESCRIPTION_DICT = {  'RISE': 'Rising',
+                                      'UNCHANGED': 'Steady',
+                                      'FALL': 'Falling',
+                                      'MISSING': 'Unknown'}
+        
+    def __init__(self, currentTime, floodDataAccessObject=None):
         '''
         This class uses the same data structures
         used by the RiverProRiverFloodRecommender class. Each
@@ -60,6 +77,7 @@ class RiverForecastPoints(object):
         object of this class should be instantiated.  It will build all
         of the data structures needed by the methods in this class.
         
+        @param currentTime:            Date object representing the current time.
         @param floodDataAccessObject:  Data access object for river data. 
                                        If not provided, then the default
                                        data access object will be used. 
@@ -68,6 +86,7 @@ class RiverForecastPoints(object):
                                        injected without the need for a live
                                        hydro database.
         '''
+        self.currenTime = currentTime
         if floodDataAccessObject is not None:
             self.riverProDataManager = RiverProDataManager(floodDataAccessObject)
         else:
@@ -493,6 +512,57 @@ class RiverForecastPoints(object):
         #
         pass
 
+
+    #@@@# Eventually may want to deprecate this in favor of getFloodLevels()
+    def getFloodLevel(self, forecastPointID, category=MINOR):
+        '''
+        Emulates the functionality of the <FldStg>, <FldFlw> template variable.
+        e.g. 35
+                
+        Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT/
+                   load_variable_value.c - load_locinfo_variable_value()
+        
+        @param forecastPointID: The river forecast point identifier.
+        @return: The flood stage associated with the river point
+        '''
+        # getFloodStage and getFloodFlow
+        # use the category to get the different values
+        # TODO, use getFloodStage for reference
+        
+        primaryPE = self.getPrimaryPhysicalElement(forecastPointID)
+        riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
+        if primaryPE[0] == PE_H :
+            # get flood stage
+            return riverForecastPoint.getFloodStage()
+        else :
+            # get flood flow
+            return riverForecastPoint.getFloodFlow()
+
+    #@@@# Eventually may want to deprecate this in favor of getFloodLevel()
+    def getFloodLevels(self, forecastPointID, category=MINOR):
+        '''
+        Emulates the functionality of the <FldStg>, <FldFlw> template variable.
+        e.g. 35
+                
+        Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT/
+                   load_variable_value.c - load_locinfo_variable_value()
+        
+        @param forecastPointID: The river forecast point identifier.
+        @return: The flood stage associated with the river point
+        '''
+        # getFloodStage and getFloodFlow
+        # use the category to get the different values
+        # TODO, use getFloodStage for reference
+        
+        primaryPE = self.getPrimaryPhysicalElement(forecastPointID)
+        riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
+        if primaryPE[0] == PE_H :
+            # get flood stage
+            return ( riverForecastPoint.getFloodStage(), RiverForecastPoints.MISSING_VALUE )
+        else :
+            # get flood flow
+            return ( RiverForecastPoints.MISSING_VALUE, riverForecastPoint.getFloodFlow() )
+
     def getFloodStage(self, forecastPointID):
         '''
         Emulates the functionality of the <FldStg> template variable.
@@ -578,7 +648,7 @@ class RiverForecastPoints(object):
         @return: 'stage' or 'flow' based on the riverstat primary pe value
         '''
         primaryPE = self.getPrimaryPhysicalElement(forecastPointID)
-        if primaryPE[0] == 'Q':
+        if primaryPE[0] == PE_Q:
             return 'flow'
         else:
             return 'stage'
@@ -597,7 +667,7 @@ class RiverForecastPoints(object):
                  stage is measured in feet.
         '''
         primaryPE = self.getPrimaryPhysicalElement(forecastPointID)
-        if primaryPE[0] == 'Q':
+        if primaryPE[0] == PE_Q:
             return 'cfs'
         else:
             return 'feet'
@@ -629,6 +699,11 @@ class RiverForecastPoints(object):
         '''
         riverStatRecord = self.getRiverStatRecord(forecastPointID)
         return riverStatRecord[self.RIVERSTAT_LONGITUDE_FIELD_POSITION]
+
+    def getRiverMile(self, forecastPointID):
+        riverStatRecord = self.getRiverStatRecord(forecastPointID)
+        return riverStatRecord[self.RIVERSTAT_RIVERMILE_FIELD_POSITION]
+        
 
     ###############################################################
     #
@@ -689,87 +764,274 @@ class RiverForecastPoints(object):
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
         return riverForecastPoint.getRecordFloodCategory()
     
-    def getImpactStage(self, forecastPointID):
-        '''
-        Emulates the functionality of the <ImpactStg> template variable.
-        e.g. 27
-        
-        Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT/
-                   load_variableValue.c - load_misc_variable_value()
-        
-        @param forecastPointID: The river forecast point identifier.
-        @return: The impact stage associated with the current observed/forecast
-                 flood stage.
-        '''
-        #
-        # TODO: code will have to be written to support the
-        # retrieval of impact information. The RiverFloodRecommender
-        # does not handle this.
-        #
-        pass
+    ###############################################################
+    #
+    # Forecast Point Reference Template Variables
+    #
+    ###############################################################
     
-    def getImpactDescription(self, forecastPointID):
-        '''
-        Emulates the functionality of the <ImpactDescr> template variable.
-        e.g. Widespread flooding envelopes the reach from just north of the airport
-        downstream to the southwest of Mapleton.  A levee protects the town of Mapleton.
-        
-        Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT/
-                   load_variableValue.c - load_misc_variable_value()
-        
-        @param forecastPointID: The river forecast point identifier.
-        @return: The impact statement associated with the current 
-                 observed/forecast flood stage.
-        '''
-        #
-        # TODO: code will have to be written to support the
-        # retrieval of impact information. The RiverFloodRecommender
-        # does not handle this.
-        #
-        pass
+    def encodeStageDate(self, stageDateTuple ) :
+        retstr = "%.2f"%stageDateTuple[0]+" "
+        retstr += "%2.2d"%(stageDateTuple[1].month)+"/"
+        retstr += "%2.2d"%(stageDateTuple[1].day)+"/"
+        retstr += "%4.4d"%(stageDateTuple[1].year)
+        return retstr
 
-    def getHistoricalCrestDate(self, forecastPointID):
+    def getImpacts(self, forecastPointID, filters=None):
         '''
-        Emulates the functionality of the <HistCrestDate> template variable.
-        e.g. "May 31 1959"
-        
-        Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT/
-                   load_variableValue.c - load_pcc_variable_value()
-        
+                                            
         @param forecastPointID: The river forecast point identifier.
-        @return: The date associated with the flood-of-record for this
-                 forecast point.
+        @return: The stage, date associated with the flood-of-record for this
+                                   forecast point.
         '''
-        #
-        # TODO: NEEDED for floodHistoryBullet
         
-        # code will have to be written to support the
-        # retrieval of impact information. The RiverFloodRecommender
-        # does not handle this.
-        #
-        pass
+        if filters is None :
+            return [], []
 
-    def getHistoricalCrestStage(self, forecastPointID):
+        _PE = self.getPrimaryPhysicalElement(forecastPointID)
+        currTime = self.getCurrentTime()
+
+        # query for descriptions here
+        jlist = self.riverProDataManager.getFloodDAO().getImpactValues(forecastPointID, currTime.month,currTime.day)
+        plist = JUtilHandler.javaCollectionToPyCollection(jlist)
+        
+        listTuple, maxIndex, diffIndex, recentIndex = self.getIndices(plist, filters, _PE, forecastPointID, 'Impacts')
+
+
+        # Index values need to be compared to None rather than submitted to a
+        # pure boolean test, otherwise index value of 0 (first value in list)
+        # will fail to get picked up.
+        searchType = filters['Search Type']
+        allBelow = False        
+        if searchType.find("All Below") >= 0 :        
+            allBelow = True
+            
+        characterizations = []
+        descriptions = []
+        
+        for index, val in enumerate(listTuple) :
+            stageOrFlow, impact = val
+            
+            impactData = impact.split("||")        
+            if len(impactData) != 2 :        
+                continue
+            if allBelow :        
+                characterizations.append(("%.2f"%stageOrFlow)+impactData[0])        
+                descriptions.append(impactData[1])
+
+        if searchType.find("Highest") >= 0 :
+            if maxIndex != None :
+                impactData = listTuple[maxIndex][1].split("||")
+                stageOrFlow = listTuple[maxIndex][0]
+                characterizations.append(("%.2f"%stageOrFlow)+impactData[0])
+                descriptions.append(impactData[1])
+        elif searchType.find("Closest") >= 0 :
+            if diffIndex != None :
+                impactData = listTuple[diffIndex][1].split("||")
+                stageOrFlow = listTuple[diffIndex][0]
+                characterizations.append(("%.2f"%stageOrFlow)+impactData[0])
+                descriptions.append(impactData[1])
+
+        return characterizations, descriptions
+        
+
+
+    def getIndices(self, plist, filters, _PE, forecastPointID, impactsOrCrests):
+        
+        currTime = self.getCurrentTime()
+        
+        if len(plist)==2:
+            if isinstance(plist[0],bool) and isinstance(plist[1],list):
+                plist = plist[1]
+
+        listTuple = []
+        for pair in plist :
+            first = JUtil.javaObjToPyVal(pair.getFirst())
+            if not isinstance(first, float) :
+                continue
+            second = JUtil.javaObjToPyVal(pair.getSecond())
+            
+            if not isinstance(second, str) and impactsOrCrests == 'Impacts':
+                continue
+            elif not isinstance(second, datetime.datetime) and impactsOrCrests == 'Crests':
+                continue
+            pytuple = ( first, second )
+            listTuple.append(pytuple)
+
+
+        referenceType = filters['Reference Type']
+        depthBelowFloodStage = float(filters['Depth Below Flood Stage'])
+        flowWindowLower = filters['Flow Window Lower']
+        flowWindowUpper = filters['Flow Window Upper']
+        stageWindowLower = filters['Stage Window Lower']
+        stageWindowUpper = filters['Stage Window Upper']
+        
+        ### yearLookBack foubd only in Crests.  Expect 'None' for impacts
+        yearLookBack = filters.get('Year Lookback')
+        
+        searchType = filters['Search Type']
+        if _PE.startswith(PE_Q) :
+            flowStageWindow = filters['Flow Stage Window']
+        else :
+            flowStageWindow = 0
+
+        if impactsOrCrests == 'Impacts':
+            floodStage = float(self.getFloodStage(forecastPointID))
+        elif impactsOrCrests == 'Crests':
+            floodStage = float(self.getFloodLevel(forecastPointID))
+        else:
+            floodStage = None
+
+        ### Note: currentDate is only used with 'Crests'
+        if referenceType == 'Max Forecast' :
+            referenceValue = self.getMaximumForecastLevel(forecastPointID)
+            currentDate = self.getMaximumForecastLevel(forecastPointID,TIME)
+        elif referenceType == 'Current Observed' :
+            referenceValue = self.getObservedLevel(forecastPointID)
+            currentDate = self.getObservedLevel(forecastPointID,TIME)
+        else :
+            maxFcst = self.getMaximumForecastLevel(forecastPointID)
+            maxObs = self.getObservedLevel(forecastPointID)
+            if maxFcst > maxObs :
+                referenceValue = maxFcst
+                currentDate = self.getMaximumForecastLevel(forecastPointID,TIME)
+            else:
+                referenceValue = maxObs
+                currentDate = self.getObservedLevel(forecastPointID,TIME)
+                
+                
+        ### curDateDate through minDateDate used with Crests only
+        minDateDate = None
+        if impactsOrCrests == 'Crests':
+            curDateDate = datetime.datetime.fromtimestamp(currentDate / 1000)
+            minYear = curDateDate.year+yearLookBack
+            if searchType.find("Year Window")<0 or minYear<datetime.MINYEAR :
+                minYear = datetime.MINYEAR
+            minDateDate = datetime.datetime(minYear, curDateDate.month, curDateDate.day)
+
+
+        # Flow offsets are all in percent, stage offsets are all in feet.
+        if _PE.startswith(PE_Q) :
+            flowWindowLower = referenceValue * float(flowWindowLower) * .01
+            flowWindowUpper = referenceValue * float(flowWindowUpper) * .01
+            flowStageWindow = floodStage * float(flowStageWindow) * .01
+            lowerBound = referenceValue - math.fabs(flowWindowLower)
+            upperBound = referenceValue + math.fabs(flowWindowUpper)
+            floodValueStage = floodStage - math.fabs(flowStageWindow)
+        else :
+            lowerBound = referenceValue - math.fabs(stageWindowLower)
+            upperBound = referenceValue + math.fabs(stageWindowUpper)
+            floodValueStage = floodStage - math.fabs(depthBelowFloodStage)
+
+        maximumValue = RiverForecastPoints.MISSING_VALUE
+        differenceValue = math.fabs(RiverForecastPoints.MISSING_VALUE) # start with a huge value
+
+        maxIndex = None
+        diffIndex = None
+        ### recentDate, recentIndex are for Crests only
+        recentDate = minDateDate
+        recentIndex = None
+        
+        if lowerBound > floodValueStage :
+            lowerBound = floodValueStage
+            
+        ### For Impacts only    
+        if searchType.find("All Below") >= 0 :        
+            lowerBound = 0
+        
+        
+        for index, val in enumerate(listTuple) :
+            stageOrFlow, impactOrDate = val
+            
+            
+            if stageOrFlow<lowerBound or stageOrFlow>upperBound :
+                if impactsOrCrests == 'Impacts':
+                    continue
+                else: #impactsOrCrests == 'Crests'
+                   if impactOrDate<minDateDate:
+                       continue
+                
+            if stageOrFlow > maximumValue :
+                maximumValue = stageOrFlow
+                maxIndex = index
+            
+            diffVal = math.fabs(referenceValue - stageOrFlow )
+            if diffVal < differenceValue :
+               differenceValue = diffVal
+               diffIndex = index
+           
+            if impactsOrCrests == 'Crests':
+               if impactOrDate > recentDate :
+                   recentDate = impactOrDate
+                   recentIndex = index
+               
+               
+        return listTuple, maxIndex, diffIndex, recentIndex
+
+
+    
+    def getHistoricalCrest(self, forecastPointID, filters=None) :
         '''
-        Emulates the functionality of the <HistCrestStg> template variable.
+        Emulates the functionality of the <HistCrestStg>, <HistCrestDate> template variable.
         e.g. 44.4
-        
+                      
         Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT/
-                   load_variableValue.c - load_pcc_variable_value()
-        
+                                         load_variableValue.c - load_pcc_variable_value()
+                      
         @param forecastPointID: The river forecast point identifier.
-        @return: The stage associated with the flood-of-record for this
-                 forecast point.
+        @return: The stage, date associated with the flood-of-record for this
+                                   forecast point.
         '''
-        #
-        # TODO: NEEDED for floodHistoryBullet
-        
-        # code will have to be written to support the
-        # retrieval of impact information. The RiverFloodRecommender
-        # does not handle this.
-        #
-        pass
-    
+        if filters is None :
+            return None, None
+
+        _PE = self.getPrimaryPhysicalElement(forecastPointID)
+
+        plist = [ ]
+        #if 'Date' in filters :
+        if _PE.startswith(PE_Q) :
+            jlist = self.riverProDataManager.getFloodDAO().getFlowCrestHistory(forecastPointID)
+            plist = JUtilHandler.javaCollectionToPyCollection(jlist)
+        elif _PE.startswith(PE_H) :
+            jlist = self.riverProDataManager.getFloodDAO().getStageCrestHistory(forecastPointID)
+            plist = JUtilHandler.javaCollectionToPyCollection(jlist)
+
+        listTuple, maxIndex, diffIndex, recentIndex = self.getIndices(plist, filters, _PE, forecastPointID, 'Crests')
+
+        # Index values need to be compared to None rather than submitted to a
+        # pure boolean test, otherwise index value of 0 (first value in list)
+        # will fail to get picked up.
+        searchType = filters['Search Type']
+        if searchType.find("Highest") >= 0 :
+            if maxIndex != None :
+                stageDate =listTuple[maxIndex]
+        elif searchType.find("Closest") >= 0 :
+            if diffIndex != None :
+                stageDate = listTuple[diffIndex]
+        elif recentIndex != None : # most recent
+            stageDate = listTuple[recentIndex]
+        else :
+            stageDate = RiverForecastPoints.MISSING_VALUE, datetime.datetime.fromtimestamp(0)
+
+        # Sort by descending crest value
+        n = len(listTuple)-1
+        t = 0
+        while t<n :
+            tt = t+1
+            while tt<=n :
+                if listTuple[t][0]<listTuple[tt][0] :
+                    lt = listTuple[t]
+                    listTuple[t] = listTuple[tt]
+                    listTuple[tt] = lt
+                tt += 1
+            t += 1
+
+        choiceList = []
+        for oneTuple in listTuple :
+            choiceList.append(self.encodeStageDate(oneTuple))
+        return ( self.encodeStageDate( stageDate ), choiceList )
+
+            
     def getImpactCompUnits(self, forecastPointID):
         '''
         Emulates the functionality of the <ImpCompUnits> template variable.
@@ -845,15 +1107,49 @@ class RiverForecastPoints(object):
         # TODO 
         pass    
         
-    def getPrimaryPhysicalElement(self, forecastPointID):
-        return self.riverProDataManager.getFloodDAO().getPrimaryPE(forecastPointID)
-        
     ###############################################################
     #
     # Forecast Point Stage Template Variables
     #
     ###############################################################
     
+    def getObservedLevel(self, forecastPointID, type=VALUE): 
+        '''
+        Emulates the functionality of the <ObsStg>,<ObsCat>,<ObsTime>,<ObsCatName> template variable.
+        e.g. 35
+
+        Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT
+                   load_variable_value.c -  load_stage_ofp_variable_value()
+
+        @param forecastPointID: The river forecast point identifier.
+        @return: The current observed river stage.
+        '''
+        riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
+
+        if type == TIME :
+            observedTime = self.MISSING_VALUE
+            stageIndex = riverForecastPoint.getObservedCurrentIndex()
+            if stageIndex != RiverForecastPoints.MISSING_VALUE:
+                observedHydrograph = riverForecastPoint.getObservedHydrograph().getShefHydroDataList()
+                observation = observedHydrograph.get(stageIndex)
+                observedTime = observation.getValidTime()
+            return observedTime
+        elif type == CATEGORY :        
+            return riverForecastPoint.getCurrentObservationCategory()
+        elif type == CATEGORY_NAME :
+            category = riverForecastPoint.getCurrentObservationCategory()
+            return RiverForecastPoints.FLOOD_CATEGORY_VALUE_DICT.get(category, 'UNKNOWN')
+        else :
+            value = self.MISSING_VALUE
+            stageIndex = riverForecastPoint.getObservedCurrentIndex()
+        
+            if stageIndex != RiverForecastPoints.MISSING_VALUE:
+                observedHydrograph = riverForecastPoint.getObservedHydrograph().getShefHydroDataList()
+                observation = observedHydrograph.get(stageIndex)
+                value = observation.getValue()
+
+        return value
+   
     def getObservedStage(self, forecastPointID):
         '''
         Emulates the functionality of the <ObsStg> template variable.
@@ -931,9 +1227,10 @@ class RiverForecastPoints(object):
 
         return observedTime
    
-    def getMaximumForecastLevel(self, forecastPointID, primaryPE):
+
+    def getMaximumForecastLevel(self, forecastPointID, type=VALUE):
         '''
-        Emulates the functionality of the <MaxFcstStg> template variable.
+        Emulates the functionality of the <MaxFcstStg>, <MaxFcstCat>, <MaxFcstCatName>, <MaxFcstTime> template variable.
         e.g. 35
         
         Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT
@@ -942,22 +1239,40 @@ class RiverForecastPoints(object):
         @param forecastPointID: The river forecast point identifier.
         @return:  The maximum forecast stage for this river forecast point.
         '''
-        maximumForecastLevel = self.MISSING_VALUE
-        shefQualCode = RiverForecastPoints.MISSING_SHEF_QUALITY_CODE
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
-        maximumForecastIndex = riverForecastPoint.getMaximumForecastIndex()
-        if primaryPE[0] == 'h' or primaryPE[0] == 'H' :
+        primaryPE = self.getPrimaryPhysicalElement(forecastPointID)
+        
+        if type == CATEGORY :
+            return riverForecastPoint.getMaximumForecastCategory()
+        elif type == CATEGORY_NAME :
+            forecastPointEventMap = self.riverProDataManager.getForecastPointEventMap()
+            category = riverForecastPoint.getMaximumForecastCategory()
+            return RiverForecastPoints.FLOOD_CATEGORY_VALUE_DICT.get(category, 'UNKNOWN')
+        elif type == TIME :
+            maximumForecastTime = self.MISSING_VALUE
+            riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
+            maximumForecastIndex = riverForecastPoint.getMaximumForecastIndex()
+            
             if maximumForecastIndex != RiverForecastPoints.MISSING_VALUE:
                 forecastHydrograph = riverForecastPoint.getForecastHydrograph().getShefHydroDataList()
-                forecast = forecastHydrograph.get(maximumForecastIndex)
-                maximumForecastStage = forecast.getValue()
-                shefQualCode = forecast.getShefQualCode()
-        elif primaryPE[0] == 'q' or primaryPE[0] == 'Q':
-            pass
-        # TODO, maybe we don't need to return the shefQualCode, rather
-        # we could return a more pertinent maximumForecastStage
-        return maximumForecastLevel, shefQualCode
+                maximumForecast = forecastHydrograph.get(maximumForecastIndex)
+                maximumForecastTime = maximumForecast.getValidTime()
     
+            return maximumForecastTime
+        else :
+            maximumForecastLevel = self.MISSING_VALUE
+            maximumForecastIndex = riverForecastPoint.getMaximumForecastIndex()
+            if primaryPE.startswith(PE_H) :
+                if maximumForecastIndex != RiverForecastPoints.MISSING_VALUE:
+                    forecastHydrograph = riverForecastPoint.getForecastHydrograph().getShefHydroDataList()
+                    forecast = forecastHydrograph.get(maximumForecastIndex)
+                    maximumForecastStage = forecast.getValue()
+            elif primaryPE.startswith(PE_Q):
+                pass
+            return maximumForecastLevel
+  
+    #@@@# Eventually replace calls to this by some form of call to getMaximumForecastLevel(),
+    # and then deprecate getMaximumForecastStage().
     def getMaximumForecastStage(self, forecastPointID):
         '''
         Emulates the functionality of the <MaxFcstStg> template variable.
@@ -970,7 +1285,6 @@ class RiverForecastPoints(object):
         @return:  The maximum forecast stage for this river forecast point.
         '''
         maximumForecastStage = self.MISSING_VALUE
-        shefQualCode = RiverForecastPoints.MISSING_SHEF_QUALITY_CODE
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
         maximumForecastIndex = riverForecastPoint.getMaximumForecastIndex()
         
@@ -978,9 +1292,8 @@ class RiverForecastPoints(object):
             forecastHydrograph = riverForecastPoint.getForecastHydrograph().getShefHydroDataList()
             forecast = forecastHydrograph.get(maximumForecastIndex)
             maximumForecastStage = forecast.getValue()
-            shefQualCode = forecast.getShefQualCode()
 
-        return maximumForecastStage, shefQualCode
+        return maximumForecastStage
     
         
     def getMaximumForecastCategory(self, forecastPointID):
@@ -1391,8 +1704,6 @@ class RiverForecastPoints(object):
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
         return riverForecastPoint.getNumFcstH();
 
-
-    
     def getRiverForecastPoint(self, forecastPointID):
         '''
         Retrieves the river forecast point data structure for a given
@@ -1441,8 +1752,15 @@ class RiverForecastPoints(object):
         @return: The list of available river groups.
         '''
         return JUtil.javaObjToPyVal(self.riverProDataManager.getRiverGroupList())
-    
-    
+
+    def getCurrentTime(self, day=0, hour=0, minutes=0):
+        return self.currenTime + datetime.timedelta(days=day, hours=hour, minutes=minutes)
+ 
+    # Put back to the old name from __getPrimaryPE, because there is a need for outside
+    # clients to use this.   #@@@#
+    def getPrimaryPhysicalElement(self, forecastPointID):
+        return self.riverProDataManager.getFloodDAO().getPrimaryPE(forecastPointID)
+        
     def _convertToMS(self, t):
         if t:
             return t.getTime() 

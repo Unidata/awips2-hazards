@@ -247,8 +247,6 @@ public class RiverFloodRecommenderNEBN1Test {
         assertEquals(6.58, attributeMap.get("currentStage"));
         assertEquals(1354952880000L, attributeMap.get("riseAbove"));
         assertEquals(0, attributeMap.get("fallBelow"));
-        assertEquals("NO", attributeMap.get("floodRecord"));
-        assertEquals("1", attributeMap.get("floodSeverity"));
         assertEquals("ER", attributeMap.get("immediateCause"));
         assertEquals("NEBN1", attributeMap.get("pointID"));
         assertEquals(16.0, attributeMap.get("actionStage"));

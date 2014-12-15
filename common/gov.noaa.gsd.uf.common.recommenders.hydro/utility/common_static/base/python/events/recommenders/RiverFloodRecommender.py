@@ -39,6 +39,7 @@ from com.raytheon.uf.common.hazards.hydro import RiverProDataManager
 from gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender import RiverProFloodRecommender
 from gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender import FloodRecommenderConstants
 from RiverForecastPoints import RiverForecastPoints
+from com.raytheon.uf.common.time import SimulatedTime
 
 #
 # The size of the buffer for default flood polygons.
@@ -64,8 +65,9 @@ class Recommender(RecommenderTemplate.Recommender):
         hazard geometries based on flood inundation maps, FEMA
         floodway maps, etc.
         """
-        
-        self._rfp = RiverForecastPoints()
+        millis = SimulatedTime.getSystemTime().getMillis()
+        currentTime = datetime.datetime.fromtimestamp(millis / 1000)
+        self._rfp = RiverForecastPoints(currentTime)
         self._riverProDataManager = RiverProDataManager()
         self._riverProFloodRecommender = RiverProFloodRecommender(self._riverProDataManager)
         
@@ -203,7 +205,7 @@ class Recommender(RecommenderTemplate.Recommender):
     
             
     def isWatch(self, pointID, warningThreshEpoch):
-        maxFcstStage = self._rfp.getMaximumForecastStage(pointID)[0]
+        maxFcstStage = self._rfp.getMaximumForecastStage(pointID)
         floodStage = self._rfp.getFloodStage(pointID)
         fcstRiseAboveFloodStageTime = self._rfp.getForecastRiseAboveFloodStageTime(pointID)
         if fcstRiseAboveFloodStageTime:
@@ -215,7 +217,7 @@ class Recommender(RecommenderTemplate.Recommender):
             return False
         
     def isWarning(self, pointID, warningThreshEpoch):
-        maxFcstStage = self._rfp.getMaximumForecastStage(pointID)[0]
+        maxFcstStage = self._rfp.getMaximumForecastStage(pointID)
         floodStage = self._rfp.getFloodStage(pointID)
         fcstRiseAboveFloodStageTime = self._rfp.getForecastRiseAboveFloodStageTime(pointID)
         if fcstRiseAboveFloodStageTime:
@@ -228,7 +230,7 @@ class Recommender(RecommenderTemplate.Recommender):
             
     def isAdvisory(self, pointID):
         actionStage = self._rfp.getRiverForecastPoint(pointID).getActionStage()
-        maxFcstStage = self._rfp.getMaximumForecastStage(pointID)[0]
+        maxFcstStage = self._rfp.getMaximumForecastStage(pointID)
         obsStage = self._rfp.getObservedStage(pointID)[0]
         
         if (obsStage >= actionStage) or (maxFcstStage >= actionStage):
@@ -281,6 +283,10 @@ class Recommender(RecommenderTemplate.Recommender):
         
             attributesDict = hazardEvent.getHazardAttributes()
             pointID = attributesDict.get(POINT_ID)
+            
+            riverMile = self._rfp.getRiverMile(pointID)
+            hazardEvent.addHazardAttribute("riverMile", riverMile)
+            
             hazEvtStart = attributesDict.get("currentStageTime")/1000
             warningTimeThresh = self.getWarningTimeThreshold(hazEvtStart)
             hazardEvent.setPhenomenon("FL")
