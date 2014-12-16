@@ -14,6 +14,7 @@ import java.util.List;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -32,7 +33,8 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 13, 2013 2182       daniel.s.schaffer@noaa.gov      Initial creation
- * 
+ * Dec 05, 2014 4124       Chris.Golden      Changed to work with newly parameterized
+ *                                           config manager.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -42,10 +44,10 @@ public class HazardEventBuilder {
 
     private final GeometryFactory geometryFactory = new GeometryFactory();
 
-    private final ISessionManager<ObservedHazardEvent> sessionManager;
+    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
     public HazardEventBuilder(
-            ISessionManager<ObservedHazardEvent> sessionManager) {
+            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager) {
         this.sessionManager = sessionManager;
     }
 

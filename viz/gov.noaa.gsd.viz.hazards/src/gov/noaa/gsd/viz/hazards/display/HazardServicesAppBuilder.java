@@ -113,7 +113,8 @@ import com.raytheon.uf.viz.core.globals.VizGlobalsManager;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.SessionManagerFactory;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -189,6 +190,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             additional events to be included in products,
  *                                             second step allows the inputting of additional
  *                                             product-specific information using megawidgets).
+ * Dec 05, 2014 4124       Chris.Golden        Changed to work with newly parameterized config
+ *                                             manager, and with ObservedSettings.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -335,7 +338,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private SpatialDisplay spatialDisplay;
 
-    private ISessionManager<ObservedHazardEvent> sessionManager;
+    private ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
     private AlertVizPresenter alertVizPresenter;
 
@@ -933,7 +936,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * 
      * @return the current settings
      */
-    public Settings getCurrentSettings() {
+    public ObservedSettings getCurrentSettings() {
         return (sessionManager.getConfigurationManager().getSettings());
 
     }
@@ -942,9 +945,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * Set the current setting.
      * 
      * @param settings
+     * @param originator
      */
-    public void setCurrentSettings(Settings settings) {
-        messageHandler.changeCurrentSettings(settings);
+    public void setCurrentSettings(ISettings settings, IOriginator originator) {
+        messageHandler.changeCurrentSettings(settings, originator);
     }
 
     /**
@@ -1330,7 +1334,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         PythonSideEffectsApplier.prepareForShutDown();
     }
 
-    public ISessionManager<ObservedHazardEvent> getSessionManager() {
+    public ISessionManager<ObservedHazardEvent, ObservedSettings> getSessionManager() {
         return sessionManager;
     }
 

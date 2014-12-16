@@ -41,7 +41,8 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
@@ -70,7 +71,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * May 18, 2014 2925       Chris.Golden                    More changes to get it to work with the new HID.
  *                                                         Also moved the subclasses' steps enums into this
  *                                                         class.
- * Dec 1, 2014    4373     daniel.s.schaffer@noaa.gov      HID Template migration for warngen
+ * Dec 01, 2014 4373       daniel.s.schaffer@noaa.gov      HID Template migration for warngen
+ * Dec 05, 2014 4124       Chris.Golden                    Changed to work with newly parameterized config
+ *                                                         manager and with ObservedSettings.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -143,9 +146,9 @@ public abstract class FunctionalTest<E extends Enum<E>> {
 
     protected E step;
 
-    protected final ISessionManager<ObservedHazardEvent> sessionManager;
+    protected final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
-    protected final ISessionConfigurationManager configManager;
+    protected final ISessionConfigurationManager<ObservedSettings> configManager;
 
     protected HazardEventBuilder hazardEventBuilder;
 
@@ -188,7 +191,7 @@ public abstract class FunctionalTest<E extends Enum<E>> {
     protected abstract void runFirstStep();
 
     private void checkForFloodSettings() {
-        Settings currentSettings = appBuilder.getSessionManager()
+        ISettings currentSettings = appBuilder.getSessionManager()
                 .getConfigurationManager().getSettings();
         String settingsID = currentSettings.getSettingsID();
         if (!settingsID.equals(CANNED_FLOOD_SETTING)) {

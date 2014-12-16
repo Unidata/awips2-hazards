@@ -26,6 +26,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.viz.ui.dialogs.ModeListener;
 
@@ -53,6 +54,7 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           "until further notice" to the temporal
  *                                           display.
  * Nov 18, 2014   4124     Chris.Golden      Adapted to new time manager.
+ * Dec 05, 2014   4124     Chris.Golden      Changed to use ObservedSettings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -140,7 +142,7 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      */
     public void initialize(ConsolePresenter presenter, Date selectedTime,
             Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
-            Settings currentSettings, List<Settings> availableSettings,
+            ObservedSettings currentSettings, List<Settings> availableSettings,
             String jsonFilters, ImmutableList<IHazardAlert> activeAlerts,
             Set<String> eventIdentifiersAllowingUntilFurtherNotice,
             boolean temporalControlsInToolBar) {
@@ -291,7 +293,7 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      * @param currentSetttings
      */
     public void updateConsoleForChanges(List<Dict> hazardEvents,
-            Settings currentSettings) {
+            ObservedSettings currentSettings) {
         temporalDisplay.clearEvents();
         temporalDisplay.updateHazardEvents(hazardEvents);
         temporalDisplay.updateSettings(currentSettings);
@@ -325,7 +327,7 @@ public class ConsoleViewPart extends DockTrackingViewPart {
     /**
      * @return the settings currently in use.
      */
-    public Settings getCurrentSettings() {
+    public ObservedSettings getCurrentSettings() {
         return temporalDisplay.getCurrentSettings();
     }
 

@@ -70,7 +70,7 @@ import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.ResourceList;
 import com.raytheon.uf.viz.core.rsc.ResourceList.AddListener;
 import com.raytheon.uf.viz.core.rsc.ResourceList.RemoveListener;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -97,7 +97,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                           display of hazard hatched areas.
  * Apr 09, 2014    2925    Chris.Golden      Changed to ensure that method is called
  *                                           within the UI thread.
- * Dec 15, 2014    3846    Tracy Hansen       Added ability to draw points back in
+ * Dec 05, 2014    4124    Chris.Golden      Changed to work with ObservedSettings.
+ * Dec 15, 2014    3846    Tracy Hansen      Added ability to draw points back in
  * </pre>
  * 
  * @author Chris.Golden
@@ -620,7 +621,7 @@ public class SpatialView implements
     }
 
     @Override
-    public void setSettings(final Settings settings) {
+    public void setSettings(final ObservedSettings settings) {
         VizApp.runAsync(new Runnable() {
             @Override
             public void run() {

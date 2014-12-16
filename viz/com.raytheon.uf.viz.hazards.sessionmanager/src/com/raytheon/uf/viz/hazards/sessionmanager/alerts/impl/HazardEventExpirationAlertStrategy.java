@@ -30,6 +30,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardEventAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertConfigCriterion;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertsConfig;
@@ -63,6 +64,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                                    you leave hazard services 
  *                                                    and come back much later.
  * 
+ * Dec 05, 2014  4124      Chris.Golden Changed to work with parameterized config
+                                        manager.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -90,7 +93,7 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
     public HazardEventExpirationAlertStrategy(
             IHazardSessionAlertsManager alertsManager,
             ISessionTimeManager sessionTimeManager,
-            ISessionConfigurationManager sessionConfigurationManager,
+            ISessionConfigurationManager<ObservedSettings> sessionConfigurationManager,
             IHazardEventManager hazardEventManager,
             IHazardFilterStrategy hazardFilterStrategy) {
         this.alertsManager = alertsManager;
@@ -109,7 +112,7 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
      * Session is active. Not clear if we need to support that pathway.
      */
     private HazardEventExpirationAlertsConfig loadAlertConfiguration(
-            ISessionConfigurationManager sessionManager) {
+            ISessionConfigurationManager<ObservedSettings> sessionManager) {
         HazardAlertsConfig config = sessionManager.getAlertConfig();
         return config.getEventExpirationConfig();
     }

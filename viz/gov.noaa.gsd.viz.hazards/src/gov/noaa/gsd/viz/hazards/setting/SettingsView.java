@@ -12,6 +12,7 @@ package gov.noaa.gsd.viz.hazards.setting;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_CATEGORIES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_CATEGORIES_AND_TYPES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_TYPES;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
@@ -53,6 +54,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
@@ -80,6 +82,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  *                                           manager changes.
  * Aug 28, 2014    3768    Robert.Blum       Changed to sort the settings menu and 
  *                                           to load a valid setting on a delete.
+ * Dec 05, 2014    4124    Chris.Golden      Changed to work with newly parameterized
+ *                                           config manager and with ObservedSettings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -155,7 +159,7 @@ public class SettingsView implements
                             StaticSettingsAction.ActionType.SETTINGS_CHOSEN,
                             settingsID));
                 } else if (text.equals(DELETE_COMMAND_MENU_TEXT)) {
-                    ISessionConfigurationManager configManager = presenter
+                    ISessionConfigurationManager<ObservedSettings> configManager = presenter
                             .getSessionManager().getConfigurationManager();
                     boolean answer = MessageDialog.openQuestion(Display
                             .getCurrent().getActiveShell(), "Delete Setting",
@@ -341,7 +345,8 @@ public class SettingsView implements
                                     currentSettings = MegawidgetSettingsConversionUtils
                                             .updateSettingsUsingMap(
                                                     currentSettings,
-                                                    manager.getState());
+                                                    manager.getState(),
+                                                    UIOriginator.SETTINGS_MENU);
 
                                     /*
                                      * Forward the current setting change to the
@@ -350,7 +355,8 @@ public class SettingsView implements
                                     try {
                                         presenter
                                                 .fireAction(new CurrentSettingsAction(
-                                                        currentSettings));
+                                                        currentSettings,
+                                                        UIOriginator.SETTINGS_MENU));
                                     } catch (Exception e) {
                                         statusHandler.error(
                                                 "Could not serialize JSON.", e);
@@ -422,7 +428,7 @@ public class SettingsView implements
     /**
      * Current settings.
      */
-    private Settings currentSettings;
+    private ObservedSettings currentSettings;
 
     /**
      * Settings pulldown action.
@@ -506,7 +512,8 @@ public class SettingsView implements
 
     @Override
     public final void initialize(SettingsPresenter presenter,
-            List<Settings> settings, Field[] fields, Settings currentSettings) {
+            List<Settings> settings, Field[] fields,
+            ObservedSettings currentSettings) {
         this.presenter = presenter;
         setSettings(settings);
         setCurrentSettings(currentSettings);
@@ -542,7 +549,7 @@ public class SettingsView implements
 
     @Override
     public final void showSettingDetail(SettingsConfig settingsConfig,
-            Settings settings) {
+            ObservedSettings settings) {
         if (settingDialog != null) {
             settingDialog.open();
             return;
@@ -587,7 +594,7 @@ public class SettingsView implements
     }
 
     @Override
-    public final void setCurrentSettings(final Settings currentSettings) {
+    public final void setCurrentSettings(final ObservedSettings currentSettings) {
         VizApp.runAsync(new Runnable() {
             @Override
             public void run() {

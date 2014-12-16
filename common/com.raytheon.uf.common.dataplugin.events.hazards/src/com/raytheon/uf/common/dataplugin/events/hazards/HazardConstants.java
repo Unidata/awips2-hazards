@@ -62,6 +62,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Oct 22, 2014 4818      Chris.Golden  Removed constant for UI scrolling increment (moved to
  *                                      UiBuilder).
  * Nov 18, 2014 4124      Chris.Golden  Removed unused change element.
+ * Dec 05, 2014 4124      Chris.Golden  Added sort priority constants.
  * </pre>
  * 
  * @author mnash
@@ -666,6 +667,17 @@ public final class HazardConstants {
      * Visible columns key in setting dictionary.
      */
     public static final String SETTING_VISIBLE_COLUMNS = "visibleColumns";
+
+    /**
+     * Sort priority key in setting dictionary.
+     */
+    public static final String SETTING_COLUMN_SORT_PRIORITY = "sortPriority";
+
+    /**
+     * Value indicating no sort priority when made the value associated with the
+     * {@link #SETTING_COLUMN_SORT_PRIORITY} key in a setting dictionary.
+     */
+    public static final int SETTING_COLUMN_SORT_PRIORITY_NONE = 0;
 
     /**
      * Sort direction key in setting dictionary.

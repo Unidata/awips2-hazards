@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.hazards.setting;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
 import gov.noaa.gsd.viz.hazards.utilities.MegawidgetSettingsConversionUtils;
@@ -43,6 +44,7 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 
@@ -68,6 +70,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  *                                         manager changes.
  * Aug 27, 2014   3768     Robert.Blum     Added ability to select recommenders as 
  *                                         part of the settings dialog.
+ * Dec 05, 2014   4124     Chris.Golden    Changed to work with ObservedSettings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -124,7 +127,8 @@ class SettingDialog extends BasicDialog {
                 @Override
                 public void run() {
                     fireAction(new StaticSettingsAction(
-                            StaticSettingsAction.ActionType.SAVE, values));
+                            StaticSettingsAction.ActionType.SAVE,
+                            currentSettings));
                 }
             }, new Runnable() {
                 private final IInputValidator validator = new IInputValidator() {
@@ -154,11 +158,14 @@ class SettingDialog extends BasicDialog {
                             "Save Setting As", "Enter the new setting name: ",
                             "", validator);
                     if (inputDialog.open() == InputDialog.OK) {
-                        values.setDisplayName(inputDialog.getValue());
-                        values.setSettingsID(inputDialog.getValue());
+                        currentSettings.setDisplayName(inputDialog.getValue(),
+                                UIOriginator.SETTINGS_DIALOG);
+                        currentSettings.setSettingsID(inputDialog.getValue(),
+                                UIOriginator.SETTINGS_DIALOG);
                         setDialogName(getShell());
                         fireAction(new StaticSettingsAction(
-                                StaticSettingsAction.ActionType.SAVE_AS, values));
+                                StaticSettingsAction.ActionType.SAVE_AS,
+                                currentSettings));
                     }
                 }
             }, "Close");
@@ -186,9 +193,9 @@ class SettingDialog extends BasicDialog {
     private final SettingsConfig fields;
 
     /**
-     * Values dictionary, used to hold the dialog's widgets' values.
+     * Current settings.
      */
-    private Settings values;
+    private ObservedSettings currentSettings;
 
     /**
      * Recommender Composite.
@@ -241,16 +248,15 @@ class SettingDialog extends BasicDialog {
      *            parameters for the fields making up the dialog. Within the set
      *            of all fields that are defined by these parameters, all the
      *            fields (widget specifiers) must have unique identifiers.
-     * @param values
-     *            Values for each of the fields defined in <code>fields</code>
-     *            as a dictionary, one entry for each field identifier.
+     * @param currentSettings
+     *            Current settings.
      */
     public SettingDialog(SettingsPresenter presenter, Shell parent,
-            SettingsConfig fields, Settings values) {
+            SettingsConfig fields, ObservedSettings currentSettings) {
         super(parent);
         this.presenter = presenter;
         this.fields = fields;
-        this.values = values;
+        this.currentSettings = currentSettings;
         setShellStyle(SWT.CLOSE | SWT.MODELESS | SWT.BORDER | SWT.TITLE
                 | SWT.RESIZE);
         setBlockOnOpen(false);
@@ -263,11 +269,11 @@ class SettingDialog extends BasicDialog {
      * specified dictionary pairing field name keys with those fields' values.
      * This may only be called once the dialog has been opened.
      * 
-     * @param newValues
-     *            Dictionary of new values to be held by the dialog.
+     * @param settings
+     *            New settings.
      */
-    public void setState(Settings settings) {
-        values = settings;
+    public void setState(ObservedSettings settings) {
+        currentSettings = settings;
         try {
             megawidgetManager.setState(MegawidgetSettingsConversionUtils
                     .settingsPOJOToMap(settings));
@@ -338,7 +344,7 @@ class SettingDialog extends BasicDialog {
 
             megawidgetManager = new MegawidgetManager(top, listForMegawidget,
                     MegawidgetSettingsConversionUtils
-                            .settingsPOJOToMap(this.values),
+                            .settingsPOJOToMap(this.currentSettings),
                     new MegawidgetManagerAdapter() {
 
                         @Override
@@ -392,17 +398,20 @@ class SettingDialog extends BasicDialog {
      *            Shell for which title text is to be set.
      */
     private void setDialogName(Shell shell) {
-        shell.setText(DIALOG_TITLE_PREFIX + this.values.getDisplayName());
+        shell.setText(DIALOG_TITLE_PREFIX + currentSettings.getDisplayName());
     }
 
     /**
      * Respond to the setting being changed.
      */
     private void settingChanged() {
-        values = MegawidgetSettingsConversionUtils.updateSettingsUsingMap(
-                values, megawidgetManager.getState());
+        currentSettings = MegawidgetSettingsConversionUtils
+                .updateSettingsUsingMap(currentSettings,
+                        megawidgetManager.getState(),
+                        UIOriginator.SETTINGS_DIALOG);
         fireAction(new StaticSettingsAction(
-                StaticSettingsAction.ActionType.SETTINGS_MODIFIED, values));
+                StaticSettingsAction.ActionType.SETTINGS_MODIFIED,
+                currentSettings));
     }
 
     /**

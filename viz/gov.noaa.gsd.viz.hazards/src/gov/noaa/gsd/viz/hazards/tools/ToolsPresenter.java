@@ -21,6 +21,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsToolsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
@@ -41,6 +42,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * May 17, 2014    2925    Chris.Golden      Added newly required implementation of
  *                                           reinitialize(), and made initialize()
  *                                           protected as it is called by setView().
+ * Dec 05, 2014    4124    Chris.Golden      Changed to work with newly parameterized
+ *                                           config manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -60,7 +63,8 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public ToolsPresenter(ISessionManager<ObservedHazardEvent> model,
+    public ToolsPresenter(
+            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
     }

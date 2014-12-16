@@ -29,13 +29,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013 2166      daniel.s.schaffer@noaa.gov      Initial creation
- * 
+ * Dec 05, 2014 4124      Chris.Golden      Properly specified generic parameter for List.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-@SuppressWarnings("rawtypes")
 public class ToolsViewForTesting implements
         IToolsView<Action, RCPMainUserInterfaceElement> {
 
@@ -56,7 +55,7 @@ public class ToolsViewForTesting implements
     }
 
     @Override
-    public List contributeToMainUI(RCPMainUserInterfaceElement type) {
+    public List<Action> contributeToMainUI(RCPMainUserInterfaceElement type) {
         return null;
     }
 

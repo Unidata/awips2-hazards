@@ -34,6 +34,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtiliti
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
@@ -57,7 +58,7 @@ import com.vividsolutions.jts.geom.TopologyException;
  * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Added code for test of settings-based filtering
  * Feb 07, 2014 2890        bkowal     Product Generation JSON refactor.
  * Apr 09, 2014    2925       Chris.Golden Fixed to work with new HID event propagation.
- * 
+ * Dec 16, 2014    4124       Chris.Golden Changed to work with new ISettings interface.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -314,8 +315,9 @@ public class AutoTestUtilities {
         eventBus.publishAsync(action);
     }
 
-    void changeCurrentSettings(Settings settings) {
-        CurrentSettingsAction action = new CurrentSettingsAction(settings);
+    void changeCurrentSettings(ISettings settings) {
+        CurrentSettingsAction action = new CurrentSettingsAction(settings,
+                UIOriginator.SETTINGS_MENU);
         eventBus.publishAsync(action);
     }
 

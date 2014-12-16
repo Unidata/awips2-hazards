@@ -10,7 +10,6 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
 
 import java.util.Date;
@@ -20,7 +19,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
@@ -48,6 +47,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Aug 28, 2014 2532       Robert.Blum       Commented out zooming when settings are
  *                                           changed.
  * Nov 18, 2014  4124      Chris.Golden      Adapted to new time manager.
+ * Dec 05, 2014  4124      Chris.Golden      Changed to work with newly parameterized
+ *                                           config manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -92,7 +93,8 @@ public class SpatialPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public SpatialPresenter(ISessionManager<ObservedHazardEvent> model,
+    public SpatialPresenter(
+            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
     }
@@ -107,10 +109,8 @@ public class SpatialPresenter extends
      */
     @Override
     public void modelChanged(EnumSet<HazardConstants.Element> changed) {
-        if (changed.contains(HazardConstants.Element.SETTINGS)) {
-            // useSettingZoomParameters();
-        } else if (changed.contains(HazardConstants.Element.CURRENT_SETTINGS)) {
-            Settings settings = getModel().getConfigurationManager()
+        if (changed.contains(HazardConstants.Element.CURRENT_SETTINGS)) {
+            ObservedSettings settings = getModel().getConfigurationManager()
                     .getSettings();
             getView().setSettings(settings);
         } else if (changed.contains(HazardConstants.Element.CAVE_TIME)) {
@@ -168,45 +168,5 @@ public class SpatialPresenter extends
         /*
          * No action.
          */
-    }
-
-    // Private Methods
-
-    /**
-     * Use the specified setting's zoom parameters.
-     * 
-     */
-    private void useSettingZoomParameters() {
-
-        /*
-         * Get the new setting parameters, and from them, get the zoom
-         * parameters.
-         */
-        double[] zoomParams = new double[ZOOM_PARAM_NAMES.length];
-        boolean zoomExtracted = true;
-        Settings settings = getModel().getConfigurationManager().getSettings();
-        try {
-            Dict settingDict = Dict.getInstance(jsonConverter.toJson(settings));
-            Dict zoomDict = settingDict
-                    .getDynamicallyTypedValue(ZOOM_PARAMETERS);
-            for (int j = 0; j < zoomParams.length; j++) {
-                zoomParams[j] = ((Number) zoomDict.get(ZOOM_PARAM_NAMES[j]))
-                        .doubleValue();
-            }
-        } catch (Exception e) {
-            statusHandler.error("SpatialPresenter.useSettingZoomParameters(): "
-                    + "Error: could not parse zoom parameter values "
-                    + "for setting ID " + settings.getSettingsID()
-                    + " from JSON.", e);
-            zoomExtracted = false;
-        }
-
-        /*
-         * Set the display to the setting's extracted zoom parameters.
-         */
-        if (zoomExtracted) {
-            getView().setDisplayZoomParameters(zoomParams[0], zoomParams[1],
-                    zoomParams[2]);
-        }
     }
 }

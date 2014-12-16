@@ -37,6 +37,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.EditorUtil;
@@ -63,6 +64,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             fill by default.
  * Sep 09, 2014     3994   Robert.Blum         Added handleMouseEnter to reset the 
  *                                             cursor type.
+ * Dec 05, 2014     4124   hris.Golden         Changed to work with newly parameterized
+ *                                             config manager.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -87,10 +90,10 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
 
     private final HazardEventBuilder hazardEventBuilder;
 
-    private final ISessionManager<ObservedHazardEvent> sessionManager;
+    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
     public VertexHazardDrawingAction(
-            ISessionManager<ObservedHazardEvent> sessionManager) {
+            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager) {
         this.sessionManager = sessionManager;
         hazardEventBuilder = new HazardEventBuilder(sessionManager);
     }

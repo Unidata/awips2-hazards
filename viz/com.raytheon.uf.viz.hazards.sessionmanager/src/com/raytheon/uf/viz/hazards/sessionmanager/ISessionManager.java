@@ -29,6 +29,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
@@ -49,13 +50,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * Nov 19, 2013  1463      blawrenc    Added state of automatic hazard conflict testing.
  * Nov 23, 2013  1462      blawrenc    Added state of hatched area drawing
  * Oct 08, 2014  4042      Chris.Golden Added generate method (moved from message handler).
+ * Dec 05, 2014  4124      Chris.Golden Changed to work with parameterized config manager.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 
-public interface ISessionManager<E extends IHazardEvent> extends IUndoRedoable {
+public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
+        extends IUndoRedoable {
 
     /**
      * Get a manager for interacting with the events
@@ -76,7 +79,7 @@ public interface ISessionManager<E extends IHazardEvent> extends IUndoRedoable {
      * 
      * @return
      */
-    public ISessionConfigurationManager getConfigurationManager();
+    public ISessionConfigurationManager<S> getConfigurationManager();
 
     /**
      * Get a manager for configuring, generating, and issueing products.

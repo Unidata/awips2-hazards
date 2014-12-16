@@ -28,6 +28,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationPopUpAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
@@ -44,6 +45,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * May 17, 2014 2925       Chris.Golden      Added newly required implementation of
  *                                           reinitialize(), and made initialize()
  *                                           protected as it is called by setView().
+ * Dec 05, 2014 4124       Chris.Golden      Changed to work with newly parameterized
+ *                                           config manager.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -55,7 +58,8 @@ public class AlertVizPresenter extends HazardServicesPresenter<IView<?, ?>> {
 
     private IUFStatusHandler statusHandler;
 
-    public AlertVizPresenter(ISessionManager<ObservedHazardEvent> model,
+    public AlertVizPresenter(
+            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
 

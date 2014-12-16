@@ -39,7 +39,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * ------------ ---------- ----------- --------------------------
  * Jun 17, 2013 1257       bsteffen    Initial creation
  * Feb 19, 2014 2915       bkowal      Remove unused constructors.
- * 
+ * Dec 05, 2014 4124       Chris.Golden Added copy constructor, and
+ *                                      new sort priority parameter.
  * </pre>
  * 
  * @author bsteffen
@@ -60,6 +61,12 @@ public class Column {
     // TODO enum
     private String sortDir;
 
+    /**
+     * Sort priority; if <code>0</code>, this column is not being used for
+     * sorting.
+     */
+    private int sortPriority;
+
     private String displayEmptyAs;
 
     public Column() {
@@ -77,6 +84,16 @@ public class Column {
         this.fieldName = fieldName;
         this.hintTextFieldName = hintTextFieldName;
         this.sortDir = sortDir;
+    }
+
+    public Column(Column other) {
+        this.width = other.width;
+        this.type = other.type;
+        this.fieldName = other.fieldName;
+        this.hintTextFieldName = other.hintTextFieldName;
+        this.sortPriority = other.sortPriority;
+        this.sortDir = other.sortDir;
+        this.displayEmptyAs = other.displayEmptyAs;
     }
 
     public Integer getWidth() {
@@ -101,6 +118,14 @@ public class Column {
 
     public void setFieldName(String fieldName) {
         this.fieldName = fieldName;
+    }
+
+    public int getSortPriority() {
+        return sortPriority;
+    }
+
+    public void setSortPriority(int sortPriority) {
+        this.sortPriority = sortPriority;
     }
 
     public String getSortDir() {

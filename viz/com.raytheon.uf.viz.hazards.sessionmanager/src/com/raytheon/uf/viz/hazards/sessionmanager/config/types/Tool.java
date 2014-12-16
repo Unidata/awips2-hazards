@@ -38,7 +38,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 17, 2013            bsteffen     Initial creation
- * 
+ * Dec 05, 2014    4124    Chris.Golden Added copy constructor.
  * </pre>
  * 
  * @author bsteffen
@@ -50,6 +50,18 @@ public class Tool {
     private String toolName;
 
     private String displayName;
+
+    public Tool() {
+
+        /*
+         * No action.
+         */
+    }
+
+    public Tool(Tool other) {
+        this.toolName = other.toolName;
+        this.displayName = other.displayName;
+    }
 
     public String getToolName() {
         return toolName;

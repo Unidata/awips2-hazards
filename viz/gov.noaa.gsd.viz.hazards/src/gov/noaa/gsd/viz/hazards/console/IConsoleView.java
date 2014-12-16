@@ -19,6 +19,7 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableList;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
@@ -36,6 +37,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * Feb 19, 2014    2161    Chris.Golden      Added passing of set of events allowing
  *                                           "until further notice" to the view.
  * Nov 18, 2014    4124    Chris.Golden      Adapted to new time manager.
+ * Dec 05, 2014    4124    Chris.Golden      Changed to use ObservedSettings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -80,7 +82,7 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      */
     public void initialize(ConsolePresenter presenter, Date selectedTime,
             Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
-            Settings currentSettings, List<Settings> availableSettings,
+            ObservedSettings currentSettings, List<Settings> availableSettings,
             String jsonFilters, ImmutableList<IHazardAlert> activeAlerts,
             Set<String> eventIdentifiersAllowingUntilFurtherNotice,
             boolean temporalControlsInToolBar);
@@ -158,7 +160,7 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      * @param currentSettings
      */
     public void setHazardEvents(List<Dict> eventsAsDicts,
-            Settings currentSettings);
+            ObservedSettings currentSettings);
 
     /**
      * Update the specified hazard event.
@@ -185,7 +187,7 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      * 
      * @return Current settings.
      */
-    public Settings getCurrentSettings();
+    public ObservedSettings getCurrentSettings();
 
     /**
      * Set the settings to those specified.

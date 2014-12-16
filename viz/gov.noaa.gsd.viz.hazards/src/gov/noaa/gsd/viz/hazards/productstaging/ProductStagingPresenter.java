@@ -32,6 +32,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtiliti
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -82,6 +83,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInform
  *                                           specified for the products (again, if
  *                                           applicable).
  * Nov 18, 2014   4124     Chris.Golden      Adapted to new time manager.
+ * Dec 05, 2014   4124     Chris.Golden      Changed to work with newly parameterized
+ *                                           config manager.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -245,7 +248,8 @@ public class ProductStagingPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public ProductStagingPresenter(ISessionManager<ObservedHazardEvent> model,
+    public ProductStagingPresenter(
+            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
     }

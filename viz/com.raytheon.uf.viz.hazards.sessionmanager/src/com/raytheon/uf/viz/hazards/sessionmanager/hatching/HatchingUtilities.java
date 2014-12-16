@@ -36,6 +36,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 
@@ -58,7 +59,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                     map resolutions.
  * Apr 28, 2014 3556       bkowal      Updated to use the new hazards common 
  *                                     configuration plugin.
- * 
+ * Dec 05, 2014 2124       Chris.Golden Changed to work with parameterized
+ *                                      config manager.
  * </pre>
  * 
  * @author blawrenc
@@ -131,7 +133,7 @@ public class HatchingUtilities {
     public static Set<IGeometryData> getIntersectingMapGeometries(
             String mapDBtableName, String labelParameter, String cwa,
             boolean applyIntersectionThreshold,
-            ISessionConfigurationManager configManager,
+            ISessionConfigurationManager<ObservedSettings> configManager,
             final IHazardEvent hazardEvent) {
 
         Geometry geometry = hazardEvent.getGeometry();
@@ -300,7 +302,8 @@ public class HatchingUtilities {
      */
     static public Set<IGeometryData> buildHatchedAreaForEvent(
             String mapDBtableName, String labelParameter, String cwa,
-            IHazardEvent hazardEvent, ISessionConfigurationManager configManager) {
+            IHazardEvent hazardEvent,
+            ISessionConfigurationManager<ObservedSettings> configManager) {
 
         Set<IGeometryData> hatchedArea = Sets.newHashSet();
 

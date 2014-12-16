@@ -41,7 +41,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 
 /**
  * Description: {@link FunctionalTest} of storm track tool.
@@ -58,6 +58,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  *                                      ongoing issue flags are set to false at the end
  *                                      of each test, and moved the steps enum into the
  *                                      base class.
+ * Dec 05, 2014 4124       Chris.Golden Changed to work with ObservedSettings.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -70,7 +71,7 @@ public class StormTrackFunctionalTest extends
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(getClass());
 
-    private Settings savedCurrentSettings;
+    private ISettings savedCurrentSettings;
 
     protected enum Steps {
         START, MODIFY_TOOL, CHANGE_BACK_CURRENT_SETTINGS
@@ -157,6 +158,7 @@ public class StormTrackFunctionalTest extends
             switch (step) {
 
             case START:
+
                 /*
                  * We'll skip over the "drag me part" because it's too hard to
                  * test that the dot appears. We'll start after the dot has been

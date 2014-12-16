@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.hazards.setting;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 
 import java.util.EnumSet;
@@ -18,8 +19,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.drawables.IRenderableDisplay;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.MapCenter;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.viz.ui.VizWorkbenchManager;
@@ -42,6 +43,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * May 17, 2014 2925       Chris.Golden      Added newly required implementation of
  *                                           reinitialize(), and made initialize()
  *                                           protected as it is called by setView().
+ * Dec 05, 2014 4124       Chris.Golden      Changed to work with newly parameterized
+ *                                           config manager and with ObservedSettings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -60,7 +63,8 @@ public class SettingsPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public SettingsPresenter(ISessionManager<ObservedHazardEvent> model,
+    public SettingsPresenter(
+            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
     }
@@ -92,7 +96,8 @@ public class SettingsPresenter extends
      */
     public final void showSettingDetail() {
 
-        Settings settings = getModel().getConfigurationManager().getSettings();
+        ObservedSettings settings = getModel().getConfigurationManager()
+                .getSettings();
 
         /*
          * Update the setting's zoom parameters with the current values.
@@ -100,7 +105,7 @@ public class SettingsPresenter extends
         double[] zoomParams = getDisplayZoomParameters();
         MapCenter mapCenter = new MapCenter(zoomParams[0], zoomParams[1],
                 zoomParams[2]);
-        settings.setMapCenter(mapCenter);
+        settings.setMapCenter(mapCenter, UIOriginator.SETTINGS_DIALOG);
 
         /*
          * Have the view open the setting detail subview.
@@ -114,7 +119,8 @@ public class SettingsPresenter extends
 
     @Override
     protected void initialize(ISettingsView<?, ?> view) {
-        Settings settings = getModel().getConfigurationManager().getSettings();
+        ObservedSettings settings = getModel().getConfigurationManager()
+                .getSettings();
         view.initialize(this, getModel().getConfigurationManager()
                 .getAvailableSettings(), getModel().getConfigurationManager()
                 .getFilterConfig(), settings);

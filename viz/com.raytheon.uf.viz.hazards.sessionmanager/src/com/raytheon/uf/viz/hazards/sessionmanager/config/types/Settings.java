@@ -32,8 +32,7 @@ import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 /**
- * Contains all the user customizable configuration options which affect the use
- * of the HazardServices UI.
+ * Basic settings implementation.
  * 
  * <pre>
  * 
@@ -44,7 +43,9 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * May 20, 2013 1257       bsteffen    Initial creation
  * Aug 22, 2013  787       blawrenc    Added capability to associate the setting
  *                                     with one or more perspectives.
- * 
+ * Dec 05, 2014 4124       Chris.Golden Made implementation of new ISettings
+ *                                      interface, needed to allow for proper
+ *                                      use of ObservedSettings.
  * </pre>
  * 
  * @author bsteffen
@@ -52,7 +53,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  */
 @XmlRootElement(name = "HazardServicesSettings")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class Settings {
+public class Settings implements ISettings {
 
     /**
      * The ID of this settings object.
@@ -143,7 +144,7 @@ public class Settings {
 
     }
 
-    public Settings(Settings other) {
+    public Settings(ISettings other) {
         apply(other);
     }
 
@@ -152,7 +153,8 @@ public class Settings {
      * 
      * @param other
      */
-    public void apply(Settings other) {
+    @Override
+    public void apply(ISettings other) {
         setSettingsID(other.getSettingsID());
         setVisibleTypes(other.getVisibleTypes());
         setVisibleStatuses(other.getVisibleStatuses());
@@ -168,132 +170,165 @@ public class Settings {
         setStaticSettingsID(other.getStaticSettingsID());
         setAddToSelected(other.getAddToSelected());
         setAddGeometryToSelected(other.getAddGeometryToSelected());
+        setPerspectiveIDs(other.getPerspectiveIDs());
     }
 
+    @Override
     public String getSettingsID() {
         return settingsID;
     }
 
+    @Override
     public void setSettingsID(String settingsID) {
         this.settingsID = settingsID;
     }
 
+    @Override
     public Set<String> getVisibleTypes() {
         return visibleTypes;
     }
 
+    @Override
     public void setVisibleTypes(Set<String> visibleTypes) {
         this.visibleTypes = visibleTypes;
     }
 
+    @Override
     public Set<String> getVisibleStatuses() {
         return visibleStatuses;
     }
 
+    @Override
     public void setVisibleStatuses(Set<String> visibleStatuses) {
         this.visibleStatuses = visibleStatuses;
     }
 
+    @Override
     public List<Tool> getToolbarTools() {
         return toolbarTools;
     }
 
+    @Override
     public void setToolbarTools(List<Tool> toolbarTools) {
         this.toolbarTools = toolbarTools;
     }
 
+    @Override
     public Long getDefaultTimeDisplayDuration() {
         return defaultTimeDisplayDuration;
     }
 
+    @Override
     public void setDefaultTimeDisplayDuration(Long defaultTimeDisplayDuration) {
         this.defaultTimeDisplayDuration = defaultTimeDisplayDuration;
     }
 
+    @Override
     public MapCenter getMapCenter() {
         return mapCenter;
     }
 
+    @Override
     public void setMapCenter(MapCenter mapCenter) {
         this.mapCenter = mapCenter;
     }
 
+    @Override
     public String getDefaultCategory() {
         return defaultCategory;
     }
 
+    @Override
     public void setDefaultCategory(String defaultCategory) {
         this.defaultCategory = defaultCategory;
     }
 
+    @Override
     public Set<String> getVisibleSites() {
         return visibleSites;
     }
 
+    @Override
     public void setVisibleSites(Set<String> visibleSites) {
         this.visibleSites = visibleSites;
     }
 
+    @Override
     public String getDisplayName() {
         return displayName;
     }
 
+    @Override
     public void setDisplayName(String displayName) {
         this.displayName = displayName;
     }
 
+    @Override
     public Long getDefaultDuration() {
         return defaultDuration;
     }
 
+    @Override
     public void setDefaultDuration(Long defaultDuration) {
         this.defaultDuration = defaultDuration;
     }
 
+    @Override
     public List<String> getVisibleColumns() {
         return visibleColumns;
     }
 
+    @Override
     public void setVisibleColumns(List<String> visibleColumns) {
         this.visibleColumns = visibleColumns;
     }
 
+    @Override
     public Map<String, Column> getColumns() {
         return columns;
     }
 
+    @Override
     public void setColumns(Map<String, Column> columns) {
         this.columns = columns;
     }
 
+    @Override
     public String getStaticSettingsID() {
         return staticSettingsID;
     }
 
+    @Override
     public void setStaticSettingsID(String staticSettingsID) {
         this.staticSettingsID = staticSettingsID;
     }
 
+    @Override
     public Boolean getAddToSelected() {
         return addToSelected;
     }
 
+    @Override
     public Boolean getAddGeometryToSelected() {
         return addGeometryToSelected;
     }
 
+    @Override
     public void setAddToSelected(Boolean addToSelected) {
         this.addToSelected = addToSelected;
     }
 
+    @Override
     public void setAddGeometryToSelected(Boolean addGeometryToSelected) {
         this.addGeometryToSelected = addGeometryToSelected;
     }
 
+    @Override
     public Set<String> getPerspectiveIDs() {
         return perspectiveIDs;
     }
 
+    @Override
     public void setPerspectiveIDs(Set<String> perspectiveIDs) {
         this.perspectiveIDs = perspectiveIDs;
     }

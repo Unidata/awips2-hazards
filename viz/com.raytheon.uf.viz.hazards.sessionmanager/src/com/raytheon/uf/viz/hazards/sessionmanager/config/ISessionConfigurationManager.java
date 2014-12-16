@@ -31,10 +31,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlerts
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
  * Manages all settings and configuration files for a session.
@@ -57,20 +59,23 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * Aug 20, 2014 4243       Chris.Golden Added new method to run an event-modifying
  *                                      script.
  * Sep 16, 2014 4753       Chris.Golden Added mutable properties to event script.
+ * Dec 05, 2014 4124       Chris.Golden Changed to have generic ISettings parameter,
+ *                                      in support of proper use of ObservedSettings.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 
-public interface ISessionConfigurationManager {
+public interface ISessionConfigurationManager<S extends ISettings> {
 
     /**
      * Switch the settings to a new settings ID.
      * 
      * @param settingsId
+     * @param originator
      */
-    public void changeSettings(String settingsId);
+    public void changeSettings(String settingsId, IOriginator originator);
 
     /**
      * Get the current siteID that is used for new Events.
@@ -92,7 +97,7 @@ public interface ISessionConfigurationManager {
      * 
      * @return
      */
-    public Settings getSettings();
+    public S getSettings();
 
     /**
      * Save the current settings.

@@ -19,36 +19,36 @@
  **/
 package gov.noaa.gsd.viz.hazards.display.action;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 
 /**
- * An abstraction of the Settings Actions. 
+ * An abstraction of the Settings Actions.
  * 
  * <pre>
- *
+ * 
  * SOFTWARE HISTORY
- *
+ * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 18, 2014 2915       bkowal      Initial creation
- *
+ * Dec 05, 2014 4124       Chris.Golden Changed to work with ISettings.
  * </pre>
- *
+ * 
  * @author bkowal
- * @version 1.0	
+ * @version 1.0
  */
 
 public class AbstractSettingsAction {
-    private final Settings settings;
-   
+    private final ISettings settings;
+
     /**
      * 
      */
-    public AbstractSettingsAction(Settings settings) {
+    public AbstractSettingsAction(ISettings settings) {
         this.settings = settings;
     }
-    
-    public Settings getSettings() {
+
+    public ISettings getSettings() {
         return settings;
     }
 }

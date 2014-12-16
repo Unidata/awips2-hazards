@@ -14,9 +14,9 @@ import gov.noaa.gsd.viz.hazards.display.HazardServicesMessageHandler;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
 
@@ -25,7 +25,7 @@ import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 
 /**
  * Description: Mock {@link ISpatialView} used for testing.
@@ -36,7 +36,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
- * 
+ * Dec 05, 2014 4124       Chris.Golden      Changed to work with ObservedSettings.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -60,7 +60,7 @@ public class SpatialViewForTesting implements ISpatialView {
     }
 
     @Override
-    public void setSettings(Settings settings) {
+    public void setSettings(ObservedSettings settings) {
     }
 
     @Override

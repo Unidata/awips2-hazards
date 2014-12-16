@@ -26,6 +26,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -45,8 +46,9 @@ import com.vividsolutions.jts.geom.Polygon;
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * Nov 23, 203     1462    bryon.lawrence      Set hazard border color to hazard fill color.
- * 
+ * Nov 23, 2013    1462    bryon.lawrence      Set hazard border color to hazard fill color.
+ * Dec 05, 2014    4124    Chris.Golden        Changed to work with newly parameterized
+ *                                             config manager.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -66,7 +68,7 @@ public abstract class HazardServicesDrawingAttributes extends Line {
 
     private TextPositioner textPosition = TextPositioner.CENTER;
 
-    protected ISessionConfigurationManager configurationManager;
+    protected ISessionConfigurationManager<ObservedSettings> configurationManager;
 
     private Color[] colors = new Color[] { Color.WHITE, Color.WHITE };
 
@@ -79,7 +81,7 @@ public abstract class HazardServicesDrawingAttributes extends Line {
     protected AbstractEditor editor;
 
     public HazardServicesDrawingAttributes(
-            ISessionConfigurationManager configurationManager)
+            ISessionConfigurationManager<ObservedSettings> configurationManager)
             throws VizException {
         super();
         this.configurationManager = configurationManager;
@@ -194,7 +196,7 @@ public abstract class HazardServicesDrawingAttributes extends Line {
     }
 
     protected void setLineStyle(IHazardEvent hazardEvent,
-            ISessionConfigurationManager configManager) {
+            ISessionConfigurationManager<ObservedSettings> configManager) {
         String borderStyle = "NONE";
         com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle linestyle = configManager
                 .getBorderStyle(hazardEvent);
@@ -227,7 +229,7 @@ public abstract class HazardServicesDrawingAttributes extends Line {
      * @return
      */
     public Color[] buildHazardEventColors(IHazardEvent hazardEvent,
-            ISessionConfigurationManager configManager) {
+            ISessionConfigurationManager<ObservedSettings> configManager) {
         com.raytheon.uf.common.colormap.Color color = configManager
                 .getColor(hazardEvent);
         Color fillColor = new Color((int) (color.getRed() * 255),

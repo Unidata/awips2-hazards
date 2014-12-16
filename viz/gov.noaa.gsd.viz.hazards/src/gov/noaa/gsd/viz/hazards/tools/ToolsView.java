@@ -38,8 +38,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 
 /**
- * Settings view, an implementation of ISettingsView that provides an SWT-based
- * view.
+ * Tools view, an implementation of IToolsView that provides an SWT-based view.
  * 
  * <pre>
  * 
@@ -53,6 +52,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  *                                           tool menu button disabled in such
  *                                           cases.
  * Jul 15, 2013    585     Chris.Golden      Changed to support loading from bundle.
+ * Dec 05, 2014   4124     Chris.Golden      Corrected header comment.
  * </pre>
  * 
  * @author Chris.Golden

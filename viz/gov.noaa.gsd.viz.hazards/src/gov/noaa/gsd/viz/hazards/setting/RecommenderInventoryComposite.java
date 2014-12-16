@@ -19,6 +19,8 @@
  **/
 package gov.noaa.gsd.viz.hazards.setting;
 
+import gov.noaa.gsd.viz.hazards.UIOriginator;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +50,8 @@ import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsToolsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 
 /**
@@ -63,6 +66,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  * Aug 28, 2014 3768       Robert.Blum  Initial creation.
  * Sep 08, 2014 4243       Chris.Golden Changed to work with latest version
  *                                      of abstract recommender engine.
+ * Dec 05, 2014 4124       Chris.Golden Changed to work with ObservedSettings.
  * </pre>
  * 
  * @author Robert.Blum
@@ -77,7 +81,7 @@ public class RecommenderInventoryComposite extends Composite {
 
     private StyledText stText;
 
-    private Settings currentSetting;
+    private ISettings currentSetting;
 
     /**
      * @param parentShell
@@ -128,7 +132,7 @@ public class RecommenderInventoryComposite extends Composite {
                     checkItems(item, checked);
                     checkPath(item.getParentItem(), checked, false);
                     Tool tool = null;
-                    ISessionConfigurationManager manager = presenter
+                    ISessionConfigurationManager<ObservedSettings> manager = presenter
                             .getSessionManager().getConfigurationManager();
                     if (item.getText().equals(rec.getName())) {
 
@@ -148,8 +152,8 @@ public class RecommenderInventoryComposite extends Composite {
                             manager.getSettings().getToolbarTools()
                                     .remove(tool);
                         }
-                        presenter
-                                .fireAction(new SettingsToolsModified(manager));
+                        presenter.fireAction(new SettingsToolsModified(manager,
+                                UIOriginator.SETTINGS_DIALOG));
                     }
                 } else {
                     if (item.getText().equals(rec.getName())) {
@@ -281,7 +285,7 @@ public class RecommenderInventoryComposite extends Composite {
      * Based on the recommenders currently available in the setting, this
      * updates the checks in the Tree
      */
-    private void updateChecks(Settings setting) {
+    private void updateChecks(ISettings setting) {
         currentSetting = setting;
         for (TreeItem item : recommenderTree.getTree().getItems()) {
             boolean inSetting = false;

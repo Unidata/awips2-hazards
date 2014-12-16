@@ -79,6 +79,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.core.requests.ThriftClient;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
@@ -165,6 +166,11 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      specifiers in a scrollable megawidget.
  * Dec 04, 2014 2826       dgilling     Ensure proper order of operations for 
  *                                      product dissemination to avoid duplicate events.
+ * Dec 05, 2014 2124       Chris.Golden Changed to work with parameterized config manager.
+ *                                      Also added better status handler error messages if
+ *                                      the defineDialog() method in a product generator
+ *                                      gives back something other than a list of maps for
+ *                                      the megawidget specifiers under the metadata key.
  * </pre>
  * 
  * @author bsteffen
@@ -182,7 +188,7 @@ public class SessionProductManager implements ISessionProductManager {
      * A full configuration manager is needed to get access to the product
      * generation table, which is not exposed in ISessionConfigurationManager
      */
-    private final ISessionConfigurationManager configManager;
+    private final ISessionConfigurationManager<ObservedSettings> configManager;
 
     private final ISessionEventManager<ObservedHazardEvent> eventManager;
 
@@ -236,7 +242,7 @@ public class SessionProductManager implements ISessionProductManager {
 
     public SessionProductManager(SessionManager sessionManager,
             ISessionTimeManager timeManager,
-            ISessionConfigurationManager configManager,
+            ISessionConfigurationManager<ObservedSettings> configManager,
             ISessionEventManager<ObservedHazardEvent> eventManager,
             ISessionNotificationSender notificationSender, IMessenger messenger) {
         this.sessionManager = sessionManager;
@@ -380,55 +386,65 @@ public class SessionProductManager implements ISessionProductManager {
             if (eventSet == null) {
                 return StagingRequired.NO_APPLICABLE_EVENTS;
             }
-            if (issue == false) {
-                Map<String, Serializable> dialogInfo = productGen
-                        .getDialogInfo(info.getProductGeneratorName(), eventSet);
-                if ((dialogInfo != null) && (dialogInfo.isEmpty() == false)) {
-                    List<Map<String, Serializable>> dialogInfoFields = (List<Map<String, Serializable>>) dialogInfo
+            Map<String, Serializable> dialogInfo = productGen.getDialogInfo(
+                    info.getProductGeneratorName(), eventSet);
+            if ((dialogInfo != null) && (dialogInfo.isEmpty() == false)) {
+                List<Map<String, Serializable>> dialogInfoFields = null;
+                try {
+                    dialogInfoFields = (List<Map<String, Serializable>>) dialogInfo
                             .get(HazardConstants.METADATA_KEY);
-                    if (dialogInfoFields.isEmpty() == false) {
+                    ;
+                } catch (Exception e) {
+                    statusHandler.error(
+                            "Could not get product staging megawidgets for "
+                                    + info.getProductGeneratorName()
+                                    + ": value associated with "
+                                    + HazardConstants.METADATA_KEY
+                                    + " by product generator must be list of "
+                                    + "megawidget specifiers.", e);
+                }
+                if ((dialogInfoFields != null)
+                        && (dialogInfoFields.isEmpty() == false)) {
 
-                        /*
-                         * Get the raw specifiers, and ensure they are
-                         * scrollable.
-                         */
-                        List<Map<String, Object>> rawSpecifiers = new ArrayList<>(
-                                dialogInfoFields.size());
-                        for (Map<String, Serializable> rawSpecifier : dialogInfoFields) {
-                            rawSpecifiers.add(new HashMap<String, Object>(
-                                    rawSpecifier));
-                        }
-                        rawSpecifiers = MegawidgetSpecifierManager
-                                .makeRawSpecifiersScrollable(rawSpecifiers, 10,
-                                        5, 10, 5);
+                    /*
+                     * Get the raw specifiers, and ensure they are scrollable.
+                     */
+                    List<Map<String, Object>> rawSpecifiers = new ArrayList<>(
+                            dialogInfoFields.size());
+                    for (Map<String, Serializable> rawSpecifier : dialogInfoFields) {
+                        rawSpecifiers.add(new HashMap<String, Object>(
+                                rawSpecifier));
+                    }
+                    rawSpecifiers = MegawidgetSpecifierManager
+                            .makeRawSpecifiersScrollable(rawSpecifiers, 10, 5,
+                                    10, 5);
 
-                        /*
-                         * Get the side effects applier, if any.
-                         */
-                        ISideEffectsApplier sideEffectsApplier = null;
-                        File scriptFile = productGen.getScriptFile(info
-                                .getProductGeneratorName());
-                        if (PythonSideEffectsApplier
-                                .containsSideEffectsEntryPointFunction(scriptFile)) {
-                            sideEffectsApplier = new PythonSideEffectsApplier(
-                                    scriptFile);
-                        }
+                    /*
+                     * Get the side effects applier, if any.
+                     */
+                    ISideEffectsApplier sideEffectsApplier = null;
+                    File scriptFile = productGen.getScriptFile(info
+                            .getProductGeneratorName());
+                    if (PythonSideEffectsApplier
+                            .containsSideEffectsEntryPointFunction(scriptFile)) {
+                        sideEffectsApplier = new PythonSideEffectsApplier(
+                                scriptFile);
+                    }
 
-                        /*
-                         * Create the megawidget specifier manager.
-                         */
-                        try {
-                            info.setStagingDialogMegawidgetSpecifierManager(new MegawidgetSpecifierManager(
-                                    rawSpecifiers, IControlSpecifier.class,
-                                    timeManager.getCurrentTimeProvider(),
-                                    sideEffectsApplier));
-                            dialogInfoNeeded = true;
-                        } catch (MegawidgetSpecificationException e) {
-                            statusHandler.error(
-                                    "Could not get product staging megawidgets for "
-                                            + info.getProductGeneratorName()
-                                            + ".", e);
-                        }
+                    /*
+                     * Create the megawidget specifier manager.
+                     */
+                    try {
+                        info.setStagingDialogMegawidgetSpecifierManager(new MegawidgetSpecifierManager(
+                                rawSpecifiers, IControlSpecifier.class,
+                                timeManager.getCurrentTimeProvider(),
+                                sideEffectsApplier));
+                        dialogInfoNeeded = true;
+                    } catch (MegawidgetSpecificationException e) {
+                        statusHandler.error(
+                                "Could not get product staging megawidgets for "
+                                        + info.getProductGeneratorName() + ": "
+                                        + e, e);
                     }
                 }
             }

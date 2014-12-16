@@ -34,6 +34,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -57,6 +58,8 @@ import com.vividsolutions.jts.geom.LinearRing;
  * Jul 15, 2013      585     Chris.Golden     Changed to no longer be a singleton.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Sep 09, 2014  3994       Robert.Blum  Added handleMouseEnter to reset the cursor type.
+ * Dec 05, 2014  4124       Chris.Golden      Changed to work with newly parameterized
+ *                                            config manager.
  * </pre>
  * 
  * @author Xiangbao jing
@@ -70,10 +73,10 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
 
     protected Line drawingAttributes = null;
 
-    private final ISessionManager<ObservedHazardEvent> sessionManager;
+    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
     public FreeHandMultiSelectionAction(
-            ISessionManager<ObservedHazardEvent> sessionManager) {
+            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager) {
         this.sessionManager = sessionManager;
     }
 
@@ -226,8 +229,8 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
                         } else {
                             // if is not existing, add on
                             clickedElementList.add(selectedElementEventID);
-                            getSpatialDisplay().elementClicked(drawableComponent,
-                                    false, false);
+                            getSpatialDisplay().elementClicked(
+                                    drawableComponent, false, false);
                         }
                     }
 

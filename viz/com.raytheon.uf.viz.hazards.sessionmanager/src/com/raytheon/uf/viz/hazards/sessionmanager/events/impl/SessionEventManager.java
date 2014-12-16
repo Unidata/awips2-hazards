@@ -83,7 +83,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.IEventModifyingScriptJo
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ModifiedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAllowUntilFurtherNoticeModified;
@@ -209,6 +210,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Nov 18, 2014 4124       Chris.Golden Changed to work with revamped time manager.
  * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded
  *                                      when appropriate.
+ * Dec 05, 2014 4124       Chris.Golden Changed to work with parameterized config
+ *                                      manager, and to properly use ObservedSettings.
  * Dec 13, 2014 4486       Dan Schaffer Eliminating effect of changed CAVE time on
  *                                      hazard status.
  * </pre>
@@ -262,7 +265,7 @@ public class SessionEventManager implements
      * A full configuration manager is needed to get access to hazard types,
      * which is not exposed in ISessionConfigurationManager
      */
-    private final ISessionConfigurationManager configManager;
+    private final ISessionConfigurationManager<ObservedSettings> configManager;
 
     private final IHazardEventManager dbManager;
 
@@ -351,7 +354,7 @@ public class SessionEventManager implements
             .reverseOrder(SEND_SELECTED_FRONT);
 
     public SessionEventManager(ISessionTimeManager timeManager,
-            ISessionConfigurationManager configManager,
+            ISessionConfigurationManager<ObservedSettings> configManager,
             IHazardEventManager dbManager,
             ISessionNotificationSender notificationSender, IMessenger messenger) {
         this.configManager = configManager;
@@ -571,16 +574,12 @@ public class SessionEventManager implements
             /*
              * Make sure the updated hazard type is a part of the visible types
              * in the current setting. If not, add it.
-             * 
-             * TODO: ObservedSettings should use defensive copying and return a
-             * copy of the visibleTypes, but since it doesn't, the copying is
-             * done here. Once the lack of defensive copying is addressed, this
-             * copying can be removed.
              */
-            Set<String> visibleTypes = new HashSet<>(configManager
-                    .getSettings().getVisibleTypes());
+            Set<String> visibleTypes = configManager.getSettings()
+                    .getVisibleTypes();
             visibleTypes.add(HazardEventUtilities.getHazardType(event));
-            configManager.getSettings().setVisibleTypes(visibleTypes);
+            configManager.getSettings().setVisibleTypes(visibleTypes,
+                    Originator.OTHER);
         } else {
             event.setHazardType(null, null, null, originator);
         }
@@ -1115,7 +1114,7 @@ public class SessionEventManager implements
     }
 
     private void filterEventsForConfig(Collection<? extends IHazardEvent> events) {
-        Settings settings = configManager.getSettings();
+        ISettings settings = configManager.getSettings();
         Set<String> siteIDs = settings.getVisibleSites();
         Set<String> phenSigs = settings.getVisibleTypes();
         Set<HazardStatus> statuses = EnumSet.noneOf(HazardStatus.class);
@@ -1142,7 +1141,7 @@ public class SessionEventManager implements
         }
     }
 
-    private void loadEventsForSettings(Settings settings) {
+    private void loadEventsForSettings(ObservedSettings settings) {
         Map<String, List<Object>> filters = new HashMap<String, List<Object>>();
         Set<String> visibleSites = settings.getVisibleSites();
         if (visibleSites == null || visibleSites.isEmpty()) {
@@ -1292,13 +1291,14 @@ public class SessionEventManager implements
             }
         }
 
-        Settings settings = configManager.getSettings();
+        ObservedSettings settings = configManager.getSettings();
 
-        Set<String> visibleSites = new HashSet<>(configManager.getSettings()
-                .getVisibleSites());
+        Set<String> visibleSites = configManager.getSettings()
+                .getVisibleSites();
         if (visibleSites.contains(configManager.getSiteID()) == false) {
             visibleSites.add(configManager.getSiteID());
-            configManager.getSettings().setVisibleSites(visibleSites);
+            configManager.getSettings().setVisibleSites(visibleSites,
+                    Originator.OTHER);
         }
         if (configManager.getHazardCategory(oevent) == null
                 && oevent.getHazardAttribute(ATTR_HAZARD_CATEGORY) == null) {

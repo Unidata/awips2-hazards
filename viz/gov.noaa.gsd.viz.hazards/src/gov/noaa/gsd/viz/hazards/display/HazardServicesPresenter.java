@@ -15,6 +15,7 @@ import gov.noaa.gsd.viz.mvp.Presenter;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
@@ -38,6 +39,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           they provided is either accessible using
  *                                           getModel().getXxxxManager(), or is for
  *                                           deprecated JSON-to-Java code.
+ * Dec 05, 2014 4124       Chris.Golden      Changed to work with newly parameterized
+ *                                           config manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -45,7 +48,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  */
 public abstract class HazardServicesPresenter<V extends IView<?, ?>>
         extends
-        Presenter<ISessionManager<ObservedHazardEvent>, HazardConstants.Element, V, Object> {
+        Presenter<ISessionManager<ObservedHazardEvent, ObservedSettings>, HazardConstants.Element, V, Object> {
 
     // Public Constructors
 
@@ -57,7 +60,8 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>>
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public HazardServicesPresenter(ISessionManager<ObservedHazardEvent> model,
+    public HazardServicesPresenter(
+            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
     }
@@ -92,7 +96,7 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>>
      * @return Session manager.
      */
     @Deprecated
-    public ISessionManager<ObservedHazardEvent> getSessionManager() {
+    public ISessionManager<ObservedHazardEvent, ObservedSettings> getSessionManager() {
         return getModel();
     }
 }

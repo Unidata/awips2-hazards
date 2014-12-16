@@ -40,6 +40,7 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
@@ -58,6 +59,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                      issued event be unmodified to
  *                                      warrant inclusion of the
  *                                      end-selected-hazards menu item.
+ * Dec 05, 2014    4124    Chris.Golden Changed to work with newly
+ *                                      parameterized config manager.
  * </pre>
  * 
  * @author mnash
@@ -123,8 +126,9 @@ public class ContextMenuHelper {
     /**
      * 
      */
-    public ContextMenuHelper(HazardServicesPresenter<?> presenter,
-            ISessionManager<ObservedHazardEvent> sessionManager) {
+    public ContextMenuHelper(
+            HazardServicesPresenter<?> presenter,
+            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager) {
         this.presenter = presenter;
         this.eventManager = sessionManager.getEventManager();
     }

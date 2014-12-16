@@ -60,12 +60,14 @@ TOR = {
         "Hazard Type": {
             "type": "string", 
             "fieldName": "type", 
+            "sortPriority": 1,
             "sortDir": "ascending",
             "hintTextFieldName": "headline",
             "displayEmptyAs": "Undefined"
         }, 
         "Status": {
-             "sortDir": "none", 
+            "sortPriority": 2,
+            "sortDir": "ascending",
             "width": 61, 
             "fieldName": "status",
             "type": "string"

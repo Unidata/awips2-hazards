@@ -9,7 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
  * Represents an action with respect to the current settings.
@@ -20,14 +21,21 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * ------------ ---------- ----------- --------------------------
  * Jan 09, 2014            daniel.s.schaffer@noaa.gov      Initial creation
  * Feb 19, 2014 2915       bkowal      Settings Action standardization
- * 
+ * Dec 05, 2014 4124       Chris.Golden Changed to work with ISettings.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  */
 public class CurrentSettingsAction extends AbstractSettingsAction {
 
-    public CurrentSettingsAction(Settings settings) {
+    private final IOriginator originator;
+
+    public CurrentSettingsAction(ISettings settings, IOriginator originator) {
         super(settings);
+        this.originator = originator;
+    }
+
+    public IOriginator getOriginator() {
+        return originator;
     }
 }

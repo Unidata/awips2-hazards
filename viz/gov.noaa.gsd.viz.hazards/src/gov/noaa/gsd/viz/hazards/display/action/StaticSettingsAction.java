@@ -9,7 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 
 /**
  * Represents an action originating from the settings view.
@@ -20,7 +20,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * ------------ ---------- ----------- --------------------------
  * Jan 09, 2014            daniel.s.schaffer@noaa.gov      Initial induction into repo
  * Feb 19, 2014 2915       bkowal      JSON settings re-factor.
- * 
+ * Dec 05, 2014 4124       Chris.Golden Changed to work with ISettings.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -40,7 +40,7 @@ public class StaticSettingsAction extends AbstractSettingsAction {
         this.actionType = actionType;
     }
 
-    public StaticSettingsAction(ActionType actionType, Settings settings) {
+    public StaticSettingsAction(ActionType actionType, ISettings settings) {
         super(settings);
         this.actionType = actionType;
     }

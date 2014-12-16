@@ -28,6 +28,7 @@ import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 
 /**
@@ -44,6 +45,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                            as long integers when doing
  *                                            conversions to/from JSON.
  * Nov 18, 2014  4124       Chris.Golden      Adapted to new time manager.
+ * Dec 05, 2014  4124       Chris.Golden      Changed to work with newly
+ *                                            parameterized config manager.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -74,7 +77,7 @@ public class DeprecatedUtilities {
     @Deprecated
     public static void adaptJSONEvent(DeprecatedEvent[] jsonEvents,
             Collection<? extends IHazardEvent> events,
-            ISessionConfigurationManager configManager,
+            ISessionConfigurationManager<ObservedSettings> configManager,
             ISessionTimeManager timeManager) {
 
         Iterator<? extends IHazardEvent> it = events.iterator();

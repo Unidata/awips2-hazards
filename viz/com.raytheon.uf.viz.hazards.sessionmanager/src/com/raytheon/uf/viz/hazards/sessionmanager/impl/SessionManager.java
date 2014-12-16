@@ -52,6 +52,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.AllHazardsFilterSt
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardEventExpirationAlertStrategy;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionAutoCheckConflictsModified;
@@ -90,15 +91,16 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                     manager, and the firing of auto-check-conflicts-
  *                                     changed messages when the toggle changes state.
  * Oct 08, 2014 4042       C. Golden   Added generate method (moved from message handler).
+ * Dec 05, 2014 2124       C. Golden   Changed to work with parameterized config manager.
  * Dec 08, 2014 2826       dgilling    Clear interoperability tables on reset events.
- * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 
-public class SessionManager implements ISessionManager<ObservedHazardEvent> {
+public class SessionManager implements
+        ISessionManager<ObservedHazardEvent, ObservedSettings> {
 
     /**
      * Files in localization to be removed when the events are reset from the
@@ -128,7 +130,7 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
 
     private final ISessionTimeManager timeManager;
 
-    private final ISessionConfigurationManager configManager;
+    private final ISessionConfigurationManager<ObservedSettings> configManager;
 
     private final ISessionProductManager productManager;
 
@@ -210,7 +212,7 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
     }
 
     @Override
-    public ISessionConfigurationManager getConfigurationManager() {
+    public ISessionConfigurationManager<ObservedSettings> getConfigurationManager() {
         return configManager;
     }
 

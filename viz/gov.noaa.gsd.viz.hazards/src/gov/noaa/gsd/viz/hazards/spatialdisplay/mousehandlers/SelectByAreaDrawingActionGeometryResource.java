@@ -33,6 +33,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
@@ -69,6 +70,8 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Sep 10, 2014 3793      Robert.Blum         Modified handleMouseDown to return false for
  *                                            when the middle mouse button is pressed.
  * Sep 16, 2014 3786      Robert.Blum         Added user feedback when simplifying polygons.
+ * Dec 05, 2014 4124      Chris.Golden        Changed to work with newly parameterized
+ *                                            config manager.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -162,7 +165,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
         private Mode mode = Mode.CREATE;
 
-        private final ISessionManager<ObservedHazardEvent> sessionManager = getSpatialPresenter()
+        private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = getSpatialPresenter()
                 .getSessionManager();
 
         /*

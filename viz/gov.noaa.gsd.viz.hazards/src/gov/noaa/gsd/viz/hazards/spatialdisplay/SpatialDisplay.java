@@ -9,6 +9,7 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
@@ -88,9 +89,9 @@ import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory.ResourceOrder;
 import com.raytheon.uf.viz.core.rsc.tools.AbstractMovableToolLayer;
 import com.raytheon.uf.viz.d2d.core.time.D2DTimeMatcher;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
@@ -106,7 +107,6 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygonal;
-import com.vividsolutions.jts.operation.valid.IsValidOp;
 
 /**
  * This is the AbstractVizResource used for the display of hazards. This
@@ -151,7 +151,9 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  * Sep 09, 2014  3994     Robert.Blum     Added handleMouseEnter to reset the cursor type.
  * Oct 20, 2014  4780     Robert.Blum     Made fix to Time Matching to update to the Time Match Basis.
  * Nov 18, 2014  4124     Chris.Golden    Adapted to new time manager.
- * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
+ * Dec 01, 2014  4188      Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
+ * Dec 05, 2014  4124      Chris.Golden   Changed to work with newly parameterized config manager
+ *                                        and with ObservedSettings.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -386,10 +388,11 @@ public class SpatialDisplay extends
                 // that; otherwise, give the resource data the setting
                 // already in use by the app builder so that it will
                 // have it in case it is saved as part of a bundle.
-                Settings settings = ((SpatialDisplayResourceData) getResourceData())
+                ISettings settings = ((SpatialDisplayResourceData) getResourceData())
                         .getSettings();
                 if (settings != null) {
-                    SpatialDisplay.this.appBuilder.setCurrentSettings(settings);
+                    SpatialDisplay.this.appBuilder.setCurrentSettings(settings,
+                            UIOriginator.SPATIAL_DISPLAY);
                 } else {
                     ((SpatialDisplayResourceData) getResourceData())
                             .setSettings(SpatialDisplay.this.appBuilder
@@ -739,7 +742,7 @@ public class SpatialDisplay extends
             return;
         }
 
-        ISessionManager<ObservedHazardEvent> sessionManager = appBuilder
+        ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = appBuilder
                 .getSessionManager();
         ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
                 .getEventManager();
@@ -1289,7 +1292,7 @@ public class SpatialDisplay extends
      * @return A list of entries to add to the context menu.
      */
     public List<IAction> getContextMenuActions() {
-        ISessionManager<ObservedHazardEvent> sessionManager = appBuilder
+        ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = appBuilder
                 .getSessionManager();
         ContextMenuHelper helper = new ContextMenuHelper(getAppBuilder()
                 .getSpatialPresenter(), sessionManager);

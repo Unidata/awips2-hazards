@@ -13,6 +13,7 @@ import gov.noaa.gsd.viz.mvp.IView;
 
 import java.util.List;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
@@ -27,7 +28,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Dec 05, 2014    4124    Chris.Golden      Changed to work with ObservedSettings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -47,7 +48,8 @@ public interface ISettingsView<C, E extends Enum<E>> extends IView<C, E> {
      * @param currentSettings
      */
     public void initialize(SettingsPresenter presenter,
-            List<Settings> settings, Field[] fields, Settings currentSettings);
+            List<Settings> settings, Field[] fields,
+            ObservedSettings currentSettings);
 
     /**
      * Show the settings detail subview.
@@ -56,7 +58,7 @@ public interface ISettingsView<C, E extends Enum<E>> extends IView<C, E> {
      * @param settings
      */
     public void showSettingDetail(SettingsConfig settingsConfig,
-            Settings settings);
+            ObservedSettings settings);
 
     /**
      * Set the settings to those specified.
@@ -68,5 +70,5 @@ public interface ISettingsView<C, E extends Enum<E>> extends IView<C, E> {
     /**
      * @param currentSettings
      */
-    public void setCurrentSettings(Settings currentSettings);
+    public void setCurrentSettings(ObservedSettings currentSettings);
 }

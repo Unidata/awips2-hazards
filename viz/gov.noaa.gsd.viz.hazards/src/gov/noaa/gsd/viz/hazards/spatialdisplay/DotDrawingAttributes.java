@@ -16,6 +16,7 @@ import java.util.List;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -31,8 +32,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
- * 
- * 
+ * Dec 05, 2014 4124       Chris.Golden        Changed to work with newly parameterized
+ *                                             config manager.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -42,7 +43,7 @@ public class DotDrawingAttributes extends HazardServicesDrawingAttributes {
     public static double SIZE_SCALE = 10.5;
 
     public DotDrawingAttributes(
-            ISessionManager<ObservedHazardEvent> sessionManager)
+            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager)
             throws VizException {
         super(sessionManager.getConfigurationManager());
         this.filled = true;

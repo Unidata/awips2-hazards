@@ -20,23 +20,20 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_SORT_DIRECTION_ASCENDING;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_SORT_DIRECTION_DESCENDING;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_SORT_DIRECTION_NONE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_SORT_PRIORITY_NONE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_COUNTDOWN;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_DATE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_NUMBER;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_STRING;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.TIME_RANGE_MINIMUM_INTERVAL;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS;
-import gov.noaa.gsd.common.utilities.DateStringComparator;
-import gov.noaa.gsd.common.utilities.DoubleStringComparator;
 import gov.noaa.gsd.common.utilities.JSONConverter;
-import gov.noaa.gsd.common.utilities.LongStringComparator;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayListener;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayManager;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
-import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.setting.SettingsView;
@@ -62,7 +59,6 @@ import gov.noaa.gsd.viz.widgets.MultiValueScale;
 import gov.noaa.gsd.viz.widgets.TimeHatchMarkGroup;
 
 import java.awt.image.BufferedImage;
-import java.text.Collator;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -71,7 +67,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -126,6 +121,9 @@ import org.eclipse.swt.widgets.TableItem;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Ordering;
+import com.google.common.collect.Range;
+import com.google.common.collect.Ranges;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -133,6 +131,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.icon.IconUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Column;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
@@ -230,10 +229,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           that displays on the correct monitor.
  * Sep 12, 2014   3511     Robert.Blum       Changed the format/timezone of the 
  *                                           Console time to match CAVE time.
- * Nov 18, 2014    4124    Chris.Golden      Changed to only show one of the selected
+ * Nov 18, 2014   4124     Chris.Golden      Changed to only show one of the selected
  *                                           time options at once (either a single
  *                                           selected time instant, or a selected
  *                                           time range).
+ * Dec 05, 2014   4124     Chris.Golden      Fixed sorting bugs. Also added multi-level
+ *                                           sorting (column header menus limit it to
+ *                                           two levels, primary and secondary sort,
+ *                                           for now, but it could be expanded by simply
+ *                                           expanding the menus).
  * </pre>
  * 
  * @author Chris.Golden
@@ -378,6 +382,16 @@ class TemporalDisplay {
     private static final String FILTER_MENU_NAME = "Filter";
 
     /**
+     * Primary sort menu name.
+     */
+    private static final String PRIMARY_SORT_MENU_NAME = "Sort by";
+
+    /**
+     * Secondary sort menu name.
+     */
+    private static final String SECONDARY_SORT_MENU_NAME = "Secondary Sort by";
+
+    /**
      * Text displayed in the column header for the time scale widgets.
      */
     private static final String TIME_SCALE_COLUMN_NAME = "Time Scale";
@@ -483,6 +497,131 @@ class TemporalDisplay {
      * which the megawidget should be associated.
      */
     private static final String COLUMN_NAME = "columnName";
+
+    // Private Enumerated Types
+
+    /**
+     * Sort direction.
+     */
+    private enum SortDirection {
+
+        // Values
+
+        ASCENDING("Ascending"), DESCENDING("Descending");
+
+        // Private Variables
+
+        /**
+         * Description.
+         */
+        private final String description;
+
+        // Private Constructors
+
+        /**
+         * Construct a standard instance.
+         */
+        private SortDirection(String description) {
+            this.description = description;
+        }
+
+        // Public Methods
+
+        /**
+         * Get a string description of this object.
+         * 
+         * @return String description.
+         */
+        @Override
+        public String toString() {
+            return description;
+        }
+    };
+
+    /**
+     * Settings changes.
+     */
+    private enum SettingsChange {
+        COLUMNS, VISIBLE_COLUMNS
+    }
+
+    // Private Classes
+
+    /**
+     * Encapsulation of a sort that may be performed, including the name of the
+     * column by which one would sort, the priority of this sort is compared to
+     * others, and the direction in which to sort. They are comparable by said
+     * priority.
+     */
+    private class Sort implements Comparable<Sort> {
+
+        // Private Constants
+
+        /**
+         * Name of column by which to sort.
+         */
+        private final String columnName;
+
+        /**
+         * Sort direction to be used.
+         */
+        private final SortDirection sortDirection;
+
+        /**
+         * Priority as compared to other instances.
+         */
+        private final int priority;
+
+        // Public Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param columnName
+         *            Name of column by which to sort.
+         * @param sortDirection
+         *            Direction in which to sort.
+         */
+        public Sort(String columnName, SortDirection sortDirection, int priority) {
+            this.columnName = columnName;
+            this.sortDirection = sortDirection;
+            this.priority = priority;
+        }
+
+        // Public Methods
+
+        /**
+         * Get the name of the column by which to sort.
+         * 
+         * @return Name.
+         */
+        public String getColumnName() {
+            return columnName;
+        }
+
+        /**
+         * Get the direction in which to sort.
+         * 
+         * @return Sort direction.
+         */
+        public SortDirection getSortDirection() {
+            return sortDirection;
+        }
+
+        /**
+         * Get the priority of this instance as compared to others.
+         * 
+         * @return Priority.
+         */
+        public int getPriority() {
+            return priority;
+        }
+
+        @Override
+        public int compareTo(Sort o) {
+            return priority - o.priority;
+        }
+    }
 
     // Private Constants
 
@@ -719,6 +858,16 @@ class TemporalDisplay {
     private Map<String, Menu> headerMenusForColumnNames;
 
     /**
+     * Map pairing column menus with their primary sort submenus.
+     */
+    private final Map<Menu, Menu> primarySortMenusForColumnMenus = new HashMap<>();
+
+    /**
+     * Map pairing column menus with their secondary sort submenus.
+     */
+    private final Map<Menu, Menu> secondarySortMenusForColumnMenus = new HashMap<>();
+
+    /**
      * Hazard event context-sensitive menu.
      */
     private Menu rowMenu;
@@ -738,7 +887,7 @@ class TemporalDisplay {
     /**
      * the current dynamic settings
      */
-    private Settings currentSettings;
+    private ObservedSettings currentSettings;
 
     /**
      * List of visible column names. The order of this list is the order in
@@ -827,6 +976,13 @@ class TemporalDisplay {
     private Map<String, Column> columnsForNames;
 
     /**
+     * Map of column names to the comparators to be used when sorting by the
+     * columns. If the comparator for a particular column is <code>null</code>,
+     * it is a countdown timer column.
+     */
+    private final Map<String, Comparator<?>> comparatorsForNames = new HashMap<>();
+
+    /**
      * Flag indicating whether or not column move events should be ignored.
      */
     private boolean ignoreMove = false;
@@ -860,7 +1016,16 @@ class TemporalDisplay {
      */
     private boolean willNotifyOfSettingChange = false;
 
+    /**
+     * JSON converter.
+     */
     private final JSONConverter jsonConverter = new JSONConverter();
+
+    /**
+     * List, in the order in which to apply them, of sorts that are currently in
+     * effect.
+     */
+    private final List<Sort> sorts = new ArrayList<>();
 
     /**
      * Multi-value linear control listener for thumb movements on the hazard
@@ -1219,7 +1384,6 @@ class TemporalDisplay {
      * Header menu item selection listener, for toggling column visibility.
      */
     private final SelectionListener headerMenuListener = new SelectionAdapter() {
-        @SuppressWarnings("unchecked")
         @Override
         public void widgetSelected(SelectionEvent e) {
 
@@ -1269,15 +1433,6 @@ class TemporalDisplay {
                 // Fill in the text for the cells in the table's
                 // rows that fall within the newly created column.
                 updateCellsForColumn(columnName);
-
-                // If the newly added column is the sort column,
-                // sort by its cells' contents.
-                if (table.getColumn(table.getColumnCount() - 2) == table
-                        .getSortColumn()) {
-                    sortRowsByColumn(table.getColumnCount() - 2,
-                            (Comparator<? super String>) table.getSortColumn()
-                                    .getData());
-                }
             }
 
             // Move the table editors over to the appropriate
@@ -1300,7 +1455,81 @@ class TemporalDisplay {
             visibleColumnCountChanged();
 
             // Notify listeners of the setting change.
-            scheduleNotificationOfSettingDefinitionChange();
+            scheduleNotificationOfSettingDefinitionChange(SettingsChange.VISIBLE_COLUMNS);
+        }
+    };
+
+    /**
+     * Sort menu item selection listener, for changing sort characteristics.
+     */
+    private final SelectionListener sortMenuListener = new SelectionAdapter() {
+        @Override
+        public void widgetSelected(SelectionEvent e) {
+
+            /*
+             * Determine whether this is a primary or secondary sort
+             * configuration, and using which column and in what direction is
+             * sorting to occur.
+             */
+            Menu columnLevelMenu = ((MenuItem) e.widget).getParent();
+            Menu sortLevelMenu = columnLevelMenu.getParentItem().getParent();
+            int sortIndex = (sortLevelMenu.getParentItem().getText()
+                    .equals(TemporalDisplay.PRIMARY_SORT_MENU_NAME) ? 0 : 1);
+            String columnName = ((MenuItem) e.widget).getParent()
+                    .getParentItem().getText();
+            SortDirection sortDirection = (SortDirection) e.widget.getData();
+
+            /*
+             * Set the flag indicating whether or not the table will have to
+             * have its visual cues related to sorting altered; this should only
+             * happen if primary sort is changing.
+             */
+            boolean changeTableSortCues = ((sortIndex == 0) || sorts.isEmpty());
+
+            /*
+             * If replacing a sort, do so; otherwise, add the sort. In the
+             * latter case, if a secondary sort was chosen but there is not a
+             * primary sort, set both sorts to be the same.
+             */
+            boolean directionChanged = false;
+            if (sortIndex < sorts.size()) {
+                Sort oldSort = sorts.remove(sortIndex);
+                Sort newSort = new Sort(columnName, sortDirection,
+                        sortIndex + 1);
+                sorts.add(sortIndex, newSort);
+                directionChanged = (oldSort.getColumnName().equals(columnName) && (oldSort
+                        .getSortDirection() != sortDirection));
+            } else {
+                for (int j = sorts.size(); j <= sortIndex; j++) {
+                    sorts.add(new Sort(columnName, sortDirection, j + 1));
+                }
+            }
+
+            /*
+             * Show the table sort cues if necessary.
+             */
+            if (changeTableSortCues) {
+                if (directionChanged == false) {
+                    for (TableColumn column : table.getColumns()) {
+                        if (columnName.equals(column.getText())) {
+                            table.setSortColumn(column);
+                            break;
+                        }
+                    }
+                }
+                table.setSortDirection(sortDirection == SortDirection.ASCENDING ? SWT.UP
+                        : SWT.DOWN);
+            }
+
+            /*
+             * Perform the sort.
+             */
+            sortEventData(directionChanged);
+
+            /*
+             * Update the sort column information in the settings.
+             */
+            updateTableSortColumnInSettingDefinition();
         }
     };
 
@@ -1364,30 +1593,48 @@ class TemporalDisplay {
      * Sort listener, used to listen for column-based sorts.
      */
     private final SelectionListener sortListener = new SelectionAdapter() {
-        @SuppressWarnings("unchecked")
         @Override
         public void widgetSelected(SelectionEvent e) {
 
-            // If the column that will not be the sorting column is
-            // the same as the previous one, then toggle the sorting
-            // direction; otherwise, start with an upward sort.
-            int tableSortDirection = table.getSortDirection();
+            /*
+             * If the column that will be the sorting column is the same as the
+             * previous one, and it is the only sorting column, then toggle the
+             * sorting direction; otherwise, start with an upward sort.
+             */
             TableColumn sortColumn = (TableColumn) e.widget;
-            if (sortColumn == table.getSortColumn()) {
-                table.setSortDirection(tableSortDirection == SWT.UP ? SWT.DOWN
+            String sortName = sortColumn.getText();
+            boolean directionChanged = false;
+            if ((sorts.size() == 1)
+                    && sortName.equals(sorts.get(0).getColumnName())) {
+                directionChanged = true;
+                Sort oldSort = sorts.remove(0);
+                table.setSortDirection(oldSort.getSortDirection() == SortDirection.ASCENDING ? SWT.DOWN
                         : SWT.UP);
+                sorts.add(
+                        0,
+                        new Sort(
+                                oldSort.getColumnName(),
+                                (oldSort.getSortDirection() == SortDirection.ASCENDING ? SortDirection.DESCENDING
+                                        : SortDirection.ASCENDING), 1));
             } else {
                 table.setSortDirection(SWT.UP);
+                sorts.clear();
+                sorts.add(new Sort(sortName, SortDirection.ASCENDING, 1));
             }
 
-            // Set the column by which to sort.
+            /*
+             * Set the column by which to sort.
+             */
             table.setSortColumn(sortColumn);
 
-            // Perform the sort.
-            sortRowsByColumn(table.indexOf(sortColumn),
-                    (Comparator<? super String>) sortColumn.getData());
+            /*
+             * Perform the sort.
+             */
+            sortEventData(directionChanged);
 
-            // Update the sort column information.
+            /*
+             * Update the sort column information in the settings.
+             */
             updateTableSortColumnInSettingDefinition();
         }
     };
@@ -1452,7 +1699,7 @@ class TemporalDisplay {
      */
     public void initialize(ConsolePresenter presenter, Date selectedTime,
             Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
-            Settings currentSettings, String filterMegawidgets,
+            ObservedSettings currentSettings, String filterMegawidgets,
             ImmutableList<IHazardAlert> activeAlerts,
             Set<String> eventIdentifiersAllowingUntilFurtherNotice,
             boolean showControlsInToolBar) {
@@ -1649,7 +1896,7 @@ class TemporalDisplay {
         return dictList;
     }
 
-    public Settings getCurrentSettings() {
+    public ObservedSettings getCurrentSettings() {
         return currentSettings;
     }
 
@@ -2080,6 +2327,40 @@ class TemporalDisplay {
                         menuItem.addSelectionListener(headerMenuListener);
                     }
 
+                    /*
+                     * Create the primary and secondary sort menu items and
+                     * their submenus.
+                     */
+                    for (int sortPriority = 0; sortPriority < 2; sortPriority++) {
+                        MenuItem menuItem = new MenuItem(menu, SWT.CASCADE);
+                        Menu sortMenu = new Menu(menuItem);
+                        menuItem.setMenu(sortMenu);
+                        for (String columnName : columnNames) {
+                            MenuItem columnNameMenuItem = new MenuItem(
+                                    sortMenu, SWT.CASCADE);
+                            columnNameMenuItem.setText(columnName);
+                            Menu subMenu = new Menu(columnNameMenuItem);
+                            columnNameMenuItem.setMenu(subMenu);
+                            for (SortDirection direction : SortDirection
+                                    .values()) {
+                                MenuItem directionMenuItem = new MenuItem(
+                                        subMenu, SWT.RADIO);
+                                directionMenuItem.setText(direction.toString());
+                                directionMenuItem.setData(direction);
+                                directionMenuItem
+                                        .addSelectionListener(sortMenuListener);
+                            }
+                        }
+                        if (sortPriority == 0) {
+                            menuItem.setText(PRIMARY_SORT_MENU_NAME);
+                            primarySortMenusForColumnMenus.put(menu, sortMenu);
+                        } else {
+                            menuItem.setText(SECONDARY_SORT_MENU_NAME);
+                            secondarySortMenusForColumnMenus
+                                    .put(menu, sortMenu);
+                        }
+                    }
+
                     // If a filter exists for this menu, add it and associate
                     // it with the column. Otherwise, the menu being created
                     // is a catch-all for any column that does not have an
@@ -2122,15 +2403,29 @@ class TemporalDisplay {
                                                             settingsAsDict
                                                                     .toJSONString(),
                                                             Settings.class);
-                                                    TemporalDisplay.this.currentSettings
-                                                            .apply(updatedSettings);
 
                                                     /*
-                                                     * Forward the dynamic
-                                                     * setting change to the
-                                                     * presenter.
+                                                     * TODO: Once the console
+                                                     * presenter receives all
+                                                     * notifications via
+                                                     * handlers instead of
+                                                     * modelChanged(), there
+                                                     * will be no need for a
+                                                     * CONSOLE_HEADER_FILTER
+                                                     * originator, since it will
+                                                     * react to changes to event
+                                                     * lists directly. But for
+                                                     * now, since it does not,
+                                                     * it needs to understand
+                                                     * that the notification of
+                                                     * the settings change did
+                                                     * not come from the console
+                                                     * per se so that it does
+                                                     * react.
                                                      */
-                                                    notifyListenersOfSettingDefinitionChange();
+                                                    TemporalDisplay.this.currentSettings
+                                                            .apply(updatedSettings,
+                                                                    UIOriginator.CONSOLE_HEADER_FILTER);
                                                 }
                                             }));
 
@@ -2205,6 +2500,9 @@ class TemporalDisplay {
         // column names list.
         updateColumnOrder();
 
+        // Create the list of sorts that should be applied.
+        createSorts();
+
         // Ensure that the checkboxes in the table's rows are in the
         // leftmost column.
         ensureCheckboxesAreInLeftmostColumn(false);
@@ -2212,7 +2510,7 @@ class TemporalDisplay {
         // Sort the incoming event identifiers based on the table's
         // sort column and direction.
         if (eventIdentifiers.size() > 0) {
-            sortEventData();
+            sortEventData(false);
             createTableRowsFromEventData();
         }
 
@@ -2220,6 +2518,41 @@ class TemporalDisplay {
         ignoreResize = lastIgnoreResize;
         ignoreMove = lastIgnoreMove;
         visibleColumnCountChanged();
+    }
+
+    /**
+     * Clear and create the list of sorts to be applied to table rows.
+     */
+    private void createSorts() {
+
+        /*
+         * Clear any sorts left around.
+         */
+        sorts.clear();
+
+        /*
+         * Iterate through the columns, creating a sort for each column that has
+         * a sort priority and direction.
+         */
+        for (Map.Entry<String, Column> entry : columnsForNames.entrySet()) {
+            String name = entry.getKey();
+            int priority = entry.getValue().getSortPriority();
+            String sortDirection = entry.getValue().getSortDir();
+            if ((priority > 0) && (sortDirection != null)) {
+                if (sortDirection
+                        .equals(SETTING_COLUMN_SORT_DIRECTION_ASCENDING)) {
+                    sorts.add(new Sort(name, SortDirection.ASCENDING, priority));
+                } else {
+                    sorts.add(new Sort(name, SortDirection.DESCENDING, priority));
+                }
+            }
+        }
+
+        /*
+         * Order the sorts by priority, so that the lowest-numbered one happens
+         * first when performing a row sort.
+         */
+        Collections.sort(sorts);
     }
 
     /**
@@ -2441,24 +2774,60 @@ class TemporalDisplay {
         }
     }
 
-    void updateSettings(Settings currentSettings) {
+    void updateSettings(ObservedSettings currentSettings) {
+
         /*
-         * Get the column definitions, and the visible column names. Also
-         * determine which of the visible columns may generate hint text, and
-         * which hold date values.
+         * Get the column definitions, and the visible column names.
          */
         this.currentSettings = currentSettings;
         columnsForNames = currentSettings.getColumns();
         visibleColumnNames = currentSettings.getVisibleColumns();
 
+        /*
+         * Determine which of the visible columns may generate hint text, and
+         * which hold date values.
+         */
         hintTextIdentifiersForVisibleColumnNames.clear();
         dateIdentifiersForVisibleColumnNames.clear();
         for (String columnName : visibleColumnNames) {
             determineSpecialPropertiesOfColumn(columnName);
         }
 
-        // Compile a mapping of column identifiers to their
-        // names.
+        /*
+         * Determine which is the appropriate comparator and class for the data
+         * associated with each column.
+         * 
+         * TODO: When switching over to attributes directly from hazard events,
+         * instead of JSONed-and-then-deserialized attributes, columns of type
+         * "date" will need to use a Date ordering object, etc.
+         */
+        comparatorsForNames.clear();
+        for (Map.Entry<String, Column> entry : columnsForNames.entrySet()) {
+            String sortByType = entry.getValue().getType();
+            Ordering<?> comparator = null;
+            if (sortByType.equals(SETTING_COLUMN_TYPE_STRING)) {
+                comparator = Ordering.<String> natural();
+            } else if (sortByType.equals(SETTING_COLUMN_TYPE_DATE)
+                    || sortByType.equals(SETTING_COLUMN_TYPE_NUMBER)) {
+                comparator = Ordering.<Double> natural();
+            } else if (sortByType.equals(SETTING_COLUMN_TYPE_COUNTDOWN)) {
+
+                /*
+                 * No action; comparator should be null.
+                 */
+            } else {
+                statusHandler
+                        .error("Do not know how to compare values of type \""
+                                + sortByType + "\" for event table "
+                                + "sorting purposes.");
+            }
+            comparatorsForNames.put(entry.getKey(),
+                    (comparator != null ? comparator.nullsFirst() : null));
+        }
+
+        /*
+         * Compile a mapping of column identifiers to their names.
+         */
         columnNamesForIdentifiers.clear();
         for (String name : columnsForNames.keySet()) {
             Column column = columnsForNames.get(name);
@@ -2875,28 +3244,32 @@ class TemporalDisplay {
             @Override
             public void menuDetected(MenuDetectEvent e) {
 
-                // Determine whether or not the point clicked is
-                // within the header area, and allow the menu to
-                // be deployed only if it is.
+                /*
+                 * Determine whether or not the point clicked is within the
+                 * header area, and allow the menu to be deployed only if it is.
+                 */
                 Point point = Display.getCurrent().map(null, table,
                         new Point(e.x, e.y));
                 int headerTop = table.getClientArea().y;
                 int headerBottom = headerTop + table.getHeaderHeight();
                 boolean headerClicked = ((point.y >= headerTop) && (point.y < headerBottom));
 
-                // Deploy the header menu if appropriate, or the
-                // item menu if an item was right-clicked.
+                /*
+                 * Deploy the header menu if appropriate, or the item menu if an
+                 * item was right-clicked.
+                 */
                 if (headerClicked) {
 
-                    // Set the menu's items checkboxes to reflect
-                    // which columns are showing and which are
-                    // hidden. If only one column is showing, dis-
-                    // able that checkbox so that the user cannot
-                    // uncheck it. Then update any associated
-                    // megawidget manager's state as well, and set
-                    // the menu as belonging to the table. If no
-                    // menu is found for the specified column, do
-                    // nothing.
+                    /*
+                     * Set the menu's items checkboxes to reflect which columns
+                     * are showing and which are hidden. If only one column is
+                     * showing, disable that checkbox so that the user cannot
+                     * uncheck it. Then update the sort menus to reflect the
+                     * current sorts. Finally, update any associated megawidget
+                     * manager's state as well, and set the menu as belonging to
+                     * the table. If no menu is found for the specified column,
+                     * do nothing.
+                     */
                     TableColumn column = getTableColumnAtPoint(new Point(e.x,
                             e.y));
                     if (column != null) {
@@ -2915,6 +3288,12 @@ class TemporalDisplay {
                             menuItem.setEnabled(!menuItem.getSelection()
                                     || (visibleColumnNames.size() > 1));
                         }
+                        prepareSortMenuForDisplay(
+                                primarySortMenusForColumnMenus.get(menu),
+                                (sorts.isEmpty() == false ? sorts.get(0) : null));
+                        prepareSortMenuForDisplay(
+                                secondarySortMenusForColumnMenus.get(menu),
+                                (sorts.size() > 1 ? sorts.get(1) : null));
                         MegawidgetManager megawidgetManager = headerMegawidgetManagersForColumnNames
                                 .get(column.getText());
                         if (megawidgetManager != null) {
@@ -2933,8 +3312,11 @@ class TemporalDisplay {
                     if (rowMenu != null && rowMenu.isDisposed() == false) {
                         rowMenu.dispose();
                     }
-                    // Create a context-sensitive menu to be deployed for
-                    // table items as appropriate.
+
+                    /*
+                     * Create a context-sensitive menu to be deployed for table
+                     * items as appropriate.
+                     */
                     rowMenu = new Menu(table);
                     untilFurtherNoticeMenuItem = new MenuItem(rowMenu, SWT.PUSH);
                     untilFurtherNoticeMenuItem
@@ -2950,14 +3332,15 @@ class TemporalDisplay {
                     }
                     createHazardMenu();
 
-                    // Unfortunately, SWT tables fire these events
-                    // before the selection events, so at the point
-                    // where this code is executing, any modification
-                    // made to the table selection has not yet oc-
-                    // curred. Since this menu should only be dis-
-                    // played after such a selection change has been
-                    // made, the actual display of the menu is delayed
-                    // until the selection event has been handled.
+                    /*
+                     * Unfortunately, SWT tables fire these events before the
+                     * selection events, so at the point where this code is
+                     * executing, any modification made to the table selection
+                     * has not yet occurred. Since this menu should only be
+                     * displayed after such a selection change has been made,
+                     * the actual display of the menu is delayed until the
+                     * selection event has been handled.
+                     */
                     table.setMenu(rowMenu);
                     rowMenu.setLocation(e.x, e.y);
 
@@ -2965,17 +3348,19 @@ class TemporalDisplay {
                         @Override
                         public void run() {
 
-                            // Only display the menu if at least one
-                            // table row is selected, and if the table
-                            // has not itself been disposed of.
+                            /*
+                             * Only display the menu if at least one table row
+                             * is selected, and if the table has not itself been
+                             * disposed of.
+                             */
                             if (table.isDisposed() == false) {
 
-                                // Iterate through the table rows,
-                                // determining for each one whether
-                                // its until further notice state may
-                                // be changed, and whether or not it
-                                // is currently in until further no-
-                                // tice mode.
+                                /*
+                                 * Iterate through the table rows, determining
+                                 * for each one whether its until further notice
+                                 * state may be changed, and whether or not it
+                                 * is currently in until further notice mode.
+                                 */
                                 TableItem[] items = table.getItems();
                                 boolean untilFurtherNoticeAllowed = true;
                                 int numUntilFurtherNotice = 0;
@@ -2999,30 +3384,30 @@ class TemporalDisplay {
                                     }
                                 }
 
-                                // Set the image for the menu item
-                                // as checked, semi-checked, or
-                                // unchecked, depending upon whether
-                                // all, some, or none of the selected
-                                // events are in until further notice
-                                // mode. Then enable it if all the
-                                // selected events may have this op-
-                                // tion toggled.
-                                //
-                                // NOTE: This is an SWT kludge; it is
-                                // using a push-button menu item to
-                                // simulate a tri-state checkbox menu
-                                // item, because SWT, in its infinite
-                                // wisdom, does not offer a tri-state
-                                // checkbox menu item.
+                                /*
+                                 * Set the image for the menu item as checked,
+                                 * semi-checked, or unchecked, depending upon
+                                 * whether all, some, or none of the selected
+                                 * events are in until further notice mode. Then
+                                 * enable it if all the selected events may have
+                                 * this option toggled.
+                                 * 
+                                 * NOTE: This is an SWT kludge; it is using a
+                                 * push-button menu item to simulate a tri-state
+                                 * checkbox menu item, because SWT, in its
+                                 * infinite wisdom, does not offer a tri-state
+                                 * checkbox menu item.
+                                 */
                                 untilFurtherNoticeMenuItem
                                         .setImage(numUntilFurtherNotice == 0 ? UNCHECKED_MENU_ITEM_IMAGE
                                                 : (numUntilFurtherNotice == selectedIndices.length ? CHECKED_MENU_ITEM_IMAGE
                                                         : SEMI_CHECKED_MENU_ITEM_IMAGE));
 
-                                // Enable the menu item if all se-
-                                // lected events can have their until
-                                // further notice mode toggled, and
-                                // show the menu.
+                                /*
+                                 * Enable the menu item if all selected events
+                                 * can have their until further notice mode
+                                 * toggled, and show the menu.
+                                 */
                                 untilFurtherNoticeMenuItem
                                         .setEnabled(untilFurtherNoticeAllowed);
                                 rowMenu.setVisible(true);
@@ -3217,6 +3602,28 @@ class TemporalDisplay {
     }
 
     /**
+     * Prepare the specified column sort menu for display.
+     * 
+     * @param menu
+     *            Menu to be prepared.
+     * @param sort
+     *            Sort that this menu represents; if <code>null</code>, there is
+     *            no sort for this menu.
+     */
+    private void prepareSortMenuForDisplay(Menu menu, Sort sort) {
+        for (MenuItem columnMenuItem : menu.getItems()) {
+            for (MenuItem directionMenuItem : columnMenuItem.getMenu()
+                    .getItems()) {
+                directionMenuItem.setSelection((sort != null)
+                        && sort.getColumnName()
+                                .equals(columnMenuItem.getText())
+                        && (sort.getSortDirection() == directionMenuItem
+                                .getData()));
+            }
+        }
+    }
+
+    /**
      * Create the columns in the table.
      */
     private void createTableColumns() {
@@ -3241,8 +3648,7 @@ class TemporalDisplay {
         column.pack();
 
         // Add a listener to the time scale column to allow it to
-        // respond
-        // to column-reordering and -resizing events.
+        // respond to column-reordering and -resizing events.
         column.addControlListener(columnControlListener);
     }
 
@@ -3298,27 +3704,6 @@ class TemporalDisplay {
         if (width != null) {
             column.setWidth(width.intValue());
         }
-
-        // Create the appropriate comparator for sorting by the
-        // contents of the cells in this column, and associate it with
-        // the column.
-        String type = columnDefinition.getType();
-        Comparator<?> comparator = null;
-        if (type.equals(SETTING_COLUMN_TYPE_STRING)) {
-            comparator = Collator.getInstance(Locale.getDefault());
-        } else if (type.equals(SETTING_COLUMN_TYPE_DATE)) {
-            comparator = new DateStringComparator(dateTimeFormatter,
-                    UNTIL_FURTHER_NOTICE_COLUMN_TEXT);
-        } else if (type.equals(SETTING_COLUMN_TYPE_NUMBER)) {
-            comparator = new LongStringComparator();
-        } else if (type.equals(SETTING_COLUMN_TYPE_COUNTDOWN)) {
-
-            // No comparator is needed, so keep it as null.
-        } else {
-            statusHandler.error("TemporalDisplay.createTableColumn(): Do not "
-                    + "know how to compare values of type \"" + type + "\".");
-        }
-        column.setData(comparator);
 
         // Add the sort listener to this column, to detect the
         // user clicking on the column header and to respond
@@ -4440,28 +4825,35 @@ class TemporalDisplay {
     }
 
     /**
-     * Notify all listeners of any changes in the dynamic setting configuration
-     * caused by the temporal display (e.g. changes in column widths, column
-     * orders, etc.).
+     * Notify all listeners of the specified change in the dynamic setting
+     * configuration caused by the temporal display (e.g. changes in column
+     * widths, column orders, etc.).
      */
-    private void notifyListenersOfSettingDefinitionChange() {
-        CurrentSettingsAction action = new CurrentSettingsAction(
-                currentSettings);
-        presenter.fireAction(action);
+    private void notifyListenersOfSettingDefinitionChange(SettingsChange change) {
+        if (change == SettingsChange.COLUMNS) {
+            currentSettings.setColumns(columnsForNames, UIOriginator.CONSOLE);
+        } else {
+            currentSettings.setVisibleColumns(visibleColumnNames,
+                    UIOriginator.CONSOLE);
+        }
     }
 
     /**
-     * Schedule notification of all listeners of any changes in the dynamic
-     * setting configuration caused by the temporal display.
+     * Schedule notification of all listeners of the specified change in the
+     * dynamic setting configuration caused by the temporal display.
+     * 
+     * @param change
+     *            Settings change.
      */
-    private void scheduleNotificationOfSettingDefinitionChange() {
+    private void scheduleNotificationOfSettingDefinitionChange(
+            final SettingsChange change) {
         if (willNotifyOfSettingChange == false) {
             willNotifyOfSettingChange = true;
             Display.getCurrent().asyncExec(new Runnable() {
                 @Override
                 public void run() {
                     willNotifyOfSettingChange = false;
-                    notifyListenersOfSettingDefinitionChange();
+                    notifyListenersOfSettingDefinitionChange(change);
                 }
             });
         }
@@ -4486,10 +4878,7 @@ class TemporalDisplay {
         }
 
         // Notify listeners of the setting change.
-        scheduleNotificationOfSettingDefinitionChange();
-
-        // Gson gson = JSONUtilities.createPrettyGsonInterpreter();
-        // statusHandler.debug(gson.toJson(visibleColumnNames));
+        scheduleNotificationOfSettingDefinitionChange(SettingsChange.VISIBLE_COLUMNS);
     }
 
     /**
@@ -4522,26 +4911,29 @@ class TemporalDisplay {
      */
     private void updateTableSortColumnInSettingDefinition() {
 
-        // Alter the column definitions to record the fact that a new
-        // column is the sort column, and its direction.
-        String sortName = table.getSortColumn().getText();
-        for (String name : columnsForNames.keySet()) {
-            Column columnDefinition = columnsForNames.get(name);
-            if (name.equals(sortName)) {
-                if (table.getSortDirection() == SWT.UP) {
-                    columnDefinition
-                            .setSortDir(SETTING_COLUMN_SORT_DIRECTION_ASCENDING);
-                } else {
-                    columnDefinition
-                            .setSortDir(SETTING_COLUMN_SORT_DIRECTION_DESCENDING);
-                }
-            } else {
-                columnDefinition.setSortDir(SETTING_COLUMN_SORT_DIRECTION_NONE);
-            }
+        /*
+         * Clear all the column definitions of any sort-related information.
+         */
+        for (Column columnDefinition : columnsForNames.values()) {
+            columnDefinition.setSortPriority(SETTING_COLUMN_SORT_PRIORITY_NONE);
+            columnDefinition.setSortDir(SETTING_COLUMN_SORT_DIRECTION_NONE);
         }
 
-        // Notify listeners of the setting change.
-        scheduleNotificationOfSettingDefinitionChange();
+        /*
+         * Alter the column definitions to include the current sorts.
+         */
+        for (Sort sort : sorts) {
+            Column columnDefinition = columnsForNames.get(sort.getColumnName());
+            columnDefinition.setSortPriority(sort.getPriority());
+            columnDefinition
+                    .setSortDir(sort.getSortDirection() == SortDirection.ASCENDING ? SETTING_COLUMN_SORT_DIRECTION_ASCENDING
+                            : SETTING_COLUMN_SORT_DIRECTION_DESCENDING);
+        }
+
+        /*
+         * Notify listeners of the setting change.
+         */
+        scheduleNotificationOfSettingDefinitionChange(SettingsChange.COLUMNS);
     }
 
     /**
@@ -4558,7 +4950,7 @@ class TemporalDisplay {
         }
 
         // Notify listeners of the setting change.
-        scheduleNotificationOfSettingDefinitionChange();
+        scheduleNotificationOfSettingDefinitionChange(SettingsChange.COLUMNS);
 
     }
 
@@ -4575,7 +4967,7 @@ class TemporalDisplay {
         }
 
         // Notify listeners of the setting change.
-        scheduleNotificationOfSettingDefinitionChange();
+        scheduleNotificationOfSettingDefinitionChange(SettingsChange.COLUMNS);
 
     }
 
@@ -4616,7 +5008,8 @@ class TemporalDisplay {
     private void setSortInfoIfSortColumn(Column columnDefinition,
             TableColumn tableColumn) {
         String sortDirection = columnDefinition.getSortDir();
-        if (sortDirection != null) {
+        if ((columnDefinition.getSortPriority() == 1)
+                && (sortDirection != null)) {
             if (sortDirection.equals(SETTING_COLUMN_SORT_DIRECTION_ASCENDING)) {
                 table.setSortColumn(tableColumn);
                 table.setSortDirection(SWT.UP);
@@ -4631,228 +5024,330 @@ class TemporalDisplay {
     /**
      * Sort the event dictionaries based on the table's sort column and
      * direction, using the Bubble Sort algorithm.
+     * 
+     * @param directionChanged
+     *            Flag indicating whether or not this sort was prompted by a
+     *            mere sort direction change for one of the sorts.
      */
-    private void sortEventData() {
+    private void sortEventData(boolean directionChanged) {
 
-        // Determine whether there is a sort column, and do the sort
-        // if there is.
-        TableColumn column = table.getSortColumn();
-        if (column != null) {
+        /*
+         * Determine whether there is at least one sort column, and do the sort
+         * if there is.
+         */
+        if (sorts.isEmpty() == false) {
 
-            // Get the sort direction, the event dictionary field it
-            // represents, and the type of the field.
-            int tableSortDirection = table.getSortDirection();
-            Column columnDefinition = columnsForNames.get(column.getText());
-            if (columnDefinition == null) {
-                statusHandler
-                        .error("TemporalDisplay.sortEventData(): Problem: no "
-                                + "column definition for \"" + column.getText()
-                                + "\".");
-                return;
-            }
-            String sortByIdentifier = columnDefinition.getFieldName();
-            String sortByType = columnDefinition.getType();
-
-            // Determine which is the appropriate comparator.
-            Comparator<? super String> comparator = null;
-            if (sortByType.equals(SETTING_COLUMN_TYPE_STRING)) {
-                comparator = Collator.getInstance(Locale.getDefault());
-            } else if (sortByType.equals(SETTING_COLUMN_TYPE_DATE)
-                    || sortByType.equals(SETTING_COLUMN_TYPE_NUMBER)) {
-                comparator = new DoubleStringComparator();
-            } else if (sortByType.equals(SETTING_COLUMN_TYPE_COUNTDOWN)) {
-
-                // No action; comparator should be null.
-            } else {
-                statusHandler
-                        .error("TemporalDisplay.sortEventData(): Do not know "
-                                + "how to compare values of type \""
-                                + sortByType + "\".");
+            /*
+             * For each sort, compile the sort direction, the event attribute it
+             * represents, and the comparator to be used.
+             */
+            List<String> attributeIdentifiers = new ArrayList<>(sorts.size());
+            List<SortDirection> sortDirections = new ArrayList<>(sorts.size());
+            List<Comparator<?>> comparators = new ArrayList<>(sorts.size());
+            for (Sort sort : sorts) {
+                Column columnDefinition = columnsForNames.get(sort
+                        .getColumnName());
+                if (columnDefinition == null) {
+                    statusHandler.error("No column definition for \""
+                            + sort.getColumnName() + "\".");
+                    return;
+                }
+                attributeIdentifiers.add(columnDefinition.getFieldName());
+                sortDirections.add(sort.getSortDirection());
+                comparators.add(comparatorsForNames.get(sort.getColumnName()));
             }
 
-            // Perform the sort.
-            boolean changed = false;
-            do {
-                changed = false;
-                for (int j = 0; j < eventIdentifiers.size() - 1; ++j) {
-
-                    // Get the objects to be sorted; if a comparator has
-                    // been found, then only do the comparison if the
-                    // text for the appropriate parameter is found for
-                    // both events. If no comparator is being used, use
-                    // the expiration times for the two events for the
-                    // comparison.
-                    String value1 = null;
-                    String value2 = null;
-                    long time1 = 0L;
-                    long time2 = 0L;
-                    if (comparator != null) {
-                        Object object1 = dictsForEventIdentifiers.get(
-                                eventIdentifiers.get(j)).get(sortByIdentifier);
-                        Object object2 = dictsForEventIdentifiers.get(
-                                eventIdentifiers.get(j + 1)).get(
-                                sortByIdentifier);
-                        if ((object1 == null) || (object2 == null)) {
-                            continue;
-                        }
-                        value1 = object1.toString();
-                        value2 = object2.toString();
-                    } else {
-                        time1 = getAlertExpirationTime(eventIdentifiers.get(j));
-                        time2 = getAlertExpirationTime(eventIdentifiers
-                                .get(j + 1));
-                    }
-
-                    // Switch the two event dictionaries if they are
-                    // not already in the correct order.
-                    if (((comparator != null) && (compareFirstToSecond(
-                            tableSortDirection, value1, value2, comparator) > 0))
-                            || ((comparator == null) && (compareFirstToSecond(
-                                    tableSortDirection, time1, time2) > 0))) {
+            /*
+             * Perform the bubble sort.
+             */
+            boolean lastChanged = true, changed = false;
+            for (int numPasses = 1; lastChanged; numPasses++) {
+                lastChanged = false;
+                for (int j = 0; j < eventIdentifiers.size() - numPasses; ++j) {
+                    int result = compareEvents(eventIdentifiers.get(j),
+                            eventIdentifiers.get(j + 1), attributeIdentifiers,
+                            sortDirections, comparators);
+                    if (result > 0) {
                         String tempEventId = eventIdentifiers.get(j);
                         eventIdentifiers.set(j, eventIdentifiers.get(j + 1));
                         eventIdentifiers.set(j + 1, tempEventId);
+                        lastChanged = true;
                         changed = true;
                     }
                 }
-            } while (changed);
+            }
+
+            /*
+             * If this sort was the result of a mere direction change in one of
+             * the sorts, iterate through the sorted items, finding any ranges
+             * that are (from a sort perspective) equivalent, and swap those
+             * ranges' orders. This needs to be done because otherwise, for
+             * example, anytime the user changes the sort direction on a column
+             * that has the same value for every row (or the same value for two
+             * or more fields), the rows with equivalent values will not swap
+             * vertical positions with respect to one another.
+             */
+            if (directionChanged) {
+                int startOfRange = -1;
+                List<Range<Integer>> ranges = new ArrayList<>();
+                for (int j = 0; j < eventIdentifiers.size() - 1; j++) {
+                    int result = compareEvents(eventIdentifiers.get(j),
+                            eventIdentifiers.get(j + 1), attributeIdentifiers,
+                            sortDirections, comparators);
+                    if (result == 0) {
+                        if (startOfRange == -1) {
+                            startOfRange = j;
+                        }
+                    } else if (startOfRange != -1) {
+                        ranges.add(Ranges.closed(startOfRange, j));
+                        startOfRange = -1;
+                    }
+                }
+                if (startOfRange != -1) {
+                    ranges.add(Ranges.closed(startOfRange,
+                            eventIdentifiers.size() - 1));
+                }
+                if (ranges.isEmpty() == false) {
+                    changed = true;
+                    for (Range<Integer> range : ranges) {
+                        int start = range.lowerEndpoint();
+                        int end = range.upperEndpoint();
+                        int numSwaps = (end + 1 - start) / 2;
+                        for (int j = 0; j < numSwaps; j++) {
+                            String tempEventId = eventIdentifiers
+                                    .get(start + j);
+                            eventIdentifiers.set(start + j,
+                                    eventIdentifiers.get(end - j));
+                            eventIdentifiers.set(end - j, tempEventId);
+                        }
+                    }
+                }
+            }
+
+            /*
+             * If a change occurred and there are rows in the table, recreate
+             * the rows as necessary to reorder them in a corresponding manner.
+             */
+            if (changed && (table.getItemCount() > 0)) {
+
+                /*
+                 * If there are existing table items, create a map of event
+                 * identifiers to the corresponding items so that they can be
+                 * sorted after the event dictionaries are sorted.
+                 */
+                Map<String, TableItem> tableItemsForEventIdentifiers = new HashMap<>(
+                        table.getItemCount());
+                for (TableItem item : table.getItems()) {
+                    tableItemsForEventIdentifiers.put((String) item.getData(),
+                            item);
+                }
+
+                /*
+                 * Compile a set of the selected event identifiers so that they
+                 * may be selected again later.
+                 */
+                TableItem[] selectedItems = table.getSelection();
+                Set<Object> selectedIdentifiers = new HashSet<>();
+                for (TableItem item : selectedItems) {
+                    selectedIdentifiers.add(item.getData());
+                }
+
+                /*
+                 * Retrieve a list of the controls, deleting the old table
+                 * editors that these controls used.
+                 */
+                Map<String, Control> controlsForIdentifiers = new HashMap<>();
+                for (String key : tableEditorsForIdentifiers.keySet()) {
+                    TableEditor editor = tableEditorsForIdentifiers.get(key);
+                    controlsForIdentifiers.put(key, editor.getEditor());
+                    editor.dispose();
+                }
+                tableEditorsForIdentifiers.clear();
+
+                /*
+                 * Iterate through the newly-sorted event identifiers, moving
+                 * each one's corresponding row to the appropriate place.
+                 */
+                for (int j = 0; j < eventIdentifiers.size(); j++) {
+
+                    /*
+                     * Get the event identifier, and the old row that went with
+                     * it.
+                     */
+                    String identifier = eventIdentifiers.get(j);
+                    TableItem oldItem = tableItemsForEventIdentifiers
+                            .get(identifier);
+
+                    /*
+                     * Create the new row at the index at which it now belongs.
+                     */
+                    TableItem newItem = new TableItem(table, SWT.NONE, j);
+
+                    /*
+                     * Set the new row's state to match what the old row had.
+                     */
+                    newItem.setChecked(oldItem.getChecked());
+                    newItem.setData(oldItem.getData());
+
+                    /*
+                     * For each column in the row, insert the text that is found
+                     * in the old row's corresponding cell, and associate the
+                     * field name for that column with it so that it may be
+                     * easily changed if the hazard event is updated later.
+                     */
+                    for (int k = 0; k < visibleColumnNames.size(); k++) {
+                        newItem.setText(k, oldItem.getText(k));
+                    }
+
+                    /*
+                     * Get rid of the old row.
+                     */
+                    oldItem.dispose();
+                }
+
+                /*
+                 * Iterate through the table items once more, placing the
+                 * controls in new editors in the last column, and making a list
+                 * of any that were previously selected.
+                 */
+                TableItem[] tableItems = table.getItems();
+                selectedItems = new TableItem[selectedIdentifiers.size()];
+                int selectedIndex = 0;
+                for (TableItem item : tableItems) {
+                    Control control = controlsForIdentifiers
+                            .get(item.getData());
+                    createTableEditorForTimeScale(control, item);
+                    if (selectedIdentifiers.contains(item.getData())) {
+                        selectedItems[selectedIndex++] = item;
+                    }
+                }
+
+                /*
+                 * Select the items that were previously selected.
+                 */
+                table.setSelection(selectedItems);
+                selectedIndices = table.getSelectionIndices();
+
+                /*
+                 * Update countdown timers, since the sort may have changed the
+                 * rows of any existing timers' cells.
+                 */
+                updateAllCountdownTimers();
+            }
         }
     }
 
     /**
-     * Sort the rows in the table based upon the contents of the cells in the
-     * specified column using the provided comparator, or using alert expiration
-     * values if no comparator is specified.
+     * Compare the hazard events associated with the specified identifiers,
+     * using the specified attributes, sort directions, and comparators,
+     * returning less than 0, 0, or greater than 0 depending upon whether the
+     * first event is less than, equal to, or greater than the second event,
+     * respectively. The sorts are performed starting with the first parameters
+     * in the attributes, sort directions, and comparators lists, and proceeding
+     * to subsequent ones only if the sort by previous ones yields equality.
      * 
-     * @param sortColumnIndex
-     *            Canonical index of the column to be used for sorting.
-     * @param comparator
-     *            If provided, comparator to be used to compare the values.
+     * @param identifier1
+     *            Identifier of the first event.
+     * @param identifier2
+     *            Identifier of the second event.
+     * @param attributeIdentifiers
+     *            List of identifiers of the hazard attributes to be used to
+     *            make the comparison, in the order of sort priority (that is,
+     *            the first item in the list identifiers the most important
+     *            attribute by which to sort).
+     * @param sortDirections
+     *            List of directions of the sorts, in the order of sort
+     *            priority.
+     * @param comparators
+     *            Comparators to be used to perform the sorts, in the order of
+     *            sort priority; if a particular entry is <code>null</code>, the
+     *            alert expiration times will be compared for that sort.
+     * @return Integer that is less than 0, 0, or greater than 0, depending upon
+     *         whether the first event is less than, equal to, or greater than
+     *         the second event, respectively.
      */
-    private void sortRowsByColumn(int sortColumnIndex,
-            Comparator<? super String> comparator) {
+    private int compareEvents(String identifier1, String identifier2,
+            List<String> attributeIdentifiers,
+            List<SortDirection> sortDirections, List<Comparator<?>> comparators) {
 
-        // If the sort direction exists, do the sort.
-        int tableSortDirection = table.getSortDirection();
-        if (tableSortDirection != SWT.NONE) {
+        /*
+         * Perform the comparison starting with the highest-priority sort, and
+         * proceeding on down from there only if the previous comparison yielded
+         * an equality result.
+         */
+        for (int j = 0; j < attributeIdentifiers.size(); j++) {
 
-            // Get the items to be sorted.
-            TableItem[] items = table.getItems();
+            /*
+             * Compare the objects using a comparator if supplied, or as alert
+             * expiration times if not.
+             */
+            String attributeIdentifier = attributeIdentifiers.get(j);
+            SortDirection sortDirection = sortDirections.get(j);
+            Comparator<?> comparator = comparators.get(j);
+            int result;
+            if (comparator != null) {
 
-            // Compile a set of the selected event identifiers so that
-            // they may be selected again later.
-            TableItem[] selectedItems = table.getSelection();
-            Set<Object> selectedIdentifiers = new HashSet<>();
-            for (TableItem item : selectedItems) {
-                selectedIdentifiers.add(item.getData());
-            }
-
-            // Retrieve a list of the controls, deleting the old table
-            // editors that these controls used.
-            Map<String, Control> controlsForIdentifiers = new HashMap<>();
-            for (String key : tableEditorsForIdentifiers.keySet()) {
-                TableEditor editor = tableEditorsForIdentifiers.get(key);
-                controlsForIdentifiers.put(key, editor.getEditor());
-                editor.dispose();
-            }
-            tableEditorsForIdentifiers.clear();
-
-            // Iterate through the old rows after the first one,
-            // finding in each case where the the row belongs, and
-            // recreating it at the appropriate index.
-            for (int j = 1; j < items.length; j++) {
-
-                // Iterate through all the rows before this one,
-                // finding the place to insert the row, and insert a
-                // new one that is identical to this one there,
-                // deleting this one in the process. Use the text in
-                // the cells to compare the two rows if a comparator
-                // was provided; otherwise, use the expiration times
-                // of any alert for the two rows for the comparison.
-                String value1 = null;
-                long time1 = 0L;
-                if (comparator != null) {
-                    value1 = items[j].getText(sortColumnIndex);
-                } else {
-                    time1 = getAlertExpirationTime((String) items[j].getData());
+                /*
+                 * Get the objects to be compared; if they are equal (or both
+                 * null, return the value indicating equality.
+                 */
+                Object value1 = dictsForEventIdentifiers.get(identifier1).get(
+                        attributeIdentifier);
+                Object value2 = dictsForEventIdentifiers.get(identifier2).get(
+                        attributeIdentifier);
+                if (value1 == value2) {
+                    continue;
                 }
-                for (int k = 0; k < j; k++) {
-                    String value2 = null;
-                    long time2 = 0L;
-                    if (comparator != null) {
-                        value2 = items[k].getText(sortColumnIndex);
-                    } else {
-                        time2 = getAlertExpirationTime((String) items[k]
-                                .getData());
-                    }
-                    if (((comparator != null) && (compareFirstToSecond(
-                            tableSortDirection, value1, value2, comparator) < 0))
-                            || ((comparator == null) && (compareFirstToSecond(
-                                    tableSortDirection, time1, time2) < 0))) {
 
-                        // Create the new row at the index at which it
-                        // now belongs.
-                        TableItem item = new TableItem(table, SWT.NONE, k);
-
-                        // Set the new item's state to match what the
-                        // old item had.
-                        item.setChecked(items[j].getChecked());
-                        item.setData(items[j].getData());
-
-                        // For each column in the row, insert the text
-                        // that is found in the old row's corresponding
-                        // cell, and associate the field name for that
-                        // column with it so that it may be easily
-                        // changed if the hazard event is updated
-                        // later.
-                        for (int q = 0; q < visibleColumnNames.size(); q++) {
-                            item.setText(q, items[j].getText(q));
-                        }
-
-                        // Get rid of the old item, and fetch the items
-                        // again from the table so that the new item
-                        // will be included in the array.
-                        items[j].dispose();
-                        items = table.getItems();
-                        break;
-                    }
+                /*
+                 * TODO: Remove this code; it is only needed while using
+                 * attributes that have been JSONed and then deserialized, since
+                 * any deserialized numbers are not guaranteed to be of any
+                 * particular subclass of numbers when deserialized from JSON,
+                 * but will be of explicit subtypes once attributes are no
+                 * longer JSONified when passed to this object.
+                 */
+                if (value1 instanceof Number) {
+                    value1 = ((Number) value1).doubleValue();
                 }
-            }
-
-            // Rebuild the event identifiers list.
-            eventIdentifiers.clear();
-            for (TableItem item : items) {
-                eventIdentifiers.add((String) item.getData());
-            }
-
-            // Iterate through the table items once more, placing the
-            // controls in new editors in the last column, and making
-            // a list of any that were previously selected.
-            TableItem[] tableItems = table.getItems();
-            selectedItems = new TableItem[selectedIdentifiers.size()];
-            int selectedIndex = 0;
-            for (TableItem item : tableItems) {
-                Control control = controlsForIdentifiers.get(item.getData());
-                createTableEditorForTimeScale(control, item);
-                if (selectedIdentifiers.contains(item.getData())) {
-                    selectedItems[selectedIndex++] = item;
+                if (value2 instanceof Number) {
+                    value2 = ((Number) value2).doubleValue();
                 }
+
+                /*
+                 * Perform the comparison, returning the result if it is
+                 * anything other than equality.
+                 */
+                result = compareFirstToSecond(sortDirection, value1, value2,
+                        comparator);
+            } else {
+
+                /*
+                 * Compare the alert expiration times.
+                 */
+                result = compareFirstToSecond(sortDirection,
+                        getAlertExpirationTime(identifier1),
+                        getAlertExpirationTime(identifier2));
             }
 
-            // Select the items that were previously selected.
-            table.setSelection(selectedItems);
-            selectedIndices = table.getSelectionIndices();
-
-            // Update countdown timers, since the sort may have
-            // changed the rows of any existing timers' cells.
-            updateAllCountdownTimers();
+            /*
+             * If the result is not equality, return it.
+             */
+            if (result != 0) {
+                return result;
+            }
         }
+
+        /*
+         * Return equality if all the sorts yielded such.
+         */
+        return 0;
     }
 
     /**
      * Compare the first and second values in the table.
      * 
-     * @param tableSortDirection
+     * @param sortDirection
      *            Direction of sorting within the table.
      * @param value1
      *            First value to be compared.
@@ -4864,18 +5359,47 @@ class TemporalDisplay {
      *         the first value is less than, equal to, or greater than the
      *         second, respectively.
      */
-    private int compareFirstToSecond(int tableSortDirection, String value1,
-            String value2, Comparator<? super String> comparator) {
-        if (tableSortDirection == SWT.UP) {
-            return comparator.compare(value1, value2);
+    @SuppressWarnings("unchecked")
+    private int compareFirstToSecond(SortDirection sortDirection,
+            Object value1, Object value2, Comparator<?> comparator) {
+
+        /*
+         * Cast the objects and comparator appropriately.
+         */
+        Object typeable = (value1 == null ? value2 : value1);
+        int result = 0;
+        if (typeable instanceof String) {
+            result = ((Comparator<? super String>) comparator).compare(
+                    (String) value1, (String) value2);
+        } else if (typeable instanceof Boolean) {
+            result = ((Comparator<Boolean>) comparator).compare(
+                    (Boolean) value1, (Boolean) value2);
+        } else if (typeable instanceof Short) {
+            result = ((Comparator<Short>) comparator).compare((Short) value1,
+                    (Short) value2);
+        } else if (typeable instanceof Integer) {
+            result = ((Comparator<Integer>) comparator).compare(
+                    (Integer) value1, (Integer) value2);
+        } else if (typeable instanceof Long) {
+            result = ((Comparator<Long>) comparator).compare((Long) value1,
+                    (Long) value2);
+        } else if (typeable instanceof Float) {
+            result = ((Comparator<Float>) comparator).compare((Float) value1,
+                    (Float) value2);
+        } else if (typeable instanceof Double) {
+            result = ((Comparator<Double>) comparator).compare((Double) value1,
+                    (Double) value2);
+        } else {
+            result = ((Comparator<Date>) comparator).compare((Date) value1,
+                    (Date) value2);
         }
-        return comparator.compare(value1, value2) * -1;
+        return result * (sortDirection == SortDirection.ASCENDING ? 1 : -1);
     }
 
     /**
      * Compare the first and second values in the table.
      * 
-     * @param tableSortDirection
+     * @param sortDirection
      *            Direction of sorting within the table.
      * @param value1
      *            First value to be compared.
@@ -4885,10 +5409,10 @@ class TemporalDisplay {
      *         the first value is less than, equal to, or greater than the
      *         second, respectively.
      */
-    private int compareFirstToSecond(int tableSortDirection, long value1,
+    private int compareFirstToSecond(SortDirection sortDirection, long value1,
             long value2) {
         int result = (value1 > value2 ? 1 : (value1 < value2 ? -1 : 0));
-        return result * (tableSortDirection == SWT.UP ? 1 : -1);
+        return result * (sortDirection == SortDirection.ASCENDING ? 1 : -1);
     }
 
     /**

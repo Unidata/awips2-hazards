@@ -21,8 +21,9 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
 import java.util.List;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
  * Anytime tools are modified directly (by the UI element, this will be fired)
@@ -34,18 +35,20 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 12, 2014            mnash     Initial creation
- * 
+ * Dec 05, 2014 4124       Chris.Golden Changed to work with parameterized config manager,
+ *                                      and to include originator.
  * </pre>
  * 
  * @author mnash
  * @version 1.0
  */
 
-public class SettingsToolsModified extends SettingsModified implements
-        ISessionNotification {
+public class SettingsToolsModified extends SettingsModified {
 
-    public SettingsToolsModified(ISessionConfigurationManager manager) {
-        super(manager);
+    public SettingsToolsModified(
+            ISessionConfigurationManager<ObservedSettings> manager,
+            IOriginator originator) {
+        super(manager, originator);
     }
 
     public List<Tool> getSettingsTools() {

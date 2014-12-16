@@ -22,7 +22,7 @@ import com.raytheon.uf.viz.core.drawables.IDescriptor;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.tools.GenericToolsResourceData;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 
 /**
  * Description: Spatial Display resource data, providing information about the
@@ -34,6 +34,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 05, 2013     585    Chris.Golden      Initial creation
+ * Dec 05, 2014    4124    Chris.Golden      Changed to work with newly parameterized
+ *                                           config manager and with ObservedSettings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -50,7 +52,7 @@ public class SpatialDisplayResourceData extends
      * settings currently in use.
      */
     @XmlElement
-    private Settings settings;
+    private ObservedSettings settings;
 
     /**
      * Flag indicating whether or not this object has been brought into being
@@ -122,11 +124,11 @@ public class SpatialDisplayResourceData extends
         this.appBuilder = appBuilder;
     }
 
-    public Settings getSettings() {
+    public ObservedSettings getSettings() {
         return settings;
     }
 
-    public void setSettings(Settings settings) {
+    public void setSettings(ObservedSettings settings) {
         this.settings = settings;
     }
 }

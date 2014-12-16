@@ -13,7 +13,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 
 /**
  * Description: {@link IConsoleView} used for {@link AutomatedTests}.
@@ -27,6 +27,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * Apr 09, 2014    2925  Chris.Golden Fixed to work with new HID event propagation.
  * May 18, 2014    2925  Chris.Golden More changes to get it to work with the new HID.
  * Nov 18, 2014    4124  Chris.Golden Changed to work with new version of IConsoleView.
+ * Dec 05, 2014    4124  Chris.Golden Changed to work with ObservedSettings.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -37,7 +38,7 @@ public class ConsoleViewForTesting implements IConsoleView {
 
     private List hazardEvents;
 
-    private Settings currentSettings;
+    private ObservedSettings currentSettings;
 
     private ImmutableList activeAlerts;
 
@@ -58,8 +59,8 @@ public class ConsoleViewForTesting implements IConsoleView {
     @Override
     public void initialize(ConsolePresenter presenter, Date selectedTime,
             Date currentTime, long visibleTimeRange, List hazardEvents,
-            Settings currentSettings, List settings, String jsonFilters,
-            ImmutableList activeAlerts,
+            ObservedSettings currentSettings, List settings,
+            String jsonFilters, ImmutableList activeAlerts,
             Set eventIdentifiersAllowingUntilFurtherNotice,
             boolean temporalControlsInToolBar) {
     }
@@ -105,7 +106,8 @@ public class ConsoleViewForTesting implements IConsoleView {
     }
 
     @Override
-    public void setHazardEvents(List hazardEvents, Settings currentSettings) {
+    public void setHazardEvents(List hazardEvents,
+            ObservedSettings currentSettings) {
         this.hazardEvents = hazardEvents;
     }
 
@@ -133,7 +135,7 @@ public class ConsoleViewForTesting implements IConsoleView {
     }
 
     @Override
-    public Settings getCurrentSettings() {
+    public ObservedSettings getCurrentSettings() {
         return currentSettings;
     }
 
@@ -146,7 +148,7 @@ public class ConsoleViewForTesting implements IConsoleView {
 
     }
 
-    public void setCurrentSettings(Settings currentSettings) {
+    public void setCurrentSettings(ObservedSettings currentSettings) {
         this.currentSettings = currentSettings;
     }
 

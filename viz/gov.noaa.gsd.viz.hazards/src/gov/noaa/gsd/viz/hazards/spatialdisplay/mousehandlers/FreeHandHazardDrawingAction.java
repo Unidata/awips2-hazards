@@ -32,6 +32,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -58,6 +59,8 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 23, 2013     1462   bryon.lawrence     Changed polygons to be drawn without fill by default.
  * Sep 09, 2014 3994       Robert.Blum        Added handleMouseEnter to reset the cursor type.
+ * Dec 05, 2014 4124       Chris.Golden       Changed to work with newly parameterized
+ *                                            config manager.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -73,7 +76,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
     protected ILine freeLine = null;
 
     public FreeHandHazardDrawingAction(
-            ISessionManager<ObservedHazardEvent> sessionManager) {
+            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager) {
 
         /*
          * Create the attribute container.
@@ -161,9 +164,10 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
 
                 // Could be LINE_SOLID or LINE_DASHED_4
                 @SuppressWarnings("unused")
-                AbstractDrawableComponent warningBox = def.create(
-                        DrawableType.LINE, freeLine, "Line", "LINE_DASHED_4",
-                        reducedPointsList, getSpatialDisplay().getActiveLayer());
+                AbstractDrawableComponent warningBox = def
+                        .create(DrawableType.LINE, freeLine, "Line",
+                                "LINE_DASHED_4", reducedPointsList,
+                                getSpatialDisplay().getActiveLayer());
 
                 points.clear();
 
@@ -213,8 +217,8 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
 
                 // create the ghost element and put it in the drawing layer
                 AbstractDrawableComponent ghost = def.create(DrawableType.LINE,
-                        freeLine, "Line", "LINE_SOLID", points, getSpatialDisplay()
-                                .getActiveLayer());
+                        freeLine, "Line", "LINE_SOLID", points,
+                        getSpatialDisplay().getActiveLayer());
 
                 List<Coordinate> ghostPts = Lists.newArrayList(points);
                 ((Line) ghost).setLinePoints(ghostPts);

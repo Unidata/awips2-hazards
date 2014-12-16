@@ -32,6 +32,8 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Console;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -67,6 +69,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
  * Nov 18, 2014    4124    Chris.Golden      Changed to use a handler method to watch
  *                                           for selected time changes, and adapted to
  *                                           new time manager.
+ * Dec 05, 2014    4124    Chris.Golden      Changed to use a handler method to watch
+ *                                           for settings changes, and to work with
+ *                                           newly parameterized config manager. Also
+ *                                           added in code to ignore changes that
+ *                                           originated with this presenter.
  * </pre>
  * 
  * @author Chris.Golden
@@ -101,7 +108,8 @@ public class ConsolePresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public ConsolePresenter(ISessionManager<ObservedHazardEvent> model,
+    public ConsolePresenter(
+            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
     }
@@ -121,6 +129,18 @@ public class ConsolePresenter extends
             getView().updateSelectedTimeRange(
                     new Date(selectedTime.getLowerBound()),
                     new Date(selectedTime.getUpperBound()));
+        }
+    }
+
+    /**
+     * Respond to the current settings changing.
+     * 
+     * @change Change that occurred.
+     */
+    @Handler
+    public void currentSettingsChanged(SettingsModified change) {
+        if (change.getOriginator() != UIOriginator.CONSOLE) {
+            updateHazardEventsForSettingChange();
         }
     }
 
@@ -151,9 +171,6 @@ public class ConsolePresenter extends
                                     .getSettingsID(),
                             getModel().getConfigurationManager()
                                     .getAvailableSettings());
-        }
-        if (changed.contains(HazardConstants.Element.CURRENT_SETTINGS)) {
-            updateHazardEventsForSettingChange();
         }
         if (changed.contains(HazardConstants.Element.EVENTS)) {
             updateHazardEventsForEventChange();
@@ -257,21 +274,6 @@ public class ConsolePresenter extends
 
     private void updateHazardEventsForSettingChange() {
         List<Dict> eventsAsDicts = adaptEventsForDisplay();
-
-        /**
-         * Optimization. Only update the view of the hazard events if the
-         * settings are changed by a different component. If it was by this
-         * component, then the view current settings and the
-         * configurationManager current settings will be identical so no need to
-         * update the view. This optimization is particularly useful when you
-         * sort the console rows!!!
-         * 
-         * TODO An optimization that was here needs to be resurrected. Need to
-         * take another approach; probably by including the originator in the
-         * {@link CurrentSettingsAction}. The code would skip call if the
-         * originator is the Console.
-         */
-
         getView().setHazardEvents(eventsAsDicts,
                 getModel().getConfigurationManager().getSettings());
     }

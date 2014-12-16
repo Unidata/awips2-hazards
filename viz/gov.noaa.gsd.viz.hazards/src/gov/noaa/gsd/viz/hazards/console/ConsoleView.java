@@ -55,6 +55,7 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.viz.core.mode.CAVEMode;
 
@@ -84,6 +85,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Apr 15, 2014     696    David.Gillingham  Add ChangeVtecFormatAction to menu.
  * Apr 23, 2014    1480    jsanchez          Added a Correct menu to the console.
  * Nov 18, 2014    4124    Chris.Golden      Adapted to new time manager.
+ * Dec 05, 2014    4124    Chris.Golden      Changed to use ObservedSettings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -583,7 +585,7 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     public final void initialize(final ConsolePresenter presenter,
             final Date selectedTime, final Date currentTime,
             final long visibleTimeRange, final List<Dict> hazardEvents,
-            final Settings currentSettings,
+            final ObservedSettings currentSettings,
             final List<Settings> availableSettings, final String jsonFilters,
             final ImmutableList<IHazardAlert> activeAlerts,
             final Set<String> eventIdentifiersAllowingUntilFurtherNotice,
@@ -809,7 +811,7 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
 
     @Override
     public final void setHazardEvents(final List<Dict> hazardEvents,
-            final Settings currentSetttings) {
+            final ObservedSettings currentSetttings) {
         executeOnCreatedViewPart(new Runnable() {
             @Override
             public void run() {
@@ -840,7 +842,7 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     }
 
     @Override
-    public final Settings getCurrentSettings() {
+    public final ObservedSettings getCurrentSettings() {
         ConsoleViewPart viewPart = getViewPart();
         return viewPart.getCurrentSettings();
     }

@@ -93,12 +93,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGener
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Page;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.styles.HazardStyle;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 
@@ -150,6 +153,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      cave does not need to be restarted.
  * Oct 20, 2014  4818      Chris.Golden Added wrapping of metadata megawidget specifiers in
  *                                      a scrollable megawidget.
+ * Dec 05, 2014  4124      Chris.Golden Changed to work with parameterized interface that it
+ *                                      implements, and to use ObservedSetttings.
  * </pre>
  * 
  * @author bsteffen
@@ -157,7 +162,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  */
 
 public class SessionConfigurationManager implements
-        ISessionConfigurationManager {
+        ISessionConfigurationManager<ObservedSettings> {
 
     /**
      * Empty map standing in for an environment map, which will be needed in the
@@ -396,15 +401,15 @@ public class SessionConfigurationManager implements
     }
 
     @Override
-    public void changeSettings(String settingsId) {
+    public void changeSettings(String settingsId, IOriginator originator) {
         for (ConfigLoader<Settings> settingsConfig : allSettings) {
             Settings s = settingsConfig.getConfig();
             if (s.getSettingsID().equals(settingsId)) {
                 if (settings == null) {
                     settings = new ObservedSettings(this, s);
-                    settingsChanged(new SettingsLoaded(this));
+                    settingsChanged(new SettingsLoaded(this, originator));
                 } else {
-                    settings.apply(s);
+                    settings.apply(s, originator);
                 }
                 break;
             }
@@ -412,13 +417,13 @@ public class SessionConfigurationManager implements
     }
 
     @Override
-    public Settings getSettings() {
+    public ObservedSettings getSettings() {
         if (settings != null) {
             return settings;
         } else if (!allSettings.isEmpty()) {
             this.settings = new ObservedSettings(this, allSettings.get(0)
                     .getConfig());
-            settingsChanged(new SettingsLoaded(this));
+            settingsChanged(new SettingsLoaded(this, Originator.OTHER));
         }
         return settings;
     }
@@ -453,7 +458,7 @@ public class SessionConfigurationManager implements
      */
     @Override
     public void deleteSettings() {
-        Settings settings = getSettings();
+        ISettings settings = getSettings();
         Map<LocalizationLevel, LocalizationFile> map = pathManager
                 .getTieredLocalizationFile(LocalizationType.COMMON_STATIC,
                         "hazardServices/settings/" + settings.getSettingsID()
@@ -483,7 +488,7 @@ public class SessionConfigurationManager implements
     private LocalizationFile getUserSettings() {
         LocalizationContext context = pathManager.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.USER);
-        Settings settings = getSettings();
+        ISettings settings = getSettings();
         return pathManager.getLocalizationFile(context,
                 "hazardServices/settings/" + settings.getSettingsID() + ".py");
     }

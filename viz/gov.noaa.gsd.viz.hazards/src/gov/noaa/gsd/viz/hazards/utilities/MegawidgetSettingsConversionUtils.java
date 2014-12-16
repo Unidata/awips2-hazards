@@ -47,9 +47,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Column;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.MapCenter;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Page;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
  * Various utility methods used to convert Settings and SettingsConfig to and
@@ -62,7 +62,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 18, 2014 2915       bkowal      Initial creation
- * 
+ * Dec 05, 2014 4124       Chris.Golden Changed to work with newly parameterized
+ *                                      config manager.
  * </pre>
  * 
  * @author bkowal
@@ -81,22 +82,14 @@ public class MegawidgetSettingsConversionUtils {
     }
 
     @SuppressWarnings("unchecked")
-    public static Map<String, Object> settingsPOJOToMap(Settings settings)
-            throws IllegalAccessException, InvocationTargetException,
-            NoSuchMethodException {
+    public static Map<String, Object> settingsPOJOToMap(
+            ObservedSettings settings) throws IllegalAccessException,
+            InvocationTargetException, NoSuchMethodException {
         Map<String, Object> currentSettingsMap = new LinkedHashMap<String, Object>();
-
-        if (settings instanceof ObservedSettings == false) {
-            statusHandler
-                    .error("Unable to build map of Current Settings based on type: "
-                            + settings.getClass().getName());
-            return null;
-        }
-        ObservedSettings observedSettings = (ObservedSettings) settings;
 
         // Build the 'hazardCategoriesAndTypes' list of maps
         List<Map<String, Object>> hazardCategoriesAndTypesMapList = new LinkedList<Map<String, Object>>();
-        for (HazardCategoryAndTypes hazardCategoryAndTypes : observedSettings
+        for (HazardCategoryAndTypes hazardCategoryAndTypes : settings
                 .getHazardCategoriesAndTypes()) {
             Map<String, Object> hazardCategoriesAndTypesMap = new HashMap<String, Object>();
 
@@ -117,8 +110,8 @@ public class MegawidgetSettingsConversionUtils {
 
         // Build the 'column' map
         Map<String, Object> columnsMap = new LinkedHashMap<String, Object>();
-        for (String columnKey : observedSettings.getColumns().keySet()) {
-            Column column = observedSettings.getColumns().get(columnKey);
+        for (String columnKey : settings.getColumns().keySet()) {
+            Column column = settings.getColumns().get(columnKey);
             Map<String, Object> columnMap = BeanUtils.describe(column);
             removeNullValues(columnMap);
 
@@ -127,37 +120,36 @@ public class MegawidgetSettingsConversionUtils {
         currentSettingsMap.put("columns", columnsMap);
 
         // Build the 'mapCenter' map
-        Map<String, Object> mapCenterMap = BeanUtils.describe(observedSettings
+        Map<String, Object> mapCenterMap = BeanUtils.describe(settings
                 .getMapCenter());
         removeNullValues(mapCenterMap);
         currentSettingsMap.put("mapCenter", mapCenterMap);
 
         // Add 'displayName' to the map
-        currentSettingsMap
-                .put("displayName", observedSettings.getDisplayName());
+        currentSettingsMap.put("displayName", settings.getDisplayName());
 
         // Add 'defaultDuration' to the map
-        currentSettingsMap.put("defaultDuration",
-                observedSettings.getDefaultDuration());
+        currentSettingsMap
+                .put("defaultDuration", settings.getDefaultDuration());
 
         // Add 'settingsID' to the map
-        currentSettingsMap.put("settingsID", observedSettings.getSettingsID());
+        currentSettingsMap.put("settingsID", settings.getSettingsID());
 
         // Add 'defaultCategory' to the map
-        currentSettingsMap.put("defaultCategory",
-                observedSettings.getDefaultCategory());
+        currentSettingsMap
+                .put("defaultCategory", settings.getDefaultCategory());
 
         // Add 'visibleTypes' to the map
-        currentSettingsMap.put(SETTING_HAZARD_TYPES,
-                observedSettings.getVisibleTypes());
+        currentSettingsMap
+                .put(SETTING_HAZARD_TYPES, settings.getVisibleTypes());
 
         // Add 'visibleStatuses' to the map
         currentSettingsMap.put(SETTING_HAZARD_STATES,
-                observedSettings.getVisibleStatuses());
+                settings.getVisibleStatuses());
 
         // Build the 'toolbarTools' list of maps
         List<Map<String, Object>> toolsMapsList = new LinkedList<Map<String, Object>>();
-        for (Tool tool : observedSettings.getToolbarTools()) {
+        for (Tool tool : settings.getToolbarTools()) {
             Map<String, Object> toolMap = BeanUtils.describe(tool);
             removeNullValues(toolMap);
 
@@ -167,19 +159,19 @@ public class MegawidgetSettingsConversionUtils {
 
         // Add 'defaultTimeDisplayDuration' to the map
         currentSettingsMap.put("defaultTimeDisplayDuration",
-                observedSettings.getDefaultTimeDisplayDuration());
+                settings.getDefaultTimeDisplayDuration());
 
         // Add 'visibleSites' to the map
-        currentSettingsMap.put(SETTING_HAZARD_SITES,
-                observedSettings.getVisibleSites());
+        currentSettingsMap
+                .put(SETTING_HAZARD_SITES, settings.getVisibleSites());
 
         // Add 'visibleColumns' to the map
         currentSettingsMap.put(SETTING_VISIBLE_COLUMNS,
-                observedSettings.getVisibleColumns());
+                settings.getVisibleColumns());
 
         // Add 'staticSettingsID' to the map
         currentSettingsMap.put("staticSettingsID",
-                observedSettings.getStaticSettingsID());
+                settings.getStaticSettingsID());
 
         return currentSettingsMap;
     }
@@ -215,15 +207,11 @@ public class MegawidgetSettingsConversionUtils {
     }
 
     @SuppressWarnings("unchecked")
-    public static Settings updateSettingsUsingMap(Settings settings,
-            Map<String, Object> settingsMap) {
-        if (settings instanceof ObservedSettings == false) {
-            statusHandler
-                    .error("Unable to build map of Current Settings based on type: "
-                            + settings.getClass().getName());
-        }
+    public static ObservedSettings updateSettingsUsingMap(
+            ObservedSettings settings, Map<String, Object> settingsMap,
+            IOriginator originator) {
 
-        ObservedSettings updatedSettings = (ObservedSettings) settings;
+        ObservedSettings updatedSettings = settings;
 
         // Update the visible types
         updatedSettings.setVisibleTypes((Set<String>) settingsMap
@@ -278,9 +266,9 @@ public class MegawidgetSettingsConversionUtils {
             }
             hazardCategoriesAndTypesList.add(hazardCategoryAndTypes);
         }
-        updatedSettings
-                .setHazardCategoriesAndTypes(hazardCategoriesAndTypesList
-                        .toArray(new HazardCategoryAndTypes[0]));
+        updatedSettings.setHazardCategoriesAndTypes(
+                hazardCategoriesAndTypesList
+                        .toArray(new HazardCategoryAndTypes[0]), originator);
 
         // Update the Columns
         Map<String, Column> updatedColumnsMap = new HashMap<String, Column>();
@@ -373,7 +361,7 @@ public class MegawidgetSettingsConversionUtils {
                     "staticSettingsID").toString());
         }
 
-        settings.apply(updatedSettings);
+        settings.apply(updatedSettings, originator);
         return settings;
     }
 

@@ -31,6 +31,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -54,6 +55,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Jul 15, 2013      585     Chris.Golden     Changed to no longer be a singleton.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Sep 09, 2014     3994     Robert.Blum      Added handleMouseEnter to reset the cursor type.
+ * Dec 05, 2014     4124    Chris.Golden      Changed to work with newly parameterized
+ *                                            config manager.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -67,10 +70,10 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
 
     protected Line attrDlg = null;
 
-    private final ISessionManager<ObservedHazardEvent> sessionManager;
+    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
     public RectangleMultiSelectionAction(
-            ISessionManager<ObservedHazardEvent> sessionManager) {
+            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager) {
         this.sessionManager = sessionManager;
     }
 
@@ -241,8 +244,8 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                         } else {
                             // if is not existing, add on
                             clickedElementList.add(selectedElementEventID);
-                            getSpatialDisplay().elementClicked(drawableComponent,
-                                    false, false);
+                            getSpatialDisplay().elementClicked(
+                                    drawableComponent, false, false);
                         }
                     }
 
@@ -260,7 +263,8 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                 if (clickedElementList != null)
 
                 {
-                    getSpatialDisplay().multipleElementsClicked(clickedElementList);
+                    getSpatialDisplay().multipleElementsClicked(
+                            clickedElementList);
                     clickedElementList.clear();
                 }
 
@@ -321,8 +325,8 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                     // The event is inside the selected area
                     if (p != null && polygon.contains(p)) {
                         // What it's thevent ID
-                        String selectedEventId = getSpatialDisplay().elementClicked(
-                                comp, false, false);
+                        String selectedEventId = getSpatialDisplay()
+                                .elementClicked(comp, false, false);
 
                         // Put the ID in the selected ID list
                         if (selectedEventId != null) {
@@ -338,7 +342,8 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                  * from here to the HazardServicesAppBuilder..
                  */
                 if (clickedElementList != null) {
-                    getSpatialDisplay().multipleElementsClicked(clickedElementList);
+                    getSpatialDisplay().multipleElementsClicked(
+                            clickedElementList);
                     clickedElementList.clear();
                 }
 

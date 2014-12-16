@@ -41,6 +41,8 @@ import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.hatching.HatchingUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
@@ -75,6 +77,8 @@ import com.vividsolutions.jts.geom.Puntal;
  * Nov 18, 2013 1462       bryon.lawrence      Added hazard area hatching.
  * Nov 23, 2013 1462       bryon.lawrence      Changed polygons to be drawn with no fill by default.
  * Nov 18, 2014 4124       Chris.Golden        Adapted to new time manager.
+ * Dec 05, 2014 4124       Chris.Golden        Changed to work with newly parameterized config
+ *                                             manager.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -102,9 +106,10 @@ public class HazardServicesDrawableBuilder {
 
     private HazardServicesDrawingAttributes drawingAttributes;
 
-    private final ISessionManager sessionManager;
+    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
-    public HazardServicesDrawableBuilder(ISessionManager sessionManager) {
+    public HazardServicesDrawableBuilder(
+            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager) {
         this.sessionManager = sessionManager;
     }
 
@@ -613,7 +618,7 @@ public class HazardServicesDrawableBuilder {
         String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
 
         if (hazardType != null) {
-            ISessionConfigurationManager configManager = sessionManager
+            ISessionConfigurationManager<ObservedSettings> configManager = sessionManager
                     .getConfigurationManager();
             String mapDBtableName = configManager.getHazardTypes()
                     .get(hazardType).getHazardHatchArea();

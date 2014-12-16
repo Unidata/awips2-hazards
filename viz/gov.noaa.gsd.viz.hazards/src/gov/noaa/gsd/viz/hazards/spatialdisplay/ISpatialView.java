@@ -16,7 +16,7 @@ import gov.noaa.gsd.viz.mvp.IView;
 
 import java.util.Date;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 
 /**
  * Interface describing the methods that must be implemented by a class that
@@ -35,6 +35,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  *                                           loadGeometryOverlayForSelectedEvent().
  * Nov 27, 2013   1462     bryon.lawrence    Updated drawEvents to support display
  *                                           of hazard hatched areas.
+ * Dec 05, 2014   4124     Chris.Golden      Changed to work with ObservedSettings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -60,7 +61,7 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
      * 
      * @param settings
      */
-    public void setSettings(Settings settings);
+    public void setSettings(ObservedSettings settings);
 
     /**
      * Draw events on the view.

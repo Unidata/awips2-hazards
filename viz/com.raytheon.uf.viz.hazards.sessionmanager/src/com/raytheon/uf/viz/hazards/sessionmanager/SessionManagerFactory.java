@@ -24,6 +24,7 @@ import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.localization.PathManagerFactory;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
@@ -45,7 +46,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 11, 2013 1257       bsteffen    Initial creation
- * 
+ * Dec 05, 2014 4124       Chris.Golden Changed to work with parameterized config manager.
  * </pre>
  * 
  * @author bsteffen
@@ -54,7 +55,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
 
 public class SessionManagerFactory {
 
-    public static ISessionManager<ObservedHazardEvent> getSessionManager(
+    public static ISessionManager<ObservedHazardEvent, ObservedSettings> getSessionManager(
             IMessenger messenger, BoundedReceptionEventBus<Object> eventBus) {
         Mode mode = CAVEMode.getMode() == CAVEMode.PRACTICE ? Mode.PRACTICE
                 : Mode.OPERATIONAL;

@@ -80,6 +80,8 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
@@ -196,6 +198,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            time instant and selected time range; only
  *                                            one or the other is used. Also adapted to
  *                                            new time manager.
+ * Dec 05, 2014  4124      Chris.Golden       Changed to work with newly parameterized
+ *                                            config manager, and with ObservedSettings.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -233,13 +237,13 @@ public final class HazardServicesMessageHandler implements
      */
     private HazardServicesAppBuilder appBuilder = null;
 
-    private final ISessionManager<ObservedHazardEvent> sessionManager;
+    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
     private final ISessionEventManager<ObservedHazardEvent> sessionEventManager;
 
     private final ISessionTimeManager sessionTimeManager;
 
-    private final ISessionConfigurationManager sessionConfigurationManager;
+    private final ISessionConfigurationManager<ObservedSettings> sessionConfigurationManager;
 
     private final BoundedReceptionEventBus<Object> eventBus;
 
@@ -276,7 +280,8 @@ public final class HazardServicesMessageHandler implements
 
         String staticSettingID = getSettingForCurrentPerspective();
 
-        sessionConfigurationManager.changeSettings(staticSettingID);
+        sessionConfigurationManager.changeSettings(staticSettingID,
+                Originator.OTHER);
         SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(this);
     }
 
@@ -513,6 +518,8 @@ public final class HazardServicesMessageHandler implements
         if (startSize == visibleTypes.size()) {
             notifyModelEventsChanged();
         } else {
+            sessionConfigurationManager.getSettings().setVisibleTypes(
+                    visibleTypes);
             appBuilder.notifyModelChanged(EnumSet.of(
                     HazardConstants.Element.EVENTS,
                     HazardConstants.Element.CURRENT_SETTINGS));
@@ -653,17 +660,21 @@ public final class HazardServicesMessageHandler implements
     }
 
     /**
-     * Changes the setting to the new setting identifier.
+     * Changes the setting to the new setting identifier, as requested by the
+     * settings dialog.
      * 
      * @param settingID
      *            New setting to be used.
+     * @param originator
+     *            Originator of the change.
      * @param eventsChanged
      *            Flag indicating whether or not hazard events have changed as
      *            part of this change.
      */
-    private void changeSetting(String settingID, boolean eventsChanged) {
+    private void changeSetting(String settingID, IOriginator originator,
+            boolean eventsChanged) {
 
-        sessionConfigurationManager.changeSettings(settingID);
+        sessionConfigurationManager.changeSettings(settingID, originator);
 
         appBuilder.notifyModelChanged(eventsChanged ? EnumSet.of(
                 HazardConstants.Element.EVENTS,
@@ -686,14 +697,14 @@ public final class HazardServicesMessageHandler implements
         sessionConfigurationManager.saveSettings();
     }
 
-    private void saveAsSetting(String settingsId) {
+    private void saveAsSetting(String settingsId, IOriginator originator) {
         Settings settings = new Settings(
                 sessionConfigurationManager.getSettings());
         String name = settingsId.replaceAll("\\P{Alnum}", "");
         settings.setSettingsID(name);
         settings.setStaticSettingsID(settingsId);
         settings.setDisplayName(settingsId);
-        sessionConfigurationManager.getSettings().apply(settings);
+        sessionConfigurationManager.getSettings().apply(settings, originator);
         sessionConfigurationManager.saveSettings();
         List<Settings> availableSettings = sessionConfigurationManager
                 .getAvailableSettings();
@@ -887,9 +898,10 @@ public final class HazardServicesMessageHandler implements
      * Respond to the current setting having changed.
      * 
      * @param settings
+     * @param originator
      */
-    public void changeCurrentSettings(Settings settings) {
-        sessionConfigurationManager.getSettings().apply(settings);
+    public void changeCurrentSettings(ISettings settings, IOriginator originator) {
+        sessionConfigurationManager.getSettings().apply(settings, originator);
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.CURRENT_SETTINGS));
     }
@@ -1532,7 +1544,8 @@ public final class HazardServicesMessageHandler implements
     @Handler
     public void currentSettingsActionOccurred(
             final CurrentSettingsAction settingsAction) {
-        changeCurrentSettings(settingsAction.getSettings());
+        changeCurrentSettings(settingsAction.getSettings(),
+                settingsAction.getOriginator());
     }
 
     /**
@@ -1547,18 +1560,22 @@ public final class HazardServicesMessageHandler implements
         switch (settingsAction.getActionType()) {
 
         case SETTINGS_MODIFIED:
-            changeCurrentSettings(settingsAction.getSettings());
+            changeCurrentSettings(settingsAction.getSettings(),
+                    UIOriginator.SETTINGS_DIALOG);
             break;
 
         case SETTINGS_CHOSEN:
-            changeSetting(settingsAction.getSettingID(), true);
+            changeSetting(settingsAction.getSettingID(),
+                    UIOriginator.SETTINGS_MENU, true);
             break;
         case SAVE:
             saveSetting();
             break;
         case SAVE_AS:
-            saveAsSetting(settingsAction.getSettings().getSettingsID());
-            changeSetting(settingsAction.getSettingID(), true);
+            saveAsSetting(settingsAction.getSettings().getSettingsID(),
+                    UIOriginator.SETTINGS_DIALOG);
+            changeSetting(settingsAction.getSettingID(),
+                    UIOriginator.SETTINGS_DIALOG, true);
             break;
         default:
             Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
@@ -1616,9 +1633,11 @@ public final class HazardServicesMessageHandler implements
     @Handler
     public void changeSiteOccurred(ChangeSiteAction action) {
         sessionManager.getConfigurationManager().setSiteID(action.getSite());
-        Settings currentSetting = sessionManager.getConfigurationManager()
-                .getSettings();
-        currentSetting.getVisibleSites().add(action.getSite());
+        ObservedSettings currentSetting = sessionManager
+                .getConfigurationManager().getSettings();
+        Set<String> visibleSites = currentSetting.getVisibleSites();
+        visibleSites.add(action.getSite());
+        currentSetting.setVisibleSites(visibleSites);
         ConsoleAction cAction = new ConsoleAction(
                 ConsoleAction.ActionType.SITE_CHANGED);
         cAction.setId(action.getSite());

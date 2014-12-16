@@ -10,7 +10,6 @@
 package gov.noaa.gsd.viz.hazards.display.test;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
@@ -24,7 +23,10 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
@@ -48,6 +50,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComp
  *                                         ongoing issue flags are set to false at the end
  *                                         of each test, and moved the steps enum into the
  *                                         base class.
+ * Dec 05, 2014    4124       Chris.Golden Changed to work with ObservedSettings.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -66,7 +69,7 @@ public class FilteringFunctionalTest extends
     private final Set<String> visibleSites = Sets
             .newHashSet(AutoTestUtilities.OAX);
 
-    private Settings savedCurrentSettings;
+    private ISettings savedCurrentSettings;
 
     protected enum Steps {
         START, CHANGE_TO_TORNADO, BACK_TO_CANNED_FLOOD,
@@ -122,11 +125,14 @@ public class FilteringFunctionalTest extends
     }
 
     private void handleCompletedIssuance() {
-        Settings currentSettings = appBuilder.getCurrentSettings();
-        savedCurrentSettings = new Settings(currentSettings);
+        ISettings currentSettings = appBuilder.getCurrentSettings();
+        savedCurrentSettings = new ObservedSettings(
+                (SessionConfigurationManager) configManager, currentSettings);
         Set<String> visibleStates = Sets.newHashSet();
-        Settings settings = autoTestUtilities.buildEventFilterCriteria(
-                visibleTypes, visibleStates, visibleSites);
+        ObservedSettings settings = new ObservedSettings(
+                (SessionConfigurationManager) configManager,
+                autoTestUtilities.buildEventFilterCriteria(visibleTypes,
+                        visibleStates, visibleSites));
         stepCompleted();
         step = Steps.CHANGING_CURRENT_SETTINGS;
         autoTestUtilities.changeCurrentSettings(settings);
@@ -183,7 +189,7 @@ public class FilteringFunctionalTest extends
 
     @Handler(priority = -1)
     public void currentSettingsActionOccurred(
-            final CurrentSettingsAction settingsAction) {
+            final SettingsModified settingsAction) {
         try {
             List<Dict> events = mockConsoleView.getHazardEvents();
             switch (step) {
@@ -204,7 +210,6 @@ public class FilteringFunctionalTest extends
                 break;
 
             default:
-                testError();
                 break;
 
             }

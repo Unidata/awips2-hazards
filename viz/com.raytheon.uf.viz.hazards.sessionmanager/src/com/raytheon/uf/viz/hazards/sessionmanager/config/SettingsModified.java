@@ -19,8 +19,9 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
 
 /**
  * A notification that will be sent out through the SessionManager to notify all
@@ -33,22 +34,26 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 11, 2013 1257       bsteffen    Initial creation
- * 
+ * Dec 05, 2014 4124       Chris.Golden Changed to work with parameterized config manager,
+ *                                      and to include originator.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 
-public class SettingsModified implements ISessionNotification {
+public class SettingsModified extends OriginatedSessionNotification {
 
-    private final ISessionConfigurationManager configManager;
+    private final ISessionConfigurationManager<ObservedSettings> configManager;
 
-    public SettingsModified(ISessionConfigurationManager configManager) {
+    public SettingsModified(
+            ISessionConfigurationManager<ObservedSettings> configManager,
+            IOriginator originator) {
+        super(originator);
         this.configManager = configManager;
     }
 
-    public Settings getSettings() {
+    public ObservedSettings getSettings() {
         return configManager.getSettings();
     }
 }

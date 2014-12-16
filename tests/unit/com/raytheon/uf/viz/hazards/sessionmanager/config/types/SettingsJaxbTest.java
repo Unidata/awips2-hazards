@@ -33,7 +33,7 @@ import com.raytheon.uf.common.serialization.JAXBManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 07, 2014  2182      daniel.s.schaffer@noaa.gov      Initial creation
- * 
+ * Dec 05, 2014  2124      Chris.Golden     Changed to use ISettings.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -44,7 +44,7 @@ public class SettingsJaxbTest {
     @Test
     public void basic() {
         try {
-            Settings settings = new Settings();
+            ISettings settings = new Settings();
             settings.setSettingsID("id0");
             Set<String> visibleTypes = new HashSet<>();
             visibleTypes.add("vt0");
@@ -64,7 +64,7 @@ public class SettingsJaxbTest {
             settings.setAddToSelected(true);
             JAXBManager manager = new JAXBManager(Settings.class);
             String xml = manager.marshalToXml(settings);
-            Settings newSettings = (Settings) manager.unmarshalFromXml(xml);
+            ISettings newSettings = (ISettings) manager.unmarshalFromXml(xml);
             assertEquals(settings, newSettings);
             String newXml = manager.marshalToXml(newSettings);
             assertEquals(xml, newXml);

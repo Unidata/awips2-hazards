@@ -45,6 +45,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtiliti
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
@@ -126,6 +127,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           be made visible again without bouncing
  *                                           H.S. (and sometimes CAVE).
  * Nov 18, 2014    4124    Chris.Golden      Adapted to new time manager.
+ * Dec 05, 2014    4124    Chris.Golden      Changed to work with newly parameterized
+ *                                           config manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -542,7 +545,8 @@ public class HazardDetailPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public HazardDetailPresenter(ISessionManager<ObservedHazardEvent> model,
+    public HazardDetailPresenter(
+            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
         List<ObservedHazardEvent> selectedEvents = model.getEventManager()
