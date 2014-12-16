@@ -9,9 +9,9 @@ class MetaData(CommonMetaData.MetaData):
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
         if self.hazardStatus == "ending":
-                metaData = [
-                            self.getEndingSynopsis(), 
-                    ]
+            metaData = [
+                        self.getEndingSynopsis(), 
+                ]
         else:
                 metaData = [
                     self.getImmediateCause(),

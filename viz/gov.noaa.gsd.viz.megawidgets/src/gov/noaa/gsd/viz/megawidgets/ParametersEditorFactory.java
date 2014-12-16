@@ -77,6 +77,7 @@ import com.google.common.collect.ImmutableMap;
  * Aug 07, 2014    3777    Robert.Blum       Changed to make SpellCheck Enabled
  *                                           set to true the default for text
  *                                           megawidgets.
+ * Dec 15, 2014    3846    Tracy Hansen      small bug fix
  * </pre>
  * 
  * @author Chris.Golden
@@ -708,7 +709,7 @@ public class ParametersEditorFactory {
                 specifier.put(ExpandBarSpecifier.MEGAWIDGET_IDENTIFIER,
                         EXPAND_BAR_IDENTIFIER_PREFIX + key);
                 specifier.put(ExpandBarSpecifier.MEGAWIDGET_PAGES, pageList);
-            } else {
+            } else if (label.isEmpty() == false) {
                 specifier.put(IStatefulSpecifier.MEGAWIDGET_LABEL, label + ":");
             }
 

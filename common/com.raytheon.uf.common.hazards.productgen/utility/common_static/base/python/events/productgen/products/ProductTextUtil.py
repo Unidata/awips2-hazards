@@ -35,7 +35,8 @@ from com.raytheon.uf.common.hazards.productgen.editable import ProductTextUtil
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    01/22/13                      mnash       Initial Creation.
-#    
+#    12/15/14        3846          hansen      bug fix -- added "value" argument to 
+#                                                createOrUpdateProductText
 # 
 #
 
@@ -64,19 +65,19 @@ def deleteProductText(key, productCategory, productID, segment, eventID):
     eventID = JUtil.pyValToJavaObj(eventID)
     ProductTextUtil.deleteProductText(key, productCategory, productID, segment, eventID)
 
-def createOrUpdateProductText(key, productCategory, productID, segment, eventID):
+def createOrUpdateProductText(key, productCategory, productID, segment, eventID, value):
     '''
     Saves or updates to the database.
     '''
     eventID = JUtil.pyValToJavaObj(eventID)
-    ProductTextUtil.createOrUpdateProductText(key, productCategory, productID, segment, eventID)
+    ProductTextUtil.createOrUpdateProductText(key, productCategory, productID, segment, eventID, value)
 
 def retrieveProductText(key, productCategory, productID, segment, eventID):
     '''
     Returns a list of ProductText objects.  Retrieves from the database based on the keys passed in.
     If the user wants to match anything in that column, they should pass in None for that column.
     '''
-    eventID = JUtil.pyValToJavaObj(eventID)
+    eventID = JUtil.pyValToJavaObj(eventID)    
     productTextList = ProductTextUtil.retrieveProductText(key, productCategory, productID, segment, eventID)
     
     if productTextList is None:

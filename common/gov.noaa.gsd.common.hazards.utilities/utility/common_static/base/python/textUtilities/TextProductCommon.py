@@ -253,7 +253,8 @@ class TextProductCommon(object):
         return default
 
     def setVal(self, dictionary, key, default, editable=False, eventIDs=None, segment=None, 
-                  label=None, productCategory=None, productID=None, formatMethod=None, formatArgs=None, displayable=False):      
+                  label=None, productCategory=None, productID=None, formatMethod=None, formatArgs=None, displayable=False,
+                  useKeyAsLabel=False):      
         '''
         If editable:
              Retrieve user edited text using the given identifying information:
@@ -293,9 +294,11 @@ class TextProductCommon(object):
                     value = productTextList[0].getValue()
                 else:
                     value = default
-#         elif displayable:
-#                 userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, '', False, displayable=True, label=label) 
-#                 value = default           
+        elif displayable:
+            if useKeyAsLabel: label = key
+            if label is None: label = ''                
+            userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment='', editable=False, displayable=True, label=label) 
+            value = default           
         else:
             value = default
             userEditedKey = key
@@ -338,12 +341,11 @@ class TextProductCommon(object):
         new_time = dt.replace(tzinfo=from_zone)
         if timeZone is not None:
             to_zone = tz.gettz(timeZone)
-            new_time = new_time.astimezone(to_zone)
-            
+            new_time = new_time.astimezone(to_zone)            
         strTime = new_time.isoformat() if format == 'ISO' else new_time.strftime(format)
         strTime = re.sub(r"\s+", " ", strTime)
         return strTime  
-                         
+                        
     def reversePolygon(self, polygon):
         '''
         Reverse lat/lon polygon to lon/lat
@@ -603,7 +605,6 @@ class TextProductCommon(object):
         returned would then be 'Excessive rain causing Flash Flooding was occurring over the warned area.'
         '''   
         value = hazardEvent.get(fieldName) 
-        import inspect
         if not value:
             return '' 
         if type(value) is types.ListType:

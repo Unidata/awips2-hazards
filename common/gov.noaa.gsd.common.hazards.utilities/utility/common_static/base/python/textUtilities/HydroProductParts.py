@@ -282,7 +282,7 @@ class HydroProductParts():
         partsList += [ 'productHeader', 'CR']
         
         if not non_CAN_EXP:
-            partsList += ['overviewHeadline_area', 'overviewSynopsis']  
+            partsList += ['overviewHeadline_area', 'overviewSynopsis_area']  
         
         partsList += [
                 ('segments', segmentParts),
@@ -415,7 +415,7 @@ class HydroProductParts():
                 'CR',
                 
                 'overviewHeadline_point',  #(optional)
-                'overviewSynopsis',        #(optional)
+                'overviewSynopsis_point',        #(optional)
                 ]
         if pil == 'FFA' and non_CAN_EXP:
             partsList.append('rainFallStatement')

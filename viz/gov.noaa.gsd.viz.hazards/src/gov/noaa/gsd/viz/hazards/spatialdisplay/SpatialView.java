@@ -97,6 +97,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                           display of hazard hatched areas.
  * Apr 09, 2014    2925    Chris.Golden      Changed to ensure that method is called
  *                                           within the UI thread.
+ * Dec 15, 2014    3846    Tracy Hansen       Added ability to draw points back in
  * </pre>
  * 
  * @author Chris.Golden
@@ -750,6 +751,7 @@ public class SpatialView implements
                     new SeparatorAction(), moveAndSelectChoiceAction,
                     drawVertexBasedPolygonChoiceAction,
                     drawFreehandPolygonChoiceAction,
+                    drawPointChoiceAction,
                     selectByAreaMapsPulldownAction, new SeparatorAction(),
                     addGeometryToSelectedAction);
         }

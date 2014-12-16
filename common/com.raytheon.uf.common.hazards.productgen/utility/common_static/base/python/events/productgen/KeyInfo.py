@@ -46,10 +46,10 @@ class KeyInfo(JUtil.JavaWrapperClass):
         self.segment = segment
         self.editable = editable
         self.displayable = displayable     
-        if label == None:
+        if label is None:
             self.label = self.name.title()
         else:
-            self.label = label.title()
+            self.label = label
             
         self.required = required
         # This should be refactored after the ParametersEditorFactory

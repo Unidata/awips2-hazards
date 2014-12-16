@@ -755,7 +755,7 @@ HazardTypes = {
               'allowAreaChange': False,
               'allowTimeChange': True,
               'expirationTime': (-30, 30),
-              'hazardConflictList': ['FL.W', 'FL.Y', 'FL.A'],
+              'hazardConflictList': [], #['FL.W', 'FL.Y', 'FL.A'],
               'hazardHatchArea': 'county',
               'hazardHatchLabel': 'countyName',
               'replacedBy': ['FL.A', 'FL.Y', 'FL.W'],

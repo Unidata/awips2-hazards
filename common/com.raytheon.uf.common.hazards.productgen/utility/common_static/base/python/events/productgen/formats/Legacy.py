@@ -53,7 +53,11 @@ class Format(FormatTemplate.Formatter):
         printText = text.replace('\n','CR\n')
         text = self._tpc.endline(text)
         text = text.upper()
-        return str(text)    
+        return str(text) 
+    
+    def _printDebugProductParts(self):   
+        # IF True will print the product parts and associated text during execution
+        return False
     
     def _processProductParts(self, productDict, productParts, skipParts=[]):
         '''
@@ -72,6 +76,10 @@ class Format(FormatTemplate.Formatter):
             elif valtype is tuple or valtype is list:
                 name = part[0]
                 infoDicts = part[1]
+
+            if self._printDebugProductParts():
+                if name not in ['segments', 'sections']:
+                    print 'Legacy Part:', name, ': ', 
             
             partText = ''                                   
             if name == 'wmoHeader': 
@@ -98,13 +106,14 @@ class Format(FormatTemplate.Formatter):
                         partText += vtecRecord['vtecString'] + '\n'
             elif name == 'issuanceTimeDate':
                 partText = self.formatIssueTime()
-            elif name == 'callsToAction':
-                callsToAction = productDict['callsToAction']
+            elif name in ['callsToAction', 'callsToAction_productLevel']:
+                callsToAction = productDict[name]
                 if callsToAction:
-                    partText += 'PRECAUTIONARY/PREPAREDNESS ACTIONS...\n\n'
+                    partText += 'Precautionary/Preparedness Actions...\n\n'
                     for cta in callsToAction:
                         partText += cta + '\n\n'
-                    partText += '&&\n\n'
+                    if name in ['callsToAction_productLevel']:
+                        partText += '&&\n\n'
             elif name == 'polygonText':
                 if 'polygonText' in productDict and productDict['polygonText']:
                     partText += productDict['polygonText'] + '\n\n'
@@ -126,10 +135,10 @@ class Format(FormatTemplate.Formatter):
                 textStr = self._tpc.getVal(productDict, name)
                 if textStr:
                     partText = textStr + '\n' 
-            # Note: these print statements are left here for debugging
-            # They will be useful for Focal Points as they are overriding product generators.                                                    
-#             if name not in ['segments', 'sections']:
-#                 print 'Legacy Part:', part, ': ', partText
+                    
+            if self._printDebugProductParts():
+                if name not in ['segments', 'sections']:
+                    print partText
                 
             text += partText
         return text

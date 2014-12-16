@@ -10,7 +10,7 @@
     Oct 22, 2014   5052      mpduff              Fix code error
     Oct 22, 2014   4042      Chris.Golden        Uncommented returning of metadata fields in defineDialog()
                                                  and added apply interdependencies script.
-
+    Dec 15, 2014   3846,4375 Tracy.L.Hansen      'defineDialog' -- Product Level information and Ending Hazards
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
     '''
@@ -43,21 +43,12 @@ class Product(Legacy_ProductGenerator.Product):
     def defineDialog(self, eventSet):
         '''
         @return: dialog definition to solicit user input before running tool
-        '''  
-        #  Here is an example of a dialog definition which you could use
-        #  as a starting point if you want to add information to be
-        #  solicited from the user:
-        self._initialize()
-
-        # TODO -- set up hazardEvents and productID's 
-        # Get Product Level Meta Data
-        self.bridge = Bridge() 
-        metaData =   self.getMetaData([], {'productID': 'FFA'}, 'MetaData_FFA_FLW_FLS')
+        '''                  
+        productSegmentGroups = self._previewProductSegmentGroups(eventSet)       
+        cancel_dict = self._checkForCancel(self._inputHazardEvents, productSegmentGroups)
+        dialogDict = self._organizeByProductLabel(self._productLevelMetaData_dict, cancel_dict, 'FFA_tabs')
+        return dialogDict
         
-        # TODO: Uncomment this return and eliminate the line below it once
-        # metadata megawidgets have been finalized.
-        # return metaData
-        return {}
                 
     def _initialize(self):
         # TODO Fix problem in framework which does not re-call the constructor
@@ -75,7 +66,7 @@ class Product(Legacy_ProductGenerator.Product):
         self._includeAreaNames = True
         self._includeCityNames = True
         self._hydroProductParts = HydroProductParts()
-                
+               
     def execute(self, eventSet, dialogInputMap):          
         '''
         Inputs:
@@ -128,6 +119,7 @@ class Product(Legacy_ProductGenerator.Product):
             productSegmentGroups.append(areaSegmentGroup)
         for productSegmentGroup in productSegmentGroups:
             self._addProductParts(productSegmentGroup)
+        self._productLevelMetaData_dict = self._getProductLevelMetaData(self._inputHazardEvents, 'MetaData_FFA_FLW_FLS', productSegmentGroups)          
         return productSegmentGroups
     
     def _addProductParts(self, productSegmentGroup):

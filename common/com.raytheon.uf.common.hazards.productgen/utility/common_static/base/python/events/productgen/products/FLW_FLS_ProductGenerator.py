@@ -10,7 +10,7 @@
     Oct  08, 2014  4042      Chris.Golden        Uncommented returning of metadata fields in defineDialog()
                                                  and added apply interdependencies script.
     Dec 1, 2014    4373      Dan Schaffer        HID Template migration for warngen
-    
+    Dec 15, 2014   3846,4375 Tracy.L.Hansen      'defineDialog' -- Product Level information and Ending Hazards    
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 '''
@@ -45,16 +45,13 @@ class Product(Legacy_ProductGenerator.Product):
     def defineDialog(self, eventSet):
         '''
         @return: dialog definition to solicit user input before running tool
-        '''  
-        # TODO -- set up hazardEvents and productID's
-        self.bridge = Bridge() 
-        metaData =   self.getMetaData([], {'productID': 'FLW_FLS'}, 'MetaData_FFA_FLW_FLS')
-
-        # TODO: Uncomment this return and eliminate the line below it once
-        # metadata megawidgets have been finalized.
-        # return metaData
-        return {}
-
+        '''                  
+        productSegmentGroups = self._previewProductSegmentGroups(eventSet)       
+        self._productLevelMetaData_dict = self._getProductLevelMetaData(self._inputHazardEvents, 'MetaData_FFA_FLW_FLS', productSegmentGroups)          
+        cancel_dict = self._checkForCancel(self._inputHazardEvents, productSegmentGroups)
+        dialogDict = self._organizeByProductLabel(self._productLevelMetaData_dict, cancel_dict, 'FLW_FLS_tabs')
+        return dialogDict
+ 
     def _initialize(self):
         # TODO Fix problem in framework which does not re-call the constructor
         self.initialize()
@@ -86,9 +83,9 @@ class Product(Legacy_ProductGenerator.Product):
         '''
         self._initialize()
         self.logger.info('Start ProductGeneratorTemplate:execute FLW_FLS')
-        
+                
         # Extract information for execution
-        self._getVariables(eventSet)
+        self._getVariables(eventSet, dialogInputMap)
         if not self._inputHazardEvents:
             return []
         # Here is the format of the dictionary that is returned for
@@ -121,8 +118,7 @@ class Product(Legacy_ProductGenerator.Product):
             productSegmentGroups += self._createAreaSegmentGroups()
         for productSegmentGroup in productSegmentGroups:
             self._addProductParts(productSegmentGroup)
-            #print 'FLW_FLS ProductSegmentGroup \n', productSegmentGroup
-        #self.flush()
+        self._productLevelMetaData_dict = self._getProductLevelMetaData(self._inputHazardEvents, 'MetaData_FFA_FLW_FLS', productSegmentGroups)          
         return productSegmentGroups
      
     def _createPointSegmentGroups(self):
@@ -216,7 +212,7 @@ class Product(Legacy_ProductGenerator.Product):
                 # See if this record matches the ETN of an existing FLS -- 
                 found = False
                 for segmentGroup in productSegmentGroups:
-                    if segmentGroup.get('productID') == 'FLS' and segmentGroup.get('etn') == etn:
+                    if segmentGroup.productID == 'FLS' and segmentGroup.etn == etn:
                         segmentGroup.addProductSegment(self.createProductSegment(segment,vtecRecords))
                         found = True
                 if not found: 

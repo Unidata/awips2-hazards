@@ -13,7 +13,7 @@
 #                                       _JsonVTECTableIO.
 #  Dec 11, 2014  #4933     dgilling     _JsonVTECTableIO now encodes using utf-8
 #                                        removing unicode.
-#
+#  Dec 15, 2014   3846,4375 Tracy.L.Hansen added ability to handle sets in as_str
 
 
 import abc
@@ -212,7 +212,7 @@ class _JsonVTECTableIO(VTECTableIO):
     def as_str(obj):
         if isinstance(obj, dict):
             return {_JsonVTECTableIO.as_str(key):_JsonVTECTableIO.as_str(value) for key,value in obj.items()}
-        elif isinstance(obj, list):
+        elif isinstance(obj, list) or isinstance(obj, set):  
             return [_JsonVTECTableIO.as_str(value) for value in obj]
         elif isinstance(obj, unicode):
             return obj.encode('utf-8')

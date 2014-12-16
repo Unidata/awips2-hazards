@@ -21,7 +21,8 @@
     Apr 20, 2014   2925      Chris.Golden        Changed to work with new hazard event metadata.
     May 06, 2014   1328      jramer              Remove reference to deprecated MapInfo class.
     Aug 15, 2014   4243      Chris.Golden        Changed to work with latest version of hazard event metadata.
-    Dec 1, 2014    4373      Dan Schaffer        HID Template migration for warnge
+    Dec 1, 2014    4373      Dan Schaffer        HID Template migration for warngen
+    Dec 15, 2014   3846,4375 Tracy.L.Hansen      'defineDialog' -- Product Level information and Ending Hazards
     @author Tracy.L.Hansen@noaa.gov
 '''
 
@@ -55,7 +56,6 @@ import HazardConstants
 from HazardEvent import HazardEvent
 from shapely import geometry
 
-from KeyInfo import KeyInfo
 import ProductTextUtil
 from com.raytheon.uf.common.time import SimulatedTime
 from BasisText import BasisText
@@ -72,6 +72,11 @@ class ProdSegment:
         self.vtecRecords = vtecRecords
         self.vtecRecords_ms = vtecRecords
         
+    def str(self):
+        print '  segment', self.segment 
+        print '  vtecRecords: ', self.vtecRecords
+        
+        
 class ProdSection:
     pass
 
@@ -87,13 +92,82 @@ class ProductSegmentGroup:
         self.etn = etn
         self.formatPolygon = formatPolygon
         self.actions = actions
+        self.determineSegmentInfo()
+        self.productLabel = self.determineProductLabel()
         
     def addProductSegment(self, productSegment):
         self.productSegments.append(productSegment)
         
     def setProductParts(self, productParts):
         self.productParts = productParts
-
+        
+    def determineSegmentInfo(self):
+        '''
+        Return a list of information for each segment:
+           Each segment will have a dictionary of  
+               {'act': action, 'eventIDs': eventID, 'type':hazardType, 'etn':etn)
+               
+        NOTE: most segments have only one action, eventID, hazardType
+            but some long-fused products can have multiple
+        '''
+        self.segmentInfoList = []
+        self.actions = []
+        self.eventIDs = []
+        self.hazardTypes = []
+        self.etns = []
+        for productSegment in self.productSegments:
+            actionEventList = []
+            for vtecRecord in productSegment.vtecRecords:
+                action = vtecRecord.get('act')
+                eventIDs = vtecRecord.get('eventID')
+                hazardType = vtecRecord.get('key')
+                etn = vtecRecord.get('etn')
+                info = {
+                    'action': action,
+                    'eventIDs': eventIDs,
+                    'type': hazardType,
+                    'etn': etn,
+                }
+                actionEventList.append(info)
+                self.actions.append(action)
+                self.eventIDs += list(eventIDs)
+                self.hazardTypes.append(hazardType)
+                self.etns.append(etn)
+            self.segmentInfoList.append(actionEventList)
+               
+    def determineProductLabel(self):
+        ''' 
+          The Product Label is a unique identifier for use in the Product Staging dialog
+          It could also be used in the Product Editor and if included in the Product Dictionary
+             
+            FFA_area, FFA_point
+            FLW_point, FLS_point_advisory, FLS_point_warning
+            FLW_area_eventID_hazardType, FLS_area_eventID_hazardType
+              Note: The hazard type is added for clarity, not needed for uniqueness
+        
+        '''
+        # FFA_area, FFA_point, FLW_point
+        productLabel = self.productID + '_' + self.geoType
+        if self.geoType == 'point' and self.productID in ['FLS']:
+            # FLS_point_advisory, FLS_point_warning
+            if self.productName.find('Advisory') >= 0:
+                productLabel += '_advisory'
+            else:
+                productLabel += '_warning'                
+        elif self.geoType == 'area' and self.productID in ['FLW', 'FLS']:
+            # FLW_area_eventID_hazardType, FLS_area_eventID_hazardType
+            eventID = self.eventIDs[0]
+            hazardType = self.hazardTypes[0].replace('.','_')
+            productLabel += '_' + eventID + '_' + hazardType
+        return productLabel
+           
+    def str(self):
+        print 'productID: ', self.productID, self.productName, self.productLabel
+        print 'geoType: ', self.geoType, 'mapType: ', self.mapType, 'segmented: ', self.segmented, 'etn: ', self.etn, 'actions: ', self.actions
+        print 'productSegments: ', len(self.productSegments)
+        for productSegment in self.productSegments:
+            print productSegment.str()
+        
 class Product(ProductTemplate.Product):
     __metaclass = ABCMeta
  
@@ -103,7 +177,7 @@ class Product(ProductTemplate.Product):
         otherwise e.g. issueTime_secs.
         
         '''  
-        #self.initialize()
+        # self.initialize()
         
     def createProduct(self):
         return Prod()
@@ -115,8 +189,6 @@ class Product(ProductTemplate.Product):
         return ProductSegmentGroup(productID, productName, geoType, vtecEngine, mapType, segmented, productSegments, etn, formatPolygon)
 
     def initialize(self):
-        self._gh = HazardServicesGenericHazards()
-
         self.bridge = Bridge()        
         self._hazardTypes = self.bridge.getHazardTypes()         
         areaDict = self.bridge.getAreaDictionary()
@@ -126,7 +198,7 @@ class Product(ProductTemplate.Product):
         self._tpc = TextProductCommon()
         self._tpc.setUp(areaDict)
         self._pp = ProductParts()
-        self._rfp = None #RiverForecastPoints()
+        self._rfp = None  # RiverForecastPoints()
 
         self.logger = logging.getLogger('Legacy_ProductGenerator')
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
@@ -153,50 +225,171 @@ class Product(ProductTemplate.Product):
         '''  
         pass
 
-    def _checkForCancel(self, eventSet):
-        # Look for a eventId with both CAN segments and non-CAN segments
+    def _previewProductSegmentGroups(self, eventSet):
+        self._initialize()
         self._getVariables(eventSet)
         if not self._inputHazardEvents:
             return {}
+        # Important to turn off "issue" so that the ETN number will not be advanced
+        # when previewing the VTEC segmentation
+        self._issueFlag = False
         segments = self._getSegments(self._inputHazardEvents)
-        self._productSegmentGroups = self._groupSegments(segments)
+        return self._groupSegments(segments)
+
+    def _getProductLevelMetaData(self, inputHazardEvents, metaDataFile, productSegmentGroups):
+        # Use product segment groups to determine the products 
+        metaDataDict = {}
+        self.bridge = Bridge()
+        eventIDs = [hazardEvent.getEventID() for hazardEvent in self._generatedHazardEvents]
+        for productSegmentGroup in productSegmentGroups:
+            productGroup = {
+                'productID': productSegmentGroup.productID,
+                'productName': productSegmentGroup.productName,
+                'geoType': productSegmentGroup.geoType,
+                'productLabel': productSegmentGroup.productLabel,
+                'productParts': productSegmentGroup.productParts,
+                'actions':productSegmentGroup.actions,
+                'eventIDs': eventIDs,
+                }
+            # Just send one group -- we'll have a separate sub-tab for each product           
+            metaDict = {'productSegmentGroup': productGroup, 'productCategory': self._productCategory}
+            metaData = self.getMetaData(inputHazardEvents, metaDict, metaDataFile) 
+            metaDataDict[productSegmentGroup.productLabel] = metaData.get('metadata')  
+        return metaDataDict
+
+    def _checkForCancel(self, inputHazardEvents, productSegmentGroups):
+        ''' Check for partial or automatic cancel
+        
+        Partial Cancel -- 
+            Look for an eventID with both CAN segments and non-CAN segments
+        Automatic Cancel -- 
+           Look for an eventID with a CAN segment that is not included in the 
+           inputHazardEvents
+           
+        @param inputHazardEvents -- hazard events given as input to the product generator
+        @param productSegmentGroups
+        @return metaDataDict -- organized by productSegmentGroup / productLabel:
+           {productLabel: megawidgets to display for cancellations}
+        '''
+        inputEventIDs = [hazardEvent.getEventID() for hazardEvent in inputHazardEvents]
+        mode = self._sessionDict.get('hazardMode', 'PRACTICE').upper()
         # Determine all the actions in a product associated with each eventID
-        #    eventID : [actions list],
+        #    eventID : [actions list]
         actionDict = {}
-        for productSegmentGroup in self._productSegmentGroups:
+        ugcDict = {}
+        metaDataDict = {}
+        for productSegmentGroup in productSegmentGroups:
             for productSegment in productSegmentGroup.productSegments:
                 vtecRecords = productSegment.vtecRecords
                 actions = []
                 for vtecRecord in vtecRecords:
-                    actions.append(vtecRecord['act'])
+                    action = vtecRecord['act']
+                    actions.append(action)
                 ids, eventIDs = productSegment.segment
+                if 'CAN' in actions:
+                    description = self._tpc.formatUGC_names(ids)
                 for eventID in eventIDs:
                     eventActions = actionDict.get(eventID, [])
                     for action in actions:
                         if action not in eventActions:
                             eventActions.append(action)
                     actionDict[eventID] = eventActions
-        # Determine if there are Cancel segments plus non-Cancel segments associated with the same eventID
-        canceledEventIDs = []
-        for eventID in actionDict:
-            eventActions = actionDict.get(eventID, [])
-            if 'CAN' in eventActions:
-                non_CAN = False
-                for eventAction in eventActions:
-                    if eventAction not in ['CAN']:
-                        canceledEventIDs.append(eventID)
-                        break
-        # Get the Meta Data for the canceledEventIDs
-        metaDataList = []
-        for eventID in canceledEventIDs:
-            for hazardEvent in self._inputHazardEvents:
-                if eventID == hazardEvent.getEventID():
-                    saveStatus = hazardEvent.getStatus()
-                    hazardEvent.setStatus('ending')
-                    metaDataList += self.getHazardMetaData(hazardEvent)
-                    hazardEvent.setStatus(saveStatus)
-        return metaDataList
+        
+            # Look for Partial and Automatic Cancellation
+            canceledEventIDs = []
+            for eventID in actionDict:
+                if eventID not in inputEventIDs:
+                    # Automatic Cancellation -- need to retrieve hazard event.
+                    hazardEvent = HazardDataAccess.getHazardEvent(str(eventID), mode)
+                    inputHazardEvents.add(hazardEvent)
+                    canceledEventIDs.append(eventID)
+                eventActions = actionDict.get(eventID, [])
+                if 'CAN' in eventActions:
+                    non_CAN = False
+                    for eventAction in eventActions:
+                        if eventAction not in ['CAN']:
+                            # Partial cancellation -- Cancel segments plus non-Cancel segments associated with the same eventID
+                            canceledEventIDs.append(eventID)
+                            break        
+        
+            # Get the Meta Data for the canceledEventIDs
+            # We will assume that all the eventIDs for a giving productSegmentGroup are in the same segment, 
+            # so we only have to get the metaData for the "lowest" eventID (by convention)
+            # Note: 
+            #    -- the product staging information needs to be unpacked accordingly and 
+            #    -- the "sectionHazardEvent" therefore should be the "lowest" eventID so
+            #       that this metaData is picked up.
+            metaDataList = []
+            canceledEventIDs.sort()
+            for eventID in canceledEventIDs:
+                for hazardEvent in self._inputHazardEvents:
+                    if eventID == hazardEvent.getEventID():
+                        if not metaDataList:
+                            saveStatus = hazardEvent.getStatus()
+                            hazardEvent.setStatus('ending')
+                            metaDataList += self.getHazardMetaData(hazardEvent).get('metadata', [])                
+                            hazardEvent.setStatus(saveStatus)
+                    
+            if metaDataList:
+                metaDataList = [{
+                    "fieldType": "Label",
+                    "fieldName": "label1",
+                    "label": "Enter information for cancellation -- " + description + ".",
+                    "bold": True,
+                    "italic": True
+                    }] + metaDataList
+            metaDataDict[productSegmentGroup.productLabel] = metaDataList
+        return metaDataDict    
+    
+    def _organizeByProductLabel(self, productLevelMetaData_dict, cancel_dict, fieldName):
+        # Organize by productLabel with a tab for each productLabel
+        pages = []
+        pageNames = []
+        for productLabel in productLevelMetaData_dict:
+            productFields = productLevelMetaData_dict.get(productLabel, [])
+            cancelFields = cancel_dict.get(productLabel, [])
+            if productFields is None: productFields = []
+            if cancelFields is None: cancelFields = []
+            fields = productFields + cancelFields
+            pageNames.append(productLabel)
+            # Add a tab for the productLabel
+            if fields:
+                page = {
+                    "pageName": productLabel,
+                    "pageFields": fields
+                }
+                pages.append(page)
+        # Add any tabs that we missed
+        for productLabel in cancel_dict:
+            if productLabel not in pageNames:
+                pageNames.append(productLabel)
+                fields = cancel_dict.get(productLabel)
+                # add a tab for the productLabel
+                if fields:
+                    page = {
+                        "pageName": productLabel,
+                        "pageFields": fields
+                    }
+                    pages.append(page)
+        tabs = [{
+            "fieldType": "TabbedComposite",
+            "fieldName": fieldName,
+            "leftMargin": 10,
+            "rightMargin": 10,
+            "topMargin": 10,
+            "bottomMargin": 10,
+            "expandHorizontally": True,
+            "expandVertically": True,
+            "pages": pages,
+        }]
+                
+        dialogDict = {}
+        if pages:
+            dialogDict['metadata'] = tabs
+            # dialogDict['metadata'] = fields
+        return dialogDict
 
+    
     @abstractmethod
     def execute(self, eventSet, dialogInputMap):          
         '''
@@ -211,7 +404,7 @@ class Product(ProductTemplate.Product):
         self._inputHazardEvents = eventSet.getEvents()
         metaDict = eventSet.getAttributes()
         if dialogInputMap:
-            self._dialogInputMap = dialogInputMap
+            self._storeDialogInputMap(dialogInputMap)
         else:
             self._dialogInputMap = {}
                 
@@ -265,6 +458,17 @@ class Product(ProductTemplate.Product):
         self._vtecMode = vtecMode
         self._vtecTestMode = bool(metaDict.get('vtecTestMode'))
         self._preProcessHazardEvents(self._inputHazardEvents)        
+
+    def _storeDialogInputMap(self, dialogInputMap):
+        self._dialogInputMap = dialogInputMap
+        eventIDs = [hazardEvent.getEventID() for hazardEvent in self._inputHazardEvents]
+        for eventID in eventIDs:
+            for key in dialogInputMap:
+                value = dialogInputMap.get(key)
+                # Some values may be lists e.g. calls to action
+                value = json.dumps(value)
+                ProductTextUtil.createOrUpdateProductText(key, '', '', '', [eventID], value)    
+        self.flush()
                     
     def _preProcessHazardEvents(self, hazardEvents):        
         '''        
@@ -334,9 +538,9 @@ class Product(ProductTemplate.Product):
 #         self.flush()            
 #         print 'PGT Output hazardEvents'
 #         for hazardEvent in self._generatedHazardEvents:
-#             print '  ', str(hazardEvent)
+#             print '  ', hazardEvent.getStatus(), str(hazardEvent)
 #         self.flush()
-        #return [], self._generatedHazardEvents
+#         #return [], self._generatedHazardEvents
         return productDicts, self._generatedHazardEvents
 
     def _printDict(self, dictionary, indent=''):
@@ -344,14 +548,14 @@ class Product(ProductTemplate.Product):
             value = dictionary.get(key)
             if type(value) is collections.OrderedDict or type(value) is types.DictType:
                 print key, ': {'
-                self._printDict(value, indent+'  ')
+                self._printDict(value, indent + '  ')
                 print '}'
             elif type(value) is types.ListType:
                 print key, ': ['
                 for val in value:
                     if type(val) is collections.OrderedDict or type(val) is types.DictType:
                         print ' {'
-                        self._printDict(val, indent+'  ')
+                        self._printDict(val, indent + '  ')
                         print '}'
                     else:
                         print val
@@ -359,7 +563,10 @@ class Product(ProductTemplate.Product):
             else:
                 print key, ':', value
               
-
+    def _showProductParts(self):
+        # IF True will label the editable pieces in the Product Editor with product parts
+        return True
+    
     ######################################################
     #  Product Segment determination         
     ######################################################
@@ -430,6 +637,7 @@ class Product(ProductTemplate.Product):
                 self._area_productSegments = productSegments
                 self._areaVtecEngine = self._vtecEngine                  
         return self._point_productSegments + self._area_productSegments
+
 
     @abstractmethod
     def _groupSegments(self, segments):
@@ -566,7 +774,7 @@ class Product(ProductTemplate.Product):
         productDict['issuedByString'] = self.getIssuedByString()
 
     def _overviewHeadline_area(self, productDict, productSegmentGroup, productSegments):
-        productDict['overviewHeadline'] = 'Overview Headline'
+        productDict['overviewHeadline'] = '|* Overview Headline *|'
         
     def _overviewHeadline_point(self, productDict, productSegmentGroup, productSegments):
         '''
@@ -610,7 +818,7 @@ class Product(ProductTemplate.Product):
             segment, vtecRecords = productSegment_tuple             
             for vtecRecord in vtecRecords:
                 action = vtecRecord.get('act')
-                if action in ('NEW','EXT'):
+                if action in ('NEW', 'EXT'):
                     new_ext_productSegments.append(self.createProductSegment(segment, vtecRecords))
                 elif action == 'CON':
                     con_productSegments.append(self.createProductSegment(segment, vtecRecords))
@@ -639,12 +847,12 @@ class Product(ProductTemplate.Product):
         # TODO -- IF not CAN, EXP and all vtecRecords have the same timing
         #         Add timing [(optional:) UNTIL <time/day phrase>4]
         #
-        #( <Action> SEQ "NEW" )
-        #bulletstr: <EventTime>.
-        #condition: ( ( <Action> SEQ "NEW" ) AND ( <EventEndTime> GT <EventBeginTime> ) )
-        #bulletstr: <EventTime>...OR UNTIL THE WARNING IS CANCELLED.
-        #condition: ( ( <Action> SEQ "NEW" ) AND ( <EventEndTime> LE <EventBeginTime> ) )
-        #bulletstr: <EventTime>.
+        # ( <Action> SEQ "NEW" )
+        # bulletstr: <EventTime>.
+        # condition: ( ( <Action> SEQ "NEW" ) AND ( <EventEndTime> GT <EventBeginTime> ) )
+        # bulletstr: <EventTime>...OR UNTIL THE WARNING IS CANCELLED.
+        # condition: ( ( <Action> SEQ "NEW" ) AND ( <EventEndTime> LE <EventBeginTime> ) )
+        # bulletstr: <EventTime>.
         #
         if not self._rfp:
             from RiverForecastPoints import RiverForecastPoints
@@ -668,11 +876,11 @@ class Product(ProductTemplate.Product):
             areaGroups += pointAreaGroups
 
             nameDescription, nameTypePhrase = self._tpc.getNameDescription(pointAreaGroups)
-            affected = nameDescription + ' '+ nameTypePhrase
+            affected = nameDescription + ' ' + nameTypePhrase
             riverName = self._rfp.getGroupName(pointID)
             proximity = self._rfp.getRiverPointProximity(pointID) 
             riverPointName = self._rfp.getRiverPointName(pointID)
-            locationPhrases.append('       ' +riverName + ' ' + proximity + ' ' + riverPointName + ' affecting ' + affected + '.')  
+            locationPhrases.append('       ' + riverName + ' ' + proximity + ' ' + riverPointName + ' affecting ' + affected + '.')  
                   
         locationPhrase = '\n'.join(locationPhrases)   
         areaGroups = self._tpc.simplifyAreas(areaGroups)
@@ -682,11 +890,17 @@ class Product(ProductTemplate.Product):
         # since that information will apply to all points in the product
         vtecRecord = vtecRecords[0]       
         attribution, headPhrase = self.getAttributionPhrase(
-                    vtecRecord, hazardEvent, riverPhrase, self._issueTime, self._testMode, self._wfoCity, endString = '...')                
-        overview = '...'+attribution + headPhrase + '\n\n' + locationPhrase + '\n'
+                    vtecRecord, hazardEvent, riverPhrase, self._issueTime, self._testMode, self._wfoCity, endString='...')                
+        overview = '...' + attribution + headPhrase + '\n\n' + locationPhrase + '\n'
         return overview
 
-    def _overviewSynopsis(self, productDict, productSegmentGroup, arguments=None):
+    def _overviewSynopsis_area(self, productDict, productSegmentGroup, arguments=None):
+        '''
+        FFA -- FF.A, FA.A
+        '''
+        productDict['overviewSynopsis_area'] = self._dialogInputMap.get('overviewSynopsisText_' + productSegmentGroup.productLabel, '') + '\n'
+
+    def _overviewSynopsis_point(self, productDict, productSegmentGroup, arguments=None):
         '''
         FFA_point, FLW, FLS:
         <General synopsis. Note for cancellation or expiration products: if a
@@ -699,7 +913,7 @@ class Product(ProductTemplate.Product):
         RAINFALL FORECASTS RANGING FROM <QPF lower range> TO <QPF upper range>
         INCHES OVER THE <river/basin name(s)>]...
         '''
-        productDict['overviewSynopsis'] = self._dialogInputMap.get('overviewSynopsisText', '')
+        productDict['overviewSynopsis_point'] = self._dialogInputMap.get('overviewSynopsisText_' + productSegmentGroup.productLabel, '') + '\n'
         
     def _rainFallStatement(self, productDict, productSegmentGroup, arguments=None):
         '''
@@ -710,27 +924,30 @@ class Product(ProductTemplate.Product):
         RAINFALL FORECASTS RANGING FROM <QPF lower range> TO <QPF upper range> 
         INCHES OVER THE <river/basin name(s)>]... 
         '''
-        productDict['rainFallStatement'] = 'The segments in this product are river forecasts for selected locations in the watch area.'
+        productDict['rainFallStatement'] = 'The segments in this product are river forecasts for selected locations in the watch area.\n'
                
     def _callsToAction_productLevel(self, productDict, productSegmentGroup, arguments=None):
         '''
         We pass here because the Calls To Action will be gathered as we go through the segments.
         The 'wrapUp_product' method will then add the cta's to the product dictionary
         '''
-        pass
+        productLevelMetaData = self._productLevelMetaData_dict[productSegmentGroup.productLabel]
+        ctas = self._tpc.getProductStrings(self._dialogInputMap, productLevelMetaData, 'cta_' + productSegmentGroup.productLabel) 
+        productDict['callsToAction_productLevel'] = ctas
    
     def _additionalInfoStatement(self, productDict, productSegmentGroup, arguments=None):
-        productDict['additionalInfoStatement'] = 'ADDITIONAL INFORMATION IS AVAILABLE AT <Web site URL>.'
+        # Please override this method for your site
+        productDict['additionalInfoStatement'] = 'Additional information is available at <Web Site URL>.'
         
     def _nextIssuanceStatement(self, productDict, productSegmentGroup, arguments=None):
-        productDict['nextIssuanceStatement'] = 'THE NEXT STATEMENT WILL BE ISSUED <time/day phrase>.' 
+        productDict['nextIssuanceStatement'] = 'The next statement will be issued <time/day phrase>.'
         
     def _floodPointTable(self, productDict, productSegmentGroup, arguments=None):
         # TODO Could be called at product level (no arguments or segment level with _productSegment argument
         pass
         
     def _wrapUp_product(self, productDict, productSegmentGroup, arguments=None):
-        #productDict['ctas'] = productSegment.ctas
+        # productDict['ctas'] = productSegment.ctas
         pass
         
     ################# Segment Level
@@ -815,8 +1032,6 @@ class Product(ProductTemplate.Product):
         # Check for special case where a CAN/EXP is paired with a
         # NEW/EXA/EXB/EXT
         #
-        includeText, includeFrameCodes, skipCTAs, forceCTAList = \
-          self._gh.useCaptureText(productSegment.vtecRecords_ms)
         # find any 'CAN' with non-CAN for reasons of text capture
         canVtecRecord = None
         for vtecRecord in productSegment.vtecRecords_ms:
@@ -840,19 +1055,25 @@ class Product(ProductTemplate.Product):
         segmentDict['ugcCodes'] = self._formatUGC_entries(self._productSegment)
         self._ugcHeader_value = self._tpc.formatUGCs(self._productSegment.ugcs, self._productSegment.expireTime)
         segmentDict['ugcHeader'] = self._ugcHeader_value
-        self._tpc.setVal(segmentDict, 'displayUgcHeader', self._ugcHeader_value, displayable=True,
+        self._tpc.setVal(segmentDict, 'displayUgcHeader', self._ugcHeader_value, displayable=True, editable=False, label='UGCs (Locked)',
                          productCategory=self._productCategory, productID=self._product.productID) 
        
     def _vtecRecords(self, segmentDict, productSegmentGroup, arguments):
         segment = self._productSegment.segment
         vtecRecords = self._productSegment.vtecRecords
-        segmentDict['vtecRecords'] = self._vtecRecordEntries(segment)
-        self._tpc.setVal(segmentDict, 'displayVtecRecords', self._vtecRecordEntries(segment), displayable=True,
+        vtecRecordEntries = self._vtecRecordEntries(segment)
+        segmentDict['vtecRecords'] = vtecRecordEntries
+        # Set up display for Editor
+        partText = ''
+        for vtecRecord in vtecRecordEntries:
+            partText += vtecRecord['vtecString'] + '\n'
+
+        self._tpc.setVal(segmentDict, 'displayVtecRecords', partText, displayable=True, label='VTEC (Locked)',
                          productCategory=self._productCategory, productID=self._product.productID) 
 
     def _areaList(self, segmentDict, productSegmentGroup, arguments):
          # Area String        
-        self._tpc.setVal(segmentDict, 'areaList', self._tpc.formatUGC_names(self._productSegment.ugcs), displayable=True,
+        self._tpc.setVal(segmentDict, 'areaList', self._tpc.formatUGC_names(self._productSegment.ugcs), displayable=True, label='Areas (Locked)',
                          productCategory=self._productCategory, productID=self._product.productID) 
            
     def _cityList(self, segmentDict, productSegmentGroup, arguments):
@@ -1045,9 +1266,9 @@ class Product(ProductTemplate.Product):
                         
         # Crest
         self._section.forecastCrestStage = self._rfp.getForecastCrestStage(pointID)
-        #self._section.forecastCrest = self._rfp.getPhysicalElementValue(pointID, 'HG', 0, 'FF', 'X', 'NEXT')
+        # self._section.forecastCrest = self._rfp.getPhysicalElementValue(pointID, 'HG', 0, 'FF', 'X', 'NEXT')
         self._section.forecastCrest = '30 feet'
-        #self._section.forecastCrestTime_ms = self._rfp.getPhysicalElementValue(pointID, 'HG', 0, 'FF', 'X', 'NEXT', timeFlag=True) 
+        # self._section.forecastCrestTime_ms = self._rfp.getPhysicalElementValue(pointID, 'HG', 0, 'FF', 'X', 'NEXT', timeFlag=True) 
         self._section.forecastCrestTime_ms = self._rfp.getForecastCrestTime(pointID)       
         self._section.forecastCrestTime_str = self._getFormattedTime(self._section.forecastCrestTime_ms, timeZones=timeZones)        
         self._section.physicalElementTime_str = ' stage time'
@@ -1068,42 +1289,52 @@ class Product(ProductTemplate.Product):
             location = hazardEvent.get('includeEmergencyLocation')
             if location is None:
                 location = self._tpc.frame('Enter location')
-            sectionDict['emergencyHeadline'] = '...Flash Flood Emergency for '+ location + '...\n'
+            sectionDict['emergencyHeadline'] = '...Flash Flood Emergency for ' + location + '...\n'
 
     def _attribution(self, sectionDict, productSegmentGroup, arguments):
         attribution = self._section.attribution
         if attribution:
             if self._section.bulletFormat == 'bulletFormat_CR':
-                attribution = self._section.attribution+'\n'
-            self._tpc.setVal(sectionDict, 'attribution', attribution, 
-                         productCategory=self._productCategory, productID=self._product.productID) 
+                attribution = attribution + '\n'
+            self._tpc.setVal(sectionDict, 'attribution', attribution, editable=True,
+                        eventIDs=[self._section.hazardEvent.getEventID()],
+                        segment=self._productSegment.segment, 
+                        productCategory=self._productCategory, productID=self._product.productID,
+                        useKeyAsLabel=self._showProductParts())  
             sectionDict['description'] += attribution + '\n'
 
     def _firstBullet(self, sectionDict, productSegmentGroup, arguments):
         if self._section.firstBullet:
-            self._tpc.setVal(sectionDict, 'firstBullet', self._section.firstBullet, formatMethod=self._section.bulletFormat,
-                         productCategory=self._productCategory, productID=self._product.productID)
+            self._tpc.setVal(sectionDict, 'firstBullet', self._section.firstBullet, editable=True,
+                        eventIDs=[self._section.hazardEvent.getEventID()],
+                        segment=self._productSegment.segment, formatMethod=self._section.bulletFormat,
+                        productCategory=self._productCategory, productID=self._product.productID,
+                        useKeyAsLabel=self._showProductParts()) 
             sectionDict['description'] += self._section.firstBullet + '\n'
 
     def _timeBullet(self, sectionDict, productSegmentGroup, arguments):        
         timeBullet = self.getHazardTimePhrases(self._section.vtecRecord, self._section.hazardEvent, self._issueTime)
-        self._tpc.setVal(sectionDict, 'timeBullet', timeBullet, formatMethod=self._section.bulletFormat,
-                         productCategory=self._productCategory, productID=self._product.productID) 
+        self._tpc.setVal(sectionDict, 'timeBullet', timeBullet, editable=True, eventIDs=[self._section.hazardEvent.getEventID()],
+                segment=self._productSegment.segment, formatMethod=self._section.bulletFormat,
+                productCategory=self._productCategory, productID=self._product.productID,
+                useKeyAsLabel=self._showProductParts()) 
         sectionDict['description'] += timeBullet + '\n'
 
     def _basisBullet(self, sectionDict, productSegmentGroup, arguments):
         basisBullet = self.getBasisPhrase(self._section.vtecRecord, self._section.hazardEvent, self._section.metaData)
         if basisBullet:
-            self._tpc.setVal(sectionDict, 'basisBullet', basisBullet, editable=True, label='Basis', eventIDs=[self._section.hazardEvent.getEventID()],
-                       segment=self._productSegment.segment, formatMethod=self._section.bulletFormat,
-                         productCategory=self._productCategory, productID=self._product.productID) 
+            self._tpc.setVal(sectionDict, 'basisBullet', basisBullet, editable=True, eventIDs=[self._section.hazardEvent.getEventID()],
+                    segment=self._productSegment.segment, formatMethod=self._section.bulletFormat,
+                    productCategory=self._productCategory, productID=self._product.productID,
+                    useKeyAsLabel=self._showProductParts()) 
             sectionDict['description'] += basisBullet + '\n'
         
     def _impactsBullet(self, sectionDict, productSegmentGroup, arguments):
         impactsBullet = self.getImpactsPhrase(self._section.vtecRecord, self._section.hazardEvent, self._section.metaData)
-        self._tpc.setVal(sectionDict, 'impactsBullet', impactsBullet, editable=True, label='Impacts', eventIDs=[self._section.hazardEvent.getEventID()],
-                       segment=self._productSegment.segment, formatMethod=self._section.bulletFormat,
-                         productCategory=self._productCategory, productID=self._product.productID) 
+        self._tpc.setVal(sectionDict, 'impactsBullet', impactsBullet, editable=True, eventIDs=[self._section.hazardEvent.getEventID()],
+                    segment=self._productSegment.segment, formatMethod=self._section.bulletFormat,
+                    productCategory=self._productCategory, productID=self._product.productID,
+                    useKeyAsLabel=self._showProductParts()) 
         sectionDict['description'] += impactsBullet + '\n'
 
     def _basisAndImpactsStatement(self, sectionDict, productSegmentGroup, arguments):
@@ -1220,7 +1451,7 @@ class Product(ProductTemplate.Product):
             else :
                 locationsAffected = '|*Forecast path of flood and/or locations to be affected*|' + '\n'
 
-        self._tpc.setVal(sectionDict, 'locationsAffected', locationsAffected, editable=True, label='Locations Affected', 
+        self._tpc.setVal(sectionDict, 'locationsAffected', locationsAffected, editable=True, label='Locations Affected',
                          eventIDs=[self._section.hazardEvent.getEventID()],
                          segment=self._productSegment.segment, formatMethod=self._section.bulletFormat,
                          productCategory=self._productCategory, productID=self._product.productID) 
@@ -1250,9 +1481,9 @@ class Product(ProductTemplate.Product):
             except :
                 pass
 
-        if len(names12)>0 :
+        if len(names12) > 0 :
             return self._tpc.formatDelimitedList(names12)
-        if len(namesOther)>0 :
+        if len(namesOther) > 0 :
             return self._tpc.formatDelimitedList(namesOther)
         return nullReturn
 
@@ -1262,7 +1493,7 @@ class Product(ProductTemplate.Product):
             return
         self._tpc.setVal(sectionDict, 'roadsAffected', roadsAffected, editable=True, label='Roads Affected',
                          eventIDs=[self._section.hazardEvent.getEventID()],
-                         segment=self._productSegment.segment, 
+                         segment=self._productSegment.segment,
                          productCategory=self._productCategory, productID=self._product.productID)
         sectionDict['description'] += roadsAffected + '\n'
                 
@@ -1314,7 +1545,7 @@ class Product(ProductTemplate.Product):
                         idVal = int(markerGeom.getString(columns[1]))
                         if not tableName in affectedRoadData :
                             affectedRoadData[tableName] = [[marker, marker]]
-                        elif idVal == prevId+1 :
+                        elif idVal == prevId + 1 :
                             affectedRoadData[tableName][-1][1] = marker
                         else:
                             affectedRoadData[tableName].append([marker, marker])
@@ -1333,12 +1564,12 @@ class Product(ProductTemplate.Product):
         for road in affectedRoadData.keys() :
             lenRoadStr = len(road)
             i = 0
-            while i<lenRoadStr and road[i]>"9" :
+            while i < lenRoadStr and road[i] > "9" :
                 i += 1
-            if i>=lenRoadStr :
+            if i >= lenRoadStr :
                 continue
-            j = i+1
-            while j<lenRoadStr and road[j]<="9" :
+            j = i + 1
+            while j < lenRoadStr and road[j] <= "9" :
                 j += 1
             if road[0] == "i" :
                 hwyDesc = "Interstate "
@@ -1356,18 +1587,18 @@ class Product(ProductTemplate.Product):
                 if state == None :
                     state = stateMap.get(suffix[0])
                 if state != None :
-                    hwyDesc += " in "+state
+                    hwyDesc += " in " + state
             markerList = affectedRoadData[road]
             conjunction = ""
             for markerItem in markerList :
-                if markerItem[0]== markerItem[1] :
-                    rngDesc = " at mile marker "+markerItem[0]
+                if markerItem[0] == markerItem[1] :
+                    rngDesc = " at mile marker " + markerItem[0]
                 else :
-                    rngDesc = " between mile marker "+markerItem[0]+ \
-                              " and "+markerItem[1]
-                hwyDesc += conjunction+rngDesc
+                    rngDesc = " between mile marker " + markerItem[0] + \
+                              " and " + markerItem[1]
+                hwyDesc += conjunction + rngDesc
                 conjunction = "...and"
-            markerText += hwyDesc+".\n"
+            markerText += hwyDesc + ".\n"
 
         return markerText
 
@@ -1379,8 +1610,8 @@ class Product(ProductTemplate.Product):
         attribution = self._section.attribution
         if attribution:
             if self._section.bulletFormat == 'bulletFormat_CR':
-                attribution = self._section.attribution+'\n'
-            self._tpc.setVal(sectionDict, 'attribution_point', attribution, 
+                attribution = self._section.attribution + '\n'
+            self._tpc.setVal(sectionDict, 'attribution_point', attribution,
                          productCategory=self._productCategory, productID=self._product.productID) 
             sectionDict['description'] += attribution + '\n'
         
@@ -1391,8 +1622,8 @@ class Product(ProductTemplate.Product):
         attribution = self._section.attribution
         if attribution:
             if self._section.bulletFormat == 'bulletFormat_CR':
-                attribution = self._section.attribution+'\n'
-            self._tpc.setVal(sectionDict, 'attribution_point', attribution, 
+                attribution = self._section.attribution + '\n'
+            self._tpc.setVal(sectionDict, 'attribution_point', attribution,
                          productCategory=self._productCategory, productID=self._product.productID) 
             sectionDict['description'] += attribution + '\n'
 
@@ -1400,7 +1631,7 @@ class Product(ProductTemplate.Product):
         if self._section.firstBullet:
             self._tpc.setVal(sectionDict, 'firstBullet_point', self._section.firstBullet, formatMethod=self._section.bulletFormat,
                          productCategory=self._productCategory, productID=self._product.productID) 
-            sectionDict['description'] +=  self._section.firstBullet + '\n'
+            sectionDict['description'] += self._section.firstBullet + '\n'
                 
     def _floodPointHeadline(self, sectionDict, productSegmentGroup, arguments):
         self._tpc.setVal(sectionDict, 'floodPointHeadline', 'Flood point headline', formatMethod=self._section.bulletFormat,
@@ -1415,7 +1646,7 @@ class Product(ProductTemplate.Product):
         if observedCategory < 0:
             bulletContent = 'There is no current observed data.'
         else:
-            #AT <ObsTime> THE <StgFlowName> WAS <ObsStg> <StgFlowUnits>.
+            # AT <ObsTime> THE <StgFlowName> WAS <ObsStg> <StgFlowUnits>.
             #  ObsTime --> hhmm am/pm <day> time_zone
             observedTime_ms = self._rfp.getObservedTime(self._productSegment.pointID)
             stageFlowName = self._rfp.getStageFlowName(self._productSegment.pointID)
@@ -1423,15 +1654,15 @@ class Product(ProductTemplate.Product):
             self._stageFlowUnits = self._rfp.getStageFlowUnits(self._productSegment.pointID)
             # 900 AM EDT FRIDAY 
             observedTime = self._getFormattedTime(observedTime_ms, timeZones=self._productSegment.timeZones)
-            bulletContent = 'At '+observedTime+ ' the '+stageFlowName+' was '+`observedStage`+' '+self._stageFlowUnits+'.'
+            bulletContent = 'At ' + observedTime + ' the ' + stageFlowName + ' was ' + `observedStage` + ' ' + self._stageFlowUnits + '.'
         self._tpc.setVal(sectionDict, 'observedStageBullet', bulletContent, formatMethod=self._section.bulletFormat,
                          productCategory=self._productCategory, productID=self._product.productID) 
 
     def _floodStageBullet(self, sectionDict, productSegmentGroup, arguments):
         floodStage = self._rfp.getFloodStage(self._productSegment.pointID)
         if floodStage != self._rfp.MISSING_VALUE:
-            #FLOOD STAGE IS <FldStg> <StgFlowUnits>.
-            bulletContent = 'Flood stage is '+`floodStage`+' '+self._stageFlowUnits+'.'
+            # FLOOD STAGE IS <FldStg> <StgFlowUnits>.
+            bulletContent = 'Flood stage is ' + `floodStage` + ' ' + self._stageFlowUnits + '.'
         else:
             bulletContent = ''
         self._tpc.setVal(sectionDict, 'floodStageBullet', bulletContent, formatMethod=self._section.bulletFormat,
@@ -1462,7 +1693,7 @@ class Product(ProductTemplate.Product):
             bulletContent = maxFcstCategoryName + ' flooding is forecast.'
         elif observedCategory > 0 and maxFcstCategory > 0:
             observedCategoryName = self._rfp.getObservedCategoryName(self._productSegment.pointID)
-            bulletContent = observedCategoryName + ' flooding is occurring and '+maxFcstCategoryName+' flooding is forecast.'
+            bulletContent = observedCategoryName + ' flooding is occurring and ' + maxFcstCategoryName + ' flooding is forecast.'
         else:
             productSegment_tuple, vtecRecord, formatArgs = arguments
             action = vtecRecord.get('act')
@@ -1485,7 +1716,7 @@ class Product(ProductTemplate.Product):
             observedTime_ms = self._rfp.getObservedTime(self._productSegment.pointID)
             observedTime = self._getFormattedTime(observedTime_ms, timeZones=self._productSegment.timeZones)
             maxStage, shefQualityCode = self._rfp.getMaximum24HourObservedStage(self._productSegment.pointID)
-            bulletContent = 'Recent Activity...The maximum river stage in the 24 hours ending at '+observedTime+' was '+`maxStage`+' feet. '            
+            bulletContent = 'Recent Activity...The maximum river stage in the 24 hours ending at ' + observedTime + ' was ' + `maxStage` + ' feet. '            
         self._tpc.setVal(sectionDict, 'recentActivityBullet', bulletContent, formatMethod=self._section.bulletFormat,
                          productCategory=self._productCategory, productID=self._product.productID) 
     
@@ -1515,8 +1746,8 @@ class Product(ProductTemplate.Product):
                 # condition: ( ( <ObsStg> EQ MISSING ) AND ( <MaxFcstStg> GE <FldStg> ) )
                 # bulletstr: FORECAST...THE RIVER IS FORECAST TO HAVE A MAXIMUM VALUE OF <MaxFcstStg> <StgFlowUnits> <MaxFcstTime>.
                 if maximumForecastStage >= floodStage:
-                    bulletContent = riverDescription + ' is forecast to have a maximum value of '+`maximumForecastStage`+' '+stageFlowUnits+\
-                      ' by '+maximumForecastTime_str+'. '
+                    bulletContent = riverDescription + ' is forecast to have a maximum value of ' + `maximumForecastStage` + ' ' + stageFlowUnits + \
+                      ' by ' + maximumForecastTime_str + '. '
                 #
                 # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
                 #  change made 3/17/2009 Mark Armstrong HSD
@@ -1525,8 +1756,8 @@ class Product(ProductTemplate.Product):
                 # bulletstr: FORECAST...THE RIVER IS FORECAST BELOW FLOOD STAGE WITH A MAXIMUM VALUE OF <MaxFcstStg> &
                 # <StgFlowUnits> <MaxFcstTime>.
                 elif maximumForecastStage < floodStage:
-                    bulletContent = riverDescription + ' is forecast below flood stage with a maximum value of '+`maximumForecastStage`+' '+stageFlowUnits+\
-                      ' by '+maximumForecastTime_str+'. '
+                    bulletContent = riverDescription + ' is forecast below flood stage with a maximum value of ' + `maximumForecastStage` + ' ' + stageFlowUnits + \
+                      ' by ' + maximumForecastTime_str + '. '
 
             elif observedStage < floodStage:
                 # Observed below flood stage/forecast to rise just to flood stage
@@ -1535,7 +1766,7 @@ class Product(ProductTemplate.Product):
                 # bulletstr: FORECAST...THE RIVER IS EXPECTED TO RISE TO NEAR FLOOD STAGE <MaxFcstTime>.
                 #
                 if maximumForecastStage == floodStage:
-                    bulletContent = riverDescription + ' is expected to rise to near flood stage by '+ maximumForecastTime_str
+                    bulletContent = riverDescription + ' is expected to rise to near flood stage by ' + maximumForecastTime_str
                     
                 # Observed below flood stage/forecast above flood stage/forecast time
                 # series has a crest/not falling below flood stage
@@ -1547,8 +1778,8 @@ class Product(ProductTemplate.Product):
                 # <HG,0,FF,X,NEXT,TIME>.        
                 #            
                 elif forecastCrestStage > floodStage and forecastFallBelowFloodStageTime == self._rfp.MISSING:
-                    bulletContent = 'rise above flood stage by '+ forecastRiseAboveFloodStageTime_str + \
-                        ' and continue to rise to near ' + `forecastCrestStage` + ' '+stageFlowUnits + ' by '+ forecastCrestTime_str+'. '
+                    bulletContent = 'rise above flood stage by ' + forecastRiseAboveFloodStageTime_str + \
+                        ' and continue to rise to near ' + `forecastCrestStage` + ' ' + stageFlowUnits + ' by ' + forecastCrestTime_str + '. '
 
                 # Observed below flood stage/forecast above flood stage/forecast time
                 # series has no crest
@@ -1561,9 +1792,9 @@ class Product(ProductTemplate.Product):
                 #                               
                 elif maximumForecastStage > floodStage and forecastCrestStage == self._rfp.MISSING_VALUE and +\
                     forecastFallBelowFloodStageTime == self._rfp.MISSING_VALUE:
-                    bulletContent = 'rise above flood stage by '+forecastRiseAboveFloodStageTime_str +\
-                       ' and continue to rise to near '+`maximumForecastStage`+' '+stageFlowUnits+' by '+\
-                       maximumForecastTime_str+'. Additional rises are possible thereafter.'
+                    bulletContent = 'rise above flood stage by ' + forecastRiseAboveFloodStageTime_str + \
+                       ' and continue to rise to near ' + `maximumForecastStage` + ' ' + stageFlowUnits + ' by ' + \
+                       maximumForecastTime_str + '. Additional rises are possible thereafter.'
 
                 # Observed below flood stage/forecast above flood stage/forecast time
                 # series has a crest/falling below flood stage
@@ -1575,11 +1806,11 @@ class Product(ProductTemplate.Product):
                 # THE RIVER WILL FALL BELOW FLOOD STAGE BY <FcstFallFSTime>.
                 #
                 elif forecastCrestStage > floodStage and forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE:
-                    bulletContent = 'rise above flood stage by '+forecastRiseAboveFloodStageTime_str + \
-                       ' and continue to rise to near '+ `forecastCrestStage`+' '+stageFlowUnits+' by '+forecastCrestTime_str + \
-                       '. The river will fall below flood stage by '+forecastFallBelowFloodStageTime_str+'. '
+                    bulletContent = 'rise above flood stage by ' + forecastRiseAboveFloodStageTime_str + \
+                       ' and continue to rise to near ' + `forecastCrestStage` + ' ' + stageFlowUnits + ' by ' + forecastCrestTime_str + \
+                       '. The river will fall below flood stage by ' + forecastFallBelowFloodStageTime_str + '. '
             
-            else: # observedStage >= floodStage:
+            else:  # observedStage >= floodStage:
                 
                 # Observed above flood stage/forecast continues above flood stage/no
                 # crest in forecast time series
@@ -1591,8 +1822,8 @@ class Product(ProductTemplate.Product):
                 #        
                 if maximumForecastStage > observedStage and forecastCrestStage == self._rfp.MISSING_VALUE and \
                      forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
-                     bulletContent = riverDescription + ' will continue rising to near '+ `maximumForecastStage`+' '+stageFlowUnits + \
-                     ' by '+ maximumForecastTime_str + '. Additional rises may be possible thereafter. '
+                     bulletContent = riverDescription + ' will continue rising to near ' + `maximumForecastStage` + ' ' + stageFlowUnits + \
+                     ' by ' + maximumForecastTime_str + '. Additional rises may be possible thereafter. '
             
                 # Observed above flood stage/forecast crests but stays above flood
                 # stage
@@ -1603,8 +1834,8 @@ class Product(ProductTemplate.Product):
                 # <HG,0,FF,X,NEXT,TIME> THEN BEGIN FALLING.
                 #
                 elif forecastCrestStage > observedStage and forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
-                        bulletContent = riverDescription + ' will continue rising to near '+`forecastCrestStage`+' '+stageFlowUnits+' by '+\
-                        forecastCrestTime_str+ ' then begin falling.'
+                        bulletContent = riverDescription + ' will continue rising to near ' + `forecastCrestStage` + ' ' + stageFlowUnits + ' by ' + \
+                        forecastCrestTime_str + ' then begin falling.'
                     
                 # Observed above flood stage/forecast crests and falls below flood
                 # stage
@@ -1617,8 +1848,8 @@ class Product(ProductTemplate.Product):
                 #
                 elif forecastCrestStage > observedStage and forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE and \
                     forecastCrestStage > observedStage:
-                    bulletContent = riverDescription + ' will continue rising to near '+`forecastCrestStage`+' '+stageFlowUnits+' by '+\
-                       forecastFallBelowFloodStageTime_ms+'. ' 
+                    bulletContent = riverDescription + ' will continue rising to near ' + `forecastCrestStage` + ' ' + stageFlowUnits + ' by ' + \
+                       forecastFallBelowFloodStageTime_ms + '. ' 
                         
                 # Observed above flood stage/forecast continue fall/not below flood
                 # stage
@@ -1641,7 +1872,7 @@ class Product(ProductTemplate.Product):
                 #
                 elif maximumForecastStage <= observedStage and stageTrend == 'steady' and \
                     forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
-                    bulletContent = riverDescription + ' will remain near '+`maximumForecastStage`+' '+stageFlowUnits+'. '
+                    bulletContent = riverDescription + ' will remain near ' + `maximumForecastStage` + ' ' + stageFlowUnits + '. '
                     
                 # Observed above flood stage/forecast continues fall to below flood
                 # stage
@@ -1652,7 +1883,7 @@ class Product(ProductTemplate.Product):
                 # <FcstFallFSTime>.
                 #
                 elif maximumForecastStage <= observedStage and forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE:
-                    bulletContent = riverDescription + ' will continue to fall to below flood stage by '+forecastFallBelowFloodStageTime_str+'.'
+                    bulletContent = riverDescription + ' will continue to fall to below flood stage by ' + forecastFallBelowFloodStageTime_str + '.'
 
         elif self._section.action in ['ROU']:                    
             #  FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
@@ -1661,8 +1892,8 @@ class Product(ProductTemplate.Product):
             # bulletstr: FORECAST...THE RIVER WILL RISE TO NEAR <MaxFcstStg> <StgFlowUnits> <MaxFcstTime>.
             #
             if maximumForecastStage != self._rfp.MISSING_VALUE:
-                bulletContent = riverDescription + ' will rise to near '+`maximumForecastStage`+' '+stageFlowUnits+\
-                      ' by '+maximumForecastTime_str+'. '                       
+                bulletContent = riverDescription + ' will rise to near ' + `maximumForecastStage` + ' ' + stageFlowUnits + \
+                      ' by ' + maximumForecastTime_str + '. '                       
         self._tpc.setVal(sectionDict, 'forecastStageBullet', bulletContent, formatMethod=self._section.bulletFormat, formatArgs='Forecast...',
                          productCategory=self._productCategory, productID=self._product.productID) 
         
@@ -1697,7 +1928,7 @@ class Product(ProductTemplate.Product):
                 elif self._section.maximumForecastStage >= self._section.floodStage:
                     if self._section.forecastRiseAboveFloodStageTime_ms != self._rfp.MISSING_VALUE and self._section.forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE:
                         bulletContent = 'The ' + self._section.riverName + ' is forecast to rise above flood stage at ' + self._section.forecastRiseAboveFloodStageTime_str\
-                         + ' to ' +self._section.maximumForecastStage + ' ' + self._section.stageFlowUnits + ' and fall below flood stage at ' + self._section.forecastFallBelowFloodStageTime_str + '.'
+                         + ' to ' + self._section.maximumForecastStage + ' ' + self._section.stageFlowUnits + ' and fall below flood stage at ' + self._section.forecastFallBelowFloodStageTime_str + '.'
                     elif self._section.forecastRiseAboveFloodStageTime_ms != self._rpf.MISSING_VALUE and self._section.forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
                         bulletContent = 'The ' + self._section.riverName + ' is forecast to rise above flood stage at ' + self._section.forecastRiseAboveFloodStageTime_str\
                          + ' to ' + self._section.maximumForecastStage + ' ' + self._section.stageFlowUnits + '.'
@@ -1879,7 +2110,7 @@ class Product(ProductTemplate.Product):
         if impacts:
            impactsString = impacts + ' ' + bulletContent
         else:
-           impactsString =  bulletContent
+           impactsString = bulletContent
            
         self._tpc.setVal(sectionDict, 'pointImpactsBullet', impactsString, formatMethod=self._section.bulletFormat, formatArgs='Impact...',
                          productCategory=self._productCategory, productID=self._product.productID) 
@@ -1892,18 +2123,20 @@ class Product(ProductTemplate.Product):
         crestString = ''
         crestContents = self._section.hazardEvent.get('crestsSelectedForecastPointsComboBox')
         if crestContents is not None:
-            crest,crestDate = crestContents.split(' :: ')
-            crestString = "This crest compares to a previous crest of " + crest + " <ImpCompUnits> on " + crestDate +"."
+            crest, crestDate = crestContents.split(' :: ')
+            crestString = "This crest compares to a previous crest of " + crest + " <ImpCompUnits> on " + crestDate + "."
         self._tpc.setVal(sectionDict, 'floodHistoryBullet', crestString, formatMethod=self._section.bulletFormat, formatArgs='FLOOD HISTORY...',
                          productCategory=self._productCategory, productID=self._product.productID) 
            
     def _endingSynopsis(self, sectionDict, productSegmentGroup, arguments):
-        # TODO Add to Product Staging -- FFA, FLS area
+        # Try to get from hazard event meta data
         endingSynopsis = self._section.hazardEvent.get('endingSynopsis')
         if endingSynopsis is None:
-            endingSynopsis = '\n|* Brief post-synopsis of hydrometeorological activity *|\n'
-        else:
-            endingSynopsis = '\n'+endingSynopsis+'\n'
+            # Try to get from dialogInputMap  (case of partial cancellation)
+            endingSynopsis = self._dialogInputMap.get('endingSynopsis')
+        if not endingSynopsis:
+            # Default value
+            endingSynopsis = '|* Brief post-synopsis of hydrometeorological activity *|'
         sectionDict['endingSynopsis'] = endingSynopsis
             
     ######################################
@@ -2115,7 +2348,7 @@ class Product(ProductTemplate.Product):
         a product generator. For example, point and area hazardEvents
         must have separate VTEC Engines.
         @param hazardEvents -- list of hazard events
-        '''
+        '''                        
         opMode = not self._sessionDict.get('testMode', 0)
         self._vtecEngineWrapper = VTECEngineWrapper(
                self.bridge, self._productCategory, self._fullStationID,
@@ -2229,7 +2462,7 @@ class Product(ProductTemplate.Product):
                 }
         metaData, filePath = self.bridge.getData(json.dumps(criteria))            
         if type(metaData) is not types.ListType:
-            metaData = metaData.execute(hazardEvent, {})            
+            metaData = metaData.execute(hazardEvent, {}) 
         return metaData
 
     def getMetaData(self, hazardEvents, metaDict, metaDataFileName): 
@@ -2237,12 +2470,13 @@ class Product(ProductTemplate.Product):
         for hazardEvent in hazardEvents:
             eventDict = {}
             eventDict['eventID'] = hazardEvent.getEventID()
-            eventDict['type'] = hazardEvent.getHazardType()
+            eventDict['hazardType'] = hazardEvent.getHazardType()
+            eventDict['status'] = hazardEvent.getStatus()
             eventDicts.append(eventDict)
-        criteria = {'dataType':'metaData','fileName':metaDataFileName}
-        metaData = self.bridge.getData(json.dumps(criteria))            
+        criteria = {'dataType':'metaData', 'fileName':metaDataFileName}
+        metaData = self.bridge.getData(json.dumps(criteria)) 
         if type(metaData) is not types.ListType:
-            metaData = metaData.execute(eventDicts, metaDict)            
+            metaData = metaData.execute(eventDicts, metaDict) 
         return metaData
 
 
@@ -2262,8 +2496,14 @@ class Product(ProductTemplate.Product):
             # state to 'ended'.
             for hazardEvent in hazardEvents:
                 vtecCodes = hazardEvent.get('vtecCodes', [])
-                if ('CAN' in vtecCodes or 'EXP' in vtecCodes) and not ['NEW', 'CON', 'EXA', 'EXT', 'EXB', 'UPG', 'ROU'] in vtecCodes:
-                    hazardEvent.setStatus('ENDED')
+                if ('CAN' in vtecCodes or 'EXP' in vtecCodes):
+                    ended = True
+                    for code in ['NEW', 'CON', 'EXA', 'EXT', 'EXB', 'UPG', 'ROU']:
+                        if code in vtecCodes:
+                            ended = False
+                            break
+                    if ended:
+                        hazardEvent.setStatus('ENDED')
                     
 
     def checkTestMode(self, sessionDict, str):
@@ -2279,8 +2519,7 @@ class Product(ProductTemplate.Product):
     def getSegmentHazardEvents(self, segments, hazardEventList=None):
         '''
         @param segments: List of segments
-        @param inputHazardEvents: Set of hazardEvents 
-        @param eventIDs: The ids of the hazardEvents to retrieve from the input set
+        @param hazardEventList: Set of hazardEvents 
         @return: Return a list of hazardEvents
         '''
         #  Each segment lists eventIDs, so collect those and then use
@@ -2301,7 +2540,7 @@ class Product(ProductTemplate.Product):
                     found = True
             if not found:
                 # Must retrieve this hazard event for automatic cancellation
-                mode = self._sessionDict.get('hazardMode','PRACTICE').upper()
+                mode = self._sessionDict.get('hazardMode', 'PRACTICE').upper()
                 hazardEvent = HazardDataAccess.getHazardEvent(str(eventID), mode)
                 # Initialize the product-specific information
                 hazardEvent.removeHazardAttribute('expirationTime');
@@ -2349,7 +2588,7 @@ class Product(ProductTemplate.Product):
             if self._section.listOfCities:
                 ugcPhrase += '\n' + productSegment.cityString
                 
-            if immediateCause in ['DM', 'DR', 'GO', 'IJ','RS', 'SM']:
+            if immediateCause in ['DM', 'DR', 'GO', 'IJ', 'RS', 'SM']:
                 hydrologicCause = hazardEvent.get('hydrologicCause')
                 riverName = None
                 if immediateCause == 'DM' and hydrologicCause in ['dam', 'siteImminent', 'siteFailed']:
@@ -2361,17 +2600,17 @@ class Product(ProductTemplate.Product):
                     if not riverName or not damOrLeveeName:
                         return ugcPhrase
                     else:
-                        return 'The '+riverName+' below '+damOrLeveeName+ ' in ' + ugcPhrase
+                        return 'The ' + riverName + ' below ' + damOrLeveeName + ' in ' + ugcPhrase
                 else:
                     typeOfFlooding = self.hydrologicCauseMapping(hydrologicCause, 'typeOfFlooding')
-                    return typeOfFlooding+ ' in '+ugcPhrase                
+                    return typeOfFlooding + ' in ' + ugcPhrase                
             return ugcPhrase
         else:
             #  <River> <Proximity> <IdName> 
             riverName = self._rfp.getGroupName(productSegment.pointID)
             proximity = self._rfp.getRiverPointProximity(productSegment.pointID) 
             riverPointName = self._rfp.getRiverPointName(productSegment.pointID) 
-            return  '\n the '+riverName + ' '+ proximity + ' ' + riverPointName              
+            return  '\n the ' + riverName + ' ' + proximity + ' ' + riverPointName              
                              
     def getAreaPhraseBullet(self, productSegment, metaData, hazardEvent):
         '''
@@ -2388,7 +2627,7 @@ class Product(ProductTemplate.Product):
         # These need to be ordered by area of state.
         orderedUgcs = []
         for ugc in ugcs :
-            orderedUgcs.append(ugc[:2]+ugcPartsOfState.get(ugc, "")+"|"+ugc)
+            orderedUgcs.append(ugc[:2] + ugcPartsOfState.get(ugc, "") + "|" + ugc)
         orderedUgcs.sort()
 
         areaPhrase = "\n"
@@ -2399,19 +2638,19 @@ class Product(ProductTemplate.Product):
                 textLine = "  "
             else :
                 textLine = "  " + part + " "
-            textLine += self._tpc.getInformationForUGC(ugc)+" "
-            textLine += self._tpc.getInformationForUGC(ugc, "typeSingular")+" IN "
+            textLine += self._tpc.getInformationForUGC(ugc) + " "
+            textLine += self._tpc.getInformationForUGC(ugc, "typeSingular") + " IN "
             part = ugcPartsOfState.get(ugc, "")
             if part == "" :
-                textLine += self._tpc.getInformationForUGC(ugc, "fullStateName")+"\n"
+                textLine += self._tpc.getInformationForUGC(ugc, "fullStateName") + "\n"
             else :
-                textLine += part+" "+self._tpc.getInformationForUGC(ugc, "fullStateName")+"\n"
+                textLine += part + " " + self._tpc.getInformationForUGC(ugc, "fullStateName") + "\n"
             areaPhrase += textLine
 
         return areaPhrase
             
                              
-    def getAttributionPhrase(self, vtecRecord, hazardEvent, areaPhrase, issueTime, testMode, wfoCity, lineLength=69, endString = '.'):
+    def getAttributionPhrase(self, vtecRecord, hazardEvent, areaPhrase, issueTime, testMode, wfoCity, lineLength=69, endString='.'):
         '''
         THE NATIONAL WEATHER SERVICE IN DENVER HAS ISSUED A
 
@@ -2446,7 +2685,7 @@ class Product(ProductTemplate.Product):
     
             elif action == 'CON':
                 attribution = 'the ' + hazName + ' remains in effect for'
-                headPhrase =  areaPhrase + endString
+                headPhrase = areaPhrase + endString
     
             elif action == 'EXA':
                 attribution = nwsPhrase + 'expanded the'
@@ -2493,7 +2732,7 @@ class Product(ProductTemplate.Product):
         LATE MONDAY NIGHT
         '''
         endTimePhrase = self._tpc.hazardTimePhrases(vtecRecord, hazardEvent, issueTime, prefixSpace=False)
-        #endTimePhrase = self._tpc.substituteBulletedText(endTimePhrase, 'TIME IS MISSING', 'DefaultOnly', lineLength)
+        # endTimePhrase = self._tpc.substituteBulletedText(endTimePhrase, 'TIME IS MISSING', 'DefaultOnly', lineLength)
         return endTimePhrase
     
     def getPointPhrase(self, hazardEvent, metaData, lineLength=69):
@@ -2505,7 +2744,7 @@ class Product(ProductTemplate.Product):
         * FORECAST...FLOOD STAGE MAY BE REACHED BY TUESDAY AM
         '''                
         stageTime = hazardEvent.getStartTime()  # Use start time for now -- '8:45 AM Monday'
-        timeOfStage = self._tpc.getFormattedTime(time.mktime(stageTime.timetuple()), '%I:%M %p %A', 
+        timeOfStage = self._tpc.getFormattedTime(time.mktime(stageTime.timetuple()), '%I:%M %p %A',
                                                  stripLeading=True, timeZones=self._productSegment.timeZones) 
         currentStage = hazardEvent.get('currentStage')
         if currentStage is not None:
@@ -2547,7 +2786,7 @@ class Product(ProductTemplate.Product):
         # Basis bullet
         return self.standardBasisPhrase(vtecRecord, hazardEvent, metaData, lineLength)
     
-    def standardBasisPhrase(self, vtecRecord, hazardEvent, metaData, lineLength ):            
+    def standardBasisPhrase(self, vtecRecord, hazardEvent, metaData, lineLength):            
         defaultBasis = {
             'NEW': ('BASIS FOR THE WATCH', 'Always'),
             'CON': ('DESCRIBE CURRENT SITUATION', 'DefaultOnly'),
@@ -2563,7 +2802,7 @@ class Product(ProductTemplate.Product):
         else:
             basisLocation = self._tpc.getProductStrings(hazardEvent, metaData, 'basisLocation')
             basis = basis.replace('!** LOCATION **!', basisLocation)
-        #basisPhrase = self._tpc.substituteBulletedText(basis, default, framing, lineLength)            
+        # basisPhrase = self._tpc.substituteBulletedText(basis, default, framing, lineLength)            
         return basis
     
     def floodBasisPhrase(self, vtecRecord, hazardEvent, metaData, floodDescription, lineLength=69):
@@ -2578,7 +2817,7 @@ class Product(ProductTemplate.Product):
         para = 'At ' + eventTime
         # TODO Need to handle these cases properly
         if hazardEvent.getHazardType() == "FL.W" or hazardEvent.getHazardType() == "HY.S":
-            basis = ' '+floodDescription+' '+ self.basisLocation(hazardEvent) + '.'
+            basis = ' ' + floodDescription + ' ' + self.basisLocation(hazardEvent) + '.'
         else:
             basis = self.basisFromHazardEvent(hazardEvent)        
         para += basis
@@ -2598,7 +2837,7 @@ class Product(ProductTemplate.Product):
         return result
     
     def floodLocation(self, hazardEvent, floodDescription):
-        return ' '+floodDescription+' '+ self.basisLocation(hazardEvent)
+        return ' ' + floodDescription + ' ' + self.basisLocation(hazardEvent)
     
     def getImpactsPhrase(self, vtecRecord, hazardEvent, metaData, lineLength=69):       
         # Impacts bullet
@@ -2612,7 +2851,7 @@ class Product(ProductTemplate.Product):
         impacts = self._tpc.getProductStrings(hazardEvent, metaData, 'impacts')
         if not impacts:
             impacts = self._tpc.frame('(OPTIONAL) POTENTIAL IMPACTS OF FLOODING')
-        #impactsPhrase = self._tpc.substituteBulletedText(impacts,
+        # impactsPhrase = self._tpc.substituteBulletedText(impacts,
         #    '(OPTIONAL) POTENTIAL IMPACTS OF FLOODING', framing, lineLength)        
         return impacts
     
@@ -2693,7 +2932,7 @@ class Product(ProductTemplate.Product):
             polyStr = 'LAT...LON'
             # 4 points per line
             pointsOnLine = 0
-            for lon,lat in polygon:              
+            for lon, lat in polygon:              
                 if pointsOnLine == 4:
                     polyStr += '\n' 
                     pointsOnLine = 0
@@ -2773,13 +3012,13 @@ class Product(ProductTemplate.Product):
             speed = stormMotion.get('speed')
             if speed < 0 :
                 return None
-            if speed <= minSpd/10 :
+            if speed <= minSpd / 10 :
                 return still
             if useMph :
                 speed *= 1.16
             if speed < minSpd :
                 return slow
-            bearing = self._plainTextOfBearing(stormMotion.get('bearing'), True)+' '
+            bearing = self._plainTextOfBearing(stormMotion.get('bearing'), True) + ' '
             speed = round * int((speed + round / 2) / round)
             movStr = bearing + 'at ' + str(int(speed))
             if useMph :
@@ -2829,7 +3068,7 @@ class Product(ProductTemplate.Product):
     def correctSegment(self, segment):
         if 'vtecRecords' in segment:
             vtecRecordList = segment['vtecRecords']
-            for j in range(0,len(vtecRecordList)):
+            for j in range(0, len(vtecRecordList)):
                 vtecRecord = vtecRecordList[j]
                 if vtecRecord['vtecRecordType'] == 'pvtecRecord':
                     action = vtecRecord['action']
@@ -2847,7 +3086,7 @@ class Product(ProductTemplate.Product):
         try :
             st = hazardEvent.getStartTime()
             try :
-                startTime = long(st.strftime("%s"))*1000
+                startTime = long(st.strftime("%s")) * 1000
             except :
                 startTime = st
             stormMotion = hazardEvent.get("stormMotion")
@@ -2865,24 +3104,24 @@ class Product(ProductTemplate.Product):
         afterTime = None
         try :
             nTrack -= 1
-            while (nTrack>0) :
-                if (trackPoints[nTrack-1]["pointID"]<startTime) :
+            while (nTrack > 0) :
+                if (trackPoints[nTrack - 1]["pointID"] < startTime) :
                     break
                 nTrack -= 1
             trackPoint = trackPoints[nTrack]
             point = trackPoint['point']
             afterLatLon = LatLonCoord.LatLonCoord(point[1], point[0])
-            afterTime = trackPoint["pointID"]/1000
+            afterTime = trackPoint["pointID"] / 1000
             t = 0
-            while t<nTrack :
-                if (trackPoints[t+1]["pointID"]>=startTime) :
+            while t < nTrack :
+                if (trackPoints[t + 1]["pointID"] >= startTime) :
                     break
                 t += 1
-            if t<nTrack :
+            if t < nTrack :
                 trackPoint = trackPoints[t]
                 point = trackPoint['point']
                 beforeLatLon = LatLonCoord.LatLonCoord(point[1], point[0])
-                beforeTime = trackPoint["pointID"]/1000
+                beforeTime = trackPoint["pointID"] / 1000
         except :
             return None
         if afterTime is None :
@@ -2901,48 +3140,48 @@ class Product(ProductTemplate.Product):
         elif beforeTime == None :
             db = DistanceBearing.DistanceBearing(afterLatLon)
             bearing = stormMotion["bearing"]
-            d = speed*(afterTime-startTime)/1944
+            d = speed * (afterTime - startTime) / 1944
         elif startTime > afterTime :
             db = DistanceBearing.DistanceBearing(afterLatLon)
-            ( d, b ) = db.getDistanceBearing(beforeLatLon)
+            (d, b) = db.getDistanceBearing(beforeLatLon)
             bearing = b
-            if b>180 :
+            if b > 180 :
                 b -= 180
             else :
                 b += 180
-            d = d*(startTime-afterTime)/(afterTime-beforeTime)
-            useLatLon = db.getLatLon( d, b )
+            d = d * (startTime - afterTime) / (afterTime - beforeTime)
+            useLatLon = db.getLatLon(d, b)
         elif startTime < beforeTime :
             db = DistanceBearing.DistanceBearing(beforeLatLon)
-            ( d, b ) = db.getDistanceBearing(afterLatLon)
-            if b>180 :
+            (d, b) = db.getDistanceBearing(afterLatLon)
+            if b > 180 :
                 b -= 180
             else :
                 b += 180
             bearing = b
-            d = d*(beforeTime-startTime)/(afterTime-beforeTime)
-            useLatLon = db.getLatLon( d, b )
+            d = d * (beforeTime - startTime) / (afterTime - beforeTime)
+            useLatLon = db.getLatLon(d, b)
         else :
             db = DistanceBearing.DistanceBearing(afterLatLon)
-            ( d, b ) = db.getDistanceBearing(beforeLatLon)
-            d = d*(afterTime-startTime)/(afterTime-beforeTime)
-            useLatLon = db.getLatLon( d, b )
+            (d, b) = db.getDistanceBearing(beforeLatLon)
+            d = d * (afterTime - startTime) / (afterTime - beforeTime)
+            useLatLon = db.getLatLon(d, b)
             bearing = b
 
-        bearing = int(0.5+bearing)
-        speed = int(0.5+speed)
-        daytime = startTime%86400
-        hh = daytime/3600
-        mm = (daytime%3600)/60
-        tmlLine = "TIME...MOT...LOC "+"%2.2d"%hh+"%2.2d"%mm+"Z "+ \
-                  "%3.3d"%bearing+"DEG "+"%d"%speed+"KT "
-        tmlLine += "%d"%int(0.5+useLatLon.lat*100)+" "
-        if useLatLon.lon<0 :
-            tmlLine += "%d"%int(0.5-useLatLon.lon*100)
-        elif useLatLon.lat<40 :
-            tmlLine += "%d"%int(0.5+useLatLon.lon*100)
+        bearing = int(0.5 + bearing)
+        speed = int(0.5 + speed)
+        daytime = startTime % 86400
+        hh = daytime / 3600
+        mm = (daytime % 3600) / 60
+        tmlLine = "TIME...MOT...LOC " + "%2.2d" % hh + "%2.2d" % mm + "Z " + \
+                  "%3.3d" % bearing + "DEG " + "%d" % speed + "KT "
+        tmlLine += "%d" % int(0.5 + useLatLon.lat * 100) + " "
+        if useLatLon.lon < 0 :
+            tmlLine += "%d" % int(0.5 - useLatLon.lon * 100)
+        elif useLatLon.lat < 40 :
+            tmlLine += "%d" % int(0.5 + useLatLon.lon * 100)
         else :
-            tmlLine += "%d"%int(0.5-(useLatLon.lon-360)*100)
+            tmlLine += "%d" % int(0.5 - (useLatLon.lon - 360) * 100)
 
         return tmlLine
 
@@ -2958,7 +3197,7 @@ class Product(ProductTemplate.Product):
             return None
         if not isinstance(basinGeoms, list) :
             return None
-        basinNames = set( [ ] )
+        basinNames = set([ ])
         for basinGeom in basinGeoms :
             try :
                 basinName = basinGeom.getString(columns[0])
@@ -2968,15 +3207,15 @@ class Product(ProductTemplate.Product):
                 pass
 
         paraText = self._tpc.formatDelimitedList(basinNames)
-        if len(paraText)==0 :
+        if len(paraText) == 0 :
             return None
-        return lead+paraText+trail
+        return lead + paraText + trail
 
 
     def basisLocation(self, hazardEvent,
-             noevent='from heavy rain. This rain was located',\
-             point='from a thunderstorm. This storm was located',\
-             line='from a line of thunderstorms.  These storms were located',\
+             noevent='from heavy rain. This rain was located', \
+             point='from a thunderstorm. This storm was located', \
+             line='from a line of thunderstorms.  These storms were located', \
              lead='', \
              trail='over the warned area', \
              useMiles=True, over=2.0, near=3.5, round=5.0) :
@@ -3004,7 +3243,7 @@ class Product(ProductTemplate.Product):
         if trackPoints is not None :
             firstFrameTrackPoint = trackPoints[0]
             for trackPoint in trackPoints :
-                if trackPoint["pointID"]>eventTime :
+                if trackPoint["pointID"] > eventTime :
                     break
                 lastFrameTrackPoint = trackPoint
 
@@ -3017,7 +3256,7 @@ class Product(ProductTemplate.Product):
         except :
             return self.setDefaultBasisLocation(noevent, lead, trail)
 
-        coslat = math.cos(HazardConstants.DEG_TO_RAD*wxLatLon.lat)
+        coslat = math.cos(HazardConstants.DEG_TO_RAD * wxLatLon.lat)
         level1CityShape = None
         nearCityShape = None
         bestd2 = 999999999.0
@@ -3028,13 +3267,13 @@ class Product(ProductTemplate.Product):
                 try :
                     if str(cityGeom.getString("warngenlev")) != str(cityLevel) :
                         continue
-                    cityLatLon = LatLonCoord.LatLonCoord( \
-                       cityGeom.getGeometry().y,cityGeom.getGeometry().x)
+                    cityLatLon = LatLonCoord.LatLonCoord(\
+                       cityGeom.getGeometry().y, cityGeom.getGeometry().x)
                 except :
                     continue
                 dlat = cityLatLon.lat - wxLatLon.lat
                 dlon = (cityLatLon.lon - wxLatLon.lon) * coslat
-                d2 = dlat*dlat + dlon*dlon
+                d2 = dlat * dlat + dlon * dlon
                 if d2 >= bestd2 :
                     continue
                 bestd2 = d2
@@ -3048,11 +3287,11 @@ class Product(ProductTemplate.Product):
         if level1CityShape is None :
             dlat = 2.0
             dlon = dlat / coslat
-            vertices = [ (wxLatLon.lon - dlon, wxLatLon.lat - dlat ), 
-                         (wxLatLon.lon - dlon, wxLatLon.lat + dlat ),
-                         (wxLatLon.lon + dlon, wxLatLon.lat + dlat ),
-                         (wxLatLon.lon + dlon, wxLatLon.lat - dlat ),
-                         (wxLatLon.lon - dlon, wxLatLon.lat - dlat ) ]
+            vertices = [ (wxLatLon.lon - dlon, wxLatLon.lat - dlat),
+                         (wxLatLon.lon - dlon, wxLatLon.lat + dlat),
+                         (wxLatLon.lon + dlon, wxLatLon.lat + dlat),
+                         (wxLatLon.lon + dlon, wxLatLon.lat - dlat),
+                         (wxLatLon.lon - dlon, wxLatLon.lat - dlat) ]
             polygon = Polygon(vertices)
             try :
                 cityGeoms = self._tpc.mapDataQuery("city", columns, polygon, False, \
@@ -3062,13 +3301,13 @@ class Product(ProductTemplate.Product):
             bestd2 = 999999999.0
             for cityGeom in cityGeoms :
                 try :
-                    cityLatLon = LatLonCoord.LatLonCoord( \
-                       cityGeom.getGeometry().y,cityGeom.getGeometry().x)
+                    cityLatLon = LatLonCoord.LatLonCoord(\
+                       cityGeom.getGeometry().y, cityGeom.getGeometry().x)
                 except :
                     continue
                 dlat = cityLatLon.lat - wxLatLon.lat
                 dlon = (cityLatLon.lon - wxLatLon.lon) * coslat
-                d2 = dlat*dlat + dlon*dlon
+                d2 = dlat * dlat + dlon * dlon
                 if d2 >= bestd2 :
                     continue
                 bestd2 = d2
@@ -3089,21 +3328,21 @@ class Product(ProductTemplate.Product):
             level1CityDesc = self.cityReferenceLocation(level1CityShape)
         if nearCityShape is not None :
             nearDesc = self.cityReferenceLocation(nearCityShape)
-            nearDesc = pointText+" "+nearDesc
+            nearDesc = pointText + " " + nearDesc
             if not level1CityDesc:
                 return nearDesc
-            return nearDesc+"...or about "+level1CityDesc
+            return nearDesc + "...or about " + level1CityDesc
 
         # Now we fall back to describing in terms of rural areas of counties if doable.
         ugcs = attributes.get("ugcs", [])
         ugcParts = attributes.get("ugcPortions", {})
         dlat = 0.002
         dlon = dlat / coslat
-        vertices = [ (wxLatLon.lon - dlon, wxLatLon.lat - dlat ), 
-                     (wxLatLon.lon - dlon, wxLatLon.lat + dlat ),
-                     (wxLatLon.lon + dlon, wxLatLon.lat + dlat ),
-                     (wxLatLon.lon + dlon, wxLatLon.lat - dlat ),
-                     (wxLatLon.lon - dlon, wxLatLon.lat - dlat ) ]
+        vertices = [ (wxLatLon.lon - dlon, wxLatLon.lat - dlat),
+                     (wxLatLon.lon - dlon, wxLatLon.lat + dlat),
+                     (wxLatLon.lon + dlon, wxLatLon.lat + dlat),
+                     (wxLatLon.lon + dlon, wxLatLon.lat - dlat),
+                     (wxLatLon.lon - dlon, wxLatLon.lat - dlat) ]
         polygon = Polygon(vertices)
         columns = ["countyname", "state", "fips"]
         try :
@@ -3113,18 +3352,18 @@ class Product(ProductTemplate.Product):
         for countyGeom in countyGeoms :
             try :
                 st = countyGeom.getString("state")
-                ugc = st+"C"+countyGeom.getString("fips")[2:]
+                ugc = st + "C" + countyGeom.getString("fips")[2:]
                 if not ugc in ugcs :
                     continue
-                ruralDesc = pointText+" over mainly rural areas of "
+                ruralDesc = pointText + " over mainly rural areas of "
                 part = ugcParts.get(ugc, "")
                 if part != "" :
-                    ruralDesc += part+" "
+                    ruralDesc += part + " "
                 ruralDesc += countyGeom.getString("countyname")
-                ruralDesc += " "+self._tpc.getInformationForUGC(ugc, "typeSingular")
+                ruralDesc += " " + self._tpc.getInformationForUGC(ugc, "typeSingular")
                 if level1CityDesc == "" :
                     return ruralDesc
-                return ruralDesc+"...or about "+level1CityDesc
+                return ruralDesc + "...or about " + level1CityDesc
             except :
                 pass
 
@@ -3144,25 +3383,25 @@ class Product(ProductTemplate.Product):
     
     def cityReferenceLocation(self, cityShape):
         mainDesc = cityShape.getString(columns[0])
-        cityLatLon = LatLonCoord.LatLonCoord( \
-                   cityShape.getGeometry().y,cityShape.getGeometry().x)
+        cityLatLon = LatLonCoord.LatLonCoord(\
+                   cityShape.getGeometry().y, cityShape.getGeometry().x)
         distBearing = DistanceBearing.DistanceBearing(cityLatLon)
-        ( dist, bearing ) = distBearing.getDistanceBearing(wxLatLon)
+        (dist, bearing) = distBearing.getDistanceBearing(wxLatLon)
         if useMiles :
-            dist = dist/1.61
+            dist = dist / 1.61
         else :
-            dist = 0.54*dist
+            dist = 0.54 * dist
         if dist < over :
-            mainDesc = "over "+mainDesc
+            mainDesc = "over " + mainDesc
         elif dist < near :
-            mainDesc = "near "+mainDesc
+            mainDesc = "near " + mainDesc
         else :
-            dist = str( int( round * int((dist + round / 2) / round) ) )
+            dist = str(int(round * int((dist + round / 2) / round)))
             bearing = self._plainTextOfBearing(bearing)
             if useMiles :
-                mainDesc = dist+" miles "+bearing+" of "+mainDesc
+                mainDesc = dist + " miles " + bearing + " of " + mainDesc
             else :
-                mainDesc = dist+" nautical miles "+bearing+" of "+mainDesc
+                mainDesc = dist + " nautical miles " + bearing + " of " + mainDesc
         return cityDesc
             
 

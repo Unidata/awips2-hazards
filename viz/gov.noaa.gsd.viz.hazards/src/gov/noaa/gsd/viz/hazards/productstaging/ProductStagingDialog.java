@@ -108,6 +108,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Oct 20, 2014   4818     Chris G.    Removed scrolled composite from step 2 of
  *                                     the dialog, since scrolling is now handled
  *                                     by the megawidgets.
+ * Dec 15, 2014   4211     Tracy H.    Added better explanation      
  * </pre>
  * 
  * @author shouming.wei
@@ -141,7 +142,9 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
      * Label for the associated events megawidget.
      */
     private static final String COMBINE_MESSAGE = "When issuing this hazard, there are "
-            + "other related hazards that could be included in the legacy product:";
+            + "other related hazards that could be included in the legacy product.  "
+            + "\nPlease choose the hazard events to include.  "
+            + "\n\nPLEASE NOTE: Omitting a previously issued hazard event may result in its CANCELLATION!";
 
     /**
      * Specifier parameters for the category combo box megawidget.

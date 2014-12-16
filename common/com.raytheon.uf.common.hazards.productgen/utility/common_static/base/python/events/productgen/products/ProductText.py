@@ -52,7 +52,7 @@ class ProductText(JUtil.JavaWrapperClass):
         return self.jobj.getSegment()
         
     def getEventID(self):
-        return self.jobj.getEventID()
+        return self.jobj.getEventIDs()
         
     def getValue(self):
         return JUtil.javaObjToPyVal(self.jobj.getValue())

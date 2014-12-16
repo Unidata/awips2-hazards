@@ -1,9 +1,37 @@
 """
     Description: Common Meta Data shared among hazard types.
+   
+    The "displayString" is for labeling the choices in the Hazard Information Dialog.  
+    
+    Calls to Action are a good example because for the choices the user needs to select, we don't have room to 
+    include the full Call To Action such as: 
+
+                  '''Most flood deaths occur in automobiles. Never drive your vehicle into areas where
+                  the water covers the roadway. Flood waters are usually deeper than they appear.
+                  Just one foot of flowing water is powerful enough to sweep vehicles off the road.
+                  When encountering flooded roads make the smart choice...Turn around...Dont drown.'''
+
+    So for that choice in the dialog, we list the "displayString": "Turn around...don't drown".
+
+    The "productString" is then included in the MetaData to correspond to that choice in the dialog.  
+    When the user selects that choice, the HazardEvent will have an attribute:
+
+               "cta":  ["turnAroundCTA"]
+
+    Product Generation then uses the "getProductStrings" method (TextProductCommon) to access the full text or 
+    corresponding "productString" to include in the product.  This is not "automatic", but is programmed into the 
+    Product Generation python code that builds the "Precautionary Preparedness" section. 
+
+    Note that "productStrings" are simply full text corresponding to a short-hand phrase recognizable by the forecaster.  
+    For more complex product text such as the "basisBullet", Product Generation takes some information from the MetaData 
+    and uses additional information e.g. "startTime" to construct the needed phrase.  This construction is done in 
+    the Product Generation python code, and does not come out of the MetaData.    
+        
 """
 
 import VTECConstants
 from LocalizationInterface import LocalizationInterface
+import os
 
 class MetaData(object):
 
@@ -662,17 +690,18 @@ class MetaData(object):
         return {"identifier":  "warningInEffectCTA",
                 "displayString": "This warning will be in effect...",
                 "productString": "This warning will be in effect until the river falls below its flood stage."}
-    
+
     def getEndingSynopsis(self):
+        label = 'Enter Ending Synopsis '
         return {
          'fieldName': 'endingSynopsis',
          'fieldType':'Text',
-         'label':'Enter Ending Synopsis',
+         'label': label, 
          'values': '',
-         'lines': 2,
-         'visibleChars': 40,
-         'length': 90,
-         }
+         "visibleChars": 60,
+         "lines": 6,
+         "expandHorizontally": True
+        }
         
     def getEndingOption(self):
         choices = [
@@ -805,6 +834,20 @@ class MetaData(object):
     #     ddd= three letter abbreviation for day of the week 
     #      
 
+    def as_str(self, obj):
+        if isinstance(obj, dict):  
+            return {self.as_str(key):self.as_str(value) for key,value in obj.items()}
+        elif isinstance(obj, list) or isinstance(obj, set):  
+            return [self.as_str(value) for value in obj]    
+        elif isinstance(obj, unicode):  
+            return obj.encode('utf-8')  
+        else:
+            return obj
+        
+    def flush(self):
+        ''' Flush the print buffer '''
+        os.sys.__stdout__.flush()
+
 # Helper function to be called by metadata megawidget interdependency implementations
 # that include Rise Above/Crest/Fall Below and need to allow Until Further Notice to
 # be applied to Fall Below. It ensures that if the associated Until Further Notice
@@ -884,3 +927,7 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
                         }        
     return propertyChanges
                 
+def toBasis(eventType, eventTypeToBasis):   
+    return eventTypeToBasis[eventType]
+
+

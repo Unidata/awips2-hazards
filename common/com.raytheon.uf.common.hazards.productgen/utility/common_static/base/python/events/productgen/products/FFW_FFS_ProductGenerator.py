@@ -7,7 +7,7 @@
     Nov      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents, simplifying product
                                                  dictionary
     Dec 1, 2014    4373      Dan Schaffer        HID Template migration for warngen
-
+    Dec 15, 2014   3846,4375 Tracy.L.Hansen      'defineDialog' -- Product Level information and Ending Hazards
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 '''
@@ -72,7 +72,7 @@ class Product(Legacy_ProductGenerator.Product):
         self.logger.info('Start ProductGeneratorTemplate:execute FFW_FFS')
         
         # Extract information for execution
-        self._getVariables(eventSet)
+        self._getVariables(eventSet, dialogInputMap)
         if not self._inputHazardEvents:
             return []
         # Here is the format of the dictionary that is returned for
