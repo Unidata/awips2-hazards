@@ -195,6 +195,6 @@ public class ProductGenerationTests {
                 .setUpdateCorrectAnswer(testMode == TEST_MODE.UPDATE_EXPECTED_ANSWERS);
         testIndex += 1;
         currentTest.run();
-
     }
+
 }

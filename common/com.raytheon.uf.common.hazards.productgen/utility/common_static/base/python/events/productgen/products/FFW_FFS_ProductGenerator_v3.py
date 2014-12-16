@@ -129,6 +129,15 @@ class Product(BaseGenerator.Product):
 
         return productDicts, self._generatedHazardEvents
 
+    def _preProcessHazardEvents(self, hazardEvents):        
+        '''        
+        Set Immediate Cause for FF.W.NonConvective prior to VTEC processing        
+        '''        
+        for hazardEvent in hazardEvents:        
+            if hazardEvent.getHazardType() == 'FF.W.NonConvective':        
+                immediateCause = self.hydrologicCauseMapping(hazardEvent.get('hydrologicCause'), 'immediateCause')        
+                hazardEvent.set('immediateCause', immediateCause)
+                
     def _initializeMetaData(self, event):
         # TODO Address metadata overrides
         subType = event.getSubType()
@@ -196,7 +205,7 @@ class Product(BaseGenerator.Product):
                                                                                         self._productID, self._issueTime_secs)
         segment['summaryHeadlines'] = summaryHeadlines_value
         segment['headlines'] = headlines
-        segment['typeOfFlooding'] = self._metadata.hydrologicCauseMapping(attributes.get('hydrologicCause',None), 'typeOfFlooding') 
+        segment['typeOfFlooding'] = self.hydrologicCauseMapping(attributes.get('hydrologicCause',None), 'typeOfFlooding') 
         segment['impactedAreas'] = self._prepareImpactedAreas(attributes)
         segment['impactedLocations'] = self._prepareImpactedLocations(event.getGeometry(), [])
         segment['geometry'] = event.getGeometry()
@@ -336,3 +345,24 @@ class Product(BaseGenerator.Product):
             productSegmentGroup.setProductParts(self._hydroProductParts._productParts_FFW(productSegments))
         elif productID == 'FFS':
             productSegmentGroup.setProductParts(self._hydroProductParts._productParts_FFS(productSegments))
+            
+
+    def hydrologicCauseMapping(self, hydrologicCause, key):
+        mapping = {
+            'dam':          {'immediateCause': 'DM', 'typeOfFlooding':'A dam failure in...'},
+            'siteImminent': {'immediateCause': 'DM', 'typeOfFlooding':'A dam break in...'},
+            'siteFailed':   {'immediateCause': 'DM', 'typeOfFlooding':'A dam break in...'},
+            'levee':        {'immediateCause': 'DM', 'typeOfFlooding':'A levee failure in...'},
+            'floodgate':    {'immediateCause': 'DR', 'typeOfFlooding':'A dam floodgate release in...'},
+            'glacier':      {'immediateCause': 'GO', 'typeOfFlooding':'A glacier-dammed lake outburst in...'},
+            'icejam':       {'immediateCause': 'IJ', 'typeOfFlooding':'An ice jam in...'},
+            'snowMelt':     {'immediateCause': 'RS', 'typeOfFlooding':'Extremely rapid snowmelt in...'},
+            'volcano':      {'immediateCause': 'SM', 'typeOfFlooding':'Extremely rapid snowmelt caused by volcanic eruption in...'},
+            'volcanoLahar': {'immediateCause': 'SM', 'typeOfFlooding':'Volcanic induced debris flow in...'},
+            'default':      {'immediateCause': 'ER', 'typeOfFlooding':'Excessive rain in...'}
+            }
+        if mapping.has_key(hydrologicCause):
+            return mapping[hydrologicCause][key]
+        else:
+            return mapping['default'][key]
+

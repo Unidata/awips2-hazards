@@ -38,7 +38,7 @@ class BasisText:
     
     ###############################################################################
     def get_FF_W_NonConvectiveBulletText(self, identifier, sourceBulletText):
-        methodName = "self.get_" + identifier.get("immediateCause") + "_bulletText"
+        methodName = "self.get_" + identifier.get("hydrologicCause") + "_bulletText"
         exec "result = " + methodName + "(sourceBulletText)"
         return result
     

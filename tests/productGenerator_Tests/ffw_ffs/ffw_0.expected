@@ -1,34 +1,37 @@
 WGUS53 KOAX 080400
 FFWOAX
-NEC025-153-081200-
+
+NEC025-153-081202-
 /O.NEW.KOAX.FF.W.0001.110208T0400Z-110208T1200Z/
 /00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/
 
-BULLETIN - EAS ACTIVATION REQUESTED
-TEST...FLASH FLOOD WARNING...TEST
-NATIONAL WEATHER SERVICE OMAHA/VALLEY NE
-1000 PM CST MON FEB 7 2011
+Bulletin - EAS activation requested
+Test...Flash Flood Warning...Test 
+National Weather Service OMAHA/VALLEY NE
+1000 PM CST Mon Feb 7 2011
 
-THE NATIONAL WEATHER SERVICE IN OMAHA/VALLEY HAS ISSUED A
+...This message is for test purposes only... 
 
-* TEST FLASH FLOOD WARNING FOR EAST CENTRAL SARPY COUNTY IN EAST 
-  CENTRAL NEBRASKA NORTHEASTERN CASS COUNTY IN SOUTHEAST NEBRASKA
-.
+The National Weather Service in OMAHA/VALLEY has issued a
 
-* UNTIL 6 AM CST TUESDAY
+* This is a test message.  FLASH FLOOD WARNING for...
+  Excessive rain in...
+  East Central Sarpy County in East Central Nebraska...
+  Northeastern Cass County in Southeast Nebraska...
 
-* AT 1000 PM CST...DOPPLER RADAR INDICATED HEAVY RAIN ACROSS THE
-WARNED AREA. FLASH FLOODING IS EXPECTED TO BEGIN SHORTLY.
+* This is a test message.  Until 600 AM CST
 
-* SOME LOCATIONS THAT WILL EXPERIENCE FLASH FLOODING INCLUDE...
-MAINLY RURAL AREAS OF THE AFOREMENTIONED AREAS.
+* This is a test message.  At 1000 PM CST ...Doppler radar indicated 
+  heavy rain across the warned area. Flash flooding is expected to 
+  begin shortly.
+
+* This is a test message.  Some locations that will experience flash 
+  flooding include...mainly rural areas of the aforementioned areas.
+
+This is a test message. Do not take action based on this message. 
 
 LAT...LON 4112 9594 4100 9587 4109 9599 4112 9594
 
-
-
-
 $$
-
 
 

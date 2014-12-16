@@ -3,7 +3,7 @@ FFWOAX
 
 NEC025-153-081202-
 /O.NEW.KOAX.FF.W.0001.110208T0400Z-110208T1200Z/
-/00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/
+/00000.U.DM.000000T0000Z.000000T0000Z.000000T0000Z.OO/
 
 Bulletin - EAS activation requested
 Test...Flash Flood Warning...Test 
@@ -15,18 +15,23 @@ National Weather Service OMAHA/VALLEY NE
 The National Weather Service in OMAHA/VALLEY has issued a
 
 * This is a test message.  FLASH FLOOD WARNING for...
-  Excessive rain in...
+  A levee failure in...
   East Central Sarpy County in East Central Nebraska...
   Northeastern Cass County in Southeast Nebraska...
 
 * This is a test message.  Until 600 AM CST
 
-* This is a test message.  At 1000 PM CST ...Doppler radar indicated 
-  heavy rain across the warned area. Flash flooding is expected to 
-  begin shortly.
+* This is a test message.  At 1000 PM CST ...County dispatch 
+  reported a levee on the  Boulder Creek at  |* Enter flood location 
+  *| failed causing flash flooding of immediately surrounding areas.
 
-* This is a test message.  Some locations that will experience flash 
-  flooding include...mainly rural areas of the aforementioned areas.
+* This is a test message.  If a complete failure of the dam occurs...
+  the water depth at Dangelo could exceed 19 feet in 32 minutes.
+
+Flood wave estimate based on the dam in Idaho: Flood initially half 
+of original height behind the dam
+and 3-4 mph; 5 miles in 1/2 hours; 10 miles in 1 hour; and 20 miles 
+in 9 hours.
 
 This is a test message. Do not take action based on this message. 
 

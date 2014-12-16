@@ -289,8 +289,10 @@ public class AutoTestUtilities {
                 .getGeneratedProductsList();
         for (GeneratedProductList generatedProductList : generatedProductsStorage) {
             for (IGeneratedProduct iGeneratedProduct : generatedProductList) {
-                String text = (String) iGeneratedProduct.getEntry("Legacy")
-                        .get(0);
+                Map<String, List<Serializable>> entries = iGeneratedProduct
+                        .getEntries();
+                String key = entries.keySet().iterator().next();
+                String text = (String) entries.get(key).get(0);
                 result.add(text);
             }
         }

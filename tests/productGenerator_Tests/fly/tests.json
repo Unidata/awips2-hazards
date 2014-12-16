@@ -1,7 +1,21 @@
 [  
   {
-    "commentary": "Single FL.Y issuance",
     "name": "fly_0",
+    "commentary": "Single FL.Y issuance",
+    "stagingDialogInfo" : {
+      "stagingKey" : "stagingValue"
+    }
+  },
+  {
+    "name": "fly_1",
+    "commentary": "FL.Y continuance",
+    "stagingDialogInfo" : {
+      "stagingKey" : "stagingValue"
+    }
+  },
+  {
+    "name": "fly_2",
+    "commentary": "FL.Y end",
     "stagingDialogInfo" : {
       "stagingKey" : "stagingValue"
     }

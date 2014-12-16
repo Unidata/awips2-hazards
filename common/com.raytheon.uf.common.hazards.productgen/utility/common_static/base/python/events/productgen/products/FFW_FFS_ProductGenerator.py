@@ -84,8 +84,18 @@ class Product(Legacy_ProductGenerator.Product):
         #     }
         #   ]
         productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._inputHazardEvents) 
-        return productDicts, hazardEvents  
+        return productDicts, hazardEvents
     
+    def _preProcessHazardEvents(self, hazardEvents):        
+        '''        
+        Set Immediate Cause for FF.W.NonConvective prior to VTEC processing        
+        '''        
+        for hazardEvent in hazardEvents:        
+            if hazardEvent.getHazardType() == 'FF.W.NonConvective':        
+                immediateCause = self.hydrologicCauseMapping(hazardEvent.get('hydrologicCause'), 'immediateCause')        
+
+                hazardEvent.set('immediateCause', immediateCause)
+                
     def _groupSegments(self, segments):
         '''
          Group the segments into the products

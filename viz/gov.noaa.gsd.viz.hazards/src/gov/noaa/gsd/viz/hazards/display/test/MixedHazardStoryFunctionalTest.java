@@ -704,7 +704,7 @@ class MixedHazardStoryFunctionalTest extends
          * complete.
          */
         assertEquals(autoTestUtilities.numInstancesContainingText(products,
-                MY_ENDING_SYNOPSIS.toUpperCase()), 1);
+                MY_ENDING_SYNOPSIS), 1);
 
     }
 

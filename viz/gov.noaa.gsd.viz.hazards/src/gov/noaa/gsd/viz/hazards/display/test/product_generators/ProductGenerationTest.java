@@ -24,7 +24,6 @@ import gov.noaa.gsd.viz.hazards.display.test.FunctionalTest;
 import gov.noaa.gsd.viz.hazards.jsonutilities.ComparableLazilyParsedNumber;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
-import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -33,6 +32,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import net.engio.mbassy.listener.Handler;
@@ -295,9 +295,12 @@ public class ProductGenerationTest extends
 
         IGeneratedProduct generatedProduct0 = generatedProductList
                 .get(NumberUtils.INTEGER_ZERO);
-        final String product = generatedProduct0.getEntries()
-                .get(ProductConstants.ASCII_PRODUCT_KEY)
-                .get(NumberUtils.INTEGER_ZERO).toString();
+
+        Map<String, List<Serializable>> entries = generatedProduct0
+                .getEntries();
+        String key = entries.keySet().iterator().next();
+        final String product = entries.get(key).get(NumberUtils.INTEGER_ZERO)
+                .toString();
         return product;
     }
 

@@ -1,0 +1,57 @@
+[
+{
+"startTime":"2011-02-08T04:00:00.000Z",
+
+"endTime":"2011-02-08T12:00:00.000Z",
+
+"phen":"FF",
+
+"sig":"W",
+
+"subType":"NonConvective",
+
+"shapes":[
+  {"shapeType":"polygon", 
+    "points":[[-95.94, 41.12],
+              [-95.87, 41.00],
+              [-95.99, 41.09],
+              [-95.94, 41.12]]
+  }
+],
+
+"attributes":{
+
+"hydrologicCause":"levee",
+
+"ugcs":[
+        "NEC023", 
+        "NEC141"
+        ],
+
+"ugcPartsOfState" : {
+        "NEC023":"East Central",
+        "NEC141":"Northeast"
+        },
+
+"ugcPortions" : {
+        "NEC023":"Northeastern",
+        "NEC141":"Eastern"
+        },
+
+"activateWEA":["WEA_activated"],
+
+"source":"countySource",
+
+"damOrLeveeName":"Branched Oak Dam",
+
+"cta":[],
+
+"additionalInfo":[],
+
+"includeEmergencyLocation":"Boulder Falls",
+
+"riverName":"Boulder Creek",
+
+"rainAmtRainEditInches":0.1
+}}
+]

@@ -100,25 +100,6 @@ class MetaData(object):
                        ]
                }
 
-    def hydrologicCauseMapping(self, hydrologicCause, key):
-        mapping = {
-            'dam':          {'immediateCause': 'DM', 'typeOfFlooding':'A dam failure in...'},
-            'siteImminent': {'immediateCause': 'DM', 'typeOfFlooding':'A dam break in...'},
-            'siteFailed':   {'immediateCause': 'DM', 'typeOfFlooding':'A dam break in...'},
-            'levee':        {'immediateCause': 'DM', 'typeOfFlooding':'A levee failure in...'},
-            'floodgate':    {'immediateCause': 'DR', 'typeOfFlooding':'A dam floodgate release in...'},
-            'glacier':      {'immediateCause': 'GO', 'typeOfFlooding':'A glacier-dammed lake outburst in...'},
-            'icejam':       {'immediateCause': 'IJ', 'typeOfFlooding':'An ice jam in...'},
-            'snowMelt':     {'immediateCause': 'RS', 'typeOfFlooding':'Extremely rapid snowmelt in...'},
-            'volcano':      {'immediateCause': 'SM', 'typeOfFlooding':'Extremely rapid snowmelt caused by volcanic eruption in...'},
-            'volcanoLahar': {'immediateCause': 'SM', 'typeOfFlooding':'Volcanic induced debris flow in...'},
-            'default':      {'immediateCause': 'ER', 'typeOfFlooding':'Excessive rain in...'}
-            }
-        if mapping.has_key(hydrologicCause):
-            return mapping[hydrologicCause][key]
-        else:
-            return mapping['default'][key]
-
     def getFloodSeverity(self):
         return {
              "fieldName": "floodSeverity",

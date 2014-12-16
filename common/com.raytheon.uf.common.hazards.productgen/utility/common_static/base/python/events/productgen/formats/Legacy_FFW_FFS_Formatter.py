@@ -303,10 +303,10 @@ class Format(FormatTemplate.Formatter):
 
     ###################### Section Level
 
-    def _attribution(self, hazard, productDict):
+    def _attribution(self, hazardEvent, productDict):
         nwsPhrase = 'The National Weather Service in ' + self._wfoCity + ' has '
         attribution = ''
-        areaPhrase = self.createAreaPhrase(hazard, productDict)
+        areaPhrase = self.createAreaPhrase(hazardEvent, productDict)
 
         # Use this to determine which first bullet format to use.
         vtecRecords = productDict['vtecRecords']
