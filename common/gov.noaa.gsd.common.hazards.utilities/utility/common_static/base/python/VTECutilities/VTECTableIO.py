@@ -14,6 +14,7 @@
 #  Dec 11, 2014  #4933     dgilling     _JsonVTECTableIO now encodes using utf-8
 #                                        removing unicode.
 #  Dec 15, 2014   3846,4375 Tracy.L.Hansen added ability to handle sets in as_str
+#  Dec 15, 2014  #2826     dgilling     Fix EDEX-based implementation.
 
 
 import abc
@@ -31,20 +32,27 @@ import time
 import Logger as LogStream
 
 
-def getInstance(operationalMode=True, testHarness=False):
+def getInstance(siteID4, operationalMode=True, testHarness=False):
     """Returns the necessary VTECTableIO implementation.
         
     Keyword arguments:
     siteID4 -- 4-character site identifier.
     operationalMode -- Whether we're operating against the operational or practice table.
     testHarness -- Whether we're executing within the test framework or not.
-    """    
-    if not testHarness:
-        # TODO: reinstate EDEX-based implementation when interoperability code
-        # has been stabilized...
-        # return _EdexVTECTableIO(siteID4, operationalMode)
+    """
+    ## TODO: Remove this environment variable check once interoperability code is complete. ##
+    # NOTE: set this variable to true to use interoperability for Hazard Services.
+    useInteropImpl = False
+    if "HAZARD_SERVICES_USE_INTEROP" in os.environ and str(os.environ["HAZARD_SERVICES_USE_INTEROP"]).lower() == "true":
+        useInteropImpl = True
     
-        return _JsonVTECTableIO(operationalMode)
+    if not testHarness:
+        if useInteropImpl:
+            LogStream.logEvent("Interoperability is enabled for the Hazard Services and active table.")
+            return _EdexVTECTableIO(siteID4, operationalMode)
+        else:
+            LogStream.logEvent("Interoperability is disabled for the Hazard Services and active table.")
+            return _JsonVTECTableIO(operationalMode)
     else:
         return _MockVTECTableIO()
             
@@ -212,8 +220,10 @@ class _JsonVTECTableIO(VTECTableIO):
     def as_str(obj):
         if isinstance(obj, dict):
             return {_JsonVTECTableIO.as_str(key):_JsonVTECTableIO.as_str(value) for key,value in obj.items()}
-        elif isinstance(obj, list) or isinstance(obj, set):  
+        elif isinstance(obj, list):  
             return [_JsonVTECTableIO.as_str(value) for value in obj]
+        elif isinstance(obj, set):  
+            return {_JsonVTECTableIO.as_str(value) for value in obj}
         elif isinstance(obj, unicode):
             return obj.encode('utf-8')
         else:
@@ -225,59 +235,27 @@ class _EdexVTECTableIO(VTECTableIO):
     def __init__(self, siteID, operationalMode):
         self.siteID = siteID
         self.operationalMode = bool(operationalMode)
-        self.hazardsConflictDict = None
-        self.queryPracticeWarningTable = False
         
     def getVtecRecords(self, reqInfo={}):
-        import JUtil        
+        import JUtil
         from com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests import VtecInteroperabilityActiveTableRequest
-        from com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests import VtecInteroperabilityWarningRequest
-        from com.raytheon.uf.common.dataplugin.events.hazards.requests import GetHazardsConflictDictRequest
         from com.raytheon.uf.common.serialization.comm import RequestRouter     
-        
-        phensig = None
-        if 'hazardEvents' in reqInfo:
-            if self.hazardsConflictDict is None:
-                request = GetHazardsConflictDictRequest()
-                response = RequestRouter.route(request)
-                self.hazardsConflictDict = JUtil.javaObjToPyVal(response)
-            
-            hazardEvents = reqInfo['hazardEvents']
-            phensig = hazardEvents[0].getPhenomenon() + '.' + hazardEvents[0].getSignificance()
-            if phensig not in self.hazardsConflictDict and self.operationalMode == False:
-                self.queryPracticeWarningTable = True
-            else:
-                self.queryPracticeWarningTable = False
-
-        if self.queryPracticeWarningTable:
-            request = VtecInteroperabilityWarningRequest()
-            # TODO This problem occurs because PGF gets called twice.
-            # Fix the workflow so product generation gets called only once
-            if phensig == None:
-                phensig = 'FF.W'
-            request.setPhensig(phensig)
-        else:
-            request = VtecInteroperabilityActiveTableRequest()
-            
+ 
+        request = VtecInteroperabilityActiveTableRequest()
         request.setSiteID(self.siteID)
         request.setPractice(self.operationalMode == False)
+         
         response = RequestRouter.route(request)
-        
         if not response.isSuccess():
             # Notify a client that an error has occurred and halt product generation.
             raise Exception(response.getExceptionText())
-        
+          
         vtecMapList = []
-        
-        #return response.getActiveTable()
-        i = 0
-        while i < response.getResults().size():
+        for i in range(response.getResults().size()):
             jVtecMap = response.getResults().get(i)
             vtecMap = JUtil.javaMapToPyDict(jVtecMap)
             if vtecMap is not None:
                 vtecMapList.append(vtecMap)
-            i += 1
-                
         return vtecMapList
     
     def putVtecRecords(self, vtecRecords, reqInfo={}):

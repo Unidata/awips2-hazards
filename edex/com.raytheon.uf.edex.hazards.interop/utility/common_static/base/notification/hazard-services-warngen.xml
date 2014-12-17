@@ -1,7 +1,3 @@
-<!--  FIXME: Uncomment out below XML when interoperability for WarnGen products is fixed. -->
-
-
-<!-- 
 <pluginNotificationList>
     <pluginNotification>
         <endpointName>hazards.warngenIngest</endpointName>
@@ -17,5 +13,4 @@
         </metadataMap>
     </pluginNotification>
 </pluginNotificationList>
--->
 

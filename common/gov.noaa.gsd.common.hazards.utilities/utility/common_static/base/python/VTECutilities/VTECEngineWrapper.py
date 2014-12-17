@@ -10,6 +10,7 @@
 #  Dec 08, 2014   2826     dgilling     Remove automated tests' special 
 #                                       VTECTableIO implementation.
 #  Nov 18, 2014   4933     Robert.Blum  Added parameter for product generator name.
+#  Dec 11, 2014   2826     dgilling     Support EDEX based VTEC table I/O.
 #
 
 from VTECEngine import VTECEngine
@@ -100,7 +101,7 @@ class VTECEngineWrapper(object):
             
         # Access to VTEC Table and VTEC records
         self.bridge = bridge        
-        self._io = VTECTableIO.getInstance(self.vtecRecordType=="vtecRecords", testHarnessMode)
+        self._io = VTECTableIO.getInstance(siteID4, self.vtecRecordType=="vtecRecords", testHarnessMode)
         reqInfo = {'hazardEvents':hazardEvents}
         vtecRecords = self._io.getVtecRecords(reqInfo) if self.vtecProduct else []
         

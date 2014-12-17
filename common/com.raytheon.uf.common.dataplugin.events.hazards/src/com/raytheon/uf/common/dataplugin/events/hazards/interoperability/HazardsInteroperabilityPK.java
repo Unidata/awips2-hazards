@@ -35,7 +35,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 1, 2014            bkowal     Initial creation
+ * Apr 01, 2014            bkowal       Initial creation
+ * Dec 18, 2014  #2826     dgilling     Change fields used in interoperability.
  * 
  * </pre>
  * 
@@ -54,9 +55,13 @@ public class HazardsInteroperabilityPK implements
     @DynamicSerializeElement
     private String siteID;
 
-    @Column(name = HazardInteroperabilityConstants.HAZARD_TYPE, nullable = false, length = 30)
+    @Column(name = HazardInteroperabilityConstants.PHENOMENON, nullable = false, length = 2)
     @DynamicSerializeElement
-    private String hazardType;
+    private String phen;
+
+    @Column(name = HazardInteroperabilityConstants.SIGNIFICANCE, nullable = false, length = 1)
+    @DynamicSerializeElement
+    private String sig;
 
     @Column(name = HazardInteroperabilityConstants.HAZARD_EVENT_ID, nullable = false, length = 100)
     @DynamicSerializeElement
@@ -66,16 +71,15 @@ public class HazardsInteroperabilityPK implements
     @DynamicSerializeElement
     private String etn;
 
-    /**
-     * 
-     */
     public HazardsInteroperabilityPK() {
+        // for dynamic serialize only
     }
 
-    public HazardsInteroperabilityPK(String siteID, String hazardType,
-            String hazardEventID, String etn) {
+    public HazardsInteroperabilityPK(String siteID, String phenomenon,
+            String significance, String hazardEventID, String etn) {
         this.siteID = siteID;
-        this.hazardType = hazardType;
+        this.phen = phenomenon;
+        this.sig = significance;
         this.hazardEventID = hazardEventID;
         this.etn = etn;
     }
@@ -88,25 +92,26 @@ public class HazardsInteroperabilityPK implements
         this.siteID = siteID;
     }
 
-    public String getHazardType() {
-        return hazardType;
+    public String getPhen() {
+        return phen;
     }
 
-    public void setHazardType(String hazardType) {
-        this.hazardType = hazardType;
+    public void setPhen(String phenomenon) {
+        this.phen = phenomenon;
     }
 
-    /**
-     * @return the hazardEventID
-     */
+    public String getSig() {
+        return sig;
+    }
+
+    public void setSig(String significance) {
+        this.sig = significance;
+    }
+
     public String getHazardEventID() {
         return hazardEventID;
     }
 
-    /**
-     * @param hazardEventID
-     *            the hazardEventID to set
-     */
     public void setHazardEventID(String hazardEventID) {
         this.hazardEventID = hazardEventID;
     }
@@ -119,11 +124,6 @@ public class HazardsInteroperabilityPK implements
         this.etn = etn;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#hashCode()
-     */
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -132,45 +132,60 @@ public class HazardsInteroperabilityPK implements
         result = prime * result
                 + ((hazardEventID == null) ? 0 : hazardEventID.hashCode());
         result = prime * result
-                + ((hazardType == null) ? 0 : hazardType.hashCode());
+                + ((phen == null) ? 0 : phen.hashCode());
+        result = prime * result
+                + ((sig == null) ? 0 : sig.hashCode());
         result = prime * result + ((siteID == null) ? 0 : siteID.hashCode());
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         HazardsInteroperabilityPK other = (HazardsInteroperabilityPK) obj;
         if (etn == null) {
-            if (other.etn != null)
+            if (other.etn != null) {
                 return false;
-        } else if (!etn.equals(other.etn))
+            }
+        } else if (!etn.equals(other.etn)) {
             return false;
+        }
         if (hazardEventID == null) {
-            if (other.hazardEventID != null)
+            if (other.hazardEventID != null) {
                 return false;
-        } else if (!hazardEventID.equals(other.hazardEventID))
+            }
+        } else if (!hazardEventID.equals(other.hazardEventID)) {
             return false;
-        if (hazardType == null) {
-            if (other.hazardType != null)
+        }
+        if (phen == null) {
+            if (other.phen != null) {
                 return false;
-        } else if (!hazardType.equals(other.hazardType))
+            }
+        } else if (!phen.equals(other.phen)) {
             return false;
+        }
+        if (sig == null) {
+            if (other.sig != null) {
+                return false;
+            }
+        } else if (!sig.equals(other.sig)) {
+            return false;
+        }
         if (siteID == null) {
-            if (other.siteID != null)
+            if (other.siteID != null) {
                 return false;
-        } else if (!siteID.equals(other.siteID))
+            }
+        } else if (!siteID.equals(other.siteID)) {
             return false;
+        }
         return true;
     }
 }

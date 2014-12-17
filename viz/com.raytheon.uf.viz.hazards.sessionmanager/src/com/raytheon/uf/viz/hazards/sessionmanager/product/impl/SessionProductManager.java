@@ -171,6 +171,8 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      the defineDialog() method in a product generator
  *                                      gives back something other than a list of maps for
  *                                      the megawidget specifiers under the metadata key.
+ * Dec 17, 2014 2826       dgilling     More order of operations fixes on product issue.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -1459,12 +1461,22 @@ public class SessionProductManager implements ISessionProductManager {
                                 .getGeneratedProducts()
                                 .getEventSet()
                                 .addAttribute(HazardConstants.ISSUE_FLAG, issue);
-                        if (issue) {
-                            issue(productGeneratorInformation);
-                        }
+                        /*
+                         * FIXME??? We've had sequencing issues with these next
+                         * 2 lines of code in the past. We need the affected
+                         * IHazardEvents to always finish storage before calling
+                         * issue() otherwise server-side interoperability code
+                         * will not be able to tie the decoded
+                         * ActiveTableRecords to an IHazardEvent and will
+                         * instead create an unnecessary duplicate event.
+                         */
                         notificationSender
                                 .postNotification(new ProductGenerated(
                                         productGeneratorInformation));
+
+                        if (issue) {
+                            issue(productGeneratorInformation);
+                        }
                     } else {
                         productGeneratorInformation
                                 .setError(new Throwable(

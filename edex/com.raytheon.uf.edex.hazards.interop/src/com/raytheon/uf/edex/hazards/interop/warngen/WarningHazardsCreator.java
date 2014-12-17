@@ -34,7 +34,6 @@ import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
 import com.raytheon.uf.common.dataplugin.warning.PracticeWarningRecord;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.hazards.interoperability.util.InteroperabilityUtil;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -49,13 +48,14 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 11, 2013            mnash     Initial creation
- * Jan 15, 2014 2755       bkowal      Exception handling for failed hazard event
- *                                     id generation.
- * Apr 08, 2014 3357       bkowal    Updated to use the new interoperability tables.
- * Apr 23, 2014 3357       bkowal    Improved interoperability hazard comparison to prevent duplicate hazard creation.
- * Nov 17, 2014 2826       mpduff      Changed back to pass Warngen for interoperability type of new hazards.
- * Dec 04, 2014 2826       dgilling  Revert previous change, remove unneeded methods.
+ * Jun 11, 2013            mnash        Initial creation
+ * Jan 15, 2014 2755       bkowal       Exception handling for failed hazard event
+ *                                      id generation.
+ * Apr 08, 2014 3357       bkowal       Updated to use the new interoperability tables.
+ * Apr 23, 2014 3357       bkowal       Improved interoperability hazard comparison to prevent duplicate hazard creation.
+ * Nov 17, 2014 2826       mpduff       Changed back to pass Warngen for interoperability type of new hazards.
+ * Dec 04, 2014 2826       dgilling     Revert previous change, remove unneeded methods.
+ * Dec 15, 2014 2826       dgilling     Code cleanup, re-factor.
  * 
  * </pre>
  * 
@@ -79,153 +79,161 @@ public class WarningHazardsCreator {
             .getHandler(WarningHazardsCreator.class);
 
     public void createHazards(List<PluginDataObject> objects) {
-        if (objects.isEmpty() == false) {
-            GeometryFactory gf = new GeometryFactory();
-            for (PluginDataObject ob : objects) {
-                if (ob instanceof AbstractWarningRecord) {
-                    AbstractWarningRecord record = (AbstractWarningRecord) ob;
-                    if (record.getGeometry() == null
-                            || record.getPhensig() == null
-                            || record.getPhensig().isEmpty()) {
-                        statusHandler
-                                .warn("Skipping product "
-                                        + record.getPil()
-                                        + " because it has invalid geometry or invalid phensig.");
-                        continue;
-                    }
+        for (PluginDataObject ob : objects) {
+            if (ob instanceof AbstractWarningRecord) {
+                AbstractWarningRecord record = (AbstractWarningRecord) ob;
 
-                    Mode mode = ob instanceof PracticeWarningRecord ? Mode.PRACTICE
-                            : Mode.OPERATIONAL;
-                    IHazardEventManager manager = new HazardEventManager(mode);
-                    if (mode == Mode.OPERATIONAL) {
-                        statusHandler
-                                .info("Encountered an operational hazard, skipping");
-                        continue;
-                    }
+                // TODO skip record if not part of active sites
 
-                    // Determine if an event already exists.
-                    if (this.doesEventAlreadyExist(manager, record)) {
-                        continue;
-                    }
+                if (record.getGeometry() == null || record.getPhensig() == null
+                        || record.getPhensig().isEmpty()) {
+                    statusHandler
+                            .warn("Skipping product "
+                                    + record.getPil()
+                                    + " from site "
+                                    + record.getOfficeid()
+                                    + " because it has invalid geometry or invalid phensig.");
+                    continue;
+                }
 
-                    IHazardEvent event = manager.createEvent();
+                Mode mode = ob instanceof PracticeWarningRecord ? Mode.PRACTICE
+                        : Mode.OPERATIONAL;
+                IHazardEventManager manager = new HazardEventManager(mode);
+                if (mode == Mode.OPERATIONAL) {
+                    statusHandler
+                            .info("Encountered an operational hazard, skipping");
+                    continue;
+                }
 
-                    String value = null;
+                // Determine if an event already exists.
+                if (doesEventAlreadyExist(manager, record)) {
+                    statusHandler
+                            .info("Skipping record for "
+                                    + record.getPhensig()
+                                    + " from office "
+                                    + record.getOfficeid()
+                                    + " because an entry already exists in the interoperability table.");
+                    continue;
+                }
+
+                IHazardEvent eventToStore = null;
+                IHazardEvent existingEvent = InteroperabilityUtil
+                        .associatedExistingHazard(manager, record.getXxxid(),
+                                record.getPhen(), record.getSig(),
+                                "[" + record.getEtn() + "]");
+                if (existingEvent != null) {
+                    statusHandler.info("Match found for etn " + record.getEtn()
+                            + " with Hazard Event "
+                            + existingEvent.getEventID());
+                    eventToStore = existingEvent;
+                } else {
+                    IHazardEvent newEvent = null;
                     try {
-                        value = HazardEventUtilities.determineEtn(
-                                record.getXxxid(), record.getAct(),
-                                record.getEtn(), manager);
+                        newEvent = buildHazardEventFromWarningRecord(record,
+                                manager);
                     } catch (Exception e) {
-                        statusHandler.handle(Priority.PROBLEM,
-                                "Failed to generate Hazard Event ID!", e);
-                        /*
-                         * TODO: previously exceptions were ignored - should
-                         * this record be skipped when an event id cannot be
-                         * generated? should the entire process be halted?
-                         */
+                        statusHandler
+                                .error("Unable to build hazard event from warning record.",
+                                        e);
                     }
-                    event.setEventID(value);
-                    event.setEndTime(record.getEndTime().getTime());
-                    event.setStartTime(record.getStartTime().getTime());
-                    event.setCreationTime(record.getIssueTime().getTime());
-                    event.setGeometry(gf
-                            .createGeometryCollection(new Geometry[] { record
-                                    .getGeometry() }));
-                    event.setPhenomenon(record.getPhen());
-                    event.setSignificance(record.getSig());
-                    event.setSiteID(record.getXxxid());
-                    event.addHazardAttribute(HazardConstants.ISSUE_TIME, record
-                            .getIssueTime().getTime().getTime());
-                    event.addHazardAttribute(HazardConstants.EXPIRATION_TIME,
-                            record.getPurgeTime().getTime().getTime());
-                    event.addHazardAttribute(HazardConstants.ETNS,
-                            "[" + record.getEtn() + "]");
-                    event.setHazardMode(HazardConstants
-                            .productClassFromAbbreviation(record
-                                    .getProductClass()));
-                    event.setStatus(HazardEventUtilities
-                            .stateBasedOnAction(record.getAct()));
 
-                    /*
-                     * these don't apply to everything so the may be blank, but
-                     * we want to make sure we fill everything out of the
-                     * warnings into the IHazardEvent object
-                     */
-                    Calendar floodBegin = record.getFloodBegin();
-                    Calendar floodCrest = record.getFloodCrest();
-                    Calendar floodEnd = record.getFloodEnd();
-                    String floodSeverity = record.getFloodSeverity();
-                    String floodRecordStatus = record.getFloodRecordStatus();
-                    String immediateCause = record.getImmediateCause();
-
-                    if (floodBegin != null) {
-                        event.addHazardAttribute(
-                                HazardConstants.FLOOD_BEGIN_TIME,
-                                floodBegin.getTime());
-                    }
-                    if (floodCrest != null) {
-                        event.addHazardAttribute(
-                                HazardConstants.FLOOD_CREST_TIME,
-                                floodCrest.getTime());
-                    }
-                    if (floodEnd != null) {
-                        event.addHazardAttribute(
-                                HazardConstants.FLOOD_END_TIME,
-                                floodEnd.getTime());
-                    }
-                    if (floodSeverity != null) {
-                        event.addHazardAttribute(
-                                HazardConstants.FLOOD_SEVERITY, floodSeverity);
-                        // this only applies to FF.W
-                        String subType = this.determineSubType(record);
-                        if (subType != null) {
-                            event.setSubType(subType);
+                    if (newEvent != null) {
+                        boolean stored = manager.storeEvent(newEvent);
+                        if (stored) {
+                            statusHandler.info("Created Hazard "
+                                    + newEvent.getEventID());
+                            eventToStore = newEvent;
+                        } else {
+                            statusHandler
+                                    .error("Unable to store converted events to the database  with type "
+                                            + mode.name().toLowerCase());
                         }
                     }
-                    if (floodRecordStatus != null) {
-                        event.addHazardAttribute(
-                                HazardConstants.FLOOD_RECORD_STATUS,
-                                floodRecordStatus);
-                    }
-                    if (immediateCause != null) {
-                        event.addHazardAttribute(
-                                HazardConstants.FLOOD_IMMEDIATE_CAUSE,
-                                immediateCause);
-                    }
+                }
 
-                    IHazardEvent existingEvent = InteroperabilityUtil
-                            .associatedExistingHazard(
-                                    manager,
-                                    event.getSiteID(),
-                                    event.getPhenomenon(),
-                                    event.getSignificance(),
-                                    event.getHazardAttributes()
-                                            .get(HazardConstants.ETNS)
-                                            .toString());
-                    if (existingEvent != null) {
-                        statusHandler.info("Match found for etn "
-                                + record.getEtn() + " with Hazard Event "
-                                + existingEvent.getEventID());
-                        InteroperabilityUtil.newOrUpdateInteroperabilityRecord(
-                                existingEvent, record.getEtn(),
-                                INTEROPERABILITY_TYPE.WARNGEN);
-                        continue;
-                    }
-
-                    boolean stored = manager.storeEvent(event);
-                    statusHandler.info("Created Hazard " + event.getEventID());
-                    if (stored) {
-                        InteroperabilityUtil.newOrUpdateInteroperabilityRecord(
-                                event, record.getEtn(),
-                                INTEROPERABILITY_TYPE.WARNGEN);
-                    } else {
-                        throw new RuntimeException(
-                                "Unable to store converted events to the database  with type "
-                                        + mode.name().toLowerCase());
-                    }
+                if (eventToStore != null) {
+                    InteroperabilityUtil.newOrUpdateInteroperabilityRecord(
+                            eventToStore, record.getEtn(),
+                            INTEROPERABILITY_TYPE.WARNGEN);
                 }
             }
         }
+    }
+
+    private static IHazardEvent buildHazardEventFromWarningRecord(
+            final AbstractWarningRecord warningRecord,
+            IHazardEventManager manager) throws Exception {
+
+        IHazardEvent event = manager.createEvent();
+
+        String value = HazardEventUtilities.determineEtn(
+                warningRecord.getXxxid(), warningRecord.getAct(),
+                warningRecord.getEtn(), manager);
+
+        event.setEventID(value);
+        event.setEndTime(warningRecord.getEndTime().getTime());
+        event.setStartTime(warningRecord.getStartTime().getTime());
+        event.setCreationTime(warningRecord.getIssueTime().getTime());
+        event.setGeometry(new GeometryFactory()
+                .createGeometryCollection(new Geometry[] { warningRecord
+                        .getGeometry() }));
+        event.setPhenomenon(warningRecord.getPhen());
+        event.setSignificance(warningRecord.getSig());
+        event.setSiteID(warningRecord.getXxxid());
+        event.addHazardAttribute(HazardConstants.ISSUE_TIME, warningRecord
+                .getIssueTime().getTime().getTime());
+        event.addHazardAttribute(HazardConstants.EXPIRATION_TIME, warningRecord
+                .getPurgeTime().getTime().getTime());
+        event.addHazardAttribute(HazardConstants.ETNS,
+                "[" + warningRecord.getEtn() + "]");
+        event.setHazardMode(HazardConstants
+                .productClassFromAbbreviation(warningRecord.getProductClass()));
+        event.setStatus(HazardEventUtilities.stateBasedOnAction(warningRecord
+                .getAct()));
+
+        /*
+         * these don't apply to everything so the may be blank, but we want to
+         * make sure we fill everything out of the warnings into the
+         * IHazardEvent object
+         */
+        Calendar floodBegin = warningRecord.getFloodBegin();
+        Calendar floodCrest = warningRecord.getFloodCrest();
+        Calendar floodEnd = warningRecord.getFloodEnd();
+        String floodSeverity = warningRecord.getFloodSeverity();
+        String floodRecordStatus = warningRecord.getFloodRecordStatus();
+        String immediateCause = warningRecord.getImmediateCause();
+
+        if (floodBegin != null) {
+            event.addHazardAttribute(HazardConstants.FLOOD_BEGIN_TIME,
+                    floodBegin.getTime());
+        }
+        if (floodCrest != null) {
+            event.addHazardAttribute(HazardConstants.FLOOD_CREST_TIME,
+                    floodCrest.getTime());
+        }
+        if (floodEnd != null) {
+            event.addHazardAttribute(HazardConstants.FLOOD_END_TIME,
+                    floodEnd.getTime());
+        }
+        if (floodSeverity != null) {
+            event.addHazardAttribute(HazardConstants.FLOOD_SEVERITY,
+                    floodSeverity);
+            // this only applies to FF.W
+            String subType = determineSubType(warningRecord);
+            if (subType != null) {
+                event.setSubType(subType);
+            }
+        }
+        if (floodRecordStatus != null) {
+            event.addHazardAttribute(HazardConstants.FLOOD_RECORD_STATUS,
+                    floodRecordStatus);
+        }
+        if (immediateCause != null) {
+            event.addHazardAttribute(HazardConstants.FLOOD_IMMEDIATE_CAUSE,
+                    immediateCause);
+        }
+
+        return event;
     }
 
     private boolean doesEventAlreadyExist(IHazardEventManager manager,
@@ -234,17 +242,14 @@ public class WarningHazardsCreator {
         final String etn = record.getEtn();
         String phen = record.getPhen();
         String sig = record.getSig();
-        String subType = this.determineSubType(record);
-        final String hazardType = HazardEventUtilities.getHazardType(phen, sig,
-                subType);
         IHazardEvent hazardEvent = InteroperabilityUtil
-                .queryInteroperabilityByETNForHazard(manager, siteID,
-                        hazardType, etn, null);
+                .queryInteroperabilityByETNForHazard(manager, siteID, phen,
+                        sig, etn, null);
 
         return (hazardEvent != null);
     }
 
-    private String determineSubType(AbstractWarningRecord record) {
+    private static String determineSubType(AbstractWarningRecord record) {
         if ((record.getFloodSeverity() == null)
                 || (!PHEN_FF.equals(record.getPhen()))
                 || (!SIG_W.equals(record.getSig()))) {
