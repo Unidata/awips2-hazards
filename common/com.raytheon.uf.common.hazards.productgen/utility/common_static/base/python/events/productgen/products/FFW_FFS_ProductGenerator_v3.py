@@ -24,6 +24,7 @@ April 5, 2013            Tracy.L.Hansen      Initial creation
 Nov      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents, simplifying product
                                              dictionary
 Oct 24, 2014   4933      Robert.Blum         Implement Product Generation Framework v3
+Dec 18, 2014   4933      Robert.Blum         Fixing issue with rebase conflict that was missed in previous checkin.
 
 @author Tracy.L.Hansen@noaa.gov
 @version 1.0
@@ -186,7 +187,7 @@ class Product(BaseGenerator.Product):
                 eventTypeKey = KeyInfo('eventType', self._productCategory, self._productID, [], '', True, label='Event Type')
                 segment[eventTypeKey] = self._tpc.getProductStrings(event, self._metadataDict, 'eventType')
             elif attribute == 'rainAmt':
-                segment['rainAmt'] = self._tpc.getProductStrings(event, self._metadataDict, 'rainAmt', precision=2)
+                segment['rainAmt'] = self._tpc.getProductStrings(event, self._metadataDict, 'rainAmt')
             elif attribute == 'debrisFlows':
                 segment['debrisFlows'] = self._tpc.getProductStrings(event, self._metadataDict, 'debrisFlows')
             elif attribute in noOpAttributes:

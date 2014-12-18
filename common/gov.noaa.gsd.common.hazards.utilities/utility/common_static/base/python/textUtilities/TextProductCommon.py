@@ -12,6 +12,8 @@
    Dec 08, 2014   2826      dgilling            Fix extraneous whitespsace in formatDatetime().
    Dec 10, 2014   4933      Robert.Blum         Fixed getProductStrings to account for replacing
                                                 float values.
+   Dec 18, 2014   4933      Robert.Blum         Fixing issue with rebase conflict that was missed 
+                                                in previous checkin.
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -580,8 +582,7 @@ class TextProductCommon(object):
 
     ###########
     #  Accessing MetaData
-    def getProductStrings(self, hazardEvent, metaData, fieldName, productStringIdentifier=None, choiceIdentifier=None,
-                          precision=0):
+    def getProductStrings(self, hazardEvent, metaData, fieldName, productStringIdentifier=None, choiceIdentifier=None):
         '''
         Translates the entries from the Hazard Information Dialog into product strings.
         @param hazardEvent: hazard event with user choices
