@@ -64,6 +64,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.common.util.StringUtil;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.MultiPolygon;
 
@@ -101,7 +102,7 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  * Apr 24, 2014 3535       bkowal       Ignore update notifications for unrecognized grid types
  *                                      instead of logging a warning. This class will receive
  *                                      every grid update notification.
- * 
+ * Dec 12, 2014 2826       dgilling     Change fields used by interoperability.
  * 
  * </pre>
  * 
@@ -272,11 +273,13 @@ public class HazardEventHandler {
     }
 
     private HazardsInteroperabilityGFE constructInteroperabilityRecord(
-            String siteID, String hazardType, Date startDate, Date endDate,
-            String eventID, String parmID, Geometry geometry) {
+            String siteID, String phenomenon, String significance,
+            Date startDate, Date endDate, String eventID, String parmID,
+            Geometry geometry) {
         HazardsInteroperabilityGFE record = new HazardsInteroperabilityGFE();
         record.getKey().setSiteID(siteID);
-        record.getKey().setHazardType(hazardType);
+        record.getKey().setPhen(phenomenon);
+        record.getKey().setSig(significance);
         record.getKey().setStartDate(startDate);
         record.getKey().setEndDate(endDate);
         record.getKey().setHazardEventID(eventID);
@@ -383,13 +386,15 @@ public class HazardEventHandler {
             while (keyIterator.hasNext()) {
                 final DiscreteKey discreteKey = keyIterator.next();
                 final String hazardType = discreteKey.toString();
+                String[] hazardParts = StringUtil.split(hazardType,
+                        '.');
 
                 List<IHazardEvent> events = null;
                 synchronized (this) {
                     events = GfeInteroperabilityUtil
                             .queryForInteroperabilityHazards(siteID,
-                                    hazardType, startDate, endDate,
-                                    hazardEventManager);
+                                    hazardParts[0], hazardParts[1], startDate,
+                                    endDate, hazardEventManager);
                 }
 
                 GridLocation gridLocation = discreteGridSlice.getGridParmInfo()
@@ -440,9 +445,10 @@ public class HazardEventHandler {
                     // initialize the associated gfe interoperability record.
                     HazardsInteroperabilityGFE record = this
                             .constructInteroperabilityRecord(
-                                    hazardEvent.getSiteID(), hazardType,
-                                    startDate, endDate,
-                                    hazardEvent.getEventID(), parmID,
+                                    hazardEvent.getSiteID(),
+                                    hazardEvent.getPhenomenon(),
+                                    hazardEvent.getSignificance(), startDate,
+                                    endDate, hazardEvent.getEventID(), parmID,
                                     hazardMultiPolygon);
 
                     hazardsToCreate.add(hazardEvent);
@@ -561,7 +567,9 @@ public class HazardEventHandler {
                         // record.
                         HazardsInteroperabilityGFE record = this
                                 .constructInteroperabilityRecord(
-                                        hazardEvent.getSiteID(), hazardType,
+                                        hazardEvent.getSiteID(),
+                                        hazardEvent.getPhenomenon(),
+                                        hazardEvent.getSignificance(),
                                         startDate, endDate,
                                         hazardEvent.getEventID(), parmID,
                                         differenceGeometry);
@@ -598,7 +606,7 @@ public class HazardEventHandler {
         }
 
         List<IHazardEvent> events = GfeInteroperabilityUtil
-                .queryForInteroperabilityHazards(siteID, null, startDate,
+                .queryForInteroperabilityHazards(siteID, null, null, startDate,
                         endDate, hazardEventManager);
 
         if (events != null) {
@@ -761,10 +769,9 @@ public class HazardEventHandler {
         IHazardsInteroperabilityRecord record = null;
         synchronized (this) {
             record = HazardInteroperabilityRecordManager.queryForRecordByPK(
-                    hazardEvent.getSiteID(),
-                    HazardEventUtilities.getHazardType(hazardEvent),
-                    hazardEvent.getEventID(), timeRange.getStart(),
-                    timeRange.getEnd());
+                    hazardEvent.getSiteID(), hazardEvent.getPhenomenon(),
+                    hazardEvent.getSignificance(), hazardEvent.getEventID(),
+                    timeRange.getStart(), timeRange.getEnd());
         }
         HazardsInteroperabilityGFE existingRecord = null;
         if (record != null) {
@@ -786,10 +793,10 @@ public class HazardEventHandler {
                     gridParmInfo.getGridLoc(), hazardEvent.getGeometry());
             HazardsInteroperabilityGFE newRecord = this
                     .constructInteroperabilityRecord(hazardEvent.getSiteID(),
-                            HazardEventUtilities.getHazardType(hazardEvent),
-                            timeRange.getStart(), timeRange.getEnd(),
-                            hazardEvent.getEventID(), gridParmInfo.getParmID()
-                                    .toString(), gfeGeometry);
+                            hazardEvent.getPhenomenon(), hazardEvent
+                                    .getSignificance(), timeRange.getStart(),
+                            timeRange.getEnd(), hazardEvent.getEventID(),
+                            gridParmInfo.getParmID().toString(), gfeGeometry);
             synchronized (this) {
                 HazardInteroperabilityRecordManager.storeRecord(newRecord);
             }
@@ -896,13 +903,12 @@ public class HazardEventHandler {
          * this point.
          */
         final String siteID = hazardEvent.getSiteID();
-        final String hazardType = HazardEventUtilities
-                .getHazardType(hazardEvent);
         final String eventID = hazardEvent.getEventID();
 
         List<IHazardsInteroperabilityRecord> records = new ArrayList<>();
         IHazardsInteroperabilityRecord record = HazardInteroperabilityRecordManager
-                .queryForRecordByPK(siteID, hazardType, eventID,
+                .queryForRecordByPK(siteID, hazardEvent.getPhenomenon(),
+                        hazardEvent.getSignificance(), eventID,
                         timeRange.getStart(), timeRange.getEnd());
         if (record != null) {
             records.add(record);
@@ -916,7 +922,8 @@ public class HazardEventHandler {
                 .getHazardAttribute(HazardConstants.ETNS).toString());
         for (String etn : etns) {
             record = HazardInteroperabilityRecordManager.queryForRecordByPK(
-                    siteID, hazardType, eventID, etn);
+                    siteID, hazardEvent.getPhenomenon(),
+                    hazardEvent.getSignificance(), eventID, etn);
             if (record != null) {
                 records.add(record);
             }

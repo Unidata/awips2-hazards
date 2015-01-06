@@ -267,8 +267,9 @@ public class GFEHazardsCreator {
          */
         List<IHazardEvent> events = GfeInteroperabilityUtil
                 .queryForInteroperabilityHazards(potentialEvent.getSiteID(),
-                        HazardEventUtilities.getHazardType(potentialEvent),
-                        startDate, endDate, manager);
+                        potentialEvent.getPhenomenon(),
+                        potentialEvent.getSignificance(), startDate, endDate,
+                        manager);
         if (events != null && events.isEmpty() == false) {
             return events;
         }
@@ -280,7 +281,8 @@ public class GFEHazardsCreator {
          */
         return InteroperabilityUtil.queryInteroperabilityByETNForHazards(
                 manager, potentialEvent.getSiteID(),
-                HazardEventUtilities.getHazardType(potentialEvent), etn, null);
+                potentialEvent.getPhenomenon(),
+                potentialEvent.getSignificance(), etn, null);
     }
 
     private void resetZones() {

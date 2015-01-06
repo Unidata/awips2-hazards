@@ -18,4 +18,12 @@
 			value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeInteropRecordsRequest" />
 		<constructor-arg ref="purgePracticeInteropHandler" />
 	</bean>
+	
+	<bean id="activeTableInteropHandler"
+		class="com.raytheon.uf.edex.hazards.interop.activetable.ActiveTableInteropRetrieveHandler" />
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.VtecInteroperabilityActiveTableRequest" />
+		<constructor-arg ref="activeTableInteropHandler" />
+	</bean>
 </beans>

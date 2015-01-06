@@ -30,7 +30,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 1, 2014            bkowal     Initial creation
+ * Apr 01, 2014            bkowal       Initial creation
+ * Dec 18, 2014  #2826     dgilling     Change fields used in interoperability.
  * 
  * </pre>
  * 
@@ -54,8 +55,11 @@ public class HazardInteroperabilityConstants {
         public static final String SITE_ID = KEY_PREFIX
                 + HazardConstants.SITE_ID;
 
-        public static final String HAZARD_TYPE = KEY_PREFIX
-                + HazardInteroperabilityConstants.HAZARD_TYPE;
+        public static final String PHENOMENON = KEY_PREFIX
+                + HazardInteroperabilityConstants.PHENOMENON;
+
+        public static final String SIGNIFICANCE = KEY_PREFIX
+                + HazardInteroperabilityConstants.SIGNIFICANCE;
 
         public static final String HAZARD_EVENT_ID = KEY_PREFIX
                 + HazardInteroperabilityConstants.HAZARD_EVENT_ID;
@@ -68,8 +72,11 @@ public class HazardInteroperabilityConstants {
         public static final String SITE_ID = KEY_PREFIX
                 + HazardConstants.SITE_ID;
 
-        public static final String HAZARD_TYPE = KEY_PREFIX
-                + HazardInteroperabilityConstants.HAZARD_TYPE;
+        public static final String PHENOMENON = KEY_PREFIX
+                + HazardInteroperabilityConstants.PHENOMENON;
+
+        public static final String SIGNIFICANCE = KEY_PREFIX
+                + HazardInteroperabilityConstants.SIGNIFICANCE;
 
         public static final String HAZARD_EVENT_ID = KEY_PREFIX
                 + HazardInteroperabilityConstants.HAZARD_EVENT_ID;
@@ -83,7 +90,9 @@ public class HazardInteroperabilityConstants {
 
     private static final String KEY_PREFIX = "key.";
 
-    public static final String HAZARD_TYPE = "hazardType";
+    public static final String PHENOMENON = "phen";
+
+    public static final String SIGNIFICANCE = "sig";
 
     public static final String ETN = "etn";
 

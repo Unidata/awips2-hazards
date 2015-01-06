@@ -20,15 +20,11 @@
 package com.raytheon.uf.common.dataplugin.events.hazards.interoperability;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Map;
 
-import com.raytheon.uf.common.serialization.ExceptionWrapper;
-import com.raytheon.uf.common.serialization.comm.RequestRouter;
-import com.raytheon.uf.common.serialization.comm.response.ServerErrorResponse;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.RecordRetrievePKRequest;
@@ -37,12 +33,15 @@ import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.request
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.RecordRetrieveResponse;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.RecordStorageRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.RecordStorageRequest.RequestType;
+import com.raytheon.uf.common.serialization.ExceptionWrapper;
+import com.raytheon.uf.common.serialization.comm.RequestRouter;
+import com.raytheon.uf.common.serialization.comm.response.ServerErrorResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 
 /**
- * Used to query, update, and create Hazard Services interoperability records. 
+ * Used to query, update, and create Hazard Services interoperability records.
  * 
  * <pre>
  * 
@@ -50,7 +49,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 1, 2014            bkowal     Initial creation
+ * Apr 01, 2014           bkowal       Initial creation
+ * Dec 18, 2014 #2826     dgilling     Change fields used in interoperability.
  * 
  * </pre>
  * 
@@ -155,18 +155,20 @@ public class HazardInteroperabilityRecordManager {
     }
 
     public static IHazardsInteroperabilityRecord queryForRecordByPK(
-            String siteID, String hazardType, String hazardEventID, String etn) {
+            String siteID, String phenomenon, String significance,
+            String hazardEventID, String etn) {
         HazardsInteroperabilityPK key = new HazardsInteroperabilityPK(siteID,
-                hazardType, hazardEventID, etn);
+                phenomenon, significance, hazardEventID, etn);
 
         return queryForRecordByPK(HazardsInteroperability.class, key);
     }
 
     public static IHazardsInteroperabilityRecord queryForRecordByPK(
-            String siteID, String hazardType, String hazardEventID,
-            Date startDate, Date endDate) {
+            String siteID, String phenomenon, String significance,
+            String hazardEventID, Date startDate, Date endDate) {
         HazardsInteroperabilityGFEPK key = new HazardsInteroperabilityGFEPK(
-                siteID, hazardType, hazardEventID, startDate, endDate);
+                siteID, phenomenon, significance, hazardEventID, startDate,
+                endDate);
 
         return queryForRecordByPK(HazardsInteroperabilityGFE.class, key);
     }
@@ -200,35 +202,51 @@ public class HazardInteroperabilityRecordManager {
     }
 
     /**
+     * Factory method for {@code IHazardsInteroperabilityRecord}.
      * 
      * @param hazardEvent
+     *            {@code IHazardEvent} to base the interoperability record
+     *            around.
      * @param etn
+     *            The ETN sequence number for the hazard.
      * @param interoperabilityType
-     * @return
+     *            Legacy application that handles this hazard.
+     * @return A {@code IHazardsInteroperabilityRecord} that corresponds to the
+     *         specified hazard event.
      */
     public static IHazardsInteroperabilityRecord constructInteroperabilityRecord(
             IHazardEvent hazardEvent, String etn,
             INTEROPERABILITY_TYPE interoperabilityType) {
         return constructInteroperabilityRecord(hazardEvent.getSiteID(),
-                HazardEventUtilities.getHazardType(hazardEvent), etn,
-                hazardEvent.getEventID(), interoperabilityType);
+                hazardEvent.getPhenomenon(), hazardEvent.getSignificance(),
+                etn, hazardEvent.getEventID(), interoperabilityType);
     }
 
     /**
+     * Factory method for {@code IHazardsInteroperabilityRecord}.
      * 
      * @param siteID
-     * @param hazardType
+     *            3-character site ID where the hazard is ocurring.
+     * @param phenomenon
+     *            Phenomenon code for the hazard.
+     * @param significance
+     *            Significance code for the hazard.
      * @param etn
+     *            The ETN sequence number for the hazard.
      * @param hazardEventID
+     *            Event ID of the hazard event
      * @param interoperabilityType
-     * @return
+     *            Legacy application that handles this hazard.
+     * @return A {@code IHazardsInteroperabilityRecord} that corresponds to the
+     *         specified hazard event.
      */
     public static IHazardsInteroperabilityRecord constructInteroperabilityRecord(
-            String siteID, String hazardType, String etn, String hazardEventID,
-            INTEROPERABILITY_TYPE interoperabilityType) {
+            String siteID, String phenomenon, String significance, String etn,
+            String hazardEventID, INTEROPERABILITY_TYPE interoperabilityType) {
         HazardsInteroperability record = new HazardsInteroperability();
         record.getKey().setSiteID(siteID);
-        record.getKey().setHazardType(hazardType);
+        record.getKey().setPhen(phenomenon);
+        record.getKey().setSig(significance);
         record.getKey().setEtn(etn);
         record.getKey().setHazardEventID(hazardEventID);
         record.setInteroperabilityType(interoperabilityType);

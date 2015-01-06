@@ -51,8 +51,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.IHazard
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 8, 2014            bkowal     Initial creation
- * Apr 22, 2014 3357      bkowal     Implemented ETN comparison to compare hazard events.
+ * Apr 08, 2014           bkowal       Initial creation
+ * Apr 22, 2014 3357      bkowal       Implemented ETN comparison to compare hazard events.
+ * Dec 18, 2014 #2826     dgilling     Change fields used in interoperability.
  * 
  * </pre>
  * 
@@ -73,10 +74,10 @@ public final class InteroperabilityUtil {
 
     public static IHazardEvent queryInteroperabilityByETNForHazard(
             IHazardEventManager manager, final String siteID,
-            final String hazardType, final String etn,
-            final INTEROPERABILITY_TYPE type) {
+            final String phenomnenon, final String significance,
+            final String etn, final INTEROPERABILITY_TYPE type) {
         List<IHazardEvent> hazardEvents = queryInteroperabilityByETNForHazards(
-                manager, siteID, hazardType, etn, type);
+                manager, siteID, phenomnenon, significance, etn, type);
         if (hazardEvents == null || hazardEvents.isEmpty()) {
             return null;
         }
@@ -86,12 +87,15 @@ public final class InteroperabilityUtil {
 
     public static List<IHazardEvent> queryInteroperabilityByETNForHazards(
             IHazardEventManager manager, final String siteID,
-            final String hazardType, final String etn,
-            final INTEROPERABILITY_TYPE type) {
+            final String phenomenon, final String significance,
+            final String etn, final INTEROPERABILITY_TYPE type) {
         Map<String, Serializable> parameters = new HashMap<>();
         parameters.put(INTEROPERABILITY_KEYS.SITE_ID, siteID);
-        if (hazardType != null) {
-            parameters.put(INTEROPERABILITY_KEYS.HAZARD_TYPE, hazardType);
+        if (phenomenon != null) {
+            parameters.put(INTEROPERABILITY_KEYS.PHENOMENON, phenomenon);
+        }
+        if (significance != null) {
+            parameters.put(INTEROPERABILITY_KEYS.SIGNIFICANCE, significance);
         }
         parameters.put(INTEROPERABILITY_KEYS.ETN, etn);
         if (type != null) {

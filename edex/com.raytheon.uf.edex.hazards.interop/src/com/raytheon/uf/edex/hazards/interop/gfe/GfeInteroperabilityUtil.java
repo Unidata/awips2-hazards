@@ -32,6 +32,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryB
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_KEYS;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityRecordManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardsInteroperabilityGFE;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.IHazardsInteroperabilityRecord;
@@ -45,7 +46,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.IHazard
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 8, 2014            bkowal     Initial creation
+ * Apr 08, 2014            bkowal       Initial creation
+ * Dec 12, 2014  #2826     dgilling     Change fields used for interoperability.
  * 
  * </pre>
  * 
@@ -62,16 +64,17 @@ public final class GfeInteroperabilityUtil {
     }
 
     public static List<IHazardEvent> queryForInteroperabilityHazards(
-            String siteID, String hazardType, Date startDate, Date endDate,
-            HazardEventManager hazardEventManager) {
+            String siteID, String phenomenon, String significance,
+            Date startDate, Date endDate, HazardEventManager hazardEventManager) {
         Map<String, Serializable> parameters = new HashMap<String, Serializable>();
         parameters
                 .put(HazardInteroperabilityConstants.INTEROPERABILITY_GFE_KEYS.SITE_ID,
                         siteID);
-        if (hazardType != null) {
-            parameters
-                    .put(HazardInteroperabilityConstants.INTEROPERABILITY_GFE_KEYS.HAZARD_TYPE,
-                            hazardType);
+        if (phenomenon != null) {
+            parameters.put(INTEROPERABILITY_KEYS.PHENOMENON, phenomenon);
+        }
+        if (significance != null) {
+            parameters.put(INTEROPERABILITY_KEYS.SIGNIFICANCE, significance);
         }
         parameters
                 .put(HazardInteroperabilityConstants.INTEROPERABILITY_GFE_KEYS.START_DATE,
