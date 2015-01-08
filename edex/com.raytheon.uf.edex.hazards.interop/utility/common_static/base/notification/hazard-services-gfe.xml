@@ -1,8 +1,10 @@
 <!--  FIXME: Uncomment out below XML when interoperability for GFE products is fixed. -->
 
 
-<!--
+
 <pluginNotificationList>
+	
+	<!--
     <pluginNotification>
         <endpointName>hazards.gfeIngest</endpointName>
         <format>PDO</format>
@@ -16,5 +18,5 @@
             </mapping>
         </metadataMap>
     </pluginNotification>
+    -->
 </pluginNotificationList>
--->
