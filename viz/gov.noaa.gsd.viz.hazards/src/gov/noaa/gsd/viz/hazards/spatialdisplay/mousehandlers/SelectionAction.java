@@ -437,8 +437,7 @@ public class SelectionAction extends NonDrawingAction {
                 String hazardID = ((IHazardServicesShape) hazard).getID();
 
                 if (hazardID.equals(eventID)) {
-                    if (hazardClass.equals(HazardServicesLine.class)
-                            || hazardClass.equals(HazardServicesPolygon.class)) {
+                    if (hazardClass.equals(HazardServicesPolygon.class)) {
                         Geometry geometry = ((IHazardServicesShape) hazard)
                                 .getGeometry();
                         result.add(geometry);

@@ -393,10 +393,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         setTimeRange(startTime, endTime, true, originator);
     }
 
-    public void setGeometry(Geometry geometry, IOriginator originator) {
-        setGeometry(geometry, true, originator);
-    }
-
     public void setHazardMode(ProductClass productClass, IOriginator originator) {
         setHazardMode(productClass, true, originator);
     }

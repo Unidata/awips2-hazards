@@ -269,11 +269,6 @@ class Recommender(TrackToolCommon.TrackToolCommon):
         hazardPolygon = []
         for latLonVertex in latLonPoly :
             hazardPolygon.append([latLonVertex.lon, latLonVertex.lat])
-        #polygonShape = { "include" : "true" }
-        #polygonShape["shapeType"] = "polygon"
-        #polygonShape["points"] = hazardPolygon
-        #shapeList.append(polygonShape)
-
 
         # Finalize our set of output attributes.
         resultDict = {}
