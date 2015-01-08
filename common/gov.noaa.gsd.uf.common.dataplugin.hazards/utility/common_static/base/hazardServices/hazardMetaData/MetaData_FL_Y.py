@@ -11,6 +11,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getFloodSeverity(),
                     self.getFloodRecord(),
                     self.getRiseCrestFall(),
+                    self.getHiddenFallLastInterval(),
                     self.getRainAmt(),
                     self.getCTAs("doNotDriveCTA"),
                     # Preserving CAP defaults for future reference.                    

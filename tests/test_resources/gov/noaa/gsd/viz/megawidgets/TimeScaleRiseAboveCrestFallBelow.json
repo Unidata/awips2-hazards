@@ -1,5 +1,10 @@
 [
  {
+  "fieldName": "hiddenFallBelowLastInterval",
+  "fieldType": "HiddenField",
+  "values": 0
+ },
+ {
   "fieldName": "riseAbove:crest:fallBelow",
   "fieldType": "TimeScale",
   "valueLabels": {

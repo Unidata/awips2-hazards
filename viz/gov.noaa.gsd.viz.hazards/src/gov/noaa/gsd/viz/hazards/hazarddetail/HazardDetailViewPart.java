@@ -213,6 +213,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           Also removed scrolled composite from metadata
  *                                           panel, since scrolling is now handled by the
  *                                           megawidgets.
+ * Jan 07, 2015   5699     Chris.Golden      Removed persisting of megawidget extraData
+ *                                           between refreshes of metadata megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -2303,25 +2305,22 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         .getSpecifiers().isEmpty() == false))) {
 
             /*
-             * Delete the old megawidget manager, if any. Before deleting it,
-             * get any extra data that its megawidgets have stashed away, as
-             * this may be being used in interdependency scripts and may be
-             * needed for the next megawidget manager's scripts. Delete the
-             * entry for it in the extra data cache, since an entry will have
-             * been created as part of the remove() call.
+             * Delete the old megawidget manager, if any, and also delete the
+             * old manager's extra data entry in the extra data cache, since an
+             * entry will have been created as part of the remove() call. If no
+             * old megawidget manager was found, use the previously-recorded
+             * extra data for this event, if any, since some may have been
+             * recorded for this event prior to this view part's existence, and
+             * if so, it should be persisted. Note that persistence of the extra
+             * data only occurs if no existing megawidget manager is being
+             * replaced; if one is being replaced, then the new megawidget
+             * manager's extra data must be used, and the old thrown away.
              */
             Map<String, Map<String, Object>> oldExtraDataMap = null;
             if (megawidgetManager != null) {
-                oldExtraDataMap = megawidgetManager.getExtraData();
                 megawidgetManagersForEventIds.remove(eventIdentifier);
                 extraDataForEventIds.remove(eventIdentifier);
-            }
-
-            /*
-             * If no extra data was found above, see if any has been cached from
-             * previous views, and if so, use that.
-             */
-            if (oldExtraDataMap == null) {
+            } else {
                 oldExtraDataMap = extraDataForEventIds.get(eventIdentifier);
             }
 
@@ -2423,27 +2422,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     panel = null;
                 }
                 if (panel != null) {
-                    if (oldExtraDataMap != null) {
 
-                        /*
-                         * Merge the old and new extra data maps together. If
-                         * the new map has no entry for a key found in the old
-                         * map, just use the old map's entry. Otherwise, take
-                         * the new map's entry's submap and place any entries
-                         * found in the the old map's entry's submap into it.
-                         */
-                        Map<String, Map<String, Object>> newExtraDataMap = megawidgetManager
-                                .getExtraData();
-                        for (String identifier : oldExtraDataMap.keySet()) {
-                            if (newExtraDataMap.containsKey(identifier)) {
-                                newExtraDataMap.get(identifier).putAll(
-                                        oldExtraDataMap.get(identifier));
-                            } else {
-                                newExtraDataMap.put(identifier,
-                                        oldExtraDataMap.get(identifier));
-                            }
-                        }
-                        megawidgetManager.setExtraData(newExtraDataMap);
+                    /*
+                     * If old extra data was found above in the cache, use it
+                     * for the new manager.
+                     */
+                    if (oldExtraDataMap != null) {
+                        megawidgetManager.setExtraData(oldExtraDataMap);
                     }
                     Map<String, IDisplaySettings> displaySettings = megawidgetDisplaySettingsForEventIds
                             .get(eventIdentifier);

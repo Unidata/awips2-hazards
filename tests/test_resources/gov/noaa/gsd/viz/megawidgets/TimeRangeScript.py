@@ -30,15 +30,18 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
             
             return { "start:end": {
                                    "valueEditables": { "end": False },
-                                   "extraData": { "lastInterval": interval },
                                    "values": { "end": end }
-                                   }
+                                   },
+                     "hiddenEndTimeLastInterval": {
+                                                   "values": interval
+                                                   }
                     }
         else:
             
-            if "extraData" in mutableProperties["start:end"] \
-                    and "lastInterval" in mutableProperties["start:end"]["extraData"]:
-                interval = mutableProperties["start:end"]["extraData"]["lastInterval"]
+            if "hiddenEndTimeLastInterval" in mutableProperties \
+                    and "values" in mutableProperties["hiddenEndTimeLastInterval"] \
+                    and mutableProperties["hiddenEndTimeLastInterval"]["values"] > 0:
+                interval = mutableProperties["hiddenEndTimeLastInterval"]["values"]
             else:
                 interval = 24 * 3600 * 1000
 
@@ -47,7 +50,10 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
             return { "start:end": {
                                    "valueEditables": { "end": True },
                                    "values": { "end": end }
-                                   }
+                                   },
+                     "hiddenEndTimeLastInterval": {
+                                                   "values": 0
+                                                   }
                     }
             
     if triggerIdentifiers != None and "useLongerDurations" in triggerIdentifiers:

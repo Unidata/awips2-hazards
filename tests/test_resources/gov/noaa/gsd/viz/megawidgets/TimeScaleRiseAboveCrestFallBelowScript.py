@@ -33,15 +33,18 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
             
             return { "riseAbove:crest:fallBelow": {
                                                    "valueEditables": { "fallBelow": False },
-                                                   "extraData": { "lastInterval": interval },
                                                    "values": { "fallBelow": fallBelow }
-                                                   }
+                                                   },
+                     "hiddenFallBelowLastInterval": {
+                                                     "values": interval
+                                                     }
                     }
         else:
             
-            if "extraData" in mutableProperties["riseAbove:crest:fallBelow"] \
-                    and "lastInterval" in mutableProperties["riseAbove:crest:fallBelow"]["extraData"]:
-                interval = mutableProperties["riseAbove:crest:fallBelow"]["extraData"]["lastInterval"]
+            if "hiddenFallBelowLastInterval" in mutableProperties \
+                    and "values" in mutableProperties["hiddenFallBelowLastInterval"] \
+                    and mutableProperties["hiddenFallBelowLastInterval"]["values"] > 0:
+                interval = mutableProperties["hiddenFallBelowLastInterval"]["values"]
             else:
                 interval = 3600 * 1000
 
@@ -50,7 +53,10 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
             return { "riseAbove:crest:fallBelow": {
                                                    "valueEditables": { "fallBelow": True },
                                                    "values": { "fallBelow": fallBelow }
-                                                   }
+                                                   },
+                     "hiddenFallBelowLastInterval": {
+                                                     "values": 0
+                                                     }
                     }
             
     else:

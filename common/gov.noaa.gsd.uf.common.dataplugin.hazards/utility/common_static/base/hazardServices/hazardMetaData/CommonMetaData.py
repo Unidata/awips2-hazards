@@ -193,6 +193,17 @@ class MetaData(object):
                }
            }
    
+    # Get the hidden field megawidget used to store the last interval that existed
+    # between the crest and fallBelow values, if fallBelow has been set to "Until
+    # Further Notice". This megawidget is used only within the interdependency
+    # script below.
+    def getHiddenFallLastInterval(self):
+        return {
+            "fieldName": "hiddenFallBelowLastInterval",
+            "fieldType": "HiddenField",
+            "values": 0
+           }
+    
     def getInclude(self):
         return {
              "fieldType":"CheckBoxes",
@@ -876,7 +887,8 @@ def applyRiseCrestFallUntilFurtherNoticeInterdependencies(triggerIdentifiers, mu
         # not just been turned on or off, ensure that the "fallBelow" state is
         # still read-only or editable as appropriate. This last case will occur,
         # for example, when the script is called as part of the megawidgets'
-        # initialization.
+        # initialization. Note that the aforementioned last interval is stored
+        # in a HiddenField megawidget named "hiddenFallBelowLastInterval".
         from VTECConstants import UFN_TIME_VALUE_SECS
         ufnTime = UFN_TIME_VALUE_SECS * 1000L
         if "riseAbove:crest:fallBelow" in mutableProperties:
@@ -889,16 +901,19 @@ def applyRiseCrestFallUntilFurtherNoticeInterdependencies(triggerIdentifiers, mu
                 
                 return { "riseAbove:crest:fallBelow": {
                                                        "valueEditables": { "fallBelow": False },
-                                                       "extraData": { "lastInterval": interval },
                                                        "values": { "fallBelow": fallBelow }
+                                                       },
+                         "hiddenFallBelowLastInterval": {
+                                                       "values": interval
                                                        }
                         }
             elif editable == True and \
                     mutableProperties["riseAbove:crest:fallBelow"]["values"]["fallBelow"] == ufnTime:
                 
-                if "extraData" in mutableProperties["riseAbove:crest:fallBelow"] \
-                        and "lastInterval" in mutableProperties["riseAbove:crest:fallBelow"]["extraData"]:
-                    interval = mutableProperties["riseAbove:crest:fallBelow"]["extraData"]["lastInterval"]
+                if "hiddenFallBelowLastInterval" in mutableProperties \
+                        and "values" in mutableProperties["hiddenFallBelowLastInterval"] \
+                        and mutableProperties["hiddenFallBelowLastInterval"]["values"] > 0:
+                    interval = mutableProperties["hiddenFallBelowLastInterval"]["values"]
                 else:
                     interval = long(mutableProperties["riseAbove:crest:fallBelow"]["values"]["crest"] - \
                             mutableProperties["riseAbove:crest:fallBelow"]["values"]["riseAbove"])
@@ -907,6 +922,9 @@ def applyRiseCrestFallUntilFurtherNoticeInterdependencies(triggerIdentifiers, mu
                 return { "riseAbove:crest:fallBelow": {
                                                        "valueEditables": { "fallBelow": True },
                                                        "values": { "fallBelow": fallBelow }
+                                                       },
+                         "hiddenFallBelowLastInterval": {
+                                                       "values": 0
                                                        }
                         }
             else:

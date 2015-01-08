@@ -1,5 +1,10 @@
 [
  {
+  "fieldName": "hiddenEndTimeLastInterval",
+  "fieldType": "HiddenField",
+  "values": 0
+ },
+ {
   "fieldName": "start:end",
   "fieldType": "TimeRange",
   "valueLabels": {

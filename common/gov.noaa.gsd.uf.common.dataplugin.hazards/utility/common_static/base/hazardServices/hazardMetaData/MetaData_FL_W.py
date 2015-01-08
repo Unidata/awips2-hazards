@@ -18,7 +18,8 @@ class MetaData(CommonMetaData.MetaData):
                             self.getImmediateCause(),
                             self.getFloodSeverity(),
                             self.getFloodRecord(),
-                            self.getRiseCrestFall()
+                            self.getRiseCrestFall(),
+                            self.getHiddenFallLastInterval()
                             ]
          
             crests = [self.getCrestsOrImpacts("crests")]
