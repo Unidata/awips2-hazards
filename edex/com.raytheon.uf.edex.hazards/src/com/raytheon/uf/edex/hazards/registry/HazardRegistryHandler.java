@@ -28,6 +28,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.registry.RegistryQueryResponse;
 import com.raytheon.uf.common.registry.handler.BaseRegistryObjectHandler;
 import com.raytheon.uf.common.registry.handler.RegistryHandlerException;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -39,7 +41,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 4, 2012            mnash     Initial creation
+ * Oct  4, 2012            mnash       Initial creation
+ * Jan 08, 2015  4839      ccody       Check registryHandler for nulls and log warning
  * 
  * </pre>
  * 
@@ -49,6 +52,9 @@ import com.vividsolutions.jts.geom.Geometry;
 
 public class HazardRegistryHandler extends
         BaseRegistryObjectHandler<HazardEvent, HazardQuery> {
+
+    private static final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(HazardRegistryHandler.class);
 
     public HazardRegistryHandler() {
     }
@@ -78,12 +84,22 @@ public class HazardRegistryHandler extends
 
     public List<HazardEvent> getByFilter(Map<String, List<Object>> filters)
             throws RegistryHandlerException {
-        HazardQuery query = getQuery();
-        query.setFilters(filters);
-        RegistryQueryResponse<HazardEvent> response = registryHandler
-                .getObjects(query);
-        checkResponse(response, "getByFilter");
-        return response.getResults();
+
+        List<HazardEvent> filterListResults = null;
+        if (registryHandler != null) {
+            HazardQuery query = getQuery();
+
+            query.setFilters(filters);
+            RegistryQueryResponse<HazardEvent> response = registryHandler
+                    .getObjects(query);
+            checkResponse(response, "getByFilter");
+            filterListResults = response.getResults();
+        } else {
+            statusHandler
+                    .warn("Registry Handler has not been configured. The getByFilter method will return empty results.");
+            filterListResults = new ArrayList<HazardEvent>();
+        }
+        return (filterListResults);
     }
 
     /**
@@ -121,11 +137,19 @@ public class HazardRegistryHandler extends
      */
     public List<HazardEvent> getByGeometry(Geometry geometry)
             throws RegistryHandlerException {
-        HazardQuery query = getQuery();
-        query.setGeometry(geometry);
-        RegistryQueryResponse<HazardEvent> response = registryHandler
-                .getObjects(query);
-        checkResponse(response, "getByGeometry");
-        return response.getResults();
+        List<HazardEvent> filterListResults = null;
+        if (registryHandler != null) {
+            HazardQuery query = getQuery();
+            query.setGeometry(geometry);
+            RegistryQueryResponse<HazardEvent> response = registryHandler
+                    .getObjects(query);
+            checkResponse(response, "getByGeometry");
+            return response.getResults();
+        } else {
+            statusHandler
+                    .warn("Registry Handler has not been configured. The getByGeometry method will return empty results.");
+            filterListResults = new ArrayList<HazardEvent>();
+        }
+        return (filterListResults);
     }
 }
