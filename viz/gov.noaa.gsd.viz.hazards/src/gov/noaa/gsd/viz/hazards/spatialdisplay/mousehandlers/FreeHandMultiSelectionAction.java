@@ -61,6 +61,7 @@ import com.vividsolutions.jts.geom.LinearRing;
  * Dec 05, 2014  4124       Chris.Golden      Changed to work with newly parameterized
  *                                            config manager.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Jan 09, 2015  4209       Daniel.S.Schaffer Lasso selects hazards intersected instead of contained
  * </pre>
  * 
  * @author Xiangbao jing
@@ -316,7 +317,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
                     Geometry p = ((IHazardServicesShape) comp).getGeometry();
 
                     // The event is inside the selected area
-                    if (p != null && polygon.contains(p)) {
+                    if (p != null && polygon.intersects(p)) {
                         // What it's thevent ID
                         String selectedEventId = getSpatialDisplay()
                                 .eventIDForElement(comp);
