@@ -56,6 +56,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionAutoCheckConflictsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionHatchingToggled;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
@@ -273,18 +274,7 @@ public class SessionManager implements
         hatchAreaDisplay = !hatchAreaDisplay;
 
         ISessionEventManager<ObservedHazardEvent> eventManager = getEventManager();
-
-        /*
-         * Force a refresh of the Hazard Services views. There is probably a
-         * better way to do this.
-         * 
-         * TODO: Add a new message class (similar to the auto-check conflict
-         * change message SessionAutocheckConflictsModified) and use that to
-         * post notifications of this change.
-         */
-        eventManager.setSelectedEvents(eventManager.getSelectedEvents(),
-                Originator.OTHER);
-
+        eventBus.publish(new SessionHatchingToggled(Originator.OTHER));
     }
 
     @Override

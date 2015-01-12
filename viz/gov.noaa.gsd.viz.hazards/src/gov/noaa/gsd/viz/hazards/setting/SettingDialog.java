@@ -39,7 +39,6 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -71,6 +70,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  * Aug 27, 2014   3768     Robert.Blum     Added ability to select recommenders as 
  *                                         part of the settings dialog.
  * Dec 05, 2014   4124     Chris.Golden    Changed to work with ObservedSettings.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Chris.Golden
@@ -97,21 +97,10 @@ class SettingDialog extends BasicDialog {
     private static final String FILE_MENU_TEXT = "&File";
 
     /**
-     * Edit menu text.
-     */
-    private static final String EDIT_MENU_TEXT = "&Edit";
-
-    /**
      * File menu item names.
      */
     private static final List<String> FILE_MENU_ITEM_NAMES = Lists
             .newArrayList("&Save", "Save &As", "&Close");;
-
-    /**
-     * Edit menu item names.
-     */
-    private static final List<String> EDIT_MENU_ITEM_NAMES = Lists
-            .newArrayList("&Revert");
 
     // Private Constants
 
@@ -169,18 +158,6 @@ class SettingDialog extends BasicDialog {
                     }
                 }
             }, "Close");
-
-    /**
-     * Edit menu item actions; each is either a {@link StaticSettingsAction},
-     * meaning it is forwarded to the presenter; a {@link String}, meaning it is
-     * handled internally; a {@link Runnable}, which is is used to implement
-     * non-standard behavior; or <code>null</code> for any menu item that has no
-     * effect.
-     */
-    private final List<?> EDIT_MENU_ITEM_ACTIONS = ImmutableList
-            .of(new StaticSettingsAction(StaticSettingsAction.ActionType.REVERT));
-
-    // Private Variables
 
     /**
      * Presenter.
@@ -471,7 +448,7 @@ class SettingDialog extends BasicDialog {
      *            Action to be fired.
      */
     private void fireAction(StaticSettingsAction action) {
-        presenter.fireAction(action);
+        presenter.publish(action);
     }
 
     /**

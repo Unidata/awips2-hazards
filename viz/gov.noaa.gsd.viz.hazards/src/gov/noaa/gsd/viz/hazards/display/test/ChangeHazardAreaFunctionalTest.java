@@ -52,6 +52,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                         ongoing issue flags are set to false at the end
  *                                         of each test, and moved the steps enum into the
  *                                         base class.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -92,21 +93,6 @@ public class ChangeHazardAreaFunctionalTest extends
             stepCompleted();
             testSuccess();
         }
-    }
-
-    private void handleCompletedIssuance() {
-
-        ObservedHazardEvent event = autoTestUtilities.getSelectedEvent();
-        Geometry geometry = event.getGeometry();
-        Coordinate[] coordinates = geometry.getCoordinates();
-        Coordinate modifiedPoint = coordinates[1];
-
-        modifiedPoint.y = 42.0;
-        SessionEventGeometryModified newAction = new SessionEventGeometryModified(
-                eventManager, event, null);
-        stepCompleted();
-        step = Steps.READY_FOR_PREVIEW;
-        eventBus.publishAsync(newAction);
     }
 
     @Handler(priority = -1)
@@ -228,6 +214,21 @@ public class ChangeHazardAreaFunctionalTest extends
             handleException(e);
         }
 
+    }
+
+    private void handleCompletedIssuance() {
+
+        ObservedHazardEvent event = autoTestUtilities.getSelectedEvent();
+        Geometry geometry = event.getGeometry();
+        Coordinate[] coordinates = geometry.getCoordinates();
+        Coordinate modifiedPoint = coordinates[1];
+
+        modifiedPoint.y = 42.0;
+        SessionEventGeometryModified newAction = new SessionEventGeometryModified(
+                eventManager, event, null);
+        stepCompleted();
+        step = Steps.READY_FOR_PREVIEW;
+        eventBus.publishAsync(newAction);
     }
 
     @Override

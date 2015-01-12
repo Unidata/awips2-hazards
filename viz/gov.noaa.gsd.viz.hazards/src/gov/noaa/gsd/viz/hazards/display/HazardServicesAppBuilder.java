@@ -192,6 +192,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             product-specific information using megawidgets).
  * Dec 05, 2014 4124       Chris.Golden        Changed to work with newly parameterized config
  *                                             manager, and with ObservedSettings.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -1227,8 +1228,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      *            Action to be executed to modify the shape.
      */
     public void modifyShape(HazardServicesDrawingAction drawingAction) {
-        spatialPresenter.getView().modifyShape(drawingAction, this,
-                messageHandler);
+        spatialPresenter.getView().modifyShape(drawingAction);
     }
 
     /**

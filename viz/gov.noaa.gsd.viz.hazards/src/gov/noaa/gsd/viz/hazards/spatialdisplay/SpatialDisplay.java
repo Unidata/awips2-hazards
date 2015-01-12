@@ -66,7 +66,6 @@ import org.eclipse.swt.widgets.Event;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
@@ -94,8 +93,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
-import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.viz.awipstools.IToolChangedListener;
 import com.raytheon.viz.core.rsc.jts.JTSCompiler;
 import com.raytheon.viz.ui.VizWorkbenchManager;
@@ -154,6 +151,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Dec 01, 2014  4188      Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
  * Dec 05, 2014  4124      Chris.Golden   Changed to work with newly parameterized config manager
  *                                        and with ObservedSettings.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -258,12 +256,6 @@ public class SpatialDisplay extends
     private SpatialView spatialView;
 
     /*
-     * List of the currently selected events. This is needed for the case of
-     * "multiple-deselection".
-     */
-    private List<String> selectedEventIDs = null;
-
-    /*
      * Color of the selection handlebars. Since PGEN uses AWT colors, there are
      * areas in this module which use the AWT Color class. Hence, I needed to
      * specify the full package here for the SWT Color class.
@@ -355,7 +347,6 @@ public class SpatialDisplay extends
         hatchedAreaAnnotations = new ArrayList<>();
 
         dataTimes = new ArrayList<>();
-        selectedEventIDs = new ArrayList<>();
 
         /**
          * 
@@ -717,58 +708,19 @@ public class SpatialDisplay extends
     }
 
     /**
-     * Draws event geometries on the Hazard Services Tool Layer.
+     * Draws the hazard events on the spatial display.
      * 
-     * @param clearAllEvents
-     *            Clear all displayed events before rendering the new events.
-     * @return
      */
-    public void drawEventAreas(boolean clearAllEvents,
+    public void drawEvents(Collection<ObservedHazardEvent> events,
+            Map<String, Boolean> eventOverlapSelectedTime,
+            Map<String, Boolean> forModifyingStormTrack,
+            Map<String, Boolean> eventEditability,
             boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed) {
+        clearEvents();
+        selectedHazardLayer = null;
 
         hatchedAreas.clear();
         hatchedAreaAnnotations.clear();
-
-        /**
-         * TODO For reasons that are not clear to Chris Golden and Dan Schaffer,
-         * this method is called for the old SpatialDisplay when you switch
-         * perspectives and create a new {@link SpatialDisplay}. But part of the
-         * changing perspective process is to nullify the appBuilder so we have
-         * to do a check here. It would be good to take some time to understand
-         * why this method is called in the old one when you switch
-         * perspectives.
-         */
-        if (appBuilder == null) {
-            return;
-        }
-
-        ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = appBuilder
-                .getSessionManager();
-        ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
-                .getEventManager();
-        Collection<ObservedHazardEvent> events = eventManager
-                .getCheckedEvents();
-        ISessionTimeManager timeManager = sessionManager.getTimeManager();
-        SelectedTime selectedRange = timeManager.getSelectedTime();
-        filterEventsForTime(events, selectedRange);
-        if (previousEvents != null) {
-            if (!areEventsChanged(events)) {
-                /*
-                 * This list of events is identical to the previously drawn
-                 * list. Do nothing more.
-                 */
-                return;
-            }
-        }
-
-        if (clearAllEvents) {
-            clearEvents();
-        }
-
-        previousEvents = events;
-        selectedHazardLayer = null;
-
-        selectedEventIDs.clear();
 
         for (ObservedHazardEvent hazardEvent : events) {
 
@@ -776,39 +728,20 @@ public class SpatialDisplay extends
              * Keep an inventory of which events are selected.
              */
             String eventID = hazardEvent.getEventID();
-
             Boolean isSelected = (Boolean) hazardEvent
                     .getHazardAttribute(HAZARD_EVENT_SELECTED);
 
-            if (isSelected != null && isSelected
-                    && !selectedEventIDs.contains(eventID)) {
-
-                /*
-                 * Since there can be multiple polygons per event, represent
-                 * each event only once.
-                 */
-                selectedEventIDs.add(eventID);
-            }
-
-            boolean isEventAreaEditable = eventManager
-                    .canEventAreaBeChanged(hazardEvent);
-
-            List<AbstractDrawableComponent> drawables = drawableBuilder
-                    .buildDrawableComponents(this, hazardEvent,
-                            getActiveLayer(), isEventAreaEditable,
-                            areHatchedAreasDisplayed);
+            drawableBuilder.buildDrawableComponents(this, hazardEvent,
+                    eventOverlapSelectedTime.get(eventID), getActiveLayer(),
+                    forModifyingStormTrack.get(eventID),
+                    eventEditability.get(eventID), areHatchedAreasDisplayed);
 
             if (areHatchedAreasDisplayed && isSelected) {
                 redrawHatchedAreas = true;
                 drawableBuilder.buildhazardAreas(this, hazardEvent,
-                        getActiveLayer(), hatchedAreas, hatchedAreaAnnotations,
-                        isSelected && areHatchedAreasDisplayed);
+                        getActiveLayer(), hatchedAreas, hatchedAreaAnnotations);
             }
 
-            Boolean isPersistent = (Boolean) hazardEvent
-                    .getHazardAttribute(HazardConstants.PERSISTENT_SHAPE);
-            trackPersistentShapes(isPersistent, hazardEvent.getEventID(),
-                    drawables);
         }
 
         List<AbstractDrawableComponent> drawables = dataManager
@@ -830,23 +763,9 @@ public class SpatialDisplay extends
         drawableBuilder.addTextComponent(this, HazardConstants.DRAG_DROP_DOT,
                 drawableComponents, shapeComponent);
 
-        trackPersistentShapes(true, HazardConstants.DRAG_DROP_DOT,
-                drawableComponents);
+        trackPersistentShapes(HazardConstants.DRAG_DROP_DOT, drawableComponents);
         setObjects(dataManager.getActiveLayer().getDrawables());
         issueRefresh();
-    }
-
-    /**
-     * Convenience method for testing if the event is contained within the
-     * selected time range.
-     * 
-     * @param
-     * @return
-     */
-    public Boolean doesEventOverlapSelectedTime(IHazardEvent event,
-            SelectedTime selectedRange) {
-        return selectedRange.intersects(event.getStartTime().getTime(), event
-                .getEndTime().getTime());
     }
 
     /**
@@ -937,7 +856,6 @@ public class SpatialDisplay extends
 
         }
 
-        // editor.refresh();
         issueRefresh();
 
     }
@@ -951,13 +869,32 @@ public class SpatialDisplay extends
      * @param multipleSelection
      *            Indicates whether or not this is a part of a multiple
      *            selection action.
-     * @param fireEvent
-     *            Indicates whether or not to fire an event indicating that an
-     *            event geometry has been selected on the Spatial Display.
-     * @return The event ID.
      */
-    public String elementClicked(AbstractDrawableComponent element,
-            boolean multipleSelection, boolean fireEvent) {
+    public void elementClicked(AbstractDrawableComponent element,
+            boolean multipleSelection) {
+
+        if (element instanceof DECollection) {
+            element = ((DECollection) element).getItemAt(0);
+        }
+
+        if (element instanceof IHazardServicesShape) {
+
+            String clickedEventId = ((IHazardServicesShape) element).getID();
+            getAppBuilder().getSpatialPresenter().handleSelection(
+                    clickedEventId, multipleSelection);
+        }
+
+    }
+
+    /**
+     * Returns the event identifier for a selected drawable element on the
+     * spatial display.
+     * 
+     * @param element
+     *            The element for which to retrieve the id.
+     * @return The event ID or null if it is not an event
+     */
+    public String eventIDForElement(AbstractDrawableComponent element) {
 
         if (element instanceof DECollection) {
             element = ((DECollection) element).getItemAt(0);
@@ -967,27 +904,6 @@ public class SpatialDisplay extends
 
             String clickedEventId = ((IHazardServicesShape) element).getID();
 
-            if (fireEvent) {
-
-                /*
-                 * If this is a multiple selection operation (left mouse click
-                 * with the Ctrl or Shift key held down), then check if the user
-                 * is selecting something that was already selected and treat
-                 * this as a deselect.
-                 */
-                if (multipleSelection
-                        && selectedEventIDs.contains(clickedEventId)) {
-                    selectedEventIDs.remove(clickedEventId);
-                    String[] eventIDs = selectedEventIDs.toArray(new String[0]);
-                    fireSelectedEventActionOccurred(eventIDs);
-                } else if (multipleSelection) {
-                    selectedEventIDs.add(clickedEventId);
-                    String[] eventIDs = selectedEventIDs.toArray(new String[0]);
-                    fireSelectedEventActionOccurred(eventIDs);
-                } else {
-                    fireSelectedEventActionOccurred(new String[] { clickedEventId });
-                }
-            }
             return clickedEventId;
 
         }
@@ -1003,8 +919,8 @@ public class SpatialDisplay extends
      * @return
      */
     public void multipleElementsClicked(Set<String> eventIDs) {
-        fireSelectedEventActionOccurred(eventIDs.toArray(new String[eventIDs
-                .size()]));
+        getAppBuilder().getSpatialPresenter().updateSelectedEventIds(
+                eventIDs.toArray(new String[eventIDs.size()]));
     }
 
     /**
@@ -1014,7 +930,7 @@ public class SpatialDisplay extends
      *            The element to remove the label from.
      */
     public void removeElementLabel(AbstractDrawableComponent element) {
-        String eventID = elementClicked(element, false, false);
+        String eventID = eventIDForElement(element);
 
         if (eventID != null) {
 
@@ -1443,20 +1359,6 @@ public class SpatialDisplay extends
     }
 
     /**
-     * When an event is selected on the IHIS display, this method will be called
-     * to notify all listeners.
-     * 
-     * @param eventIDs
-     *            The identifiers of the events selected in the spatial display.
-     */
-    private void fireSelectedEventActionOccurred(String[] eventIDs) {
-        SpatialDisplayAction action = new SpatialDisplayAction(
-                SpatialDisplayAction.ActionType.SELECTED_EVENTS_CHANGED,
-                eventIDs);
-        eventBus.publish(action);
-    }
-
-    /**
      * Sends a notification when the spatial display is disposed of, such as in
      * a clear action.
      * 
@@ -1588,55 +1490,21 @@ public class SpatialDisplay extends
         issueRefresh();
     }
 
-    private void trackPersistentShapes(Boolean isPersistent, String id,
+    private void trackPersistentShapes(String id,
             List<AbstractDrawableComponent> drawables) {
         /*
          * This ensures that a persistent shape with the same id as one that
          * already exists will override it.
          */
 
-        if (isPersistent != null && isPersistent) {
-            if (persistentShapeMap.containsKey(id)) {
-                persistentShapeMap.remove(id);
-            }
-
-            if (!drawables.isEmpty()) {
-                persistentShapeMap.put(id, drawables);
-            }
+        if (persistentShapeMap.containsKey(id)) {
+            persistentShapeMap.remove(id);
         }
-    }
 
-    private boolean areEventsChanged(Collection<ObservedHazardEvent> events) {
-        for (IHazardEvent hazardEvent : events) {
-            for (IHazardEvent previousEvent : previousEvents) {
-                if (hazardEvent.getEventID().equals(previousEvent.getEventID())) {
-                    if (!hazardEvent.equals(previousEvent)) {
-                        return false;
-                    }
-                }
-            }
+        if (!drawables.isEmpty()) {
+            persistentShapeMap.put(id, drawables);
         }
-        return true;
-    }
 
-    private void filterEventsForTime(Collection<ObservedHazardEvent> events,
-            SelectedTime selectedRange) {
-        Iterator<ObservedHazardEvent> it = events.iterator();
-        while (it.hasNext()) {
-            IHazardEvent event = it.next();
-
-            /*
-             * Test for unissued storm track operations. These should not be
-             * filtered out by time.
-             */
-            if (!(HazardServicesDrawableBuilder.forModifyingStormTrack(event) && !HazardStatus
-                    .hasEverBeenIssued(event.getStatus()))) {
-
-                if (!doesEventOverlapSelectedTime(event, selectedRange)) {
-                    it.remove();
-                }
-            }
-        }
     }
 
     /**

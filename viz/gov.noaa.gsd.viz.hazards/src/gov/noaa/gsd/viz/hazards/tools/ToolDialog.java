@@ -121,6 +121,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Oct 20, 2014   4818     Chris.Golden      Removed scrolled composite from the dialog,
  *                                           since scrolling is now handled by the
  *                                           megawidgets.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Chris.Golden
@@ -419,9 +420,11 @@ class ToolDialog extends BasicDialog {
                              * a tool-running trigger.
                              */
                             if (runToolTriggerIdentifiers.contains(identifier)) {
-                                fireAction(new ToolAction(
-                                        ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
-                                        identifier, ToolDialog.this.getState()));
+                                presenter
+                                        .publish(new ToolAction(
+                                                ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
+                                                identifier, ToolDialog.this
+                                                        .getState()));
                             }
                         }
 
@@ -473,7 +476,7 @@ class ToolDialog extends BasicDialog {
     protected void buttonPressed(int buttonId) {
         super.buttonPressed(buttonId);
         if (buttonId == IDialogConstants.OK_ID) {
-            fireAction(new ToolAction(
+            presenter.publish(new ToolAction(
                     ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
                     toolName, getState()));
         }
@@ -533,14 +536,4 @@ class ToolDialog extends BasicDialog {
     }
 
     // Private Methods
-
-    /**
-     * Fire the specified action.
-     * 
-     * @param action
-     *            Action to be fired.
-     */
-    private void fireAction(ToolAction action) {
-        presenter.fireAction(action);
-    }
 }

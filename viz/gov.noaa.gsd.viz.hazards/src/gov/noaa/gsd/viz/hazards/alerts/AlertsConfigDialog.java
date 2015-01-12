@@ -53,6 +53,7 @@ import com.raytheon.uf.common.time.SimulatedTime;
  *                                                changes.
  * Jun 30, 2014   3512     Chris.Golden           Changed to work with still more megawidget
  *                                                manager changes.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -98,7 +99,7 @@ class AlertsConfigDialog extends BasicDialog {
             new AlertsAction("New", null), new Runnable() {
                 @Override
                 public void run() {
-                    fireAction(new AlertsAction("Save", getState()));
+                    presenter.publish(new AlertsAction("Save", getState()));
                 }
             }, new Runnable() {
                 private final IInputValidator validator = new IInputValidator() {
@@ -117,7 +118,8 @@ class AlertsConfigDialog extends BasicDialog {
                     if (inputDialog.open() == InputDialog.OK) {
                         values.put(DISPLAY_NAME, inputDialog.getValue());
                         setDialogName(getShell());
-                        fireAction(new AlertsAction("Save As", getState()));
+                        presenter.publish(new AlertsAction("Save As",
+                                getState()));
                     }
                 }
             }, new AlertsAction("Dialog", "Delete"), null, "Close" };
@@ -172,7 +174,7 @@ class AlertsConfigDialog extends BasicDialog {
         public void widgetSelected(SelectionEvent e) {
             Object action = ((MenuItem) e.widget).getData();
             if (action instanceof AlertsAction) {
-                fireAction((AlertsAction) action);
+                presenter.publish(action);
             } else if (action instanceof String) {
                 handleMenuItemInvocationInternally((String) action);
             } else if (action instanceof Runnable) {
@@ -372,15 +374,5 @@ class AlertsConfigDialog extends BasicDialog {
         if (action.equals("Close")) {
             close();
         }
-    }
-
-    /**
-     * Fire the specified action.
-     * 
-     * @param action
-     *            Action to be fired.
-     */
-    private void fireAction(AlertsAction action) {
-        presenter.fireAction(action);
     }
 }

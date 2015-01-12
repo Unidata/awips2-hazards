@@ -238,6 +238,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           two levels, primary and secondary sort,
  *                                           for now, but it could be expanded by simply
  *                                           expanding the menus).
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Jan 08, 2015   2394     Chris.Golden      Fixed bug that caused column cell values
  *                                           that were not strings or dates to throw an
  *                                           exception. Also changed number-populated
@@ -4336,7 +4337,7 @@ class TemporalDisplay {
      */
     private void fireConsoleActionOccurred(ConsoleAction consoleAction) {
         consoleAction.setOriginator(UIOriginator.CONSOLE);
-        presenter.fireAction(consoleAction);
+        presenter.publish(consoleAction);
     }
 
     /**
@@ -4844,6 +4845,7 @@ class TemporalDisplay {
             currentSettings.setVisibleColumns(visibleColumnNames,
                     UIOriginator.CONSOLE);
         }
+
     }
 
     /**

@@ -33,6 +33,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                           and to no longer be a singleton.
  * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * Sep 05, 2013 1264       blawrenc          Removed getInstance method. It is not used.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -89,7 +90,7 @@ public class DragDropAction extends NonDrawingAction {
                 SpatialDisplayAction action = new SpatialDisplayAction(
                         SpatialDisplayAction.ActionType.RUN_TOOL, toolName,
                         toolParameters);
-                getSpatialPresenter().fireAction(action);
+                getSpatialPresenter().publish(action);
                 getSpatialPresenter().getView().drawingActionComplete();
 
                 getSpatialDisplay().removeGhostLine();

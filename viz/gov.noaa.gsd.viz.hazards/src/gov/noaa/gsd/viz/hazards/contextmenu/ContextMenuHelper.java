@@ -61,6 +61,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                      end-selected-hazards menu item.
  * Dec 05, 2014    4124    Chris.Golden Changed to work with newly
  *                                      parameterized config manager.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author mnash
@@ -475,7 +476,7 @@ public class ContextMenuHelper {
             SpatialDisplayAction action = new SpatialDisplayAction(
                     SpatialDisplayAction.ActionType.CONTEXT_MENU_SELECTED, 0,
                     menuLabel);
-            presenter.fireAction(action);
+            presenter.publish(action);
         }
     }
 

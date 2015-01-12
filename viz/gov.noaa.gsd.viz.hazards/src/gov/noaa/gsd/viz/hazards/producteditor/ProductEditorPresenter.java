@@ -64,6 +64,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Jul 28, 2014 3412        jsanchez         Close the product editor on regeneration request.
  * Dec 05, 2014 4124       Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -162,7 +163,7 @@ public class ProductEditorPresenter extends
                         action.setGeneratedProductsList(getView()
                                 .getGeneratedProductsList());
                         getModel().setIssueOngoing(true);
-                        ProductEditorPresenter.this.fireAction(action);
+                        ProductEditorPresenter.this.publish(action);
                         dismissProductEditor();
                     }
                 });
@@ -178,7 +179,7 @@ public class ProductEditorPresenter extends
                                         .equalsIgnoreCase(HazardConstants.REGENERATE_FLAG)) {
                             HazardDetailAction action = new HazardDetailAction(
                                     HazardDetailAction.ActionType.PREVIEW);
-                            ProductEditorPresenter.this.fireAction(action);
+                            ProductEditorPresenter.this.publish(action);
                         }
                     }
                 });

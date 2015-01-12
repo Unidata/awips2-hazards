@@ -50,10 +50,7 @@ import java.util.Set;
 
 import net.engio.mbassy.listener.Handler;
 
-import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -84,9 +81,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -200,6 +194,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            new time manager.
  * Dec 05, 2014  4124      Chris.Golden       Changed to work with newly parameterized
  *                                            config manager, and with ObservedSettings.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author bryon.lawrence
@@ -288,44 +283,6 @@ public final class HazardServicesMessageHandler implements
     // Methods
 
     /**
-     * This method is called when the Selected Event is changed on a component:
-     * the Spatial Display by clicking on an event area OR the Temporal Display
-     * by clicking on an event label OR a Recommender creating a new event.
-     * 
-     * @param eventIDs
-     *            The selected event(s)
-     * @param multipleSelection
-     *            whether or not this is a part of a multiple selection action
-     * @param UIOriginator
-     *            Where this action originated from
-     * 
-     * @throws VizException
-     */
-    public void updateSelectedEvents(final List<String> eventIDs,
-            IOriginator originator) throws VizException {
-        setSelectedEvents(eventIDs, originator);
-        updateCaveSelectedTime();
-        notifyModelEventsChanged();
-        if (originator != UIOriginator.SPATIAL_DISPLAY) {
-            appBuilder.recenterRezoomDisplay();
-        }
-    }
-
-    private void setSelectedEvents(List<String> eventIDs, IOriginator originator) {
-        Collection<ObservedHazardEvent> selectedEvents = fromIDs(eventIDs);
-        sessionEventManager.setSelectedEvents(selectedEvents, originator);
-    }
-
-    private Collection<ObservedHazardEvent> fromIDs(List<String> eventIDs) {
-        Collection<ObservedHazardEvent> events = new ArrayList<>(
-                eventIDs.size());
-        for (String eventId : eventIDs) {
-            events.add(sessionEventManager.getEventById(eventId));
-        }
-        return events;
-    }
-
-    /**
      * This method runs a tool chosen from the Toolbar. If parameters must be
      * gathered from the user, this method will do so. If not, it will simply
      * run the tool.
@@ -373,15 +330,6 @@ public final class HazardServicesMessageHandler implements
     private void updateCaveSelectedTime() {
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.CAVE_TIME));
-    }
-
-    /**
-     * Send notification to listeners (generally presenters) of hazard events
-     * changing in the model.
-     */
-    private void notifyModelEventsChanged() {
-        appBuilder.notifyModelChanged(EnumSet
-                .of(HazardConstants.Element.EVENTS));
     }
 
     /**
@@ -480,8 +428,6 @@ public final class HazardServicesMessageHandler implements
 
         appBuilder.setCursor(SpatialViewCursorTypes.MOVE_VERTEX_CURSOR);
 
-        notifyModelEventsChanged();
-
     }
 
     private IPythonJobListener<EventSet<IEvent>> getRecommenderListener(
@@ -515,14 +461,9 @@ public final class HazardServicesMessageHandler implements
             visibleTypes.add(HazardEventUtilities.getHazardType(event));
         }
 
-        if (startSize == visibleTypes.size()) {
-            notifyModelEventsChanged();
-        } else {
+        if (startSize != visibleTypes.size()) {
             sessionConfigurationManager.getSettings().setVisibleTypes(
                     visibleTypes);
-            appBuilder.notifyModelChanged(EnumSet.of(
-                    HazardConstants.Element.EVENTS,
-                    HazardConstants.Element.CURRENT_SETTINGS));
         }
 
     }
@@ -589,7 +530,6 @@ public final class HazardServicesMessageHandler implements
 
         sessionEventManager.removeEvents(events, null);
 
-        notifyModelEventsChanged();
         appBuilder.hideHazardDetail();
     }
 
@@ -606,7 +546,6 @@ public final class HazardServicesMessageHandler implements
             sessionEventManager.proposeEvent(event, originator);
         }
 
-        notifyModelEventsChanged();
         appBuilder.closeProductEditorView();
     }
 
@@ -616,7 +555,6 @@ public final class HazardServicesMessageHandler implements
     private void issueEvents() {
         if (continueIfThereAreHazardConflicts()) {
             sessionManager.generate(true);
-            notifyModelEventsChanged();
         }
     }
 
@@ -634,18 +572,6 @@ public final class HazardServicesMessageHandler implements
     public void handleStormTrackModification(ModifyStormTrackAction action) {
         runTool(HazardConstants.MODIFY_STORM_TRACK_TOOL,
                 action.getParameters(), null);
-        notifyModelEventsChanged();
-    }
-
-    @Handler
-    public void handleNewHazard(SessionEventAdded action) {
-        notifyModelEventsChanged();
-    }
-
-    @Handler
-    public void handleHazardGeometryModification(
-            SessionEventGeometryModified action) {
-        notifyModelEventsChanged();
     }
 
     /**
@@ -677,7 +603,6 @@ public final class HazardServicesMessageHandler implements
         sessionConfigurationManager.changeSettings(settingID, originator);
 
         appBuilder.notifyModelChanged(eventsChanged ? EnumSet.of(
-                HazardConstants.Element.EVENTS,
                 HazardConstants.Element.SETTINGS,
                 HazardConstants.Element.TOOLS,
                 HazardConstants.Element.VISIBLE_TIME_DELTA,
@@ -802,8 +727,6 @@ public final class HazardServicesMessageHandler implements
     private void updateEventData(Map<String, Serializable> map,
             boolean isUserInitiated, IOriginator originator) {
         _updateEventData(map, isUserInitiated, originator);
-        appBuilder.notifyModelChanged(
-                EnumSet.of(HazardConstants.Element.EVENTS), originator);
     }
 
     /**
@@ -1012,17 +935,14 @@ public final class HazardServicesMessageHandler implements
                         .getValue())) {
             removeEventsWithState(HazardConstants.HazardStatus.POTENTIAL
                     .getValue());
-            notifyModelEventsChanged();
         } else if (label.equals(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES)) {
             appBuilder.loadGeometryOverlayForSelectedEvent();
         } else if (label.equals(HazardConstants.CONTEXT_MENU_SEND_TO_BACK)) {
             sessionEventManager
                     .sortEvents(SessionEventManager.SEND_SELECTED_BACK);
-            notifyModelEventsChanged();
         } else if (label.equals(HazardConstants.CONTEXT_MENU_BRING_TO_FRONT)) {
             sessionEventManager
                     .sortEvents(SessionEventManager.SEND_SELECTED_FRONT);
-            notifyModelEventsChanged();
         } else if (label
                 .equals(HazardConstants.CONTEXT_MENU_CLIP_AND_REDUCE_SELECTED_HAZARDS)) {
             sessionEventManager.clipSelectedHazardGeometries();
@@ -1065,7 +985,6 @@ public final class HazardServicesMessageHandler implements
             if (this.continueIfThereAreHazardConflicts()) {
                 sessionProductManager.createProductsFromHazardEventSets(true,
                         action.getGeneratedProductsList());
-                notifyModelEventsChanged();
             } else {
                 sessionManager.setIssueOngoing(false);
             }
@@ -1233,19 +1152,6 @@ public final class HazardServicesMessageHandler implements
      */
     @Handler
     @Deprecated
-    public void sessionEventsModified(final SessionEventsModified notification) {
-        notifyModelEventsChanged();
-    }
-
-    /**
-     * Handle the visible time range changing. This may be removed once
-     * presenters handle this directly.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    @Deprecated
     public void visibleTimeRangeChanged(VisibleTimeRangeChanged change) {
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.VISIBLE_TIME_RANGE));
@@ -1267,24 +1173,6 @@ public final class HazardServicesMessageHandler implements
         statusHandler.debug("SpatialDisplayActionOccurred actionType: "
                 + actionType);
         switch (actionType) {
-        case SELECTED_EVENTS_CHANGED:
-            try {
-                statusHandler.debug(getClass().getName()
-                        + "spatialDisplayActionOccurred(): eventIDs: "
-                        + spatialDisplayAction.getSelectedEventIDs());
-                List<String> convertedEventIDs = Lists
-                        .newArrayList(spatialDisplayAction
-                                .getSelectedEventIDs());
-                updateSelectedEvents(convertedEventIDs,
-                        UIOriginator.SPATIAL_DISPLAY);
-
-            } catch (VizException e) {
-                statusHandler.error(getClass().getName()
-                        + "spatialDisplayActionOccurred(): "
-                        + "Unable to handle selected events changed.", e);
-            }
-            break;
-
         case ADD_PENDING_TO_SELECTED:
             setAddToSelected(spatialDisplayAction.getActionIdentifier());
             break;
@@ -1420,14 +1308,12 @@ public final class HazardServicesMessageHandler implements
 
         case SELECTED_EVENTS_CHANGED:
 
-            try {
-                List<String> eventIDsString = Lists.newArrayList(consoleAction
-                        .getSelectedEventIDs());
-                updateSelectedEvents(eventIDsString, UIOriginator.CONSOLE);
+            List<String> selectedEventIDs = Lists.newArrayList(consoleAction
+                    .getSelectedEventIDs());
+            sessionEventManager.setSelectedEventForIDs(selectedEventIDs,
+                    UIOriginator.CONSOLE);
+            appBuilder.recenterRezoomDisplay();
 
-            } catch (VizException e) {
-                statusHandler.error("Error updating selected events", e);
-            }
             break;
 
         case EVENT_TIME_RANGE_CHANGED: {
@@ -1577,11 +1463,6 @@ public final class HazardServicesMessageHandler implements
             changeSetting(settingsAction.getSettingID(),
                     UIOriginator.SETTINGS_DIALOG, true);
             break;
-        default:
-            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                    .getShell();
-            MessageDialog.openInformation(shell, null,
-                    "This feature is not yet implemented.");
 
         }
     }

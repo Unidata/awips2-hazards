@@ -58,6 +58,8 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                            consider storm track events
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Sep 09, 2014  3994     Robert.Blum         Added handleMouseEnter to reset the cursor type.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes.  Also 5591, 
+ *                                      fix of intermittent inability to select/deselect hazards
  * 
  * </pre>
  * 
@@ -246,7 +248,7 @@ public class SelectionAction extends NonDrawingAction {
 
                 if (selectedElement != null) {
                     String selectedElementEventID = getSpatialDisplay()
-                            .elementClicked(selectedElement, false, false);
+                            .eventIDForElement(selectedElement);
 
                     /*
                      * If there is more than one containing component, make sure
@@ -257,7 +259,7 @@ public class SelectionAction extends NonDrawingAction {
                     for (AbstractDrawableComponent comp : containingComponentsList) {
                         if (comp instanceof HazardServicesSymbol) {
                             String containingComponentEventID = getSpatialDisplay()
-                                    .elementClicked(comp, false, false);
+                                    .eventIDForElement(comp);
 
                             if (containingComponentEventID
                                     .equals(selectedElementEventID)) {
@@ -272,7 +274,7 @@ public class SelectionAction extends NonDrawingAction {
                         AbstractDrawableComponent comp = containingComponentsList
                                 .get(0);
                         String containingComponentEventID = getSpatialDisplay()
-                                .elementClicked(comp, false, false);
+                                .eventIDForElement(comp);
 
                         if (containingComponentEventID
                                 .equals(selectedElementEventID)) {
@@ -293,13 +295,13 @@ public class SelectionAction extends NonDrawingAction {
                 }
 
                 if (nadc != null) {
-                    getSpatialDisplay().setSelectedDE(nadc);
                     allowPanning = false;
                 } else {
                     // Pass this event on.
                     allowPanning = true;
                     selectedDEFound = false;
                 }
+                getSpatialDisplay().setSelectedDE(nadc);
             }
 
             return selectedDEFound;
@@ -307,6 +309,7 @@ public class SelectionAction extends NonDrawingAction {
 
         @Override
         public boolean handleMouseUp(int x, int y, int button) {
+            boolean result = true;
             /*
              * Button 2 functionality for adding/deleting vertices... This
              * mimics WarnGen.
@@ -314,14 +317,14 @@ public class SelectionAction extends NonDrawingAction {
             if (button == 2) {
                 if (getSpatialDisplay().getSelectedHazardLayer() != null) {
                     handleVertexAdditionOrDeletion();
-                    finalizeMouseHandling();
                 }
-                return false;
+                result = false;
             } else if (isVertexMove) {
                 handleVertexMove();
 
             } else if (ghostEl != null) {
-                DrawableElement selectedDE = getSpatialDisplay().getSelectedDE();
+                DrawableElement selectedDE = getSpatialDisplay()
+                        .getSelectedDE();
                 if (selectedDE != null) {
                     IHazardServicesShape origShape = (IHazardServicesShape) selectedDE;
                     Class<?> selectedDEclass = selectedDE.getClass();
@@ -337,15 +340,15 @@ public class SelectionAction extends NonDrawingAction {
                 /*
                  * Treat this has a hazard selection.
                  */
+                boolean multipleSelection = shiftKeyIsDown || ctrlKeyIsDown;
                 getSpatialDisplay().elementClicked(
-                        getSpatialDisplay().getSelectedDE(),
-                        shiftKeyIsDown || ctrlKeyIsDown, true);
+                        getSpatialDisplay().getSelectedDE(), multipleSelection);
+
             } else {
-                return false;
+                result = false;
             }
             finalizeMouseHandling();
-
-            return true;
+            return result;
 
         }
 
@@ -669,8 +672,7 @@ public class SelectionAction extends NonDrawingAction {
                         if (isEditable) {
 
                             String selectedElementEventID = getSpatialDisplay()
-                                    .elementClicked(selectedElement, false,
-                                            false);
+                                    .eventIDForElement(selectedElement);
 
                             AbstractDrawableComponent nadc = null;
                             // First try to find a component that completely
@@ -681,7 +683,7 @@ public class SelectionAction extends NonDrawingAction {
 
                             for (AbstractDrawableComponent comp : containingComponentList) {
                                 String containingComponentEventID = getSpatialDisplay()
-                                        .elementClicked(comp, false, false);
+                                        .eventIDForElement(comp);
 
                                 if (containingComponentEventID
                                         .equals(selectedElementEventID)) {
@@ -693,8 +695,7 @@ public class SelectionAction extends NonDrawingAction {
                                      */
                                     if (!comp.equals(selectedElement)) {
                                         getSpatialDisplay()
-                                                .setSelectedHazardLayer(
-                                                        comp);
+                                                .setSelectedHazardLayer(comp);
                                     }
                                     /*
                                      * Need a bit more logic here. Just because
@@ -717,7 +718,7 @@ public class SelectionAction extends NonDrawingAction {
                                 if (comp != null) {
 
                                     String containingComponentEventID = getSpatialDisplay()
-                                            .elementClicked(comp, false, false);
+                                            .eventIDForElement(comp);
 
                                     if (containingComponentEventID
                                             .equals(selectedElementEventID)) {
@@ -827,10 +828,6 @@ public class SelectionAction extends NonDrawingAction {
                             }
                         }
 
-                    } else {
-                        getSpatialDisplay().setDrawSelectedHandleBars(false);
-                        getSpatialPresenter().getView().setCursor(
-                                SpatialViewCursorTypes.ARROW_CURSOR);
                     }
                 }
             }

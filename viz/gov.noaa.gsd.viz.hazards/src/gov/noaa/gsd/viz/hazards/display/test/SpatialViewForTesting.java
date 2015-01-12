@@ -9,8 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesMessageHandler;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView;
@@ -20,8 +18,10 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorType
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
 
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
@@ -37,6 +37,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
  * Dec 05, 2014 4124       Chris.Golden      Changed to work with ObservedSettings.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * 
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -61,12 +63,6 @@ public class SpatialViewForTesting implements ISpatialView {
 
     @Override
     public void setSettings(ObservedSettings settings) {
-    }
-
-    @Override
-    public void drawEvents(boolean toogleAutoHazardChecking,
-            boolean areHatchedAreasDisplayed) {
-
     }
 
     @Override
@@ -96,9 +92,7 @@ public class SpatialViewForTesting implements ISpatialView {
     }
 
     @Override
-    public void modifyShape(HazardServicesDrawingAction drawingAction,
-            HazardServicesAppBuilder appBuilder,
-            HazardServicesMessageHandler messageHandler) {
+    public void modifyShape(HazardServicesDrawingAction drawingAction) {
     }
 
     @Override
@@ -144,4 +138,11 @@ public class SpatialViewForTesting implements ISpatialView {
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
     }
+
+    @Override
+    public void drawEvents(Collection events, Map eventOverlapSelectedTime,
+            Map forModifyingStormTrack, Map eventEditability,
+            boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed) {
+    }
+
 }

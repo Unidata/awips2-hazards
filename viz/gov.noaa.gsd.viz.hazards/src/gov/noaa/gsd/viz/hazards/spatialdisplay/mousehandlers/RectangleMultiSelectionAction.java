@@ -57,6 +57,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Sep 09, 2014     3994     Robert.Blum      Added handleMouseEnter to reset the cursor type.
  * Dec 05, 2014     4124    Chris.Golden      Changed to work with newly parameterized
  *                                            config manager.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -233,7 +234,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                     // otherwise, remove it.
                     for (AbstractDrawableComponent drawableComponent : containingComponentsList) {
                         String selectedElementEventID = getSpatialDisplay()
-                                .elementClicked(drawableComponent, false, false);
+                                .eventIDForElement(drawableComponent);
                         if (selectedElementEventID == null) {
                             continue;
                         }
@@ -244,8 +245,6 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                         } else {
                             // if is not existing, add on
                             clickedElementList.add(selectedElementEventID);
-                            getSpatialDisplay().elementClicked(
-                                    drawableComponent, false, false);
                         }
                     }
 
@@ -326,7 +325,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                     if (p != null && polygon.contains(p)) {
                         // What it's thevent ID
                         String selectedEventId = getSpatialDisplay()
-                                .elementClicked(comp, false, false);
+                                .eventIDForElement(comp);
 
                         // Put the ID in the selected ID list
                         if (selectedEventId != null) {

@@ -57,6 +57,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      new method to run scripts.
  * Sep 16, 2014 4753       Chris.Golden Added mutable properties to event scripts.
  * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author bsteffen
@@ -312,6 +313,12 @@ public class SimpleSessionEventManager implements
     @Override
     public boolean isValidGeometryChange(Geometry geometry,
             ObservedHazardEvent hazardEvent) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setSelectedEventForIDs(Collection<String> selectedEventIDs,
+            IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 

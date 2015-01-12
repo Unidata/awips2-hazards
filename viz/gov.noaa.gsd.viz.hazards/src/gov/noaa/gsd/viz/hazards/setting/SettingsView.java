@@ -84,6 +84,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  *                                           to load a valid setting on a delete.
  * Dec 05, 2014    4124    Chris.Golden      Changed to work with newly parameterized
  *                                           config manager and with ObservedSettings.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Chris.Golden
@@ -155,7 +156,7 @@ public class SettingsView implements
                      * action.
                      */
                     String settingsID = (String) event.widget.getData();
-                    presenter.fireAction(new StaticSettingsAction(
+                    presenter.publish(new StaticSettingsAction(
                             StaticSettingsAction.ActionType.SETTINGS_CHOSEN,
                             settingsID));
                 } else if (text.equals(DELETE_COMMAND_MENU_TEXT)) {
@@ -193,7 +194,7 @@ public class SettingsView implements
                              * one was deleted, fire off the action.
                              */
                             presenter
-                                    .fireAction(new StaticSettingsAction(
+                                    .publish(new StaticSettingsAction(
                                             StaticSettingsAction.ActionType.SETTINGS_CHOSEN,
                                             id));
                         }
@@ -354,7 +355,7 @@ public class SettingsView implements
                                      */
                                     try {
                                         presenter
-                                                .fireAction(new CurrentSettingsAction(
+                                                .publish(new CurrentSettingsAction(
                                                         currentSettings,
                                                         UIOriginator.SETTINGS_MENU));
                                     } catch (Exception e) {

@@ -7,8 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
-import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesMessageHandler;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
@@ -99,6 +97,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                           within the UI thread.
  * Dec 05, 2014    4124    Chris.Golden      Changed to work with ObservedSettings.
  * Dec 15, 2014    3846    Tracy Hansen      Added ability to draw points back in
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Chris.Golden
@@ -229,11 +228,12 @@ public class SpatialView implements
          */
         @Override
         public void run() {
-            fireAction(new SpatialDisplayAction(
-                    actionType,
-                    (getStyle() == Action.AS_CHECK_BOX ? (isChecked() ? SpatialDisplayAction.ActionIdentifier.ON
-                            : SpatialDisplayAction.ActionIdentifier.OFF)
-                            : actionName)));
+            presenter
+                    .publish(new SpatialDisplayAction(
+                            actionType,
+                            (getStyle() == Action.AS_CHECK_BOX ? (isChecked() ? SpatialDisplayAction.ActionIdentifier.ON
+                                    : SpatialDisplayAction.ActionIdentifier.OFF)
+                                    : actionName)));
         }
     }
 
@@ -270,8 +270,7 @@ public class SpatialView implements
         private final SelectionListener listener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                fireAction((SpatialDisplayAction) ((MenuItem) event.widget)
-                        .getData());
+                presenter.publish(((MenuItem) event.widget).getData());
             }
         };
 
@@ -751,8 +750,7 @@ public class SpatialView implements
                     new SeparatorAction(), addToSelectedToggleAction,
                     new SeparatorAction(), moveAndSelectChoiceAction,
                     drawVertexBasedPolygonChoiceAction,
-                    drawFreehandPolygonChoiceAction,
-                    drawPointChoiceAction,
+                    drawFreehandPolygonChoiceAction, drawPointChoiceAction,
                     selectByAreaMapsPulldownAction, new SeparatorAction(),
                     addGeometryToSelectedAction);
         }
@@ -760,11 +758,15 @@ public class SpatialView implements
     }
 
     @Override
-    public void drawEvents(boolean toggleAutoHazardChecking,
-            boolean areHatchedAreasDisplayed) {
+    public void drawEvents(Collection<ObservedHazardEvent> events,
+            Map<String, Boolean> eventOverlapSelectedTime,
+            Map<String, Boolean> forModifyingStormTrack,
+            Map<String, Boolean> eventEditability,
+            boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed) {
         enableAddGeometryToSelected();
-        spatialDisplay.drawEventAreas(true, toggleAutoHazardChecking,
-                areHatchedAreasDisplayed);
+        spatialDisplay.drawEvents(events, eventOverlapSelectedTime,
+                forModifyingStormTrack, eventEditability,
+                toggleAutoHazardChecking, areHatchedAreasDisplayed);
     }
 
     @Override
@@ -858,9 +860,7 @@ public class SpatialView implements
     }
 
     @Override
-    public void modifyShape(HazardServicesDrawingAction drawingAction,
-            HazardServicesAppBuilder appBuilder,
-            HazardServicesMessageHandler messageHandler) {
+    public void modifyShape(HazardServicesDrawingAction drawingAction) {
 
         switch (drawingAction) {
         case ADD_VERTEX:
@@ -897,7 +897,7 @@ public class SpatialView implements
 
             if (caveNewTime != currentFrameTime) {
                 if (framesInfo != null) {
-                    fireAction(new SpatialDisplayAction(
+                    presenter.publish(new SpatialDisplayAction(
                             SpatialDisplayAction.ActionType.FRAME_CHANGED,
                             framesInfo));
                 }
@@ -1043,7 +1043,7 @@ public class SpatialView implements
     }
 
     /**
-     * Returns the current instance of the draw by area resoure.
+     * Returns the current instance of the draw by area resource.
      * 
      * @return the selectableGeometryDisplay
      */
@@ -1305,16 +1305,6 @@ public class SpatialView implements
                     .dispose();
         }
 
-    }
-
-    /**
-     * Fire an action event to its listener.
-     * 
-     * @param action
-     *            Action.
-     */
-    private void fireAction(SpatialDisplayAction action) {
-        presenter.fireAction(action);
     }
 
     /**

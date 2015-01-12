@@ -46,6 +46,7 @@ import java.util.Set;
  *                                        (since presenters should manipulate the
  *                                        model directly, and should be notified of
  *                                        changes to the model via @Handler methods.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Chris.Golden
@@ -133,17 +134,11 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
     }
 
     /**
-     * Fire an action off to listeners.
-     * <p>
-     * <strong>Note</strong>: This method has been deprecated. Presenters should
-     * receive notifications of model changes via <code>@Handler</code> methods,
-     * since they subscribe to the event bus.
-     * 
-     * @param action
-     *            Action.
+     * Once the MVP design is complete, the presenters will directly change the
+     * model instead of publishing.
      */
     @Deprecated
-    public final void fireAction(A action) {
+    public final void publish(A action) {
         eventBus.publish(action);
     }
 

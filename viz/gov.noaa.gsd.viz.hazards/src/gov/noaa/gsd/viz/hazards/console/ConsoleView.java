@@ -86,6 +86,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Apr 23, 2014    1480    jsanchez          Added a Correct menu to the console.
  * Nov 18, 2014    4124    Chris.Golden      Adapted to new time manager.
  * Dec 05, 2014    4124    Chris.Golden      Changed to use ObservedSettings.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Chris.Golden
@@ -467,7 +468,7 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             if (partRef == getViewPartReference()) {
                 statusHandler
                         .debug("ConsoleView.partClosed(): console view part closed.");
-                presenter.fireAction(new ConsoleAction(
+                presenter.publish(new ConsoleAction(
                         ConsoleAction.ActionType.CLOSE, (String) null));
             }
         }
@@ -895,7 +896,7 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
      */
     private void fireConsoleAction(ConsoleAction.ActionType actionType,
             String actionName) {
-        presenter.fireAction(new ConsoleAction(actionType, actionName));
+        presenter.publish(new ConsoleAction(actionType, actionName));
     }
 
     /**

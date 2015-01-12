@@ -54,6 +54,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 28, 2013            mnash     Initial creation
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * 
  * </pre>
  * 
@@ -92,7 +93,7 @@ public class ChangeSiteAction extends Action {
         if (!this.isChecked()) {
             return;
         }
-        presenter.fireAction(this);
+        presenter.publish(this);
     }
 
     private static class MenuCreator implements IMenuCreator {

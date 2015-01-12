@@ -59,6 +59,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 16, 2014            jsanchez     Initial creation
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * 
  * </pre>
  * 
@@ -138,7 +139,7 @@ public class ReviewAction extends Action {
         Map<String, Serializable> parameters = new HashMap<String, Serializable>();
         parameters.put(PRODUCT_DATA_PARAM, productData);
         action.setParameters(parameters);
-        presenter.fireAction(action);
+        presenter.publish(action);
     }
 
     private static class MenuCreator implements IMenuCreator {

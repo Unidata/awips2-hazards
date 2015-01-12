@@ -61,6 +61,7 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Sep 09, 2014 3994       Robert.Blum        Added handleMouseEnter to reset the cursor type.
  * Dec 05, 2014 4124       Chris.Golden       Changed to work with newly parameterized
  *                                            config manager.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -184,7 +185,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                             getSpatialPresenter().getSessionManager()
                                     .getEventManager(), observedHazardEvent,
                             getSpatialPresenter());
-                    getSpatialPresenter().fireAction(action);
+                    getSpatialPresenter().publish(action);
                 } catch (InvalidGeometryException e) {
                     statusHandler
                             .handle(Priority.WARN,

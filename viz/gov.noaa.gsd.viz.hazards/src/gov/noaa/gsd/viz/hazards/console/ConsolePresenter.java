@@ -37,6 +37,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Console;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
@@ -79,6 +86,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
  *                                           hazard attribute is always included in
  *                                           the dictionaries sent to the view when it
  *                                           is present in the original events.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Chris.Golden
@@ -351,8 +359,58 @@ public class ConsolePresenter extends
         }
     }
 
+    /*
+     * TODO It's not at all clear that all of these handlers are needed. Some
+     * optimization is needed here. This requires completely understanding the
+     * eventing in Hazard Services; a fairly time consuming process that will be
+     * done when Red-Mine 3975 is completed.
+     */
     @Handler
     public void alertsModified(HazardAlertsModified notification) {
         getView().setActiveAlerts(notification.getActiveAlerts());
     }
+
+    @Handler
+    public void sessionSelectedEventsModified(
+            SessionSelectedEventsModified notification) {
+        updateHazardEventsForEventChange();
+    }
+
+    @Handler
+    public void sessionEventAttributesModified(
+            SessionEventAttributesModified notification) {
+        updateHazardEventsForEventChange();
+    }
+
+    @Handler
+    public void sessionEventRemoved(SessionEventRemoved notification) {
+        updateHazardEventsForEventChange();
+    }
+
+    @Handler
+    public void sessionEventTimeRangeModified(
+            SessionEventTimeRangeModified notification) {
+        updateHazardEventsForEventChange();
+    }
+
+    @Handler
+    public void sessionEventTypeModified(SessionEventTypeModified notification) {
+        updateHazardEventsForEventChange();
+    }
+
+    /*
+     * TODO In particular, it did not seem to Dan that these are needed but Dan
+     * could be wrong.
+     */
+    @Handler
+    public void sessionEventAdded(SessionEventAdded notification) {
+        updateHazardEventsForEventChange();
+    }
+
+    @Handler
+    public void sessionEventStatusModified(
+            SessionEventStatusModified notification) {
+        updateHazardEventsForEventChange();
+    }
+
 }

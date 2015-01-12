@@ -129,6 +129,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Nov 18, 2014    4124    Chris.Golden      Adapted to new time manager.
  * Dec 05, 2014    4124    Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Chris.Golden
@@ -531,7 +532,7 @@ public class HazardDetailPresenter extends
                             : (identifier == Command.PROPOSE ? ActionType.PROPOSE
                                     : ActionType.ISSUE)));
             action.setOriginator(UIOriginator.HAZARD_INFORMATION_DIALOG);
-            fireAction(action);
+            publish(action);
         }
     };
 

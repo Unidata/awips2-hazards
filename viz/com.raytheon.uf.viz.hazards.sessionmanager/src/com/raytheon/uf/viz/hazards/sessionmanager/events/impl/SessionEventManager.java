@@ -214,6 +214,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      manager, and to properly use ObservedSettings.
  * Dec 13, 2014 4486       Dan Schaffer Eliminating effect of changed CAVE time on
  *                                      hazard status.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author bsteffen
@@ -440,7 +441,7 @@ public class SessionEventManager implements
             Collection<ObservedHazardEvent> selectedEvents,
             IOriginator originator) {
         for (ObservedHazardEvent event : getSelectedEvents()) {
-            if (!selectedEvents.contains(event.getEventID())) {
+            if (!selectedEvents.contains(event)) {
                 event.addHazardAttribute(HAZARD_EVENT_SELECTED, false,
                         originator);
             }
@@ -456,6 +457,13 @@ public class SessionEventManager implements
                 event.setStatus(HazardStatus.PENDING, Originator.OTHER);
             }
         }
+    }
+
+    @Override
+    public void setSelectedEventForIDs(Collection<String> selectedEventIDs,
+            IOriginator originator) {
+        Collection<ObservedHazardEvent> selectedEvents = fromIDs(selectedEventIDs);
+        setSelectedEvents(selectedEvents, originator);
     }
 
     @Override
@@ -2214,9 +2222,10 @@ public class SessionEventManager implements
 
     private boolean canBeClipped(ObservedHazardEvent selectedEvent,
             HazardTypeEntry hazardType) {
-        return !HazardStatus.hasEverBeenIssued(selectedEvent.getStatus())
-                || (HazardStatus.issuedButNotEnded(selectedEvent.getStatus()) && selectedEvent
-                        .isModified());
+        return hazardType != null
+                && (!HazardStatus.hasEverBeenIssued(selectedEvent.getStatus()) || (HazardStatus
+                        .issuedButNotEnded(selectedEvent.getStatus()) && selectedEvent
+                        .isModified()));
     }
 
     @Override
@@ -2437,5 +2446,14 @@ public class SessionEventManager implements
             }
         }
         return result;
+    }
+
+    private Collection<ObservedHazardEvent> fromIDs(Collection<String> eventIDs) {
+        Collection<ObservedHazardEvent> events = new ArrayList<>(
+                eventIDs.size());
+        for (String eventId : eventIDs) {
+            events.add(getEventById(eventId));
+        }
+        return events;
     }
 }

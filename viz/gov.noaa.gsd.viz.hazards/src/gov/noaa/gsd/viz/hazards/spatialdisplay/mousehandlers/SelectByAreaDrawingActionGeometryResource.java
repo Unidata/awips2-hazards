@@ -72,6 +72,7 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Sep 16, 2014 3786      Robert.Blum         Added user feedback when simplifying polygons.
  * Dec 05, 2014 4124      Chris.Golden        Changed to work with newly parameterized
  *                                            config manager.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -339,7 +340,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
                                             observedHazardEvent,
                                             getSpatialPresenter());
 
-                                    getSpatialPresenter().fireAction(addAction);
+                                    getSpatialPresenter().publish(addAction);
 
                                     if (hazardGeometryList.containsKey(eventID)) {
                                         hazardGeometryList.get(eventID).addAll(
@@ -378,7 +379,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
                                     SpatialDisplayAction action = new SpatialDisplayAction(
                                             SpatialDisplayAction.ActionType.UPDATE_EVENT_METADATA);
                                     action.setToolParameters(geoReferenceDict);
-                                    getSpatialPresenter().fireAction(action);
+                                    getSpatialPresenter().publish(action);
                                 } catch (InvalidGeometryException e) {
                                     statusHandler
                                             .warn("Error creating Select-by-Area polygon: "
@@ -395,7 +396,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
                                 SessionEventGeometryModified modifyAction = new SessionEventGeometryModified(
                                         sessionManager.getEventManager(),
                                         modifiedEvent, getSpatialPresenter());
-                                getSpatialPresenter().fireAction(modifyAction);
+                                getSpatialPresenter().publish(modifyAction);
 
                             }
 

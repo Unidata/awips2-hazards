@@ -42,6 +42,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 
 /**
  * Description: {@link FunctionalTest} of storm track tool.
@@ -59,6 +60,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
  *                                      of each test, and moved the steps enum into the
  *                                      base class.
  * Dec 05, 2014 4124       Chris.Golden Changed to work with ObservedSettings.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -94,6 +96,36 @@ public class StormTrackFunctionalTest extends
     }
 
     @Handler(priority = -1)
+    public void handleSessionEventAdded(SessionEventAdded notification) {
+        if (step.equals(Steps.START)) {
+            Dict consoleEvent = mockConsoleView.getHazardEvents().get(0);
+            eventID = consoleEvent
+                    .getDynamicallyTypedValue(HAZARD_EVENT_IDENTIFIER);
+            IHazardEvent event = eventManager.getEventById(eventID);
+            @SuppressWarnings("unchecked")
+            List<Map<String, Serializable>> trackPoints = (List<Map<String, Serializable>>) event
+                    .getHazardAttribute(TRACK_POINTS);
+            Map<String, Serializable> lastPoint = trackPoints.get(trackPoints
+                    .size() - 1);
+            Long pointID = (Long) lastPoint.get(POINTID);
+            Map<String, Serializable> toolParameters = new HashMap<>();
+            toolParameters.put(POINTID, pointID);
+            toolParameters.put(HAZARD_EVENT_IDENTIFIER, eventID);
+            toolParameters.put(HAZARD_EVENT_SHAPE_TYPE,
+                    HAZARD_EVENT_SHAPE_TYPE_DOT);
+            ArrayList<Double> point = Lists.newArrayList(-98.76, 40.29);
+            toolParameters.put(SYMBOL_NEW_LAT_LON, point);
+
+            SpatialDisplayAction modifyAction = new SpatialDisplayAction(
+                    SpatialDisplayAction.ActionType.RUN_TOOL,
+                    MODIFY_STORM_TRACK_TOOL, toolParameters);
+            stepCompleted();
+            step = Steps.MODIFY_TOOL;
+            eventBus.publishAsync(modifyAction);
+        }
+    }
+
+    @Handler(priority = -1)
     public void toolActionOccurred(final ToolAction action) {
         try {
             switch (action.getActionType()) {
@@ -105,30 +137,6 @@ public class StormTrackFunctionalTest extends
                             .next();
                     assertEquals(event.getHazardType(), "FF.W.Convective");
                     assertEquals(event.getStatus(), HazardStatus.PENDING);
-                    Dict consoleEvent = mockConsoleView.getHazardEvents()
-                            .get(0);
-                    eventID = consoleEvent
-                            .getDynamicallyTypedValue(HAZARD_EVENT_IDENTIFIER);
-                    @SuppressWarnings("unchecked")
-                    List<Map<String, Serializable>> trackPoints = (List<Map<String, Serializable>>) event
-                            .getHazardAttribute(TRACK_POINTS);
-                    Map<String, Serializable> lastPoint = trackPoints
-                            .get(trackPoints.size() - 1);
-                    Long pointID = (Long) lastPoint.get(POINTID);
-                    Map<String, Serializable> toolParameters = new HashMap<>();
-                    toolParameters.put(POINTID, pointID);
-                    toolParameters.put(HAZARD_EVENT_IDENTIFIER, eventID);
-                    toolParameters.put(HAZARD_EVENT_SHAPE_TYPE,
-                            HAZARD_EVENT_SHAPE_TYPE_DOT);
-                    ArrayList<Double> point = Lists.newArrayList(-98.76, 40.29);
-                    toolParameters.put(SYMBOL_NEW_LAT_LON, point);
-
-                    SpatialDisplayAction modifyAction = new SpatialDisplayAction(
-                            SpatialDisplayAction.ActionType.RUN_TOOL,
-                            MODIFY_STORM_TRACK_TOOL, toolParameters);
-                    stepCompleted();
-                    step = Steps.MODIFY_TOOL;
-                    eventBus.publishAsync(modifyAction);
                 } else {
                     EventSet<IEvent> events = action.getRecommendedEventList();
                     assertEquals(events.size(), 1);

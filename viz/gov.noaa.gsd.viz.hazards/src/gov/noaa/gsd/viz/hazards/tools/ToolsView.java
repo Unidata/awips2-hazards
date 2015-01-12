@@ -9,7 +9,6 @@ package gov.noaa.gsd.viz.hazards.tools;
 
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
-import gov.noaa.gsd.viz.hazards.display.action.ToolAction.ToolActionEnum;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 
 import java.util.Collections;
@@ -53,6 +52,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  *                                           cases.
  * Jul 15, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * Dec 05, 2014   4124     Chris.Golden      Corrected header comment.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Chris.Golden
@@ -101,8 +101,9 @@ public class ToolsView implements
         private final SelectionListener listener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                fireAction(ToolAction.ToolActionEnum.RUN_TOOL,
-                        (String) event.widget.getData());
+                presenter.publish(new ToolAction(
+                        ToolAction.ToolActionEnum.RUN_TOOL,
+                        (String) event.widget.getData()));
             }
         };
 
@@ -336,15 +337,4 @@ public class ToolsView implements
 
     // Private Methods
 
-    /**
-     * Fire an action event to its listener.
-     * 
-     * @param action
-     *            Action.
-     * @param detail
-     *            Detail.
-     */
-    private void fireAction(ToolActionEnum action, String detail) {
-        presenter.fireAction(new ToolAction(action, detail));
-    }
 }

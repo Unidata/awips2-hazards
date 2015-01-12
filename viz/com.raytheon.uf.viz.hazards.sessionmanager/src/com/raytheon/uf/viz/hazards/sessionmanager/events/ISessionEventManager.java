@@ -66,6 +66,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      command having been invoked.
  * Sep 16, 2014 4753       Chris.Golden Changed event script to include mutable properties.
  * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author bsteffen
@@ -240,6 +241,15 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @param originator
      */
     public void setSelectedEvents(Collection<E> selectedEvents,
+            IOriginator originator);
+
+    /**
+     * Set the selected events corresponding to on the eventIDs.
+     * 
+     * @param selectedEventIDs
+     * @param originator
+     */
+    public void setSelectedEventForIDs(Collection<String> selectedEventIDs,
             IOriginator originator);
 
     /**

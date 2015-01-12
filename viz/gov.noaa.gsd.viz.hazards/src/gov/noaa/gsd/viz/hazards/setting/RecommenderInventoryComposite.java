@@ -67,6 +67,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  * Sep 08, 2014 4243       Chris.Golden Changed to work with latest version
  *                                      of abstract recommender engine.
  * Dec 05, 2014 4124       Chris.Golden Changed to work with ObservedSettings.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Robert.Blum
@@ -152,7 +153,7 @@ public class RecommenderInventoryComposite extends Composite {
                             manager.getSettings().getToolbarTools()
                                     .remove(tool);
                         }
-                        presenter.fireAction(new SettingsToolsModified(manager,
+                        presenter.publish(new SettingsToolsModified(manager,
                                 UIOriginator.SETTINGS_DIALOG));
                     }
                 } else {

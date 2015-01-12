@@ -44,8 +44,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationMa
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.hatching.HatchingUtilities;
-import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -79,6 +77,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Nov 18, 2014 4124       Chris.Golden        Adapted to new time manager.
  * Dec 05, 2014 4124       Chris.Golden        Changed to work with newly parameterized config
  *                                             manager.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author bryon.lawrence
@@ -311,14 +310,16 @@ public class HazardServicesDrawableBuilder {
 
     public List<AbstractDrawableComponent> buildDrawableComponents(
             SpatialDisplay spatialDisplay, IHazardEvent hazardEvent,
-            Layer activeLayer, boolean isEventAreaEditable,
+            boolean eventOverlapSelectedTime, Layer activeLayer,
+            boolean forModifyingStormTrack, boolean isEventEditable,
             boolean drawHazardHatchArea) {
 
         List<AbstractDrawableComponent> result = Lists.newArrayList();
 
-        if (forModifyingStormTrack(hazardEvent)) {
-            addComponentsForStormTrackModification(hazardEvent, result,
-                    spatialDisplay, activeLayer);
+        if (forModifyingStormTrack) {
+            addComponentsForStormTrackModification(hazardEvent,
+                    eventOverlapSelectedTime, result, spatialDisplay,
+                    activeLayer);
         } else {
 
             for (int shapeNum = 0; shapeNum < hazardEvent.getGeometry()
@@ -336,10 +337,10 @@ public class HazardServicesDrawableBuilder {
                         IHazardServicesShape drawable = (IHazardServicesShape) deCollection
                                 .getItemAt(i);
                         if (!(drawable instanceof HazardServicesSymbol)) {
-                            drawable.setIsEditable(isEventAreaEditable);
+                            drawable.setIsEditable(isEventEditable);
                         }
 
-                        drawable.setMovable(isEventAreaEditable);
+                        drawable.setMovable(isEventEditable);
 
                     }
 
@@ -348,10 +349,10 @@ public class HazardServicesDrawableBuilder {
                     IHazardServicesShape drawable = (IHazardServicesShape) drawableComponent;
 
                     if (!(drawableComponent instanceof HazardServicesSymbol)) {
-                        drawable.setIsEditable(isEventAreaEditable);
+                        drawable.setIsEditable(isEventEditable);
                     }
 
-                    drawable.setMovable(isEventAreaEditable);
+                    drawable.setMovable(isEventEditable);
 
                 }
             }
@@ -386,22 +387,17 @@ public class HazardServicesDrawableBuilder {
     public void buildhazardAreas(SpatialDisplay spatialDisplay,
             IHazardEvent hazardEvent, Layer activeLayer,
             List<AbstractDrawableComponent> hatchedAreas,
-            List<AbstractDrawableComponent> hatchedAreaAnnotations,
-            boolean drawHazardHatchArea) {
+            List<AbstractDrawableComponent> hatchedAreaAnnotations) {
 
-        if (drawHazardHatchArea) {
-            addHazardHatchArea(spatialDisplay, hazardEvent, activeLayer,
-                    hatchedAreas, hatchedAreaAnnotations);
-        }
-    }
+        addHazardHatchArea(spatialDisplay, hazardEvent, activeLayer,
+                hatchedAreas, hatchedAreaAnnotations);
 
-    public static boolean forModifyingStormTrack(IHazardEvent hazardEvent) {
-        return hazardEvent.getHazardAttribute(HazardConstants.TRACK_POINTS) != null;
     }
 
     @SuppressWarnings("unchecked")
     private void addComponentsForStormTrackModification(
-            IHazardEvent hazardEvent, List<AbstractDrawableComponent> result,
+            IHazardEvent hazardEvent, boolean eventOverlapSelectedTime,
+            List<AbstractDrawableComponent> result,
             SpatialDisplay spatialDisplay, Layer activeLayer) {
 
         Boolean subduePolygon = false;
@@ -486,14 +482,7 @@ public class HazardServicesDrawableBuilder {
                 spatialDisplay.addElement(component);
             }
 
-            /*
-             * Test whether or not the polygon should be subdued.
-             */
-            ISessionTimeManager timeManager = sessionManager.getTimeManager();
-            SelectedTime selectedRange = timeManager.getSelectedTime();
-
-            if (!spatialDisplay.doesEventOverlapSelectedTime(hazardEvent,
-                    selectedRange)) {
+            if (!eventOverlapSelectedTime) {
                 subduePolygon = true;
             }
 

@@ -10,28 +10,20 @@
 package gov.noaa.gsd.viz.hazards.display.test;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
 import java.util.List;
-import java.util.Set;
 
 import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.google.common.collect.Sets;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 
 /**
  * Description: {@link FunctionalTest} of event filtering.
@@ -62,14 +54,6 @@ public class FilteringFunctionalTest extends
     @SuppressWarnings("unused")
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(getClass());
-
-    private final Set<String> visibleTypes = Sets
-            .newHashSet(AutoTestUtilities.FLASH_FLOOD_WATCH_PHEN_SIG);
-
-    private final Set<String> visibleSites = Sets
-            .newHashSet(AutoTestUtilities.OAX);
-
-    private ISettings savedCurrentSettings;
 
     protected enum Steps {
         START, CHANGE_TO_TORNADO, BACK_TO_CANNED_FLOOD,
@@ -124,69 +108,6 @@ public class FilteringFunctionalTest extends
         }
     }
 
-    private void handleCompletedIssuance() {
-        ISettings currentSettings = appBuilder.getCurrentSettings();
-        savedCurrentSettings = new ObservedSettings(
-                (SessionConfigurationManager) configManager, currentSettings);
-        Set<String> visibleStates = Sets.newHashSet();
-        ObservedSettings settings = new ObservedSettings(
-                (SessionConfigurationManager) configManager,
-                autoTestUtilities.buildEventFilterCriteria(visibleTypes,
-                        visibleStates, visibleSites));
-        stepCompleted();
-        step = Steps.CHANGING_CURRENT_SETTINGS;
-        autoTestUtilities.changeCurrentSettings(settings);
-    }
-
-    @Handler(priority = -1)
-    public void sessionEventStateModified(SessionEventStatusModified action) {
-        if (step == Steps.BACK_TO_CANNED_FLOOD) {
-            handleCompletedIssuance();
-
-        }
-    }
-
-    @Handler(priority = -1)
-    public void handleProductGeneratorResult(
-            final IProductGenerationComplete productGenerationComplete) {
-        if (step == Steps.BACK_TO_CANNED_FLOOD) {
-            handleCompletedIssuance();
-
-        }
-    }
-
-    @Handler(priority = -1)
-    public void staticSettingsActionOccurred(
-            final StaticSettingsAction settingsAction) {
-        try {
-            switch (step) {
-
-            case CHANGE_TO_TORNADO:
-                List<Dict> events = mockConsoleView.getHazardEvents();
-                assertEquals(events.size(), 0);
-                stepCompleted();
-                step = Steps.BACK_TO_CANNED_FLOOD;
-                autoTestUtilities.changeStaticSettings(CANNED_FLOOD_SETTING);
-                break;
-
-            case BACK_TO_CANNED_FLOOD:
-                events = mockConsoleView.getHazardEvents();
-                assertEquals(events.size(), 1);
-
-                autoTestUtilities.issueFromHID();
-                break;
-
-            default:
-                testError();
-                break;
-
-            }
-        } catch (Exception e) {
-            handleException(e);
-        }
-
-    }
-
     @Handler(priority = -1)
     public void currentSettingsActionOccurred(
             final SettingsModified settingsAction) {
@@ -194,15 +115,15 @@ public class FilteringFunctionalTest extends
             List<Dict> events = mockConsoleView.getHazardEvents();
             switch (step) {
 
-            case CHANGING_CURRENT_SETTINGS:
+            case CHANGE_TO_TORNADO:
                 events = mockConsoleView.getHazardEvents();
                 assertEquals(events.size(), 0);
                 stepCompleted();
-                step = Steps.CHANGE_BACK_CURRENT_SETTINGS;
-                autoTestUtilities.changeCurrentSettings(savedCurrentSettings);
+                step = Steps.BACK_TO_CANNED_FLOOD;
+                autoTestUtilities.changeStaticSettings(CANNED_FLOOD_SETTING);
                 break;
 
-            case CHANGE_BACK_CURRENT_SETTINGS:
+            case BACK_TO_CANNED_FLOOD:
                 events = mockConsoleView.getHazardEvents();
                 assertEquals(events.size(), 1);
                 stepCompleted();

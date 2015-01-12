@@ -40,7 +40,6 @@ import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper.ContextMenuSelections;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.DamBreakUrgencyLevels;
@@ -65,6 +64,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.math.NumberUtils;
 import org.eclipse.jface.action.ActionContributionItem;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
@@ -77,9 +77,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventMetadataModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 
 /**
@@ -111,6 +114,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComp
  * Oct 21, 2014 4818       Chris.Golden Fixed to work with newest version of metadata
  *                                      megawidgets, which are now always wrapped in a
  *                                      scrollable container megawidget.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -163,6 +167,8 @@ class MixedHazardStoryFunctionalTest extends
     }
 
     private static final int NUM_EVENTS_GENERATED_BY_FLOOD_RECOMMENDER = 4;
+
+    private static final int NUM_EVENTS_DELETED_BY_REMOVE_POTENTIAL = 3;
 
     private Set<String> waitingToBeSelected;
 
@@ -250,6 +256,15 @@ class MixedHazardStoryFunctionalTest extends
                 }
                 break;
 
+            case ENDED_ISSUE_PRODUCTS:
+                if (++eventStateChangeCount == 2) {
+                    eventStateChangeCount = 0;
+                    checkReplacementEvents(HazardStatus.ENDED.getValue());
+                    stepCompleted();
+                    testSuccess();
+                    break;
+                }
+
             default:
             }
         } catch (Exception e) {
@@ -311,25 +326,33 @@ class MixedHazardStoryFunctionalTest extends
     }
 
     @Handler(priority = -1)
+    public void sessionSelectedEventsModified(
+            final SessionSelectedEventsModified action) {
+        switch (step) {
+
+        case SELECT_RECOMMENDED:
+            for (IHazardEvent event : eventManager.getSelectedEvents()) {
+                waitingToBeSelected.remove(event.getEventID());
+            }
+            if (waitingToBeSelected.isEmpty()) {
+                checkConsoleSelections();
+                checkFloodEventAddition();
+                stepCompleted();
+                step = Steps.CHANGE_TIME_RANGE;
+                changeTimeRangeOfRiverFloodRecommenderEvent();
+            }
+
+            break;
+        default:
+            return;
+        }
+    }
+
+    @Handler(priority = -1)
     public void sessionEventAttributeModifiedOccurred(
             final SessionEventAttributesModified action) {
         try {
             switch (step) {
-
-            case SELECT_RECOMMENDED:
-                if (action.getAttributeKeys().contains(HAZARD_EVENT_SELECTED)) {
-                    for (IHazardEvent event : eventManager.getSelectedEvents()) {
-                        waitingToBeSelected.remove(event.getEventID());
-                    }
-                    if (waitingToBeSelected.isEmpty()) {
-                        checkConsoleSelections();
-                        checkFloodEventAddition();
-                        stepCompleted();
-                        step = Steps.CHANGE_TIME_RANGE;
-                        changeTimeRangeOfRiverFloodRecommenderEvent();
-                    }
-                }
-                break;
 
             case CONTINUING_EVENTS:
                 if (action.getAttributeKeys().contains(INCLUDE) == false) {
@@ -409,14 +432,11 @@ class MixedHazardStoryFunctionalTest extends
                 String e1 = hazards.get(1).getDynamicallyTypedValue(
                         HAZARD_EVENT_IDENTIFIER);
 
-                String[] eventIDs = new String[] { e0, e1 };
+                List<String> eventIDs = Lists.newArrayList(e0, e1);
                 stepCompleted();
                 step = Steps.SELECT_RECOMMENDED;
-                SpatialDisplayAction displayAction = new SpatialDisplayAction(
-                        SpatialDisplayAction.ActionType.SELECTED_EVENTS_CHANGED,
-                        eventIDs);
+                eventManager.setSelectedEventForIDs(eventIDs, Originator.OTHER);
                 waitingToBeSelected = Sets.newHashSet(eventIDs);
-                eventBus.publishAsync(displayAction);
                 break;
 
             case UPDATING_FIRST_EVENT:
@@ -480,12 +500,15 @@ class MixedHazardStoryFunctionalTest extends
     }
 
     @Handler(priority = -1)
-    public void spatialDisplayActionOccurred(
-            final SpatialDisplayAction spatialDisplayAction) {
+    public void sessionEventRemoved(SessionEventRemoved notification) {
         try {
             switch (step) {
 
             case REMOVING_POTENTIAL_EVENTS:
+                if (++counter < NUM_EVENTS_DELETED_BY_REMOVE_POTENTIAL) {
+                    break;
+                }
+                counter = 0;
                 List<Dict> hazards = mockConsoleView.getHazardEvents();
 
                 assertEquals(hazards.size(), 2);
@@ -497,24 +520,6 @@ class MixedHazardStoryFunctionalTest extends
                 break;
 
             default:
-            }
-        } catch (Exception e) {
-            handleException(e);
-        }
-
-    }
-
-    @Handler(priority = -1)
-    public void hazardDetailActionOccurred(
-            final HazardDetailAction hazardDetailAction) {
-        try {
-            switch (hazardDetailAction.getActionType()) {
-            case PREVIEW:
-                break;
-
-            default:
-                throw new IllegalArgumentException("Unexpected action type "
-                        + hazardDetailAction.getActionType());
             }
         } catch (Exception e) {
             handleException(e);
@@ -569,12 +574,6 @@ class MixedHazardStoryFunctionalTest extends
                 stepCompleted();
                 step = Steps.ENDED_ISSUE_PRODUCTS;
                 issue();
-                break;
-
-            case ENDED_ISSUE_PRODUCTS:
-                checkReplacementEvents(HazardStatus.ENDED.getValue());
-                stepCompleted();
-                testSuccess();
                 break;
 
             default:

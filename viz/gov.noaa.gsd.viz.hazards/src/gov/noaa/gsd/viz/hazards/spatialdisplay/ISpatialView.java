@@ -7,16 +7,17 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
-import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesMessageHandler;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
 import gov.noaa.gsd.viz.mvp.IView;
 
+import java.util.Collection;
 import java.util.Date;
+import java.util.Map;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
  * Interface describing the methods that must be implemented by a class that
@@ -36,6 +37,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
  * Nov 27, 2013   1462     bryon.lawrence    Updated drawEvents to support display
  *                                           of hazard hatched areas.
  * Dec 05, 2014   4124     Chris.Golden      Changed to work with ObservedSettings.
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * </pre>
  * 
  * @author Chris.Golden
@@ -65,9 +67,15 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
 
     /**
      * Draw events on the view.
+     * 
+     * @param eventEditability
+     * @param events
      */
-    public void drawEvents(boolean toggleAutoHazardChecking,
-            boolean areHatchedAreasDisplayed);
+    public void drawEvents(Collection<ObservedHazardEvent> events,
+            Map<String, Boolean> eventOverlapSelectedTime,
+            Map<String, Boolean> forModifyingStormTrack,
+            Map<String, Boolean> eventEditability,
+            boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed);
 
     /**
      * Force time matching to be recalculated.
@@ -121,15 +129,9 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
      * Modify a displayed shape.
      * 
      * @param drawingAction
-     *            The modification action.
-     * @param appBuilder
-     *            App builder.
-     * @param messageHandler
-     *            Message handler.
+     *            The modification action..
      */
-    public void modifyShape(HazardServicesDrawingAction drawingAction,
-            HazardServicesAppBuilder appBuilder,
-            HazardServicesMessageHandler messageHandler);
+    public void modifyShape(HazardServicesDrawingAction drawingAction);
 
     /**
      * Manage the view frames based on the selected time.
