@@ -7,7 +7,7 @@
     ------------ ---------- ----------- --------------------------
     4/14         1633       thansen   Initial creation.
     11/10        4933       Robert.Blum    Added endSegment part for FFS
-    
+    1/12         4937       Robert.Blum    PGFv3 changes for FLW_FLS
 '''
 import types, collections
 
@@ -26,7 +26,7 @@ class HydroProductParts():
         act = vtecRecord['act']
         if sig == 'Y' and phen in ['FL', 'FA']:
             return False
-        elif act in ['NEW', 'EXA', 'EXB', 'EXT'] and phen in ['FF', 'FA']:
+        elif act in ['NEW', 'EXA', 'EXB', 'EXT'] and phen in ['FF', 'FA', 'FL']:
             return True
         else:
             return False
@@ -224,6 +224,7 @@ class HydroProductParts():
                     'issuanceTimeDate',
                     'CR',
                     'summaryHeadlines',
+                    'CR',
                     ('sections', sectionParts), # Sections so not have information displayed, but need to call section_setUp 
                     ] + parts +
                     ['endSegment']
@@ -321,9 +322,9 @@ class HydroProductParts():
             'issuanceTimeDate',
             'CR'
             ]
-        #if pil == 'FFA':  
-        partsList.append('summaryHeadlines')
-            
+        if pil == 'FFA':  
+            partsList.append('summaryHeadlines')
+
         partsList.append(('sections', sectionParts))
         
         # TODO Example doesn't match directive 
@@ -354,7 +355,6 @@ class HydroProductParts():
                 partsList = [
                     'setUp_section',
                     'attribution',
-                    'firstBullet',
                     'endingSynopsis',
                     ]
             elif pil == 'FFA':
@@ -375,6 +375,12 @@ class HydroProductParts():
                     'impactsBullet'
                     ]
         # Otherwise (FLS)
+        elif action == 'CON':
+            partsList = [
+                    'setUp_section',
+                    'attribution',
+                    'basisAndImpactsStatement',
+                    ]
         else:
             partsList = [
                     'setUp_section',
@@ -475,8 +481,7 @@ class HydroProductParts():
         sig = vtecRecord['sig']
         
         partsList = ['setUp_section']
-        if  not (pil == 'FLS' and phen == 'FL' and sig == 'Y' and action in ['CON', 'EXT']):
-            # NOT for FLS FL.Y CON, EXT
+        if action in ['NEW', 'EXP']:
             partsList.append('attribution_point')
   
         partsList.append('firstBullet_point')

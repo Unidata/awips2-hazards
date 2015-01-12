@@ -20,8 +20,8 @@ class MetaData(CommonMetaData.MetaData):
         eventIDs = productSegmentGroup.get('eventIDs')
         suffix = "_"+productLabel
                          
-        # Set up initial values -- Use previous values from User Edited Text database if available       
-        for field in ['overviewSynopsisText', 'cta']:
+        # Set up initial values -- Use previous values from User Edited Text database if available
+        for field in ['overviewSynopsis', 'callsToAction_productLevel']:
             exec field +'_value = ""'
             for eventID in eventIDs:
                 textObjects =  ProductTextUtil.retrieveProductText(field+suffix, '', '', '', [eventID]) 
@@ -32,7 +32,7 @@ class MetaData(CommonMetaData.MetaData):
                     
         # Product level CTA's are only for the point-based hazards
         if geoType == 'point':
-            ctas = [self.getCTAs(productLabel, cta_value)]
+            ctas = [self.getCTAs(productLabel, callsToAction_productLevel_value)]
         else:
             if 'overviewSynopsis_area' not in productParts.get('partsList'):
                 return {
@@ -65,11 +65,11 @@ class MetaData(CommonMetaData.MetaData):
                      },
                     {
                      "fieldType": "Text",
-                     "fieldName": 'overviewSynopsisText' + suffix,
+                     "fieldName": 'overviewSynopsis' + suffix,
                      "visibleChars": 60,
                      "lines": 6,
                      "expandHorizontally": True,
-                     "values": overviewSynopsisText_value,
+                     "values": overviewSynopsis_value,
                      }
                     ] + ctas
         return {
@@ -165,7 +165,7 @@ class MetaData(CommonMetaData.MetaData):
         return {
                 "fieldType":"CheckList",
                 "label":"Calls to Action (1 or more):",
-                "fieldName": "cta_"+productLabel,
+                "fieldName": "callsToAction_productLevel_"+productLabel,
                 "values": values,
                 "choices": self.getCTA_Choices(productLabel)
                 }        
@@ -233,7 +233,7 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
                 for choiceDict in choices:
                     if choiceDict.get('identifier') == choice:
                         productString = choiceDict.get('productString')
-                changeField = 'overviewSynopsisText_'+productLabel
+                changeField = 'overviewSynopsis_'+productLabel
 
                 returnDict[changeField] =  {
                   "values": productString

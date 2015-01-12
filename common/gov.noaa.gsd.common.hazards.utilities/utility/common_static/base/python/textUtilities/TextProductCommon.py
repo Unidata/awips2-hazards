@@ -14,6 +14,7 @@
                                                 float values.
    Dec 18, 2014   4933      Robert.Blum         Fixing issue with rebase conflict that was missed 
                                                 in previous checkin.
+   Jan 12, 2015   4937      Robert.Blum         Changes for PGFv3.
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -608,7 +609,7 @@ class TextProductCommon(object):
         value = hazardEvent.get(fieldName) 
         if not value:
             return '' 
-        if type(value) is types.ListType:
+        if type(value) is types.ListType or isinstance(value, set):
             if choiceIdentifier:
                 return self.getMetaDataValue(hazardEvent, metaData, fieldName, choiceIdentifier)
             else:
@@ -1359,7 +1360,7 @@ class TextProductCommon(object):
             
         return headlineStr, headlines, sections
 
-    def getTimingPhrase(self, vtecRecord, hazardEvents, issueTime, stype=None, etype=None):
+    def getTimingPhrase(self, vtecRecord, hazardEvents, issueTime, stype=None, etype=None, timeZones=None):
         '''
         vtecRecord has times converted to ms
         issueTime in ms
@@ -1371,9 +1372,10 @@ class TextProductCommon(object):
             stype, etype = self.getTimingType(vtecRecord, issueTime)
 
         # Get the time zones for the areas
-        timeZones = []
-        for hazardEvent in hazardEvents:
-            timeZones += self.hazardTimeZones(hazardEvent.get('ugcs'))
+        if not timeZones:
+            timeZones = []
+            for hazardEvent in hazardEvents:
+                timeZones += self.hazardTimeZones(hazardEvent.get('ugcs'))
 
         # Get the starting time
         stext = []
@@ -2488,19 +2490,18 @@ class TextProductCommon(object):
 
         # test mode
         if testMode:
-            phrase = 'TEST ' + name   #test mode, prepend 'TEST'
+            phrase = 'Test ' + name   #test mode, prepend 'Test'
         else:
             phrase = name
 
         # want A or AN?
         if addA:
             if phrase[0] in ['A','E','I','O','U','a','e','i','o','u']:
-                phrase = 'AN ' + phrase
+                phrase = 'an ' + phrase
             else:
-                phrase = 'A ' + phrase
+                phrase = 'a ' + phrase
         return phrase
-    
-    
+
 ######################  FROM GFE Header.py
 
     def getExpireTime(self, issueTime, purgeHours, vtecRecords, roundMinutes=15,

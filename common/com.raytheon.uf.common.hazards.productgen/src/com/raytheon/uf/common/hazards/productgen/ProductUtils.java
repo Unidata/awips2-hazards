@@ -65,6 +65,7 @@ import com.raytheon.uf.common.time.SimulatedTime;
  *                                      SendPracticeProductRequest.
  * Dec 10, 2014 4933       Robert.Blum  Changes to allow for mixed case in the
  *                                      legacy product.
+ * Jan 06, 2015 4937       Robert.Blum  wrapLegacy was incorrectly indenting bullets.
  * 
  * </pre>
  * 
@@ -174,15 +175,13 @@ public class ProductUtils {
                 inBullet = false;
                 addLine = line;
             } else if (line.length() <= MAX_WIDTH) { // LESS THAN MAX
-                // Add indenting if the template didn't account for it yet.
-                if (inBullet && !line.startsWith(INDENT)) {
-                    sb.append(INDENT);
-                }
-
                 if (line.startsWith(BULLET_START)) {
                     inBullet = true;
                 }
-
+                // Add indenting if the template didn't account for it yet.
+                else if (inBullet && !line.startsWith(INDENT)) {
+                    sb.append(INDENT);
+                }
                 addLine = line;
             } else { // NEEDS TO BE WRAPPED
                 addLine = wrapLongLines(line, inBullet);
