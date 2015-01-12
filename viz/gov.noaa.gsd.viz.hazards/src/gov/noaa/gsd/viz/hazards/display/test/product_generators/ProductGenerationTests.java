@@ -195,20 +195,5 @@ public class ProductGenerationTests {
                 .setUpdateCorrectAnswer(testMode == TEST_MODE.UPDATE_EXPECTED_ANSWERS);
         testIndex += 1;
         currentTest.run();
-        workAroundToRaceConditionInTests();
     }
-
-    /**
-     * With this in place, tests work well enough.  Dan spent several hours trying to get
-     * to the bottom of this but could not.
-     */
-	private void workAroundToRaceConditionInTests() {
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-
 }

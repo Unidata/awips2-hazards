@@ -28,7 +28,6 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -85,6 +84,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  * Dec 05, 2014    4124    Chris.Golden      Changed to work with newly parameterized
  *                                           config manager and with ObservedSettings.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Jan 09, 2015    5457    Daniel.S.Schaffer Fixed bug in settings deletion.
  * </pre>
  * 
  * @author Chris.Golden
@@ -171,33 +171,16 @@ public class SettingsView implements
                         configManager.deleteSettings();
                         List<Settings> availableSettings = configManager
                                 .getAvailableSettings();
-                        Iterator<Settings> iter = availableSettings.iterator();
-                        while (iter.hasNext()) {
-                            Settings available = iter.next();
-                            if (available.getSettingsID()
-                                    .equals(configManager.getSettings()
-                                            .getSettingsID())) {
-                                iter.remove();
-                            }
-                        }
-
+                        String newSettingsId = availableSettings.iterator()
+                                .next().getSettingsID();
                         /*
-                         * Select the new setting to be selected. Currently just
-                         * the first in the list.
+                         * Need to select a new setting since the current one
+                         * was deleted, fire off the action.
                          */
-                        if (iter.hasNext()) {
-                            String id = availableSettings.iterator().next()
-                                    .getSettingsID();
-
-                            /*
-                             * Need to select a new setting since the current
-                             * one was deleted, fire off the action.
-                             */
-                            presenter
-                                    .publish(new StaticSettingsAction(
-                                            StaticSettingsAction.ActionType.SETTINGS_CHOSEN,
-                                            id));
-                        }
+                        presenter
+                                .publish(new StaticSettingsAction(
+                                        StaticSettingsAction.ActionType.SETTINGS_CHOSEN,
+                                        newSettingsId));
 
                     }
                 }
