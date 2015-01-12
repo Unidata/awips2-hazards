@@ -284,10 +284,11 @@ class MetaData(CommonMetaData.MetaData):
 
     def getApplyButton(self,parm):
         apply = {
-                    "fieldType": "CheckBox",
+                    "fieldType": "Button",
                     "fieldName": parm + "ApplyButton",
-                    "label": "Toggle to Apply Parameters",
-                     "refreshMetadata": True
+                    "label": "Apply Parameters",
+                    "spacing": 5,
+                    "refreshMetadata": True
                 }
         return apply
             

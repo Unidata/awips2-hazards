@@ -130,6 +130,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Dec 05, 2014    4124    Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Jan 08, 2015    5700    Chris.Golden      Changed to generalize the meaning of a
+ *                                           command invocation for a particular
+ *                                           event, since it no longer only means
+ *                                           that an event-modifying script is to be
+ *                                           executed; it may instead trigger a
+ *                                           metadata refresh.
  * </pre>
  * 
  * @author Chris.Golden
@@ -505,7 +511,7 @@ public class HazardDetailPresenter extends
             ObservedHazardEvent event = getModel().getEventManager()
                     .getEventById(identifier.getEventIdentifier());
             if (event != null) {
-                getModel().getEventManager().scriptCommandInvoked(event,
+                getModel().getEventManager().eventCommandInvoked(event,
                         identifier.getDetailIdentifier(),
                         identifier.getMutableProperties());
             }

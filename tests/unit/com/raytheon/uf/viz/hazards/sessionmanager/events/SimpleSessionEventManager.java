@@ -58,6 +58,9 @@ import com.vividsolutions.jts.geom.Geometry;
  * Sep 16, 2014 4753       Chris.Golden Added mutable properties to event scripts.
  * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Jan 08, 2015 5700       Chris.Golden Changed to generalize the meaning of a command invocation
+ *                                      for a particular event, since it no longer only means
+ *                                      that an event-modifying script is to be executed.
  * </pre>
  * 
  * @author bsteffen
@@ -93,7 +96,7 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public void scriptCommandInvoked(ObservedHazardEvent event,
+    public void eventCommandInvoked(ObservedHazardEvent event,
             String identifier,
             Map<String, Map<String, Object>> mutableProperties) {
         throw new UnsupportedOperationException();

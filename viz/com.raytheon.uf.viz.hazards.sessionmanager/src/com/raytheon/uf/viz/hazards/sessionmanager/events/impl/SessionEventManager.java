@@ -215,6 +215,13 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Dec 13, 2014 4486       Dan Schaffer Eliminating effect of changed CAVE time on
  *                                      hazard status.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Jan 08, 2015 5700       Chris.Golden Changed to generalize the meaning of a command
+ *                                      invocation for a particular event, since it no
+ *                                      longer only means that an event-modifying
+ *                                      script is to be executed; it may also trigger
+ *                                      a metadata refresh. Previously, the latter was
+ *                                      only possible on a hazard attribute state
+ *                                      change.
  * </pre>
  * 
  * @author bsteffen
@@ -683,9 +690,26 @@ public class SessionEventManager implements
     }
 
     @Override
-    public void scriptCommandInvoked(ObservedHazardEvent event,
+    public void eventCommandInvoked(ObservedHazardEvent event,
             String identifier,
             Map<String, Map<String, Object>> mutableProperties) {
+
+        /*
+         * If the command that was invoked is a metadata refresh trigger,
+         * perform the refresh.
+         */
+        if (metadataReloadTriggeringIdentifiersForEventIdentifiers
+                .containsKey(event.getEventID())
+                && metadataReloadTriggeringIdentifiersForEventIdentifiers.get(
+                        event.getEventID()).contains(identifier)) {
+            updateEventMetadata(event);
+            return;
+        }
+
+        /*
+         * Find the event modifying script that goes with this identifier, if
+         * any, and execute it.
+         */
         Map<String, String> eventModifyingFunctionNamesForIdentifiers = eventModifyingScriptsForEventIdentifiers
                 .get(event.getEventID());
         if (eventModifyingFunctionNamesForIdentifiers == null) {

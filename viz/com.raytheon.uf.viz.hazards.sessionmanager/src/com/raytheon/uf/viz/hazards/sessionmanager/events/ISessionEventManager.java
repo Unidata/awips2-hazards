@@ -67,6 +67,9 @@ import com.vividsolutions.jts.geom.Geometry;
  * Sep 16, 2014 4753       Chris.Golden Changed event script to include mutable properties.
  * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Jan 08, 2015 5700       Chris.Golden Changed to generalize the meaning of a command invocation
+ *                                      for a particular event, since it no longer only means
+ *                                      that an event-modifying script is to be executed.
  * </pre>
  * 
  * @author bsteffen
@@ -165,16 +168,17 @@ public interface ISessionEventManager<E extends IHazardEvent> {
 
     /**
      * Receive notification that a command was invoked within the user interface
-     * that requires a script to be run in response.
+     * that requires a metadata refresh or a script to be run in response.
      * 
      * @param event
-     *            Hazard event for which to run the script.
+     *            Hazard event for which to run the script or refresh the
+     *            metadata.
      * @param identifier
      *            Identifier of the command that was invoked.
      * @param mutableProperties
-     *            Mutable properties to be passed to the script.
+     *            Mutable properties to be passed to the script, if one is run.
      */
-    public void scriptCommandInvoked(E event, String identifier,
+    public void eventCommandInvoked(E event, String identifier,
             Map<String, Map<String, Object>> mutableProperties);
 
     /**
