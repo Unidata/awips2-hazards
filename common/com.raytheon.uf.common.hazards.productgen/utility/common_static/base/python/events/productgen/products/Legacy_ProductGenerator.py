@@ -1734,6 +1734,7 @@ class Product(ProductTemplate.Product):
         forecastCrestTime_str = self._section.forecastCrestTime_str
         stageFlowUnits = self._section.stageFlowUnits
         maximumForecastTime_str = self._section.maximumForecastTime_str
+        forecastFallBelowFloodStageTime_ms = self._section.forecastFallBelowFloodStageTime_ms
         forecastFallBelowFloodStageTime_str = self._section.forecastFallBelowFloodStageTime_str
         forecastRiseAboveFloodStageTime_str = self._section.forecastRiseAboveFloodStageTime_str
         riverDescription = self._getRiverDescription()
@@ -1782,7 +1783,7 @@ class Product(ProductTemplate.Product):
                 # AND CONTINUE TO RISE TO NEAR <HG,0,FF,X,NEXT> <StgFlowUnits> BY &
                 # <HG,0,FF,X,NEXT,TIME>.        
                 #            
-                elif forecastCrestStage > floodStage and forecastFallBelowFloodStageTime == self._rfp.MISSING:
+                elif forecastCrestStage > floodStage and forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
                     bulletContent = 'rise above flood stage by ' + forecastRiseAboveFloodStageTime_str + \
                         ' and continue to rise to near ' + `forecastCrestStage` + ' ' + stageFlowUnits + ' by ' + forecastCrestTime_str + '. '
 
@@ -1854,7 +1855,7 @@ class Product(ProductTemplate.Product):
                 elif forecastCrestStage > observedStage and forecastFallBelowFloodStageTime_ms != self._rfp.MISSING_VALUE and \
                     forecastCrestStage > observedStage:
                     bulletContent = riverDescription + ' will continue rising to near ' + `forecastCrestStage` + ' ' + stageFlowUnits + ' by ' + \
-                       forecastFallBelowFloodStageTime_ms + '. ' 
+                       forecastFallBelowFloodStageTime_str + '. ' 
                         
                 # Observed above flood stage/forecast continue fall/not below flood
                 # stage

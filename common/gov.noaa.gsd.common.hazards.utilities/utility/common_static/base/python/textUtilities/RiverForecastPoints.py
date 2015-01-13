@@ -1266,7 +1266,7 @@ class RiverForecastPoints(object):
                 if maximumForecastIndex != RiverForecastPoints.MISSING_VALUE:
                     forecastHydrograph = riverForecastPoint.getForecastHydrograph().getShefHydroDataList()
                     forecast = forecastHydrograph.get(maximumForecastIndex)
-                    maximumForecastStage = forecast.getValue()
+                    maximumForecastLevel = forecast.getValue()
             elif primaryPE.startswith(PE_Q):
                 pass
             return maximumForecastLevel
