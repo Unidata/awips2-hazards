@@ -44,6 +44,9 @@ import com.raytheon.uf.common.dataplugin.gfe.server.request.LockRequest;
 import com.raytheon.uf.common.dataplugin.gfe.server.request.SaveGridRequest;
 import com.raytheon.uf.common.message.WsId;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.TimeRange;
 
 /**
@@ -60,6 +63,7 @@ import com.raytheon.uf.common.time.TimeRange;
  *                                      GridParmInfo based on mode.
  * Apr 08, 2014 3357       bkowal       No longer attempt to save to the Official
  *                                      DB for practice mode.
+ * Jan 19, 2014 4840       rferrel      Log error when exception getting GFE Record.
  * 
  * </pre>
  * 
@@ -68,6 +72,8 @@ import com.raytheon.uf.common.time.TimeRange;
  */
 
 public class GridRequestHandler {
+    private static final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(GridRequestHandler.class);
 
     private static final String PARM_ID_PREFIX_FORMAT = "Hazards_SFC:%s_GRID";
 
@@ -141,9 +147,18 @@ public class GridRequestHandler {
                 .getDbId().getSiteId(), parmID, intersectingTimeRanges);
         for (TimeRange tr : intersectingTimeRanges) {
             GFERecord record = new GFERecord(parmID, tr);
-            record.setGridHistory(histories.get(tr));
-            record.setMessageData(GFEDataAccessUtil.getSlice(record));
-            records.add(record);
+            try {
+                record.setGridHistory(histories.get(tr));
+                record.setMessageData(GFEDataAccessUtil.getSlice(record));
+                records.add(record);
+            } catch (Exception ex) {
+                if (statusHandler.isPriorityEnabled(Priority.ERROR)) {
+                    String message = String
+                            .format("Unable to obtain GFE Record for ParamID: %s, in the time range: %s",
+                                    parmID.getParmId(), tr.toString());
+                    statusHandler.error(message, ex);
+                }
+            }
         }
 
         return records;

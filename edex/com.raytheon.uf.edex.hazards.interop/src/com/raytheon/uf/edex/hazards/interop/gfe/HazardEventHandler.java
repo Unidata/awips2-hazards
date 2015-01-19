@@ -103,6 +103,7 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  *                                      instead of logging a warning. This class will receive
  *                                      every grid update notification.
  * Dec 12, 2014 2826       dgilling     Change fields used by interoperability.
+ * Jan 19, 2014 4849       rferrel      Log exceptions getting GFERecords to delete.
  * 
  * </pre>
  * 
@@ -386,8 +387,7 @@ public class HazardEventHandler {
             while (keyIterator.hasNext()) {
                 final DiscreteKey discreteKey = keyIterator.next();
                 final String hazardType = discreteKey.toString();
-                String[] hazardParts = StringUtil.split(hazardType,
-                        '.');
+                String[] hazardParts = StringUtil.split(hazardType, '.');
 
                 List<IHazardEvent> events = null;
                 synchronized (this) {
@@ -871,10 +871,19 @@ public class HazardEventHandler {
                     .requestAdjacentTimeRanges(parmID, timeRange);
             for (TimeRange tr : adjacentTimeRanges) {
                 GFERecord gfeRecord = new GFERecord(parmID, tr);
-                DiscreteGridSlice slice = (DiscreteGridSlice) GFEDataAccessUtil
-                        .getSlice(gfeRecord);
-                adjacentMap.put(tr,
-                        DiscreteGridSliceUtil.separate(slice, tr, null));
+                try {
+                    DiscreteGridSlice slice = (DiscreteGridSlice) GFEDataAccessUtil
+                            .getSlice(gfeRecord);
+                    adjacentMap.put(tr,
+                            DiscreteGridSliceUtil.separate(slice, tr, null));
+                } catch (Exception ex) {
+                    if (statusHandler.isPriorityEnabled(Priority.ERROR)) {
+                        String message = String
+                                .format("Unable to obtain Discrete Grid Slice for ParamID: %s, in the time range: %s",
+                                        parmID.getParmId(), tr.toString());
+                        statusHandler.error(message, ex);
+                    }
+                }
             }
         }
 
