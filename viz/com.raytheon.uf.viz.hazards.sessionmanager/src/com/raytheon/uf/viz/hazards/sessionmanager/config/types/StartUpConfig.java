@@ -32,6 +32,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 23, 2013 1257       bsteffen    Initial creation
+ * Jan 19, 2015 4193       rferrel     Added disseminationOrder.
  * 
  * </pre>
  * 
@@ -43,12 +44,23 @@ public class StartUpConfig {
     @JsonProperty("Console")
     private Console console;
 
+    @JsonProperty("disseminationOrder")
+    private String[] disseminationOrder;
+
     public Console getConsole() {
         return console;
     }
 
     public void setConsole(Console console) {
         this.console = console;
+    }
+
+    public String[] getDisseminationOrder() {
+        return disseminationOrder;
+    }
+
+    public void setDisseminationOrder(String[] disseminationOrder) {
+        this.disseminationOrder = disseminationOrder;
     }
 
     @Override

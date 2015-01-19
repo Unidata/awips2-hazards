@@ -33,6 +33,7 @@ import com.raytheon.uf.common.hazards.productgen.data.ProductDataResponse;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.database.dao.CoreDao;
 import com.raytheon.uf.edex.database.dao.DaoConfig;
 import com.raytheon.uf.edex.database.query.DatabaseQuery;
@@ -48,6 +49,7 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 15, 2014            jsanchez     Initial creation
+ * Jan 15, 2014 4193       rferrel      Log request
  * 
  * </pre>
  * 
@@ -77,6 +79,14 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
         ProductData pData = request.getProductData();
         Criteria criteria = null;
         List<ProductData> data = null;
+        if (handler.isPriorityEnabled(Priority.INFO)) {
+
+            List<Integer> eventIDs = pData.getEventIDs();
+            handler.info("ProductGeneratorName: "
+                    + pData.getProductGeneratorName() + ", mode: "
+                    + pData.getMode() + ", type: " + request.getType()
+                    + ", eventIDs: " + (eventIDs == null ? "ALL" : eventIDs));
+        }
 
         switch (request.getType()) {
         case CREATE:

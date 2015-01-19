@@ -44,10 +44,15 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -73,6 +78,7 @@ import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.exception.VizException;
@@ -82,6 +88,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationMa
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
@@ -93,6 +100,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
@@ -172,6 +180,7 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      gives back something other than a list of maps for
  *                                      the megawidget specifiers under the metadata key.
  * Dec 17, 2014 2826       dgilling     More order of operations fixes on product issue.
+ * Jan 15, 2015 4193       rferrel      Implement dissemination ordering.
  * 
  * </pre>
  * 
@@ -183,6 +192,12 @@ public class SessionProductManager implements ISessionProductManager {
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionProductManager.class);
+
+    /**
+     * Default PIL dissemination order when none provided in Start Up Config.
+     */
+    private final static String[] DEFAULT_DISSEMINATION_ORDER = new String[] {
+            "FFW", "FLW", "FFS", "FLS", "FFA" };
 
     private final ISessionTimeManager timeManager;
 
@@ -241,6 +256,9 @@ public class SessionProductManager implements ISessionProductManager {
 
     /** String version of CAVEMode */
     private final String caveModeStr = caveMode.toString();
+
+    /** Used to order product dissemination. */
+    private final Map<IGeneratedProduct, ProductGeneratorInformation> pgiMap = new HashMap<>();
 
     public SessionProductManager(SessionManager sessionManager,
             ISessionTimeManager timeManager,
@@ -1320,24 +1338,7 @@ public class SessionProductManager implements ISessionProductManager {
          * database
          */
         if (operationalMode) {
-            for (IGeneratedProduct generatedProduct : productGeneratorInformation
-                    .getGeneratedProducts()) {
-                if (productGeneratorInformation.getProductFormats() != null
-                        && productGeneratorInformation.getProductFormats()
-                                .getIssueFormats() != null) {
-                    for (String format : productGeneratorInformation
-                            .getProductFormats().getIssueFormats()) {
-                        List<Serializable> objs = generatedProduct
-                                .getEntry(format);
-                        if (objs != null) {
-                            for (Serializable obj : objs) {
-                                ProductUtils.disseminate(String.valueOf(obj),
-                                        operationalMode);
-                            }
-                        }
-                    }
-                }
-            }
+            sendProducts(productGeneratorInformation);
         }
         Date startTime = null;
         boolean ended = false;
@@ -1377,19 +1378,26 @@ public class SessionProductManager implements ISessionProductManager {
          * by ingest getting the data before it is written to the db
          */
         if (!operationalMode) {
-            for (IGeneratedProduct generatedProduct : productGeneratorInformation
-                    .getGeneratedProducts()) {
-                if (productGeneratorInformation.getProductFormats() != null
-                        && productGeneratorInformation.getProductFormats()
-                                .getIssueFormats() != null) {
-                    for (String format : productGeneratorInformation
-                            .getProductFormats().getIssueFormats()) {
+            sendProducts(productGeneratorInformation);
+        }
+    }
+
+    private void sendProducts(
+            ProductGeneratorInformation productGeneratorInformation) {
+        ProductFormats formats = productGeneratorInformation
+                .getProductFormats();
+        if (formats != null) {
+            List<String> issueFormats = formats.getIssueFormats();
+            if ((issueFormats != null) && !issueFormats.isEmpty()) {
+                for (IGeneratedProduct generatedProduct : orderGeneratedProducts(productGeneratorInformation
+                        .getGeneratedProducts())) {
+                    for (String issueFormat : issueFormats) {
                         List<Serializable> objs = generatedProduct
-                                .getEntry(format);
+                                .getEntry(issueFormat);
                         if (objs != null) {
                             for (Serializable obj : objs) {
                                 ProductUtils.disseminate(String.valueOf(obj),
-                                        false);
+                                        operationalMode);
                             }
                         }
                     }
@@ -1454,35 +1462,51 @@ public class SessionProductManager implements ISessionProductManager {
 
                 @Override
                 public void run() {
-                    if (result != null) {
-                        productGeneratorInformation
-                                .setGeneratedProducts(result);
-                        productGeneratorInformation
-                                .getGeneratedProducts()
-                                .getEventSet()
-                                .addAttribute(HazardConstants.ISSUE_FLAG, issue);
-                        /*
-                         * FIXME??? We've had sequencing issues with these next
-                         * 2 lines of code in the past. We need the affected
-                         * IHazardEvents to always finish storage before calling
-                         * issue() otherwise server-side interoperability code
-                         * will not be able to tie the decoded
-                         * ActiveTableRecords to an IHazardEvent and will
-                         * instead create an unnecessary duplicate event.
-                         */
-                        notificationSender
-                                .postNotification(new ProductGenerated(
-                                        productGeneratorInformation));
+                    try {
+                        if (result != null) {
+                            productGeneratorInformation
+                                    .setGeneratedProducts(result);
+                            productGeneratorInformation
+                                    .getGeneratedProducts()
+                                    .getEventSet()
+                                    .addAttribute(HazardConstants.ISSUE_FLAG,
+                                            issue);
+                            /*
+                             * FIXME??? We've had sequencing issues with these
+                             * next 2 lines of code in the past. We need the
+                             * affected IHazardEvents to always finish storage
+                             * before calling issue() otherwise server-side
+                             * interoperability code will not be able to tie the
+                             * decoded ActiveTableRecords to an IHazardEvent and
+                             * will instead create an unnecessary duplicate
+                             * event.
+                             */
 
-                        if (issue) {
-                            issue(productGeneratorInformation);
+                            if (issue
+                                    && !productGeneratorInformation
+                                            .getGeneratedProducts().isEmpty()) {
+                                for (IGeneratedProduct prod : productGeneratorInformation
+                                        .getGeneratedProducts()) {
+                                    pgiMap.put(prod,
+                                            productGeneratorInformation);
+                                }
+                            } else {
+                                notificationSender
+                                        .postNotification(new ProductGenerated(
+                                                productGeneratorInformation));
+                            }
+                        } else {
+                            productGeneratorInformation
+                                    .setError(new Throwable(
+                                            "GeneratedProduct result from generator is null."));
+                            notificationSender
+                                    .postNotification(new ProductFailed(
+                                            productGeneratorInformation));
                         }
-                    } else {
-                        productGeneratorInformation
-                                .setError(new Throwable(
-                                        "GeneratedProduct result from generator is null."));
-                        notificationSender.postNotification(new ProductFailed(
-                                productGeneratorInformation));
+                    } finally {
+                        synchronized (pgiMap) {
+                            pgiMap.notifyAll();
+                        }
                     }
                 }
             });
@@ -1495,9 +1519,15 @@ public class SessionProductManager implements ISessionProductManager {
 
                 @Override
                 public void run() {
-                    productGeneratorInformation.setError(e);
-                    notificationSender.postNotification(new ProductFailed(
-                            productGeneratorInformation));
+                    try {
+                        productGeneratorInformation.setError(e);
+                        notificationSender.postNotification(new ProductFailed(
+                                productGeneratorInformation));
+                    } finally {
+                        synchronized (pgiMap) {
+                            pgiMap.notifyAll();
+                        }
+                    }
                 }
             });
         }
@@ -1505,7 +1535,7 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     private void runProductGeneration(
-            Collection<ProductGeneratorInformation> allMatchingProductGeneratorInformation,
+            final Collection<ProductGeneratorInformation> allMatchingProductGeneratorInformation,
             boolean issue) {
         boolean confirm = issue;
 
@@ -1528,18 +1558,134 @@ public class SessionProductManager implements ISessionProductManager {
                     productGenerationAuditor);
         }
 
-        for (ProductGeneratorInformation productGeneratorInformation : allMatchingProductGeneratorInformation) {
-            boolean continueGeneration = generate(productGeneratorInformation,
-                    issue, confirm);
-            confirm = false;
-            if (continueGeneration == false) {
-                /*
-                 * Halt product generation, the user indicated that they did not
-                 * want to issue the product(s).
-                 */
-                break;
+        synchronized (pgiMap) {
+            pgiMap.clear();
+            final AtomicInteger processed = new AtomicInteger(0);
+            for (ProductGeneratorInformation productGeneratorInformation : allMatchingProductGeneratorInformation) {
+                boolean continueGeneration = generate(
+                        productGeneratorInformation, issue, confirm);
+                confirm = false;
+                if (continueGeneration == false) {
+                    /*
+                     * Halt product generation, the user indicated that they did
+                     * not want to issue the product(s).
+                     */
+                    break;
+                }
+                processed.incrementAndGet();
+            }
+
+            if (processed.get() > 0) {
+                Job job = new Job("pgiMap") {
+
+                    @Override
+                    protected IStatus run(IProgressMonitor monitor) {
+                        synchronized (pgiMap) {
+                            while (processed.get() > 0) {
+                                try {
+                                    pgiMap.wait();
+                                    processed.decrementAndGet();
+                                } catch (InterruptedException e) {
+                                    break;
+                                }
+                            }
+                        }
+                        VizApp.runAsync(new Runnable() {
+
+                            @Override
+                            public void run() {
+                                Set<ProductGeneratorInformation> pgiSet = new HashSet<>();
+                                /*
+                                 * This assumes productGeneratorInformation
+                                 * should be issued with the highest order
+                                 * dissemination.
+                                 */
+                                for (IGeneratedProduct key : orderGeneratedProducts(new ArrayList<>(
+                                        pgiMap.keySet()))) {
+                                    ProductGeneratorInformation productGeneratorInformation = pgiMap
+                                            .get(key);
+                                    if (!pgiSet
+                                            .contains(productGeneratorInformation)) {
+                                        issue(productGeneratorInformation);
+                                        notificationSender
+                                                .postNotification(new ProductGenerated(
+                                                        productGeneratorInformation));
+                                        pgiSet.add(productGeneratorInformation);
+                                    }
+                                }
+                            }
+                        });
+                        return Status.OK_STATUS;
+                    }
+                };
+                job.schedule();
             }
         }
+    }
+
+    /**
+     * Order the generator products based on PIL dissemination order.
+     * 
+     * @param gpList
+     * @return ordered
+     */
+    private List<IGeneratedProduct> orderGeneratedProducts(
+            List<IGeneratedProduct> gpList) {
+        int gpListSize = gpList.size();
+        List<IGeneratedProduct> ordered = new ArrayList<>(gpListSize);
+        if (gpListSize == 1) {
+            ordered.addAll(gpList);
+        } else if (gpListSize > 1) {
+            List<IGeneratedProduct> unordered = new ArrayList<>(gpList);
+            String[] disseminationOrder = null;
+            StartUpConfig startUpConfig = sessionManager
+                    .getConfigurationManager().getStartUpConfig();
+
+            if (startUpConfig != null) {
+                disseminationOrder = startUpConfig.getDisseminationOrder();
+            }
+
+            if ((disseminationOrder == null)
+                    || (disseminationOrder.length == 0)) {
+                disseminationOrder = SessionProductManager.DEFAULT_DISSEMINATION_ORDER;
+            }
+
+            for (String order : disseminationOrder) {
+                Iterator<IGeneratedProduct> unorderedIter = unordered
+                        .iterator();
+                while (unorderedIter.hasNext()) {
+                    IGeneratedProduct key = unorderedIter.next();
+                    if (order.equals(key.getProductID())) {
+                        ordered.add(key);
+                        unorderedIter.remove();
+                    }
+                }
+            }
+
+            /*
+             * Found PIL's not in the dissemination order list. Report missing
+             * and add to the end of the ordered list and hope they get
+             * processed in correct order.
+             */
+            if (!unordered.isEmpty()) {
+                if (statusHandler.isPriorityEnabled(Priority.WARN)) {
+                    StringBuilder sb = new StringBuilder(
+                            "Missing following PIL's from disseminationOrder: ");
+                    Set<String> missing = new HashSet<>();
+                    for (IGeneratedProduct gp : unordered) {
+                        String pil = gp.getProductID();
+                        if (!missing.contains(pil)) {
+                            missing.add(pil);
+                            sb.append(pil).append(", ");
+                        }
+                    }
+                    sb.setLength(sb.length() - 2);
+                    statusHandler.warn(sb.toString());
+                }
+                ordered.addAll(unordered);
+            }
+        }
+        return ordered;
     }
 
     private void publishGenerationCompletion(
