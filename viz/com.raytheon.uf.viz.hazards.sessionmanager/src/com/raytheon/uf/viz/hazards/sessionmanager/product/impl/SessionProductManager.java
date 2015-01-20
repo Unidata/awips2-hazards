@@ -181,6 +181,7 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      the megawidget specifiers under the metadata key.
  * Dec 17, 2014 2826       dgilling     More order of operations fixes on product issue.
  * Jan 15, 2015 4193       rferrel      Implement dissemination ordering.
+ * Jan 20, 2015 4476       rferrel      Implement shutdown of ProductGeneration.
  * 
  * </pre>
  * 
@@ -700,9 +701,7 @@ public class SessionProductManager implements ISessionProductManager {
 
     @Override
     public void shutdown() {
-        /**
-         * Nothing to do right now.
-         */
+        productGen.shutdown();
     }
 
     /**

@@ -77,6 +77,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jun 16, 2014 3519       jsanchez     Initial creation
  * Jun 30, 2014 3512       Chris.Golden Changed to work with changes to
  *                                      ICommandInvoker.
+ * Jan 20, 2015 4476       rferrel      Implement shutdown of ProductGeneration.
  * </pre>
  * 
  * @author jsanchez
@@ -131,7 +132,7 @@ public class ProductEditor extends CaveSWTDialog {
     private boolean isCorrectable;
 
     private CTabFolder productsFolder;
-    
+
     private int buttonWidth = 0;
 
     /*
@@ -281,8 +282,8 @@ public class ProductEditor extends CaveSWTDialog {
         GridData data = new GridData(SWT.FILL, SWT.NONE, true, false);
         button.setLayoutData(data);
         button.pack();
-        
-        if(button.getSize().x < buttonWidth) {
+
+        if (button.getSize().x < buttonWidth) {
             data.widthHint = buttonWidth;
             button.setLayoutData(data);
         }
@@ -862,4 +863,11 @@ public class ProductEditor extends CaveSWTDialog {
             invokeDismiss(regenerate);
         }
     }
+
+    @Override
+    protected void disposed() {
+        productGeneration.shutdown();
+        super.disposed();
+    }
+
 }

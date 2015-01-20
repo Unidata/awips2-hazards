@@ -44,6 +44,7 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.python.concurrent.PythonJobCoordinator;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 
 /**
  * 
@@ -60,6 +61,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Nov  5, 2013 2266       jsanchez     Removed unused method and used GeneratedProductList.
  * Apr 23, 2014 1480       jsanchez     Passed correction flag to update method.
  * Oct 03, 2014 4042       Chris.Golden Added ability to get product script file path.
+ * Jan 20, 2015 4476       rferrel      Implement shutdown of PythonJobCoordinator.
  * </pre>
  * 
  * @author jsanchez
@@ -82,6 +84,15 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
 
     private final IPathManager pathManager = PathManagerFactory
             .getPathManager();
+
+    public ProductGeneration() {
+        if (statusHandler.isPriorityEnabled(Priority.DEBUG)) {
+            String c = coordinator.toString();
+            statusHandler
+                    .debug("ProductGeneration.init incrementing reference count for "
+                            + c.substring(c.lastIndexOf('.') + 1));
+        }
+    }
 
     /**
      * Generates the eventSet into different formats. The job is performed
@@ -201,6 +212,19 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
         Validate.notNull(eventSet, "'HAZARD EVENT SET' must be set");
         Validate.isTrue(!eventSet.isEmpty(), "HAZARD EVENT SET can't be empty");
         Validate.notNull(listener, "'listener' must be set.");
+    }
+
+    /**
+     * Shutdown Python Job Coordinator.
+     */
+    public void shutdown() {
+        if (statusHandler.isPriorityEnabled(Priority.DEBUG)) {
+            String c = coordinator.toString();
+            statusHandler
+                    .debug("ProductGeneration.shutdown decrementing reference count for "
+                            + c.substring(c.lastIndexOf('.') + 1));
+        }
+        coordinator.shutdown();
     }
 
 }
