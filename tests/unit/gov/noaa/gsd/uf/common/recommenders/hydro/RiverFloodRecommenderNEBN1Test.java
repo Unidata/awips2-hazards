@@ -241,12 +241,12 @@ public class RiverFloodRecommenderNEBN1Test {
                 .getHazardAttributes();
 
         assertEquals(1354952880000L, recommendation.getStartTime().getTime());
-        assertEquals(1354996080000L, recommendation.getEndTime().getTime());
+        assertEquals(2147483647000L, recommendation.getEndTime().getTime());
         assertEquals(1355292000000L, attributeMap.get("crest"));
         assertEquals(18.71, attributeMap.get("crestStage"));
         assertEquals(6.58, attributeMap.get("currentStage"));
         assertEquals(1354952880000L, attributeMap.get("riseAbove"));
-        assertEquals(0, attributeMap.get("fallBelow"));
+        assertEquals(2147483647000L, attributeMap.get("fallBelow"));
         assertEquals("ER", attributeMap.get("immediateCause"));
         assertEquals("NEBN1", attributeMap.get("pointID"));
         assertEquals(16.0, attributeMap.get("actionStage"));

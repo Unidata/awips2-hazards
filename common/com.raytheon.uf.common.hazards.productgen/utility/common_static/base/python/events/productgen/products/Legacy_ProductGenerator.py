@@ -1279,6 +1279,9 @@ class Product(ProductTemplate.Product):
         
         # Fall
         self._section.forecastFallBelowFloodStageTime_ms = self._rfp.getForecastFallBelowFloodStageTime(pointID)
+        if not self._section.forecastFallBelowFloodStageTime_ms:
+            self._section.forecastFallBelowFloodStageTime_ms = self._rfp.MISSING_VALUE
+       
         self._section.forecastFallBelowFloodStageTime_str = self._getFormattedTime(self._section.forecastFallBelowFloodStageTime_ms, timeZones=timeZones)
         self._section.stageFlowUnits = self._rfp.getStageFlowUnits(pointID)
         
@@ -1730,7 +1733,7 @@ class Product(ProductTemplate.Product):
         observedStage = self._section.observedStage
         maximumForecastStage = self._section.maximumForecastStage
         floodStage = self._section.floodStage
-        forecastCrestStage = self._section.forecastCrest
+        forecastCrestStage = self._section.forecastCrestStage
         forecastCrestTime_str = self._section.forecastCrestTime_str
         stageFlowUnits = self._section.stageFlowUnits
         maximumForecastTime_str = self._section.maximumForecastTime_str
@@ -1865,7 +1868,7 @@ class Product(ProductTemplate.Product):
                 # bulletstr: FORECAST...THE RIVER WILL CONTINUE TO FALL TO A STAGE OF <SpecFcstStg> <StgFlowUnits> BY &
                 # <SpecFcstStgTime>.
                 #
-                elif maximumForecastStage <= observedStage and stageTrend == 'falling' and \
+                elif maximumForecastStage <= observedStage and self._section.stageTrend == 'falling' and \
                     forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
                     # TODO Need SpecFcstStg and SpecFcstStgTime
                     bulletContent = ''
@@ -1876,7 +1879,7 @@ class Product(ProductTemplate.Product):
                 # ( <StgTrend> SEQ "steady" ) AND ( <FcstFallFSTime> EQ MISSING ) )
                 # bulletstr: FORECAST...THE RIVER WILL REMAIN NEAR <MaxFcstStg> <StgFlowUnits>.
                 #
-                elif maximumForecastStage <= observedStage and stageTrend == 'steady' and \
+                elif maximumForecastStage <= observedStage and self._section.stageTrend == 'steady' and \
                     forecastFallBelowFloodStageTime_ms == self._rfp.MISSING_VALUE:
                     bulletContent = riverDescription + ' will remain near ' + `maximumForecastStage` + ' ' + stageFlowUnits + '. '
                     

@@ -18,6 +18,7 @@ import com.raytheon.uf.common.hazards.hydro.HazardSettings;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastGroup;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastPoint;
 import com.raytheon.uf.common.hazards.hydro.RiverProDataManager;
+import com.raytheon.uf.common.hazards.hydro.SHEFObservation;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -268,12 +269,37 @@ public class RiverProFloodRecommender {
                     .getVirtualFallBelowTime(true);
             riverHazardEvent.setEndTime(virtualEndTime);
         } else {
-            hazardAttributes.put(HazardConstants.FALL_BELOW, 0);
-            Calendar cal = Calendar.getInstance();
-            cal.setTime(riverHazardEvent.getStartTime());
-            cal.add(Calendar.HOUR, this.riverProDataManager.getHazardSettings()
-                    .getFlwExpirationHours());
-            riverHazardEvent.setEndTime(cal.getTime());
+
+            hazardAttributes.put(HazardConstants.FALL_BELOW,
+                    HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+            hazardAttributes.put(
+                    HazardConstants.FALL_BELOW_UNTIL_FURTHER_NOTICE, true);
+            Calendar ufnCal = Calendar.getInstance();
+            ufnCal.setTimeInMillis(HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+            riverHazardEvent.setEndTime(ufnCal.getTime());
+            hazardAttributes.put(
+                    HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
+                    true);
+
+            long latestTime = 0L;
+            for (SHEFObservation fcst : riverForecastPoint
+                    .getForecastHydrograph().getShefHydroDataList()) {
+                if (fcst.getValidTime() > latestTime) {
+                    latestTime = fcst.getValidTime();
+                }
+            }
+
+            long interval = latestTime
+                    - riverHazardEvent.getStartTime().getTime();
+
+            hazardAttributes
+                    .put(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE,
+                            interval);
+
+            interval = latestTime
+                    - riverForecastPoint.getMaximumObservedForecastTime()
+                            .getTime();
+            hazardAttributes.put("hiddenFallBelowLastInterval", interval);
         }
 
         // Default to excessive rainfall.

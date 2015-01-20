@@ -650,10 +650,10 @@ class NoForecastDataOMHN1Test extends spock.lang.Specification {
         IHazardEvent recommendation = iterator.next()
         Map<String, Serializable> attributeMap = recommendation.getHazardAttributes()
 
-        recommendation.getEndTime().getTime() == 1355363415000
+        recommendation.getEndTime().getTime() == 2147483647000
         attributeMap.riseAbove == 1355320215000
         attributeMap.crest == 1355342400000
-        attributeMap.fallBelow == 0
+        attributeMap.fallBelow == 2147483647000
         recommendation.getStartTime().getTime() == 1355320215000
         attributeMap.crestStage == 33.28
         attributeMap.immediateCause == "ER"
