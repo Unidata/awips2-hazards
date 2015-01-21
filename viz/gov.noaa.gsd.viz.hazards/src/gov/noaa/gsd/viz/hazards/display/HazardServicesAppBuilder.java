@@ -80,8 +80,10 @@ import net.engio.mbassy.bus.error.IPublicationErrorHandler;
 import net.engio.mbassy.bus.error.PublicationError;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IPerspectiveDescriptor;
 import org.eclipse.ui.IPerspectiveListener4;
@@ -193,6 +195,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Dec 05, 2014 4124       Chris.Golden        Changed to work with newly parameterized config
  *                                             manager, and with ObservedSettings.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Jan 21, 2015 3795       rferrel             Use ProductGenConfirmationDlg for getUserAnswer dialog.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -533,23 +536,24 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             @Override
             public boolean getUserAnswerToQuestion(String question,
                     String[] buttonLabels) {
-                final int ISSUE_CODE = 0;
-                MessageDialog dialog = new MessageDialog(null,
-                        "Hazard Services", null, question,
-                        MessageDialog.QUESTION, buttonLabels, ISSUE_CODE)
-
-                {
-                    @Override
-                    protected void buttonPressed(int buttonId) {
-                        setReturnCode(buttonId);
-                        close();
+                String okTitle = IDialogConstants.OK_LABEL;
+                String cancelTitle = IDialogConstants.CANCEL_LABEL;
+                if (buttonLabels != null) {
+                    if (buttonLabels.length >= 1) {
+                        okTitle = buttonLabels[0];
                     }
-                };
-
-                int buttonId = dialog.open();
-                return buttonId == ISSUE_CODE;
+                    if (buttonLabels.length >= 2) {
+                        cancelTitle = buttonLabels[1];
+                    }
+                }
+                Shell shell = Display.getCurrent().getActiveShell();
+                ProductGenConfirmationDlg dialog = new ProductGenConfirmationDlg(
+                        shell, "Hazard Services", question, okTitle,
+                        cancelTitle);
+                // Assume blocking dialog.
+                Object result = dialog.open();
+                return Boolean.TRUE.equals(result);
             }
-
         };
 
         this.warner = new IWarner() {
