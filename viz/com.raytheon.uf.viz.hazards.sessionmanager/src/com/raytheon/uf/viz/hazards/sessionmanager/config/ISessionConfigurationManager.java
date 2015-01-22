@@ -61,6 +61,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Sep 16, 2014 4753       Chris.Golden Added mutable properties to event script.
  * Dec 05, 2014 4124       Chris.Golden Changed to have generic ISettings parameter,
  *                                      in support of proper use of ObservedSettings.
+ * Jan 21, 2014 3626       Chris.Golden Added method to retrieve hazard-type-first
+ *                                      recommender based upon hazard type.
  * </pre>
  * 
  * @author bsteffen
@@ -249,6 +251,18 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      *         for its end time, an empty list is returned.
      */
     public List<String> getDurationChoices(IHazardEvent event);
+
+    /**
+     * Get the recommender identifier associated with the specified hazard type
+     * for type-first hazard event creation.
+     * 
+     * @param hazardType
+     *            Type of the hazard for which the type-first recommender is
+     *            desired.
+     * @return Identifier of the associated recommender, or <code>null</code> if
+     *         there is none.
+     */
+    public String getTypeFirstRecommender(String hazardType);
 
     /**
      * Get the hazard category from the hazardCategories configuration file for

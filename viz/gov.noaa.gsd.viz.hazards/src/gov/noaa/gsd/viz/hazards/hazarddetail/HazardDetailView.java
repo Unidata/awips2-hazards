@@ -153,7 +153,8 @@ public class HazardDetailView extends
     };
 
     /**
-     * Name of the file holding the image for the alerts toolbar button icon.
+     * Name of the file holding the image for the hazard detail toolbar button
+     * icon.
      */
     private static final String HAZARD_DETAIL_TOOLBAR_IMAGE_FILE_NAME = "hazardInfo.png";
 

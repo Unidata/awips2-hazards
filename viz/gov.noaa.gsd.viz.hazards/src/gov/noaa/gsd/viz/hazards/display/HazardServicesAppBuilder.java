@@ -45,6 +45,8 @@ import gov.noaa.gsd.viz.hazards.display.test.AutomatedTests;
 import gov.noaa.gsd.viz.hazards.display.test.product_generators.ProductGenerationTests;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailView;
+import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstPresenter;
+import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstView;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.producteditor.ProductEditorPresenter;
 import gov.noaa.gsd.viz.hazards.producteditor.ProductEditorView;
@@ -194,8 +196,10 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             product-specific information using megawidgets).
  * Dec 05, 2014 4124       Chris.Golden        Changed to work with newly parameterized config
  *                                             manager, and with ObservedSettings.
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Dec 13, 2014 4959       Dan Schaffer        Spatial Display cleanup and other bug fixes
  * Jan 21, 2015 3795       rferrel             Use ProductGenConfirmationDlg for getUserAnswer dialog.
+ * Jan 21, 2014 3626       Chris.Golden        Added use of new hazard-type-first presenter and
+ *                                             view.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -303,8 +307,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     /**
      * Spatial presenter.
      */
-
     private SpatialPresenter spatialPresenter = null;
+
+    /**
+     * Hazard type first presenter.
+     */
+    private HazardTypeFirstPresenter hazardTypeFirstPresenter = null;
 
     /**
      * Product staging presenter.
@@ -666,6 +674,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         // Create the hazard detail view.
         createHazardDetailDisplay(loadedFromBundle);
 
+        createHazardTypeFirstDisplay();
+
         createAlertsConfigDisplay();
 
         createAlertVizPresenter();
@@ -742,6 +752,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         contributors.add((SettingsView) settingsPresenter.getView());
         contributors.add((ToolsView) toolsPresenter.getView());
         contributors.add((HazardDetailView) hazardDetailPresenter.getView());
+        contributors.add((HazardTypeFirstView) hazardTypeFirstPresenter
+                .getView());
         contributors.add((AlertsConfigView) alertsConfigPresenter.getView());
         contributors.add((SpatialView) spatialPresenter.getView());
         contributors.add(consoleView);
@@ -880,6 +892,21 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             spatialPresenter.getView().dispose();
         }
         spatialPresenter.setView(spatialView);
+    }
+
+    /**
+     * Create the hazard type first view and presenter.
+     */
+    private void createHazardTypeFirstDisplay() {
+        HazardTypeFirstView hazardTypeFirstView = new HazardTypeFirstView();
+        if (hazardTypeFirstPresenter == null) {
+            hazardTypeFirstPresenter = new HazardTypeFirstPresenter(
+                    sessionManager, eventBus);
+            presenters.add(hazardTypeFirstPresenter);
+        } else {
+            hazardTypeFirstPresenter.getView().dispose();
+        }
+        hazardTypeFirstPresenter.setView(hazardTypeFirstView);
     }
 
     /**
@@ -1348,6 +1375,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     public ConsolePresenter getConsolePresenter() {
         return consolePresenter;
+    }
+
+    public HazardTypeFirstPresenter getHazardTypeFirstPresenter() {
+        return hazardTypeFirstPresenter;
     }
 
     public ProductStagingPresenter getProductStagingPresenter() {

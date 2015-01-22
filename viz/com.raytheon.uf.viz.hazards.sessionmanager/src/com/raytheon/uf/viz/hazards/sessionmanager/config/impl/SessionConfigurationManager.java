@@ -155,6 +155,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      a scrollable megawidget.
  * Dec 05, 2014  4124      Chris.Golden Changed to work with parameterized interface that it
  *                                      implements, and to use ObservedSetttings.
+ * Jan 21, 2014 3626       Chris.Golden Added method to retrieve hazard-type-first recommender
+ *                                      based upon hazard type.
  * </pre>
  * 
  * @author bsteffen
@@ -267,6 +269,8 @@ public class SessionConfigurationManager implements
             .newInstance(new ConfigScriptFactory());
 
     private Map<String, ImmutableList<String>> durationChoicesForHazardTypes;
+
+    private Map<String, String> typeFirstRecommendersForHazardTypes;
 
     SessionConfigurationManager() {
 
@@ -925,6 +929,29 @@ public class SessionConfigurationManager implements
         return durationChoicesForHazardTypes.get(HazardEventUtilities
                 .getHazardType(event.getPhenomenon(), event.getSignificance(),
                         event.getSubType()));
+    }
+
+    @Override
+    public String getTypeFirstRecommender(String hazardType) {
+
+        /*
+         * If the type-first recommenders for hazard types map has not yet been
+         * initialized, do so now.
+         */
+        if (typeFirstRecommendersForHazardTypes == null) {
+            typeFirstRecommendersForHazardTypes = new HashMap<>();
+            for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
+                    .getConfig().entrySet()) {
+                String recommender = entry.getValue()
+                        .getHazardTypeFirstRecommender();
+                if ((recommender != null) && (recommender.isEmpty() == false)) {
+                    typeFirstRecommendersForHazardTypes.put(entry.getKey(),
+                            recommender);
+                }
+            }
+        }
+
+        return typeFirstRecommendersForHazardTypes.get(hazardType);
     }
 
     @Override

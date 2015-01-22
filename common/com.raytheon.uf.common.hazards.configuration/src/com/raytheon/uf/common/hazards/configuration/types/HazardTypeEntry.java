@@ -44,7 +44,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Apr 28, 2014 3556       bkowal      Relocate to a common plugin.
  * Jul 03, 2014 3512       Chris.Golden Added durationChoiceList
  *                                      field.
- * 
+ * Jan 21, 2015 3626       Chris.Golden Added hazard-type-first
+ *                                      recommender field.
  * </pre>
  * 
  * @author bsteffen
@@ -69,6 +70,8 @@ public class HazardTypeEntry {
     private String hazardHatchLabel;
 
     private String hazardClipArea;
+
+    private String hazardTypeFirstRecommender;
 
     private boolean inclusionTest;
 
@@ -185,6 +188,21 @@ public class HazardTypeEntry {
      */
     public void setHazardClipArea(String hazardClipArea) {
         this.hazardClipArea = hazardClipArea;
+    }
+
+    /**
+     * @return the hazardTypeFirstRecommender
+     */
+    public String getHazardTypeFirstRecommender() {
+        return hazardTypeFirstRecommender;
+    }
+
+    /**
+     * @param hazardTypeFirstRecommender
+     *            The hazard-type-first recommender.
+     */
+    public void setHazardTypeFirstRecommender(String hazardTypeFirstRecommender) {
+        this.hazardTypeFirstRecommender = hazardTypeFirstRecommender;
     }
 
     /**
