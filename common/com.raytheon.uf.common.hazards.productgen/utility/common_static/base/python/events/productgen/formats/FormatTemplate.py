@@ -28,10 +28,12 @@
 #    ------------    ----------    -----------    --------------------------
 #    02/18/13                      jsanchez       Initial Creation.
 #    12/11/13        2266          jsanchez       Added abstract method formatFrom.
+#    01/19/2015      5109          bphillip       Added _getEditableParts method
 #
 #
 
 import abc
+from ProductPartTable import ProductPartTable
 
 class Formatter(object):
     __metaclass__ = abc.ABCMeta
@@ -47,5 +49,12 @@ class Formatter(object):
         @return: Abstract method does not return anything
         """
         return
+    
+    def _getEditableParts(self, productDict):
+        productPartTable = ProductPartTable()
+        editableParts = productPartTable.EditableProductParts.get(productDict['productID'], productPartTable.DefaultEditableProductParts)
+        if editableParts is None:
+            editableParts = productPartTable.DefaultEditableProductParts
+        return editableParts
 
         

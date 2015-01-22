@@ -62,6 +62,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Mar 19, 2014 3293       bkowal       Code cleanup.
  * Sep 23, 2014 3790       Robert.Blum  Updated the inventory and reloaded
  *                                      the module on update.
+ * 1/15/2015    5109       bphillip		Changes to accomodate running generators and formatters separately
  * 
  * </pre>
  * 
@@ -80,6 +81,10 @@ public class ProductScript extends PythonScriptController {
 
     private static final String GET_DIALOG_INFO = "getDialogInfo";
 
+    private static final String DATA_LIST = "dataList";
+
+    private static final String PREV_DATA_LIST = "prevDataList";
+
     /** Class name in the python modules */
     private static final String PYTHON_CLASS = "Product";
 
@@ -90,14 +95,15 @@ public class ProductScript extends PythonScriptController {
 
     private static final String FORMATS = "formats";
 
-    private static final String DATA_LIST = "dataList";
+    private static final String GENERATED_PRODUCT = "generatedProductList";
 
-    private static final String PREV_DATA_LIST = "prevDataList";
+    /** Method in ProductInterface.py for executing the generators */
+    private static final String GENERATOR_METHOD = "executeGenerator";
 
-    /** Executing method in the python module */
-    private static final String METHOD_NAME = "execute";
+    private static final String GENERATOR_UPDATE_METHOD = "executeGeneratorFrom";
 
-    private static final String UPDATE_METHOD = "executeFrom";
+    /** Method in ProductInterface.py for executing the formatters */
+    private static final String FORMATTER_METHOD = "executeFormatter";
 
     private static final String PRODUCTS_DIRECTORY = "productgen/products";
 
@@ -165,16 +171,19 @@ public class ProductScript extends PythonScriptController {
      * Generates a list of IGeneratedProducts from the eventSet
      * 
      * @param product
+     *            Product ID of the product type being generated
      * @param eventSet
-     * @param dailogVaues
+     *            The set of events used by the generator to create the product
+     * @param dialogValues
+     *            The values extracted from the dialog, if any
      * @param formats
-     *            an array of the formats the IGeneratedProduct should be in
-     *            (i.e. XML)
-     * @return
+     *            Optional array of formatters to be run after the generator
+     * @return GeneratedProductList object containing all products produced by
+     *         the generator
      */
     public GeneratedProductList generateProduct(String product,
             EventSet<IEvent> eventSet, Map<String, Serializable> dialogValues,
-            String[] formats) {
+            String... formats) {
 
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(product));
@@ -187,8 +196,13 @@ public class ProductScript extends PythonScriptController {
                 return new GeneratedProductList();
             }
 
-            retVal = (GeneratedProductList) execute(METHOD_NAME, INTERFACE,
-                    args);
+            // Run the generator and formatters
+            retVal = formatProduct(
+                    product,
+                    formats,
+                    (GeneratedProductList) execute(GENERATOR_METHOD, INTERFACE,
+                            args));
+
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
                     "Unable to execute product generator", e);
@@ -223,14 +237,66 @@ public class ProductScript extends PythonScriptController {
                 return new GeneratedProductList();
             }
 
-            retVal = (GeneratedProductList) execute(UPDATE_METHOD, INTERFACE,
-                    args);
+            retVal = formatProduct(
+                    product,
+                    formats,
+                    (GeneratedProductList) execute(GENERATOR_UPDATE_METHOD,
+                            INTERFACE, args));
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
                     "Unable to update the generated products", e);
         }
 
         return retVal;
+    }
+
+    private GeneratedProductList formatProduct(String product,
+            String[] formats, GeneratedProductList retVal) {
+        Map<String, Object> args = new HashMap<String, Object>(
+                getStarterMap(product));
+
+        try {
+            if (formats != null && formats.length > 0) {
+                args = new HashMap<String, Object>(getStarterMap(product));
+                args.put(GENERATED_PRODUCT, retVal);
+                args.put(FORMATS, Arrays.asList(formats));
+                retVal = (GeneratedProductList) execute(FORMATTER_METHOD,
+                        INTERFACE, args);
+            }
+        } catch (JepException e) {
+            statusHandler.handle(Priority.ERROR,
+                    "Unable to execute product formatter", e);
+        }
+        return retVal;
+    }
+
+    /**
+     * Updates generated products. This method does not regenerate the products.
+     * 
+     * @param product
+     * @param prevProduct
+     * @param formats
+     * @return
+     */
+    public GeneratedProductList formatProducts(GeneratedProductList product,
+            GeneratedProductList prevProduct, String[] formats) {
+
+        Map<String, Object> args = new HashMap<String, Object>(
+                getStarterMap(product.getProductInfo()));
+        try {
+            if (this.verifyProductGeneratorIsLoaded(product.getProductInfo()) == false) {
+                return new GeneratedProductList();
+            }
+            args.put(GENERATED_PRODUCT, product);
+            args.put(FORMATS, Arrays.asList(formats));
+            execute(FORMATTER_METHOD, INTERFACE, args);
+
+        } catch (JepException e) {
+            statusHandler.handle(Priority.ERROR,
+                    "Unable to update the generated products", e);
+        }
+
+        return product;
     }
 
     /**

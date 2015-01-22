@@ -35,6 +35,7 @@
 #    01/20/14        2766          bkowal         Updated to use the Python Overrider
 #    10/10/14        3790          Robert.Blum    Reverted to use the RollbackMasterInterface.
 #    10/24/14        4934          mpduff         Additional metadata actions.
+#    01/15/15        5109          bphillip       Separated generated and formatter execution
 # 
 #
 import RollbackMasterInterface
@@ -70,7 +71,7 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
             "com.raytheon.uf.common.hazards.productgen", "ProductInterface", level=logging.INFO))
         self.logger.setLevel(logging.INFO)
 
-    def execute(self, moduleName, className, **kwargs):
+    def executeGenerator(self, moduleName, className, **kwargs):
         javaDialogInput = kwargs['dialogInputMap']
         if javaDialogInput is not None :
             kwargs['dialogInputMap'] = JUtil.javaObjToPyVal(javaDialogInput)
@@ -86,14 +87,14 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
         kwargs.pop('eventSet')
         kwargs.pop('dialogInputMap')
 
-        genProdList = self.executeFrom(moduleName, className, **kwargs)
+        genProdList = self.executeGeneratorFrom(moduleName, className, **kwargs)
         
         javaEventSet = EventSet()
         javaEventSet.addAll(JUtil.pyValToJavaObj(events))
         genProdList.setEventSet(javaEventSet)
         return genProdList
 
-    def executeFrom(self, moduleName, className, **kwargs):
+    def executeGeneratorFrom(self, moduleName, className, **kwargs):
         genProdList = GeneratedProductList()
         
         dataList = kwargs['dataList']
@@ -121,14 +122,75 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
         formats = kwargs.pop('formats')
 
         # call executeFrom from product generator
-        dataList = self.runMethod(moduleName, className, 'executeFrom', **kwargs)
-
-        formats = JUtil.javaObjToPyVal(formats)   
+        dataList = self.runMethod(moduleName, className, 'executeFrom', **kwargs)  
           
         genProdList.setProductInfo(moduleName)
-        genProdList.addAll(self.format(dataList, formats))
-        
+        genProdList.addAll(self.createProductsFromDictionary(dataList))
         return genProdList
+    
+    def executeFormatter(self, moduleName, className, **kwargs):
+        
+        generatedProductList = kwargs['generatedProductList']
+        formats = JUtil.javaObjToPyVal( kwargs['formats'])
+        eventSet =  PythonEventSet(generatedProductList.getEventSet())
+        productInfo = generatedProductList.getProductInfo()
+        
+        # Loop over each product that has been generated and format them
+        for i in range(generatedProductList.size()):
+            self.formatProduct(generatedProductList.get(i),formats, eventSet, productInfo)
+
+        return generatedProductList
+      
+    def formatProduct(self, generatedProduct, formats, eventSet, productInfo):
+        # Retrieve the product's data to pass to the formatter
+        productData = JUtil.javaObjToPyVal(generatedProduct.getData())
+        
+        data = self.keyInfoDictToPythonDict(productData)
+        
+        if isinstance(data, OrderedDict): 
+        
+            instance = getattr(importlib.import_module(productInfo), 'Product')()
+        
+            # Dictionary containing the formatted products
+            productDict = {}
+            editables = {}
+            for format in formats:
+                try:
+                    module = importlib.import_module(format) 
+                    instance = getattr(module, 'Format')()
+                    result = instance.execute(data)
+                    productDict[format] = result[0]
+                    editables[format] = result[1]
+        
+                except Exception, e:
+                    productDict[format] = ['Failed to execute ' + format + '. Make sure it exists. Check log for errors. ']
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    print traceback.format_exc(limit=20)
+                    os.sys.__stdout__.flush()
+
+            # TODO Use JUtil.pyValToJavaObj() when JUtil.pyDictToJavaMap() is fully resolved
+            generatedProduct.setEntries(JUtil.pyDictToJavaMap(productDict))
+            generatedProduct.setEditableEntries(JUtil.pyDictToJavaMap(editables))   
+
+    def createProductsFromDictionary(self, dataList):
+        generatedProductList = ArrayList()
+        
+        for data in dataList:
+            if isinstance(data, OrderedDict):
+                if 'productID' in data:
+                    productID = data.get('productID')
+                else:
+                    wmoHeader = data.get('wmoHeader') 
+                    if wmoHeader:
+                        productID = wmoHeader.get('productID')
+                  
+                generatedProduct = GeneratedProduct(productID)
+                generatedProduct.setData(JUtil.pyValToJavaObj(self.pyDictToKeyInfoDict(data)));
+            else:
+                generatedProduct = GeneratedProduct(None)
+            generatedProductList.add(generatedProduct)
+
+        return generatedProductList
     
     def getDialogInfo(self, moduleName, className, **kwargs):
         """
@@ -146,57 +208,6 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
         """
         val = self.runMethod(moduleName, className, 'defineScriptMetadata', **kwargs)
         return JUtil.pyValToJavaObj(val)
-    
-    def format(self, dataList, formats):
-        """
-        Returns the list of dictionaries of the data in different formats.
-        @param dataList: list of dictionaries
-        @param formats: list of formats
-        @param eventDicts: list of hazard event dictionaries
-        @return: Returns a Hazard Event Set with a list of GeneratedProducts.
-        """
-        generatedProductList = ArrayList()
-        
-        for data in dataList:
-            if isinstance(data, OrderedDict):
-                if 'productID' in data:
-                    productID = data.get('productID')
-                else:
-                    wmoHeader = data.get('wmoHeader') 
-                    if wmoHeader:
-                        productID = wmoHeader.get('productID')
-                  
-                generatedProduct = GeneratedProduct(productID)
-                productDict = {}
-                editables = {}
-                for format in formats:
-                    try:
-                        module = importlib.import_module(format) 
-                        instance = getattr(module, 'Format')()
-                        result = instance.execute(data)
-                        if type(result) is list:
-                            product = result
-                        else:
-                            product = [result] 
-                        productDict[format] = product
-
-                    except Exception, e:
-                        productDict[format] = ['Failed to execute ' + format + '. Make sure it exists. Check console for errors. ']
-                        #self.logger.exception("An Exception Occurred" + traceback.format_exc(limit=20))
-                        exc_type, exc_value, exc_traceback = sys.exc_info()
-                        print traceback.format_exc(limit=20)
-                        #traceback.print_tb(exc_traceback, limit=20)
-                        os.sys.__stdout__.flush()
-                # TODO Use JUtil.pyValToJavaObj() when JUtil.pyDictToJavaMap() is fully resolved
-                generatedProduct.setEntries(JUtil.pyDictToJavaMap(productDict))          
-                #generatedProduct.setEditableEntries(JUtil.pyDictToJavaMap(editables))
-                generatedProduct.setData(JUtil.pyValToJavaObj(self.pyDictToKeyInfoDict(data)));
-            else:
-                generatedProduct = GeneratedProduct(None)
-                generatedProduct.setErrors('Can not format data. Not a python dictionary ')
-            generatedProductList.add(generatedProduct)
-
-        return generatedProductList
     
     def pyDictToKeyInfoDict(self, data):
         if isinstance(data, OrderedDict):

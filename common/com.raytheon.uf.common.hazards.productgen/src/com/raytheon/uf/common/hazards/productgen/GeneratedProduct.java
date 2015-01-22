@@ -41,6 +41,7 @@ import java.util.Map.Entry;
  * Sep 19, 2013 2046       mnash        Update for product generation.
  * Nov  5, 2013 2266       jsanchez     Created getter/setters for eventSet. Added editableEntries.
  * Feb 18, 2013 2702       jsanchez     Used Serializable.
+ * 1/15/2015    5109       bphillip     Changed type on editableEntries field
  * 
  * </pre>
  * 
@@ -54,8 +55,8 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
     /** Resulting products generated */
     private Map<String, List<Serializable>> entries = new LinkedHashMap<String, List<Serializable>>();
 
-    /* Map of editable entries - mainly used for GUI highlighting */
-    private Map<String, List<LinkedHashMap<String, Serializable>>> editableEntries = new LinkedHashMap<String, List<LinkedHashMap<String, Serializable>>>();
+    /** Map of editable entries - mainly used for GUI highlighting */
+    private Map<String, LinkedHashMap<String, Serializable>> editableEntries = new LinkedHashMap<String, LinkedHashMap<String, Serializable>>();
 
     private LinkedHashMap<KeyInfo, Serializable> data;
 
@@ -80,10 +81,12 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
             KeyInfo key = entry.getKey();
             Serializable value = entry.getValue();
             if (value instanceof Map) {
-                data.put(key,
+                data.put(
+                        key,
                         deepCopyHashMap((LinkedHashMap<KeyInfo, Serializable>) value));
             } else if (value instanceof List) {
-                data.put(key, deepCopyArrayList((ArrayList<Serializable>) value));
+                data.put(key,
+                        deepCopyArrayList((ArrayList<Serializable>) value));
             } else {
                 data.put(key, value);
             }
@@ -92,7 +95,8 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
         return data;
     }
 
-    private ArrayList<Serializable> deepCopyArrayList(ArrayList<Serializable> list) {
+    private ArrayList<Serializable> deepCopyArrayList(
+            ArrayList<Serializable> list) {
         ArrayList<Serializable> data = new ArrayList<Serializable>();
         for (Serializable item : list) {
             if (item instanceof Map) {
@@ -151,12 +155,12 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
         return null;
     }
 
-    public Map<String, List<LinkedHashMap<String, Serializable>>> getEditableEntries() {
+    public Map<String, LinkedHashMap<String, Serializable>> getEditableEntries() {
         return editableEntries;
     }
 
     public void setEditableEntries(
-            Map<String, List<LinkedHashMap<String, Serializable>>> editableEntries) {
+            Map<String, LinkedHashMap<String, Serializable>> editableEntries) {
         this.editableEntries = editableEntries;
     }
 

@@ -38,6 +38,7 @@ import java.util.Map;
  * Aug 20, 2013 1360       blawrenc     Added methods to set/get event set
  * Nov  5, 2013 2266       jsanchez     Removed getter/setter for event set.
  * Feb 18, 2014 2702       jsanchez     Used Serializable.
+ * 1/15/2015    5109       bphillip     Changed type on editableEntries field
  * </pre>
  * 
  * @author jsanchez
@@ -52,8 +53,10 @@ public interface IGeneratedProduct {
     public Map<String, List<Serializable>> getEntries();
 
     public void setEntries(Map<String, List<Serializable>> entries);
+    
+    public void setEditableEntries(Map<String, LinkedHashMap<String, Serializable>> editableEntries);
 
-    public Map<String, List<LinkedHashMap<String, Serializable>>> getEditableEntries();
+    public Map<String, LinkedHashMap<String, Serializable>> getEditableEntries();
 
     public LinkedHashMap<KeyInfo, Serializable> getData();
 

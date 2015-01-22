@@ -29,6 +29,7 @@
 #    03/14/13                      jsanchez       Initial Creation.
 #    07/08/13        784,1290      Tracy.L.Hansen Added ProductParts and changes for ESF product generator
 #    12/11/13        2266          jsanchez       Used ProductUtil to format text. Added Editable to track editable entries.
+#    01/15/15        5109          bphillip       Editable parts are returned along with formatted text
 #
 import FormatTemplate
 from time import gmtime, strftime
@@ -48,11 +49,13 @@ class Format(FormatTemplate.Formatter):
         from TextProductCommon import TextProductCommon
         self._tpc = TextProductCommon()        
         self.productDict = productDict
+        self._editableProductParts = self._getEditableParts(productDict)
+        self._editableParts = {}
         productParts = self._tpc.getVal(productDict, 'productParts', [])
         text = self._processProductParts(productDict, productParts.get('partsList'))
-        printText = text.replace('\n','CR\n')
         text = self._tpc.endline(text)
-        return str(text) 
+        text = text.upper()
+        return [[str(text)], self._editableParts]
     
     def _printDebugProductParts(self):   
         # IF True will print the product parts and associated text during execution
@@ -140,6 +143,10 @@ class Format(FormatTemplate.Formatter):
                     print partText
                 
             text += partText
+            
+            if part in self._editableProductParts:
+                self._editableParts[part] = partText
+                
         return text
         
     def processWmoHeader(self, wmoHeader):

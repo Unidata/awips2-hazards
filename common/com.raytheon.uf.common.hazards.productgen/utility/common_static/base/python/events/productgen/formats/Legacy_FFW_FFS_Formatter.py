@@ -12,7 +12,7 @@
 '''
 
 
-import datetime
+import datetime, collections
 
 import types, re, sys
 from com.raytheon.uf.common.hazards.productgen import ProductUtils
@@ -61,13 +61,14 @@ class Format(Legacy_Hydro_Formatter.Format):
         self.productDict = productDict
         self.initialize()
 
+        self._editableProductParts = self._getEditableParts(productDict)
+        self._editableParts = {}
         legacyText = self._createTextProduct()
-
-        return ProductUtils.wrapLegacy(legacyText)
+        return [[ProductUtils.wrapLegacy(legacyText)],self._editableParts]
 
     def _processProductParts(self, productDict, productParts, skipParts=[]):
         text = ''
-        if type(productParts) is types.DictType:
+        if type(productParts) is collections.OrderedDict:
             arguments = productParts.get('arguments')
             partsList = productParts.get('partsList')
         else:
@@ -105,7 +106,11 @@ class Format(Legacy_Hydro_Formatter.Format):
                 if name not in ['segments', 'sections']:
                     print partText
 
-            text += partText
+            if partText is not None:
+                text += partText
+                if part in self._editableProductParts:
+                    self._editableParts[part] = partText
+                    
         return text
 
     ######################################################
