@@ -23,6 +23,9 @@
  ------------ ---------- ----------- --------------------------
  Jan 25, 2014  2394      blawrenc     Initial Coding
  May 1, 2014   3581      bkowal       Updated to use common hazards hydro
+ Jan 12, 2015  4937      Robert.Blum  Moved constant outside of the RFP class
+                                      so that the class does not have to be instantiated
+                                      to access the constant.
 '''
 from com.raytheon.uf.common.hazards.hydro import RiverProDataManager
 from sets import Set
@@ -46,9 +49,11 @@ RECORD = 'RECORD'
 PE_H = 'H'
 PE_Q = 'Q'
 
+Missing_Value_Constant = -9999
+
 class RiverForecastPoints(object):
     
-    MISSING_VALUE = -9999
+    MISSING_VALUE = Missing_Value_Constant
     MISSING_SHEF_QUALITY_CODE = 'Z'
 
     RIVERSTAT_PRIMARY_PE_FIELD_POSITION = 1

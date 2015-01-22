@@ -48,7 +48,7 @@ class MetaData(CommonMetaData.MetaData):
         return [
             self.generalMinorFlooding(),
             self.smallStreams(),
-            self.urbanAreas(),
+            self.urbanAreasSmallStreams(),
             self.arroyoSmallStreams(),
             self.hydrologic(),
             ]
@@ -70,52 +70,47 @@ class MetaData(CommonMetaData.MetaData):
     def noSpecificFlooding(self):
                 return {"identifier":"noSpecificFlooding",
                         "displayString": "None",
-                        "productString":"TBD - What should this be?",
+                        "productString":"",
                  }
                  
     def rapidRiverRises(self):
                 return {"identifier":"rapidRiverRises",
                         "displayString": "Rapid River Rises",
-                        "productString":"For Rapid River Rises",
+                        "productString":"rapid rises",
                  }
                 
     def poorDrainage(self):
                 return {"identifier":"poorDrainage",
                         "displayString": "Minor Flooding Of Poor Drainage",
-                        "productString":"Minor Flooding in Poor Drainage Areas",
+                        "productString":"poor drainage areas",
                  }
         
     def generalMinorFlooding(self):
                 return {"identifier":"generalMinorFlooding",
                         "displayString": "General (minor flooding)",
-                        "productString":"General Minor Flooding "
+                        "productString":""
                  }
                 
     def smallStreams(self):
         return {"identifier":"smallStreams",
                 "displayString": "Small streams",
-                "productString":"Small Stream Flooding "
+                "productString":"Small streams"
                  }
-        
-    def urbanAreas(self):
-        return {"identifier":"urbanAreas",
-                  "displayString": "Urban areas and small streams",
-                  "productString":"Urban and Small Stream "
-                  }
+
     def urbanAreasSmallStreams(self):
         return  {"identifier":"urbanAreasSmallStreams",
                  "displayString": "Urban areas and small streams",
-                 "productString":"Urban and Small Stream Flooding "
+                 "productString":"Urban areas and small streams"
                  }
     def arroyoSmallStreams(self):
         return {"identifier":"arroyoSmallStreams",
                 "displayString": "Arroyo and small streams",
-                "productString":"Arroyo and Small Stream Flooding "
+                "productString":"Arroyo and small streams"
                  }
     def hydrologic(self):
         return {"identifier":"hydrologic", 
                 "displayString": "Hydrologic flooding",
-                  "productString":"Hydrologic Flooding "
+                  "productString":"Hydrologic"
                   }
         
     def immediateCauseChoices(self):

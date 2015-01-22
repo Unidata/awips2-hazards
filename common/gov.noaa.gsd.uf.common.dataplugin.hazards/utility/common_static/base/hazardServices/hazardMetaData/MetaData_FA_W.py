@@ -9,10 +9,15 @@ class MetaData(CommonMetaData.MetaData):
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
         if self.hazardStatus == "ending":
-            metaData = [
-                        self.getEndingOption(),
-                        self.getEndingSynopsis(),
-                        ]
+            # FA.W point hazards do not have the endingSynopsis productPart
+            # Removing the metaData for it so it does not show up in the HID.
+            if hazardEvent.get('geoType', '') == 'area':
+                metaData = [
+                            self.getEndingOption(),
+                            self.getEndingSynopsis(),
+                            ]
+            else:
+                metaData = []
         else:
             metaData = [
                     self.getWarningType(),
@@ -53,17 +58,17 @@ class MetaData(CommonMetaData.MetaData):
     def genericFloodWarning(self):
                 return {"identifier":"genericFloodWarning",
                         "displayString": "Flood warning: generic",
-                        "productString":"Flood Warning"
+                        "productString":""
                  }
                 
     def smallStreamsWarning(self):
                 return {"identifier":"smallStreamsWarning","displayString": "Flood warning for small streams",
-                        "productString":"Flood Warning For Small Streams"
+                        "productString":"Small Streams"
                  }
     def urbanSmallStreamsWarning(self):
                 return {"identifier":"urbanSmallStreamsWarning",
                         "displayString": "Flood warning for urban areas and small streams",
-                        "productString":"Flood Warning For Urban"
+                        "productString":"Urban areas and small streams"
                  }
         
     def immediateCauseChoices(self):

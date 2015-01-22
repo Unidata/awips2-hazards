@@ -9,7 +9,7 @@ ProductGeneratorTable = {
             "previewFormatters": ["Legacy"],
             "issueFormatters": ["Legacy"], 
             },
-        "FLW_FLS_ProductGenerator" : {
+        "FLW_FLS_ProductGenerator_v3" : {
             "allowedHazards": [
              ('FA.W', "Flood1"),
              ('FA.Y', "Flood2"),
@@ -17,18 +17,9 @@ ProductGeneratorTable = {
              ('FL.Y', "Flood4"),
              ('HY.S', "Flood5"),
             ],
-            "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy"],  
+            "previewFormatters": ["Legacy_FLW_FLS_Formatter"],
+            "issueFormatters": ["Legacy_FLW_FLS_Formatter"],  
             },
-#         "FFW_FFS_ProductGenerator" : {
-#             "allowedHazards": [
-#              ('FF.W.Convective',     "Flood"),
-#              ('FF.W.NonConvective',  "Flood"),
-#              ('FF.W.BurnScar',  "Flood"),
-#              ],
-#             "previewFormatters": ["Legacy"],
-#             "issueFormatters": ["Legacy"],
-#             },
         "FFW_FFS_ProductGenerator_v3" : {
             "allowedHazards": [
              ('FF.W.Convective',     "Flood"),
@@ -40,25 +31,11 @@ ProductGeneratorTable = {
             },
         "ESF_ProductGenerator": {
             "allowedHazards": [
-             ('HY.O',     "Flood"),           
+             ('HY.O',     "Flood"),
              ],
             "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy"],   
-            },           
-#         "FFW_FFS_Convective_ProductGenerator" : {
-#             "allowedHazards": [
-#              ('FF.W.Convective',     "Flood"),
-#              ],
-#            "previewFormatters": ["Legacy", "XML", "CAP"],
-#            "issueFormatters": ["Legacy", "XML", "CAP"],
-#              },
-#         "FFW_FFS_NonConvective_ProductGenerator" : {
-#             "allowedHazards": [
-#              ('FF.W.NonConvective',  "Flood"),             
-#              ],
-#            "previewFormatters": ["Legacy", "XML", "CAP"],
-#            "issueFormatters": ["Legacy", "XML", "CAP"],   
-#             },
+            "issueFormatters": ["Legacy"],
+            },
         "WSW_ProductGenerator" : {
             "allowedHazards": [
             ('BZ.W', 'WinterWx'),     # BLIZZARD WARNING
