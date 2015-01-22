@@ -146,7 +146,7 @@ class Format(Legacy_Base_Formatter.Format):
             elif observedStage < floodStage:
                 if maximumForecastStage == floodStage:
                     bulletContent = riverDescription + ' is expected to rise to near flood stage by '+ maximumForecastTime_str
-                elif forecastCrest > floodStage and forecastFallBelowFloodStageTime_ms == self._rfp.MISSING:
+                elif forecastCrest > floodStage and forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
                     bulletContent = 'rise above flood stage by '+ forecastRiseAboveFloodStageTime_str + \
                         ' and continue to rise to near ' + `forecastCrest` + ' '+stageFlowUnits + ' by '+ forecastCrestTime_str+'. '
                 elif maximumForecastStage > floodStage and forecastCrest == self.MISSING_VALUE and +\
