@@ -14,7 +14,7 @@
                 <constraint constraintValue="practicewarning" constraintType="IN"/>
             </mapping>
             <mapping key="phensig">
-                <constraint constraintValue="FA.W,FA.Y,FL.W,FL.Y,FL.A,HY.S,HY.O" constraintType="IN"/>
+                <constraint constraintValue="FL.W,FL.Y,FL.A,HY.S,HY.O" constraintType="IN"/>
             </mapping>
         </metadataMap>
     </pluginNotification>

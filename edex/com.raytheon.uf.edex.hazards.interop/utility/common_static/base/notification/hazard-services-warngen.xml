@@ -8,7 +8,7 @@
                 <constraint constraintValue="practicewarning" constraintType="IN"/>
             </mapping>
             <mapping key="phensig">
-                <constraint constraintValue="FF.W" constraintType="EQUALS"/>
+                <constraint constraintValue="FF.W,FA.W,FA.Y" constraintType="IN"/>
             </mapping>
         </metadataMap>
     </pluginNotification>
