@@ -169,7 +169,7 @@ class Format(Legacy_Base_Formatter.Format):
                 elif forecastCrest > observedStage and forecastFallBelowFloodStageTime_ms != self.MISSING_VALUE and \
                     forecastCrest > observedStage:
                     bulletContent = riverDescription + ' will continue rising to near '+`forecastCrest`+' '+stageFlowUnits+' by '+\
-                       forecastFallBelowFloodStageTime_ms+'. ' 
+                       forecastFallBelowFloodStageTime_str+'. ' 
                 elif maximumForecastStage <= observedStage and stageTrend == 'falling' and \
                     forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
                     # TODO Need SpecFcstStg and SpecFcstStgTime
