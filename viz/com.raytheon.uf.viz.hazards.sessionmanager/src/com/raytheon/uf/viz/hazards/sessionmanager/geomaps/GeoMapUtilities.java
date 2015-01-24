@@ -17,9 +17,13 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.hazards.sessionmanager.hatching;
+package com.raytheon.uf.viz.hazards.sessionmanager.geomaps;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTAINED_UGCS;
+
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -33,15 +37,26 @@ import com.raytheon.uf.common.dataaccess.IDataRequest;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataaccess.impl.DefaultGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IugcToMapGeometryDataBuilder;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.CountyUGCBuilder;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.FireWXZoneUGCBuilder;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.MarineZoneUGCBuilder;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.NullUGCBuilder;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.OffshoreZoneUGCBuilder;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.ZoneUGCBuilder;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.TopologyException;
 
 /**
- * Misc functionality for building the hatched areas associated with a hazard
+ * Misc functionality for building the UGC information associated with a hazard
  * event.
  * 
  * <pre>
@@ -62,13 +77,21 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Dec 05, 2014 2124       Chris.Golden Changed to work with parameterized
  *                                      config manager.
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
+ * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
  * </pre>
  * 
  * @author blawrenc
  * @version 1.0
  */
 
-public class MapUtilities {
+public class GeoMapUtilities {
+
+    private enum MapGeometryExtractionApproach {
+        CONTAINING, CONTAINED, INTERSECTION
+    }
+
+    private static final transient IUFStatusHandler statusHandler = UFStatus
+            .getHandler(GeoMapUtilities.class);
 
     /**
      * Contains the mappings between geometry tables in the geodatabase and
@@ -103,6 +126,30 @@ public class MapUtilities {
     }
 
     /**
+     * Contains the mappings between geodatabase table names and the UGCBuilders
+     * which correspond to them.
+     */
+    private static Map<String, IugcToMapGeometryDataBuilder> geoTableUGCBuilderMap;
+
+    /**
+     * Look-up IUGCBuilders for tables in the maps geodatabase.
+     */
+    static {
+        Map<String, IugcToMapGeometryDataBuilder> tempMap = new HashMap<>();
+
+        tempMap.put(HazardConstants.MAPDATA_COUNTY, new CountyUGCBuilder());
+        tempMap.put(HazardConstants.MAPDATA_ZONE, new ZoneUGCBuilder());
+        tempMap.put(HazardConstants.MAPDATA_FIRE_ZONES,
+                new FireWXZoneUGCBuilder());
+        tempMap.put(HazardConstants.MAPDATA_MARINE_ZONES,
+                new MarineZoneUGCBuilder());
+        tempMap.put(HazardConstants.MAPDATA_OFFSHORE,
+                new OffshoreZoneUGCBuilder());
+
+        geoTableUGCBuilderMap = Collections.unmodifiableMap(tempMap);
+    }
+
+    /**
      * Map for caching geometries retrieved from the geo database.
      */
     private static Map<String, Map<String, Set<IGeometryData>>> mapGeometryCache = Maps
@@ -110,21 +157,23 @@ public class MapUtilities {
 
     private final ISessionConfigurationManager<ObservedSettings> configManager;
 
-    public MapUtilities(
+    private final GeometryFactory geometryFactory = new GeometryFactory();
+
+    public GeoMapUtilities(
             ISessionConfigurationManager<ObservedSettings> configManager) {
         this.configManager = configManager;
     }
 
     /**
-     * Given one or more events, returns a list of geometries from the maps
-     * database which intersects all of the geometries associated with each the
-     * events.
+     * Given a {@link IHazardEvent}, returns a list of geometries from the maps
+     * database which intersects all of the geometries associated with the
+     * event.
      * 
      * @param applyIntersectionThreshold
      *            True if the intersection thresholds for this hazard type
      *            should be applied when finding the intersection
      * @param hazardEvent
-     *            The hazard event to determine hatching for.
+     *            The hazard event to determine the intersections.
      * 
      * @return A set of intersecting map db geometries. This set will be empty
      *         if there are no intersecting geometries.
@@ -141,25 +190,6 @@ public class MapUtilities {
 
     /**
      * Returns a collection of geometry data from the maps geodatabase for the
-     * specified hazadEvent
-     * 
-     * @param hazardEvent
-     * @return A list of geometry data for the specified geo table and cwa.
-     */
-    public Set<IGeometryData> getMapGeometries(IHazardEvent hazardEvent) {
-        String hazardType = hazardEvent.getHazardType();
-        String mapDBtableName = configManager.getHazardTypes().get(hazardType)
-                .getUgcType();
-
-        String mapLabelParameter = configManager.getHazardTypes()
-                .get(hazardType).getUgcLabel();
-
-        String cwa = configManager.getSiteID();
-        return getMapGeometries(mapDBtableName, mapLabelParameter, cwa);
-    }
-
-    /**
-     * Returns a collection of geometry data from the maps geodatabase for the
      * specified cwa and maps table.
      * 
      * This method buffers the requested geometries to speed up query
@@ -167,15 +197,15 @@ public class MapUtilities {
      * 
      * @param mapDBtableName
      *            The name of the maps table to retrieve map geometries from
-     * @param labelParameter
+     * @param mapLabelParameter
      *            The name of the field in the maps db table to use for
      *            labeling.
      * @param cwa
      *            The county warning area identifier (e.g. OAX)
-     * @return A list of geometry data for the specified geo table and cwa.
+     * @return {@link IGeometryData}s for the specified geo table and cwa.
      */
     public Set<IGeometryData> getMapGeometries(String mapDBtableName,
-            String labelParameter, String cwa) {
+            String mapLabelParameter, String cwa) {
 
         Map<String, Set<IGeometryData>> mapGeometryMap;
 
@@ -207,8 +237,8 @@ public class MapUtilities {
          */
         List<String> parameterList = Lists.newArrayList();
 
-        if (labelParameter != null && labelParameter.length() > 0) {
-            parameterList.add(labelParameter);
+        if (mapLabelParameter != null && mapLabelParameter.length() > 0) {
+            parameterList.add(mapLabelParameter);
         }
 
         if (geoTableAttributesMap.containsKey(mapDBtableName)) {
@@ -247,27 +277,25 @@ public class MapUtilities {
     }
 
     /**
-     * Given the geometry associated with a hazard event, builds a set of
-     * geometries representing the actual hazard area.
+     * Given {@link IHazardEvent}, builds a set of geometries representing the
+     * actual hazard area.
      * 
      * @param hazardEvent
      *            The hazard event to build the hazard area for.
      * 
-     * @return A set of IGeometryData objects describing the actual hazard area
+     * @return {@link IGeometryData}s describing the actual hazard area
      *         associated with this event.
      */
-    public Set<IGeometryData> buildHatchedAreaForEvent(
-            IHazardEvent hazardEvent, boolean isPolygonBased) {
+    public Set<IGeometryData> buildHazardAreaForEvent(IHazardEvent hazardEvent) {
         String hazardType = hazardEvent.getHazardType();
-        String mapDBtableName = configManager.getHazardTypes().get(hazardType)
-                .getUgcType();
+        String mapDBtableName = getMapDBtableName(hazardType);
 
         String mapLabelParameter = configManager.getHazardTypes()
                 .get(hazardType).getUgcLabel();
 
         String cwa = configManager.getSiteID();
-        return buildHatchedAreaForEvent(mapDBtableName, mapLabelParameter, cwa,
-                hazardEvent, isPolygonBased);
+        return buildHazardAreaForEvent(mapDBtableName, mapLabelParameter, cwa,
+                hazardEvent);
 
     }
 
@@ -277,25 +305,22 @@ public class MapUtilities {
      * 
      * @param mapDBtableName
      *            The name of the map db geo table
-     * @param labelParameter
+     * @param mapLabelParameter
      *            The name of the field in the maps db table to use for
      *            labeling.
      * @param cwa
      *            The county warning area
      * @param hazardEvent
      *            The hazard event to build the hazard area for.
-     * @param eventManager
-     *            The hazardEvent Manager
      * 
-     * @return A set of IGeometryData objects describing the actual hazard area
+     * @return {@link IGeometryData}s describing the actual hazard area
      *         associated with this event.
      */
-    public Set<IGeometryData> buildHatchedAreaForEvent(String mapDBtableName,
-            String labelParameter, String cwa, IHazardEvent hazardEvent,
-            boolean isPolygonBased) {
+    public Set<IGeometryData> buildHazardAreaForEvent(String mapDBtableName,
+            String mapLabelParameter, String cwa, IHazardEvent hazardEvent) {
         Set<IGeometryData> result = Sets.newHashSet();
 
-        if (isPolygonBased) {
+        if (isPolygonBased(hazardEvent)) {
             /*
              * The hazard geometry represents the hazard area. Use the CWA
              * boundary as the basis of the hazard area. Hazard Types without a
@@ -304,25 +329,20 @@ public class MapUtilities {
              * TODO: May need to consider using HSA as well.
              */
             Set<IGeometryData> clippedGeometries = getClippedMapGeometries(
-                    HazardConstants.CWA_IDENTIFIER, labelParameter, cwa,
+                    HazardConstants.CWA_IDENTIFIER, mapLabelParameter, cwa,
                     hazardEvent);
 
             result.addAll(clippedGeometries);
-        } else if (hazardEvent.getHazardAttributes().containsKey(
-                HazardConstants.GEOMETRY_MAP_NAME_KEY)) {
-            /*
-             * Draw-by-area geometry. The polygon itself represents the hazard
-             * area.
-             */
-            Set<IGeometryData> containedGeometries = getContainedMapGeometries(hazardEvent);
-
-            result.addAll(containedGeometries);
-
         } else {
-            Set<IGeometryData> intersectingGeometries = getIntersectingMapGeometries(
-                    true, hazardEvent);
-
-            result.addAll(intersectingGeometries);
+            Set<IGeometryData> mapGeometryData = getMapGeometries(hazardEvent);
+            Map<String, IGeometryData> mapping = getUgcsGeometryDataMapping(
+                    mapDBtableName, mapGeometryData);
+            @SuppressWarnings("unchecked")
+            List<String> hazardUGCs = (List<String>) hazardEvent
+                    .getHazardAttribute(CONTAINED_UGCS);
+            for (String ugc : hazardUGCs) {
+                result.add(mapping.get(ugc));
+            }
 
         }
 
@@ -331,31 +351,29 @@ public class MapUtilities {
 
     /**
      * Returns a set of geometries from the maps database clipped to fit in the
-     * given geometry.
+     * geometry of the given {@link IHazardEvent}
      * 
      * @param mapDBtableName
      *            The map database table to retrieve geometries from
-     * @param labelParameter
+     * @param mapLabelParameter
      *            The name of the field in the maps db table to use for
      *            labeling.
      * @param cwa
      *            The identifier of the county warning area (e.g. OAX)
-     * @param geometry
-     *            A geometry
-     * 
-     * @return A set of geometries. This set will be empty if there are no
+     * @param hazardEvent
+     *            The hazard event to build the hazard area for.
+     * @return {@link IGeometryData}s. The result will be empty if there are no
      *         clipped geometries.
      */
     public Set<IGeometryData> getClippedMapGeometries(String mapDBtableName,
-            String labelParameter, String cwa, final IHazardEvent hazardEvent) {
+            String mapLabelParameter, String cwa, final IHazardEvent hazardEvent) {
 
-        GeometryFactory geoFactory = new GeometryFactory();
         Geometry hazardGeometry = hazardEvent.getGeometry();
 
         Set<IGeometryData> result = Sets.newHashSet();
 
         Set<IGeometryData> mapGeometries = getMapGeometries(mapDBtableName,
-                labelParameter, cwa);
+                mapLabelParameter, cwa);
 
         for (int i = 0; i < hazardGeometry.getNumGeometries(); ++i) {
             for (IGeometryData mapGeometry : mapGeometries) {
@@ -363,8 +381,8 @@ public class MapUtilities {
                 for (int k = 0; k < mapGeometry.getGeometry()
                         .getNumGeometries(); ++k) {
 
-                    Geometry clippedGeometry = geoFactory.createPolygon(null,
-                            null);
+                    Geometry clippedGeometry = geometryFactory.createPolygon(
+                            null, null);
 
                     if (mapGeometry.getGeometry().getGeometryN(k)
                             .intersects(hazardGeometry.getGeometryN(i))) {
@@ -390,16 +408,162 @@ public class MapUtilities {
         return result;
     }
 
+    /**
+     * Find a subset of mapGeometries containing the given {@link Geometry}
+     * 
+     * @param allMapGeometryData
+     *            - the map geometries from which the subset will be computed
+     * @return A subset of map geometries containing this geometry
+     */
     public Set<IGeometryData> getContainingMapGeometries(
             Set<IGeometryData> allMapGeometryData, Geometry geometry) {
-        return getContainingOrContainedMapGeometries(allMapGeometryData,
-                geometry, true);
+        return extractMapGeometries(allMapGeometryData, geometry,
+                MapGeometryExtractionApproach.CONTAINING);
     }
 
+    /**
+     * Find a subset of mapGeometries contained within the given
+     * {@link Geometry}
+     * 
+     * @param allMapGeometryData
+     *            - the map geometries from which the subset will be computed
+     * @return A subset of map geometries contained within this geometry
+     */
     public Set<IGeometryData> getContainedMapGeometries(IHazardEvent hazardEvent) {
         Set<IGeometryData> mapGeometryData = getMapGeometries(hazardEvent);
-        return getContainingOrContainedMapGeometries(mapGeometryData,
-                hazardEvent.getGeometry(), false);
+        return extractMapGeometries(mapGeometryData, hazardEvent.getGeometry(),
+                MapGeometryExtractionApproach.CONTAINED);
+    }
+
+    /**
+     * Find a subset of mapGeometries intersecting the given {@link Geometry}
+     * 
+     * @param allMapGeometryData
+     *            - the map geometries from which the subset will be computed
+     * @return A subset of map geometries intersecting this geometry
+     */
+    public Set<IGeometryData> getIntersectingMapGeometries(
+            IHazardEvent hazardEvent) {
+        Set<IGeometryData> mapGeometryData = getMapGeometries(hazardEvent);
+        return extractMapGeometries(mapGeometryData, hazardEvent.getGeometry(),
+                MapGeometryExtractionApproach.INTERSECTION);
+    }
+
+    /**
+     * Find the UGCs corresponding to the given {@link IHazardEvent}
+     * 
+     * @param hazardEvent
+     * @return the UGCs
+     */
+    public List<String> buildContainedUGCs(IHazardEvent hazardEvent) {
+
+        Set<IGeometryData> hazardArea = getContainedMapGeometries(hazardEvent);
+        String mapDBtableName = getMapDBtableName(hazardEvent.getHazardType());
+
+        Set<String> ugcs = getUgcsGeometryDataMapping(mapDBtableName,
+                hazardArea).keySet();
+
+        return new ArrayList<>(ugcs);
+    }
+
+    /**
+     * Construct a mapping between UGC names and map geometries
+     * 
+     * @param mapDBtableName
+     *            The map database table to retrieve geometries from
+     * @param mapGeometryData
+     *            the map geometries
+     * @return the mapping
+     */
+    public Map<String, IGeometryData> getUgcsGeometryDataMapping(
+            String mapDBtableName, Set<IGeometryData> mapGeometryData) {
+        IugcToMapGeometryDataBuilder ugcBuilder = getUGCBuilder(mapDBtableName);
+        Map<String, IGeometryData> result = ugcBuilder
+                .ugcsToMapGeometryData(mapGeometryData);
+        return result;
+    }
+
+    /**
+     * Factory method which builds the correct IUGCBuilder based on the provided
+     * geodatabase table name.
+     * 
+     * @param geoTableName
+     *            The name of the geodatabase table
+     * @return An IUGCBuilder object which knows how to construct UGCs for the
+     *         specified geodatabase table.
+     */
+    public IugcToMapGeometryDataBuilder getUGCBuilder(String geoTableName) {
+
+        if (geoTableUGCBuilderMap.containsKey(geoTableName)) {
+            return geoTableUGCBuilderMap.get(geoTableName);
+        } else {
+            statusHandler.error("No UGC handler found for maps database table "
+                    + geoTableName);
+            return new NullUGCBuilder();
+        }
+    }
+
+    /**
+     * Determine if this is a polygon-based hazard
+     * 
+     * @param hazardEvent
+     * @return true if the hazardEvent is a polygon based hazard type
+     */
+    public boolean isPolygonBased(IHazardEvent hazardEvent) {
+        String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
+
+        HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes().get(
+                hazardType);
+
+        return hazardTypeEntry.isPolygonBased();
+    }
+
+    /**
+     * Find the mapDBtableName for the given {@link IHazardEvent}
+     * 
+     * @param hazardEvent
+     * @return The name of the field in the maps db table to use for labeling.
+     */
+    public String getMapLabelParameter(IHazardEvent hazardEvent) {
+        String mapLabelParameter = configManager.getHazardTypes()
+                .get(hazardEvent.getHazardType()).getUgcLabel();
+        return mapLabelParameter;
+    }
+
+    /**
+     * Find the mapLabelParameter for the given {@link IHazardEvent}
+     * 
+     * @param hazardEvent
+     * @return The name of the maps table to retrieve map geometries from.
+     */
+    public String getMapDBtableName(IHazardEvent hazardEvent) {
+        String mapDBtableName = configManager.getHazardTypes()
+                .get(hazardEvent.getHazardType()).getUgcType();
+        return mapDBtableName;
+    }
+
+    /**
+     * Returns a collection of geometry data from the maps geodatabase for the
+     * specified hazadEvent
+     * 
+     * @param hazardEvent
+     * @return A list of geometry data for the specified geo table and cwa.
+     */
+    private Set<IGeometryData> getMapGeometries(IHazardEvent hazardEvent) {
+        String hazardType = hazardEvent.getHazardType();
+        String mapDBtableName = getMapDBtableName(hazardType);
+
+        String mapLabelParameter = configManager.getHazardTypes()
+                .get(hazardType).getUgcLabel();
+
+        String cwa = configManager.getSiteID();
+        return getMapGeometries(mapDBtableName, mapLabelParameter, cwa);
+    }
+
+    private String getMapDBtableName(String hazardType) {
+        String mapDBtableName = configManager.getHazardTypes().get(hazardType)
+                .getUgcType();
+        return mapDBtableName;
     }
 
     private Set<IGeometryData> getIntersectingMapGeometries(
@@ -461,9 +625,9 @@ public class MapUtilities {
         return result;
     }
 
-    private Set<IGeometryData> getContainingOrContainedMapGeometries(
+    private Set<IGeometryData> extractMapGeometries(
             Set<IGeometryData> allMapGeometryData, Geometry geometry,
-            boolean wantContaining) {
+            MapGeometryExtractionApproach extractionApproach) {
         Set<IGeometryData> result = Sets.newHashSet();
 
         for (IGeometryData mapGeometryData : allMapGeometryData) {
@@ -474,17 +638,35 @@ public class MapUtilities {
                 for (int geometryIndex = 0; geometryIndex < geometry
                         .getNumGeometries(); ++geometryIndex) {
 
-                    if (wantContaining) {
-                        if (mapGeometry.getGeometryN(mapGeometryIndex)
-                                .contains(geometry.getGeometryN(geometryIndex))) {
+                    Geometry mg = mapGeometry.getGeometryN(mapGeometryIndex);
+                    Geometry gg = geometry.getGeometryN(geometryIndex);
+                    if (extractionApproach == MapGeometryExtractionApproach.CONTAINING) {
+                        if (mg.contains(gg)) {
+                            result.add(mapGeometryData);
+                            continue outer;
+                        }
+                    } else if (extractionApproach == MapGeometryExtractionApproach.CONTAINED) {
+                        if (gg.contains(mg)) {
                             result.add(mapGeometryData);
                             continue outer;
                         }
                     } else {
-                        if (geometry.getGeometryN(geometryIndex).contains(
-                                mapGeometry.getGeometryN(mapGeometryIndex))) {
-                            result.add(mapGeometryData);
-                            continue outer;
+                        /*
+                         * Some trickiness here. We can't just intersect because
+                         * we only want a match if the geometries intersect in
+                         * at least some interior points. (i.e. there should be
+                         * no match if only boundary points intersect).
+                         * Geometry#crosses does not work because it returns
+                         * false if all of the points are crossed. So take this
+                         * approach instead.
+                         */
+                        if (gg.intersects(mg)) {
+                            Geometry difference = gg.difference(mg);
+
+                            if (!gg.equalsTopo(difference)) {
+                                result.add(mapGeometryData);
+                                continue outer;
+                            }
                         }
                     }
                 }
@@ -533,14 +715,22 @@ public class MapUtilities {
     private boolean testInclusion(Geometry mapGeometry,
             Geometry hazardGeometry, boolean testInclusion,
             double inclusionPercentage) {
-        if (testInclusion == false) {
-            return true;
+        try {
+            if (testInclusion == false) {
+                return true;
+            }
+
+            Geometry intersection = hazardGeometry.intersection(mapGeometry);
+            double intersectionPercentage = intersection.getArea()
+                    / mapGeometry.getArea();
+
+            return intersectionPercentage > inclusionPercentage;
+        } catch (TopologyException e) {
+            /*
+             * TODO Use {@link GeometryPrecisionReducer}?
+             */
+            statusHandler.error("Encountered topology exception", e);
+            return false;
         }
-
-        Geometry intersection = hazardGeometry.intersection(mapGeometry);
-        double intersectionPercentage = intersection.getArea()
-                / mapGeometry.getArea();
-
-        return intersectionPercentage > inclusionPercentage;
     }
 }

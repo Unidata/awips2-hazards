@@ -92,6 +92,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      like the other notify-taking methods.
  * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
  * Jan 22, 2015 4959       Dan Schaffer MB3 to add/remove UGCs to a hazard
+ * Jan 26, 2015 5952       Dan Schaffer Fix incorrect warned area designation.
  * </pre>
  * 
  * @author bsteffen
@@ -522,9 +523,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         setSignificance(significance, false, originator);
         setSubType(subtype, false, originator);
 
-        List<String> ugcs = eventManager.buildContainedUGCs(this);
-        addHazardAttribute(CONTAINED_UGCS, (Serializable) ugcs, notify,
-                Originator.OTHER);
+        updateContainedUGCs(notify);
         if (notify) {
             eventManager.hazardEventModified(new SessionEventTypeModified(
                     eventManager, this, originator));
@@ -599,6 +598,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         if (changed(getGeometry(), geom)) {
             pushToStack("setGeometry", Geometry.class, getGeometry());
             delegate.setGeometry(geom);
+            updateContainedUGCs(notify);
+
             /*
              * Reset the clipped and point reduction flags when the geometry
              * changes. This indicates that clipping and point reduction may
@@ -902,4 +903,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         return delegate.toString();
     }
 
+    private void updateContainedUGCs(boolean notify) {
+        if (getHazardType() != null) {
+            List<String> ugcs = eventManager.buildContainedUGCs(this);
+            addHazardAttribute(CONTAINED_UGCS, (Serializable) ugcs, notify,
+                    Originator.OTHER);
+        }
+    }
 }

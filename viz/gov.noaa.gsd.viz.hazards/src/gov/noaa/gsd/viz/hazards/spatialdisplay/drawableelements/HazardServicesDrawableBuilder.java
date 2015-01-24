@@ -44,7 +44,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.hatching.MapUtilities;
+import com.raytheon.uf.viz.hazards.sessionmanager.geomaps.GeoMapUtilities;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -80,6 +80,7 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                             manager.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
+ * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -109,12 +110,12 @@ public class HazardServicesDrawableBuilder {
 
     private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
-    private final MapUtilities mapUtilities;
+    private final GeoMapUtilities geoMapUtilities;
 
     public HazardServicesDrawableBuilder(
             ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager) {
         this.sessionManager = sessionManager;
-        this.mapUtilities = new MapUtilities(
+        this.geoMapUtilities = new GeoMapUtilities(
                 sessionManager.getConfigurationManager());
     }
 
@@ -625,14 +626,9 @@ public class HazardServicesDrawableBuilder {
 
             String cwa = hazardEvent.getSiteID();
 
-            Set<IGeometryData> hazardArea = mapUtilities
-                    .buildHatchedAreaForEvent(
-                            mapDBtableName,
-                            mapLabelParameter,
-                            cwa,
-                            hazardEvent,
-                            sessionManager.getEventManager().isPolygonBased(
-                                    hazardEvent));
+            Set<IGeometryData> hazardArea = geoMapUtilities
+                    .buildHazardAreaForEvent(mapDBtableName, mapLabelParameter,
+                            cwa, hazardEvent);
 
             for (IGeometryData geometryData : hazardArea) {
 
@@ -661,7 +657,7 @@ public class HazardServicesDrawableBuilder {
              */
             if (isPolygonBased) {
 
-                hazardArea = mapUtilities.getIntersectingMapGeometries(true,
+                hazardArea = geoMapUtilities.getIntersectingMapGeometries(true,
                         hazardEvent);
 
                 for (IGeometryData geometryData : hazardArea) {

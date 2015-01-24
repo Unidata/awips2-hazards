@@ -72,6 +72,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      for a particular event, since it no longer only means
  *                                      that an event-modifying script is to be executed.
  * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
+ * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
  * </pre>
  * 
  * @author bsteffen
@@ -509,12 +510,6 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @return
      */
     public void addOrRemoveEnclosingUGCs(Coordinate location);
-
-    /**
-     * @param hazardEvent
-     * @return true if the hazardEvent is a polygon based hazard type
-     */
-    public boolean isPolygonBased(IHazardEvent hazardEvent);
 
     /**
      * @param hazardEvent

@@ -460,6 +460,8 @@ HazardTypes = {
               'defaultDuration': 1 * HOURS,
               'durationIncrement': 15,
               'hazardTypeFirstRecommender':'StormTrackTool',
+              'inclusionTest' : True,
+              'inclusionPercentage': 0.1,
               },
     'FF.W.NonConvective' : {
               'headline': 'FLASH FLOOD WARNING',

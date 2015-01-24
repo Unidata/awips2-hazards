@@ -101,19 +101,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModifie
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionLastChangedEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventConflictsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.hatching.MapUtilities;
+import com.raytheon.uf.viz.hazards.sessionmanager.geomaps.GeoMapUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IugcToMapGeometryDataBuilder;
-import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.CountyUGCBuilder;
-import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.FireWXZoneUGCBuilder;
-import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.MarineZoneUGCBuilder;
-import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.NullUGCBuilder;
-import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.OffshoreZoneUGCBuilder;
-import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.ZoneUGCBuilder;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -121,6 +114,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Point;
+import com.vividsolutions.jts.geom.TopologyException;
 import com.vividsolutions.jts.operation.valid.IsValidOp;
 import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
 
@@ -225,6 +219,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      a metadata refresh. Previously, the latter was
  *                                      only possible on a hazard attribute state
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards.
+ * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
  * </pre>
  * 
  * @author bsteffen
@@ -237,30 +232,6 @@ public class SessionEventManager implements
     private static final String GEOMETRY_MODIFICATION_ERROR = "Geometry Modification Error";
 
     private static final String EMPTY_GEOMETRY_ERROR = "Deleting this UGC would leave the hazard with an empty geometry";
-
-    /**
-     * Contains the mappings between geodatabase table names and the UGCBuilders
-     * which correspond to them.
-     */
-    private static Map<String, IugcToMapGeometryDataBuilder> geoTableUGCBuilderMap;
-
-    /**
-     * Look-up IUGCBuilders for tables in the maps geodatabase.
-     */
-    static {
-        Map<String, IugcToMapGeometryDataBuilder> tempMap = new HashMap<>();
-
-        tempMap.put(HazardConstants.MAPDATA_COUNTY, new CountyUGCBuilder());
-        tempMap.put(HazardConstants.MAPDATA_ZONE, new ZoneUGCBuilder());
-        tempMap.put(HazardConstants.MAPDATA_FIRE_ZONES,
-                new FireWXZoneUGCBuilder());
-        tempMap.put(HazardConstants.MAPDATA_MARINE_ZONES,
-                new MarineZoneUGCBuilder());
-        tempMap.put(HazardConstants.MAPDATA_OFFSHORE,
-                new OffshoreZoneUGCBuilder());
-
-        geoTableUGCBuilderMap = Collections.unmodifiableMap(tempMap);
-    }
 
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionEventManager.class);
@@ -322,7 +293,7 @@ public class SessionEventManager implements
 
     private ObservedHazardEvent currentEvent;
 
-    private final MapUtilities mapUtilities;
+    private final GeoMapUtilities geoMapUtilities;
 
     /**
      * Listener for event modifying script completions.
@@ -382,7 +353,7 @@ public class SessionEventManager implements
                 createTimeListener());
         this.messenger = messenger;
         geoFactory = new GeometryFactory();
-        this.mapUtilities = new MapUtilities(this.configManager);
+        this.geoMapUtilities = new GeoMapUtilities(this.configManager);
 
     }
 
@@ -1855,10 +1826,9 @@ public class SessionEventManager implements
 
                     String ugcLabel = hazardTypeEntry.getUgcLabel();
 
-                    Set<IGeometryData> hatchedAreasForEvent = mapUtilities
-                            .buildHatchedAreaForEvent(ugcType, ugcLabel, cwa,
-                                    eventToCompare,
-                                    isPolygonBased(eventToCompare));
+                    Set<IGeometryData> hatchedAreasForEvent = geoMapUtilities
+                            .buildHazardAreaForEvent(ugcType, ugcLabel, cwa,
+                                    eventToCompare);
 
                     /*
                      * Retrieve matching events from the Hazard Event Manager
@@ -1927,13 +1897,11 @@ public class SessionEventManager implements
                                             .getUgcLabel();
 
                                     if (hazardTypeEntry != null) {
-                                        Set<IGeometryData> hatchedAreasEventToCheck = mapUtilities
-                                                .buildHatchedAreaForEvent(
+                                        Set<IGeometryData> hatchedAreasEventToCheck = geoMapUtilities
+                                                .buildHazardAreaForEvent(
                                                         otherUgcType,
-                                                        otherUgcLabel,
-                                                        cwa,
-                                                        eventToCheck,
-                                                        isPolygonBased(eventToCheck));
+                                                        otherUgcLabel, cwa,
+                                                        eventToCheck);
 
                                         conflictingHazardsMap
                                                 .putAll(buildConflictMap(
@@ -2050,7 +2018,8 @@ public class SessionEventManager implements
 
         List<String> geometryNames = new ArrayList<>();
 
-        if (!isPolygonBased(firstEvent) && !isPolygonBased(secondEvent)) {
+        if (!geoMapUtilities.isPolygonBased(firstEvent)
+                && !geoMapUtilities.isPolygonBased(secondEvent)) {
 
             Set<IGeometryData> commonHatchedAreas = new HashSet<>();
             commonHatchedAreas.addAll(hatchedAreasFirstEvent);
@@ -2071,10 +2040,10 @@ public class SessionEventManager implements
             String labelFieldName = null;
             Set<IGeometryData> geoWithLabelInfo = null;
 
-            if (!isPolygonBased(firstEvent)) {
+            if (!geoMapUtilities.isPolygonBased(firstEvent)) {
                 labelFieldName = firstEventLabelParameter;
                 geoWithLabelInfo = hatchedAreasFirstEvent;
-            } else if (!isPolygonBased(secondEvent)) {
+            } else if (!geoMapUtilities.isPolygonBased(secondEvent)) {
                 labelFieldName = secondEventLabelParameter;
                 geoWithLabelInfo = hatchedAreasSecondEvent;
             }
@@ -2112,16 +2081,6 @@ public class SessionEventManager implements
 
         return conflictingHazardsMap;
     };
-
-    @Override
-    public boolean isPolygonBased(IHazardEvent hazardEvent) {
-        String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
-
-        HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes().get(
-                hazardType);
-
-        return hazardTypeEntry.isPolygonBased();
-    }
 
     @Override
     public void endEvent(ObservedHazardEvent event, IOriginator originator) {
@@ -2202,7 +2161,7 @@ public class SessionEventManager implements
 
                 if (canBeClipped(selectedEvent, hazardType)) {
 
-                    Set<IGeometryData> geoDataSet = mapUtilities
+                    Set<IGeometryData> geoDataSet = geoMapUtilities
                             .getClippedMapGeometries(
                                     hazardType.getHazardClipArea(), null, cwa,
                                     selectedEvent);
@@ -2393,21 +2352,18 @@ public class SessionEventManager implements
 
     @Override
     public List<String> buildUGCs(IHazardEvent hazardEvent) {
-        String hazardType = hazardEvent.getHazardType();
-        String mapDBtableName = configManager.getHazardTypes().get(hazardType)
-                .getUgcType();
+        String mapDBtableName = geoMapUtilities.getMapDBtableName(hazardEvent);
 
         Set<IGeometryData> hazardArea;
 
-        if (isPolygonBased(hazardEvent)) {
-            hazardArea = mapUtilities.getIntersectingMapGeometries(true,
+        if (geoMapUtilities.isPolygonBased(hazardEvent)) {
+            hazardArea = geoMapUtilities.getIntersectingMapGeometries(true,
                     hazardEvent);
         } else {
-            hazardArea = mapUtilities.buildHatchedAreaForEvent(hazardEvent,
-                    isPolygonBased(hazardEvent));
+            hazardArea = geoMapUtilities.buildHazardAreaForEvent(hazardEvent);
         }
-        Set<String> ugcs = ugcsToGeometryData(mapDBtableName, hazardArea)
-                .keySet();
+        Set<String> ugcs = geoMapUtilities.getUgcsGeometryDataMapping(
+                mapDBtableName, hazardArea).keySet();
 
         return new ArrayList<>(ugcs);
     }
@@ -2415,44 +2371,19 @@ public class SessionEventManager implements
     @Override
     public List<String> buildContainedUGCs(IHazardEvent hazardEvent) {
 
-        Set<IGeometryData> hazardArea = mapUtilities
-                .getContainedMapGeometries(hazardEvent);
-        String hazardType = hazardEvent.getHazardType();
-        String mapDBtableName = configManager.getHazardTypes().get(hazardType)
-                .getUgcType();
+        Set<IGeometryData> hazardArea;
+        if (geoMapUtilities.isPolygonBased(hazardEvent)) {
+            hazardArea = geoMapUtilities.getContainedMapGeometries(hazardEvent);
+        } else {
+            hazardArea = geoMapUtilities
+                    .getIntersectingMapGeometries(hazardEvent);
+        }
+        String mapDBtableName = geoMapUtilities.getMapDBtableName(hazardEvent);
 
-        Set<String> ugcs = ugcsToGeometryData(mapDBtableName, hazardArea)
-                .keySet();
+        Set<String> ugcs = geoMapUtilities.getUgcsGeometryDataMapping(
+                mapDBtableName, hazardArea).keySet();
 
         return new ArrayList<>(ugcs);
-    }
-
-    private Map<String, IGeometryData> ugcsToGeometryData(
-            String mapDBtableName, Set<IGeometryData> geometryData) {
-        IugcToMapGeometryDataBuilder ugcBuilder = getUGCBuilder(mapDBtableName);
-        Map<String, IGeometryData> result = ugcBuilder
-                .ugcsToMapGeometryData(geometryData);
-        return result;
-    }
-
-    /**
-     * Factory method which builds the correct IUGCBuilder based on the provided
-     * geodatabase table name.
-     * 
-     * @param geoTableName
-     *            The name of the geodatabase table
-     * @return An IUGCBuilder object which knows how to construct UGCs for the
-     *         specified geodatabase table.
-     */
-    private IugcToMapGeometryDataBuilder getUGCBuilder(String geoTableName) {
-
-        if (geoTableUGCBuilderMap.containsKey(geoTableName)) {
-            return geoTableUGCBuilderMap.get(geoTableName);
-        } else {
-            statusHandler.error("No UGC handler found for maps database table "
-                    + geoTableName);
-            return new NullUGCBuilder();
-        }
     }
 
     @Override
@@ -2506,110 +2437,112 @@ public class SessionEventManager implements
      * @see
      * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
      * #addOrRemoveEnclosingUGCs(com.vividsolutions.jts.geom.Coordinate)
-     * 
-     * TODO. Fails if you start off by creating a hazard via "Select by County".
-     * The reason is that the geometry created in this fashion is not the same
-     * geometry you get when you MB3 in a location and retrieve the enclosing
-     * geometry.
-     * 
-     * TODO. Fails if you have already clipped the hazard.
      */
     @Override
     public void addOrRemoveEnclosingUGCs(Coordinate location) {
-        List<ObservedHazardEvent> selectedEvents = getSelectedEvents();
-        if (selectedEvents.size() != 1) {
-            messenger
-                    .getWarner()
-                    .warnUser(GEOMETRY_MODIFICATION_ERROR,
-                            "Cannot add or remove UGCs unless exactly one hazard event is selected");
-            return;
-        }
-        ObservedHazardEvent hazardEvent = selectedEvents.get(0);
-        String hazardType = hazardEvent.getHazardType();
-        if (hazardType == null) {
-            messenger
-                    .getWarner()
-                    .warnUser(GEOMETRY_MODIFICATION_ERROR,
-                            "Cannot add or remove UGCs for a hazard with an undefined type");
-            return;
-        }
-        if (hazardEvent.getStatus().equals(HazardStatus.ENDED)) {
-            messenger.getWarner().warnUser(GEOMETRY_MODIFICATION_ERROR,
-                    "Cannot add or remove UGCs for an ended hazard");
-            return;
-        }
-
-        @SuppressWarnings("unchecked")
-        List<String> hazardUGCs = (List<String>) hazardEvent
-                .getHazardAttribute(CONTAINED_UGCS);
-        String mapDBtableName = configManager.getHazardTypes().get(hazardType)
-                .getUgcType();
-
-        String mapLabelParameter = configManager.getHazardTypes()
-                .get(hazardType).getUgcLabel();
-
-        String cwa = configManager.getSiteID();
-        Set<IGeometryData> mapGeometryData = mapUtilities.getMapGeometries(
-                mapDBtableName, mapLabelParameter, cwa);
-        Geometry locationAsGeometry = geoFactory.createPoint(location);
-        Set<IGeometryData> mapGeometryDataContainingLocation = mapUtilities
-                .getContainingMapGeometries(mapGeometryData, locationAsGeometry);
-
-        Map<String, IGeometryData> ugcsEnclosingUserSelectedLocation = ugcsToGeometryData(
-                mapDBtableName, mapGeometryDataContainingLocation);
-
-        Map<String, IGeometryData> allUGCs = ugcsToGeometryData(mapDBtableName,
-                mapGeometryData);
-
-        Geometry hazardEventGeometry = hazardEvent.getGeometry();
-
-        /*
-         * Handle the possibility that a hazard geometry can include single
-         * {@link Point}s as well as polygons by pulling them out, taking the
-         * adding or removing the UGC to the union of the polygons and then
-         * putting everything back together into a {@link GeometryCollection}.
-         * By ensuring any point geometries are not merged into surrounding
-         * polygon geometries, the points remain distinct in the resulting
-         * modified geometry.
-         */
-        GeometryCollection asGeometryCollection = (GeometryCollection) hazardEventGeometry;
-        List<Geometry> modifiedGeometries = new ArrayList<>();
-        List<Geometry> pointHazards = collectPointGeometries(asGeometryCollection);
-        modifiedGeometries.addAll(pointHazards);
-        List<Geometry> nonPointHazards = collectNonPointGeometries(asGeometryCollection);
-
-        if (!nonPointHazards.isEmpty()) {
-            Geometry nonPointGeometry = asUnion(nonPointHazards);
-            for (String enclosingUGC : ugcsEnclosingUserSelectedLocation
-                    .keySet()) {
-                Geometry enclosingUgcGeometry = allUGCs.get(enclosingUGC)
-                        .getGeometry();
-                if (nonPointGeometry.equalsTopo(enclosingUgcGeometry)) {
-                    statusHandler.warn(EMPTY_GEOMETRY_ERROR);
-                    return;
-                }
-                if (hazardUGCs.contains(enclosingUGC)
-                        && !enclosingUgcGeometry.contains(nonPointGeometry)) {
-
-                    nonPointGeometry = nonPointGeometry
-                            .difference(enclosingUgcGeometry);
-                    hazardUGCs.remove(enclosingUGC);
-                } else {
-                    nonPointGeometry = nonPointGeometry
-                            .union(enclosingUgcGeometry);
-                    hazardUGCs.add(enclosingUGC);
-                }
+        try {
+            List<ObservedHazardEvent> selectedEvents = getSelectedEvents();
+            if (selectedEvents.size() != 1) {
+                messenger
+                        .getWarner()
+                        .warnUser(GEOMETRY_MODIFICATION_ERROR,
+                                "Cannot add or remove UGCs unless exactly one hazard event is selected");
+                return;
             }
-            modifiedGeometries.add(nonPointGeometry);
+            ObservedHazardEvent hazardEvent = selectedEvents.get(0);
+            String hazardType = hazardEvent.getHazardType();
+            if (hazardType == null) {
+                messenger
+                        .getWarner()
+                        .warnUser(GEOMETRY_MODIFICATION_ERROR,
+                                "Cannot add or remove UGCs for a hazard with an undefined type");
+                return;
+            }
+            if (hazardEvent.getStatus().equals(HazardStatus.ENDED)) {
+                messenger.getWarner().warnUser(GEOMETRY_MODIFICATION_ERROR,
+                        "Cannot add or remove UGCs for an ended hazard");
+                return;
+            }
+
+            @SuppressWarnings("unchecked")
+            List<String> hazardUGCs = (List<String>) hazardEvent
+                    .getHazardAttribute(CONTAINED_UGCS);
+            String mapDBtableName = geoMapUtilities
+                    .getMapDBtableName(hazardEvent);
+
+            String mapLabelParameter = geoMapUtilities
+                    .getMapLabelParameter(hazardEvent);
+
+            String cwa = configManager.getSiteID();
+            Geometry locationAsGeometry = geoFactory.createPoint(location);
+            Set<IGeometryData> mapGeometryData = geoMapUtilities
+                    .getMapGeometries(mapDBtableName, mapLabelParameter, cwa);
+            Set<IGeometryData> mapGeometryDataContainingLocation = geoMapUtilities
+                    .getContainingMapGeometries(mapGeometryData,
+                            locationAsGeometry);
+
+            Map<String, IGeometryData> ugcsEnclosingUserSelectedLocation = geoMapUtilities
+                    .getUgcsGeometryDataMapping(mapDBtableName,
+                            mapGeometryDataContainingLocation);
+
+            Map<String, IGeometryData> allUGCs = geoMapUtilities
+                    .getUgcsGeometryDataMapping(mapDBtableName, mapGeometryData);
+
+            Geometry hazardEventGeometry = hazardEvent.getGeometry();
+
+            /*
+             * Handle the possibility that a hazard geometry can include single
+             * {@link Point}s as well as polygons by pulling them out, taking
+             * the adding or removing the UGC to the union of the polygons and
+             * then putting everything back together into a {@link
+             * GeometryCollection}. By ensuring any point geometries are not
+             * merged into surrounding polygon geometries, the points remain
+             * distinct in the resulting modified geometry.
+             */
+            GeometryCollection asGeometryCollection = (GeometryCollection) hazardEventGeometry;
+            List<Geometry> modifiedGeometries = new ArrayList<>();
+            List<Geometry> pointHazards = collectPointGeometries(asGeometryCollection);
+            modifiedGeometries.addAll(pointHazards);
+            List<Geometry> nonPointHazards = collectNonPointGeometries(asGeometryCollection);
+
+            if (!nonPointHazards.isEmpty()) {
+                Geometry nonPointGeometry = asUnion(nonPointHazards);
+                for (String enclosingUGC : ugcsEnclosingUserSelectedLocation
+                        .keySet()) {
+                    Geometry enclosingUgcGeometry = allUGCs.get(enclosingUGC)
+                            .getGeometry();
+
+                    if (hazardUGCs.contains(enclosingUGC)) {
+
+                        nonPointGeometry = nonPointGeometry
+                                .difference(enclosingUgcGeometry);
+
+                        if (nonPointGeometry.isEmpty()) {
+                            statusHandler.warn(EMPTY_GEOMETRY_ERROR);
+                            return;
+                        }
+                        hazardUGCs.remove(enclosingUGC);
+                    } else {
+                        nonPointGeometry = nonPointGeometry
+                                .union(enclosingUgcGeometry);
+                        hazardUGCs.add(enclosingUGC);
+                    }
+                }
+                modifiedGeometries.add(nonPointGeometry);
+            }
+
+            hazardEventGeometry = geoFactory
+                    .createGeometryCollection(modifiedGeometries
+                            .toArray(new Geometry[0]));
+            hazardEvent.setGeometry(hazardEventGeometry);
+            hazardEvent.addHazardAttribute(CONTAINED_UGCS,
+                    (Serializable) hazardUGCs);
+        } catch (TopologyException e) {
+            /*
+             * /* TODO Use {@link GeometryPrecisionReducer}?
+             */
+            statusHandler.error("Encountered topology exception", e);
         }
-
-        hazardEventGeometry = geoFactory
-                .createGeometryCollection(modifiedGeometries
-                        .toArray(new Geometry[0]));
-        hazardEvent.setGeometry(hazardEventGeometry);
-        hazardEvent.addHazardAttribute(CONTAINED_UGCS,
-                (Serializable) hazardUGCs);
-
     }
 
     private List<Geometry> collectPointGeometries(

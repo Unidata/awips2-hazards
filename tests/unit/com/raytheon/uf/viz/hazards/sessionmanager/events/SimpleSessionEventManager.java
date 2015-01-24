@@ -63,6 +63,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      for a particular event, since it no longer only means
  *                                      that an event-modifying script is to be executed.
  * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
+ * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
  * </pre>
  * 
  * @author bsteffen
@@ -326,19 +327,6 @@ public class SimpleSessionEventManager implements
 
     @Override
     public void addOrRemoveEnclosingUGCs(Coordinate location) {
-        throw new UnsupportedOperationException();
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
-     * #isPolygonBased
-     * (com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent)
-     */
-    @Override
-    public boolean isPolygonBased(IHazardEvent hazardEvent) {
         throw new UnsupportedOperationException();
     }
 

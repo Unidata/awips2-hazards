@@ -8,8 +8,6 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Polygon;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Shape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
@@ -43,7 +41,6 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
 
 /**
  * Rect drawing action(refer to RT collaboration)
@@ -73,6 +70,7 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Dec 05, 2014 4124      Chris.Golden        Changed to work with newly parameterized
  *                                            config manager.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -130,7 +128,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
             /*
              * Clear any cached geometries
              */
-            ((SelectByAreaHandler) handler).selectedGeoms.clear();
+            ((SelectByAreaHandler) handler).selectedGeometryAsList.clear();
         }
 
         return handler;
@@ -160,9 +158,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
         private Geometry selectedGeometry = null;
 
-        private Geometry mergedPolygons = null;
-
-        private List<Geometry> selectedGeoms = new ArrayList<>();
+        private List<Geometry> selectedGeometryAsList = new ArrayList<>();
 
         private Mode mode = Mode.CREATE;
 
@@ -200,12 +196,12 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
                     if (!isContainedInSelectedGeometries(selectedGeometry)) {
                         mode = Mode.CREATE;
-                        selectedGeoms.add(selectedGeometry);
+                        selectedGeometryAsList.add(selectedGeometry);
                     } else {
-                        selectedGeoms.remove(selectedGeometry);
+                        selectedGeometryAsList.remove(selectedGeometry);
                     }
 
-                    zoneDisplay.setSelectedGeometries(selectedGeoms);
+                    zoneDisplay.setSelectedGeometries(selectedGeometryAsList);
                     editor.refresh();
                 } else {
                     mode = Mode.NONE;
@@ -237,12 +233,12 @@ public class SelectByAreaDrawingActionGeometryResource extends
             g = zoneDisplay.clickOnExistingGeometry(c);
 
             if (g != null && !isContainedInSelectedGeometries(g)) {
-                selectedGeoms.add(g);
+                selectedGeometryAsList.add(g);
             }
 
             // Tell the resource to update its display of
             // the selected geometries.
-            zoneDisplay.setSelectedGeometries(selectedGeoms);
+            zoneDisplay.setSelectedGeometries(selectedGeometryAsList);
             editor.refresh();
 
             return true;
@@ -269,7 +265,8 @@ public class SelectByAreaDrawingActionGeometryResource extends
                     if (g.equals(mouseDownGeometry)) {
                         if (mode.equals(Mode.CREATE)) {
                         } else {
-                            zoneDisplay.setSelectedGeometries(selectedGeoms);
+                            zoneDisplay
+                                    .setSelectedGeometries(selectedGeometryAsList);
                         }
                     }
                 }
@@ -280,58 +277,44 @@ public class SelectByAreaDrawingActionGeometryResource extends
                 // Unload the ZoneDbResource??
 
                 // Send off the selected geometries.
-                if (selectedGeoms != null && selectedGeoms.size() > 0) {
+                if (selectedGeometryAsList != null
+                        && selectedGeometryAsList.size() > 0) {
 
                     Runnable mergingPolygons = new Runnable() {
 
                         @Override
                         public void run() {
                             // Try this polygon merging technique instead...
-                            GeometryFactory geoFactory = selectedGeoms.get(0)
-                                    .getFactory();
-                            Geometry geomColl = geoFactory
-                                    .createGeometryCollection(selectedGeoms
+                            GeometryFactory geoFactory = selectedGeometryAsList
+                                    .get(0).getFactory();
+                            Geometry selectedGeometry = geoFactory
+                                    .createGeometryCollection(selectedGeometryAsList
                                             .toArray(new Geometry[1]));
-                            mergedPolygons = geomColl.buffer(0.001);
-
-                            mergedPolygons = TopologyPreservingSimplifier
-                                    .simplify(mergedPolygons, 0.0001);
-
-                            List<Shape> shapes = new ArrayList<>();
-
-                            for (int i = 0; i < mergedPolygons
-                                    .getNumGeometries(); ++i) {
-                                Polygon polygon = new Polygon("", "true",
-                                        "true", "true", "White", 2, "SOLID",
-                                        "White", mergedPolygons.getGeometryN(i)
-                                                .getCoordinates());
-                                shapes.add(polygon);
-                            }
 
                             /*
                              * Clone the list of selected geometries.
                              */
-                            List<Geometry> copyGeometriesList = new ArrayList<>();
+                            List<Geometry> selectedGeometryCopy = new ArrayList<>();
 
-                            for (Geometry geometry : selectedGeoms) {
-                                copyGeometriesList.add((Geometry) geometry
+                            for (Geometry geometry : selectedGeometryAsList) {
+                                selectedGeometryCopy.add((Geometry) geometry
                                         .clone());
                             }
 
                             if (!modifyingEvent) {
 
-                                selectedGeoms.clear();
+                                selectedGeometryAsList.clear();
 
                                 // Tell the resource to update its display of
                                 // the selected geometries.
                                 zoneDisplay
-                                        .setSelectedGeometries(selectedGeoms);
+                                        .setSelectedGeometries(selectedGeometryAsList);
 
                                 try {
                                     HazardEventBuilder hazardEventBuilder = new HazardEventBuilder(
                                             sessionManager);
                                     IHazardEvent hazardEvent = hazardEventBuilder
-                                            .buildPolygonHazardEvent(mergedPolygons);
+                                            .buildPolygonHazardEvent(selectedGeometry);
                                     ObservedHazardEvent observedHazardEvent = hazardEventBuilder
                                             .addEvent(hazardEvent);
                                     eventID = observedHazardEvent.getEventID();
@@ -344,11 +327,11 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
                                     if (hazardGeometryList.containsKey(eventID)) {
                                         hazardGeometryList.get(eventID).addAll(
-                                                copyGeometriesList);
+                                                selectedGeometryCopy);
 
                                     } else {
                                         hazardGeometryList.put(eventID,
-                                                copyGeometriesList);
+                                                selectedGeometryCopy);
                                     }
 
                                     /*
@@ -388,11 +371,11 @@ public class SelectByAreaDrawingActionGeometryResource extends
                             } else {
 
                                 hazardGeometryList.put(eventID,
-                                        copyGeometriesList);
+                                        selectedGeometryCopy);
                                 ObservedHazardEvent modifiedEvent = sessionManager
                                         .getEventManager()
                                         .getEventById(eventID);
-                                modifiedEvent.setGeometry(mergedPolygons);
+                                modifiedEvent.setGeometry(selectedGeometry);
                                 SessionEventGeometryModified modifyAction = new SessionEventGeometryModified(
                                         sessionManager.getEventManager(),
                                         modifiedEvent, getSpatialPresenter());
@@ -436,16 +419,16 @@ public class SelectByAreaDrawingActionGeometryResource extends
              * contained within this polygon.
              */
             List<Geometry> geometries = hazardGeometryList.get(eventID);
-            selectedGeoms = Lists.newArrayList(geometries);
-            zoneDisplay.setSelectedGeometries(selectedGeoms);
+            selectedGeometryAsList = Lists.newArrayList(geometries);
+            zoneDisplay.setSelectedGeometries(selectedGeometryAsList);
         }
 
         private boolean isContainedInSelectedGeometries(
                 Geometry selectedGeometry) {
 
-            for (int i = 0; i < selectedGeoms.size(); ++i) {
-                if (selectedGeoms.get(i).equals(selectedGeometry)) {
-                    selectedGeoms.set(i, selectedGeometry);
+            for (int i = 0; i < selectedGeometryAsList.size(); ++i) {
+                if (selectedGeometryAsList.get(i).equals(selectedGeometry)) {
+                    selectedGeometryAsList.set(i, selectedGeometry);
                     return true;
                 }
             }

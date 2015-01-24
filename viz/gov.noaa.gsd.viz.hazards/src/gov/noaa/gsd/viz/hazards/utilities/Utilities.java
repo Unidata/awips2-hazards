@@ -52,7 +52,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Nov 04, 2013    2182    daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 25, 2013    2336    Chris.Golden       Altered to handle new location of
  *                                            utility classes.
- * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov More consolidation to {@link HazardConstants}
+ * Nov 29, 2013    2380    Dan Schaffer       More consolidation to {@link HazardConstants}
+ * Jan 26, 2015    5952    Dan Schaffer       Fix incorrect hazard area designation.
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -103,11 +104,13 @@ public class Utilities {
     }
 
     public static void closeCoordinatesIfNecessary(List<Coordinate> coordinates) {
-        Coordinate firstPoint = coordinates.get(0);
-        Coordinate lastPoint = coordinates.get(coordinates.size() - 1);
-        if (!firstPoint.equals(lastPoint)) {
-            Coordinate copy = (Coordinate) firstPoint.clone();
-            coordinates.add(copy);
+        if (coordinates.size() > 0) {
+            Coordinate firstPoint = coordinates.get(0);
+            Coordinate lastPoint = coordinates.get(coordinates.size() - 1);
+            if (!firstPoint.equals(lastPoint)) {
+                Coordinate copy = (Coordinate) firstPoint.clone();
+                coordinates.add(copy);
+            }
         }
     }
 
