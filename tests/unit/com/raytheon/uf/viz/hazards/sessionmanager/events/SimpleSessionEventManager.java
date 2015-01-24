@@ -37,6 +37,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -61,6 +62,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Jan 08, 2015 5700       Chris.Golden Changed to generalize the meaning of a command invocation
  *                                      for a particular event, since it no longer only means
  *                                      that an event-modifying script is to be executed.
+ * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * </pre>
  * 
  * @author bsteffen
@@ -69,8 +71,6 @@ import com.vividsolutions.jts.geom.Geometry;
 
 public class SimpleSessionEventManager implements
         ISessionEventManager<ObservedHazardEvent> {
-
-    private final boolean canChangeGeometry;
 
     private final boolean canChangeTimeRange;
 
@@ -84,7 +84,6 @@ public class SimpleSessionEventManager implements
 
     public SimpleSessionEventManager(boolean canChangeGeometry,
             boolean canChangeTimeRange, boolean canChangeType) {
-        this.canChangeGeometry = canChangeGeometry;
         this.canChangeTimeRange = canChangeTimeRange;
         this.canChangeType = canChangeType;
     }
@@ -322,6 +321,50 @@ public class SimpleSessionEventManager implements
     @Override
     public void setSelectedEventForIDs(Collection<String> selectedEventIDs,
             IOriginator originator) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void addOrRemoveEnclosingUGCs(Coordinate location) {
+        throw new UnsupportedOperationException();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
+     * #isPolygonBased
+     * (com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent)
+     */
+    @Override
+    public boolean isPolygonBased(IHazardEvent hazardEvent) {
+        throw new UnsupportedOperationException();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
+     * #buildUGCs
+     * (com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent)
+     */
+    @Override
+    public List<String> buildUGCs(IHazardEvent hazardEvent) {
+        throw new UnsupportedOperationException();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
+     * #buildContainedUGCs
+     * (com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent)
+     */
+    @Override
+    public List<String> buildContainedUGCs(IHazardEvent hazardEvent) {
         throw new UnsupportedOperationException();
     }
 

@@ -31,6 +31,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventM
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionHazardNotificationListener;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.GeometryFactory;
 
 /**
  * Tests for SessionHazardNotification
@@ -67,6 +69,8 @@ public class SessionHazardNotificationListenerTest {
 
     private SessionHazardNotificationListener listener;
 
+    private final GeometryFactory geometryFactory = new GeometryFactory();
+
     @Before
     public void init() {
         eventManager = new SimpleSessionEventManager();
@@ -77,6 +81,8 @@ public class SessionHazardNotificationListenerTest {
         IHazardEvent event = new BaseHazardEvent();
         event.setEventID(TEST_EVENT_ID);
         event.setPhenomenon(TEST_PHEN1);
+        event.setGeometry(geometryFactory.createPoint(new Coordinate()));
+
         return event;
     }
 

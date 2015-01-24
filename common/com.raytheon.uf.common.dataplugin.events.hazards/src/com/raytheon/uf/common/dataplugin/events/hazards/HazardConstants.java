@@ -63,6 +63,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  *                                      UiBuilder).
  * Nov 18, 2014 4124      Chris.Golden  Removed unused change element.
  * Dec 05, 2014 4124      Chris.Golden  Added sort priority constants.
+ * Jan 22, 2015 4959      Dan Schaffer  MB3 to add/remove UGCs to a hazard
  * </pre>
  * 
  * @author mnash
@@ -445,6 +446,11 @@ public final class HazardConstants {
      * UGCs
      */
     public static final String UGCS = "ugcs";
+
+    /**
+     * contained UGCs
+     */
+    public static final String CONTAINED_UGCS = "containedUgcs";
 
     /**
      * Group identifier key in hazard

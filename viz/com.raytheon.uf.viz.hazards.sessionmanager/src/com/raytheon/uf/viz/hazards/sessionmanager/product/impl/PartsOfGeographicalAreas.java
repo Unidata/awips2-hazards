@@ -9,7 +9,6 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.product.impl;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -53,6 +52,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * ------------ ---------- ----------- --------------------------
  * Apr 24, 2014            daniel.s.schaffer@noaa.gov      Initial creation
  * Jul 24, 2014 4272       jsanchez    Set the CountyUserData.
+ * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * 
  * </pre>
  * 
@@ -316,17 +316,16 @@ public class PartsOfGeographicalAreas {
          * portion for each UGC, so we can then break out of our main UGC loop
          * arbitrarily.
          */
-        Serializable serializableUgcList = event
-                .getHazardAttribute(HazardConstants.UGCS);
         @SuppressWarnings("unchecked")
-        List<String> ugcList = (List<String>) serializableUgcList;
+        List<String> ugcs = (List<String>) event
+                .getHazardAttribute(HazardConstants.UGCS);
         Map<String, String> partOfCountyDescriptions = new HashMap<>();
         Map<String, String> partOfStateDescriptions = new HashMap<>();
 
         /* Main UGC loop; only construct one PortionsUtil object. */
         PortionsUtil portionsUtil = null;
 
-        for (String ugc : ugcList) {
+        for (String ugc : ugcs) {
             /*
              * Make sure we have a blank string for any descriptions that cannot
              * be made because of a database access problem.
@@ -335,7 +334,7 @@ public class PartsOfGeographicalAreas {
             partOfStateDescriptions.put(ugc, "");
         }
 
-        for (String ugc : ugcList) {
+        for (String ugc : ugcs) {
 
             Geometry countyGeometry = null;
             try {

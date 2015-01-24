@@ -35,6 +35,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
@@ -43,7 +44,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.hatching.HatchingUtilities;
+import com.raytheon.uf.viz.hazards.sessionmanager.hatching.MapUtilities;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -78,6 +79,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Dec 05, 2014 4124       Chris.Golden        Changed to work with newly parameterized config
  *                                             manager.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * </pre>
  * 
  * @author bryon.lawrence
@@ -107,9 +109,13 @@ public class HazardServicesDrawableBuilder {
 
     private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
+    private final MapUtilities mapUtilities;
+
     public HazardServicesDrawableBuilder(
             ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager) {
         this.sessionManager = sessionManager;
+        this.mapUtilities = new MapUtilities(
+                sessionManager.getConfigurationManager());
     }
 
     public AbstractDrawableComponent buildPoint(IHazardEvent hazardEvent,
@@ -609,17 +615,24 @@ public class HazardServicesDrawableBuilder {
         if (hazardType != null) {
             ISessionConfigurationManager<ObservedSettings> configManager = sessionManager
                     .getConfigurationManager();
-            String mapDBtableName = configManager.getHazardTypes()
-                    .get(hazardType).getHazardHatchArea();
+            HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes()
+                    .get(hazardType);
+            String mapDBtableName = hazardTypeEntry.getUgcType();
 
-            String mapLabelParameter = configManager.getHazardTypes()
-                    .get(hazardType).getHazardHatchLabel();
+            String mapLabelParameter = hazardTypeEntry.getUgcLabel();
+
+            boolean isPolygonBased = hazardTypeEntry.isPolygonBased();
 
             String cwa = hazardEvent.getSiteID();
 
-            Set<IGeometryData> hazardArea = HatchingUtilities
-                    .buildHatchedAreaForEvent(mapDBtableName,
-                            mapLabelParameter, cwa, hazardEvent, configManager);
+            Set<IGeometryData> hazardArea = mapUtilities
+                    .buildHatchedAreaForEvent(
+                            mapDBtableName,
+                            mapLabelParameter,
+                            cwa,
+                            hazardEvent,
+                            sessionManager.getEventManager().isPolygonBased(
+                                    hazardEvent));
 
             for (IGeometryData geometryData : hazardArea) {
 
@@ -646,11 +659,10 @@ public class HazardServicesDrawableBuilder {
              * to indicate which counties are covered by a portion of the hazard
              * polgyon.
              */
-            if (mapDBtableName.equals(HazardConstants.POLYGON_TYPE)) {
+            if (isPolygonBased) {
 
-                hazardArea = HatchingUtilities.getIntersectingMapGeometries(
-                        HazardConstants.MAPDATA_COUNTY, mapLabelParameter, cwa,
-                        true, configManager, hazardEvent);
+                hazardArea = mapUtilities.getIntersectingMapGeometries(true,
+                        hazardEvent);
 
                 for (IGeometryData geometryData : hazardArea) {
                     Point centroid = geometryData.getGeometry().getCentroid();

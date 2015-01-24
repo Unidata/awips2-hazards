@@ -33,6 +33,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -70,6 +71,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Jan 08, 2015 5700       Chris.Golden Changed to generalize the meaning of a command invocation
  *                                      for a particular event, since it no longer only means
  *                                      that an event-modifying script is to be executed.
+ * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * </pre>
  * 
  * @author bsteffen
@@ -497,5 +499,33 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      */
     public boolean isValidGeometryChange(Geometry geometry,
             ObservedHazardEvent hazardEvent);
+
+    /**
+     * Find a UGC enclosing the given location. If that UGC is included in the
+     * selected event then remove it. If it is not included, add it.
+     * 
+     * @param location
+     *            - coordinate enclosed by a UGC
+     * @return
+     */
+    public void addOrRemoveEnclosingUGCs(Coordinate location);
+
+    /**
+     * @param hazardEvent
+     * @return true if the hazardEvent is a polygon based hazard type
+     */
+    public boolean isPolygonBased(IHazardEvent hazardEvent);
+
+    /**
+     * @param hazardEvent
+     * @return UGCs intersected by the geometry of a hazard event.
+     */
+    public List<String> buildUGCs(IHazardEvent hazardEvent);
+
+    /**
+     * @param hazardEvent
+     * @return UGCs contained within the geometry of a hazard event.
+     */
+    public List<String> buildContainedUGCs(IHazardEvent hazardEvent);
 
 }

@@ -19,8 +19,10 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.impl;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTAINED_UGCS;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Iterator;
 
@@ -94,6 +96,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Oct 08, 2014 4042       C. Golden   Added generate method (moved from message handler).
  * Dec 05, 2014 2124       C. Golden   Changed to work with parameterized config manager.
  * Dec 08, 2014 2826       dgilling    Clear interoperability tables on reset events.
+ * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove polygons from hazards
  * </pre>
  * 
  * @author bsteffen
@@ -411,6 +414,9 @@ public class SessionManager implements
         for (IEvent event : eventList) {
             if (event instanceof IHazardEvent) {
                 IHazardEvent hevent = (IHazardEvent) event;
+                Serializable ugcs = (Serializable) eventManager
+                        .buildContainedUGCs(hevent);
+                hevent.addHazardAttribute(CONTAINED_UGCS, ugcs);
                 hevent = eventManager.addEvent(hevent, Originator.OTHER);
             }
         }

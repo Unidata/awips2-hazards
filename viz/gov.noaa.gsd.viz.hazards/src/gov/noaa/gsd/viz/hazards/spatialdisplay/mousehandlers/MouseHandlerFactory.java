@@ -29,6 +29,7 @@ import com.raytheon.uf.viz.core.rsc.IInputHandler;
  * Jul 15, 2013      585   Chris.Golden        Changed so that various handlers
  *                                             are no longer singletons.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -87,7 +88,7 @@ public class MouseHandlerFactory {
         if (handler == null) {
             switch (mouseHandler) {
             case SINGLE_SELECTION:
-                handler = new SelectionAction();
+                handler = new SelectionAction(presenter);
                 break;
             case FREE_HAND_MULTI_SELECTION:
                 handler = new FreeHandMultiSelectionAction(

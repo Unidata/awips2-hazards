@@ -9,6 +9,7 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPoint;
@@ -60,6 +61,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * Sep 09, 2014  3994     Robert.Blum         Added handleMouseEnter to reset the cursor type.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes.  Also 5591, 
  *                                      fix of intermittent inability to select/deselect hazards
+ * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove polygons from hazards
  * 
  * </pre>
  * 
@@ -72,6 +74,8 @@ public class SelectionAction extends NonDrawingAction {
      */
     public static final double SELECTION_DISTANCE_PIXELS = 15.0;
 
+    private final SpatialPresenter spatialPresenter;
+
     /**
      * Defines the type of move operation. SINGLE_POINT -- the user is moving a
      * vertex ALL_POINTS -- the user is moving the entire polygon.
@@ -80,7 +84,8 @@ public class SelectionAction extends NonDrawingAction {
         SINGLE_POINT, ALL_POINTS;
     }
 
-    public SelectionAction() {
+    public SelectionAction(SpatialPresenter spatialPresenter) {
+        this.spatialPresenter = spatialPresenter;
     }
 
     @Override
@@ -202,9 +207,7 @@ public class SelectionAction extends NonDrawingAction {
         @Override
         public boolean handleMouseDown(int anX, int aY, int button) {
             if (button == 1) {
-                AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                        .getInstance().getActiveEditor());
-                Coordinate loc = editor.translateClick(anX, aY);
+                Coordinate loc = toCoordinate(anX, aY);
 
                 if (loc != null) {
                     findSelectedDE(loc, anX, aY);
@@ -212,6 +215,65 @@ public class SelectionAction extends NonDrawingAction {
             }
 
             return false;
+        }
+
+        @Override
+        public boolean handleMouseUp(int x, int y, int button) {
+
+            boolean result = true;
+            if (button == 3) {
+                Coordinate loc = toCoordinate(x, y);
+                spatialPresenter.zoneSelected(loc);
+            }
+
+            /*
+             * Button 2 functionality for adding/deleting vertices... This
+             * mimics WarnGen.
+             */
+            else if (button == 2) {
+                if (getSpatialDisplay().getSelectedHazardLayer() != null) {
+                    handleVertexAdditionOrDeletion();
+                }
+                result = false;
+            } else if (isVertexMove) {
+                handleVertexMove();
+
+            } else if (ghostEl != null) {
+                DrawableElement selectedDE = getSpatialDisplay()
+                        .getSelectedDE();
+                if (selectedDE != null) {
+                    IHazardServicesShape origShape = (IHazardServicesShape) selectedDE;
+                    Class<?> selectedDEclass = selectedDE.getClass();
+                    if (selectedDEclass.equals(HazardServicesSymbol.class)) {
+                        handleStormTrackModification(selectedDE);
+
+                    } else {
+                        handleShapeMove(origShape, selectedDEclass);
+                    }
+
+                }
+            } else if (!allowPanning) {
+                /*
+                 * Treat this has a hazard selection.
+                 */
+                boolean multipleSelection = shiftKeyIsDown || ctrlKeyIsDown;
+                getSpatialDisplay().elementClicked(
+                        getSpatialDisplay().getSelectedDE(), multipleSelection);
+
+            } else {
+                result = false;
+            }
+            finalizeMouseHandling();
+
+            return result;
+
+        }
+
+        private Coordinate toCoordinate(int x, int y) {
+            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
+                    .getInstance().getActiveEditor());
+            Coordinate loc = editor.translateClick(x, y);
+            return loc;
         }
 
         /**
@@ -305,51 +367,6 @@ public class SelectionAction extends NonDrawingAction {
             }
 
             return selectedDEFound;
-        }
-
-        @Override
-        public boolean handleMouseUp(int x, int y, int button) {
-            boolean result = true;
-            /*
-             * Button 2 functionality for adding/deleting vertices... This
-             * mimics WarnGen.
-             */
-            if (button == 2) {
-                if (getSpatialDisplay().getSelectedHazardLayer() != null) {
-                    handleVertexAdditionOrDeletion();
-                }
-                result = false;
-            } else if (isVertexMove) {
-                handleVertexMove();
-
-            } else if (ghostEl != null) {
-                DrawableElement selectedDE = getSpatialDisplay()
-                        .getSelectedDE();
-                if (selectedDE != null) {
-                    IHazardServicesShape origShape = (IHazardServicesShape) selectedDE;
-                    Class<?> selectedDEclass = selectedDE.getClass();
-                    if (selectedDEclass.equals(HazardServicesSymbol.class)) {
-                        handleStormTrackModification(selectedDE);
-
-                    } else {
-                        handleShapeMove(origShape, selectedDEclass);
-                    }
-
-                }
-            } else if (!allowPanning) {
-                /*
-                 * Treat this has a hazard selection.
-                 */
-                boolean multipleSelection = shiftKeyIsDown || ctrlKeyIsDown;
-                getSpatialDisplay().elementClicked(
-                        getSpatialDisplay().getSelectedDE(), multipleSelection);
-
-            } else {
-                result = false;
-            }
-            finalizeMouseHandling();
-            return result;
-
         }
 
         private void handleShapeMove(IHazardServicesShape origShape,

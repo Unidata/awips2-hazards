@@ -9,7 +9,7 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder;
 
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
@@ -25,22 +25,23 @@ import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 28, 2014            blawrenc    Initial creation
+ * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * 
  * </pre>
  * 
  * @author blawrenc
  * @version 1.0
  */
-public interface IUGCBuilder {
+public interface IugcToMapGeometryDataBuilder {
 
     /**
-     * Creates a list of UGC information given the set of geometry data objects
-     * retrieved from a table in the maps geodatabase.
+     * Determine the mapping between UGCs and their associated map
+     * {@link IGeometryData}
      * 
-     * @param geometryData
-     *            The set of geometry data objects from which UGC information
-     *            will be derived.
-     * @return A list of UGCs.
+     * @param mapGeometryData
+     *            the geometryData
+     * @return the mapping
      */
-    public List<String> buildUGCList(Set<IGeometryData> geometryData);
+    public Map<String, IGeometryData> ugcsToMapGeometryData(
+            Set<IGeometryData> mapGeometryData);
 }

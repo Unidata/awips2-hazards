@@ -9,17 +9,16 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl;
 
-import java.util.List;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 
-import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
-import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IUGCBuilder;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IugcToMapGeometryDataBuilder;
 
 /**
  * 
- * Description: A null IUGCBuilder implementation which returns an empty list of
- * UGCs.
+ * Description: A null implementation of a {@link IugcToMapGeometryDataBuilder}
  * 
  * <pre>
  * 
@@ -27,6 +26,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IUGCBuilder;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 02, 2014            blawrenc      Initial creation
+ * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * 
  * </pre>
  * 
@@ -34,10 +34,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IUGCBuilder;
  * @version 1.0
  */
 
-public class NullUGCBuilder implements IUGCBuilder {
+public class NullUGCBuilder implements IugcToMapGeometryDataBuilder {
 
     @Override
-    public List<String> buildUGCList(Set<IGeometryData> geometryData) {
-        return Lists.newArrayList();
+    public Map<String, IGeometryData> ugcsToMapGeometryData(
+            Set<IGeometryData> mapGeometryData) {
+        return Collections.emptyMap();
     }
 }

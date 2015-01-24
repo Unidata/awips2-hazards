@@ -9,18 +9,18 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
-import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IUGCBuilder;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IugcToMapGeometryDataBuilder;
 
 /**
  * 
- * Description: An IUGCBuilder implementation which constructs a list of UGCs
- * from geometry data read from the county table in the maps geodatabase.
+ * Description: An {@link IugcToMapGeometryDataBuilder} implementation for data
+ * read from the county table in the maps geodatabase.
  * 
  * <pre>
  * 
@@ -28,6 +28,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IUGCBuilder;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 28, 2014            blawrenc      Initial creation
+ * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * 
  * </pre>
  * 
@@ -35,19 +36,20 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IUGCBuilder;
  * @version 1.0
  */
 
-public class CountyUGCBuilder implements IUGCBuilder {
+public class CountyUGCBuilder implements IugcToMapGeometryDataBuilder {
 
     @Override
-    public List<String> buildUGCList(Set<IGeometryData> geometryData) {
-        List<String> ugcList = Lists.newArrayList();
+    public Map<String, IGeometryData> ugcsToMapGeometryData(
+            Set<IGeometryData> mapGeometryData) {
+        Map<String, IGeometryData> result = new HashMap<>();
 
-        for (IGeometryData geoData : geometryData) {
+        for (IGeometryData geoData : mapGeometryData) {
             String fips = geoData.getString(HazardConstants.UGC_FIPS);
             String state = geoData.getString(HazardConstants.UGC_STATE);
             String ugc = state + "C" + fips.substring(2);
-            ugcList.add(ugc);
+            result.put(ugc, geoData);
         }
 
-        return ugcList;
+        return result;
     }
 }

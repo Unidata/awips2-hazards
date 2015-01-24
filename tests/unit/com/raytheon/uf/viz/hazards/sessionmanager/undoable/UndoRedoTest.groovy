@@ -126,7 +126,7 @@ class UndoRedoTest extends spock.lang.Specification {
         and:  "the event's geometry cannot be redone"
         observedHazardEvent.isRedoable() == false
         and:  "the event contains the modified geometry"
-        observedHazardEvent.getGeometry() == testGeometry2
+        observedHazardEvent.getGeometry().getGeometryN(0) == testGeometry2
     }
 
     def "When an event's geometry is undone, then it contains the orginal geometry"() {
@@ -135,7 +135,7 @@ class UndoRedoTest extends spock.lang.Specification {
         and: "the event's geometry change is undone"
         observedHazardEvent.undo()
         then: "the event contains the original geometry"
-        observedHazardEvent.getGeometry() == testGeometry1
+        observedHazardEvent.getGeometry().getGeometryN(0) == testGeometry1
         and: "the event's geometry is not undoable"
         observedHazardEvent.isUndoable() == false
         and: "the event's geometry is redoable"
@@ -153,7 +153,7 @@ class UndoRedoTest extends spock.lang.Specification {
         observedHazardEvent.redo()
         observedHazardEvent.redo()
         then: "then event should contain the correct geometry"
-        observedHazardEvent.getGeometry() == testGeometry3
+        observedHazardEvent.getGeometry().getGeometryN(0) == testGeometry3
     }
 
     def "test clearing an event's undo/redo history"() {
@@ -163,7 +163,7 @@ class UndoRedoTest extends spock.lang.Specification {
         and: "the event's change history is cleared"
         observedHazardEvent.clearUndoRedo()
         then: "the event should contain the last geometry change"
-        observedHazardEvent.getGeometry() == testGeometry3
+        observedHazardEvent.getGeometry().getGeometryN(0) == testGeometry3
         and: "the event should not be undoable"
         observedHazardEvent.isUndoable() == false
         and: "the event should not be redoable"

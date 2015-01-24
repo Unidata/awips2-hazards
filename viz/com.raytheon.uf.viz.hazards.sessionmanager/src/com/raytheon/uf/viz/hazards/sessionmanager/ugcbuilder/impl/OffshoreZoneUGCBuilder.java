@@ -9,18 +9,18 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
-import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IUGCBuilder;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IugcToMapGeometryDataBuilder;
 
 /**
  * 
- * Description: An IUGCBuilder implementation which constructs a list of UGCs
- * from geometry data read from the offshore table in the maps geodatabase.
+ * Description: An {@link IugcToMapGeometryDataBuilder} implementation for
+ * geometry data read from the offshore table in the maps geodatabase.
  * 
  * <pre>
  * 
@@ -28,6 +28,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IUGCBuilder;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 28, 2014            blawrenc      Initial creation
+ * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * 
  * </pre>
  * 
@@ -35,19 +36,20 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IUGCBuilder;
  * @version 1.0
  */
 
-public class OffshoreZoneUGCBuilder implements IUGCBuilder {
+public class OffshoreZoneUGCBuilder implements IugcToMapGeometryDataBuilder {
 
     @Override
-    public List<String> buildUGCList(Set<IGeometryData> geometryData) {
+    public Map<String, IGeometryData> ugcsToMapGeometryData(
+            Set<IGeometryData> mapGeometryData) {
 
-        List<String> ugcList = Lists.newArrayList();
+        Map<String, IGeometryData> result = new HashMap<>();
 
-        for (IGeometryData geoData : geometryData) {
+        for (IGeometryData geoData : mapGeometryData) {
             String zone = geoData.getString(HazardConstants.UGC_ID);
-            ugcList.add(zone);
+            result.put(zone, geoData);
         }
 
-        return ugcList;
+        return result;
     }
 
 }

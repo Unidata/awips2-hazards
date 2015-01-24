@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.product.impl;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.MAPDATA_COUNTY;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
@@ -182,6 +183,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Dec 17, 2014 2826       dgilling     More order of operations fixes on product issue.
  * Jan 15, 2015 4193       rferrel      Implement dissemination ordering.
  * Jan 20, 2015 4476       rferrel      Implement shutdown of ProductGeneration.
+ * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * 
  * </pre>
  * 
@@ -1288,7 +1290,10 @@ public class SessionProductManager implements ISessionProductManager {
 
             /* Make descriptions of portions of counties if we have any polygon */
             /* geometries for this event. */
-            if (polygonGeometries.size() > 0) {
+            HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes()
+                    .get(HazardEventUtilities.getHazardType(event));
+            String ugcType = hazardTypeEntry.getUgcType();
+            if (ugcType.equals(MAPDATA_COUNTY) && polygonGeometries.size() > 0) {
                 if (polygonGeometries.size() < geometryCollection
                         .getNumGeometries()) {
                     geometryCollection = new GeometryFactory()

@@ -44,6 +44,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Apr 28, 2014 3556       bkowal      Relocate to a common plugin.
  * Jul 03, 2014 3512       Chris.Golden Added durationChoiceList
  *                                      field.
+ * Jan 16, 2015 4959       Dan Schaffer Add/Remove UGC capability
+ * 
  * Jan 21, 2015 3626       Chris.Golden Added hazard-type-first
  *                                      recommender field.
  * </pre>
@@ -65,9 +67,11 @@ public class HazardTypeEntry {
 
     private String[] hazardConflictList;
 
-    private String hazardHatchArea;
+    private boolean polygonBased;
 
-    private String hazardHatchLabel;
+    private String ugcType;
+
+    private String ugcLabel;
 
     private String hazardClipArea;
 
@@ -146,33 +150,33 @@ public class HazardTypeEntry {
     }
 
     /**
-     * @return the hazardHatchArea
+     * @return the ugcType
      */
-    public String getHazardHatchArea() {
-        return hazardHatchArea;
+    public String getUgcType() {
+        return ugcType;
     }
 
     /**
-     * @param hazardHatchArea
-     *            the hazardHatchArea to set
+     * @param ugcType
+     *            the ugcType to set
      */
-    public void setHazardHatchArea(String hazardHatchArea) {
-        this.hazardHatchArea = hazardHatchArea;
+    public void setUgcType(String ugcType) {
+        this.ugcType = ugcType;
     }
 
     /**
-     * @return the hazardHatchLabel
+     * @return the ugcLabel
      */
-    public String getHazardHatchLabel() {
-        return hazardHatchLabel;
+    public String getUgcLabel() {
+        return ugcLabel;
     }
 
     /**
-     * @param hazardHatchLabel
-     *            the hazardHatchLabel to set
+     * @param ugcLabel
+     *            the ugcLabel to set
      */
-    public void setHazardHatchLabel(String hazardHatchLabel) {
-        this.hazardHatchLabel = hazardHatchLabel;
+    public void setUgcLabel(String ugcLabel) {
+        this.ugcLabel = ugcLabel;
     }
 
     /**
@@ -275,5 +279,20 @@ public class HazardTypeEntry {
      */
     public void setInclusionPercentage(double inclusionPercentage) {
         this.inclusionPercentage = inclusionPercentage;
+    }
+
+    /**
+     * @return the polygonBased
+     */
+    public boolean isPolygonBased() {
+        return polygonBased;
+    }
+
+    /**
+     * @param polygonBased
+     *            the polygonBased to set
+     */
+    public void setPolygonBased(boolean polygonBased) {
+        this.polygonBased = polygonBased;
     }
 }

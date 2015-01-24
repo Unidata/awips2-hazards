@@ -19,12 +19,15 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTAINED_UGCS;
+
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
@@ -53,6 +56,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryCollection;
+import com.vividsolutions.jts.geom.GeometryFactory;
 
 /**
  * A hazard event which notifies the SessionEventManager whenever fields are
@@ -86,6 +91,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      public that should have been protected
  *                                      like the other notify-taking methods.
  * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
+ * Jan 22, 2015 4959       Dan Schaffer MB3 to add/remove UGCs to a hazard
  * </pre>
  * 
  * @author bsteffen
@@ -142,6 +148,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
      * reduced.
      */
     private volatile Boolean reduced = false;
+
+    private final GeometryFactory geometryFactory = new GeometryFactory();
 
     @Override
     public Date getStartTime() {
@@ -503,12 +511,20 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     protected void setHazardType(String phenomenon, String significance,
             String subtype, boolean notify, IOriginator originator) {
+        /*
+         * TODO Handle case when user sets hazard type back to empty. Should the
+         * HID even allow that?
+         */
         notify &= (changed(getPhenomenon(), phenomenon)
                 || changed(getSignificance(), significance) || changed(
                 getSubType(), subtype));
         setPhenomenon(phenomenon, false, originator);
         setSignificance(significance, false, originator);
         setSubType(subtype, false, originator);
+
+        List<String> ugcs = eventManager.buildContainedUGCs(this);
+        addHazardAttribute(CONTAINED_UGCS, (Serializable) ugcs, notify,
+                Originator.OTHER);
         if (notify) {
             eventManager.hazardEventModified(new SessionEventTypeModified(
                     eventManager, this, originator));
@@ -573,6 +589,13 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     protected void setGeometry(Geometry geom, boolean notify,
             IOriginator originator) {
+        /*
+         * Make sure that geometries are GeometryCollections throughout
+         */
+        if (!(geom.getClass().isAssignableFrom(GeometryCollection.class))) {
+            geom = geometryFactory
+                    .createGeometryCollection(new Geometry[] { geom });
+        }
         if (changed(getGeometry(), geom)) {
             pushToStack("setGeometry", Geometry.class, getGeometry());
             delegate.setGeometry(geom);

@@ -13,8 +13,8 @@ import com.raytheon.uf.viz.core.maps.rsc.AbstractDbMapResourceData;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
 
 /**
- * Constructs an SelectByAreaDbMapResource object. Based upon RTS code
- * originallhy by randerso.
+ * Constructs an SelectByAreaDbMapResource object. Based upon RTS code written
+ * by Ron Anderson
  * 
  * <pre>
  * 
@@ -25,7 +25,7 @@ import com.raytheon.uf.viz.core.rsc.LoadProperties;
  * 
  * </pre>
  * 
- * @author randerso
+ * @author Bryon.Lawrence
  * @version 1.0
  */
 

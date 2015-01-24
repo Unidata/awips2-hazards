@@ -43,6 +43,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
+import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Spatial presenter, used to mediate between the model and the spatial view.
@@ -71,6 +72,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
  * Dec 05, 2014  4124      Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * </pre>
  * 
  * @author Chris.Golden
@@ -332,6 +334,10 @@ public class SpatialPresenter extends
                 UIOriginator.SPATIAL_DISPLAY);
     }
 
+    public void zoneSelected(Coordinate location) {
+        getModel().getEventManager().addOrRemoveEnclosingUGCs(location);
+    }
+
     private void filterEventsForTime(Collection<ObservedHazardEvent> events,
             SelectedTime selectedTime) {
         Iterator<ObservedHazardEvent> it = events.iterator();
@@ -352,4 +358,5 @@ public class SpatialPresenter extends
 
         }
     }
+
 }
