@@ -170,7 +170,10 @@ class MetaData(CommonMetaData.MetaData):
                 "choices": self.getCTA_Choices(productLabel)
                 }        
     def getCTA_Choices(self, productLabel):
-        if productLabel.find('FFA')>=0:
+        if productLabel.find('FAA')>=0:
+            #FA.A (FAA) Does not have Calls To Action CTA Choices
+            return [ ]
+        elif productLabel.find('FFA')>=0:
             return [
                     self.ctaSafety(),
                     self.ctaStayAway(),

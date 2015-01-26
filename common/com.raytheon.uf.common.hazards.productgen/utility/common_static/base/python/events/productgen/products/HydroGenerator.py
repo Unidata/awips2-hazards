@@ -6,6 +6,7 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     Jan 12, 2015    4937    Robert.Blum Initial creation
+    Jan 26, 2015    4936    Chris.Cody  Implement scripts for Flash Flood Watch Products (FFA,FAA,FLA)
 '''
 from RiverForecastPoints import RiverForecastPoints
 from HydroProductParts import HydroProductParts
@@ -70,11 +71,7 @@ class Product(Legacy_Base_Generator.Product):
         segment['forecastCrestStage'] = self._rfp.getForecastCrestStage(pointID)
         segment['forecastCrestTime_ms'] = self._rfp.getForecastCrestTime(pointID)
         # Fall
-        forecastFallBelowFloodStageTime_ms = self._rfp.getForecastFallBelowFloodStageTime(pointID)
-        if not forecastFallBelowFloodStageTime_ms:
-            forecastFallBelowFloodStageTime_ms = self._rfp.MISSING_VALUE
-        segment['forecastFallBelowFloodStageTime_ms'] = forecastFallBelowFloodStageTime_ms
-
+        segment['forecastFallBelowFloodStageTime_ms'] = self._rfp.getForecastFallBelowFloodStageTime(pointID)
         segment['stageFlowUnits'] = self._rfp.getStageFlowUnits(pointID)
         # Trend
         segment['stageTrend'] = self._rfp.getStageTrend(pointID)
@@ -110,33 +107,57 @@ class Product(Legacy_Base_Generator.Product):
        return height, impactValue
 
     def hydrologicCauseMapping(self, hydrologicCause, key):
-        mapping = {
-            'dam':          {'immediateCause': 'DM', 'typeOfFlooding':'A dam failure in...'},
-            'siteImminent': {'immediateCause': 'DM', 'typeOfFlooding':'A dam break in...'},
-            'siteFailed':   {'immediateCause': 'DM', 'typeOfFlooding':'A dam break in...'},
-            'levee':        {'immediateCause': 'DM', 'typeOfFlooding':'A levee failure in...'},
-            'floodgate':    {'immediateCause': 'DR', 'typeOfFlooding':'A dam floodgate release in...'},
-            'glacier':      {'immediateCause': 'GO', 'typeOfFlooding':'A glacier-dammed lake outburst in...'},
-            'icejam':       {'immediateCause': 'IJ', 'typeOfFlooding':'An ice jam in...'},
-            'snowMelt':     {'immediateCause': 'RS', 'typeOfFlooding':'Extremely rapid snowmelt in...'},
-            'volcano':      {'immediateCause': 'SM', 'typeOfFlooding':'Extremely rapid snowmelt caused by volcanic eruption in...'},
-            'volcanoLahar': {'immediateCause': 'SM', 'typeOfFlooding':'Volcanic induced debris flow in...'},
-            'default':      {'immediateCause': 'ER', 'typeOfFlooding':'Excessive rain in...'}
-            }
-        if mapping.has_key(hydrologicCause):
+        
+        keyFound = False
+        if ((hydrologicCause is not None) and (key is not None)):
+            mapping = {
+                'dam':          {'immediateCause': 'DM', 'typeOfFlooding':'A dam failure in...'},
+                'siteImminent': {'immediateCause': 'DM', 'typeOfFlooding':'A dam break in...'},
+                'siteFailed':   {'immediateCause': 'DM', 'typeOfFlooding':'A dam break in...'},
+                'levee':        {'immediateCause': 'DM', 'typeOfFlooding':'A levee failure in...'},
+                'floodgate':    {'immediateCause': 'DR', 'typeOfFlooding':'A dam floodgate release in...'},
+                'glacier':      {'immediateCause': 'GO', 'typeOfFlooding':'A glacier-dammed lake outburst in...'},
+                'icejam':       {'immediateCause': 'IJ', 'typeOfFlooding':'An ice jam in...'},
+                'snowMelt':     {'immediateCause': 'RS', 'typeOfFlooding':'Extremely rapid snowmelt in...'},
+                'volcano':      {'immediateCause': 'SM', 'typeOfFlooding':'Extremely rapid snowmelt caused by volcanic eruption in...'},
+                'volcanoLahar': {'immediateCause': 'SM', 'typeOfFlooding':'Volcanic induced debris flow in...'},
+                'default':      {'immediateCause': 'ER', 'typeOfFlooding':'Excessive rain in...'}
+                }
+            
+            mapKeyList = list(mapping)
+            for listKeyVal in mapKeyList:
+                if (listKeyVal == hydrologicCause):
+                    keyFound = True
+                    break
+        if (keyFound == True):
             return mapping[hydrologicCause][key]
         else:
             return mapping['default'][key]
 
     def immediateCauseMapping(self, immediateCause):
         mapping = {
+            'ER' : 'excessive rainfall',
             'SM' : 'snowmelt',
             'RS' : 'rain and snowmelt',
-            'IJ' : 'an ice jam',
             'DM' : 'a levee failure',
             'DR' : 'a dam floodgate release',
-            'GO' : 'a glacier-dammed lake outburst'
+            'GO' : 'a glacier-dammed lake outburst',
+            'IJ' : 'an ice jam',
+            'IC' : 'rain and/or snowmelt and/or ice jam',
+            'FS' : 'flooding upstream plus storm surge',
+            'FT' : 'flooding upstream plus tidal effects',
+            'ET' : 'elevated upstream flow plus tidal effects',
+            'WT' : 'wind and/or tidal effects',
+            'OT' : 'other effects',
+            'MC' : 'multiple causes',
+            'UU' : 'unknown'
             }
-        if mapping.has_key(immediateCause):
-                return mapping.get(immediateCause)
+        mapKeyList = list(mapping)
+        keyFound = False
+        for listKeyVal in mapKeyList:
+            if (listKeyVal == immediateCause):
+                keyFound = True
+                break
+        if (keyFound == True):
+            return mapping.get(immediateCause)
         return ''

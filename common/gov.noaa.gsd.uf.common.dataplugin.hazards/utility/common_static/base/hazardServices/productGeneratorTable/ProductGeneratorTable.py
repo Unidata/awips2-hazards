@@ -1,13 +1,25 @@
+'''
+    Description: Hazard Services Product preview and formatters Table. 
+    
+    SOFTWARE HISTORY
+    Date         Ticket#    Engineer    Description
+    ------------ ---------- ----------- --------------------------
+                                        Initial implementation
+    Jan 26, 2015   4936     Chris.Cody  Implement scripts for Flash Flood Watch Products (FFA,FAA,FLA)
+    
+    @author 
+    @version 1.0
+'''
 
 ProductGeneratorTable = {
-        "FFA_ProductGenerator": {
+        "FFA_ProductGenerator_v3": {
             "allowedHazards": [
              ('FF.A', "Flood"),
              ('FA.A', "Flood"),
              ('FL.A', "Flood1"),
              ],
-            "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy"], 
+            "previewFormatters": ["Legacy_FFA_Formatter"],
+            "issueFormatters": ["Legacy_FFA_Formatter"], 
             },
         "FLW_FLS_ProductGenerator_v3" : {
             "allowedHazards": [

@@ -1,6 +1,3 @@
-'''
-    Description: Hazard Information Dialog Metadata for hazard type FF.A
-'''
 import CommonMetaData
 from HazardConstants import *
 
@@ -15,7 +12,7 @@ class MetaData(CommonMetaData.MetaData):
         else:
                 metaData = [
                     self.getImmediateCause(),
-                    self.basisStatement(),
+                    self.getBasisStatement(),
                     self.getCTAs(), 
                     # Preserving CAP defaults for future reference.                   
 #                     self.getCAP_Fields([
@@ -69,7 +66,7 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaStayAway(),
             ]
 
-    def basisStatement(self):
+    def getBasisStatement(self):
         return {
              "fieldType": "Text",
              "fieldName": "basisStatement",

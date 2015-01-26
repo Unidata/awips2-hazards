@@ -1,15 +1,13 @@
 '''
-    Description: Legacy formatter for FFW products
+    Description: Legacy formatter for hydro FFA products
     
     SOFTWARE HISTORY
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
-    Oct 24, 2014    4933    Robert.Blum Initial creation
-    Jan 12  2015    4937    Robert.Blum Refactor to inherit from new
-                            formatter classes.
+    Jan 07  2015            mduff       Initial release
+    Jan 26, 2015 4936       chris.cody  Implement scripts for Flash Flood Watch Products (FFA,FAA,FLA)
 '''
 
-import FormatTemplate
 import datetime
 
 import types, re, sys
@@ -24,6 +22,7 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     def initialize(self) :
         super(Format, self).initialize()
+
 
     def execute(self, productDict):
         self.productDict = productDict
@@ -40,7 +39,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             partsList = productParts.get('partsList')
         else:
             partsList = productParts
-
+        
         for part in partsList:
             valtype = type(part)
             if valtype is types.StringType:
@@ -65,20 +64,28 @@ class Format(Legacy_Hydro_Formatter.Format):
             elif name == 'ugcHeader':
                 partText = self._ugcHeader(productDict)
             elif name == 'easMessage':
-                easMessage = self._easMessage(productDict['vtecRecords'])
+                segments = self.productDict['segments']
+                vtecRecords = []
+                for segment in segments:
+                    if 'vtecRecords' in segment:
+                        vtec = segment['vtecRecords']
+                        vtecRecords.extend(vtec)
+                easMessage = self._easMessage(vtecRecords)
                 if easMessage is not None:
                     partText = easMessage + '\n'
             elif name == 'productHeader':
                 partText = self._productHeader()
-            elif name == 'overview':
-                partText = '|* DEFAULT OVERVIEW SECTION *|\n\n'
+            elif name == 'overviewHeadline_point':
+                partText = self._overviewHeadline_point(productDict)
+            elif name == 'overviewSynopsis_point':
+                partText = self._overviewSynopsis_point(productDict)
             elif name == 'vtecRecords':
                 partText = self._vtecRecords(productDict)
             elif name == 'areaList':
                 partText = self._areaList(productDict)
             elif name == 'issuanceTimeDate':
                 partText = self._issuanceTimeDate()
-            elif name == 'callsToAction':
+            elif name == 'callsToAction' or name =='callsToAction_productLevel':
                 partText = self._callsToAction(productDict, name)
                 if (self._runMode == 'Practice'):
                     partText += 'This is a test message. Do not take action based on this message. \n\n'
@@ -92,8 +99,6 @@ class Format(Legacy_Hydro_Formatter.Format):
                 partText = self._cityList(productDict)
             elif name == 'summaryHeadlines':
                 partText = self._summaryHeadlines(productDict)
-            elif name == 'basisAndImpactsStatement_segmentLevel':
-                partText = self._basisAndImpactsStatement_segmentLevel(productDict)
             elif name == 'segments':
                 partText = self.processSubParts(productDict['segments'], infoDicts) 
             elif name == 'sections':
@@ -113,7 +118,9 @@ class Format(Legacy_Hydro_Formatter.Format):
             elif name == 'timeBullet':
                 partText = self._timeBullet(productDict) + '\n'
             elif name == 'basisBullet':
-                partText = self._basisBullet(productDict)
+                partText = self._basisBullet(hazard, productDict)
+            elif name == 'impactsBullet':
+                partText = self._impactsBullet(productDict)
             elif name == 'emergencyHeadline':
                 if (self._runMode == 'Practice'):
                     partText = '...This message is for test purposes only... \n\n'
@@ -148,6 +155,12 @@ class Format(Legacy_Hydro_Formatter.Format):
                 partText = self._pointImpactsBullet(productDict)
             elif name == 'floodPointTable':
                 partText = '\n' + self._floodPointTable(productDict) + '\n'
+            elif name == 'nextIssuanceStatement':
+                partText = self._nextIssuanceStatement(productDict)
+            elif name == 'rainFallStatement':
+                partText = self._rainFallStatement(productDict)
+            elif name == 'additionalInfoStatement':
+                partText = self._additionalInfoStatement(productDict)
             else:
                 textStr = self._tpc.getVal(productDict, name)
                 if textStr:
@@ -157,7 +170,8 @@ class Format(Legacy_Hydro_Formatter.Format):
                 if name not in ['segments', 'sections']:
                     print partText
 
-            text += partText
+            if partText is not None:
+                text += partText
         return text
 
     def processSubParts(self, infoDicts, subParts):
@@ -167,6 +181,7 @@ class Format(Legacy_Hydro_Formatter.Format):
         @param subParts: a list of Product Parts for each segment
         @return: Returns the legacy text of the subParts
         """
+        
         text = '' 
         for i in range(len(subParts)):
             text += self._processProductParts(infoDicts[i], subParts[i].get('partsList'))
@@ -198,7 +213,7 @@ class Format(Legacy_Hydro_Formatter.Format):
         for vtecRecord in vtecRecords:  # NOTE there is only one vtecRecord / hazard to process
             hazName = vtecRecord['hdln']
 
-            if len(vtecRecord['hdln']):
+            if len(hazName):
                 action = vtecRecord['act']
 
             if action == 'NEW':
@@ -216,7 +231,7 @@ class Format(Legacy_Hydro_Formatter.Format):
                     attribution = 'the ' + hazName + \
                       ' for ' + areaPhrase + ' has expired.'
                 else:
-                   timeWords = self._tpc.getTimingPhrase(vtecRecord, [], expTimeCurrent, timeZones=self.timezones)
+                   timeWords = self._tpc.getTimingPhrase(vtecRecord, [hazardEvent], expTimeCurrent)
                    attribution = 'the ' + hazName + \
                       ' for ' + areaPhrase + ' will expire ' + timeWords + '.'
         return attribution + '\n'
@@ -234,43 +249,22 @@ class Format(Legacy_Hydro_Formatter.Format):
         for vtecRecord in vtecRecords:  # NOTE there is only one vtecRecord / hazard to process
             hazName = vtecRecord['hdln']
 
-            if len(vtecRecord['hdln']):
+            if len(hazName):
                 action = vtecRecord['act']
 
             if action == 'NEW':
                 headPhrase += hazName + ' for...\n'
-                # TODO - Fix this
-                headPhrase += productDict['typeOfFlooding'] + '\n'
                 headPhrase += areaPhrase
+                headPhrase += ' due to '
+                immediateCauseCode = hazard['immediateCause']
+                immediateCauseText = self.getImmediateCauseText(immediateCauseCode)
+                headPhrase += immediateCauseText + '\n'
             elif action == 'CON':
                 headPhrase +=  areaPhrase
             elif action == 'EXT':
                 headPhrase += ' ' + areaPhrase
 
         return headPhrase
-
-    def _basisBullet(self, segment):
-        bulletText = '* '
-        if self._runMode == 'Practice':
-            bulletText += 'This is a test message.  '
-
-        elements = KeyInfo.getElements('basisBullet', segment)
-        if len(elements) > 0:
-            basis = segment[elements[0]]
-        else:
-            basis = segment['basisBullet']
-
-        if basis is None :
-             basis = '...Flash Flooding was reported'
-
-        # Create basis statement
-        vtecRecords = segment['vtecRecords']
-        for vtecRecord in vtecRecords:  # NOTE there is only one vtecRecord / hazard to process
-            eventTime = vtecRecord.get('startTime')
-            eventTime = self._tpc.getFormattedTime(eventTime, '%I%M %p %Z ', stripLeading=True, timeZones=self.timezones)
-            bulletText += 'At ' + eventTime
-            bulletText += basis
-        return bulletText + '\n\n'
 
     def _locationsAffected(self, segmentDict):
         heading = '* '
@@ -311,30 +305,118 @@ class Format(Legacy_Hydro_Formatter.Format):
 
         return heading + locationsAffected
 
-    def _damInfo(self):
-        return {
-                'Big Rock Dam': {
-                        'riverName': 'Phil River',
-                        'cityInfo': 'Evan...located about 3 miles',
-                        'scenarios': {
-                            'highFast': 'If a complete failure of the dam occurs...the water depth at Evan could exceed 18 feet in 16 minutes.',
-                            'highNormal': 'If a complete failure of the dam occurs...the water depth at Evan could exceed 23 feet in 31 minutes.',
-                            'mediumFast': 'If a complete failure of the dam occurs...the water depth at Evan could exceed 14 feet in 19 minutes.',
-                            'mediumNormal': 'If a complete failure of the dam occurs...the water depth at Evan could exceed 17 feet in 32 minutes.',
-                            },
-                        'ruleOfThumb': '''Flood wave estimate based on the dam in Idaho: Flood initially half of original height behind the dam 
-                                        and 3-4 mph; 5 miles in 1/2 hours; 10 miles in 1 hour; and 20 miles in 9 hours.''',
-                    },
-                'Branched Oak Dam': {
-                        'riverName': 'Kells River',
-                        'cityInfo': 'Dangelo...located about 6 miles',
-                        'scenarios': {
-                            'highFast': 'If a complete failure of the dam occurs...the water depth at Dangelo could exceed 19 feet in 32 minutes.',
-                            'highNormal': 'If a complete failure of the dam occurs...the water depth at Dangelo could exceed 26 feet in 56 minutes.',
-                            'mediumFast': 'If a complete failure of the dam occurs...the water depth at Dangelo could exceed 14 feet in 33 minutes.',
-                            'mediumNormal': 'If a complete failure of the dam occurs...the water depth at Dangelo could exceed 20 feet in 60 minutes.',
-                            },
-                        'ruleOfThumb': '''Flood wave estimate based on the dam in Idaho: Flood initially half of original height behind the dam 
-                                        and 3-4 mph; 5 miles in 1/2 hours; 10 miles in 1 hour; and 20 miles in 9 hours.''',
-                    },
-                }
+    # Generate Watch Basis Bullet block
+    def _basisBullet(self, hazardEvent, productDict):
+        
+        bulletText = None
+        basisStatement = productDict['basisBullet']
+        if (self.checkForValidString(basisStatement) == True):
+            if self._runMode == 'Practice':
+                bulletText = '|* This is a test message. Current hydrometeorological basis \n* '
+            else:
+                bulletText = '* '
+
+            # Add Basis Statement Data
+            vtecRecords = productDict['vtecRecords']
+            for vtecRecord in vtecRecords:  # NOTE there is only one vtecRecord / hazard to process
+                eventTime = vtecRecord.get('startTime')
+                eventTime = self._tpc.getFormattedTime(eventTime, '%I%M %p %Z ', stripLeading=True, timeZones=self.timezones)
+                bulletText += 'At ' + eventTime
+
+            bulletText += basisStatement
+             
+            immediateCauseCode =  productDict['immediateCause']
+            immediateCauseText = self.getImmediateCauseText(immediateCauseCode)
+            if (self.checkForValidString(immediateCauseText) == True):
+                bulletText += ' caused by ' + immediateCauseText 
+            else:
+                bulletText += ' A Flash Flood Watch'
+
+            bulletText += '\n'
+             
+            if self._runMode == 'Practice':
+                bulletText += '*|'
+                
+            bulletText += '\n\n'
+            
+        return bulletText
+
+    # Generate Immediate Impacts Bullet block
+    def _impactsBullet(self, segment):
+        bulletText = ""
+        #Add Impact Statement Data
+        impactStatement = segment['impactStatement']
+        if (self.checkForValidString(impactStatement) == True):    
+            if self._runMode == 'Practice':
+                bulletText = 'This is a test message. |* Current hydrometeorological Impacts \n* '
+            else:
+                bulletText = '* '
+            bulletText += impactStatement + '\n'
+         
+            if self._runMode == 'Practice':
+                bulletText += '*|'
+
+        bulletText += '\n\n'
+        return bulletText
+    
+    def _rainFallStatement(self, productDict):
+
+        statementText = 'The segments in this product are river forecasts for selected locations in the watch area.\n'
+            
+        return statementText
+
+    def _additionalInfoStatement(self, productDict):
+
+        #TODO Please override this method for your site 
+        return 'Additional information is available at <Web site URL>.\n\n'
+
+    def _nextIssuanceStatement(self, productDict):
+
+        # TODO fill in time/day phrase 
+        statementText = 'The next statement will be issued <time/day phrase>.\n'
+        
+        return statementText
+
+    def _overviewHeadline_point(self, productDict):
+
+        statementText = '|* Point Overview Headline *|'
+            
+        return statementText
+
+    def _overviewSynopsis_point(self, productDict):
+
+        statementText = '|* Point Overview Synopsis *|'
+            
+        return statementText
+
+    #Translate an Immediate Cause code into FFA cause string.
+    def getImmediateCauseText(self, immediateCauseCode):
+        immediateCauseDict = {"ER":"excessive rain",
+                              "SM":"snow Melt",
+                              "RS":"rain and snow melt", 
+                              "DM":"dam or levee failure",
+                              "DR":"upstream dam release",
+                              "GO":"glacier-dammed lake outburst",
+                              "IJ":"ice jam", 
+                              "IC":"rain and/or snow melt and/or ice jam",
+                              "FS":"upstream flooding plus storm surge", 
+                              "FT":"upstream flooding plus tidal effects",
+                              "ET":"elevated upstream flow plus tidal effects",
+                              "WT":"wind and/or tidal effects",
+                              "OT":"other effects",
+                              "MC":"multiple causes",
+                              "UU":"Unknown" }
+        immediateCauseText = immediateCauseDict[immediateCauseCode]
+
+        return immediateCauseText
+    
+    #Returns TRUE if it is not null or empty
+    def checkForValidString(self, theString):
+        retBool = False
+        if theString:
+            tempString = theString.strip()
+            if tempString != "":
+                retBool = True
+                
+        return retBool
+
