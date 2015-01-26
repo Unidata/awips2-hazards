@@ -1206,7 +1206,8 @@ class Product(ProductTemplate.Product):
                 self._section.listOfDrainages = True 
             if 'floodMoving' in additionalInfo:
                 self._section.floodMoving = self._tpc.getProductStrings(
-                            self._section.hazardEvent, self._section.metaData, 'additionalInfo', choiceIdentifier='floodMoving')
+                            self._section.hazardEvent, self._section.metaData, 'additionalInfo', choiceIdentifier='floodMoving', 
+                            formatMethod=self.floodTimeStr, formatHashTags=['additionalInfoFloodMovingTime'])
         # Use the phen, sig, life cycle point, and whether an areal product to determine
         # the format of the areaPhrase.  Maybe this should be in a table???
         self._tpc.setPartOfStateInfo(sectionHazardEvent["attributes"])
@@ -1273,7 +1274,22 @@ class Product(ProductTemplate.Product):
         endTime = self._section.hazardEvent.getEndTime() 
         if endTime: 
             infoDict['eventEndingTime_datetime'] = endTime
-            
+
+    def floodTimeStr(self, creationTime, flood_time_ms):
+        creationTimeInSeconds = int(creationTime.strftime("%s"))
+        floodTimeInSeconds = flood_time_ms/1000
+        floodTime = datetime.datetime.fromtimestamp(floodTimeInSeconds)
+        creationWeekDay = creationTime.strftime("%A")
+        floodWeekDay = floodTime.strftime("%A")
+        SECONDS_PER_WEEK = 86400*7
+        if floodTimeInSeconds > (creationTimeInSeconds + SECONDS_PER_WEEK) :
+            result= floodTime.strftime("%b %d %Y at %H:%M %p")
+        elif creationWeekDay != floodWeekDay:
+            result= floodTime.strftime("%A at %H:%M %p")
+        else:
+            result= floodTime.strftime("%H:%M %p")
+        return result
+               
     def _getPointInformation(self):
         # Import RiverForecastPoints if not there
         if not self._rfp:
@@ -1473,7 +1489,7 @@ class Product(ProductTemplate.Product):
             locationsAffected += 'Locations impacted include...' + self._productSegment.cityString + '. '
         # Flood moving
         if self._section.floodMoving:
-            locationsAffected += self._section.floodMoving + '. '
+            locationsAffected += "\n\n" + self._section.floodMoving + '. '
             
         if not locationsAffected:
             phen = self._section.vtecRecord.get("phen")

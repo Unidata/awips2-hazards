@@ -205,8 +205,6 @@ class VTECTestHarness(object):
 
         # run the calculations
         productGeneratorName = None
-        if productType in ["FFW_FFS"]:
-           productGeneratorName = "FFW_FFS_ProductGenerator_v3"
         wrapper = VTECEngineWrapper(None, productType, 'KTBW', hazardEvents,
           issueTime=drtTime, vtecMode=script['vtecMode'], operationalMode=False, 
           testHarnessMode=1, productGeneratorName = productGeneratorName)

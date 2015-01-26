@@ -16,7 +16,6 @@ class MetaData(CommonMetaData.MetaData):
                      self.setBurnScarNameLabel(hazardEvent),
                      self.getImmediateCause(),
                      self.getEventSpecificSource(),
-                     self.getDebrisFlowOptions(),                                       
                      self.getRainAmt(),
                      self.getAdditionalInfo(),
                      self.getCTAs(), 
@@ -154,7 +153,6 @@ class MetaData(CommonMetaData.MetaData):
         return [ 
             self.listOfCities(),
             self.additionalRain(),
-            self.floodLocation(),
             self.listOfDrainages(),
             ]
             

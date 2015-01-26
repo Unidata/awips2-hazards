@@ -25,6 +25,10 @@ class MetaData(CommonMetaData.MetaData):
                     self.getEventSpecificSource(),
                     self.getRainAmt(),
                     self.getAdditionalInfo(),
+                    self.getRiver(editable=self.hazardStatus != "issued"),
+                    self.getFloodLocation(),
+                    self.getUpstreamLocation(),
+                    self.getDownstreamLocation(),
                     self.getCTAs(),  
                     # Preserving CAP defaults for future reference.                  
 #                     self.getCAP_Fields([
@@ -113,9 +117,10 @@ class MetaData(CommonMetaData.MetaData):
                 "fieldName": "eventTypeWrapper",
                 "fields": [
                     {
-                     "fieldType":"ComboBox",
+                     "fieldType":"DetailedComboBox",
                      "fieldName": "eventType",
                      "label": "Event type:",
+                     "expandVertically": True,
                      "values": "thunderEvent",
                      "choices": [
                             self.eventTypeThunder(),

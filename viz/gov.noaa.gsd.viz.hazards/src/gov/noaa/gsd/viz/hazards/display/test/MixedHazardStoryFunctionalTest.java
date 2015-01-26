@@ -261,7 +261,7 @@ class MixedHazardStoryFunctionalTest extends
                     eventStateChangeCount = 0;
                     checkReplacementEvents(HazardStatus.ENDED.getValue());
                     stepCompleted();
-                    testSuccess();
+                    // testSuccess();
                     break;
                 }
 
@@ -674,7 +674,7 @@ class MixedHazardStoryFunctionalTest extends
                 .legacyProductsFromEditorView(mockProductEditorView);
         assertEquals(products.size(), 4);
         assertEquals(autoTestUtilities.numInstancesContainingText(products,
-                "CANCELLED"), 2);
+                "cancelled"), 2);
         assertEquals(autoTestUtilities.numInstancesContainingText(products,
                 NEW_VTEC_STRING + ".FL.W"), 1);
         assertEquals(autoTestUtilities.numInstancesContainingText(products,

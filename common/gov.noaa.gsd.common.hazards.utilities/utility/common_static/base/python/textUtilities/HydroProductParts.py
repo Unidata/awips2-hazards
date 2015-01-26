@@ -130,7 +130,6 @@ class HydroProductParts():
         partsList += [
                     'productHeader',
                     'CR',
-                    'emergencyHeadline',
                     ('sections', sectionParts),
                     'callsToAction', # optional
                     'polygonText',
@@ -146,6 +145,7 @@ class HydroProductParts():
     def _sectionPartsList_FFW(self):
         return [
                 'setUp_section',
+                'emergencyHeadline',
                 'attribution',  
                 'firstBullet',
                 'timeBullet',
@@ -220,7 +220,6 @@ class HydroProductParts():
                     'ugcHeader',
                     'vtecRecords',
                     'areaList',
-                    'cityList',
                     'issuanceTimeDate',
                     'CR',
                     'summaryHeadlines',
@@ -246,6 +245,7 @@ class HydroProductParts():
                 'forecastStageBullet',
                 'pointImpactsBullet',
                 'floodPointTable',
+                'locationsAffected'
                 ]
 
     #############################################################################################################
@@ -302,6 +302,7 @@ class HydroProductParts():
         sectionParts = []
         # non_CAN_EXP is True if the segment has only CAN, EXP in it
         non_CAN_EXP = True
+        phen = None
         for vtecRecord in vtecRecords:
             section = {
                 'arguments': ((segment, vtecRecords), vtecRecord, {'bulletFormat':'bulletFormat_CR'}),
@@ -312,16 +313,28 @@ class HydroProductParts():
             if vtecRecord['act'] in ['CAN', 'EXP']:
                 non_CAN_EXP = False
             pil = vtecRecord['pil']  # All vtec records in this segment must have the same pil
+            phen = vtecRecord['phen']
             
-        partsList = [
-            'setUp_segment',
-            'ugcHeader',
-            'vtecRecords',
-            'areaList',
-            'cityList',
-            'issuanceTimeDate',
-            'CR'
-            ]
+        if phen == "FA" :
+            partsList = [
+                'setUp_segment',
+                'ugcHeader',
+                'vtecRecords',
+                'areaList',
+                'issuanceTimeDate',
+                'CR'
+                ]
+        else :
+            partsList = [
+                'setUp_segment',
+                'ugcHeader',
+                'vtecRecords',
+                'areaList',
+                'cityList',
+                'issuanceTimeDate',
+                'CR'
+                ]
+
         if pil == 'FFA':  
             partsList.append('summaryHeadlines')
 
@@ -387,7 +400,10 @@ class HydroProductParts():
                     'attribution',
                     'firstBullet',
                     'basisAndImpactsStatement',
-                    ]            
+                    ] 
+        if phen == "FA" :
+            partsList.append('locationsAffected')
+           
         return partsList
 
     ###########  POINT-based  ################

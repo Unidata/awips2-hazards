@@ -106,7 +106,7 @@ class TextProductCommon(object):
                 if infoType == 'typeSingular' or infoType == 'typePlural' :
                     return ''
                 return '?'
-            if int(ugc[3:])>=500 or ugc[:2]=="DC" :
+            if int(ugc[3:]) >= 500 or ugc[:2] == "DC" :
                 if infoType == 'typeSingular' or infoType == 'typePlural' :
                     return ''
                 return 'INDEPENDENT CITY'
@@ -138,7 +138,7 @@ class TextProductCommon(object):
         if infoType == "timeZone" :
             return self.currentUGCentry.get("ugcTimeZone", "")
         if infoType == "stateAbrev" :
-            return self.currentUGCentry.get("stateAbbr",  ugc[:2])
+            return self.currentUGCentry.get("stateAbbr", ugc[:2])
         if infoType == "partOfState" :
             return self.currentUGCentry.get("partOfState", "")
         return ""
@@ -200,8 +200,8 @@ class TextProductCommon(object):
             try :
                 req = DataAccessLayer.newDataRequest()
                 req.setDatatype("maps")
-                req.addIdentifier("table","mapdata."+tableName)
-                req.addIdentifier("geomField","the_geom")
+                req.addIdentifier("table", "mapdata." + tableName)
+                req.addIdentifier("geomField", "the_geom")
                 if queryMatch :
                     req.addIdentifier("inLocation", "true")
                     req.addIdentifier("locationField", matchColumn)
@@ -228,8 +228,8 @@ class TextProductCommon(object):
             except :
                 tbData = traceback.format_exc()
                 sys.stderr.write("\n")
-                sys.stderr.write("For "+tableName+"\n")
-                sys.stderr.write(tbData+"\n")
+                sys.stderr.write("For " + tableName + "\n")
+                sys.stderr.write(tbData + "\n")
                 pass
 
         return returnList
@@ -255,7 +255,7 @@ class TextProductCommon(object):
             return altDict.get(key)
         return default
 
-    def setVal(self, dictionary, key, default, editable=False, eventIDs=None, segment=None, 
+    def setVal(self, dictionary, key, default, editable=False, eventIDs=None, segment=None,
                   label=None, productCategory=None, productID=None, formatMethod=None, formatArgs=None, displayable=False,
                   useKeyAsLabel=False):      
         '''
@@ -310,11 +310,11 @@ class TextProductCommon(object):
         #     bulletFormat_CR...
         # By setting value to {'value':value, 'valueFormat':formatMethod}
         if formatMethod:
-            exec 'value = self.'+formatMethod+'(value, formatArgs)'
+            exec 'value = self.' + formatMethod + '(value, formatArgs)'
         
         dictionary[userEditedKey] = value
         
-    ### Formatting helper methods    
+    # ## Formatting helper methods    
                 
     def getFormattedTime(self, time_ms, format='%I%M %p %Z %a %b %d %Y',
                         upperCase=False, stripLeading=True, timeZones=['GMT']):  
@@ -355,7 +355,7 @@ class TextProductCommon(object):
         '''
         reverse = []
         for lat, lon in polygon:
-            reverse.append((lon,lat))
+            reverse.append((lon, lat))
         # Add first point to end so first point matches last point
         lat, lon = polygon[0]
         reverse.append((lon, lat))
@@ -380,12 +380,12 @@ class TextProductCommon(object):
             return ''
         ugcList = copy.deepcopy(ugcs)
         # Remove any blank UGC lines from the list
-        listsize=len(ugcList)
-        j=0
+        listsize = len(ugcList)
+        j = 0
         while j < listsize:
             if ugcList[j] == '':
                 del ugcList[j]
-            j=j+1
+            j = j + 1
 
         # Set up state variables and process initialize ugcStr with first ugc
         # in ugcList
@@ -409,7 +409,7 @@ class TextProductCommon(object):
                         # Replace the last ugcNumStr in sequence with the
                         # current ugcNumStr
                         # e.g.   062>063  becomes 062>064
-                        ugcStr = ugcStr[:len(ugcStr)-3] + ugcNumStr
+                        ugcStr = ugcStr[:len(ugcStr) - 3] + ugcNumStr
                         inSeq += 1
                     else:
                         ugcStr += '>' + ugcNumStr
@@ -422,7 +422,7 @@ class TextProductCommon(object):
                 ugcStr = self.checkLastArrow(inSeq, ugcStr)
                 ugcStr += '-' + ugc
                 curState = ugcState
-                inSeq = 0   #reset sequence when switching states
+                inSeq = 0  # reset sequence when switching states
             lastNum = num
             lastUgc = ugc
 
@@ -444,9 +444,9 @@ class TextProductCommon(object):
     def formatNameString(self, nameList, separator, state=None) :
         nameString = ''
         for name in nameList:
-            nameString+= name + separator
+            nameString += name + separator
         if state:
-            nameString = nameString.rstrip(separator) + ' ('+state+') '
+            nameString = nameString.rstrip(separator) + ' (' + state + ') '
         return nameString
     
     def formatUGC_namesWithState(self, ugcs, alphabetize=False, separator='; '):
@@ -468,7 +468,7 @@ class TextProductCommon(object):
                 curState = stateName
                 nameList = []
         nameStrings.append(self.formatNameString(nameList, separator, curState))
-        return self.formatNameString(nameStrings, separator = '')
+        return self.formatNameString(nameStrings, separator='')
         
     # TODO -- Not Used?
     def formatUGC_cities(self, ugcs, alphabetize=0):
@@ -480,7 +480,7 @@ class TextProductCommon(object):
             cityList.sort()
         cityString = ''
         for cityStr in cityList:
-            cityString+= cityStr
+            cityString += cityStr
         return cityString
     
     # TODO -- Not Used?
@@ -520,7 +520,7 @@ class TextProductCommon(object):
                 ugcList.append(ugcCode)
         return newAreaList, ugcList
     
-    ### Formatting methods
+    # ## Formatting methods
     
     def bulletFormat_CR(self, text, label=''):
         text = self.bulletFormat_noCR(text, label)
@@ -558,7 +558,7 @@ class TextProductCommon(object):
             if frameit == 'Always' or frameit == 'DefaultOnly':
                 textToUse = '|* ' + textToUse + ' *|'
 
-        textToUse = '* '+label+textToUse
+        textToUse = '* ' + label + textToUse
         return textToUse
         
     def frame(self, text):
@@ -583,7 +583,8 @@ class TextProductCommon(object):
 
     ###########
     #  Accessing MetaData
-    def getProductStrings(self, hazardEvent, metaData, fieldName, productStringIdentifier=None, choiceIdentifier=None):
+    def getProductStrings(self, hazardEvent, metaData, fieldName, productStringIdentifier=None, choiceIdentifier=None,
+                          formatMethod=None, formatHashTags=[]):
         '''
         Translates the entries from the Hazard Information Dialog into product strings.
         @param hazardEvent: hazard event with user choices
@@ -611,14 +612,16 @@ class TextProductCommon(object):
             return '' 
         if type(value) is types.ListType or isinstance(value, set):
             if choiceIdentifier:
-                return self.getMetaDataValue(hazardEvent, metaData, fieldName, choiceIdentifier)
+                return self.getMetaDataValue(hazardEvent, metaData, fieldName,
+                                             choiceIdentifier, formatMethod, formatHashTags)
             else:
                 returnList = []
                 for val in value:
-                    returnList.append(self.getMetaDataValue(hazardEvent, metaData, fieldName, val))
+                    returnList.append(self.getMetaDataValue(hazardEvent, metaData, fieldName,
+                                                            val, formatMethod, formatHashTags))
                 return returnList
         else:
-            return self.getMetaDataValue(hazardEvent, metaData, fieldName, value)
+            return self.getMetaDataValue(hazardEvent, metaData, fieldName, value, formatMethod, formatHashTags)
 
     def getEmbeddedDict(self, node, keyValue, search):
         """
@@ -630,7 +633,7 @@ class TextProductCommon(object):
         """
         if isinstance(node, list):
             for element in node:
-                result =  self.getEmbeddedDict(element, keyValue, search)
+                result = self.getEmbeddedDict(element, keyValue, search)
                 if result is not None:
                    return result
         elif isinstance(node, dict):
@@ -638,11 +641,11 @@ class TextProductCommon(object):
                 if node[keyValue] == search:
                     return node
             for value in node.values():
-                result =  self.getEmbeddedDict(value, keyValue, search)
+                result = self.getEmbeddedDict(value, keyValue, search)
                 if result is not None:
                    return result
 
-    def getMetaDataValue(self, hazardEvent, metaData, fieldName, value):
+    def getMetaDataValue(self, hazardEvent, metaData, fieldName, value, formatMethod, formatHashTags):
         '''
         Given a value, return the corresponding productString (or displayString) from the metaData. 
         @param hazardEvent: hazard event with user choices
@@ -693,10 +696,10 @@ class TextProductCommon(object):
                     returnVal = returnVal.replace('  ', '')
                     returnVal = returnVal.replace('\n', ' ')
                     returnVal = returnVal.replace('</br>', '\n')
-                    returnVal = self.substituteParameters(hazardEvent, returnVal) 
+                    returnVal = self.substituteParameters(hazardEvent, returnVal, formatMethod, formatHashTags) 
         return returnVal
     
-    def substituteParameters(self, hazardEvent, returnVal):
+    def substituteParameters(self, hazardEvent, returnVal, formatMethod=None, formatHashTags=[]):
         # Search for #...# values  e.g. floodLocation
         hashTags = self.getFramedValues(returnVal, '#', '#')
         for hashTag in hashTags:
@@ -705,9 +708,14 @@ class TextProductCommon(object):
                 replaceVal = eventValue
             else:
                 replaceVal = self.frame(hashTag)
-            returnVal = returnVal.replace('#' + hashTag + '#', " " + self.formatAsNecessary(replaceVal))
+            if hashTag in formatHashTags:
+                formattedVal = formatMethod(hazardEvent.getCreationTime(), replaceVal)
+            else:
+                formattedVal = self.formatAsNecessary(replaceVal)
+            returnVal = returnVal.replace('#' + hashTag + '#', " " + formattedVal)
 
         return returnVal
+    
     def formatAsNecessary(self, val):
         if (self.is_number(val)):
             return "{:2.1f}".format(val)
@@ -730,7 +738,7 @@ class TextProductCommon(object):
         framedValues = []
         for value in values:
             value = value.strip()
-            if text.find(beginStr +value+endStr) >=0:
+            if text.find(beginStr + value + endStr) >= 0:
                 framedValues.append(value)
         return framedValues        
 
@@ -748,7 +756,7 @@ class TextProductCommon(object):
             # 062>063  should be   062-063
             arrowIndex = ugcStr.rfind('>')
             if arrowIndex >= 0:
-                ugcStr = ugcStr[:arrowIndex] + '-' + ugcStr[arrowIndex+1:]
+                ugcStr = ugcStr[:arrowIndex] + '-' + ugcStr[arrowIndex + 1:]
         return ugcStr    
 
     def filtFunc_zones(self, atts, compareToken):
@@ -779,8 +787,8 @@ class TextProductCommon(object):
          @param areas -- list of tuples (state, partOfState, names)
          @result -- sorted list of area names
         '''
-        #determine how many states, and how many areas within each state
-        stateDict = {}   #key is state, value is count of portions of state
+        # determine how many states, and how many areas within each state
+        stateDict = {}  # key is state, value is count of portions of state
         for state, partOfState, names in areas:
             if stateDict.has_key(state):
                 stateDict[state] = stateDict[state] + 1
@@ -789,7 +797,7 @@ class TextProductCommon(object):
    
         # if single state, include all directional terms
         if len(stateDict.keys()) < 2:
-            return areas   #unchanged
+            return areas  # unchanged
 
         # multiple states - multiple direction terms in a state
         # keep states sorted in same order as present. 
@@ -798,9 +806,9 @@ class TextProductCommon(object):
             if stateDict[state] == 1:
                 names.sort()
                 out.append((state, partOfState, names))
-            elif len(out) == 0 or state != out[-1][0]:  #new state 
-                out.append((state, '', names))   #leave out partOfState
-            else:    #same state as before
+            elif len(out) == 0 or state != out[-1][0]:  # new state 
+                out.append((state, '', names))  # leave out partOfState
+            else:  # same state as before
                 nmeList = out[-1][2]
                 for n in names:
                     nmeList.append(n)
@@ -857,7 +865,7 @@ class TextProductCommon(object):
         Harrison...Burt and Monona
         
         '''        
-        #including phrase, have to count what we have
+        # including phrase, have to count what we have
         d = {
              'INDEPENDENT CITY': ('independent city', 'independent cities'),
              'PARISH': ('parish', 'parishes'),
@@ -869,7 +877,7 @@ class TextProductCommon(object):
         zoneCnt = 0
         countyCnt = 0
         for state, partOfState, names in areaGroups:
-            for name,nameType in names:
+            for name, nameType in names:
                 if nameType == 'ZONE':
                     zoneCnt = zoneCnt + 1
                 elif nameType == 'COUNTY':
@@ -897,7 +905,7 @@ class TextProductCommon(object):
             nameTypes.append('PARISHES')
         nameTypePhrase = ' and '.join(nameTypes)
              
-        #list of the specific areas
+        # list of the specific areas
         nameDescription = ''
         for i in xrange(len(areaGroups)):
             state, partOfState, names = areaGroups[i]
@@ -906,7 +914,7 @@ class TextProductCommon(object):
             else:
                 # extract out the names
                 snames = []
-                for name,nameType in names:
+                for name, nameType in names:
                     snames.append(name)
 
                 # single (don't mention state, partOfState again)
@@ -925,7 +933,7 @@ class TextProductCommon(object):
                     phrase = phrase + ' and ' + snames[-1]
                 nameDescription = nameDescription + phrase
             if i != len(areaGroups) - 1:
-                nameDescription = nameDescription + '. '  #another one coming, add period
+                nameDescription = nameDescription + '. '  # another one coming, add period
                 
         return nameDescription, nameTypePhrase
 
@@ -1001,7 +1009,7 @@ class TextProductCommon(object):
         '''
         timeWords = self.getTimingPhrase(vtecRecord, [hazardEvent], issueTime)
         if prefixSpace and len(timeWords):
-            timeWords = ' ' + timeWords   #add a leading space
+            timeWords = ' ' + timeWords  # add a leading space
         return timeWords
 
     def substituteBulletedText(self, text, defaultText, frameit='Never', lineLength=69):
@@ -1035,8 +1043,8 @@ class TextProductCommon(object):
         textToUse = '* ' + textToUse
 
         # format it
-        return self.indentText(textToUse, indentFirstString = '',
-          indentNextString = '  ', maxWidth=lineLength,
+        return self.indentText(textToUse, indentFirstString='',
+          indentNextString='  ', maxWidth=lineLength,
           breakStrings=[' ', '-', '...'])
 
     def decodeBulletedText(self, prevText):
@@ -1060,24 +1068,24 @@ class TextProductCommon(object):
         if len(buf) <= 1:
             return (None, None, None, None, None, None)
 
-        multRecords = 0  #indicator of multiple sets of bullets
+        multRecords = 0  # indicator of multiple sets of bullets
 
         for x in xrange(len(buf)):
             if x == 0:
-                continue   #headlines and text before the bullets
+                continue  # headlines and text before the bullets
             bullets.append(buf[x])
 
         # find only the bulleted text, defined by the double line feed term.
         # of the text
-        regText = ''   #regular text after bullets
+        regText = ''  # regular text after bullets
         for x in xrange(1, len(bullets)):
             index = bullets[x].find('\n\n')
             if index != -1:
-                regText = bullets[x][index+2:]
-                bullets[x] = bullets[x][0:index]  #eliminate after bullet text
-                if len(bullets) > x+2:   #more bullets are present
+                regText = bullets[x][index + 2:]
+                bullets[x] = bullets[x][0:index]  # eliminate after bullet text
+                if len(bullets) > x + 2:  # more bullets are present
                     multRecords = 1
-                bullets = bullets[0:x+1]  #only interested in these bullets
+                bullets = bullets[0:x + 1]  # only interested in these bullets
                 break
                 
         # regular text is the remainder of the text.  However we only
@@ -1086,15 +1094,15 @@ class TextProductCommon(object):
         lines = regText.split('\n')
         for x in xrange(len(lines)):
             if lines[x].find('THE NATIONAL WEATHER SERVICE') == 0:
-                lines = lines[0:x]  #eliminate following lines
+                lines = lines[0:x]  # eliminate following lines
                 break
         regText = ('\n').join(lines)
 
         # now clean up the text
         for x in xrange(len(bullets)):
-            bullets[x] = string.replace(bullets[x],'\n',' ')
+            bullets[x] = string.replace(bullets[x], '\n', ' ')
         removeLF = re.compile(r'(s*[^\n])\n([^\n])', re.DOTALL)
-        regText = removeLF.sub(r'\1 \2',regText)
+        regText = removeLF.sub(r'\1 \2', regText)
 
         # extract out each section for returning the values
         if len(bullets) >= 1:
@@ -1114,7 +1122,7 @@ class TextProductCommon(object):
         else:
             impact = None
         if len(regText) == 0:
-            regText = None  #no regular text after bullets
+            regText = None  # no regular text after bullets
 
         return (hazard, time, basis, impact, regText, multRecords)
 
@@ -1125,33 +1133,33 @@ class TextProductCommon(object):
         if sessionDict.get('testMode', 0):
             lines = str.split('\n')
             str = '...THIS MESSAGE IS FOR TEST PURPOSES ONLY...\n'
-            for x in xrange(len(lines)-1):   #-1 for trailing new line
+            for x in xrange(len(lines) - 1):  # -1 for trailing new line
                 line = lines[x]
 
-                #beginning of line
+                # beginning of line
                 if line.find('...') == 0:
                     line = line[0:3] + 'TEST ' + line[3:]
-                #end of line
+                # end of line
                 index = line.rfind('...')
-                if index != 0 and index == len(line)-3:
+                if index != 0 and index == len(line) - 3:
                     line = line[0:-3] + ' TEST...' 
 
                 lines[x] = line
 
-            return str + string.join(lines,'\n')
+            return str + string.join(lines, '\n')
 
-        #normal mode (not test mode)
+        # normal mode (not test mode)
         else:
             return str
 
     def marineSortHazardAlg(self, r1, r2):
-        #1st by start time
+        # 1st by start time
         if r1['startTime'] < r2['startTime']:
             return -1
         elif r1['startTime'] > r2['startTime']:
             return 1
         
-        #2nd by action
+        # 2nd by action
         actionCodeOrder = ['CAN', 'EXP', 'UPG', 'NEW', 'EXB', 'EXA',
                            'EXT', 'ROU', 'CON']
         try:
@@ -1167,8 +1175,8 @@ class TextProductCommon(object):
         elif aIndex > bIndex:
             return 1
 
-        #3rd by significance
-        sig = ['W','Y','A']
+        # 3rd by significance
+        sig = ['W', 'Y', 'A']
         try:
             index1 = sig.index(r1['sig'])
         except:
@@ -1182,13 +1190,13 @@ class TextProductCommon(object):
         elif index1 > index2:
             return 1
 
-        #4th by phen (alphabetically)
+        # 4th by phen (alphabetically)
         if r1['phen'] < r2['phen']:
             return -1
         elif r1['phen'] > r2['phen']:
             return 1
 
-        #equal
+        # equal
         return 0    
         
     def regularSortHazardAlg(self, r1, r2):
@@ -1222,8 +1230,8 @@ class TextProductCommon(object):
         elif aIndex > bIndex:
             return 1
         
-        #4th by significance
-        sig = ['W','Y','A']
+        # 4th by significance
+        sig = ['W', 'Y', 'A']
         try:
             index1 = sig.index(r1['sig'])
         except:
@@ -1237,13 +1245,13 @@ class TextProductCommon(object):
         elif index1 > index2:
             return 1
 
-        #5th by phen (alphabetically)
+        # 5th by phen (alphabetically)
         if r1['phen'] < r2['phen']:
             return -1
         elif r1['phen'] > r2['phen']:
             return 1
 
-        #equal
+        # equal
         return 0
         
     def actionControlWord(self, vtecRecord, issuanceTime):
@@ -1290,7 +1298,7 @@ class TextProductCommon(object):
         headlineStr = ''
         hList = copy.deepcopy(vtecRecords)
         if len(hList):
-            if productID in ['CWF','NSH','OFF','GLF']:
+            if productID in ['CWF', 'NSH', 'OFF', 'GLF']:
                 hList.sort(self.marineSortHazardAlg)
             else:
                 hList.sort(self.regularSortHazardAlg)
@@ -1307,14 +1315,14 @@ class TextProductCommon(object):
 
             # make sure the vtecRecord is still in effect or within EXP criteria
             if (vtecRecord['act'] != 'EXP' and issueTime >= vtecRecord['endTime']) or \
-            (vtecRecord['act'] == 'EXP' and issueTime > 30*60 + vtecRecord['endTime']):
+            (vtecRecord['act'] == 'EXP' and issueTime > 30 * 60 + vtecRecord['endTime']):
                 hList.remove(vtecRecord)
-                continue # no headline for expired vtecRecords
+                continue  # no headline for expired vtecRecords
    
-            #assemble the vtecRecord type
+            # assemble the vtecRecord type
             hazStr = vtecRecord['hdln']
             headlines.append(hazStr)
-            #hazStr = self.convertToLower(hazStr)
+            # hazStr = self.convertToLower(hazStr)
 
             # if the vtecRecord is a convective watch, tack on the etn
             phenSig = vtecRecord['phen'] + '.' + vtecRecord['sig']
@@ -1326,7 +1334,7 @@ class TextProductCommon(object):
             hazStr = hazStr + ' ' + actionWords
             
             if includeTiming:
-                #get the timing words
+                # get the timing words
                 timeWords = self.getTimingPhrase(vtecRecord, hazardEvents, issueTime)
                 if len(timeWords):
                     hazStr = hazStr + ' ' + timeWords
@@ -1348,9 +1356,9 @@ class TextProductCommon(object):
             replacedBy = hazardEvent.get('replacedBy')
             replaces = hazardEvent.get('replaces')
             if replacedBy:
-                replaceStr =  '...REPLACED BY ' + replacedBy + '...\n'
+                replaceStr = '...REPLACED BY ' + replacedBy + '...\n'
             elif replaces:
-                replaceStr =  '...REPLACES ' + replaces + '...\n'
+                replaceStr = '...REPLACES ' + replaces + '...\n'
             else:
                 replaceStr = ''
             headlineStr += replaceStr 
@@ -1365,7 +1373,7 @@ class TextProductCommon(object):
         vtecRecord has times converted to ms
         issueTime in ms
         '''
-        #Returns the timing phrase to use
+        # Returns the timing phrase to use
 
         # Get the timing type
         if stype is None or etype is None:
@@ -1389,25 +1397,25 @@ class TextProductCommon(object):
             stype = newType
         elif stype == 'EXPLICIT':
             for tz in timeZones:
-                info = self.timingWordTableEXPLICIT(issueTime, 
+                info = self.timingWordTableEXPLICIT(issueTime,
                   startTime, tz, 'startTime')
                 if info not in stext:
                     stext.append(info)
         elif stype == 'FUZZY4':
             for tz in timeZones:
-                info = self.timingWordTableFUZZY4(issueTime, 
+                info = self.timingWordTableFUZZY4(issueTime,
                   startTime, tz, 'startTime')
                 if info not in stext:
                     stext.append(info)
         elif stype == 'FUZZY8':
             for tz in timeZones:
-                info = self.timingWordTableFUZZY8(issueTime, 
+                info = self.timingWordTableFUZZY8(issueTime,
                   startTime, tz, 'startTime')
                 if info not in stext:
                     stext.append(info)
         elif stype == 'DAY_NIGHT_ONLY':
             for tz in timeZones:
-                info = self.timingWordTableDAYNIGHT(issueTime, 
+                info = self.timingWordTableDAYNIGHT(issueTime,
                   startTime, tz, 'startTime')
                 if info not in stext:
                     stext.append(info)
@@ -1430,25 +1438,25 @@ class TextProductCommon(object):
             etype = newType
         elif etype == 'EXPLICIT':
             for tz in timeZones:
-                info = self.timingWordTableEXPLICIT(issueTime, 
+                info = self.timingWordTableEXPLICIT(issueTime,
                   endTime, tz, 'endTime')
                 if info not in etext:
                     etext.append(info)
         elif etype == 'FUZZY4':
             for tz in timeZones:
-                info = self.timingWordTableFUZZY4(issueTime, 
+                info = self.timingWordTableFUZZY4(issueTime,
                   endTime, tz, 'endTime')
                 if info not in etext:
                     etext.append(info)
         elif etype == 'FUZZY8':
             for tz in timeZones:
-                info = self.timingWordTableFUZZY8(issueTime, 
+                info = self.timingWordTableFUZZY8(issueTime,
                   endTime, tz, 'endTime')
                 if info not in etext:
                     etext.append(info)
         elif etype == 'DAY_NIGHT_ONLY':
             for tz in timeZones:
-                info = self.timingWordTableDAYNIGHT(issueTime, 
+                info = self.timingWordTableDAYNIGHT(issueTime,
                   endTime, tz, 'endTime')
                 if info not in etext:
                     etext.append(info)
@@ -1474,15 +1482,15 @@ class TextProductCommon(object):
         
         # Get the local headlines customizable timing
         locStart, locEnd = self.getLocalHeadlinesTiming(
-            vtecRecord['key'], vtecRecord['startTime'], vtecRecord['endTime'], 
+            vtecRecord['key'], vtecRecord['startTime'], vtecRecord['endTime'],
             vtecRecord['id'], issueTime)
                 
-        #time from issuanceTime
-        deltaTstart = vtecRecord['startTime'] - issueTime  #ms past now
-        deltaTend = vtecRecord['endTime'] - issueTime  #ms past now
+        # time from issuanceTime
+        deltaTstart = vtecRecord['startTime'] - issueTime  # ms past now
+        deltaTend = vtecRecord['endTime'] - issueTime  # ms past now
         
-        HR=3600 * 1000  #convenience constants
-        MIN=60  * 1000  #convenience constants
+        HR = 3600 * 1000  # convenience constants
+        MIN = 60 * 1000  # convenience constants
     
         # record in the past, ignore
         if deltaTend <= 0:
@@ -1490,7 +1498,7 @@ class TextProductCommon(object):
     
         # upgrades and cancels
         if vtecRecord['act'] in ['UPG', 'CAN']:
-            return ('NONE', 'NONE')   #upgrades/cancels never get timing phrases
+            return ('NONE', 'NONE')  # upgrades/cancels never get timing phrases
     
         # expirations EXP codes are always expressed explicitly, only end time
         if vtecRecord['act'] == 'EXP':
@@ -1501,60 +1509,60 @@ class TextProductCommon(object):
         # SPC Watches always get explicit times, 3 hour start mention
         spcWatches = ['TO.A', 'SV.A']
         if phensig in spcWatches:
-            if deltaTstart < 3*HR:
+            if deltaTstart < 3 * HR:
                 return ('NONE', 'EXPLICIT')
             else:
                 return ('EXPLICIT', 'EXPLICIT')
 
         # Tropical events never get times at all
-        tpcEvents = ['TY.A','TY.W','HU.A','HU.S','HU.W','TR.A','TR.W']
+        tpcEvents = ['TY.A', 'TY.W', 'HU.A', 'HU.S', 'HU.W', 'TR.A', 'TR.W']
         if phensig in tpcEvents:
             return ('NONE', 'NONE')
     
         # special marine case?
         marineHazList = ['SC.Y', 'SW.Y', 'GL.W', 'SR.W', 'HF.W', 'BW.Y',
-          'UP.W', 'UP.Y', 'RB.Y', 'SE.W', 'SI.Y']  #treat like watches
-        marinePils = ['CWF', 'OFF', 'NSH', 'GLF']  #specific marine pils
-        oconusSites = ['PGUM','PHFO','PAFC','PAJK','PAFG']
+          'UP.W', 'UP.Y', 'RB.Y', 'SE.W', 'SI.Y']  # treat like watches
+        marinePils = ['CWF', 'OFF', 'NSH', 'GLF']  # specific marine pils
+        oconusSites = ['PGUM', 'PHFO', 'PAFC', 'PAJK', 'PAFG']
     
         # regular products - not marine
         if vtecRecord['pil'] not in marinePils:
-            #advisories/warnings
-            if vtecRecord['sig'] in ['Y','W']:   #advisories/warnings - explicit
-                if deltaTstart < 3*HR:    #no start time in first 3 hours
+            # advisories/warnings
+            if vtecRecord['sig'] in ['Y', 'W']:  # advisories/warnings - explicit
+                if deltaTstart < 3 * HR:  # no start time in first 3 hours
                     start = 'NONE'
                 else:
-                    start = 'EXPLICIT'    #explicit start time after 3 hours
-                end = 'EXPLICIT'          #end time always explicit
+                    start = 'EXPLICIT'  # explicit start time after 3 hours
+                end = 'EXPLICIT'  # end time always explicit
     
-            #watches
-            elif vtecRecord['sig'] in ['A']:  #watches - mix of explicit/fuzzy
-                if deltaTstart < 3*HR:    #no start time in first 3 hours
+            # watches
+            elif vtecRecord['sig'] in ['A']:  # watches - mix of explicit/fuzzy
+                if deltaTstart < 3 * HR:  # no start time in first 3 hours
                     start = 'NONE'
-                elif deltaTstart < 12*HR:
-                    start = 'EXPLICIT'    #explicit start time 3-12 hours
+                elif deltaTstart < 12 * HR:
+                    start = 'EXPLICIT'  # explicit start time 3-12 hours
                 else:
-                    start = 'FUZZY4'      #fuzzy times after 12 (4/day)
-                if deltaTend < 12*HR:     #explicit end time 0-12 hours
+                    start = 'FUZZY4'  # fuzzy times after 12 (4/day)
+                if deltaTend < 12 * HR:  # explicit end time 0-12 hours
                     end = 'EXPLICIT'
                 else:
-                    end = 'FUZZY4'        #fuzzy times after 12 (4/day)
+                    end = 'FUZZY4'  # fuzzy times after 12 (4/day)
             
-            #local hazards
+            # local hazards
             elif locStart is not None and locEnd is not None:
                 start = locStart
                 end = locEnd
             else: 
-                if deltaTstart < 3*HR:    #no start time in first 3 hours
+                if deltaTstart < 3 * HR:  # no start time in first 3 hours
                     start = 'NONE'
-                elif deltaTstart < 12*HR:
-                    start = 'EXPLICIT'    #explicit start time 3-12 hours
+                elif deltaTstart < 12 * HR:
+                    start = 'EXPLICIT'  # explicit start time 3-12 hours
                 else:
-                    start = 'FUZZY4'      #fuzzy times after 12 (4/day)
-                if deltaTend < 12*HR:     #explicit end time 0-12 hours
+                    start = 'FUZZY4'  # fuzzy times after 12 (4/day)
+                if deltaTend < 12 * HR:  # explicit end time 0-12 hours
                     end = 'EXPLICIT'
                 else:
-                    end = 'FUZZY4'        #fuzzy times after 12 (4/day)
+                    end = 'FUZZY4'  # fuzzy times after 12 (4/day)
     
     
         # marine - CONUS
@@ -1565,91 +1573,91 @@ class TextProductCommon(object):
             # exact same time as startTime and therefore the tests would sometimes
             # fall into the wrong if/else block
     
-            #advisories/warnings - explicit, but not some phensigs
-            if vtecRecord['sig'] in ['Y','W'] and phensig not in marineHazList:
-                if deltaTstart <= 3*HR:    #no start time in first 3 hours
+            # advisories/warnings - explicit, but not some phensigs
+            if vtecRecord['sig'] in ['Y', 'W'] and phensig not in marineHazList:
+                if deltaTstart <= 3 * HR:  # no start time in first 3 hours
                     start = 'NONE'
                 else:
-                    start = 'EXPLICIT'    #explicit start time after 3 hours
-                end = 'EXPLICIT'          #end time always explicit
+                    start = 'EXPLICIT'  # explicit start time after 3 hours
+                end = 'EXPLICIT'  # end time always explicit
     
-            #watches - mix of explicit/fuzzy, some phensig treated as watches
+            # watches - mix of explicit/fuzzy, some phensig treated as watches
             elif vtecRecord['sig'] in ['A'] or phensig in marineHazList:
-                if deltaTstart <= 3*HR:    #no start time in first 3 hours
+                if deltaTstart <= 3 * HR:  # no start time in first 3 hours
                     start = 'NONE'
-                elif deltaTstart <= 12*HR:
-                    start = 'EXPLICIT'    #explicit start time 3-12 hours
+                elif deltaTstart <= 12 * HR:
+                    start = 'EXPLICIT'  # explicit start time 3-12 hours
                 else:
-                    start = 'FUZZY4'      #fuzzy times after 12 (4/day)
-                if deltaTend <= 12*HR:     #explicit end time 0-12 hours
+                    start = 'FUZZY4'  # fuzzy times after 12 (4/day)
+                if deltaTend <= 12 * HR:  # explicit end time 0-12 hours
                     end = 'EXPLICIT'
                 else:
-                    end = 'FUZZY4'        #fuzzy times after 12 (4/day)
+                    end = 'FUZZY4'  # fuzzy times after 12 (4/day)
             
-            #local hazards - treat as watches
+            # local hazards - treat as watches
             elif locStart is not None and locEnd is not None:
                 start = locStart
                 end = locEnd
             else:
-                if deltaTstart < 3*HR:    #no start time in first 3 hours
+                if deltaTstart < 3 * HR:  # no start time in first 3 hours
                     start = 'NONE'
-                elif deltaTstart < 12*HR:
-                    start = 'EXPLICIT'    #explicit start time 3-12 hours
+                elif deltaTstart < 12 * HR:
+                    start = 'EXPLICIT'  # explicit start time 3-12 hours
                 else:
-                    start = 'FUZZY4'      #fuzzy times after 12 (4/day)
-                if deltaTend < 12*HR:     #explicit end time 0-12 hours
+                    start = 'FUZZY4'  # fuzzy times after 12 (4/day)
+                if deltaTend < 12 * HR:  # explicit end time 0-12 hours
                     end = 'EXPLICIT'
                 else:
-                    end = 'FUZZY4'        #fuzzy times after 12 (4/day)
+                    end = 'FUZZY4'  # fuzzy times after 12 (4/day)
     
         # marine - OCONUS
         else:
     
-            #advisories/warnings - explicit, but not some phensigs
-            if vtecRecord['sig'] in ['Y','W'] and phensig not in marineHazList:
-                if deltaTstart < 3*HR:    #no start time in first 3 hours
+            # advisories/warnings - explicit, but not some phensigs
+            if vtecRecord['sig'] in ['Y', 'W'] and phensig not in marineHazList:
+                if deltaTstart < 3 * HR:  # no start time in first 3 hours
                     start = 'NONE'
                 else:
-                    start = 'EXPLICIT'    #explicit start time after 3 hours
-                end = 'EXPLICIT'          #end time always explicit
+                    start = 'EXPLICIT'  # explicit start time after 3 hours
+                end = 'EXPLICIT'  # end time always explicit
 
-            #special marine phensigs - treat as watches, with fuzzy8
+            # special marine phensigs - treat as watches, with fuzzy8
             elif phensig in marineHazList:
-                if deltaTstart < 3*HR:    #no start time in first 3 hours
+                if deltaTstart < 3 * HR:  # no start time in first 3 hours
                     start = 'NONE'
                 else:
-                    start = 'FUZZY8'      #fuzzy start times
-                end = 'FUZZY8'            #always fuzzy end times
+                    start = 'FUZZY8'  # fuzzy start times
+                end = 'FUZZY8'  # always fuzzy end times
 
     
-            #regular watches - fuzzy4
+            # regular watches - fuzzy4
             elif vtecRecord['sig'] in ['A']:
-                if deltaTstart < 3*HR:    #no start time in first 3 hours
+                if deltaTstart < 3 * HR:  # no start time in first 3 hours
                     start = 'NONE'
-                elif deltaTstart < 12*HR:
-                    start = 'EXPLICIT'    #explicit start time 3-12 hours
+                elif deltaTstart < 12 * HR:
+                    start = 'EXPLICIT'  # explicit start time 3-12 hours
                 else:
-                    start = 'FUZZY4'      #fuzzy times after 12 (4/day)
-                if deltaTend < 12*HR:     #explicit end time 0-12 hours
+                    start = 'FUZZY4'  # fuzzy times after 12 (4/day)
+                if deltaTend < 12 * HR:  # explicit end time 0-12 hours
                     end = 'EXPLICIT'
                 else:
-                    end = 'FUZZY4'        #fuzzy times after 12 (4/day)
+                    end = 'FUZZY4'  # fuzzy times after 12 (4/day)
 
-            #local hazards - treat as watches
+            # local hazards - treat as watches
             elif locStart is not None and locEnd is not None:
                 start = locStart
                 end = locEnd
             else:
-                if deltaTstart < 3*HR:    #no start time in first 3 hours
+                if deltaTstart < 3 * HR:  # no start time in first 3 hours
                     start = 'NONE'
-                elif deltaTstart < 12*HR:
-                    start = 'EXPLICIT'    #explicit start time 3-12 hours
+                elif deltaTstart < 12 * HR:
+                    start = 'EXPLICIT'  # explicit start time 3-12 hours
                 else:
-                    start = 'FUZZY4'      #fuzzy times after 12 (4/day)
-                if deltaTend < 12*HR:     #explicit end time 0-12 hours
+                    start = 'FUZZY4'  # fuzzy times after 12 (4/day)
+                if deltaTend < 12 * HR:  # explicit end time 0-12 hours
                     end = 'EXPLICIT'
                 else:
-                    end = 'FUZZY4'        #fuzzy times after 12 (4/day)
+                    end = 'FUZZY4'  # fuzzy times after 12 (4/day)
     
         return (start, end)  
     
@@ -1706,13 +1714,13 @@ class TextProductCommon(object):
         startPhraseType = 'FUZZY'
         endPhraseType = 'FUZZY'
 
-        #Example code -- NOTE: need to convert to unixTime manually
-        #if startTime <= issuanceTime + 12 * 3600 * 1000:   # 12 hours past issuance
-            #startPhraseType = 'EXPLICIT'
-        #if endTime <= issuanceTime + 12 * 3600 * 1000:   # 12 hours past issuance
-            #endPhraseType = 'EXPLICIT'
+        # Example code -- NOTE: need to convert to unixTime manually
+        # if startTime <= issuanceTime + 12 * 3600 * 1000:   # 12 hours past issuance
+            # startPhraseType = 'EXPLICIT'
+        # if endTime <= issuanceTime + 12 * 3600 * 1000:   # 12 hours past issuance
+            # endPhraseType = 'EXPLICIT'
 
-        #return startPhraseType, endPhraseType
+        # return startPhraseType, endPhraseType
         return None, None
     
     def untilFurtherNotice(self, time_ms):
@@ -1744,7 +1752,7 @@ class TextProductCommon(object):
             for timeZone in timeZoneData:
                 if timeZone in zoneList:
                     continue
-                if timeZone==thisTimeZone :
+                if timeZone == thisTimeZone :
                     zoneList.insert(0, timeZone)
                 else :
                     zoneList.append(timeZone)
@@ -1759,87 +1767,87 @@ class TextProductCommon(object):
         ''' Flush the print buffer '''
         os.sys.__stdout__.flush()    
     
-    def timingWordTableEXPLICIT(self, issueTime, eventTime, timezone, 
+    def timingWordTableEXPLICIT(self, issueTime, eventTime, timezone,
       timeType='startTime'):
-        #returns (timeValue, timeZone, descriptiveWord).  
-        #eventTime is either the starting or ending time, based on 
-        #the timeType flag. timezone is the time zone for the hazard area
+        # returns (timeValue, timeZone, descriptiveWord).  
+        # eventTime is either the starting or ending time, based on 
+        # the timeType flag. timezone is the time zone for the hazard area
 
-        HR=3600
+        HR = 3600
         sameDay = [
-          (0*HR,       6*HR,     'early this morning'), #midnght-559am
-          (6*HR,      12*HR-1,   'this morning'),       #600am-1159am
-          (12*HR,     12*HR+1,   'today'),               #noon
-          (12*HR+1,   18*HR-1,   'this afternoon'),     #1201pm-559pm
-          (18*HR,     24*HR,     'this evening')]       #6pm-1159pm
+          (0 * HR, 6 * HR, 'early this morning'),  # midnght-559am
+          (6 * HR, 12 * HR - 1, 'this morning'),  # 600am-1159am
+          (12 * HR, 12 * HR + 1, 'today'),  # noon
+          (12 * HR + 1, 18 * HR - 1, 'this afternoon'),  # 1201pm-559pm
+          (18 * HR, 24 * HR, 'this evening')]  # 6pm-1159pm
 
         nextDay = [
-          (0*HR,       0*HR+1,   'tonight'),            #midnght
-          (0*HR,      24*HR,     '<dayOfWeek>'),]       #midnght-1159pm
+          (0 * HR, 0 * HR + 1, 'tonight'),  # midnght
+          (0 * HR, 24 * HR, '<dayOfWeek>'), ]  # midnght-1159pm
 
         subsequentDay = [
-          (0*HR,       0*HR+1,   '<dayOfWeek-1> Night'),  #midnght
-          (0*HR,      24*HR,     '<dayOfWeek>'),]         #midnght-1159pm
+          (0 * HR, 0 * HR + 1, '<dayOfWeek-1> Night'),  # midnght
+          (0 * HR, 24 * HR, '<dayOfWeek>'), ]  # midnght-1159pm
 
 
-        #determine local time
+        # determine local time
         myTimeZone = os.environ.get('TZ', 'GMT')  # save the defined time zone
-        os.environ['TZ'] = timezone    # set the new time zone
-        ltissue = time.localtime(issueTime/1000) # issuance local time
-        ltevent = time.localtime(eventTime/1000) # event local time
-        #get the hour string (e.g., 8 PM)
+        os.environ['TZ'] = timezone  # set the new time zone
+        ltissue = time.localtime(issueTime / 1000)  # issuance local time
+        ltevent = time.localtime(eventTime / 1000)  # event local time
+        # get the hour string (e.g., 8 PM)
         hourStr = time.strftime('%I %p', ltevent)
         if hourStr[0] == '0':
-            hourStr = hourStr[1:]  #eliminate leading zero
+            hourStr = hourStr[1:]  # eliminate leading zero
 
-        #get the time zone (e.g., MDT)
+        # get the time zone (e.g., MDT)
         hourTZstr = time.strftime('%Z', ltevent)
 
-        #determine the delta days from issuance to event
-        diffDays = ltevent[7] - ltissue[7]  #julian day
-        if diffDays < 0:   #year wrap around, assume Dec/Jan
-            diffDays = ltevent[2] + 31 - ltissue[2]  #day of month
+        # determine the delta days from issuance to event
+        diffDays = ltevent[7] - ltissue[7]  # julian day
+        if diffDays < 0:  # year wrap around, assume Dec/Jan
+            diffDays = ltevent[2] + 31 - ltissue[2]  # day of month
 
-        #get description time phrase
+        # get description time phrase
         description = '<day>'
-        hourmin = ltevent[3]*3600 + ltevent[4]*60   #hour, minute
+        hourmin = ltevent[3] * 3600 + ltevent[4] * 60  # hour, minute
         if diffDays == 0:
             for (startT, endT, desc) in sameDay:
-                if hourmin >= startT and hourmin < endT and timeType=='startTime':
+                if hourmin >= startT and hourmin < endT and timeType == 'startTime':
                     description = desc
                     break
-                elif hourmin <= endT and timeType=='endTime':
+                elif hourmin <= endT and timeType == 'endTime':
                     description = desc
                     break
 
         else:
-            #choose proper table
+            # choose proper table
             if diffDays == 1:
                 table = nextDay
             else:
                 table = subsequentDay
             for (startT, endT, desc) in table:
-                hourmin = ltevent[3]*3600 + ltevent[4]*60   #hour, minute
-                if hourmin >= startT and hourmin < endT and timeType=='startTime':
+                hourmin = ltevent[3] * 3600 + ltevent[4] * 60  # hour, minute
+                if hourmin >= startT and hourmin < endT and timeType == 'startTime':
                     description = desc
                     break
-                elif hourmin <= endT and timeType=='endTime':
+                elif hourmin <= endT and timeType == 'endTime':
                     description = desc
                     break
-            dow = ltevent[6]  #day of week
+            dow = ltevent[6]  # day of week
             dowMinusOne = ltevent[6] - 1
             if dowMinusOne < 0:
-                dowMinusOne = 6   #week wraparound
+                dowMinusOne = 6  # week wraparound
             description = string.replace(description, '<dayOfWeek>',
-              self.asciiDayOfWeek(dow))   #day of week
+              self.asciiDayOfWeek(dow))  # day of week
             description = string.replace(description, '<dayOfWeek-1>',
-              self.asciiDayOfWeek(dowMinusOne))   #day of week
+              self.asciiDayOfWeek(dowMinusOne))  # day of week
 
-        #special cases NOON
+        # special cases NOON
         if hourStr == '12 PM' and description == 'today':
             hourStr = 'Noon'
 
-        #special cases MIDNIGHT
+        # special cases MIDNIGHT
         if hourStr == '12 AM':
             hourStr = 'Midnight'
 
@@ -1850,79 +1858,79 @@ class TextProductCommon(object):
 
     def timingWordTableFUZZY4(self, issueTime, eventTime, timeZone,
       timeType='startTime'):
-        #returns (timeValue, timeZone, descriptiveWord).  
-        #eventTime is either the starting or ending time, based on 
-        #the timeType flag. timezone is the time zone for the hazard area
-        #table is local time, start, end, descriptive phrase
-        HR=3600
+        # returns (timeValue, timeZone, descriptiveWord).  
+        # eventTime is either the starting or ending time, based on 
+        # the timeType flag. timezone is the time zone for the hazard area
+        # table is local time, start, end, descriptive phrase
+        HR = 3600
         sameDay = [
-          (0*HR,       6*HR,     'early this morning'), #midnght-559am
-          (6*HR,      12*HR,     'this morning'),       #600am-noon
-          (12*HR,     18*HR,     'this afternoon'),     #1200pm-559pm
-          (18*HR,     24*HR,     'this evening')]       #6pm-1159pm
+          (0 * HR, 6 * HR, 'early this morning'),  # midnght-559am
+          (6 * HR, 12 * HR, 'this morning'),  # 600am-noon
+          (12 * HR, 18 * HR, 'this afternoon'),  # 1200pm-559pm
+          (18 * HR, 24 * HR, 'this evening')]  # 6pm-1159pm
 
         nextDay = [
-          (0*HR,       0*HR,     'this evening'),              #midnght tonight
-          (0*HR,       6*HR,     'late tonight'),              #midnght-559am
-          (6*HR,      12*HR,     '<dayOfWeek> morning'),       #600am-noon
-          (12*HR,     18*HR,     '<dayOfWeek> afternoon'),     #1200pm-559pm
-          (18*HR,     24*HR,     '<dayOfWeek> evening')]       #6pm-1159pm
+          (0 * HR, 0 * HR, 'this evening'),  # midnght tonight
+          (0 * HR, 6 * HR, 'late tonight'),  # midnght-559am
+          (6 * HR, 12 * HR, '<dayOfWeek> morning'),  # 600am-noon
+          (12 * HR, 18 * HR, '<dayOfWeek> afternoon'),  # 1200pm-559pm
+          (18 * HR, 24 * HR, '<dayOfWeek> evening')]  # 6pm-1159pm
 
         subsequentDay = [
-          (0*HR,       0*HR,     '<dayOfWeek-1> evening'),     #midnght ystdy 
-          (0*HR,       6*HR,     'late <dayOfWeek-1> night'),  #midnght-559am
-          (6*HR,      12*HR,     '<dayOfWeek> morning'),       #600am-noon
-          (12*HR,     18*HR,     '<dayOfWeek> afternoon'),     #1200pm-559pm
-          (18*HR,     24*HR,     '<dayOfWeek> evening')]       #6pm-1159pm
+          (0 * HR, 0 * HR, '<dayOfWeek-1> evening'),  # midnght ystdy 
+          (0 * HR, 6 * HR, 'late <dayOfWeek-1> night'),  # midnght-559am
+          (6 * HR, 12 * HR, '<dayOfWeek> morning'),  # 600am-noon
+          (12 * HR, 18 * HR, '<dayOfWeek> afternoon'),  # 1200pm-559pm
+          (18 * HR, 24 * HR, '<dayOfWeek> evening')]  # 6pm-1159pm
 
 
-        #determine local time
+        # determine local time
        
         myTimeZone = os.environ.get('TZ', 'GMT')  # save the defined time zone
-        os.environ['TZ'] = timeZone    # set the new time zone        
+        os.environ['TZ'] = timeZone  # set the new time zone        
     
-        ltissue = time.localtime(issueTime/1000) # issuance local time
-        ltevent = time.localtime(eventTime/1000) # event local time
+        ltissue = time.localtime(issueTime / 1000)  # issuance local time
+        ltevent = time.localtime(eventTime / 1000)  # event local time
 
-        #determine the delta days from issuance to event
-        diffDays = ltevent[7] - ltissue[7]  #julian day
-        if diffDays < 0:   #year wrap around, assume Dec/Jan
-            diffDays = ltevent[2] + 31 - ltissue[2]  #day of month
+        # determine the delta days from issuance to event
+        diffDays = ltevent[7] - ltissue[7]  # julian day
+        if diffDays < 0:  # year wrap around, assume Dec/Jan
+            diffDays = ltevent[2] + 31 - ltissue[2]  # day of month
 
-        #get description time phrase
+        # get description time phrase
         description = '<day>'
-        hourmin = ltevent[3]*3600 + ltevent[4]*60   #hour, minute
+        hourmin = ltevent[3] * 3600 + ltevent[4] * 60  # hour, minute
         if diffDays == 0:
             for (startT, endT, desc) in sameDay:
-                if hourmin >= startT and hourmin < endT and timeType=='startTime':  
+                if hourmin >= startT and hourmin < endT and timeType == 'startTime':  
                     description = desc
                     break
-                elif hourmin <= endT and timeType=='endTime':
+                elif hourmin <= endT and timeType == 'endTime':
                     description = desc
                     break
 
         else:
-            #choose proper table
+            # choose proper table
             if diffDays == 1:
                 table = nextDay
             else:
                 table = subsequentDay
             for (startT, endT, desc) in table:
-                hourmin = ltevent[3]*3600 + ltevent[4]*60   #hour, minute
-                if hourmin >= startT and hourmin < endT and timeType=='startTime':
+                hourmin = ltevent[3] * 3600 + ltevent[4] * 60  # hour, minute
+                if hourmin >= startT and hourmin < endT and timeType == 'startTime':
                     description = desc
                     break
-                elif hourmin <= endT and timeType=='endTime':
+                elif hourmin <= endT and timeType == 'endTime':
                     description = desc
                     break
-            dow = ltevent[6]  #day of week
+            dow = ltevent[6]  # day of week
             dowMinusOne = ltevent[6] - 1
             if dowMinusOne < 0:
-                dowMinusOne = 6   #week wraparound
+                dowMinusOne = 6  # week wraparound
             description = string.replace(description, '<dayOfWeek>',
-              self.asciiDayOfWeek(dow))   #day of week
+              self.asciiDayOfWeek(dow))  # day of week
             description = string.replace(description, '<dayOfWeek-1>',
-              self.asciiDayOfWeek(dowMinusOne))   #day of week
+              self.asciiDayOfWeek(dowMinusOne))  # day of week
 
         os.environ['TZ'] = myTimeZone  # reset the defined time zone
 
@@ -1933,75 +1941,75 @@ class TextProductCommon(object):
 
     def timingWordTableFUZZY8(self, issueTime, eventTime, timeZone,
       timeType='startTime'):
-        #returns the descriptive word for the event.  eventTime is either
-        #the starting or ending time, based on the timeType flag.
-        #table is local time, start, end, descriptive phrase-A
+        # returns the descriptive word for the event.  eventTime is either
+        # the starting or ending time, based on the timeType flag.
+        # table is local time, start, end, descriptive phrase-A
   
-        HR=3600
+        HR = 3600
         sameDay = [
-          (0*HR,       3*HR,     'late <dayOfWeek-1> night'), #midnght-259am
-          (3*HR,       6*HR,     'early this morning'),    #300am-559am
-          (6*HR,       9*HR,     'this morning'),          #600am-859am
-          (9*HR,      12*HR,     'late this morning'),     #900am-1159am
-          (12*HR,     15*HR,     'early this afternoon'),  #noon-259pm
-          (15*HR,     18*HR,     'late this afternoon'),   #300pm-559pm
-          (18*HR,     21*HR,     'this evening'),          #600pm-859pm
-          (21*HR,     24*HR,     'tonight')]               #900pm-1159pm
+          (0 * HR, 3 * HR, 'late <dayOfWeek-1> night'),  # midnght-259am
+          (3 * HR, 6 * HR, 'early this morning'),  # 300am-559am
+          (6 * HR, 9 * HR, 'this morning'),  # 600am-859am
+          (9 * HR, 12 * HR, 'late this morning'),  # 900am-1159am
+          (12 * HR, 15 * HR, 'early this afternoon'),  # noon-259pm
+          (15 * HR, 18 * HR, 'late this afternoon'),  # 300pm-559pm
+          (18 * HR, 21 * HR, 'this evening'),  # 600pm-859pm
+          (21 * HR, 24 * HR, 'tonight')]  # 900pm-1159pm
 
         nextDayStart = [
-          (0*HR,       3*HR,     'late <dayOfWeek-1> night'),  #midnght-259am
-          (3*HR,       6*HR,     'early <dayOfWeek> morning'), #300am-559am
-          (6*HR,      12*HR,     '<dayOfWeek> morning'),       #600am-noon
-          (12*HR,     18*HR,     '<dayOfWeek> afternoon'),     #1200pm-559pm
-          (18*HR,     24*HR,     '<dayOfWeek> evening')]       #6pm-1159pm
+          (0 * HR, 3 * HR, 'late <dayOfWeek-1> night'),  # midnght-259am
+          (3 * HR, 6 * HR, 'early <dayOfWeek> morning'),  # 300am-559am
+          (6 * HR, 12 * HR, '<dayOfWeek> morning'),  # 600am-noon
+          (12 * HR, 18 * HR, '<dayOfWeek> afternoon'),  # 1200pm-559pm
+          (18 * HR, 24 * HR, '<dayOfWeek> evening')]  # 6pm-1159pm
 
         nextDayEnd = [
-          (0*HR,       0*HR,     'tonight'),                   #midnght tonight
-          (0*HR,       3*HR,     'late <dayOfWeek-1> night'), #midnght-259am
-          (3*HR,       6*HR,     'early <dayOfWeek> morning'), #300am-559am
-          (6*HR,      12*HR,     '<dayOfWeek> morning'),       #600am-noon
-          (12*HR,     18*HR,     '<dayOfWeek> afternoon'),     #1200pm-559pm
-          (18*HR,     24*HR,     '<dayOfWeek> night')]         #6pm-1159pm
+          (0 * HR, 0 * HR, 'tonight'),  # midnght tonight
+          (0 * HR, 3 * HR, 'late <dayOfWeek-1> night'),  # midnght-259am
+          (3 * HR, 6 * HR, 'early <dayOfWeek> morning'),  # 300am-559am
+          (6 * HR, 12 * HR, '<dayOfWeek> morning'),  # 600am-noon
+          (12 * HR, 18 * HR, '<dayOfWeek> afternoon'),  # 1200pm-559pm
+          (18 * HR, 24 * HR, '<dayOfWeek> night')]  # 6pm-1159pm
 
-        subsequentDayStart =  [
-          (0*HR,       6*HR,     'late <dayOfWeek-1> night'),  #midnght-559am
-          (6*HR,      12*HR,     '<dayOfWeek> morning'),       #600am-noon
-          (12*HR,     18*HR,     '<dayOfWeek> afternoon'),     #1200pm-559pm
-          (18*HR,     24*HR,     '<dayOfWeek> evening')]       #6pm-1159pm
+        subsequentDayStart = [
+          (0 * HR, 6 * HR, 'late <dayOfWeek-1> night'),  # midnght-559am
+          (6 * HR, 12 * HR, '<dayOfWeek> morning'),  # 600am-noon
+          (12 * HR, 18 * HR, '<dayOfWeek> afternoon'),  # 1200pm-559pm
+          (18 * HR, 24 * HR, '<dayOfWeek> evening')]  # 6pm-1159pm
 
         subsequentDayEnd = [
-          (0*HR,       0*HR,     '<dayOfWeek-1> night'),       #midnght tonight
-          (0*HR,       6*HR,     'early <dayOfWeek> morning'), #midnght-559am
-          (6*HR,      12*HR,     '<dayOfWeek> morning'),       #600am-noon
-          (12*HR,     18*HR,     '<dayOfWeek> afternoon'),     #1200pm-559pm
-          (18*HR,     24*HR,     '<dayOfWeek> night')]         #6pm-1159pm
+          (0 * HR, 0 * HR, '<dayOfWeek-1> night'),  # midnght tonight
+          (0 * HR, 6 * HR, 'early <dayOfWeek> morning'),  # midnght-559am
+          (6 * HR, 12 * HR, '<dayOfWeek> morning'),  # 600am-noon
+          (12 * HR, 18 * HR, '<dayOfWeek> afternoon'),  # 1200pm-559pm
+          (18 * HR, 24 * HR, '<dayOfWeek> night')]  # 6pm-1159pm
 
 
-        #determine local time
+        # determine local time
         myTimeZone = os.environ.get('TZ', 'GMT')  # save the defined time zone
-        os.environ['TZ'] = timeZone    # set the new time zone
-        ltissue = time.localtime(issueTime/1000) # issuance local time
-        ltevent = time.localtime(eventTime/1000) # event local time
+        os.environ['TZ'] = timeZone  # set the new time zone
+        ltissue = time.localtime(issueTime / 1000)  # issuance local time
+        ltevent = time.localtime(eventTime / 1000)  # event local time
 
-        #determine the delta days from issuance to event
-        diffDays = ltevent[7] - ltissue[7]  #julian day
-        if diffDays < 0:   #year wrap around, assume Dec/Jan
-            diffDays = ltevent[2] + 31 - ltissue[2]  #day of month
+        # determine the delta days from issuance to event
+        diffDays = ltevent[7] - ltissue[7]  # julian day
+        if diffDays < 0:  # year wrap around, assume Dec/Jan
+            diffDays = ltevent[2] + 31 - ltissue[2]  # day of month
 
-        #get description time phrase
+        # get description time phrase
         description = '<day>'
-        hourmin = ltevent[3]*3600 + ltevent[4]*60   #hour, minute
+        hourmin = ltevent[3] * 3600 + ltevent[4] * 60  # hour, minute
         if diffDays == 0:
             for (startT, endT, desc) in sameDay:
-                if hourmin >= startT and hourmin < endT and timeType=='startTime':  
+                if hourmin >= startT and hourmin < endT and timeType == 'startTime':  
                     description = desc
                     break
-                elif hourmin <= endT and timeType=='endTime':
+                elif hourmin <= endT and timeType == 'endTime':
                     description = desc
                     break
 
         else:
-            #choose proper table
+            # choose proper table
             if timeType == 'startTime':
                 if diffDays == 1:
                     table = nextDayStart
@@ -2013,23 +2021,23 @@ class TextProductCommon(object):
                 else:
                     table = subsequentDayEnd
             for (startT, endT, desc) in table:
-                hourmin = ltevent[3]*3600 + ltevent[4]*60   #hour, minute
-                if hourmin >= startT and hourmin < endT and timeType=='startTime':
+                hourmin = ltevent[3] * 3600 + ltevent[4] * 60  # hour, minute
+                if hourmin >= startT and hourmin < endT and timeType == 'startTime':
                     description = desc
                     break
-                elif hourmin <= endT and timeType=='endTime':
+                elif hourmin <= endT and timeType == 'endTime':
                     description = desc
                     break
 
-       #do substitution
-        dow = ltevent[6]  #day of week
+       # do substitution
+        dow = ltevent[6]  # day of week
         dowMinusOne = ltevent[6] - 1
         if dowMinusOne < 0:
-            dowMinusOne = 6   #week wraparound
+            dowMinusOne = 6  # week wraparound
         description = string.replace(description, '<dayOfWeek>',
-          self.asciiDayOfWeek(dow))   #day of week
+          self.asciiDayOfWeek(dow))  # day of week
         description = string.replace(description, '<dayOfWeek-1>',
-          self.asciiDayOfWeek(dowMinusOne))   #day of week
+          self.asciiDayOfWeek(dowMinusOne))  # day of week
 
         os.environ['TZ'] = myTimeZone  # reset the defined time zone
 
@@ -2039,71 +2047,71 @@ class TextProductCommon(object):
 
     def timingWordTableDAYNIGHT(self, issueTime, eventTime, timeZone,
       timeType='startTime'):
-        #returns (timeValue, timeZone, descriptiveWord).  
-        #eventTime is either the starting or ending time, based on 
-        #the timeType flag. timezone is the time zone for the hazard area
-        #table is local time, start, end, descriptive phrase
-        HR=3600
+        # returns (timeValue, timeZone, descriptiveWord).  
+        # eventTime is either the starting or ending time, based on 
+        # the timeType flag. timezone is the time zone for the hazard area
+        # table is local time, start, end, descriptive phrase
+        HR = 3600
         sameDay = [
-          (0*HR,         self.DAY()*HR,   'early today'), #midnght-559am
-          (self.DAY()*HR,   self.NIGHT()*HR, 'today'),       #600am-6pm
-          (self.NIGHT()*HR, 24*HR,        'tonight')]     #6pm-midnight
+          (0 * HR, self.DAY() * HR, 'early today'),  # midnght-559am
+          (self.DAY() * HR, self.NIGHT() * HR, 'today'),  # 600am-6pm
+          (self.NIGHT() * HR, 24 * HR, 'tonight')]  # 6pm-midnight
 
         nextDay = [
-          (0*HR,         self.DAY()*HR,   'tonight'),           #midnght-559am
-          (self.DAY()*HR,   self.NIGHT()*HR, '<dayOfWeek>'),       #600am-6pm
-          (self.NIGHT()*HR, 24*HR,        '<dayOfWeek> night')] #6pm-midnight
+          (0 * HR, self.DAY() * HR, 'tonight'),  # midnght-559am
+          (self.DAY() * HR, self.NIGHT() * HR, '<dayOfWeek>'),  # 600am-6pm
+          (self.NIGHT() * HR, 24 * HR, '<dayOfWeek> night')]  # 6pm-midnight
 
         subsequentDay = [
-          (0*HR,         self.DAY()*HR,   '<dayOfWeek-1> night'), #midnght-559am
-          (self.DAY()*HR,   self.NIGHT()*HR, '<dayOfWeek>'),         #600am-6pm
-          (self.NIGHT()*HR, 24*HR,        '<dayOfWeek> night')]   #6pm-midnight
+          (0 * HR, self.DAY() * HR, '<dayOfWeek-1> night'),  # midnght-559am
+          (self.DAY() * HR, self.NIGHT() * HR, '<dayOfWeek>'),  # 600am-6pm
+          (self.NIGHT() * HR, 24 * HR, '<dayOfWeek> night')]  # 6pm-midnight
 
-        #determine local time
+        # determine local time
         myTimeZone = os.environ.get('TZ', 'GMT')  # save the defined time zone
-        os.environ['TZ'] = timeZone    # set the new time zone
-        ltissue = time.localtime(issueTime/1000) # issuance local time
-        ltevent = time.localtime(eventTime/1000) # event local time
+        os.environ['TZ'] = timeZone  # set the new time zone
+        ltissue = time.localtime(issueTime / 1000)  # issuance local time
+        ltevent = time.localtime(eventTime / 1000)  # event local time
 
-        #determine the delta days from issuance to event
-        diffDays = ltevent[7] - ltissue[7]  #julian day
-        if diffDays < 0:   #year wrap around, assume Dec/Jan
-            diffDays = ltevent[2] + 31 - ltissue[2]  #day of month
+        # determine the delta days from issuance to event
+        diffDays = ltevent[7] - ltissue[7]  # julian day
+        if diffDays < 0:  # year wrap around, assume Dec/Jan
+            diffDays = ltevent[2] + 31 - ltissue[2]  # day of month
 
-        #get description time phrase
+        # get description time phrase
         description = '<day>'
-        hourmin = ltevent[3]*3600 + ltevent[4]*60   #hour, minute
+        hourmin = ltevent[3] * 3600 + ltevent[4] * 60  # hour, minute
         if diffDays == 0:
             for (startT, endT, desc) in sameDay:
-                if hourmin >= startT and hourmin < endT and timeType=='startTime':  
+                if hourmin >= startT and hourmin < endT and timeType == 'startTime':  
                     description = desc
                     break
-                elif hourmin <= endT and timeType=='endTime':
+                elif hourmin <= endT and timeType == 'endTime':
                     description = desc
                     break
 
         else:
-            #choose proper table
+            # choose proper table
             if diffDays == 1:
                 table = nextDay
             else:
                 table = subsequentDay
             for (startT, endT, desc) in table:
-                hourmin = ltevent[3]*3600 + ltevent[4]*60   #hour, minute
-                if hourmin >= startT and hourmin < endT and timeType=='startTime':
+                hourmin = ltevent[3] * 3600 + ltevent[4] * 60  # hour, minute
+                if hourmin >= startT and hourmin < endT and timeType == 'startTime':
                     description = desc
                     break
-                elif hourmin <= endT and timeType=='endTime':
+                elif hourmin <= endT and timeType == 'endTime':
                     description = desc
                     break
-            dow = ltevent[6]  #day of week
+            dow = ltevent[6]  # day of week
             dowMinusOne = ltevent[6] - 1
             if dowMinusOne < 0:
-                dowMinusOne = 6   #week wraparound
+                dowMinusOne = 6  # week wraparound
             description = string.replace(description, '<dayOfWeek>',
-              self.asciiDayOfWeek(dow))   #day of week
+              self.asciiDayOfWeek(dow))  # day of week
             description = string.replace(description, '<dayOfWeek-1>',
-              self.asciiDayOfWeek(dowMinusOne))   #day of week
+              self.asciiDayOfWeek(dowMinusOne))  # day of week
 
         os.environ['TZ'] = myTimeZone  # reset the defined time zone
 
@@ -2112,7 +2120,7 @@ class TextProductCommon(object):
         return (hourStr, hourTZstr, description)
 
     def asciiDayOfWeek(self, number):
-        #converts number (0-Monday) to day of week
+        # converts number (0-Monday) to day of week
         days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
           'Saturday', 'Sunday']
         if number >= 0 and number < 7:
@@ -2159,104 +2167,104 @@ class TextProductCommon(object):
       endPrefix):
 
         if (stype, etype) == ('NONE', 'NONE'):
-            return ''  #no timing phrase
+            return ''  # no timing phrase
 
         elif (stype, etype) in [('NONE', 'EXPLICIT')]:
-            return self.ctp_NONE_EXPLICIT(stext,etext,startPrefix,endPrefix)
+            return self.ctp_NONE_EXPLICIT(stext, etext, startPrefix, endPrefix)
 
         elif (stype, etype) in [('NONE', 'FUZZY4'), ('NONE', 'FUZZY8')]:
-            return self.ctp_NONE_FUZZY(stext,etext,startPrefix,endPrefix)
+            return self.ctp_NONE_FUZZY(stext, etext, startPrefix, endPrefix)
 
         elif (stype, etype) in [('EXPLICIT', 'EXPLICIT')]:
-            return self.ctp_EXPLICIT_EXPLICIT(stext,etext,startPrefix,
+            return self.ctp_EXPLICIT_EXPLICIT(stext, etext, startPrefix,
               endPrefix)
 
         elif (stype, etype) in [('EXPLICIT', 'FUZZY4'), ('EXPLICIT', 'FUZZY8')]:
-            return self.ctp_EXPLICIT_FUZZY(stext,etext,startPrefix,endPrefix)
+            return self.ctp_EXPLICIT_FUZZY(stext, etext, startPrefix, endPrefix)
 
         elif (stype, etype) in [('FUZZY4', 'FUZZY4'), ('FUZZY8', 'FUZZY4'),
           ('FUZZY4', 'FUZZY8'), ('FUZZY8', 'FUZZY8')]:
-            return self.ctp_FUZZY_FUZZY(stext,etext,startPrefix,endPrefix)
+            return self.ctp_FUZZY_FUZZY(stext, etext, startPrefix, endPrefix)
 
         elif (stype, etype) in [('NONE', 'DAY_NIGHT_ONLY')]:
-            return self.ctp_NONE_DAYNIGHT(stext,etext,startPrefix,endPrefix)
+            return self.ctp_NONE_DAYNIGHT(stext, etext, startPrefix, endPrefix)
 
         elif (stype, etype) in [('EXPLICIT', 'DAY_NIGHT_ONLY')]:
-            return self.ctp_EXPLICIT_DAYNIGHT(stext,etext,startPrefix,
+            return self.ctp_EXPLICIT_DAYNIGHT(stext, etext, startPrefix,
               endPrefix)
 
-        elif (stype, etype) in [('FUZZY4', 'DAY_NIGHT_ONLY'), 
+        elif (stype, etype) in [('FUZZY4', 'DAY_NIGHT_ONLY'),
           ('FUZZY8', 'DAY_NIGHT_ONLY')]:
-            return self.ctp_FUZZY_DAYNIGHT(stext,etext,startPrefix,endPrefix)
+            return self.ctp_FUZZY_DAYNIGHT(stext, etext, startPrefix, endPrefix)
 
         elif (stype, etype) in [('DAY_NIGHT_ONLY', 'DAY_NIGHT_ONLY')]:
-            return self.ctp_DAYNIGHT_DAYNIGHT(stext,etext,startPrefix,
+            return self.ctp_DAYNIGHT_DAYNIGHT(stext, etext, startPrefix,
               endPrefix)
 
         elif (stype, etype) in [('DAY_NIGHT_ONLY', 'NONE')]:
-            return self.ctp_DAYNIGHT_NONE(stext,etext,startPrefix,endPrefix)
+            return self.ctp_DAYNIGHT_NONE(stext, etext, startPrefix, endPrefix)
 
         elif (stype, etype) in [('DAY_NIGHT_ONLY', 'EXPLICIT')]:
-            return self.ctp_DAYNIGHT_EXPLICIT(stext,etext,startPrefix,
+            return self.ctp_DAYNIGHT_EXPLICIT(stext, etext, startPrefix,
               endPrefix)
 
         elif (stype, etype) in [('DAY_NIGHT_ONLY', 'FUZZY4'),
           ('DAY_NIGHT_ONLY', 'FUZZY8')]:
-            return self.ctp_DAYNIGHT_FUZZY(stext,etext,startPrefix,endPrefix)
+            return self.ctp_DAYNIGHT_FUZZY(stext, etext, startPrefix, endPrefix)
 
         else:
             return '<UnknownPhraseType-' + stype + '/' + etype + '>'
 
-    #calculates the NONE/EXPLICIT timing phrase
+    # calculates the NONE/EXPLICIT timing phrase
     def ctp_NONE_EXPLICIT(self, stext, etext, startPrefix, endPrefix):
-        #single time zone
+        # single time zone
         if len(etext) == 1:
             hourStr, hourTZstr, description = etext[0]
-            #special cases NOON
+            # special cases NOON
             if hourStr == '12 PM':
                hourStr = 'Noon'
             return endPrefix + ' ' + hourStr + ' ' + hourTZstr + ' ' + \
               description
         
-        #multiple time zones            
+        # multiple time zones            
         elif len(etext) > 1:
             hourStr, hourTZstr, description = etext[0]
-            #special cases NOON
+            # special cases NOON
             if hourStr == '12 PM':
                hourStr = 'Noon'
             s = endPrefix + ' ' + hourStr + ' ' + hourTZstr + ' '
             for x in xrange(1, len(etext)):
                 hourStr, hourTZstr, othDescription = etext[x]
-                #special cases NOON
+                # special cases NOON
                 if hourStr == '12 PM':
                    hourStr = 'Noon'
                 s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
             s = s + description
             return s
     
-    #calculates the NONE/FUZZY timing phrase
+    # calculates the NONE/FUZZY timing phrase
     def ctp_NONE_FUZZY(self, stext, etext, startPrefix, endPrefix):
-        #returns phrase like:  THROUGH THIS EVENING
-        hourStr, hourTZstr, description = etext[0]  #ending text
+        # returns phrase like:  THROUGH THIS EVENING
+        hourStr, hourTZstr, description = etext[0]  # ending text
         s = endPrefix + ' ' + description
         return s
     
-    #calculates the NONE/EXPLICIT timing phrase
+    # calculates the NONE/EXPLICIT timing phrase
     def ctp_EXPLICIT_EXPLICIT(self, stext, etext, startPrefix, endPrefix):
-        #return phrases like:  
+        # return phrases like:  
         #  FROM 2 AM WEDNESDAY TO 2 AM CST THURSDAY
         #  FROM 2 AM TO 5 AM CST THURSDAY
         #  FROM 2 AM CST /1 AM MST/ WEDNESDAY TO 2 AM CST /1 AM MST/ THURSDAY
         #  FROM 2 AM CST /1 AM MST/ TO 6 AM CST /5AM MST/ THURSDAY
 
-        shourStr, shourTZstr, sdescription = stext[0]  #starting text
-        ehourStr, ehourTZstr, edescription = etext[0]  #ending text
+        shourStr, shourTZstr, sdescription = stext[0]  # starting text
+        ehourStr, ehourTZstr, edescription = etext[0]  # ending text
 
-        #special cases NOON
+        # special cases NOON
         if shourStr == '12 PM':
            shourStr = 'Noon'
 
-        #special cases NOON
+        # special cases NOON
         if ehourStr == '12 PM':
            ehourStr = 'Noon'
 
@@ -2264,13 +2272,13 @@ class TextProductCommon(object):
         # just THIS MORNING
         if sdescription == 'early this morning' and \
           edescription == 'this morning':
-            sdescription = 'this morning'  #combine two phrases
+            sdescription = 'this morning'  # combine two phrases
  
 
         # single time zone, same time zone for start/end times - same day
         if len(stext) == 1 and len(etext) == 1 and \
           shourTZstr == ehourTZstr and sdescription == edescription:
-            return startPrefix + ' ' + shourStr + ' ' + endPrefix + ' ' +\
+            return startPrefix + ' ' + shourStr + ' ' + endPrefix + ' ' + \
               ehourStr + ' ' + ehourTZstr + ' ' + edescription
 
         # single time zone, same time zone for start/end times - diff day
@@ -2285,14 +2293,14 @@ class TextProductCommon(object):
             s = startPrefix + ' ' + shourStr + ' ' + shourTZstr + ' '
             for x in xrange(1, len(stext)):
                 hourStr, hourTZstr, description = stext[x]
-                #special cases NOON
+                # special cases NOON
                 if hourStr == '12 PM':
                    hourStr = 'Noon'
                 s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
             s = s + endPrefix + ' ' + ehourStr + ' ' + ehourTZstr + ' '
             for x in xrange(1, len(etext)):
                 hourStr, hourTZstr, description = etext[x]
-                #special cases NOON
+                # special cases NOON
                 if hourStr == '12 PM':
                    hourStr = 'Noon'
                 s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
@@ -2304,7 +2312,7 @@ class TextProductCommon(object):
             s = startPrefix + ' ' + shourStr + ' ' + shourTZstr + ' '
             for x in xrange(1, len(stext)):
                 hourStr, hourTZstr, description = stext[x]
-                #special cases NOON
+                # special cases NOON
                 if hourStr == '12 PM':
                    hourStr = 'Noon'
                 s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
@@ -2312,141 +2320,141 @@ class TextProductCommon(object):
               ' ' + ehourTZstr + ' '
             for x in xrange(1, len(etext)):
                 hourStr, hourTZstr, description = etext[x]
-                #special cases NOON
+                # special cases NOON
                 if hourStr == '12 PM':
                    hourStr = 'Noon'
                 s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
             s = s + edescription
             return s
     
-    #calculates the NONE/EXPLICIT timing phrase
+    # calculates the NONE/EXPLICIT timing phrase
     def ctp_EXPLICIT_FUZZY(self, stext, etext, startPrefix, endPrefix):
-        #returns phrase like:
+        # returns phrase like:
         #    FROM 2 AM CST WEDNESDAY THROUGH LATE WEDNESDAY NIGHT
         #    FROM 2 AM CST /1 AM MST/ WEDNESDAY THROUGH LATE WEDNESDAY NIGHT
 
-        #start phrase
+        # start phrase
         hourStr, hourTZstr, description0 = stext[0]
-        #special cases NOON
+        # special cases NOON
         if hourStr == '12 PM':
            hourStr = 'Noon'
         s = startPrefix + ' ' + hourStr + ' ' + hourTZstr + ' ' 
         for x in xrange(1, len(stext)):
             hourStr, hourTZstr, description = stext[x]
-            #special cases NOON
+            # special cases NOON
             if hourStr == '12 PM':
                hourStr = 'Noon'
             s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
         s = s + description0 + ' '
 
-        #end phrase
+        # end phrase
         hourStr, hourTZstr, description = etext[0]
         s = s + endPrefix + ' ' + description
         
         return s
     
-    #calculates the FUZZY/FUZZY timing phrase
+    # calculates the FUZZY/FUZZY timing phrase
     def ctp_FUZZY_FUZZY(self, stext, etext, startPrefix, endPrefix):
-        #return phrases like FROM THIS EVENING THROUGH LATE WEDNESDAY NIGHT
-        #return phrases like LATE WEDNESDAY NIGHT
+        # return phrases like FROM THIS EVENING THROUGH LATE WEDNESDAY NIGHT
+        # return phrases like LATE WEDNESDAY NIGHT
 
-        hourStr, hourTZstr, s_description = stext[0]  #starting text
-        hourStr, hourTZstr, e_description = etext[0]  #ending text
+        hourStr, hourTZstr, s_description = stext[0]  # starting text
+        hourStr, hourTZstr, e_description = etext[0]  # ending text
 
-        #special case of description the same
+        # special case of description the same
         if s_description == e_description:
             return s_description
 
-        #normal case of different descriptions
-        s = startPrefix + ' ' + s_description + ' ' + endPrefix + ' ' +\
+        # normal case of different descriptions
+        s = startPrefix + ' ' + s_description + ' ' + endPrefix + ' ' + \
           e_description
 
         return s
  
-    def ctp_NONE_DAYNIGHT(self,stext,etext,startPrefix,endPrefix):
-        #return phrases like THROUGH WEDNESDAY
+    def ctp_NONE_DAYNIGHT(self, stext, etext, startPrefix, endPrefix):
+        # return phrases like THROUGH WEDNESDAY
 
-        hourStr, hourTZstr, e_description = etext[0]  #ending text
+        hourStr, hourTZstr, e_description = etext[0]  # ending text
 
         s = endPrefix + ' ' + e_description
 
         return s
 
     def ctp_EXPLICIT_DAYNIGHT(self, stext, etext, startPrefix, endPrefix):
-        #returns phrase like:
+        # returns phrase like:
         #    FROM 2 AM CST WEDNESDAY THROUGH WEDNESDAY
         #    FROM 2 AM CST /1 AM MST/ WEDNESDAY THROUGH WEDNESDAY
 
-        #start phrase
+        # start phrase
         hourStr, hourTZstr, description0 = stext[0]
-        #special cases NOON
+        # special cases NOON
         if hourStr == '12 PM':
            hourStr = 'Noon'
         s = startPrefix + ' ' + hourStr + ' ' + hourTZstr + ' ' 
         for x in xrange(1, len(stext)):
             hourStr, hourTZstr, description = stext[x]
-            #special cases NOON
+            # special cases NOON
             if hourStr == '12 PM':
                hourStr = 'Noon'
             s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
         s = s + description0 + ' '
 
-        #end phrase
+        # end phrase
         hourStr, hourTZstr, description = etext[0]
         s = s + endPrefix + ' ' + description
         
         return s
 
-    def ctp_FUZZY_DAYNIGHT(self, stext,etext,startPrefix,endPrefix):
-        #return phrases like FROM THIS EVENING THROUGH WEDNESDAY NIGHT
+    def ctp_FUZZY_DAYNIGHT(self, stext, etext, startPrefix, endPrefix):
+        # return phrases like FROM THIS EVENING THROUGH WEDNESDAY NIGHT
 
-        hourStr, hourTZstr, s_description = stext[0]  #starting text
-        hourStr, hourTZstr, e_description = etext[0]  #ending text
+        hourStr, hourTZstr, s_description = stext[0]  # starting text
+        hourStr, hourTZstr, e_description = etext[0]  # ending text
 
-        #special case of description the same
+        # special case of description the same
         if s_description == e_description:
             return s_description
 
-        #normal case of different descriptions
-        s = startPrefix + ' ' + s_description + ' ' + endPrefix + ' ' +\
+        # normal case of different descriptions
+        s = startPrefix + ' ' + s_description + ' ' + endPrefix + ' ' + \
           e_description
 
         return s
 
-    def ctp_DAYNIGHT_DAYNIGHT(self,stext,etext,startPrefix,endPrefix):
-        #return phrases like FROM TONIGHT THROUGH WEDNESDAY
+    def ctp_DAYNIGHT_DAYNIGHT(self, stext, etext, startPrefix, endPrefix):
+        # return phrases like FROM TONIGHT THROUGH WEDNESDAY
 
-        hourStr, hourTZstr, s_description = stext[0]  #starting text
-        hourStr, hourTZstr, e_description = etext[0]  #ending text
+        hourStr, hourTZstr, s_description = stext[0]  # starting text
+        hourStr, hourTZstr, e_description = etext[0]  # ending text
 
-        #special case of description the same
+        # special case of description the same
         if s_description == e_description:
             return s_description
 
-        #normal case of different descriptions
-        s = startPrefix + ' ' + s_description + ' ' + endPrefix + ' ' +\
+        # normal case of different descriptions
+        s = startPrefix + ' ' + s_description + ' ' + endPrefix + ' ' + \
           e_description
 
         return s
 
-    def ctp_DAYNIGHT_EXPLICIT(self, stext,etext,startPrefix,endPrefix):
-        #returns phrase like:
+    def ctp_DAYNIGHT_EXPLICIT(self, stext, etext, startPrefix, endPrefix):
+        # returns phrase like:
         #    FROM TUESDAY UNTIL 2 AM CST WEDNESDAY
         #    FROM TUESDAY UNTIL 2 AM CST /1 AM MST/ WEDNESDAY
 
-        #start phrase
+        # start phrase
         hourStr, hourTZstr, description = stext[0]
         s = startPrefix + ' ' + description + ' '
 
-        #end phrase
+        # end phrase
         hourStr, hourTZstr, description0 = etext[0]
-        #special cases NOON
+        # special cases NOON
         if hourStr == '12 PM':
            hourStr = 'Noon'
         s = s + endPrefix + ' ' + hourStr + ' ' + hourTZstr + ' ' 
         for x in xrange(1, len(etext)):
             hourStr, hourTZstr, description = etext[x]
-            #special cases NOON
+            # special cases NOON
             if hourStr == '12 PM':
                hourStr = 'Noon'
             s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
@@ -2454,27 +2462,27 @@ class TextProductCommon(object):
 
         return s
 
-    def ctp_DAYNIGHT_NONE(self, stext,etext,startPrefix,endPrefix):
-        #return phrases like FROM TONIGHT
+    def ctp_DAYNIGHT_NONE(self, stext, etext, startPrefix, endPrefix):
+        # return phrases like FROM TONIGHT
 
-        hourStr, hourTZstr, s_description = stext[0]  #starting text
+        hourStr, hourTZstr, s_description = stext[0]  # starting text
 
         s = startPrefix + ' ' + s_description
 
         return s
 
-    def ctp_DAYNIGHT_FUZZY(self,stext,etext,startPrefix,endPrefix):
-        #return phrases like FROM TONIGHT THROUGH WEDNESDAY NIGHT
+    def ctp_DAYNIGHT_FUZZY(self, stext, etext, startPrefix, endPrefix):
+        # return phrases like FROM TONIGHT THROUGH WEDNESDAY NIGHT
 
-        hourStr, hourTZstr, s_description = stext[0]  #starting text
-        hourStr, hourTZstr, e_description = etext[0]  #ending text
+        hourStr, hourTZstr, s_description = stext[0]  # starting text
+        hourStr, hourTZstr, e_description = etext[0]  # ending text
 
-        #special case of description the same
+        # special case of description the same
         if s_description == e_description:
             return s_description
 
-        #normal case of different descriptions
-        s = startPrefix + ' ' + s_description + ' ' + endPrefix + ' ' +\
+        # normal case of different descriptions
+        s = startPrefix + ' ' + s_description + ' ' + endPrefix + ' ' + \
           e_description
 
         return s
@@ -2490,13 +2498,13 @@ class TextProductCommon(object):
 
         # test mode
         if testMode:
-            phrase = 'Test ' + name   #test mode, prepend 'Test'
+            phrase = 'Test ' + name  # test mode, prepend 'Test'
         else:
             phrase = name
 
         # want A or AN?
         if addA:
-            if phrase[0] in ['A','E','I','O','U','a','e','i','o','u']:
+            if phrase[0] in ['A', 'E', 'I', 'O', 'U', 'a', 'e', 'i', 'o', 'u']:
                 phrase = 'an ' + phrase
             else:
                 phrase = 'a ' + phrase
@@ -2538,12 +2546,12 @@ class TextProductCommon(object):
         if not fixedExpire:
             canExpFound = 0
             activeFound = 0
-            laterActive = None  #later end time of all active events
+            laterActive = None  # later end time of all active events
             for vtecRecord in vtecRecords: 
                 action = vtecRecord.get('act')
-                if action in  ['CAN','EXP']:
+                if action in  ['CAN', 'EXP']:
                     canExpFound = 1
-                elif action in ['NEW','CON','EXT','EXB','EXA']:
+                elif action in ['NEW', 'CON', 'EXT', 'EXB', 'EXA']:
                     activeFound = 1
                     endTime = vtecRecord.get('endTime')
                     if endTime != 0:
@@ -2554,19 +2562,19 @@ class TextProductCommon(object):
             if laterActive is not None:
                 expireTime = min(expireTime, laterActive)
             elif canExpFound and not activeFound:
-                expireTime = min(expireTime, issueTime+3600)  #1hr from now
+                expireTime = min(expireTime, issueTime + 3600)  # 1hr from now
                 
-        #ensure expireTime is not before issueTime, and is at least 1 hour
+        # ensure expireTime is not before issueTime, and is at least 1 hour
         if expireTime - issueTime < 3600:
-            expireTime = issueTime + 3600*1000
+            expireTime = issueTime + 3600 * 1000
 
-        #round to next 'roundMinutes'
-        roundValue = roundMinutes*60*1000  #in milliseconds
+        # round to next 'roundMinutes'
+        roundValue = roundMinutes * 60 * 1000  # in milliseconds
         delta = expireTime % roundValue  # in milliseconds
-        baseTime = int(expireTime/roundValue)*roundValue
-        if delta/60*1000 >= 1:   #add the next increment
+        baseTime = int(expireTime / roundValue) * roundValue
+        if delta / 60 * 1000 >= 1:  # add the next increment
             expireTime = baseTime + roundValue
-        else:   #within 1 minute, don't add the next increment
+        else:  # within 1 minute, don't add the next increment
             expireTime = baseTime
         return expireTime
     
@@ -2585,7 +2593,7 @@ class TextProductCommon(object):
             state = self.getInformationForUGC(areaName, "fullStateName")
             if state == "" :
                 state == areaName[:2]
-            #Special District of Columbia case
+            # Special District of Columbia case
             if state == 'DISTRICT OF COLUMBIA':
                 state = 'THE DISTRICT OF COLUMBIA'
 
@@ -2605,18 +2613,18 @@ class TextProductCommon(object):
             else:
                 geoAreas[value] = [znt]
 
-        #now sort the zoneName or countyNames
+        # now sort the zoneName or countyNames
         for state, partState in geoAreas.keys():
-            names = geoAreas[(state,partState)]
+            names = geoAreas[(state, partState)]
             names.sort()
 
-        #now separate them by land and water
-        #Anything to do with WATERS or other related items go last
-        waters = ['WATERS','LAKE','RIVER']
+        # now separate them by land and water
+        # Anything to do with WATERS or other related items go last
+        waters = ['WATERS', 'LAKE', 'RIVER']
         gaLAND = []
         gaWATER = []
-        for g,pg in geoAreas.keys():
-            names = geoAreas[(g,pg)]
+        for g, pg in geoAreas.keys():
+            names = geoAreas[(g, pg)]
             words = g.split(' ')
             found = 0
             for w in waters:
@@ -2624,11 +2632,11 @@ class TextProductCommon(object):
                     found = 1
                     break
             if found:
-                gaWATER.append((g,pg,names))
+                gaWATER.append((g, pg, names))
             else:
-                gaLAND.append((g,pg,names))
+                gaLAND.append((g, pg, names))
 
-        #convert the output to a list with land first, then waters
+        # convert the output to a list with land first, then waters
         geoAreas = []
         for g in gaLAND:
             geoAreas.append(g)
@@ -2647,7 +2655,7 @@ class TextProductCommon(object):
         "Insert endlines into phrase"
 
         # Break into sub-phrases separated by \n
-        subPhrases = string.split(phrase,"\n")
+        subPhrases = string.split(phrase, "\n")
 
         # Break each sub-phrase into lines
         str = ""
@@ -2659,7 +2667,7 @@ class TextProductCommon(object):
         return str
 
     def linebreak(self, phrase, linelength, breakStr=[' ', '...'],
-                  forceBreakStr=[" ","/"]):
+                  forceBreakStr=[" ", "/"]):
         # Break phrase into lines of the given linelength
         # Prevents a line break on a number.
         # If no breakStr is found for a given linelength of characters,
@@ -2687,13 +2695,13 @@ class TextProductCommon(object):
                     text = '%s%s\n' % (text, subPhrase)
                     start += linelength
             elif maxIndex == 0:
-                pass # space in first position: will be skipped
+                pass  # space in first position: will be skipped
             else:
                 text = '%s%s\n' % (text, subPhrase[:maxIndex])
                 start += maxIndex
             if breakChars == " ":
                 # Skip the space
-                start +=1
+                start += 1
             end = start + linelength
             subPhrase = phrase[start:end]
         if subPhrase:
@@ -2717,9 +2725,9 @@ class TextProductCommon(object):
             done = False
             while index > 0 and not done:
                 # Check for a numeric at end of line
-                if nonNumeric and breakChars == " " and text[index-1].isdigit():
+                if nonNumeric and breakChars == " " and text[index - 1].isdigit():
                     # Try to find the next right most break char
-                    index = text.rfind(breakChars, 0, index-1)
+                    index = text.rfind(breakChars, 0, index - 1)
                     continue
                 done = True
             if index > maxIndex:
@@ -2735,7 +2743,7 @@ class TextProductCommon(object):
             index = maxIndex + len(maxChars)
         return index, maxChars
   
-    def indentText(self, text, indentFirstString = '', indentNextString = '',
+    def indentText(self, text, indentFirstString='', indentNextString='',
                    maxWidth=69, breakStrings=[' ']):
         '''
         IndentText returns a formatted string which is at most maxWidth
@@ -2745,7 +2753,7 @@ class TextProductCommon(object):
         
         '''
         
-        out = ''   # total output
+        out = ''  # total output
         line = ''  # each line
 
         # eliminate all new lines and create a list of words
@@ -2772,10 +2780,10 @@ class TextProductCommon(object):
                 line = indentNextString + w
             else:
                 if len(out) == 0 and len(line) == len(additional):
-                    line = line + w   #first line, don't add a space
+                    line = line + w  # first line, don't add a space
                 else:
-                    #line = line + ' ' + w   #subsequent words, add a space
-                    line = line +  w   #subsequent words, add a space
+                    # line = line + ' ' + w   #subsequent words, add a space
+                    line = line + w  # subsequent words, add a space
         if len(line):
             out = out + line
         return out
@@ -2793,7 +2801,7 @@ class TextProductCommon(object):
                     newStrWords = []
                     # Add the breakStr back in except for last one
                     index = 0
-                    length = len(strWords)-1
+                    length = len(strWords) - 1
                     for strWord in strWords:
                         if strWord == '':
                             continue
@@ -2831,20 +2839,20 @@ class CallToActions:
             items = func()
             if len(items) > 0:
                 return items[0]
-        return ''   #No call to action
+        return ''  # No call to action
 
     def allCTAs(self, phensig):
         if self.ctaDict().has_key(phensig):
             func = self.ctaDict()[phensig]
             return func() 
-        return [] #no Call to actions
+        return []  # no Call to actions
 
 
     def pilCTAs(self, pil):
         if self.ctaPilDict().has_key(pil):
             func = self.ctaPilDict()[pil]
             return func() 
-        return [] #no Call to actions
+        return []  # no Call to actions
 
 
     # returns list of generic call to action statements
@@ -3020,7 +3028,7 @@ class CallToActions:
 
     def winterWWcta(self):
         return [
-      ('***BLOWING SNOW', '''A WINTER WEATHER ADVISORY FOR BLOWING SNOW MEANS THAT VISIBILITIES WILL BE LIMITED DUE TO STRONG WINDS BLOWING SNOW AROUND. USE CAUTION WHEN TRAVELING...ESPECIALLY IN OPEN AREAS.'''),      
+      ('***BLOWING SNOW', '''A WINTER WEATHER ADVISORY FOR BLOWING SNOW MEANS THAT VISIBILITIES WILL BE LIMITED DUE TO STRONG WINDS BLOWING SNOW AROUND. USE CAUTION WHEN TRAVELING...ESPECIALLY IN OPEN AREAS.'''),
       ('***SLEET', '''A WINTER WEATHER ADVISORY FOR SLEET MEANS PERIODS OF SLEET ARE IMMINENT OR OCCURRING. SLEET MAY CAUSE DRIVING TO BECOME EXTREMELY DANGEROUS...SO BE PREPARED TO USE CAUTION WHEN TRAVELING.'''),
       ('***SNOW AND BLOWING SNOW', '''A WINTER WEATHER ADVISORY FOR |*LAKE EFFECT*| SNOW AND BLOWING SNOW MEANS THAT VISIBILITIES WILL BE LIMITED DUE TO A COMBINATION OF FALLING AND BLOWING SNOW. USE CAUTION WHEN TRAVELING...ESPECIALLY IN OPEN AREAS.'''),
       ('***SNOW', '''A WINTER WEATHER ADVISORY FOR SNOW MEANS THAT PERIODS OF SNOW WILL CAUSE PRIMARILY TRAVEL DIFFICULTIES. BE PREPARED FOR SNOW COVERED ROADS AND LIMITED VISIBILITIES...AND USE CAUTION WHILE DRIVING.'''),

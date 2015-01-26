@@ -52,7 +52,6 @@ class Format(FormatTemplate.Formatter):
         text = self._processProductParts(productDict, productParts.get('partsList'))
         printText = text.replace('\n','CR\n')
         text = self._tpc.endline(text)
-        text = text.upper()
         return str(text) 
     
     def _printDebugProductParts(self):   

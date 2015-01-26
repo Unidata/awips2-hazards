@@ -129,8 +129,13 @@ class VTECEngineWrapper(object):
         if productGeneratorName:
             allowedHazards = ProductGeneratorTable[productGeneratorName]['allowedHazards']
         else:
-            pgtKey = "{p}_ProductGenerator".format(p=productCategory)
-            allowedHazards = ProductGeneratorTable[pgtKey]['allowedHazards']
+            try:
+                pgtKey = "{p}_ProductGenerator".format(p=productCategory)
+                allowedHazards = ProductGeneratorTable[pgtKey]['allowedHazards']
+            except:
+                pgtKey = "{p}_ProductGenerator_v3".format(p=productCategory)
+                allowedHazards = ProductGeneratorTable[pgtKey]['allowedHazards']
+                
         
 
 

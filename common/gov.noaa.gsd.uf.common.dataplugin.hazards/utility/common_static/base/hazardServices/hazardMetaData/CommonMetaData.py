@@ -258,7 +258,16 @@ class MetaData(object):
         
     def eventTypeGenericFlooding(self):
         return {
-                "identifier":"genericFlooding", "displayString": "Generic (provide reasoning)"
+                "identifier":"genericFlooding", 
+                "displayString": "Generic (provide reasoning)",
+                "detailFields": [
+                    {
+                    "fieldType": "Text",
+                    "fieldName": "genericFloodReasoning",
+                    "label": "Reasoning:",
+                    }
+                 ]
+
                 }
         
     def eventTypeFlashFlooding(self):
@@ -447,8 +456,7 @@ class MetaData(object):
                 "displayString": "Flood waters are moving down",
                 "productString":
                 '''Flood waters are moving down #riverName# from #upstreamLocation# to 
-                #floodLocation#. The flood crest is expected to reach #downstreamLocation# by 
-                #additionalInfoFloodMovingTime#.''',
+                #floodLocation#. The flood crest is expected to reach #downstreamLocation# by #additionalInfoFloodMovingTime#''',
                 "detailFields": [
                             {
                              "fieldName":"additionalInfoFloodMovingTime",
@@ -457,18 +465,7 @@ class MetaData(object):
                             }
                       ]
                      }
-    def floodLocation(self):
-        return {"identifier":"floodLocation",
-                "displayString": "Specify location of flooding:", 
-                "detailFields": [
-                        {
-                         "fieldType": "Text",
-                         "fieldName": "floodLocation",
-                         "expandHorizontally": True,
-                         "maxChars": 40,
-                         "visibleChars": 12
-                        }]
-                }
+        
     def recedingWater(self):  # EXP / CAN
         return {"identifier":"recedingWater", 
                 "displayString": "Water is receding",
@@ -481,7 +478,57 @@ class MetaData(object):
                 "productString": 
                 '''The heavy rain has ended...and flooding is no longer expected to pose a threat.''',}
  
+    def getRiver(self, editable=True):
+        return {
+             "fieldType": "Text",
+             "fieldName": "riverName",
+             "expandHorizontally": True,
+             "label" : "River name:",
+             "maxChars": 40,
+             "visibleChars": 12,
+             "editable": editable,
+            } 
+
+    def getFloodLocation(self):
+        return {
+             "fieldType": "Text",
+             "fieldName": "floodLocation",
+             "expandHorizontally": True,
+             "label" : "Flood location",
+             "maxChars": 40,
+             "visibleChars": 12,
+            } 
+
+
+    def getUpstreamLocation(self):
+        return {
+             "fieldType": "Text",
+             "fieldName": "upstreamLocation",
+             "expandHorizontally": True,
+             "label" : "Upstream location:",
+             "maxChars": 40,
+             "visibleChars": 12,
+            } 
+ 
+    def getDownstreamLocation(self):
+        return {
+             "fieldType": "Text",
+             "fieldName": "downstreamLocation",
+             "expandHorizontally": True,
+             "label" : "Downstream location:",
+             "maxChars": 40,
+             "visibleChars": 12,
+            } 
         
+    def getVolcano(self):
+        return {
+             "fieldType": "Text",
+             "fieldName": "volcanoName",
+             "expandHorizontally": True,
+             "label" : "Volcano location:",
+             "maxChars": 40,
+             "visibleChars": 12,
+            }         
     def getCTAs(self,values=None):
  
         pageFields = { 

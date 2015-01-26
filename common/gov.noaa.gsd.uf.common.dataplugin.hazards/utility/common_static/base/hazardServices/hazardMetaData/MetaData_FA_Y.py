@@ -168,7 +168,7 @@ class MetaData(CommonMetaData.MetaData):
             self.listOfCities(),
             self.additionalRain(),
             self.floodLocation(),
-            self.listOfDrainages()
+            self.listOfDrainages(),
             ]
  
     def getCTA_Choices(self):
@@ -182,6 +182,19 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaPowerFlood(),
             self.ctaReportFlooding(),
             ]
+        
+    def floodLocation(self):
+        return {"identifier":"floodLocation",
+                "displayString": "Specify location of flooding:",
+                "detailFields": [
+                        {
+                         "fieldType": "Text",
+                         "fieldName": "floodLocation",
+                         "expandHorizontally": True,
+                         "maxChars": 40,
+                         "visibleChars": 12
+                        }]
+                }
 
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     propertyChanges = CommonMetaData.applyInterdependencies(triggerIdentifiers, mutableProperties)

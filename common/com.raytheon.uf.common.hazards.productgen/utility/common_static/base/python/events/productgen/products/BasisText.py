@@ -76,9 +76,10 @@ class BasisText:
     def get_FA_W_BulletText(self, identifier, sourceBulletText):
         if identifier.get("eventType") == "genericFlooding":
            methodName = "self.get_FA_W_genericFlooding_bulletText"
+           exec "result = " + methodName + "(sourceBulletText, identifier['genericFloodReasoning'])"
         else:
             methodName = "self.get_FA_W_" + identifier.get("source") + "_" + identifier.get("eventType") + "_bulletText"
-        exec "result = " + methodName + "(sourceBulletText)"
+            exec "result = " + methodName + "(sourceBulletText)"
         return result
     
     def get_FA_W_dopplerSource_thunderEvent_bulletText(self, sourceBulletText):
@@ -162,8 +163,8 @@ class BasisText:
     def get_FA_W_gaugesSource_flooding_bulletText(self, sourceBulletText):
         return sourceBulletText + "heavy rain that will cause flooding in the warning area."
     
-    def get_FA_W_genericFlooding_bulletText(self, sourceBulletText):
-        return "!** Enter reason and forecast for flood **!"
+    def get_FA_W_genericFlooding_bulletText(self, sourceBulletText, reasoning):
+        return sourceBulletText + reasoning
     
     ###############################################################################
     def get_FA_Y_BulletText(self, identifier, sourceBulletText):
@@ -338,7 +339,11 @@ class BasisText:
             rainSoFarUpperBound = identifier.get("rainSoFarUpperBound")
             rainLower = "{:2.1f}".format(rainSoFarLowerBound)
             rainUpper = "{:2.1f}".format(rainSoFarUpperBound)
-            result = " Between " + rainLower + " and " + rainUpper + " inches of rain have fallen. "
+            rainText = " inches of rain have fallen. "
+            if rainLower == 0.0 or rainLower == rainUpper:
+                result = "Up to " + rainUpper + rainText
+            else:
+                result = " Between " + rainLower + " and " + rainUpper + rainText
         return result
             
 ###############################################################################
