@@ -116,7 +116,7 @@ class Format(Legacy_Base_Formatter.Format):
     def _forecastStageBullet(self, segmentDict):
         action = segmentDict['hazards'][0]['act']
         riverDescription = self._getRiverDescription(segmentDict)
-        forecastCrest = '30 feet'
+        forecastCrestStage = segmentDict.get('forecastCrestStage')
 
         maximumForecastStage = segmentDict['maximumForecastStage']
         maximumForecastTime_ms = segmentDict['maximumForecastTime_ms']
@@ -146,29 +146,29 @@ class Format(Legacy_Base_Formatter.Format):
             elif observedStage < floodStage:
                 if maximumForecastStage == floodStage:
                     bulletContent = riverDescription + ' is expected to rise to near flood stage by '+ maximumForecastTime_str
-                elif forecastCrest > floodStage and forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
+                elif forecastCrestStage > floodStage and forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
                     bulletContent = 'rise above flood stage by '+ forecastRiseAboveFloodStageTime_str + \
-                        ' and continue to rise to near ' + `forecastCrest` + ' '+stageFlowUnits + ' by '+ forecastCrestTime_str+'. '
-                elif maximumForecastStage > floodStage and forecastCrest == self.MISSING_VALUE and +\
+                        ' and continue to rise to near ' + `forecastCrestStage` + ' '+stageFlowUnits + ' by '+ forecastCrestTime_str+'. '
+                elif maximumForecastStage > floodStage and forecastCrestStage == self.MISSING_VALUE and +\
                     forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
                     bulletContent = 'rise above flood stage by '+forecastRiseAboveFloodStageTime_str +\
                        ' and continue to rise to near '+`maximumForecastStage`+' '+stageFlowUnits+' by '+\
                        maximumForecastTime_str+'. Additional rises are possible thereafter.'
-                elif forecastCrest > floodStage and forecastFallBelowFloodStageTime_ms != self.MISSING_VALUE:
+                elif forecastCrestStage > floodStage and forecastFallBelowFloodStageTime_ms != self.MISSING_VALUE:
                     bulletContent = 'rise above flood stage by '+forecastRiseAboveFloodStageTime_str + \
-                       ' and continue to rise to near '+ `forecastCrest`+' '+stageFlowUnits+' by '+forecastCrestTime_str + \
+                       ' and continue to rise to near '+ `forecastCrestStage`+' '+stageFlowUnits+' by '+forecastCrestTime_str + \
                        '. The river will fall below flood stage by '+forecastFallBelowFloodStageTime_str+'. '
             else:
-                if maximumForecastStage > observedStage and forecastCrest == self.MISSING_VALUE and \
+                if maximumForecastStage > observedStage and forecastCrestStage == self.MISSING_VALUE and \
                      forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
                      bulletContent = riverDescription + ' will continue rising to near '+ `maximumForecastStage`+' '+stageFlowUnits + \
                      ' by '+ maximumForecastTime_str + '. Additional rises may be possible thereafter. '
-                elif forecastCrest > observedStage and forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
-                        bulletContent = riverDescription + ' will continue rising to near '+`forecastCrest`+' '+stageFlowUnits+' by '+\
+                elif forecastCrestStage > observedStage and forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
+                        bulletContent = riverDescription + ' will continue rising to near '+`forecastCrestStage`+' '+stageFlowUnits+' by '+\
                         forecastCrestTime_str+ ' then begin falling.'
-                elif forecastCrest > observedStage and forecastFallBelowFloodStageTime_ms != self.MISSING_VALUE and \
-                    forecastCrest > observedStage:
-                    bulletContent = riverDescription + ' will continue rising to near '+`forecastCrest`+' '+stageFlowUnits+' by '+\
+                elif forecastCrestStage > observedStage and forecastFallBelowFloodStageTime_ms != self.MISSING_VALUE and \
+                    forecastCrestStage > observedStage:
+                    bulletContent = riverDescription + ' will continue rising to near '+`forecastCrestStage`+' '+stageFlowUnits+' by '+\
                        forecastFallBelowFloodStageTime_str+'. ' 
                 elif maximumForecastStage <= observedStage and stageTrend == 'falling' and \
                     forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:

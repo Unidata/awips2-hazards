@@ -70,7 +70,11 @@ class Product(Legacy_Base_Generator.Product):
         segment['forecastCrestStage'] = self._rfp.getForecastCrestStage(pointID)
         segment['forecastCrestTime_ms'] = self._rfp.getForecastCrestTime(pointID)
         # Fall
-        segment['forecastFallBelowFloodStageTime_ms'] = self._rfp.getForecastFallBelowFloodStageTime(pointID)
+        forecastFallBelowFloodStageTime_ms = self._rfp.getForecastFallBelowFloodStageTime(pointID)
+        if not forecastFallBelowFloodStageTime_ms:
+            forecastFallBelowFloodStageTime_ms = self._rfp.MISSING_VALUE
+        segment['forecastFallBelowFloodStageTime_ms'] = forecastFallBelowFloodStageTime_ms
+
         segment['stageFlowUnits'] = self._rfp.getStageFlowUnits(pointID)
         # Trend
         segment['stageTrend'] = self._rfp.getStageTrend(pointID)
