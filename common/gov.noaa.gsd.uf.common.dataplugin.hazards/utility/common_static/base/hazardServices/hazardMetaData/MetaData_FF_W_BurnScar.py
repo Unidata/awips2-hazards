@@ -16,6 +16,7 @@ class MetaData(CommonMetaData.MetaData):
                      self.setBurnScarNameLabel(hazardEvent),
                      self.getImmediateCause(),
                      self.getEventSpecificSource(),
+                     self.getDebrisFlowOptions(),                                       
                      self.getRainAmt(),
                      self.getAdditionalInfo(),
                      self.getCTAs(), 
@@ -41,13 +42,20 @@ class MetaData(CommonMetaData.MetaData):
         attrs = hazardEvent.getHazardAttributes()
         bsName = attrs.get('burnScarName')
        
+        enabled = False
+        edit = False
         if bsName is None:
-            bsName = "Unnamed"
+            bsName = "|* Enter Burn Scar or Location *|"
+            enabled = True
+            edit = True
         
         label = {
-            "fieldName": "burnScarLabel",
-            "fieldType":"Label",
-            "label": bsName,
+            "fieldName": "burnScarText",
+            "fieldType":"Text",
+            "values": bsName,
+            "visibleChars": 40,
+            'enable': enabled,
+            'editable': edit,
             "bold": True,
             "italic": True
                 }  

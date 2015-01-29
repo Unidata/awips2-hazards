@@ -28,11 +28,8 @@ import static org.junit.Assert.fail;
 
 import java.io.Serializable;
 import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import org.junit.Ignore;
-import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
@@ -49,7 +46,8 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 24, 2014            bkowal     Initial creation
- * 
+ * Jan 29, 2015 3626       Chris.Golden Changes to allow event type to
+ *                                      be passed to a recommender.
  * </pre>
  * 
  * @author bkowal
@@ -60,9 +58,9 @@ public abstract class AbstractRecommenderOverrideTest extends
         AbstractRecommenderTest {
     private static final String DICT_KEY_TEST = "test";
 
-    private String recommenderName;
+    private final String recommenderName;
 
-    private String expectedKeyValue;
+    private final String expectedKeyValue;
 
     /**
      * 
@@ -75,7 +73,8 @@ public abstract class AbstractRecommenderOverrideTest extends
 
     @Ignore
     public void run() {
-        super.runRecommender(this.recommenderName, this.getPythonJobListener());
+        super.runRecommender(this.recommenderName, null,
+                this.getPythonJobListener());
         while (proceed == false) {
             // sit and wait
         }
@@ -83,7 +82,8 @@ public abstract class AbstractRecommenderOverrideTest extends
 
     @Ignore
     public void runGetDialogInfo() {
-        Map<String, Serializable> vals = getDialogInfo(this.recommenderName);
+        Map<String, Serializable> vals = getDialogInfo(this.recommenderName,
+                null);
         assertNotNull(vals);
         assertThat((String) vals.get(DICT_KEY_TEST),
                 equalTo(this.expectedKeyValue));
@@ -91,7 +91,8 @@ public abstract class AbstractRecommenderOverrideTest extends
 
     @Ignore
     public void runGetSpatialInfo() {
-        Map<String, Serializable> vals = getDialogInfo(this.recommenderName);
+        Map<String, Serializable> vals = getDialogInfo(this.recommenderName,
+                null);
         assertNotNull(vals);
         assertThat((String) vals.get(DICT_KEY_TEST),
                 equalTo(this.expectedKeyValue));

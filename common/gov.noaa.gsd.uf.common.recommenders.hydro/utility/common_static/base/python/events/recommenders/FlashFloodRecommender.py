@@ -103,11 +103,13 @@ class Recommender(RecommenderTemplate.Recommender):
         
         return metaDict
 
-    def defineDialog(self):
+    def defineDialog(self, eventSet):
         '''
         Reads the supported QPE, QPF and FFG sources to build the QPE source,
         QPF source, and Guidance source options on the tool dialog.
         
+        @param eventSet: A set of event objects that the user can use to help determine 
+        new objects to return 
         @return: A dialog definition to solicit user input before running tool
         '''        
         dialogDict = {'title': 'Flash Flood Recommender'}

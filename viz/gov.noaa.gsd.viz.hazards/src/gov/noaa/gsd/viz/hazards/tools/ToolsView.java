@@ -53,6 +53,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  * Jul 15, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * Dec 05, 2014   4124     Chris.Golden      Corrected header comment.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Jan 30, 2015   3626     Chris.Golden      Added ability to pass event type when
+ *                                           running a recommender.
  * </pre>
  * 
  * @author Chris.Golden
@@ -131,17 +133,6 @@ public class ToolsView implements
 
         // Protected Methods
 
-        /**
-         * Get the menu for the specified parent, possibly reusing the specified
-         * menu if provided.
-         * 
-         * @param parent
-         *            Parent control.
-         * @param menu
-         *            Menu that was created previously, if any; this may be
-         *            reused, or disposed of completely.
-         * @return Menu.
-         */
         @Override
         public Menu doGetMenu(Control parent, Menu menu) {
 
@@ -232,23 +223,12 @@ public class ToolsView implements
 
     // Public Methods
 
-    /**
-     * Initialize the view.
-     * 
-     * @param presenter
-     *            Presenter managing this view.
-     * @param tools
-     * 
-     */
     @Override
     public final void initialize(ToolsPresenter presenter, List<Tool> tools) {
         this.presenter = presenter;
         setTools(tools);
     }
 
-    /**
-     * Prepare for disposal.
-     */
     @Override
     public final void dispose() {
         if (toolDialog != null) {
@@ -257,17 +237,6 @@ public class ToolsView implements
         }
     }
 
-    /**
-     * Contribute to the main UI, if desired. Note that this method may be
-     * called multiple times per <code>type</code> to (re)populate the main UI
-     * with the specified <code>type</code>; implementations are responsible for
-     * cleaning up after contributed items that may exist from a previous call
-     * with the same <code>type</code>.
-     * 
-     * @param type
-     *            Type of contribution to be made to the main user interface.
-     * @return List of contributions; this may be empty if none are to be made.
-     */
     @Override
     public final List<? extends Action> contributeToMainUI(
             RCPMainUserInterfaceElement type) {
@@ -278,21 +247,9 @@ public class ToolsView implements
         return Collections.emptyList();
     }
 
-    /**
-     * Show a tool subview that is used to gather parameter values for a tool
-     * that is to be executed.
-     * 
-     * @param toolName
-     *            Name of the tool for which parameters are to be gathered.
-     * @param jsonParams
-     *            JSON string giving the parameters for this subview. Within the
-     *            set of all fields that are defined by these parameters, all
-     *            the fields (megawidget specifiers) must have unique
-     *            identifiers.
-     */
     @Override
     public final void showToolParameterGatherer(String toolName,
-            String jsonParams) {
+            String eventType, String jsonParams) {
         if (toolDialog != null) {
             Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                     .getShell();
@@ -305,16 +262,12 @@ public class ToolsView implements
             return;
         }
         toolDialog = new ToolDialog(presenter, PlatformUI.getWorkbench()
-                .getActiveWorkbenchWindow().getShell(), toolName, jsonParams);
+                .getActiveWorkbenchWindow().getShell(), toolName, eventType,
+                jsonParams);
         toolDialog.open();
         toolDialog.getShell().addDisposeListener(dialogDisposeListener);
     }
 
-    /**
-     * Set the tools to those specified.
-     * 
-     * @param tools
-     */
     @Override
     public final void setTools(List<Tool> tools) {
 
@@ -334,7 +287,4 @@ public class ToolsView implements
             toolsPulldownAction.toolsChanged();
         }
     }
-
-    // Private Methods
-
 }

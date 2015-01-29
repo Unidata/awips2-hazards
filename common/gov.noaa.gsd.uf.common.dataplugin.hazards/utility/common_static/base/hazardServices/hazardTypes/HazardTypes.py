@@ -51,6 +51,8 @@
 #                           Currently by policy only hazards in the FLW_FLS products use
 #                           "Until Further Notice"
 #         polygonBased      True if the hazard type is based on polygons  (TODO Better explanation)
+#         hazardTypeFirstRecommender  Set the name of the recommender you want launched if the 
+#                                     forecaster opts for the Hazard Type First workflow 
 
 HOURS = 3600000
 MINUTES = 60000
@@ -424,7 +426,7 @@ HazardTypes = {
               'replacedBy': ['FF.W.Convective', 'FF.W.NonConvective'],
               'defaultDuration': 8 * HOURS,
               'durationIncrement': 60, 
-              'hazardTypeFirstRecommender':'DamBreakFloodRecommender',
+              'hazardTypeFirstRecommender':'StormTrackTool',
               },
     'FF.W.BurnScar' : {
               'headline': 'FLASH FLOOD WARNING',
@@ -439,10 +441,9 @@ HazardTypes = {
               'ugcLabel': '',
               'hazardClipArea' : 'cwa',
               'hazardPointLimit' : 20,
-              'durationChoiceList': [ "30 min", "45 min", "60 min", "90 min", "120 min", "3 hrs", "4 hrs", "6 hrs", "8 hrs" ],
-              'defaultDuration': 45 * MINUTES,
+              'defaultDuration': 3 * HOURS,
               'durationIncrement': 15, 
-              'hazardTypeFirstRecommender':'BurnScarFloodRecommender',
+              'hazardTypeFirstRecommender':'StormTrackTool',
               },
     'FF.W.Convective' : {
               'headline': 'FLASH FLOOD WARNING',
@@ -458,7 +459,7 @@ HazardTypes = {
               'hazardClipArea' : 'cwa',
               'hazardPointLimit': 20,
               'durationChoiceList': [ "60 min", "90 min", "120 min", "2 hrs 30 min", "3 hrs", "3 hrs 30 min", "4 hrs", "4 hrs 30 min", "5 hrs", "5 hrs 30 min", "6 hrs", "6 hrs 30 min", "7 hrs", "7 hrs 30 min", "8 hrs" ],
-              'defaultDuration': 3 * HOURS,
+              'defaultDuration': 1 * HOURS,
               'durationIncrement': 15,
               'hazardTypeFirstRecommender':'StormTrackTool',
               'inclusionTest' : True,
@@ -480,7 +481,7 @@ HazardTypes = {
               'durationChoiceList': [ "60 min", "90 min", "120 min", "3 hrs", "6 hrs", "9 hrs", "12 hrs", "24 hrs", "1 day 12 hrs", "2 days", "2 days 12 hrs", "3 days", "4 days", "5 days", "6 days", "7 days" ],
               'defaultDuration': 3 * HOURS,
               'durationIncrement': 15, 
-              'hazardTypeFirstRecommender':'DamBreakFloodRecommender',
+              'hazardTypeFirstRecommender':'StormTrackTool',
               },
     'FG.Y' : {'headline': 'DENSE FOG ADVISORY',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -511,7 +512,6 @@ HazardTypes = {
               'replacedBy': ['FL.W', 'FL.Y'],
               'defaultDuration': 8 * HOURS,
               'durationIncrement': 60, 
-              'hazardTypeFirstRecommender':'RiverFloodRecommender',
               },
     'FL.W' : {'headline': 'FLOOD WARNING',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -528,7 +528,6 @@ HazardTypes = {
               'defaultDuration': 8 * HOURS,
               'durationIncrement': 60, 
               'allowUntilFurtherNotice': True, 
-              'hazardTypeFirstRecommender':'RiverFloodRecommender',
               },
     'FL.Y' : {'headline': 'FLOOD ADVISORY',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -545,7 +544,6 @@ HazardTypes = {
               'defaultDuration': 8 * HOURS,
               'durationIncrement': 60, 
               'allowUntilFurtherNotice': True, 
-              'hazardTypeFirstRecommender':'RiverFloodRecommender',
               },
     'FR.Y' : {'headline': 'FROST ADVISORY',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],

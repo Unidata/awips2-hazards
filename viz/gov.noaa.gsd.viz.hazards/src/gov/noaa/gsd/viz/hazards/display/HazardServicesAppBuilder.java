@@ -200,6 +200,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Jan 21, 2015 3626       Chris.Golden        Added use of new hazard-type-first presenter and
  *                                             view.
  * Jan 29, 2015 3795       Robert.Blum         Fixed NullPointer on Display.getCurrent().getActiveShell().
+ * Jan 30, 2015 3626       Chris.Golden        Added ability to pass event type when running a
+ *                                             recommender.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -1074,18 +1076,23 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * 
      * @param toolName
      *            Name of the tool for which parameters are to be gathered.
+     * @param eventType
+     *            The type of the event that this tool is to create; if present,
+     *            the tool is being run as a result of a hazard-type-first
+     *            invocation. Otherwise, it will be <code>null</code>.
      * @param dialogInput
      *            the parameters for this subview. Within the set of all fields
      *            that are defined by these parameters, all the fields
      *            (megawidget specifiers) must have unique identifiers.
      */
-    public void showToolParameterGatherer(String toolName,
+    public void showToolParameterGatherer(String toolName, String eventType,
             Map<String, Serializable> dialogInput) {
         Dict dict = new Dict();
         for (String parameter : dialogInput.keySet()) {
             dict.put(parameter, dialogInput.get(parameter));
         }
-        toolsPresenter.showToolParameterGatherer(toolName, dict.toJSONString());
+        toolsPresenter.showToolParameterGatherer(toolName, eventType,
+                dict.toJSONString());
     }
 
     @Override

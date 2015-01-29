@@ -46,6 +46,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jan 21, 2015    3626    Chris.Golden Initial creation.
+ * Jan 29, 2015    3626    Chris.Golden Added the passing of the event type
+ *                                      chosen to a recommender that is being
+ *                                      run as a result of that choice.
  * </pre>
  * 
  * @author Chris.Golden
@@ -395,7 +398,7 @@ public class HazardTypeFirstPresenter extends
          */
         publish(new ToolAction(ToolAction.ToolActionEnum.RUN_TOOL, getModel()
                 .getConfigurationManager()
-                .getTypeFirstRecommender(selectedType)));
+                .getTypeFirstRecommender(selectedType), selectedType));
     }
 
     /**

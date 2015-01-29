@@ -27,7 +27,8 @@
 #    
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
-#    01/22/13                      mnash       Initial Creation.
+#    01/22/13                      mnash          Initial Creation.
+#    01/29/15        3626          Chris.Golden   Added EventSet to arguments for getting dialog info.
 #    
 # 
 #
@@ -48,11 +49,13 @@ class Recommender(object):
         '''
         return
     
-    def defineDialog(self):
+    def defineDialog(self, eventSet):
         '''      
         @summary: Defines a dialog that will be presented to the user prior to 
         the recommender's execute routine.  Will use python maps to define widgets.  
         Each key within the map will defined a specific attribute for the widget.
+        @param eventSet: A set of event objects that the user can use to help determine 
+        new objects to return 
         @return: Python map which correspond to attributes for widgets.
         '''
         return

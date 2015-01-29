@@ -32,7 +32,7 @@
 #                                                 Hazard Event conversion capabilities with JUtil.
 #    01/20/14        2766          bkowal         Updated to use the Python Overrider 
 #    10/13/14        3790          Robert.Blum    Reverted to use the RollbackMasterInterface.
-# 
+#    01/29/15        3626          Chris.Golden   Added EventSet to arguments for getting dialog info.
 #
 
 import os
@@ -76,6 +76,10 @@ class RecommenderInterface(RollbackMasterInterface.RollbackMasterInterface):
         return val
     
     def getDialogInfo(self, moduleName, className, **kwargs):
+        if kwargs.get('eventSet') is not None:
+            kwargs['eventSet'] = EventSet(kwargs['eventSet'])
+        else:
+            kwargs['eventSet'] = None
         val = self.runMethod(moduleName, className, "defineDialog", **kwargs)
         if val is not None :
             val = JUtil.pyValToJavaObj(val)

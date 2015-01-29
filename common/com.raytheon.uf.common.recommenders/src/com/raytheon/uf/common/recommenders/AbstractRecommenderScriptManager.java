@@ -84,6 +84,8 @@ import com.raytheon.uf.common.util.FileUtil;
  *                                      Also reloading next localization level if a
  *                                      recommender is deleted.
  * Dec 12, 2014 4124       Kevin.Manross Add "textUtilities" to python/JEP include path
+ * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
+ *                                      info.
  * </pre>
  * 
  * @author mnash
@@ -258,7 +260,7 @@ public abstract class AbstractRecommenderScriptManager extends
      * @return
      */
     public abstract EventSet<IEvent> executeEntireRecommender(
-            String recommenderName);
+            String recommenderName, EventSet<IEvent> eventSet);
 
     /**
      * This method will check the inventory to verify that the specified
@@ -351,18 +353,22 @@ public abstract class AbstractRecommenderScriptManager extends
      * 
      * @param recName
      * @param methodName
+     * @param eventSet
      * @return
      */
     @SuppressWarnings("unchecked")
-    public <T> Map<String, T> getInfo(String recName, String methodName) {
+    public <T> Map<String, T> getInfo(String recName, String methodName,
+            EventSet<IEvent> eventSet) {
         // determine if the recommender has been loaded & initialized yet.
         if (this.verifyRecommenderIsLoaded(recName) == false) {
             return new HashMap<String, T>();
         }
-
         Object retVal = null;
         try {
             final Map<String, Object> args = getStarterMap(recName);
+            if (eventSet != null) {
+                args.put("eventSet", eventSet);
+            }
             retVal = execute(methodName, INTERFACE, args);
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR, "Unable to get info from "

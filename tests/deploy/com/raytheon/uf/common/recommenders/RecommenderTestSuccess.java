@@ -52,7 +52,8 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  *                                     Strings.
  * Dec 3, 2013  1472       bkowal      Ignore entire class.
  * Jan 27, 2013 2766       bkowal      Remove unit test ignore.
- * 
+ * Jan 29, 2015 3626       Chris.Golden Changes to allow event type to
+ *                                      be passed to a recommender.
  * </pre>
  * 
  * @author mnash
@@ -80,7 +81,7 @@ public class RecommenderTestSuccess extends AbstractRecommenderTest {
                 proceed = true;
             }
         };
-        runRecommender("RecommenderSuccess", listener);
+        runRecommender("RecommenderSuccess", null, listener);
         while (proceed == false) {
             // sit and wait
         }
@@ -88,14 +89,16 @@ public class RecommenderTestSuccess extends AbstractRecommenderTest {
 
     @Test
     public void runGetDialogInfo() {
-        Map<String, Serializable> vals = getDialogInfo("RecommenderSuccess");
+        Map<String, Serializable> vals = getDialogInfo("RecommenderSuccess",
+                null);
         assertNotNull(vals);
         assertThat((String) vals.get("test"), equalTo("value"));
     }
 
     @Test
     public void runGetSpatialInfo() {
-        Map<String, Serializable> vals = getDialogInfo("RecommenderSuccess");
+        Map<String, Serializable> vals = getDialogInfo("RecommenderSuccess",
+                null);
         assertNotNull(vals);
         assertThat((String) vals.get("test"), equalTo("value"));
     }

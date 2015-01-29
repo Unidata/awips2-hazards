@@ -46,7 +46,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Jul 12, 2013 1257       bsteffen    Convert recommender dialog info to use
  *                                     Serializeables for values instead of
  *                                     Strings.
- * 
+ * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
+ *                                      info.
  * </pre>
  * 
  * @author mnash
@@ -77,7 +78,8 @@ public class CAVERecommenderScriptManager extends
      * executeRecommender(java.lang.String)
      */
     @Override
-    public EventSet<IEvent> executeEntireRecommender(String recommenderName) {
+    public EventSet<IEvent> executeEntireRecommender(String recommenderName,
+            EventSet<IEvent> eventSet) {
         if (inventory.containsKey(recommenderName)) {
             statusHandler
                     .handle(Priority.VERBOSE, "Running " + recommenderName);
@@ -87,12 +89,12 @@ public class CAVERecommenderScriptManager extends
                     instantiatePythonScript(recName);
                 }
                 Map<String, Serializable> dialogValues = getInfo(recName,
-                        "getDialogInfo");
+                        "getDialogInfo", eventSet);
                 showDialog(dialogValues);
                 Map<String, Serializable> spatialValues = getInfo(recName,
-                        "getSpatialInfo");
-                return executeRecommender(recommenderName,
-                        new EventSet<IEvent>(), dialogValues, spatialValues);
+                        "getSpatialInfo", eventSet);
+                return executeRecommender(recommenderName, eventSet,
+                        dialogValues, spatialValues);
             } catch (JepException e) {
                 statusHandler.handle(Priority.ERROR,
                         "Unable to execute recommender", e);

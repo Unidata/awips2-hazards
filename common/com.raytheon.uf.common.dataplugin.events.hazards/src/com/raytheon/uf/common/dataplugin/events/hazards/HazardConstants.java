@@ -64,6 +64,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Nov 18, 2014 4124      Chris.Golden  Removed unused change element.
  * Dec 05, 2014 4124      Chris.Golden  Added sort priority constants.
  * Jan 22, 2015 4959      Dan Schaffer  MB3 to add/remove UGCs to a hazard
+ * Jan 29, 2015 3626      Chris.Golden  Added event type constant for recommenders.
  * </pre>
  * 
  * @author mnash
@@ -576,6 +577,11 @@ public final class HazardConstants {
      * Key for run tool triggers list in the recommender dialog.
      */
     public static final String RUN_TOOL_TRIGGERS_LIST_KEY = "runToolTriggers";
+
+    /**
+     * Hazard event type.
+     */
+    public static final String EVENT_TYPE = "eventType";
 
     /**
      * Key for title text.

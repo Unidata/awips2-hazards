@@ -12,14 +12,15 @@ class MetaData(CommonMetaData.MetaData):
         hydrologicCause = None
         if hazardEvent is not None:
             hydrologicCause = hazardEvent.get("hydrologicCause")
+            damName = hazardEvent.get('damName')
 
-        metaData = self.buildMetaDataList(self.hazardStatus, hydrologicCause)
+        metaData = self.buildMetaDataList(self.hazardStatus, hydrologicCause, damName)
         
         return {
                 METADATA_KEY: metaData
                 }    
        
-    def buildMetaDataList(self, status, hydrologicCause):
+    def buildMetaDataList(self, status, hydrologicCause, damName):
         
         
         addDam = [
@@ -44,11 +45,11 @@ class MetaData(CommonMetaData.MetaData):
                      self.getSource(hydrologicCause),
                      self.getImpactedLocations(),
                      self.getAdditionalInfo(),
+                     self.getScenario(),
                      self.getRiver(),
                      self.getFloodLocation(),
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
-                     self.getScenario(),
                      self.getCTAs(), 
                         ]
         elif status == "issued":
@@ -58,11 +59,11 @@ class MetaData(CommonMetaData.MetaData):
                      self.getSource(hydrologicCause),
                      self.getImpactedLocations(),
                      self.getAdditionalInfo(),
+                     self.getScenario(),
                      self.getRiver(editable=False),
                      self.getFloodLocation(),
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
-                     self.getScenario(),
                      self.getCTAs(), 
                      # Preserving CAP defaults for future reference.
 #                      self.getCAP_Fields([
@@ -79,15 +80,54 @@ class MetaData(CommonMetaData.MetaData):
                     ]
             return metaData
         
+        if damName is not None:
+                metaData.insert(0,self.setDamNameLabel(damName))
+                
         if hydrologicCause is not None:
             
             if hydrologicCause in addDam:
-                metaData.insert(5, self.getDamOrLevee())
+                metaData.insert(6, self.getDamOrLevee(damName))
                 
             if hydrologicCause in addVolcano:
                 metaData.insert(len(metaData)-2,self.getVolcano())
                 
         return metaData
+
+    def setDamNameLabel(self, damName):
+       
+        edit = False
+        enabled = False
+        if damName is None:
+            damName = "|* Enter Dam or Levee Name *|"
+            edit =True 
+            enabled = True
+        
+        label = {
+            "fieldName": "damNameLabel",
+            "fieldType":"Text",
+            "values": damName,
+            "visibleChars": 40,
+            "editable": edit,
+            "enable": enabled,
+            "bold": True,
+            "italic": True
+                }  
+        
+        group = {
+                    "fieldType": "Group",
+                    "fieldName": "damNameGroup",
+                    "label": "Dam Name: ",
+                    "leftMargin": 10,
+                    "rightMargin": 10,
+                    "topMargin": 10,
+                    "bottomMargin": 10,
+                    "expandHorizontally": True,
+                    "expandVertically": True,
+                    "fields": [label]
+                }
+        
+        return group
+
 
     def getSource(self, hydrologicCause):
         choices = self.sourceChoices(hydrologicCause)
@@ -300,7 +340,7 @@ class MetaData(CommonMetaData.MetaData):
             ] 
                     
         if hydrologicCause in addDam:
-            choices.insert(3, self.damOperatorSource())
+            choices.insert(4, self.damOperatorSource())
                 
         if hydrologicCause in addVolcano:
             choices.append(self.alaskaVolcanoObservatorySource())
@@ -349,16 +389,36 @@ class MetaData(CommonMetaData.MetaData):
     # <damInfoBullet bulletGroup="ruleofthumb" bulletText="rule of thumb" bulletName="BranchedOakruleofthumb"  parseString="FLOOD WAVE ESTIMATE"/>
     # </damInfoBullets> 
     #           
-    def getDamOrLevee(self):
+    def getDamOrLevee(self, damOrLeveeName):
 
-        damOrLeveeName = 'Branched Oak Dam'            
-        return {
+        
+        if damOrLeveeName is None:
+            damOrLevee = {
             "fieldName": "damOrLeveeName",
-            "fieldType":"ComboBox",
+            "fieldType":"Text",
             "label":"Dam or Levee:",
-            "values": damOrLeveeName,
-            "choices": self.damOrLeveeChoices(),
+            "visibleChars": 40,
+            "editable": True,
+            "enable": True,
+            "values": "|* Enter Dam or Levee Name *|"
             } 
+        else: 
+            damOrLevee = {
+                           "fieldName": "damOrLeveeName",
+                            "fieldType":"ComboBox",
+                            "autocomplete":  True,
+                            "label":"Dam or Levee:",
+                            "editable": False,
+                            "enable": False,
+                            "values": damOrLeveeName,
+                            "choices": self.damOrLeveeChoices(),
+                            } 
+            
+            
+        return damOrLevee
+    
+    
+    
     def damOrLeveeChoices(self):
         return [
                 self.BranchedOakDam(),
@@ -404,6 +464,59 @@ class MetaData(CommonMetaData.MetaData):
         return {"identifier":"mediumNormal", 
                 "displayString": "Medium Normal",
                 "productString": "Medium Normal"}
+       
+
+    def getRiver(self, editable=True):
+        return {
+             "fieldType": "Text",
+             "fieldName": "riverName",
+             "expandHorizontally": True,
+             "maxChars": 40,
+             "visibleChars": 12,
+             "editable": editable,
+             "values": "|* Enter river name *|",
+            } 
+
+    def getFloodLocation(self):
+        return {
+             "fieldType": "Text",
+             "fieldName": "floodLocation",
+             "expandHorizontally": True,
+             "maxChars": 40,
+             "visibleChars": 12,
+             "values": "|* Enter flood location *|",
+            } 
+
+
+    def getUpstreamLocation(self):
+        return {
+             "fieldType": "Text",
+             "fieldName": "upstreamLocation",
+             "expandHorizontally": True,
+             "maxChars": 40,
+             "visibleChars": 12,
+             "values": "|* Enter upstream location *|",
+            } 
+ 
+    def getDownstreamLocation(self):
+        return {
+             "fieldType": "Text",
+             "fieldName": "downstreamLocation",
+             "expandHorizontally": True,
+             "maxChars": 40,
+             "visibleChars": 12,
+             "values": "|* Enter downstream location *|",
+            } 
+        
+    def getVolcano(self):
+        return {
+             "fieldType": "Text",
+             "fieldName": "volcanoName",
+             "expandHorizontally": True,
+             "maxChars": 40,
+             "visibleChars": 12,
+             "values": "|* Enter volcano name *|",
+            } 
 
     def countyDispatchSource(self):
         return {"identifier":"countySource", 

@@ -38,8 +38,9 @@ import com.raytheon.uf.viz.python.VizPythonJob;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Mar 6, 2013            mnash     Initial creation
- * 
+ * Mar 06, 2013            mnash        Initial creation
+ * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
+ *                                      info.
  * </pre>
  * 
  * @author mnash
@@ -95,9 +96,10 @@ public final class CAVERecommenderEngine extends
      */
     @Override
     public void runEntireRecommender(String recommenderName,
+            EventSet<IEvent> eventSet,
             IPythonJobListener<EventSet<IEvent>> listener) {
         VizPythonJob<EventSet<IEvent>> job = new VizPythonJob<>(
                 recommenderName, listener);
-        super.runEntireRecommender(recommenderName, job);
+        super.runEntireRecommender(recommenderName, eventSet, job);
     }
 }

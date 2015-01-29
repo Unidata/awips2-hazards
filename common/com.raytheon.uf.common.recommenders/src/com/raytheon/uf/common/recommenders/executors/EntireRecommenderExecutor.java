@@ -32,8 +32,9 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Mar 5, 2013            mnash     Initial creation
- * 
+ * Mar 05, 2013            mnash        Initial creation
+ * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
+ *                                      info.
  * </pre>
  * 
  * @author mnash
@@ -42,11 +43,16 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 
 public class EntireRecommenderExecutor<P extends AbstractRecommenderScriptManager>
         extends AbstractRecommenderExecutor<P, EventSet<IEvent>> {
+
+    private final EventSet<IEvent> eventSet;
+
     /**
      * @param recommenderName
      */
-    public EntireRecommenderExecutor(String recommenderName) {
+    public EntireRecommenderExecutor(String recommenderName,
+            EventSet<IEvent> eventSet) {
         super(recommenderName);
+        this.eventSet = eventSet;
     }
 
     /*
@@ -58,6 +64,6 @@ public class EntireRecommenderExecutor<P extends AbstractRecommenderScriptManage
      */
     @Override
     public EventSet<IEvent> execute(P script) {
-        return script.executeEntireRecommender(recommenderName);
+        return script.executeEntireRecommender(recommenderName, eventSet);
     }
 }

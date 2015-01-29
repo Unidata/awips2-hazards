@@ -71,8 +71,10 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict["eventState"] = "Pending"
         return metaDict
 
-    def defineDialog(self):
+    def defineDialog(self, eventSet):
         """
+        @param eventSet: A set of event objects that the user can use to help determine 
+        new objects to return 
         @return: MegaWidget dialog definition to solicit user input before running tool
         """        
         dialogDict = {"title": "Burn Scar Flood Recommender"}
@@ -80,7 +82,8 @@ class Recommender(RecommenderTemplate.Recommender):
         burnScarFieldDict = {}
         burnScarFieldDict["fieldName"] = "burnScarName"
         burnScarFieldDict["label"] = "Please Select a Burn Scar"
-        burnScarFieldDict["fieldType"] = "RadioButtons"
+        burnScarFieldDict["fieldType"] = "ComboBox"
+        burnScarFieldDict["autocomplete"] = True
         
         burnScarList = ["Fourmile", "Waldo Canyon"]
         burnScarFieldDict["choices"] = burnScarList

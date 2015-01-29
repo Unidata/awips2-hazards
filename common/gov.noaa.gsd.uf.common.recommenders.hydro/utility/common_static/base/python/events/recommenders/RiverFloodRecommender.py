@@ -87,7 +87,7 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict["eventState"] = "Potential"
         return metaDict
 
-    def defineDialog(self):
+    def defineDialog(self, eventSet):
         """
         @return: A dialog definition to solicit user input before running tool
         """        

@@ -40,16 +40,19 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict["eventState"] = "Pending"
         return metaDict
 
-    def defineDialog(self):
+    def defineDialog(self, eventSet):
         """
         @return: MegaWidget dialog definition to solicit user input before running tool
+        @param eventSet: A set of event objects that the user can use to help determine 
+        new objects to return 
         """        
         dialogDict = {"title": "Dam/Levee Break Flood Recommender"}
         
         damFieldDict = {}
         damFieldDict["fieldName"] = "damName"
         damFieldDict["label"] = "Please Select a Dam or Levee"
-        damFieldDict["fieldType"] = "RadioButtons"
+        damFieldDict["fieldType"] = "ComboBox"
+        damFieldDict["autocomplete"] = True
         
         damList = ["Branched Oak Dam", "Council Bluffs Levee"]
         damFieldDict["choices"] = damList
@@ -59,14 +62,14 @@ class Recommender(RecommenderTemplate.Recommender):
         urgencyFieldDict["label"] = "Please Select Level of Urgency"
         urgencyFieldDict["fieldType"] = "RadioButtons"
         
-        urgencyList = ["Structure has Failed!!", "High Confidence (Structure Failure Imminent)",\
-                       "Low Confidence (Potential Structure Failure)"]
+        urgencyList = ["WARNING (Structure has Failed / Structure Failure Imminent)",\
+                       "WATCH (Potential Structure Failure)"]
         urgencyFieldDict["choices"] = urgencyList
         
         fieldDicts = [damFieldDict, urgencyFieldDict]
         dialogDict["fields"] = fieldDicts
         
-        valueDict = {"damName": "Branched Oak Dam", "urgencyLevel":"Structure has Failed!!"}
+        valueDict = {"damName": "Branched Oak Dam", "urgencyLevel":urgencyList[0]}
         dialogDict["valueDict"] = valueDict
         
         return dialogDict
@@ -125,7 +128,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
         urgencyLevel = dialogDict["urgencyLevel"]
         
-        if "Failed" in urgencyLevel or "Imminent" in urgencyLevel:
+        if "WARNING" in urgencyLevel:
             significance = "W"
             subType = "NonConvective"
             

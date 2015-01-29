@@ -22,6 +22,8 @@ package com.raytheon.uf.common.recommenders.executors;
 import java.io.Serializable;
 import java.util.Map;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 
 /**
@@ -38,6 +40,8 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  * Jul 12, 2013 1257       bsteffen    Convert recommender dialog info to use
  *                                     Serializeables for values instead of
  *                                     Strings.
+ * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting
+ *                                      dialog info.
  * 
  * </pre>
  * 
@@ -48,15 +52,16 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 public class RecommenderDialogInfoExecutor<P extends AbstractRecommenderScriptManager>
         extends AbstractRecommenderExecutor<P, Map<String, Serializable>> {
 
-    /**
-* 
-*/
-    public RecommenderDialogInfoExecutor(String recommenderName) {
+    private final EventSet<IEvent> eventSet;
+
+    public RecommenderDialogInfoExecutor(String recommenderName,
+            EventSet<IEvent> eventSet) {
         super(recommenderName);
+        this.eventSet = eventSet;
     }
 
     @Override
     public Map<String, Serializable> execute(P script) {
-        return script.getInfo(recommenderName, "getDialogInfo");
+        return script.getInfo(recommenderName, "getDialogInfo", eventSet);
     }
 }

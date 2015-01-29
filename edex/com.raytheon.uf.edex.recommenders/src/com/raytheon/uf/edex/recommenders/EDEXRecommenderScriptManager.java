@@ -45,7 +45,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Jul 12, 2013 1257       bsteffen    Convert recommender dialog info to use
  *                                     Serializeables for values instead of
  *                                     Strings.
- * 
+ * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
+ *                                      info.
  * </pre>
  * 
  * @author mnash
@@ -75,7 +76,8 @@ public class EDEXRecommenderScriptManager extends
      * executeEntireRecommender(java.lang.String)
      */
     @Override
-    public EventSet<IEvent> executeEntireRecommender(String recommenderName) {
+    public EventSet<IEvent> executeEntireRecommender(String recommenderName,
+            EventSet<IEvent> eventSet) {
         if (inventory.containsKey(recommenderName)) {
             statusHandler
                     .handle(Priority.VERBOSE, "Running " + recommenderName);
@@ -89,8 +91,8 @@ public class EDEXRecommenderScriptManager extends
                 Map<String, Serializable> spatialValues = null;
                 // using a new EventSet<IEvent> for now, but will need something
                 // different for future
-                return executeRecommender(recommenderName,
-                        new EventSet<IEvent>(), dialogValues, spatialValues);
+                return executeRecommender(recommenderName, eventSet,
+                        dialogValues, spatialValues);
             } catch (JepException e) {
                 statusHandler.handle(Priority.ERROR,
                         "Unable to execute recommender", e);

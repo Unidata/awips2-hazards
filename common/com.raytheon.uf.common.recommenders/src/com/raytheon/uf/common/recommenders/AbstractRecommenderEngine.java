@@ -62,6 +62,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  *                                     been loaded before the inventory is retrieved.
  * Aug 18, 2014 4243       Chris.Golden Changed getInventory(recommenderName) to only
  *                                      return a single recommender.
+ * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
+ *                                      info.
  * </pre>
  * 
  * @author mnash
@@ -93,9 +95,10 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
      * @param recommenderName
      */
     public void runEntireRecommender(String recommenderName,
+            EventSet<IEvent> eventSet,
             IPythonJobListener<EventSet<IEvent>> listener) {
         IPythonExecutor<P, EventSet<IEvent>> executor = new EntireRecommenderExecutor<P>(
-                recommenderName);
+                recommenderName, eventSet);
         try {
             getCoordinator(recommenderName).submitAsyncJob(executor, listener);
         } catch (Exception e) {
@@ -137,9 +140,10 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
      * @param recommenderName
      * @return
      */
-    public Map<String, Serializable> getDialogInfo(String recommenderName) {
+    public Map<String, Serializable> getDialogInfo(String recommenderName,
+            EventSet<IEvent> eventSet) {
         IPythonExecutor<P, Map<String, Serializable>> executor = new RecommenderDialogInfoExecutor<P>(
-                recommenderName);
+                recommenderName, eventSet);
         try {
             return getCoordinator(recommenderName).submitSyncJob(executor);
         } catch (Exception e) {

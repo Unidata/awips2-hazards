@@ -44,6 +44,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           protected as it is called by setView().
  * Dec 05, 2014    4124    Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
+ * Jan 30, 2015    3626    Chris.Golden      Added ability to pass event type when
+ *                                           running a recommender.
  * </pre>
  * 
  * @author Chris.Golden
@@ -114,14 +116,19 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
      * 
      * @param toolName
      *            Name of the tool for which parameters are to be gathered.
+     * @param eventType
+     *            The type of the event that this tool is to create; if present,
+     *            the tool is being run as a result of a hazard-type-first
+     *            invocation. Otherwise, it will be <code>null</code>.
      * @param jsonParams
      *            JSON string giving the parameters for this subview. Within the
      *            set of all fields that are defined by these parameters, all
      *            the fields (megawidget specifiers) must have unique
      *            identifiers.
      */
-    public void showToolParameterGatherer(String toolName, String jsonParams) {
-        getView().showToolParameterGatherer(toolName, jsonParams);
+    public void showToolParameterGatherer(String toolName, String eventType,
+            String jsonParams) {
+        getView().showToolParameterGatherer(toolName, eventType, jsonParams);
     }
 
     @Override

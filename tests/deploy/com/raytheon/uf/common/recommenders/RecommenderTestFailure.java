@@ -44,7 +44,8 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * Feb 27, 2013            mnash       Initial creation
  * Dec 3, 2013  1472       bkowal      Ignore entire class.
  * Jan 27, 2013 2766       bkowal      Remove unit test ignore.
- * 
+ * Jan 29, 2015 3626       Chris.Golden Changes to allow event type to
+ *                                      be passed to a recommender.
  * </pre>
  * 
  * @author mnash
@@ -70,7 +71,7 @@ public class RecommenderTestFailure extends AbstractRecommenderTest {
                 proceed = true;
             }
         };
-        runRecommender("RecommenderFailure", listener);
+        runRecommender("RecommenderFailure", null, listener);
         while (proceed == false) {
             // sit and wait
         }

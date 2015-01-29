@@ -194,7 +194,9 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            new time manager.
  * Dec 05, 2014  4124      Chris.Golden       Changed to work with newly parameterized
  *                                            config manager, and with ObservedSettings.
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Dec 13, 2014 4959       Dan Schaffer       Spatial Display cleanup and other bug fixes
+ * Jan 29, 2015 3626       Chris.Golden       Added ability to pass event type when running
+ *                                            a recommender.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -243,6 +245,8 @@ public final class HazardServicesMessageHandler implements
     private final BoundedReceptionEventBus<Object> eventBus;
 
     private final ISessionProductManager sessionProductManager;
+
+    private String eventType;
 
     // Public Constructors
     /**
@@ -297,8 +301,10 @@ public final class HazardServicesMessageHandler implements
         // Check if this tool requires user input from the display...
         Map<String, Serializable> spatialInput = recommenderEngine
                 .getSpatialInfo(toolName);
+        EventSet<IEvent> eventSet = new EventSet<>();
+        eventSet.addAttribute(HazardConstants.EVENT_TYPE, eventType);
         Map<String, Serializable> dialogInput = recommenderEngine
-                .getDialogInfo(toolName);
+                .getDialogInfo(toolName, eventSet);
 
         if (!spatialInput.isEmpty() || !dialogInput.isEmpty()) {
             if (!spatialInput.isEmpty()) {
@@ -313,7 +319,8 @@ public final class HazardServicesMessageHandler implements
                     dialogInput.put(FILE_PATH_KEY, recommenderEngine
                             .getInventory(toolName).getFile().getFile()
                             .getPath());
-                    appBuilder.showToolParameterGatherer(toolName, dialogInput);
+                    appBuilder.showToolParameterGatherer(toolName, eventType,
+                            dialogInput);
                 }
             }
         } else {
@@ -368,8 +375,6 @@ public final class HazardServicesMessageHandler implements
      * 
      * @param toolName
      *            The name of the tool to run
-     * @param sourceKey
-     *            The source of the runData
      * @param spatialInfo
      *            Spatial info to pass to the tool.
      * @param dialogInfo
@@ -402,6 +407,11 @@ public final class HazardServicesMessageHandler implements
             BaseHazardEvent baseHazardEvent = new BaseHazardEvent(event);
             eventSet.add(baseHazardEvent);
         }
+
+        /*
+         * Add the hazard type the tool is to create to the event set.
+         */
+        eventSet.addAttribute(HazardConstants.EVENT_TYPE, eventType);
 
         /*
          * Add session information to event set.
@@ -1490,10 +1500,12 @@ public final class HazardServicesMessageHandler implements
     public void toolActionOccurred(final ToolAction action) {
         switch (action.getActionType()) {
         case RUN_TOOL:
+            eventType = action.getEventType();
             runTool(action.getToolName());
             break;
 
         case RUN_TOOL_WITH_PARAMETERS:
+            eventType = action.getEventType();
             runTool(action.getToolName(), null, action.getAuxiliaryDetails());
             break;
 

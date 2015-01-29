@@ -121,7 +121,9 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Oct 20, 2014   4818     Chris.Golden      Removed scrolled composite from the dialog,
  *                                           since scrolling is now handled by the
  *                                           megawidgets.
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Dec 13, 2014   4959     Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Jan 30, 2015   3626     Chris.Golden      Added ability to pass event type when
+ *                                           running a recommender.
  * </pre>
  * 
  * @author Chris.Golden
@@ -197,6 +199,11 @@ class ToolDialog extends BasicDialog {
      */
     private final List<String> runToolTriggerIdentifiers;
 
+    /**
+     * Event type to be created, if specified at construction time.
+     */
+    private final String eventType;
+
     // Public Constructors
 
     /**
@@ -208,6 +215,10 @@ class ToolDialog extends BasicDialog {
      *            Parent shell.
      * @param toolName
      *            Name of the tool to be executed.
+     * @param eventType
+     *            The type of the event that this tool is to create; if present,
+     *            the tool is being run as a result of a hazard-type-first
+     *            invocation. Otherwise, it will be <code>null</code>.
      * @param jsonParams
      *            JSON string giving the parameters for this dialog. Within the
      *            set of all fields that are defined by these parameters, all
@@ -215,10 +226,11 @@ class ToolDialog extends BasicDialog {
      *            identifiers.
      */
     public ToolDialog(ToolsPresenter presenter, Shell parent, String toolName,
-            String jsonParams) {
+            String eventType, String jsonParams) {
         super(parent);
         this.presenter = presenter;
         this.toolName = toolName;
+        this.eventType = eventType;
         setShellStyle(SWT.CLOSE | SWT.MODELESS | SWT.BORDER | SWT.TITLE
                 | SWT.RESIZE);
         setBlockOnOpen(false);
@@ -423,8 +435,8 @@ class ToolDialog extends BasicDialog {
                                 presenter
                                         .publish(new ToolAction(
                                                 ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
-                                                identifier, ToolDialog.this
-                                                        .getState()));
+                                                identifier, eventType,
+                                                ToolDialog.this.getState()));
                             }
                         }
 
@@ -478,7 +490,7 @@ class ToolDialog extends BasicDialog {
         if (buttonId == IDialogConstants.OK_ID) {
             presenter.publish(new ToolAction(
                     ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
-                    toolName, getState()));
+                    toolName, eventType, getState()));
         }
     }
 

@@ -30,7 +30,9 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  *                                           from recommenders and product generators.
  *                                           Added enum for action types.
  * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
- * Dex 13, 2013 2266       jsanchez          Added ProductInformation and GeneratedProductList
+ * Dec 13, 2013 2266       jsanchez          Added ProductInformation and GeneratedProductList
+ * Jan 29, 2015 3626       Chris.Golden      Added ability to pass event type when running
+ *                                           a recommender.
  * </pre>
  * 
  * @author Chris Golden
@@ -52,6 +54,8 @@ public class ToolAction {
     private ToolActionEnum actionType;
 
     private String toolName;
+
+    private String eventType;
 
     /**
      * Auxiliary details text, if any.
@@ -99,17 +103,50 @@ public class ToolAction {
     /**
      * Construct a standard instance.
      * 
+     * @param action
+     *            Identifier of the action that is occurring.
+     * @param toolName
+     * @param eventType
+     * 
+     */
+    public ToolAction(ToolActionEnum action, String toolName, String eventType) {
+        this.actionType = action;
+        this.toolName = toolName;
+        this.eventType = eventType;
+    }
+
+    /**
+     * Construct a standard instance.
+     * 
      * @param actionType
      *            Identifier of the action that is occurring.
      * @param toolName
      * 
-     * @param auxiliarlyDetails
+     * @param auxiliaryDetails
      *            Optional auxiliary details.
      */
     public ToolAction(ToolActionEnum actionType, String toolName,
             Map<String, Serializable> auxiliarlyDetails) {
         this.actionType = actionType;
         this.toolName = toolName;
+        this.auxiliaryDetails = auxiliarlyDetails;
+    }
+
+    /**
+     * Construct a standard instance.
+     * 
+     * @param actionType
+     *            Identifier of the action that is occurring.
+     * @param toolName
+     * @param eventType
+     * @param auxiliaryDetails
+     *            Optional auxiliary details.
+     */
+    public ToolAction(ToolActionEnum actionType, String toolName,
+            String eventType, Map<String, Serializable> auxiliarlyDetails) {
+        this.actionType = actionType;
+        this.toolName = toolName;
+        this.eventType = eventType;
         this.auxiliaryDetails = auxiliarlyDetails;
     }
 
@@ -171,6 +208,10 @@ public class ToolAction {
 
     public String getToolName() {
         return toolName;
+    }
+
+    public String getEventType() {
+        return eventType;
     }
 
     /**

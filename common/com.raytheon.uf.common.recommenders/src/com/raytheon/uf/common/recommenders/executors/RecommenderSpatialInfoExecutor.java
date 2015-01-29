@@ -34,8 +34,9 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 6, 2013            mnash     Initial creation
- * 
+ * Feb 06, 2013            mnash     Initial creation
+ * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
+ *                                      info.
  * </pre>
  * 
  * @author mnash
@@ -54,6 +55,6 @@ public class RecommenderSpatialInfoExecutor<P extends AbstractRecommenderScriptM
 
     @Override
     public Map<String, Serializable> execute(P script) {
-        return script.getInfo(recommenderName, "getSpatialInfo");
+        return script.getInfo(recommenderName, "getSpatialInfo", null);
     }
 }

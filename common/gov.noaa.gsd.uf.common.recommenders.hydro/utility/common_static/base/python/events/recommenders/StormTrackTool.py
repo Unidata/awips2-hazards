@@ -34,7 +34,7 @@ class Recommender(TrackToolCommon.TrackToolCommon):
         metaDict["eventState"] = "Pending"
         return metaDict
 
-    def defineDialog(self):
+    def defineDialog(self, eventSet):
         '''      
         @summary: Defines a dialog that will be presented to the user prior to 
         the recommender's execute routine.  Will use python maps to define
@@ -114,6 +114,22 @@ class Recommender(TrackToolCommon.TrackToolCommon):
         @return: A tuple containing the phenomena, significance, subtype,
                  and phensig.
         '''
+        
+        eventType = sessionAttributes.get('eventType')
+        if eventType:
+            eventTypeFields = eventType.split('.')
+            phenomena, significance = eventTypeFields[0], eventTypeFields[1]
+            
+            if len(eventTypeFields) == 3:
+                subType = eventTypeFields[2]
+            else:
+                subType = None
+            
+            phenSig = '.'.join([phenomena, significance])
+            
+            return ( phenomena, significance, subType, phenSig )
+        
+        
         # Pickup the hazard type stuff from the event that was passed in
         # if that was possible.  Otherwise, for now we default it to convective
         # flash flood warning.
