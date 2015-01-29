@@ -283,7 +283,7 @@ class HydroProductParts():
         partsList += [ 'productHeader', 'CR']
         
         if not non_CAN_EXP:
-            partsList += ['overviewHeadline_area', 'overviewSynopsis_area']  
+            partsList += ['overviewSynopsis_area']  
         
         partsList += [
                 ('segments', segmentParts),

@@ -940,9 +940,30 @@ class Product(ProductTemplate.Product):
     def _additionalInfoStatement(self, productDict, productSegmentGroup, arguments=None):
         # Please override this method for your site
         productDict['additionalInfoStatement'] = 'Additional information is available at <Web Site URL>.'
+
         
     def _nextIssuanceStatement(self, productDict, productSegmentGroup, arguments=None):
-        productDict['nextIssuanceStatement'] = 'The next statement will be issued <time/day phrase>.'
+        
+        ugcs = []
+        for productSegment in productSegmentGroup.productSegments:
+           ugcs.extend(self._getProductSegmentUGCs(productSegment))
+           
+        ugcs.sort()
+        
+        timeZones = self._tpc.hazardTimeZones(ugcs)
+        expireTime = self._tpc.getExpireTime(
+                    self._issueTime, self._purgeHours, [], fixedExpire=True)
+        
+        ### want description from timingWordTableFUZZY4, hence [2]
+        ### Using only first timezone. Don't think 1 hr diff enough to include extra description
+        nextIssue = self._tpc.timingWordTableFUZZY4(self._issueTime, expireTime, timeZones[0], 'startTime')[2] + ' at'
+        for timeZone in timeZones:
+            fmtIssueTme = self._tpc.getFormattedTime(expireTime, timeZones=[timeZone], format='%I%M %p %Z')
+            ### If more than one timezone, will read like: 
+            ### "The next statement will be issued at Tuesday morning at 600 AM CST. 500 AM MST."
+            nextIssue += ' ' + fmtIssueTme + '.'
+        
+        productDict['nextIssuanceStatement'] = 'The next statement will be issued at ' + nextIssue
         
     def _floodPointTable(self, productDict, productSegmentGroup, arguments=None):
         # TODO Could be called at product level (no arguments or segment level with _productSegment argument
@@ -985,6 +1006,7 @@ class Product(ProductTemplate.Product):
         
         '''
     def _setUp_segment(self, segmentDict, productSegmentGroup, productSegment_tuple):  
+        self.flush()
         segment, vtecRecords = productSegment_tuple 
         productSegment = self.createProductSegment(segment, vtecRecords)
         productSegment.metaDataList, productSegment.hazardEvents = self.getSegmentMetaData(segment)
@@ -996,11 +1018,9 @@ class Product(ProductTemplate.Product):
             
         # UGCs and Expire Time
         # Assume that the geoType is the same for all hazard events in the segment i.e. area or point
+
         hazardEvent = productSegment.hazardEvents[0]
-        if hazardEvent.get('geoType') == 'area':
-            productSegment.ugcs = list(segment[0])
-        else:
-            productSegment.ugcs = hazardEvent.get('ugcs', [])
+        productSegment.ugcs = self._getProductSegmentUGCs(productSegment)
         productSegment.pointID = hazardEvent.get('pointID')
         productSegment.ugcs.sort()  
         productSegment.cityInfo = self.getCityInfo(productSegment.ugcs, returnType='list')       
@@ -1050,6 +1070,19 @@ class Product(ProductTemplate.Product):
         if not productSegment.sections:
             self._setProductInformation(productSegment.vtecRecords_ms[0], productSegment.hazardEvents[0], productSegment)
         self._productSegment = productSegment
+
+    def _getProductSegmentUGCs(self,productSegment):
+        segment = productSegment.segment
+        hazardEvents = self.getSegmentMetaData(segment)[1]
+        hazardEvent = hazardEvents[0]
+        ugcs = []
+        
+        if hazardEvent.get('geoType') == 'area':
+            ugcs = list(segment[0])
+        else:
+            ugcs = hazardEvent.get('ugcs', [])
+            
+        return ugcs
 
     def _ugcHeader(self, segmentDict, productSegmentGroup, arguments):
         segment = self._productSegment.segment
