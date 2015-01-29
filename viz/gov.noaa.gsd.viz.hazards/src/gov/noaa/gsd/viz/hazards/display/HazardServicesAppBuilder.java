@@ -85,7 +85,6 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.IPreferenceStore;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IPerspectiveDescriptor;
 import org.eclipse.ui.IPerspectiveListener4;
@@ -198,8 +197,9 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             manager, and with ObservedSettings.
  * Dec 13, 2014 4959       Dan Schaffer        Spatial Display cleanup and other bug fixes
  * Jan 21, 2015 3795       rferrel             Use ProductGenConfirmationDlg for getUserAnswer dialog.
- * Jan 21, 2014 3626       Chris.Golden        Added use of new hazard-type-first presenter and
+ * Jan 21, 2015 3626       Chris.Golden        Added use of new hazard-type-first presenter and
  *                                             view.
+ * Jan 29, 2015 3795       Robert.Blum         Fixed NullPointer on Display.getCurrent().getActiveShell().
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -554,7 +554,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                         cancelTitle = buttonLabels[1];
                     }
                 }
-                Shell shell = Display.getCurrent().getActiveShell();
+                Shell shell = PlatformUI.getWorkbench()
+                        .getActiveWorkbenchWindow().getShell();
                 ProductGenConfirmationDlg dialog = new ProductGenConfirmationDlg(
                         shell, "Hazard Services", question, okTitle,
                         cancelTitle);
