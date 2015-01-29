@@ -37,6 +37,10 @@ import com.google.common.collect.ImmutableMap;
  *                                      TimeScaleSpecifier).
  * Oct 20, 2014   4818     Chris.Golden Changed to always take up the full
  *                                      width of a details panel.
+ * Jan 28, 2015   2331     Chris.Golden Added parameters allowing the
+ *                                      defining of valid boundaries for the
+ *                                      values, with potentially a different
+ *                                      boundary for each state identifier.
  * </pre>
  * 
  * @author Chris.Golden
@@ -53,7 +57,7 @@ public class MultiTimeMegawidgetSpecifier extends TimeMegawidgetSpecifier
      * Time editability parameter name; a multi-time megawidget may include a
      * value associated with this name. The value may be either a boolean (if
      * only one state identifier is associated with the specifier), or else a
-     * {link Map} pairing state identifiers to booleans (with one per state
+     * {@link Map} pairing state identifiers to booleans (with one per state
      * identifier). There must be the same number of booleans as there are
      * states associated with this specifier, one per identifier. If not
      * provided, it is assumed that all states are editable. Note that if
@@ -76,6 +80,40 @@ public class MultiTimeMegawidgetSpecifier extends TimeMegawidgetSpecifier
     public static final String MEGAWIDGET_DETAIL_FIELDS = "detailFields";
 
     /**
+     * Minimum allowable time parameter name; a multi-time megawidget may
+     * include a value associated with this name. The value may be either a long
+     * integer (if only one state identifier is associated with the specifier),
+     * or else a {@link Map} pairing state identifiers to long integers (with at
+     * most one for each state identifier associated with a value that is
+     * specified in absolute form, as with a date-time chooser, rather than
+     * relative form, as with a delta drop-down selector used to choose how much
+     * of an interval lies between the value and the previous value). If not
+     * provided, it is assumed that all states have no practical minimum limits
+     * as to what times they may hold, except of course that each value must be
+     * greater than the previous one. If one is specified for a given state
+     * identifier, it must be less than or equal to any corresponding entry
+     * associated with the {@link #MAXIMUM_ALLOWABLE_TIME} parameter.
+     */
+    public static final String MINIMUM_ALLOWABLE_TIME = "minimumTime";
+
+    /**
+     * Maximum allowable time parameter name; a multi-time megawidget may
+     * include a value associated with this name. The value may be either a long
+     * integer (if only one state identifier is associated with the specifier),
+     * or else a {@link Map} pairing state identifiers to long integers (with at
+     * most one for each state identifier associated with a value that is
+     * specified in absolute form, as with a date-time chooser, rather than
+     * relative form, as with a delta drop-down selector used to choose how much
+     * of an interval lies between the value and the previous value). If not
+     * provided, it is assumed that all states have no practical maximum limits
+     * as to what times they may hold, except that of course each value must be
+     * less than the next one. If one is specified for a given state identifier,
+     * it must be greater than or equal to any corresponding entry associated
+     * with the {@link #MINIMUM_ALLOWABLE_TIME} parameter.
+     */
+    public static final String MAXIMUM_ALLOWABLE_TIME = "maximumTime";
+
+    /**
      * Minimum visible time megawidget creation time parameter name; if
      * specified in the map passed to
      * {@link #createMegawidget(Widget, Class, Map)}, its value must be an
@@ -92,6 +130,18 @@ public class MultiTimeMegawidgetSpecifier extends TimeMegawidgetSpecifier
      * that is to be visible at megawidget creation time.
      */
     public static final String MAXIMUM_VISIBLE_TIME = "maximumVisibleTime";
+
+    // Protected Static Constants
+
+    /**
+     * Minimum allowable time value, as epoch time in milliseconds.
+     */
+    protected static final Long MINIMUM_ALLOWABLE_VALUE = 0L;
+
+    /**
+     * Maximum allowable time value, as epoch time in milliseconds.
+     */
+    protected static final Long MAXIMUM_ALLOWABLE_VALUE = Long.MAX_VALUE / 2L;
 
     // Private Variables
 
@@ -136,7 +186,9 @@ public class MultiTimeMegawidgetSpecifier extends TimeMegawidgetSpecifier
     public MultiTimeMegawidgetSpecifier(Map<String, Object> parameters,
             String minimumIntervalKey) throws MegawidgetSpecificationException {
         super(parameters, new BoundedMultiLongValidator(parameters,
-                minimumIntervalKey, 0L, Long.MAX_VALUE / 2L),
+                MINIMUM_ALLOWABLE_TIME, MAXIMUM_ALLOWABLE_TIME,
+                minimumIntervalKey, (minimumIntervalKey == null),
+                MINIMUM_ALLOWABLE_VALUE, MAXIMUM_ALLOWABLE_VALUE),
                 ControlSpecifierOptionsManager.BooleanSource.TRUE);
 
         /*
@@ -268,6 +320,32 @@ public class MultiTimeMegawidgetSpecifier extends TimeMegawidgetSpecifier
      */
     public final boolean isStateEditable(String identifier) {
         return editabilityForStateIdentifiers.get(identifier);
+    }
+
+    /**
+     * Get the minimum possible value for the specified state.
+     * 
+     * @param identifier
+     *            Identifier of the state for which to find the minimum possible
+     *            value.
+     * @return Minimum possible value for the state.
+     */
+    public final long getMinimumValue(String identifier) {
+        return ((BoundedMultiLongValidator) getStateValidator())
+                .getMinimumValue(identifier);
+    }
+
+    /**
+     * Get the maximum possible value for the specified state.
+     * 
+     * @param identifier
+     *            Identifier of the state for which to find the maximum possible
+     *            value.
+     * @return Maximum possible value for the state.
+     */
+    public final long getMaximumValue(String identifier) {
+        return ((BoundedMultiLongValidator) getStateValidator())
+                .getMaximumValue(identifier);
     }
 
     /**

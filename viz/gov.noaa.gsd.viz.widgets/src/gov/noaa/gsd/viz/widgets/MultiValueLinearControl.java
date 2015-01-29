@@ -11,8 +11,10 @@ package gov.noaa.gsd.viz.widgets;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jface.dialogs.PopupDialog;
@@ -130,6 +132,11 @@ import org.eclipse.swt.widgets.Composite;
  * Sep 11, 2014    1283    Robert.Blum       Changed out the ToolTip with a 
  *                                           custom one that displays on the 
  *                                           correct monitor.
+ * Jan 26, 2014    2331    Chris.Golden      Added ability to specify lower
+ *                                           and upper bounds for allowable
+ *                                           values for constrained thumbs,
+ *                                           with such boundaries being
+ *                                           individual to each thumb.
  * </pre>
  * 
  * @author Chris.Golden
@@ -325,22 +332,44 @@ public abstract class MultiValueLinearControl extends Canvas {
     private final List<Boolean> constrainedThumbValuesEditable = new ArrayList<Boolean>();
 
     /**
+     * Map of constrained thumb indices to their minimum values, as specified by
+     * {@link #setAllowableConstrainedValueRange(int, long, long)}. Any
+     * constrained thumb with an index that has no such mapping is assumed to
+     * not have a particular minimum constraint.
+     */
+    private final Map<Integer, Long> allowableMinimumConstrainedThumbValues = new HashMap<>();
+
+    /**
+     * Map of constrained thumb indices to their maximum values, as specified by
+     * {@link #setAllowableConstrainedValueRange(int, long, long)}. Any
+     * constrained thumb with an index that has no such mapping is assumed to
+     * not have a particular maximum constraint.
+     */
+    private final Map<Integer, Long> allowableMaximumConstrainedThumbValues = new HashMap<>();
+
+    /**
      * List of minimum values that constrained thumbs can have, based upon the
      * snap value calculator (if any), the minimum thumb gap, and the minimum
-     * allowable value. Each index holds the minimum value that the thumb value
-     * at the corresponding index from {@link #constrainedThumbValues} can have.
-     * Note that these minimum values are only used to determine values when
-     * constrained thumb values are changed via user-GUI interaction.
+     * allowable value overall as well as any individual constrained thumbs'
+     * minimum values (the latter as specified by
+     * {@link #allowableMinimumConstrainedThumbValues}). Each index holds the
+     * minimum value that the thumb value at the corresponding index from
+     * {@link #constrainedThumbValues} can have. Note that these minimum values
+     * are only used to determine values when constrained thumb values are
+     * changed via user-GUI interaction.
      */
     private final List<Long> minConstrainedThumbValues = new ArrayList<Long>();
 
     /**
      * List of maximum values that constrained thumbs can have, based upon the
      * snap value calculator (if any), the minimum thumb gap, and the maximum
-     * allowable value. Each index holds the maximum value that the thumb value
-     * at the corresponding index from {@link #constrainedThumbValues} can have.
-     * Note that these maximum values are only used to determine values when
-     * constrained thumb values are changed via user-GUI interaction.
+     * allowable value overall as well as any individual constrained thumbs'
+     * maximum values (the latter as specified by
+     * {@link #allowableMinimumConstrainedThumbValues}). Each index holds the
+     * maximum value that the thumb value at the corresponding index from
+     * {@link #constrainedThumbValues} can have. Note that these maximum values
+     * are only used to determine values when constrained thumb values are
+     * changed via user-GUI interaction.
      */
     private final List<Long> maxConstrainedThumbValues = new ArrayList<Long>();
 
@@ -699,11 +728,19 @@ public abstract class MultiValueLinearControl extends Canvas {
      *            Snap value calculator, or <code>null</code> if values may be
      *            any value between the current allowable minimum and maximum
      *            values.
+     * @return True if the new snap value calculator can be used, false if it
+     *         cannot because the interplay of it with the various boundaries
+     *         results in an illegal state.
      */
-    public final void setSnapValueCalculator(ISnapValueCalculator calculator) {
+    public final boolean setSnapValueCalculator(ISnapValueCalculator calculator) {
+        ISnapValueCalculator oldSnapValueCalculator = snapValueCalculator;
         snapValueCalculator = (calculator != null ? calculator
                 : DEFAULT_SNAP_VALUE_CALCULATOR);
-        calculateConstrainedThumbValueBounds();
+        if (calculateConstrainedThumbValueBounds() == false) {
+            snapValueCalculator = oldSnapValueCalculator;
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -781,10 +818,18 @@ public abstract class MultiValueLinearControl extends Canvas {
      * @param value
      *            Flag indicating whether constrained thumbs' intervals are
      *            locked.
+     * @return True if the new flag value can be used, false if it cannot
+     *         because the interplay of it with the various boundaries results
+     *         in an illegal state.
      */
-    public final void setConstrainedThumbIntervalLocked(boolean value) {
+    public final boolean setConstrainedThumbIntervalLocked(boolean value) {
+        boolean oldValue = constrainedThumbIntervalLocked;
         constrainedThumbIntervalLocked = value;
-        calculateConstrainedThumbValueBounds();
+        if (calculateConstrainedThumbValueBounds() == false) {
+            constrainedThumbIntervalLocked = oldValue;
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -832,7 +877,11 @@ public abstract class MultiValueLinearControl extends Canvas {
     }
 
     /**
-     * Set the absolute minimum and maximum possible values.
+     * Set the absolute minimum and maximum possible values. Note that this
+     * clears any individual minimum and maximum values for constrained thumbs
+     * as set by {@link #setAllowableConstrainedValueRange(int, long, long)},
+     * and sets the minimum constrained thumb gap to something compatible with
+     * the new boundaries if the previous value for the gap is incompatible.
      * 
      * @param minimumValue
      *            New absolute minimum possible value; must be less than
@@ -865,6 +914,13 @@ public abstract class MultiValueLinearControl extends Canvas {
          */
         this.minimumValue = minimumValue;
         this.maximumValue = maximumValue;
+
+        /*
+         * Clear the constrained thumbs' individual minimum and maximum values,
+         * if any.
+         */
+        allowableMinimumConstrainedThumbValues.clear();
+        allowableMaximumConstrainedThumbValues.clear();
 
         /*
          * Ensure that the visible range is properly bounded by the new
@@ -927,6 +983,141 @@ public abstract class MultiValueLinearControl extends Canvas {
          * Make sure that the right thumb, if any, is active.
          */
         scheduleDetermineActiveThumbIfEnabled();
+    }
+
+    /**
+     * Get the minimum possible value for the specified constrained thumb.
+     * 
+     * @param index
+     *            Index of the constrained thumb for which the minimum possible
+     *            value is to be fetched.
+     * @return Minimum possible value for the thumb, if one was specified
+     *         previously via use of the
+     *         {@link #setAllowableConstrainedValueRange(int, long, long)};
+     *         otherwise the absolute minimum allowable value for all thumbs.
+     */
+    public final long getMinimumAllowableConstrainedValue(int index) {
+        Long value = allowableMinimumConstrainedThumbValues.get(index);
+        return (value == null ? minimumValue : value);
+    }
+
+    /**
+     * Get the maximum possible value for the specified constrained thumb.
+     * 
+     * @param index
+     *            Index of the constrained thumb for which the maximum possible
+     *            value is to be fetched.
+     * @return Maximum possible value for the thumb, if one was specified
+     *         previously via use of the
+     *         {@link #setAllowableConstrainedValueRange(int, long, long)};
+     *         otherwise the absolute maximum allowable value for all thumbs.
+     */
+    public final long getMaximumAllowableConstrainedValue(int index) {
+        Long value = allowableMaximumConstrainedThumbValues.get(index);
+        return (value == null ? maximumValue : value);
+    }
+
+    /**
+     * Set the minimum and maximum possible values for the specified constrained
+     * thumb. Note that if the thumb's current value lies outside of this range,
+     * it is repositioned to fall within the range.
+     * 
+     * @param index
+     *            Index of the constrained thumb for which the minimum and
+     *            maximum possible values are to be set.
+     * @param minimumValue
+     *            New absolute minimum possible value; must be less than
+     *            <code>maximumValue</code>.
+     * @param maximumValue
+     *            New absolute maximum possible value; must be greater than
+     *            <code>minimumValue</code>.
+     * @return True if the minimum and maximum possible values for the specified
+     *         thumb were set successfully, false otherwise. The latter occurs
+     *         if said values would result in the thumb being too close to its
+     *         neighboring thumbs, or would move past either of its neighbors as
+     *         a result of the requested change.
+     */
+    public final boolean setAllowableConstrainedValueRange(int index,
+            long minimumValue, long maximumValue) {
+
+        /*
+         * Ensure that the minimum value is less than the maximum value.
+         */
+        if (minimumValue >= maximumValue) {
+            throw new IllegalArgumentException(
+                    "minimum value must be less than maximum");
+        }
+
+        /*
+         * If the boundaries have not changed, do nothing more.
+         */
+        Long oldMinimumValue = allowableMinimumConstrainedThumbValues
+                .get(index);
+        Long oldMaximumValue = allowableMaximumConstrainedThumbValues
+                .get(index);
+        if ((oldMinimumValue != null) && (oldMinimumValue == minimumValue)
+                && (oldMaximumValue != null)
+                && (oldMaximumValue == maximumValue)) {
+            return true;
+        }
+
+        /*
+         * Remember the new boundaries.
+         */
+        allowableMinimumConstrainedThumbValues.put(index, minimumValue);
+        allowableMaximumConstrainedThumbValues.put(index, maximumValue);
+
+        /*
+         * If the thumb lies outside this new range, reposition it within the
+         * range.
+         */
+        Long oldValue = constrainedThumbValues.get(index);
+        if (oldValue != null) {
+            if (oldValue < minimumValue) {
+                constrainedThumbValues.set(index, minimumValue);
+            } else if (oldValue > maximumValue) {
+                constrainedThumbValues.set(index, maximumValue);
+            }
+        }
+
+        /*
+         * If the boundaries are incompatible with the current limitations,
+         * reset the boundaries and the value to what they were before this
+         * method was invoked and do nothing more.
+         */
+        if (calculateConstrainedThumbValueBounds() == false) {
+            if (index < constrainedThumbValues.size()) {
+                constrainedThumbValues.set(index, oldValue);
+            }
+            allowableMinimumConstrainedThumbValues.put(index, oldMinimumValue);
+            allowableMaximumConstrainedThumbValues.put(index, oldMaximumValue);
+            return false;
+        }
+
+        /*
+         * Make sure that the right thumb, if any, is active.
+         */
+        scheduleDetermineActiveThumbIfEnabled();
+        return true;
+    }
+
+    /**
+     * Clear the minimum and maximum possible values for the specified
+     * constrained thumb.
+     * 
+     * @param index
+     *            Index of the constrained thumb for which the minimum and
+     *            maximum possible values are to be cleared.
+     */
+    public final void clearAllowableConstrainedValueRange(int index) {
+
+        /*
+         * If the boundaries have not changed, do nothing more.
+         */
+        if ((allowableMinimumConstrainedThumbValues.get(index) == null)
+                && (allowableMaximumConstrainedThumbValues.get(index) == null)) {
+            return;
+        }
     }
 
     /**
@@ -1032,7 +1223,21 @@ public abstract class MultiValueLinearControl extends Canvas {
          * Sanity check the value provided, and use it only if it passes these
          * checks.
          */
+        Long minimumForThumb = allowableMinimumConstrainedThumbValues
+                .get(index);
+        Long maximumForThumb = allowableMaximumConstrainedThumbValues
+                .get(index);
         if ((value < minimumValue) || (value > maximumValue)) {
+            throw new IllegalArgumentException("value " + value
+                    + " for constrained thumb " + index + " out of range ("
+                    + minimumValue + " to " + maximumValue + ")");
+        } else if (((minimumForThumb != null) && (value < minimumForThumb))
+                || ((maximumForThumb != null) && (value > maximumForThumb))) {
+            throw new IllegalArgumentException("value " + value
+                    + " for constrained thumb " + index + " out of range "
+                    + "designated for it (" + minimumForThumb + " to "
+                    + maximumForThumb + ")");
+        } else if ((value < minimumValue) || (value > maximumValue)) {
             throw new IllegalArgumentException("value " + value
                     + " for constrained thumb " + index + " out of range ("
                     + minimumValue + " to " + maximumValue + ")");
@@ -1094,6 +1299,14 @@ public abstract class MultiValueLinearControl extends Canvas {
                             - minimumConstrainedThumbGap))) {
                 return false;
             }
+            Long minimumForThumb = allowableMinimumConstrainedThumbValues
+                    .get(j);
+            Long maximumForThumb = allowableMaximumConstrainedThumbValues
+                    .get(j);
+            if (((minimumForThumb != null) && (values[j] < minimumForThumb))
+                    || ((maximumForThumb != null) && (values[j] > maximumForThumb))) {
+                return false;
+            }
         }
         if ((values.length > 0)
                 && ((values[0] < minimumValue) || (values[values.length - 1] > maximumValue))) {
@@ -1147,17 +1360,21 @@ public abstract class MultiValueLinearControl extends Canvas {
      *            be set; must specify an index of an existing thumb.
      * @param editable
      *            New editability.
+     * @return True if the new editability flag value can be used, false if it
+     *         cannot because the interplay of it with the various boundaries
+     *         results in an illegal state.
      */
-    public final void setConstrainedThumbEditable(int index, boolean editable) {
+    public final boolean setConstrainedThumbEditable(int index, boolean editable) {
 
         /*
          * Remember the new flag value, or do nothing if the new value is the
          * same as the current one.
          */
         if (editable == constrainedThumbValuesEditable.get(index)) {
-            return;
+            return true;
         }
-        constrainedThumbValuesEditable.set(index, editable);
+        Boolean oldEditable = constrainedThumbValuesEditable.set(index,
+                editable);
 
         /*
          * If a thumb being dragged is now uneditable, end the drag.
@@ -1169,14 +1386,18 @@ public abstract class MultiValueLinearControl extends Canvas {
         }
 
         /*
+         * Recalculate the thumb value minimum and maximum boundaries.
+         */
+        if (calculateConstrainedThumbValueBounds() == false) {
+            constrainedThumbValuesEditable.set(index, oldEditable);
+            return false;
+        }
+
+        /*
          * Ensure that the correct thumb is active.
          */
         scheduleDetermineActiveThumbIfEnabled();
-
-        /*
-         * Recalculate the thumb value minimum and maximum boundaries.
-         */
-        calculateConstrainedThumbValueBounds();
+        return true;
     }
 
     /**
@@ -1502,12 +1723,16 @@ public abstract class MultiValueLinearControl extends Canvas {
             /*
              * Remember the new delta.
              */
+            long oldMinimumDelta = minimumConstrainedThumbGap;
             minimumConstrainedThumbGap = minimumDelta;
 
             /*
              * Recalculate the thumb value minimum and maximum boundaries.
              */
-            calculateConstrainedThumbValueBounds();
+            if (calculateConstrainedThumbValueBounds() == false) {
+                minimumConstrainedThumbGap = oldMinimumDelta;
+                return false;
+            }
 
             /*
              * Ensure that the thumb values are far enough apart given the new
@@ -2890,21 +3115,38 @@ public abstract class MultiValueLinearControl extends Canvas {
 
     /**
      * Calculate the minimum and maximum allowable values for any thumb values.
+     * If successful, the {@link #minConstrainedThumbValues} and
+     * {@link #maxConstrainedThumbValues} are set to hold the newly calculated
+     * boundaries.
+     * 
+     * @return True if the calculation results in a valid set of boundaries,
+     *         false if the interplay of the various factors result in illegal
+     *         boundaries (that is, boundaries for different constrained values
+     *         that are mutually exclusive).
      */
-    private void calculateConstrainedThumbValueBounds() {
+    private boolean calculateConstrainedThumbValueBounds() {
 
         /*
-         * Clear the boundary lists.
+         * Create the new boundary lists.
          */
-        minConstrainedThumbValues.clear();
-        maxConstrainedThumbValues.clear();
+        List<Long> minConstrainedThumbValues = new ArrayList<>(
+                this.minConstrainedThumbValues.size());
+        List<Long> maxConstrainedThumbValues = new ArrayList<>(
+                this.maxConstrainedThumbValues.size());
 
         /*
          * Calculate the minimum allowable values for the thumb values.
          */
         for (int j = 0; j < constrainedThumbValues.size(); j++) {
+
+            /*
+             * If the thumb is editable, calculate the minimum as the lowest
+             * value, if it is the first thumb, or as the previous value's
+             * minimum plus the minimum interval, if not the first thumb.
+             */
+            long value;
             if (constrainedThumbValuesEditable.get(j)) {
-                long value = minimumValue;
+                value = minimumValue;
                 if (j > 0) {
                     long interval = (constrainedThumbIntervalLocked ? constrainedThumbValues
                             .get(j) - constrainedThumbValues.get(j - 1)
@@ -2913,10 +3155,20 @@ public abstract class MultiValueLinearControl extends Canvas {
                 }
                 value = snapValueCalculator.getSnapThumbValue(value, value,
                         maximumValue);
-                minConstrainedThumbValues.add(value);
             } else {
-                minConstrainedThumbValues.add(constrainedThumbValues.get(j));
+                value = constrainedThumbValues.get(j);
             }
+
+            /*
+             * If there are specific boundaries for this thumb, ensure the
+             * minimum being calculated is at least the specific minimum.
+             */
+            Long minAllowable = allowableMinimumConstrainedThumbValues.get(j);
+            if ((minAllowable != null) && (value < minAllowable)) {
+                value = minAllowable;
+            }
+
+            minConstrainedThumbValues.add(value);
         }
 
         /*
@@ -2925,8 +3177,15 @@ public abstract class MultiValueLinearControl extends Canvas {
          * after the values are calculated.
          */
         for (int j = constrainedThumbValues.size() - 1; j >= 0; j--) {
+
+            /*
+             * If the thumb is editable, calculate the maximum as the highest
+             * value, if it is the last thumb, or as the next value's maximum
+             * minus the minimum interval, if not the last thumb.
+             */
+            long value;
             if (constrainedThumbValuesEditable.get(j)) {
-                long value = maximumValue;
+                value = maximumValue;
                 if (j < constrainedThumbValues.size() - 1) {
                     long interval = (constrainedThumbIntervalLocked ? constrainedThumbValues
                             .get(j + 1) - constrainedThumbValues.get(j)
@@ -2937,12 +3196,43 @@ public abstract class MultiValueLinearControl extends Canvas {
                 }
                 value = snapValueCalculator.getSnapThumbValue(value,
                         minimumValue, value);
-                maxConstrainedThumbValues.add(value);
             } else {
-                maxConstrainedThumbValues.add(constrainedThumbValues.get(j));
+                value = constrainedThumbValues.get(j);
             }
+
+            /*
+             * If there are specific boundaries for this thumb, ensure the
+             * maximum being calculated is at most the specific maximum.
+             */
+            Long maxAllowable = allowableMaximumConstrainedThumbValues.get(j);
+            if ((maxAllowable != null) && (value > maxAllowable)) {
+                value = maxAllowable;
+            }
+
+            maxConstrainedThumbValues.add(value);
         }
         Collections.reverse(maxConstrainedThumbValues);
+
+        /*
+         * Ensure that for each thumb, the minimum boundaries is not greater
+         * than the maximum boundaries.
+         */
+        for (int j = 0; j < constrainedThumbValues.size(); j++) {
+            if (minConstrainedThumbValues.get(j) > maxConstrainedThumbValues
+                    .get(j)) {
+                return false;
+            }
+        }
+
+        /*
+         * Since the calculations did not yield illegal boundaries, keep the new
+         * boundaries.
+         */
+        this.minConstrainedThumbValues.clear();
+        this.maxConstrainedThumbValues.clear();
+        this.minConstrainedThumbValues.addAll(minConstrainedThumbValues);
+        this.maxConstrainedThumbValues.addAll(maxConstrainedThumbValues);
+        return true;
     }
 
     /**

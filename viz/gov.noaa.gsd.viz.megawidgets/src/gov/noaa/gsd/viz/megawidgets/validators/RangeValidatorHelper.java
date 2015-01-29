@@ -27,6 +27,10 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Apr 23, 2014   2925     Chris.Golden Initial creation.
+ * Jan 28, 2015   2331     Chris.Golden Added ability to be used by specifiers
+ *                                      to manage ranges not defined directly
+ *                                      within the megawidget specifiers'
+ *                                      parameters.
  * </pre>
  * 
  * @author Chris.Golden
@@ -250,22 +254,78 @@ public class RangeValidatorHelper<T extends Comparable<T>> {
         /*
          * Check the resulting range for validity.
          */
-        RangeCheckProblem result = validateRange(minimumValue, maximumValue);
-        if (result != NO_RANGE_PROBLEM) {
-            String name = null;
-            switch (result.getElements()) {
-            case MINIMUM:
-                name = minimumValueKey;
-                break;
-            case MAXIMUM:
-                name = maximumValueKey;
-                break;
-            default:
-                break;
-            }
-            throw new MegawidgetSpecificationException(identifier, type, name,
-                    result.getValue(), result.getDescription());
-        }
+        checkStartingRangeForValidity();
+    }
+
+    /**
+     * Construct a standard instance for a {@link StateValidator} used by an
+     * {@link IStatefulSpecifier}. This constructor is intended for situations
+     * in which the lower and upper boundaries are always to be used, even if
+     * they are the default values taken from <code>lowest</code> and
+     * <code>highest</code>.
+     * 
+     * @param type
+     *            Type of the megawidget.
+     * @param identifier
+     *            State identifier of the megawidget.
+     * @param lowerBoundary
+     *            Lower boundary for this range; if <code>null</code>, then
+     *            <code>lowest</code> will be used. Otherwise, it should be of
+     *            type <code>T</code>.
+     * @param upperBoundary
+     *            Upper boundary for this range; if <code>null</code>, then
+     *            <code>highest</code> will be used. Otherwise, it should be of
+     *            type <code>T</code>.
+     * @param minimumValuePropertyName
+     *            Name of the minimum value property, to be used when an error
+     *            occurs to describe the problem in the resulting exception.
+     * @param maximumValuePropertyName
+     *            Name of the maximum value property, to be used when an error
+     *            occurs to describe the problem in the resulting exception.
+     * @param comparableClass
+     *            Type of state.
+     * @param lowest
+     *            Lowest allowable value; the minimum value may not be lower
+     *            than this.
+     * @param highest
+     *            Highest allowable value; the maximum value may not be higher
+     *            than this.
+     * @throws MegawidgetSpecificationException
+     *             If an error occurs during construction, such as if the
+     *             minimum value is lower than <code>lowest</code>, the maximum
+     *             value is higher than <code>highest</code>, the minimum or
+     *             maximum are missing, or the minimum is not less than the
+     *             maximum.
+     */
+    public RangeValidatorHelper(String type, String identifier,
+            Object lowerBoundary, Object upperBoundary,
+            String minimumValuePropertyName, String maximumValuePropertyName,
+            Class<T> comparableClass, T lowest, T highest)
+            throws MegawidgetSpecificationException {
+        this.type = type;
+        this.identifier = identifier;
+        this.minimumPropertyName = minimumValuePropertyName;
+        this.maximumPropertyName = maximumValuePropertyName;
+        this.comparableClass = comparableClass;
+        this.lowestAllowableValue = lowest;
+        this.highestAllowableValue = highest;
+
+        /*
+         * Get the minimum and maximum values.
+         */
+        minimumValue = ConversionUtilities
+                .getSpecifierDynamicallyTypedObjectFromObject(identifier, type,
+                        lowerBoundary, minimumPropertyName, comparableClass,
+                        lowest);
+        maximumValue = ConversionUtilities
+                .getSpecifierDynamicallyTypedObjectFromObject(identifier, type,
+                        upperBoundary, maximumPropertyName, comparableClass,
+                        highest);
+
+        /*
+         * Check the resulting range for validity.
+         */
+        checkStartingRangeForValidity();
     }
 
     /**
@@ -343,7 +403,8 @@ public class RangeValidatorHelper<T extends Comparable<T>> {
          */
         T minimumValue = ConversionUtilities
                 .getPropertyDynamicallyTypedObjectFromObject(identifier, type,
-                        minimum, minimumPropertyName, comparableClass, null);
+                        minimum, minimumPropertyName, comparableClass,
+                        lowestAllowableValue);
 
         /*
          * Ensure the value, combined with the other boundary, constitute a
@@ -385,7 +446,8 @@ public class RangeValidatorHelper<T extends Comparable<T>> {
          */
         T maximumValue = ConversionUtilities
                 .getPropertyDynamicallyTypedObjectFromObject(identifier, type,
-                        maximum, maximumPropertyName, comparableClass, null);
+                        maximum, maximumPropertyName, comparableClass,
+                        highestAllowableValue);
 
         /*
          * Ensure the value, combined with the other boundary, constitute a
@@ -429,10 +491,12 @@ public class RangeValidatorHelper<T extends Comparable<T>> {
          */
         T minimumValue = ConversionUtilities
                 .getPropertyDynamicallyTypedObjectFromObject(identifier, type,
-                        minimum, minimumPropertyName, comparableClass, null);
+                        minimum, minimumPropertyName, comparableClass,
+                        lowestAllowableValue);
         T maximumValue = ConversionUtilities
                 .getPropertyDynamicallyTypedObjectFromObject(identifier, type,
-                        maximum, maximumPropertyName, comparableClass, null);
+                        maximum, maximumPropertyName, comparableClass,
+                        highestAllowableValue);
 
         /*
          * Ensure the values constitute a valid range.
@@ -488,5 +552,31 @@ public class RangeValidatorHelper<T extends Comparable<T>> {
                             + ")");
         }
         return NO_RANGE_PROBLEM;
+    }
+
+    /**
+     * Validate the starting minimum and maximum values.
+     * 
+     * @throws MegawidgetSpecificationException
+     *             If the starting minimum and maximum values are invalid.
+     */
+    private void checkStartingRangeForValidity()
+            throws MegawidgetSpecificationException {
+        RangeCheckProblem result = validateRange(minimumValue, maximumValue);
+        if (result != NO_RANGE_PROBLEM) {
+            String name = null;
+            switch (result.getElements()) {
+            case MINIMUM:
+                name = minimumPropertyName;
+                break;
+            case MAXIMUM:
+                name = maximumPropertyName;
+                break;
+            default:
+                break;
+            }
+            throw new MegawidgetSpecificationException(identifier, type, name,
+                    result.getValue(), result.getDescription());
+        }
     }
 }

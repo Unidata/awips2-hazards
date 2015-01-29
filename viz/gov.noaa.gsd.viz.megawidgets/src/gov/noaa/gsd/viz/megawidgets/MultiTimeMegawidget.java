@@ -34,6 +34,7 @@ import org.eclipse.swt.widgets.Label;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Multi-time megawidget, providing the user the ability to select one or more
@@ -46,6 +47,10 @@ import com.google.common.collect.ImmutableSet;
  * ------------ ---------- ----------- --------------------------
  * Jun 27, 2014   3512     Chris.Golden Initial creation (extracted from
  *                                      TimeScaleMegawidget).
+ * Jan 28, 2015   2331     Chris.Golden Added mutable properties allowing the
+ *                                      defining of valid boundaries for the
+ *                                      values, with potentially a different
+ *                                      boundary for each state identifier.
  * </pre>
  * 
  * @author Chris.Golden
@@ -66,6 +71,8 @@ public abstract class MultiTimeMegawidget extends
                 StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         names.add(MultiTimeMegawidgetSpecifier.MEGAWIDGET_STATE_EDITABLES);
+        names.add(MultiTimeMegawidgetSpecifier.MINIMUM_ALLOWABLE_TIME);
+        names.add(MultiTimeMegawidgetSpecifier.MAXIMUM_ALLOWABLE_TIME);
         names.add(MultiTimeMegawidgetSpecifier.MINIMUM_VISIBLE_TIME);
         names.add(MultiTimeMegawidgetSpecifier.MAXIMUM_VISIBLE_TIME);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
@@ -102,6 +109,18 @@ public abstract class MultiTimeMegawidget extends
     };
 
     // Private Static Constants
+
+    /**
+     * Set of mutable properties to be ignored within
+     * {@link #setMutableProperties(Map)} when handling the general cases,
+     * because they have been dealt with already by that point in the method
+     * body.
+     */
+    private static final Set<String> IGNORE_FOR_SET_MUTABLE_PROPERTIES = Sets
+            .newHashSet(MultiTimeMegawidgetSpecifier.MINIMUM_VISIBLE_TIME,
+                    MultiTimeMegawidgetSpecifier.MAXIMUM_VISIBLE_TIME,
+                    MultiTimeMegawidgetSpecifier.MINIMUM_ALLOWABLE_TIME,
+                    MultiTimeMegawidgetSpecifier.MAXIMUM_ALLOWABLE_TIME);
 
     /**
      * Width in pixels of the time scale thumbs.
@@ -392,6 +411,12 @@ public abstract class MultiTimeMegawidget extends
                 .equals(MultiTimeMegawidgetSpecifier.MEGAWIDGET_STATE_EDITABLES)) {
             return new HashMap<>(editabilityForIds);
         } else if (name
+                .equals(MultiTimeMegawidgetSpecifier.MINIMUM_ALLOWABLE_TIME)) {
+            return getMinimumAllowableTimes();
+        } else if (name
+                .equals(MultiTimeMegawidgetSpecifier.MAXIMUM_ALLOWABLE_TIME)) {
+            return getMaximumAllowableTimes();
+        } else if (name
                 .equals(MultiTimeMegawidgetSpecifier.MINIMUM_VISIBLE_TIME)) {
             return getLowerVisibleTime();
         } else if (name
@@ -433,6 +458,12 @@ public abstract class MultiTimeMegawidget extends
             for (String identifier : map.keySet()) {
                 setStateEditable(identifier, map.get(identifier));
             }
+        } else if (name
+                .equals(MultiTimeMegawidgetSpecifier.MINIMUM_ALLOWABLE_TIME)) {
+            setMinimumAllowableTimes(value);
+        } else if (name
+                .equals(MultiTimeMegawidgetSpecifier.MAXIMUM_ALLOWABLE_TIME)) {
+            setMaximumAllowableTimes(value);
         } else if (name
                 .equals(MultiTimeMegawidgetSpecifier.MINIMUM_VISIBLE_TIME)) {
             setVisibleTimeRange(
@@ -502,13 +533,68 @@ public abstract class MultiTimeMegawidget extends
         }
 
         /*
+         * If the minimum or maximum allowable values are being set, set them
+         * first, setting them together if both are being set, or one or the
+         * other if only one is being set. If setting them together,
+         */
+        minValueObj = properties
+                .get(MultiTimeMegawidgetSpecifier.MINIMUM_ALLOWABLE_TIME);
+        maxValueObj = properties
+                .get(MultiTimeMegawidgetSpecifier.MAXIMUM_ALLOWABLE_TIME);
+        boolean valuesNotYetHandled = true;
+        if ((minValueObj != null) && (maxValueObj != null)) {
+            if (properties
+                    .containsKey(IStatefulSpecifier.MEGAWIDGET_STATE_VALUES)) {
+                stateValidator.setRanges(minValueObj, maxValueObj);
+                setMutableProperty(
+                        IStatefulSpecifier.MEGAWIDGET_STATE_VALUES,
+                        properties
+                                .get(IStatefulSpecifier.MEGAWIDGET_STATE_VALUES));
+                valuesNotYetHandled = false;
+                handleAllowableRangesChange();
+            } else {
+                setAllowableRanges(minValueObj, maxValueObj);
+            }
+        } else if (minValueObj != null) {
+            if (properties
+                    .containsKey(IStatefulSpecifier.MEGAWIDGET_STATE_VALUES)) {
+                stateValidator.setMinimumValues(minValueObj);
+                setMutableProperty(
+                        IStatefulSpecifier.MEGAWIDGET_STATE_VALUES,
+                        properties
+                                .get(IStatefulSpecifier.MEGAWIDGET_STATE_VALUES));
+                valuesNotYetHandled = false;
+                handleAllowableMinimumsChange();
+            } else {
+                setMutableProperty(
+                        MultiTimeMegawidgetSpecifier.MINIMUM_ALLOWABLE_TIME,
+                        minValueObj);
+            }
+        } else if (maxValueObj != null) {
+            if (properties
+                    .containsKey(IStatefulSpecifier.MEGAWIDGET_STATE_VALUES)) {
+                stateValidator.setMaximumValues(maxValueObj);
+                setMutableProperty(
+                        IStatefulSpecifier.MEGAWIDGET_STATE_VALUES,
+                        properties
+                                .get(IStatefulSpecifier.MEGAWIDGET_STATE_VALUES));
+                valuesNotYetHandled = false;
+                handleAllowableMaximumsChange();
+            } else {
+                setMutableProperty(
+                        MultiTimeMegawidgetSpecifier.MAXIMUM_ALLOWABLE_TIME,
+                        minValueObj);
+            }
+        }
+
+        /*
          * Do what would have been done by the superclass method, except for
-         * ignoring any minimum or maximum visible time setting, as that has
-         * already been done above.
+         * ignoring anything that has already been handled above.
          */
         for (String name : properties.keySet()) {
-            if (!name.equals(MultiTimeMegawidgetSpecifier.MINIMUM_VISIBLE_TIME)
-                    && !name.equals(MultiTimeMegawidgetSpecifier.MAXIMUM_VISIBLE_TIME)) {
+            if ((IGNORE_FOR_SET_MUTABLE_PROPERTIES.contains(name) == false)
+                    && (valuesNotYetHandled || (name
+                            .equals(IStatefulSpecifier.MEGAWIDGET_STATE_VALUES) == false))) {
                 setMutableProperty(name, properties.get(name));
             }
         }
@@ -570,6 +656,70 @@ public abstract class MultiTimeMegawidget extends
     public final List<IControl> getChildren() {
         return (childManager == null ? Collections.<IControl> emptyList()
                 : childManager.getDetailMegawidgets());
+    }
+
+    /**
+     * Get the map of state identifiers to their minimum allowable times.
+     * 
+     * @return Map of state identifiers to their minimum allowable times.
+     */
+    public Map<String, Long> getMinimumAllowableTimes() {
+        return stateValidator.getMinimumValues();
+    }
+
+    /**
+     * Get the map of state identifiers to their maximum allowable times.
+     * 
+     * @return Map of state identifiers to their maximum allowable times.
+     */
+    public Map<String, Long> getMaximumAllowableTimes() {
+        return stateValidator.getMaximumValues();
+    }
+
+    /**
+     * Set the minimum values for the states.
+     * 
+     * @param values
+     *            Map of state identifiers to their minimum values.
+     * @throws MegawidgetPropertyException
+     *             If the values are not valid.
+     */
+    public final void setMinimumAllowableTimes(Object values)
+            throws MegawidgetPropertyException {
+        stateValidator.setMinimumValues(values);
+        handleAllowableMinimumsChange();
+    }
+
+    /**
+     * Set the maximum values for the states.
+     * 
+     * @param values
+     *            Map of state identifiers to their minimum values.
+     * @throws MegawidgetPropertyException
+     *             If the values are not valid.
+     */
+    public final void setMaximumAllowableTimes(Object values)
+            throws MegawidgetPropertyException {
+        stateValidator.setMaximumValues(values);
+        handleAllowableMaximumsChange();
+    }
+
+    /**
+     * Set the minimum and maximum values.
+     * 
+     * @param minimumValue
+     *            New minimum value; must be less than or equal to <code>
+     *            maximumValue</code>.
+     * @param maximumValue
+     *            New maximum value; must be greater than or equal to
+     *            <code>minimumValue</code>.
+     * @throws MegawidgetPropertyException
+     *             If the new values are not valid.
+     */
+    public final void setAllowableRanges(Object minimumValues,
+            Object maximumValues) throws MegawidgetPropertyException {
+        stateValidator.setRanges(minimumValues, maximumValues);
+        handleAllowableRangesChange();
     }
 
     /**
@@ -733,15 +883,20 @@ public abstract class MultiTimeMegawidget extends
         }
 
         /*
-         * Get the starting value(s) for the different state identifiers, and
+         * Get the starting value(s) for the different state identifiers, as
+         * well as their starting minimum and maximum allowable values, and
          * determine the starting editability states for the state identifiers.
          */
         editabilityForIds = new HashMap<>();
         long[] startingValues = new long[specifier.getStateIdentifiers().size()];
+        long[] startingMinimums = new long[startingValues.length];
+        long[] startingMaximums = new long[startingValues.length];
         boolean[] startingEditabilities = new boolean[startingValues.length];
         for (int j = 0; j < startingValues.length; j++) {
             String identifier = specifier.getStateIdentifiers().get(j);
             startingValues[j] = statesForIds.get(identifier);
+            startingMinimums[j] = specifier.getMinimumValue(identifier);
+            startingMaximums[j] = specifier.getMaximumValue(identifier);
             startingEditabilities[j] = specifier.isStateEditable(identifier);
             editabilityForIds.put(identifier, startingEditabilities[j]);
         }
@@ -822,7 +977,8 @@ public abstract class MultiTimeMegawidget extends
          * Create the multi-thumbed scale component.
          */
         createMultiValueScaleComponent(specifier, panel, paramMap,
-                minimumInterval, startingValues, startingEditabilities);
+                minimumInterval, startingValues, startingMinimums,
+                startingMaximums, startingEditabilities);
 
         /*
          * Bind the scale component's value change events to trigger a change in
@@ -1095,14 +1251,17 @@ public abstract class MultiTimeMegawidget extends
      * closest legitimate value on the multi-value scale widget, and of course
      * between the minimum and maximum allowable values.
      * 
+     * @param identifier
+     *            State identifier of the value to be converted.
      * @param value
      *            Value to be converted.
      * @return Converted value.
      */
-    protected final long convertToValueAcceptableToScale(long value) {
+    protected final long convertToValueAcceptableToScale(String identifier,
+            long value) {
         return SNAP_VALUE_CALCULATOR.getSnapThumbValue(value,
-                stateValidator.getMinimumValue(),
-                stateValidator.getMaximumValue());
+                stateValidator.getMinimumValue(identifier),
+                stateValidator.getMaximumValue(identifier));
     }
 
     /**
@@ -1149,7 +1308,7 @@ public abstract class MultiTimeMegawidget extends
         long delta = scale.getConstrainedThumbValue(scale
                 .getConstrainedThumbValueCount() - 1)
                 - scale.getConstrainedThumbValue(0);
-        return (value + delta <= stateValidator.getMaximumValue());
+        return (value + delta <= stateValidator.getHighestAllowableValue());
     }
 
     /**
@@ -1327,6 +1486,10 @@ public abstract class MultiTimeMegawidget extends
      *            Minimum interval to be used for the multi-value scale.
      * @param startingValues
      *            Array of values to be used as the initial values.
+     * @param startingMinimums
+     *            Array of values to be used as the initial minimum values.
+     * @param startingMaximums
+     *            Array of values to be used as the initial maximum values.
      * @param startingEditabilities
      *            Array of booleans indicating which of the values in the
      *            corresponding indices of <code>startingValues</code> are to be
@@ -1335,9 +1498,11 @@ public abstract class MultiTimeMegawidget extends
     private void createMultiValueScaleComponent(
             MultiTimeMegawidgetSpecifier specifier, Composite parent,
             Map<String, Object> paramMap, long minimumInterval,
-            long[] startingValues, boolean[] startingEditabilities) {
-        scale = new MultiValueScale(parent, stateValidator.getMinimumValue(),
-                stateValidator.getMaximumValue());
+            long[] startingValues, long[] startingMinimums,
+            long[] startingMaximums, boolean[] startingEditabilities) {
+        scale = new MultiValueScale(parent,
+                stateValidator.getLowestAllowableValue(),
+                stateValidator.getHighestAllowableValue());
         scale.setSnapValueCalculator(SNAP_VALUE_CALCULATOR);
         scale.setInsets(SCALE_HORIZONTAL_PADDING, SCALE_VERTICAL_PADDING_TOP,
                 SCALE_HORIZONTAL_PADDING, SCALE_VERTICAL_PADDING_BOTTOM);
@@ -1350,6 +1515,8 @@ public abstract class MultiTimeMegawidget extends
         scale.setMinimumDeltaBetweenConstrainedThumbs(minimumInterval);
         scale.setConstrainedThumbValues(startingValues);
         for (int j = 0; j < startingEditabilities.length; j++) {
+            scale.setAllowableConstrainedValueRange(j, startingMinimums[j],
+                    startingMaximums[j]);
             if (startingEditabilities[j] == false) {
                 scale.setConstrainedThumbEditable(j, false);
             }
@@ -1401,5 +1568,129 @@ public abstract class MultiTimeMegawidget extends
                 .get(((IStatefulSpecifier) getSpecifier())
                         .getStateIdentifiers().get(0)) : editabilityForIds
                 .get(identifier));
+    }
+
+    /**
+     * Ensure that the states are ordered correctly, repositioning any that are
+     * to the left of, or insufficiently far from, their previous neighbors.
+     */
+    private void ensureStatesAreOrderedCorrectly() {
+        Long lastState = null;
+        for (String identifier : ((IStatefulSpecifier) getSpecifier())
+                .getStateIdentifiers()) {
+            Long state = statesForIds.get(identifier);
+            if ((lastState != null)
+                    && (lastState + stateValidator.getMinimumInterval() > state)) {
+                state = lastState + stateValidator.getMinimumInterval();
+                statesForIds.put(identifier, state);
+            }
+            lastState = state;
+        }
+    }
+
+    /**
+     * Synchronize the component widgets to the boundaries for the states.
+     */
+    protected void synchronizeComponentWidgetsToBounds() {
+        List<String> identifiers = ((IStatefulSpecifier) getSpecifier())
+                .getStateIdentifiers();
+        for (int j = 0; j < identifiers.size(); j++) {
+            String identifier = identifiers.get(j);
+            scale.setAllowableConstrainedValueRange(j,
+                    stateValidator.getMinimumValue(identifier),
+                    stateValidator.getMaximumValue(identifier));
+        }
+    }
+
+    /**
+     * Handle changes to the allowable minimums.
+     */
+    private void handleAllowableMinimumsChange() {
+
+        /*
+         * Iterate through the states, ensuring that each is within the new
+         * boundaries, and moving any that are not.
+         */
+        List<String> identifiers = ((IStatefulSpecifier) getSpecifier())
+                .getStateIdentifiers();
+        for (String identifier : identifiers) {
+            Long state = statesForIds.get(identifier);
+            if ((state == null)
+                    || (state < stateValidator.getMinimumValue(identifier))) {
+                statesForIds.put(identifier,
+                        stateValidator.getMinimumValue(identifier));
+            }
+        }
+
+        cleanUpAfterBoundariesChange();
+    }
+
+    /**
+     * Handle changes to the allowable maximums.
+     */
+    private void handleAllowableMaximumsChange() {
+
+        /*
+         * Iterate through the states, ensuring that each is within the new
+         * boundaries, and moving any that are not.
+         */
+        List<String> identifiers = ((IStatefulSpecifier) getSpecifier())
+                .getStateIdentifiers();
+        for (String identifier : identifiers) {
+            Long state = statesForIds.get(identifier);
+            if ((state == null)
+                    || (state > stateValidator.getMaximumValue(identifier))) {
+                statesForIds.put(identifier,
+                        stateValidator.getMaximumValue(identifier));
+            }
+        }
+
+        cleanUpAfterBoundariesChange();
+    }
+
+    /**
+     * Handle changes to the allowable ranges.
+     */
+    private void handleAllowableRangesChange() {
+
+        /*
+         * Iterate through the states, ensuring that each is within the new
+         * boundaries, and moving any that are not.
+         */
+        List<String> identifiers = ((IStatefulSpecifier) getSpecifier())
+                .getStateIdentifiers();
+        for (String identifier : identifiers) {
+            Long state = statesForIds.get(identifier);
+            if ((state == null)
+                    || (state < stateValidator.getMinimumValue(identifier))) {
+                statesForIds.put(identifier,
+                        stateValidator.getMinimumValue(identifier));
+            } else if (state > stateValidator.getMaximumValue(identifier)) {
+                statesForIds.put(identifier,
+                        stateValidator.getMaximumValue(identifier));
+            }
+        }
+
+        cleanUpAfterBoundariesChange();
+    }
+
+    /**
+     * Clean up after boundary changes, and any state changes that occurred as a
+     * result.
+     */
+    private void cleanUpAfterBoundariesChange() {
+
+        /*
+         * Make sure that any alterations made to the state above did not render
+         * them out of order.
+         */
+        ensureStatesAreOrderedCorrectly();
+
+        /*
+         * Synchronize the widgets to the new boundaries and potentially new
+         * states.
+         */
+        synchronizeComponentWidgetsToBounds();
+        synchronizeComponentWidgetsToState();
     }
 }

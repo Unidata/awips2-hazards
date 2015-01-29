@@ -1,0 +1,49 @@
+[
+ {
+  "fieldName": "start:end",
+  "fieldType": "TimeScale",
+  "valueLabels": {
+   "start": "Start Time:",
+   "end": "End Time:"
+  },
+  "minimumTimeInterval": 60000,
+  "minimumTime": {
+   "start": 1402400940000
+  },
+  "values": {
+   "start": 1402401000000,
+   "end": 1402402200000
+  }
+ },
+ {
+  "fieldName": "start2:end2",
+  "fieldType": "TimeRange",
+  "valueLabels": {
+   "start2": "Start Time:",
+   "end2": "Duration:"
+  },
+  "durationChoices": [ "10 min", "20 min", "30 min", "45 min", "1 hour" ],
+  "minimumTime": {
+   "start2": 1402400940000
+  },
+  "values": {
+   "start2": 1402401000000,
+   "end2": 1402402200000
+  }
+ },
+ {
+  "fieldName": "currentTime",
+  "fieldType": "Time",
+  "label": "Current Time:",
+  "values": 1402400940000,
+  "editable": false,
+  "spacing": 15,
+  "expandHorizontally": true
+ },
+ {
+  "fieldName": "advance",
+  "fieldType": "Button",
+  "label": "Tick Current Time Forward",
+  "spacing": 5
+ }
+]

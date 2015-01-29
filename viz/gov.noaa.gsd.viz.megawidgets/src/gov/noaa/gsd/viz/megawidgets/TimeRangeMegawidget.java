@@ -32,6 +32,10 @@ import com.google.common.collect.ImmutableSet;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jul 01, 2014   3512     Chris.Golden Initial creation.
+ * Jan 28, 2015   2331     Chris.Golden Added mutable properties allowing the
+ *                                      defining of valid boundaries for the
+ *                                      values, with potentially a different
+ *                                      boundary for each state identifier.
  * </pre>
  * 
  * @author Chris.Golden
@@ -70,7 +74,7 @@ public class TimeRangeMegawidget extends MultiTimeMegawidget {
             /*
              * Make the value valid for the scale widget.
              */
-            value = convertToValueAcceptableToScale(value);
+            value = convertToValueAcceptableToScale(identifier, value);
 
             /*
              * If the scale widget's intervals are locked, that means that the

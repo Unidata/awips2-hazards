@@ -34,6 +34,9 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 
+import com.google.common.collect.Range;
+import com.google.common.collect.Ranges;
+
 /**
  * Description: Megawidget tester.
  * <p>
@@ -63,6 +66,12 @@ import org.eclipse.swt.widgets.Shell;
  *                                      one is specified.
  * Aug 21, 2014    4243    Chris.Golden Changed to work with new side effects
  *                                      applier.
+ * Jan 26, 2014    2331    Chris.Golden Changed to ensure that time scale and
+ *                                      time range megawidgets always have
+ *                                      their visible range area include their
+ *                                      starting values (so that users can see
+ *                                      the thumbs when they bring up the
+ *                                      test dialog).
  * </pre>
  * 
  * @author Chris.Golden
@@ -134,6 +143,9 @@ public class MegawidgetTest extends Dialog {
     @Override
     protected Control createDialogArea(Composite parent) {
 
+        /*
+         * Lay out the overall area.
+         */
         Composite top = (Composite) super.createDialogArea(parent);
         GridLayout mainLayout = new GridLayout(1, false);
         mainLayout.marginHeight = 3;
@@ -141,6 +153,9 @@ public class MegawidgetTest extends Dialog {
         mainLayout.marginTop = 10;
         top.setLayout(mainLayout);
 
+        /*
+         * Get the megawidget specifiers.
+         */
         List<Map<String, Object>> specifiers = null;
         try {
             DictList specifiersDictList = DictList
@@ -157,6 +172,9 @@ public class MegawidgetTest extends Dialog {
             System.exit(1);
         }
 
+        /*
+         * Set the window title.
+         */
         File file = new File(specifiersFilePath);
         String name = file.getName();
         parent.getShell().setText(
@@ -164,9 +182,52 @@ public class MegawidgetTest extends Dialog {
 
         MegawidgetManager manager = null;
         try {
-            manager = new MegawidgetManager(
-                    top,
-                    specifiers,
+
+            /*
+             * Create the megawidget specifier manager first, and find the
+             * minimum and maximum times used as starting values by any time
+             * megawidgets.
+             */
+            MegawidgetSpecifierManager specifierManager = new MegawidgetSpecifierManager(
+                    specifiers, IControlSpecifier.class,
+                    new ICurrentTimeProvider() {
+
+                        @Override
+                        public long getCurrentTime() {
+                            return System.currentTimeMillis();
+                        }
+                    }, (scriptFilePath == null ? null
+                            : new PythonSideEffectsApplier(new File(PATH_PREFIX
+                                    + scriptFilePath))));
+            Range<Long> bounds = getTimeBoundaries(null,
+                    specifierManager.getSpecifiers());
+            long minTime = (bounds == null ? System.currentTimeMillis()
+                    : bounds.lowerEndpoint());
+            long maxTime = (bounds == null ? System.currentTimeMillis()
+                    : bounds.upperEndpoint());
+
+            /*
+             * Determine the delta between the minimum and maximum times, and
+             * from that, determine the lower and upper boundaries of the
+             * visible time for any time megawidgets, giving some room to either
+             * side of the found minimum and maximum values.
+             */
+            long delta = maxTime - minTime;
+            if (delta < TimeUnit.HOURS.toMillis(1L)) {
+                minTime -= TimeUnit.MINUTES.toMillis(30L);
+                maxTime += TimeUnit.MINUTES.toMillis(30L);
+            } else if (delta < TimeUnit.DAYS.toMillis(1L)) {
+                minTime -= TimeUnit.HOURS.toMillis(12L);
+                maxTime += TimeUnit.HOURS.toMillis(12L);
+            } else {
+                minTime -= TimeUnit.DAYS.toMillis(2L);
+                maxTime += TimeUnit.DAYS.toMillis(2L);
+            }
+
+            /*
+             * Create the megawidget manager.
+             */
+            manager = new MegawidgetManager(top, specifierManager,
                     new HashMap<String, Object>(),
                     new IMegawidgetManagerListener() {
 
@@ -218,17 +279,7 @@ public class MegawidgetTest extends Dialog {
                             exception.printStackTrace(System.err);
                         }
 
-                    }, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(4L),
-                    System.currentTimeMillis() + TimeUnit.DAYS.toMillis(4L),
-                    new ICurrentTimeProvider() {
-
-                        @Override
-                        public long getCurrentTime() {
-                            return System.currentTimeMillis();
-                        }
-                    }, (scriptFilePath == null ? null
-                            : new PythonSideEffectsApplier(new File(PATH_PREFIX
-                                    + scriptFilePath))));
+                    }, minTime, maxTime);
         } catch (Exception e) {
             System.err.println("Error: Megawidget improperly specified: " + e);
             e.printStackTrace(System.err);
@@ -236,6 +287,10 @@ public class MegawidgetTest extends Dialog {
             System.exit(1);
         }
 
+        /*
+         * If an SWT wrapper megawidget was found, add an SWT composite and
+         * button to it as a test.
+         */
         if (swtWrapperIdentifier != null) {
             SwtWrapperMegawidget megawidget = manager
                     .getSwtWrapper(swtWrapperIdentifier);
@@ -282,5 +337,49 @@ public class MegawidgetTest extends Dialog {
             System.exit(1);
             return null;
         }
+    }
+
+    /**
+     * 
+     */
+    @SuppressWarnings("unchecked")
+    private Range<Long> getTimeBoundaries(Range<Long> startingBounds,
+            List<ISpecifier> specifiers) {
+        long minTime = (startingBounds == null ? Long.MAX_VALUE
+                : startingBounds.lowerEndpoint());
+        long maxTime = (startingBounds == null ? Long.MIN_VALUE
+                : startingBounds.upperEndpoint());
+        for (ISpecifier specifier : specifiers) {
+            if (specifier instanceof TimeMegawidgetSpecifier) {
+                IStatefulSpecifier statefulSpecifier = (IStatefulSpecifier) specifier;
+                for (String identifier : statefulSpecifier
+                        .getStateIdentifiers()) {
+                    Object startingValue = statefulSpecifier
+                            .getStartingState(identifier);
+                    if (startingValue != null) {
+                        long time = (Long) startingValue;
+                        if (minTime > time) {
+                            minTime = time;
+                        }
+                        if (maxTime < time) {
+                            maxTime = time;
+                        }
+                    }
+                }
+            }
+            if (specifier instanceof IParentSpecifier) {
+                Range<Long> bounds = getTimeBoundaries(
+                        (minTime == Long.MAX_VALUE ? null : Ranges.closed(
+                                minTime, maxTime)),
+                        ((IParentSpecifier<ISpecifier>) specifier)
+                                .getChildMegawidgetSpecifiers());
+                if (bounds != null) {
+                    minTime = bounds.lowerEndpoint();
+                    maxTime = bounds.upperEndpoint();
+                }
+            }
+        }
+        return (minTime == Long.MAX_VALUE ? null : Ranges.closed(minTime,
+                maxTime));
     }
 }

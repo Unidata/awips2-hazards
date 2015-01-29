@@ -9,14 +9,10 @@
  */
 package gov.noaa.gsd.viz.megawidgets.validators;
 
-import gov.noaa.gsd.viz.megawidgets.ConversionUtilities;
 import gov.noaa.gsd.viz.megawidgets.IStateful;
 import gov.noaa.gsd.viz.megawidgets.IStatefulSpecifier;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecificationException;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -33,47 +29,17 @@ import java.util.Map;
  * Apr 23, 2014   2925     Chris.Golden Initial creation.
  * Jun 27, 2014   3512     Chris.Golden Made minimum interval parameter
  *                                      optional.
+ * Jan 28, 2015   2331     Chris.Golden Made subclass of new class called
+ *                                      BoundedMultiNumberValidator, which
+ *                                      took much of this class's abilities
+ *                                      and genericized it.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class BoundedMultiLongValidator extends MultiStateValidator<Long> {
-
-    // Private Variables
-
-    /**
-     * Map of parameters used to create the specifier. This may be
-     * <code>null</code> if the validator has been constructed as already
-     * initialized.
-     */
-    private final Map<String, Object> parameters;
-
-    /**
-     * Key in {@link #parameters} for the minimum interval parameter; if
-     * <code>null</code>, the minimum interval is assumed to be 0.
-     */
-    private final String minimumIntervalKey;
-
-    /**
-     * Lowest allowable value; the minimum value may not be lower than this.
-     */
-    private final Long lowest;
-
-    /**
-     * Highest allowable value; the maximum value may not be higher than this.
-     */
-    private final Long highest;
-
-    /**
-     * Minimum interval allowed between adjacent values.
-     */
-    private Long minimumInterval;
-
-    /**
-     * Range validator helper.
-     */
-    private RangeValidatorHelper<Long> helper;
+public class BoundedMultiLongValidator extends
+        BoundedMultiNumberValidator<Long> {
 
     // Public Constructors
 
@@ -82,10 +48,23 @@ public class BoundedMultiLongValidator extends MultiStateValidator<Long> {
      * 
      * @param parameters
      *            Map of parameters used to create the specifier.
+     * @param minimumValuesKey
+     *            Key in <code>parameters</code> for the map of state
+     *            identifiers to minimum values; if <code>null</code>, the
+     *            minimum for all state identifiers is assumed to be
+     *            <code>lowest</code>.
+     * @param maximumValuesKey
+     *            Key in <code>parameters</code> for the map of state
+     *            identifiers to maximum values; if <code>null</code>, the
+     *            maximum for all state identifiers is assumed to be
+     *            <code>highest</code>.
      * @param minimumIntervalKey
      *            Key in <code>parameters</code> for the minimum interval
      *            parameter; if <code>null</code>, no minimum interval may be
      *            specified and it is assumed to be 0.
+     * @param individualBoundsOnlyForFirstIdentifier
+     *            Flag indicating whether or not only the first state identifier
+     *            can have its own allowable boundaries.
      * @param lowest
      *            Lowest allowable value; the minimum value may not be lower
      *            than this.
@@ -94,12 +73,13 @@ public class BoundedMultiLongValidator extends MultiStateValidator<Long> {
      *            than this.
      */
     public BoundedMultiLongValidator(Map<String, Object> parameters,
-            String minimumIntervalKey, Long lowest, Long highest)
-            throws MegawidgetSpecificationException {
-        this.parameters = parameters;
-        this.minimumIntervalKey = minimumIntervalKey;
-        this.lowest = lowest;
-        this.highest = highest;
+            String minimumValuesKey, String maximumValuesKey,
+            String minimumIntervalKey,
+            boolean individualBoundsOnlyForFirstIdentifier, Long lowest,
+            Long highest) throws MegawidgetSpecificationException {
+        super(parameters, minimumValuesKey, maximumValuesKey,
+                minimumIntervalKey, individualBoundsOnlyForFirstIdentifier,
+                Long.class, lowest, highest);
     }
 
     // Protected Constructors
@@ -115,12 +95,6 @@ public class BoundedMultiLongValidator extends MultiStateValidator<Long> {
      */
     protected BoundedMultiLongValidator(BoundedMultiLongValidator other) {
         super(other);
-        parameters = null;
-        minimumIntervalKey = other.minimumIntervalKey;
-        lowest = other.lowest;
-        highest = other.highest;
-        helper = new RangeValidatorHelper<Long>(other.helper);
-        minimumInterval = other.minimumInterval;
     }
 
     // Public Methods
@@ -131,138 +105,38 @@ public class BoundedMultiLongValidator extends MultiStateValidator<Long> {
         return (V) new BoundedMultiLongValidator(this);
     }
 
-    /**
-     * Get the minimum allowed value.
-     * 
-     * @return Minimum allowed value.
-     */
-    public final Long getMinimumValue() {
-        return helper.getMinimumValue();
-    }
-
-    /**
-     * Get the maximum allowed value.
-     * 
-     * @return Maximum allowed value.
-     */
-    public final Long getMaximumValue() {
-        return helper.getMaximumValue();
-    }
-
-    /**
-     * Get the minimum interval.
-     * 
-     * @return Minimum interval.
-     */
-    public Long getMinimumInterval() {
-        return minimumInterval;
-    }
-
-    @Override
-    public Long convertToStateValue(String identifier, Object object)
-            throws MegawidgetException {
-        Long value = ConversionUtilities.getStateLongObjectFromObject(
-                identifier, getType(), object, helper.getMinimumValue());
-        if ((value < helper.getMinimumValue())
-                || (value > helper.getMaximumValue())) {
-            throw new MegawidgetStateException(getIdentifiers().get(
-                    getIdentifiers().size() - 1), getType(), value,
-                    "out of bounds");
-        }
-        return value;
-    }
-
-    @Override
-    public Map<String, Long> convertToStateValues(
-            Map<String, ?> objectsForIdentifiers) throws MegawidgetException {
-
-        /*
-         * If the map is empty, come up with some default values equally spaced
-         * along the allowable range.
-         */
-        if ((objectsForIdentifiers == null) || objectsForIdentifiers.isEmpty()) {
-            Map<String, Long> defaultMap = new HashMap<>();
-            long range = helper.getMaximumValue() - helper.getMinimumValue();
-            long interval = range / (getIdentifiers().size() + 1);
-            long value = interval;
-            for (String identifier : getIdentifiers()) {
-                defaultMap.put(identifier, value);
-                value += interval;
-            }
-            objectsForIdentifiers = defaultMap;
-        }
-
-        /*
-         * Build a map of the converted values, checking each value in order to
-         * ensure that it is within bounds and that all values are in ascending
-         * order with respect to the order of the state identifiers, and have at
-         * least the minimum interval in between them.
-         */
-        Map<String, Long> valuesForIdentifiers = new HashMap<>(
-                objectsForIdentifiers.size());
-        Long lastValue = null;
-        for (int j = 0; j < getIdentifiers().size(); j++) {
-            String identifier = getIdentifiers().get(j);
-            Long value = ConversionUtilities.getStateLongObjectFromObject(
-                    identifier, getType(),
-                    objectsForIdentifiers.get(identifier), null);
-            if ((j == 0) && (value < helper.getMinimumValue())) {
-                throw new MegawidgetStateException(identifier, getType(),
-                        value, "out of bounds");
-            } else if ((j > 0) && (value < lastValue + minimumInterval)) {
-                throw new MegawidgetStateException(identifier, getType(),
-                        value, "not in ascending order");
-            }
-            valuesForIdentifiers.put(identifier, value);
-            lastValue = value;
-        }
-        if ((lastValue != null) && (lastValue > helper.getMaximumValue())) {
-            throw new MegawidgetStateException(getIdentifiers().get(
-                    getIdentifiers().size() - 1), getType(), lastValue,
-                    "out of bounds");
-        }
-        return valuesForIdentifiers;
-    }
-
     // Protected Methods
 
     @Override
-    protected void doInitialize() throws MegawidgetSpecificationException {
-        helper = new RangeValidatorHelper<Long>(getType(),
-                getMegawidgetIdentifier(), parameters, null, null, Long.class,
-                lowest, highest);
-        if (minimumIntervalKey != null) {
-            minimumInterval = getMinimumInterval(minimumIntervalKey, parameters);
-        } else {
-            minimumInterval = 0L;
-        }
+    protected Long getSmallestAllowableInterval() {
+        return 0L;
     }
 
-    // Private Methods
+    @Override
+    protected Long add(Long first, Long second) {
+        return first + second;
+    }
 
-    /**
-     * Get the minimum interval from the specified parameters map using the
-     * specified key.
-     * 
-     * @param key
-     *            Key with which object to be used as the minimum interval is
-     *            associated in <code>parameters</code>.
-     * @param parameters
-     *            Map holding parameters.
-     * @return Minimum interval.
-     * @throws MegawidgetSpecificationException
-     *             If a valid minimum interval cannot be found.
-     */
-    private Long getMinimumInterval(String key, Map<String, Object> parameters)
-            throws MegawidgetSpecificationException {
-        long minimumInterval = ConversionUtilities
-                .getSpecifierLongValueFromObject(getMegawidgetIdentifier(),
-                        getType(), parameters.get(key), key, 0L);
-        if (minimumInterval < 0L) {
-            throw new MegawidgetSpecificationException(
-                    getMegawidgetIdentifier(), getType(), key,
-                    parameters.get(key), "must be non-negative long");
+    @Override
+    protected Long subtract(Long minuend, Long subtrahend) {
+        return minuend - subtrahend;
+    }
+
+    @Override
+    protected Long multiply(Long first, Long second) {
+        return first * second;
+    }
+
+    @Override
+    protected Long divide(Long dividend, Long divisor) {
+        if (divisor == 0L) {
+            throw new ArithmeticException("divide by zero");
         }
-        return minimumInterval;
+        return dividend / divisor;
+    }
+
+    @Override
+    protected Long convertToNumber(int value) {
+        return new Long(value);
     }
 }

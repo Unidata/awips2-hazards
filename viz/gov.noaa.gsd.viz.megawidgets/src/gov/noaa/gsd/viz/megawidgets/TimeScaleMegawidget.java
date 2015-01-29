@@ -73,6 +73,10 @@ import org.eclipse.swt.widgets.Composite;
  *                                           current state.
  * Jul 01, 2014    3512    Chris.Golden      Made subclass of new base class
  *                                           MultiTimeMegawidget.
+ * Jan 28, 2015    2331    Chris.Golden      Added mutable properties allowing the
+ *                                           defining of valid boundaries for the
+ *                                           values, with potentially a different
+ *                                           boundary for each state identifier.
  * </pre>
  * 
  * @author Chris.Golden
@@ -98,7 +102,7 @@ public class TimeScaleMegawidget extends MultiTimeMegawidget {
             /*
              * Make the value valid for the scale widget.
              */
-            value = convertToValueAcceptableToScale(value);
+            value = convertToValueAcceptableToScale(identifier, value);
 
             /*
              * Ensure that the new value is not too close to or beyond a
