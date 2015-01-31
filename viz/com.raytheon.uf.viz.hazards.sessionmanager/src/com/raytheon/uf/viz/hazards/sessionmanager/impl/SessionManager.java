@@ -34,6 +34,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEvent
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeInteropRecordsRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeWarningRequest;
+import com.raytheon.uf.common.hazards.productgen.ProductGenerationException;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
@@ -468,6 +469,12 @@ public class SessionManager implements
         } else {
             setPreviewOngoing(true);
         }
-        productManager.generateProducts(issue);
+        try {
+            productManager.generateProducts(issue);
+        } catch (ProductGenerationException e) {
+            setPreviewOngoing(false);
+            setIssueOngoing(false);
+            statusHandler.error("Error during product generation", e);
+        }
     }
 }

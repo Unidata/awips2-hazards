@@ -77,9 +77,13 @@ public class HazardTypeEntry {
 
     private String hazardTypeFirstRecommender;
 
-    private boolean inclusionTest;
+    private boolean inclusionFractionTest;
 
-    private double inclusionPercentage;
+    private double inclusionFraction;
+
+    private double inclusionAreaInSqKm;
+
+    private boolean inclusionAreaTest;
 
     private int hazardPointLimit;
 
@@ -252,33 +256,63 @@ public class HazardTypeEntry {
     }
 
     /**
-     * @return the inclusionTest
+     * @return the inclusionFractionTest
      */
-    public boolean isInclusionTest() {
-        return inclusionTest;
+    public boolean isInclusionFractionTest() {
+        return inclusionFractionTest;
     }
 
     /**
-     * @param inclusionTest
-     *            the inclusionTest to set
+     * @param inclusionFractionTest
+     *            the inclusionFractionTest to set
      */
-    public void setInclusionTest(boolean inclusionTest) {
-        this.inclusionTest = inclusionTest;
+    public void setInclusionFractionTest(boolean inclusionFractionTest) {
+        this.inclusionFractionTest = inclusionFractionTest;
     }
 
     /**
-     * @return the inclusionPercentage
+     * @return the inclusionFraction
      */
-    public double getInclusionPercentage() {
-        return inclusionPercentage;
+    public double getInclusionFraction() {
+        return inclusionFraction;
     }
 
     /**
-     * @param inclusionPercentage
-     *            the inclusionPercentage to set
+     * @param inclusionFraction
+     *            the inclusionFraction to set
      */
-    public void setInclusionPercentage(double inclusionPercentage) {
-        this.inclusionPercentage = inclusionPercentage;
+    public void setInclusionFraction(double inclusionFraction) {
+        this.inclusionFraction = inclusionFraction;
+    }
+
+    /**
+     * @return the inclusionAreaInSqKm
+     */
+    public double getInclusionAreaInSqKm() {
+        return inclusionAreaInSqKm;
+    }
+
+    /**
+     * @param inclusionAreaInSqKm
+     *            the inclusionAreaInSqKm to set
+     */
+    public void setInclusionAreaInSqKm(double inclusionAreaInSqKm) {
+        this.inclusionAreaInSqKm = inclusionAreaInSqKm;
+    }
+
+    /**
+     * @return the inclusionAreaTest
+     */
+    public boolean isInclusionAreaTest() {
+        return inclusionAreaTest;
+    }
+
+    /**
+     * @param inclusionAreaTest
+     *            the inclusionAreaTest to set
+     */
+    public void setInclusionAreaTest(boolean inclusionAreaTest) {
+        this.inclusionAreaTest = inclusionAreaTest;
     }
 
     /**
@@ -295,4 +329,5 @@ public class HazardTypeEntry {
     public void setPolygonBased(boolean polygonBased) {
         this.polygonBased = polygonBased;
     }
+
 }

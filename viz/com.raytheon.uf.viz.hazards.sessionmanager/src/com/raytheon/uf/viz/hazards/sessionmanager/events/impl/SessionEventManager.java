@@ -73,6 +73,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
+import com.raytheon.uf.common.hazards.productgen.ProductGenerationException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -2323,6 +2324,10 @@ public class SessionEventManager implements
 
             if (hazardType != null) {
                 List<String> ugcs = buildUGCs(hazardEvent);
+                if (ugcs.isEmpty()) {
+                    throw new ProductGenerationException(
+                            "No UGCs included in hazard.  Check inclusions in HazardTypes.py");
+                }
                 hazardEvent.addHazardAttribute(HazardConstants.UGCS,
                         (Serializable) ugcs);
             }

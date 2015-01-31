@@ -954,7 +954,7 @@ public final class HazardServicesMessageHandler implements
             sessionEventManager
                     .sortEvents(SessionEventManager.SEND_SELECTED_FRONT);
         } else if (label
-                .equals(HazardConstants.CONTEXT_MENU_CLIP_AND_REDUCE_SELECTED_HAZARDS)) {
+                .equals(HazardConstants.CONTEXT_MENU_SHOW_PRODUCT_GEOMETRY)) {
             sessionEventManager.clipSelectedHazardGeometries();
             sessionEventManager.reduceSelectedHazardGeometries();
         } else {

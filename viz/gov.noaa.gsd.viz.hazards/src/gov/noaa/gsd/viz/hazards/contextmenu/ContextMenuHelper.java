@@ -267,7 +267,7 @@ public class ContextMenuHelper {
         List<IContributionItem> items = new ArrayList<>();
         for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
             if (event.getHazardType() != null) {
-                items.add(newAction(HazardConstants.CONTEXT_MENU_CLIP_AND_REDUCE_SELECTED_HAZARDS));
+                items.add(newAction(HazardConstants.CONTEXT_MENU_SHOW_PRODUCT_GEOMETRY));
             }/*
               * Logic to handle hazard-specific contributions to the context
               * menu. This is used, for example, by the "Add/Remove Shapes"

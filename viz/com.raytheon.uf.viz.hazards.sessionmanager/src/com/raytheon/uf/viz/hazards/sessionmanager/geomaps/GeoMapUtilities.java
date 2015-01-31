@@ -53,6 +53,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.OffshoreZoneUG
 import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.ZoneUGCBuilder;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.TopologyException;
 
 /**
@@ -85,6 +86,8 @@ import com.vividsolutions.jts.geom.TopologyException;
  */
 
 public class GeoMapUtilities {
+
+    private static final double KM_PER_DEGREE_AT_EQUATOR = 111.03;
 
     private enum MapGeometryExtractionApproach {
         CONTAINING, CONTAINED, INTERSECTION
@@ -694,11 +697,15 @@ public class GeoMapUtilities {
     private boolean testInclusion(Geometry mapGeometry,
             Geometry hazardGeometry, HazardTypeEntry hazardTypeEntry) {
 
-        boolean testInclusion = hazardTypeEntry.isInclusionTest();
-        double inclusionPercentage = hazardTypeEntry.getInclusionPercentage();
+        boolean inclusionFractionTest = hazardTypeEntry
+                .isInclusionFractionTest();
+        double inclusionFraction = hazardTypeEntry.getInclusionFraction();
+        boolean inclusionAreaTest = hazardTypeEntry.isInclusionAreaTest();
+        double inclusionAreaInSqKm = hazardTypeEntry.getInclusionAreaInSqKm();
 
-        return testInclusion(mapGeometry, hazardGeometry, testInclusion,
-                inclusionPercentage);
+        return testInclusion(mapGeometry, hazardGeometry,
+                inclusionFractionTest, inclusionFraction,
+                inclusionAreaTest, inclusionAreaInSqKm);
     }
 
     /*
@@ -709,22 +716,32 @@ public class GeoMapUtilities {
             Geometry hazardGeometry) {
 
         return testInclusion(mapGeometry, hazardGeometry, true,
-                DEFAULT_INTEROPERABILITY_OVERLAP_REQUIREMENT);
+                DEFAULT_INTEROPERABILITY_OVERLAP_REQUIREMENT, false, 0.0);
     }
 
     private boolean testInclusion(Geometry mapGeometry,
-            Geometry hazardGeometry, boolean testInclusion,
-            double inclusionPercentage) {
+            Geometry hazardGeometry, boolean inclusionFractionTest,
+            double inclusionFraction, boolean inclusionAreaTest,
+            double inclusionAreaInSqKm) {
         try {
-            if (testInclusion == false) {
-                return true;
+            if (inclusionFractionTest == false) {
+                inclusionFraction = 0.0001;
             }
 
             Geometry intersection = hazardGeometry.intersection(mapGeometry);
-            double intersectionPercentage = intersection.getArea()
+            double intersectionAreaInSquareDegrees = intersection.getArea();
+            double intersectionFraction = intersectionAreaInSquareDegrees
                     / mapGeometry.getArea();
 
-            return intersectionPercentage > inclusionPercentage;
+            boolean included = intersectionFraction > inclusionFraction;
+            if (included && inclusionAreaTest) {
+                Point centroid = intersection.getCentroid();
+                double cosLat = Math.cos(Math.PI * centroid.getCoordinate().y);
+                double inclusionAreaInSquareDegrees = inclusionAreaInSqKm
+                        / (KM_PER_DEGREE_AT_EQUATOR * KM_PER_DEGREE_AT_EQUATOR * cosLat);
+                included = intersectionAreaInSquareDegrees > inclusionAreaInSquareDegrees;
+            }
+            return included;
         } catch (TopologyException e) {
             /*
              * TODO Use {@link GeometryPrecisionReducer}?

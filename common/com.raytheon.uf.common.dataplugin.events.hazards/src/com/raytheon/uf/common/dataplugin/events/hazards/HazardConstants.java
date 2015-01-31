@@ -631,7 +631,7 @@ public final class HazardConstants {
 
     public static final String CONTEXT_MENU_HAZARD_INFORMATION_DIALOG = "Hazard Information Dialog";
 
-    public static final String CONTEXT_MENU_CLIP_AND_REDUCE_SELECTED_HAZARDS = "Clip and Reduce Selected Hazards";
+    public static final String CONTEXT_MENU_SHOW_PRODUCT_GEOMETRY = "Show Product Geometry";
 
     public static final String CONTEXT_MENU_ADD_VERTEX = "Add Vertex";
 
