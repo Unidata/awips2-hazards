@@ -2,12 +2,6 @@ import collections
 from KeyInfo import KeyInfo
 import HydroGenerator
 
-# Import all the metaData for hazards covered by this generator
-# TODO Address metadata overrides
-import MetaData_FF_W_Convective
-import MetaData_FF_W_NonConvective
-import MetaData_FF_W_BurnScar
-
 '''
 Description: Product Generator for the FFW and FFS products.
 
@@ -21,6 +15,7 @@ Oct 24, 2014   4933      Robert.Blum         Implement Product Generation Framew
 Dec 18, 2014   4933      Robert.Blum         Fixing issue with rebase conflict that was missed in previous checkin.
 Jan 12, 2015   4937      Robert.Blum         Refactor to use new generator class hierarchy 
                                              introduced with ticket 4937.
+Jan 31, 2015   4937      Robert.Blum         General cleanup and minor bug fixes.
 
 @author Tracy.L.Hansen@noaa.gov
 @version 1.0
@@ -74,131 +69,60 @@ class Product(HydroGenerator.Product):
         self._getVariables(eventSet, dialogInputMap)
         eventSetAttributes = eventSet.getAttributes()
 
-        # Determine the list of segments given the hazard events 
-        segments = self._getSegments(self._inputHazardEvents)
+        if not self._inputHazardEvents:
+            return []
 
-        # Determine the list of products and associated segments given the segments
-        productSegmentGroups = self._groupSegments(segments)
+        productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._inputHazardEvents, eventSetAttributes)
 
-        # List of product dictionaries
-        productDicts = []
-        for productSegmentGroup in productSegmentGroups:
-            # Update these first so they are correct when we init the product dictionary.
-            self._productID = productSegmentGroup.productID
-            self._productName = productSegmentGroup.productName
+        return productDicts, hazardEvents
 
-            # Init the productDict
-            productDict = collections.OrderedDict()
-            self._initializeProductDict(productDict, eventSetAttributes)
-
-            # Add productParts to the dictionary
-            productParts = productSegmentGroup.productParts
-            productDict['productParts'] = productParts
-
-            # Add dialogInputMap entries to the product dictionary
-            for key in dialogInputMap.keys():
-                productDict[key] = dialogInputMap[key]
-
-            segments = []
-            event = None
-            for productSegment in productSegmentGroup.productSegments:
-                self._productSegment = productSegment
-
-                for vtecRecord in productSegment.vtecRecords:
-                    for event in eventSet:
-                        if event.getEventID() in vtecRecord.get('eventID'):
-                            break
-                self._initializeMetaData(event)
-
-                # Create the dict for each segment and add it to the list
-                self._setupSegment(event)
-                segmentDict = self._prepareSegment(event, vtecRecord)
-                segments.append(segmentDict)
-
-            productDict['segments'] = segments
-            productDict['startTime'] = event.getStartTime()
-            productDict['endTime'] = event.getEndTime()
-            productDicts.append(productDict)
-
-        # If issuing, save the VTEC records for legacy products
-        self._saveVTEC(self._generatedHazardEvents)
-
-        return productDicts, self._generatedHazardEvents
-
-    def _preProcessHazardEvents(self, hazardEvents):        
-        '''        
-        Set Immediate Cause for FF.W.NonConvective prior to VTEC processing        
+    def _preProcessHazardEvents(self, hazardEvents):
+        '''
+        Set Immediate Cause for FF.W.NonConvective prior to VTEC processing
         '''
         for hazardEvent in hazardEvents:
             if hazardEvent.getHazardType() == 'FF.W.NonConvective':
-                immediateCause = self.hydrologicCauseMapping(hazardEvent.get('hydrologicCause'), 'immediateCause')
+                immediateCause = self.hydrologicCauseMapping(hazardEvent.get('hydrologicCause'))
                 hazardEvent.set('immediateCause', immediateCause)
-                
-    def _initializeMetaData(self, event):
-        # TODO Address metadata overrides
-        subType = event.getSubType()
-        if subType == 'NonConvective':
-            self._metadata = MetaData_FF_W_NonConvective.MetaData()
-        elif subType == 'Convective':
-            self._metadata = MetaData_FF_W_Convective.MetaData()
-        else:
-            self._metadata = MetaData_FF_W_BurnScar.MetaData()
-        self._metadataDict = self._metadata.execute(hazardEvent=event)
 
-    def _prepareSegment(self, event, vtecRecord):
-        self._setProductInformation(vtecRecord, event)
+    def _prepareSection(self, event, vtecRecord, metaData):
         attributes = event.getHazardAttributes()
 
         # This creates a list of ints for the eventIDs and also formats the UGCs correctly.
         eventIDs, ugcList = self.parameterSetupForKeyInfo(list(vtecRecord.get('eventID', None)), attributes.get('ugcs', None))
 
         # Attributes that get skipped. They get added to the dictionary indirectly.
-        noOpAttributes = ('ugcs', 'ugcPortions', 'ugcPartsOfState')
+        noOpAttributes = ['ugcs', 'ugcPortions', 'ugcPartsOfState']
 
-        segment = {}
-        segment['hazards'] = [{'act': vtecRecord.get('act'),
-                               'phenomenon': vtecRecord.get("phen"),
-                               'significance': vtecRecord.get("sig")}]
+        section = collections.OrderedDict()
         for attribute in attributes:
             # Special case attributes that need additional work before adding to the dictionary
             if attribute == 'additionalInfo':
-                additionalInfo, citiesListFlag = self._prepareAdditionalInfo(attributes[attribute] , event)
+                additionalInfo, citiesListFlag = self._prepareAdditionalInfo(attributes[attribute] , event, metaData)
                 additionalCommentsKey = KeyInfo('additionalComments', self._productCategory, self._productID, eventIDs, ugcList, editable=True, label='Additional Comments')
-                segment[additionalCommentsKey] = additionalInfo
-                segment['citiesListFlag'] = citiesListFlag
+                section[additionalCommentsKey] = additionalInfo
+                section['citiesListFlag'] = citiesListFlag
             elif attribute == 'cta':
-                callsToActionKey = KeyInfo('callsToAction', self._productCategory, self._productID, eventIDs, ugcList, editable=True, label='Calls To Action')
-                segment[callsToActionKey] = self._tpc.getProductStrings(event, self._metadataDict, 'cta')
-            elif attribute == 'eventType':
-                eventTypeKey = KeyInfo('eventType', self._productCategory, self._productID, eventIDs, ugcList, editable=True, label='Event Type')
-                segment[eventTypeKey] = self._tpc.getProductStrings(event, self._metadataDict, 'eventType')
-            elif attribute == 'rainAmt':
-                segment['rainAmt'] = self._tpc.getProductStrings(event, self._metadataDict, 'rainAmt')
-            elif attribute == 'debrisFlows':
-                segment['debrisFlows'] = self._tpc.getProductStrings(event, self._metadataDict, 'debrisFlows')
+                # These are now added at the segment level. Do we want to add here as well?
+                callsToActionValue = self._tpc.getProductStrings(event, metaData, 'cta')
+                section['callsToAction'] = callsToActionValue
             elif attribute in noOpAttributes:
                 continue
             else:
-                segment[attribute] = attributes.get(attribute, None)
+                section[attribute] = attributes.get(attribute, None)
 
-        # Create basis statement
-        basisText = self.basisFromHazardEvent(event)
+        section['impactedAreas'] = self._prepareImpactedAreas(attributes)
+        section['impactedLocations'] = self._prepareImpactedLocations(event.getGeometry(), [])
+        section['geometry'] = event.getGeometry()
+        section['subType'] = event.getSubType()
+        section['timeZones'] = self._productSegment.timeZones
+        section['vtecRecord'] = vtecRecord
+        section['startTime'] = event.getStartTime()
+        section['endTime'] = event.getEndTime()
+        self._cityList(section, event)
 
-        # Add it to the dictionary
-        basisKey = KeyInfo('basisBullet', self._productCategory, self._productID, eventIDs, ugcList, editable=True, label='Basis')
-        segment[basisKey] = basisText
-
-        segment['typeOfFlooding'] = self.hydrologicCauseMapping(attributes.get('hydrologicCause',None), 'typeOfFlooding') 
-        segment['impactedAreas'] = self._prepareImpactedAreas(attributes)
-        segment['impactedLocations'] = self._prepareImpactedLocations(event.getGeometry(), [])
-        segment['geometry'] = event.getGeometry()
-        segment['subType'] = event.getSubType()
-        segment['timeZones'] = self._productSegment.timeZones
-        segment['vtecRecords'] = self._productSegment.vtecRecords
-        segment['impactsStringForStageFlowTextArea'] = event.get('impactsStringForStageFlowTextArea', None)
-        self._cityList(segment, event)
-
-        return segment
+        self._setProductInformation(vtecRecord, event)
+        return section
 
     def _groupSegments(self, segments):
         '''

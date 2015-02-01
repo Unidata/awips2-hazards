@@ -15,6 +15,8 @@
    Dec 18, 2014   4933      Robert.Blum         Fixing issue with rebase conflict that was missed 
                                                 in previous checkin.
    Jan 12, 2015   4937      Robert.Blum         Changes for PGFv3.
+   Jan 31, 2015   4937      Robert.Blum         Added missing break statement and removed space when
+                                                substituting hashtags.
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -696,7 +698,8 @@ class TextProductCommon(object):
                     returnVal = returnVal.replace('  ', '')
                     returnVal = returnVal.replace('\n', ' ')
                     returnVal = returnVal.replace('</br>', '\n')
-                    returnVal = self.substituteParameters(hazardEvent, returnVal, formatMethod, formatHashTags) 
+                    returnVal = self.substituteParameters(hazardEvent, returnVal, formatMethod, formatHashTags)
+                    break
         return returnVal
     
     def substituteParameters(self, hazardEvent, returnVal, formatMethod=None, formatHashTags=[]):
@@ -712,8 +715,7 @@ class TextProductCommon(object):
                 formattedVal = formatMethod(hazardEvent.getCreationTime(), replaceVal)
             else:
                 formattedVal = self.formatAsNecessary(replaceVal)
-            returnVal = returnVal.replace('#' + hashTag + '#', " " + formattedVal)
-
+            returnVal = returnVal.replace('#' + hashTag + '#', formattedVal)
         return returnVal
     
     def formatAsNecessary(self, val):

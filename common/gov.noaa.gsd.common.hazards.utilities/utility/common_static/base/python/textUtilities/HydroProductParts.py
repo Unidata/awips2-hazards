@@ -9,6 +9,7 @@
     11/10        4933       Robert.Blum    Added endSegment part for FFS
     1/12         4937       Robert.Blum    PGFv3 changes for FLW_FLS
     01/26/2015   4936       chris.cody     Implement scripts for Flash Flood Watch Products (FFA,FAA,FLA)
+    01/31/2015   4937       Robert.Blum    Removed unneeded code.
 '''
 import types, collections
 
@@ -284,8 +285,8 @@ class HydroProductParts():
         partsList += [ 'productHeader', 'CR']
         
         if not non_CAN_EXP:
-            partsList += ['overviewSynopsis_area']  
-        
+            partsList += ['overviewSynopsis_area']
+
         partsList += [
                 ('segments', segmentParts),
                 ]         
@@ -298,8 +299,6 @@ class HydroProductParts():
         @productSegment -- (segment, vtecRecords)
         @return  productParts for the given segment
         '''
-        
-        productVtecRecord = None
         segment = productSegment.segment
         vtecRecords = productSegment.vtecRecords
         sectionParts = []
@@ -307,8 +306,6 @@ class HydroProductParts():
         non_CAN_EXP = True
         phen = None
         for vtecRecord in vtecRecords:
-            #This product has a single vtecRecord
-            productVtecRecord = vtecRecord
             section = {
                 'arguments': ((segment, vtecRecords), vtecRecord, {'bulletFormat':'bulletFormat_CR'}),
                 'partsList': self._sectionPartsList_FFA_FLW_FLS_area(vtecRecord),
@@ -342,6 +339,7 @@ class HydroProductParts():
 
         if pil == 'FFA':  
             partsList.append('summaryHeadlines')
+            partsList.append('CR')
 
         partsList.append(('sections', sectionParts))
         
@@ -349,12 +347,6 @@ class HydroProductParts():
         # Should the statement be part of the CTA's (example) or separate (directive)?
         #if pil == 'FFA' and non_CAN_EXP: 
             #partsList.append('meaningOfStatement')
-            
-        phensig = ""
-        if productVtecRecord is not None: 
-            phensig = productVtecRecord['phensig']
-            
-        #if ((non_CAN_EXP) and (phensig != 'FA.A')):
         if (non_CAN_EXP):
             partsList.append('callsToAction')
             

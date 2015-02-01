@@ -6,6 +6,7 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     Jan 12, 2015    4937    Robert.Blum Initial creation
+    Jan 31, 2015    4937    Robert.Blum General cleanup
 '''
 import datetime
 import collections
@@ -56,79 +57,81 @@ class Format(Legacy_Base_Formatter.Format):
             LOWER DEMOPOLIS L&D          68  43.6 7 AM 1.4  44.0  45.0  52.0  68.0
         '''
         # TODO Determine if product or segment level
-        return '| floodPointTable Placeholder |'
+        return '\n| floodPointTable Placeholder |\n'
 
     ################# Segment Level
 
     ###################### Section Level
 
     def _observedStageBullet(self, segmentDict):
-        if segmentDict['observedCategory'] < 0:
+        if segmentDict.get('observedCategory') < 0:
             bulletContent = 'There is no current observed data.'
         else:
-            stageFlowName = segmentDict['stageFlowName']
-            observedStage = segmentDict['observedStage']
-            stageFlowUnits = segmentDict['stageFlowUnits']
-            observedTime = self._getFormattedTime(segmentDict['observedTime_ms'], timeZones=self.timezones)
+            stageFlowName = segmentDict.get('stageFlowName')
+            observedStage = segmentDict.get('observedStage')
+            stageFlowUnits = segmentDict.get('stageFlowUnits')
+            observedTime = self._getFormattedTime(segmentDict.get('observedTime_ms'), timeZones=self.timezones)
 
             bulletContent = 'At '+observedTime+ 'the '+stageFlowName+' was '+`observedStage`+' '+stageFlowUnits+'.'
-        return bulletContent
+        return '* ' + bulletContent + '\n'
 
     def _floodStageBullet(self, segmentDict):
-        floodStage = segmentDict['floodStage']
+        floodStage = segmentDict.get('floodStage')
         if floodStage != self.MISSING_VALUE:
-            bulletContent = 'Flood stage is '+`floodStage`+' '+segmentDict['stageFlowUnits']+'.'
+            bulletContent = 'Flood stage is '+`floodStage`+' '+segmentDict.get('stageFlowUnits')+'.'
         else:
             bulletContent = ''
-        return bulletContent
+        return '* ' + bulletContent + '\n'
 
     def _otherStageBullet(self, segmentDict):
-        bulletContent = '* |* Default otherStageBullet *|'
-        return bulletContent
+        # TODO This productPart needs to be completed
+        bulletContent = '|* Default otherStageBullet *|'
+        return '* ' + bulletContent + '\n'
 
     def _floodCategoryBullet(self, segmentDict):
-        observedCategory = segmentDict['observedCategory']
-        observedCategoryName = segmentDict['observedCategoryName']
-        maxFcstCategory = segmentDict['maxFcstCategory']
-        maxFcstCategoryName = segmentDict['maxFcstCategoryName']
+        observedCategory = segmentDict.get('observedCategory')
+        observedCategoryName = segmentDict.get('observedCategoryName')
+        maxFcstCategory = segmentDict.get('maxFcstCategory')
+        maxFcstCategoryName = segmentDict.get('maxFcstCategoryName')
         if observedCategory <= 0 and maxFcstCategory > 0:
             bulletContent = maxFcstCategoryName + ' flooding is forecast.'
         elif observedCategory > 0 and maxFcstCategory > 0:
             bulletContent = observedCategoryName + ' flooding is occurring and '+maxFcstCategoryName+' flooding is forecast.'
         else:
-            action = segmentDict['hazards'][0]['act']
+            action = segmentDict.get('vtecRecord').get('act')
             if action == 'ROU' or (observedCategory == 0 and maxFcstCategory < 0):
                 bulletContent = 'No flooding is currently forecast.'
             else:
                 bulletContent = '|* Default floodCategoryBullet *|'
-        return bulletContent
+        return '* ' + bulletContent + '\n'
 
     def _recentActivityBullet(self, segmentDict):
         bulletContent = '* '
-        if segmentDict['observedCategory'] > 0:
-            maxStage = segmentDict['max24HourObservedStage']
-            observedTime = self._getFormattedTime(segmentDict['observedTime_ms'], timeZones=self.timezones)
+        if segmentDict.get('observedCategory') > 0:
+            maxStage = segmentDict.get('max24HourObservedStage')
+            observedTime = self._getFormattedTime(segmentDict.get('observedTime_ms'), timeZones=self.timezones)
             bulletContent = '* Recent Activity...The maximum river stage in the 24 hours ending at '+observedTime+' was '+`maxStage`+' feet. '
         else:
             bulletContent = '* |* Default recentActivityBullet *|'
-        return bulletContent
+        return bulletContent + '\n'
 
     def _forecastStageBullet(self, segmentDict):
-        action = segmentDict['hazards'][0]['act']
+        action = segmentDict.get('vtecRecord').get('act')
         riverDescription = self._getRiverDescription(segmentDict)
         forecastCrestStage = segmentDict.get('forecastCrestStage')
 
-        maximumForecastStage = segmentDict['maximumForecastStage']
-        maximumForecastTime_ms = segmentDict['maximumForecastTime_ms']
+        maximumForecastStage = segmentDict.get('maximumForecastStage')
+        maximumForecastTime_ms = segmentDict.get('maximumForecastTime_ms', self.MISSING_VALUE)
         maximumForecastTime_str = self._getFormattedTime(maximumForecastTime_ms, emptyValue='at time unknown', timeZones=self.timezones)
-        observedStage = segmentDict['observedStage']
-        floodStage = segmentDict['floodStage']
-        stageFlowUnits = segmentDict['stageFlowUnits']
-        forecastCrestTime_ms = segmentDict['forecastCrestTime_ms']
+        observedStage = segmentDict.get('observedStage')
+        floodStage = segmentDict.get('floodStage')
+        stageTrend = segmentDict.get('stageTrend')
+        stageFlowUnits = segmentDict.get('stageFlowUnits')
+        forecastCrestTime_ms = segmentDict.get('forecastCrestTime_ms', self.MISSING_VALUE)
         forecastCrestTime_str = self._getFormattedTime(forecastCrestTime_ms, timeZones=self.timezones)
-        forecastFallBelowFloodStageTime_ms = segmentDict['forecastFallBelowFloodStageTime_ms']
+        forecastFallBelowFloodStageTime_ms = segmentDict.get('forecastFallBelowFloodStageTime_ms', self.MISSING_VALUE)
         forecastFallBelowFloodStageTime_str = self._getFormattedTime(forecastFallBelowFloodStageTime_ms, timeZones=self.timezones)
-        forecastRiseAboveFloodStageTime_ms = segmentDict['forecastRiseAboveFloodStageTime_ms']
+        forecastRiseAboveFloodStageTime_ms = segmentDict.get('forecastRiseAboveFloodStageTime_ms', self.MISSING_VALUE)
         forecastRiseAboveFloodStageTime_str = self._getFormattedTime(forecastRiseAboveFloodStageTime_ms, timeZones=self.timezones)
 
         bulletContent = ''
@@ -166,10 +169,9 @@ class Format(Legacy_Base_Formatter.Format):
                 elif forecastCrestStage > observedStage and forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
                         bulletContent = riverDescription + ' will continue rising to near '+`forecastCrestStage`+' '+stageFlowUnits+' by '+\
                         forecastCrestTime_str+ ' then begin falling.'
-                elif forecastCrestStage > observedStage and forecastFallBelowFloodStageTime_ms != self.MISSING_VALUE and \
-                    forecastCrestStage > observedStage:
+                elif forecastCrestStage > observedStage and forecastFallBelowFloodStageTime_ms != self.MISSING_VALUE:
                     bulletContent = riverDescription + ' will continue rising to near '+`forecastCrestStage`+' '+stageFlowUnits+' by '+\
-                       forecastFallBelowFloodStageTime_str+'. ' 
+                       forecastCrestTime_str+'. ' + riverDescription + 'will fall below flood stage by ' +  forecastFallBelowFloodStageTime_str + '.'
                 elif maximumForecastStage <= observedStage and stageTrend == 'falling' and \
                     forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
                     # TODO Need SpecFcstStg and SpecFcstStgTime
@@ -183,13 +185,13 @@ class Format(Legacy_Base_Formatter.Format):
             if maximumForecastStage != self.MISSING_VALUE:
                 bulletContent = riverDescription + ' will rise to near '+`maximumForecastStage`+' '+stageFlowUnits+\
                       ' by '+maximumForecastTime_str+'. '
-        return '* Forecast...' + bulletContent
+        return '* Forecast...' + bulletContent + '\n'
 
     def _getRiverDescription(self, segmentDict):
         '''
         To use the actual river name:
         
-        return riverDescription = segmentDict['riverName_RiverName']
+        return riverDescription = segmentDict.get('riverName_RiverName')
         '''
         return 'The river'
 
@@ -218,21 +220,22 @@ class Format(Legacy_Base_Formatter.Format):
             crestString = "This crest compares to a previous crest of " + crest + " " + units + " on " + crestDate +"."
         else:
             crestString = 'Flood History...No available flood history available.'
-        return crestString
+        return crestString + '\n'
 
-    def _floodPointHeader(self):
+    def _floodPointHeader(self, segmentDict):
         # TODO This productPart needs to be completed
-        return 'Flood point header'
+        return 'Flood point header' + '\n'
 
-    def _floodPointHeadline(self):
+    def _floodPointHeadline(self, segmentDict):
         # TODO This productPart needs to be completed
-        return 'Flood point headline'
+        return 'Flood point headline' + '\n'
 
     ###################### Utility methods
 
     def getAreaPhrase(self, segmentDict):
         if segmentDict.get('geoType') == 'area':
             immediateCause = segmentDict.get('immediateCause')
+            areaPhrase  = self.getAreaPhraseBullet(segmentDict)
             ugcList = []
             for area in segmentDict['impactedAreas']:
                 ugcList.append(area['ugc'])
@@ -242,23 +245,59 @@ class Format(Legacy_Base_Formatter.Format):
                 hydrologicCause = segmentDict.get('hydrologicCause')
                 riverName = None
                 if immediateCause == 'DM' and hydrologicCause in ['dam', 'siteImminent', 'siteFailed']:
-                    damOrLeveeName = self._tpc.getProductStrings(hazardEvent, metaData, 'damOrLeveeName')
+                    damOrLeveeName = segmentDict.get('damOrLeveeName', '')
                     if damOrLeveeName:
                         damInfo = self._damInfo().get(damOrLeveeName)
                         if damInfo:
                             riverName = damInfo.get('riverName')
                     if not riverName or not damOrLeveeName:
-                        return ugcPhrase
+                        return areaPhrase
                     else:
-                        return 'The '+riverName+' below '+damOrLeveeName+ ' in ' + ugcPhrase
-            return ugcPhrase
+                        return 'The '+riverName+' below '+damOrLeveeName+ ' in...\n' + areaPhrase
+                else:
+                    typeOfFlooding = self.typeOfFloodingMapping(immediateCause)
+                    return typeOfFlooding + ' in...\n' + areaPhrase
+            return areaPhrase
         else:
             #  <River> <Proximity> <IdName> 
-            riverName = segmentDict['riverName_GroupName']
-            proximity = segmentDict['proximity']
+            riverName = segmentDict.get('riverName_GroupName')
+            proximity = segmentDict.get('proximity')
             # TODO Occasionally proximity comes back as None.
             # What should we make the default in that case?
             if proximity is None:
                 proximity = 'near'
-            riverPointName = segmentDict['riverPointName']
+            riverPointName = segmentDict.get('riverPointName')
             return  'the '+riverName + ' '+ proximity + ' ' + riverPointName
+
+    def typeOfFloodingMapping(self, immediateCuase):
+        mapping = {
+            'DM' : 'A levee failure',
+            'DR' : 'A dam floodgate release',
+            'GO' : 'A glacier-dammed lake outburst',
+            'IJ' : 'An ice jam',
+            'RS' : 'Extremely rapid snowmelt',
+            'SM' : 'Extremely rapid snowmelt caused by volcanic eruption'
+            }
+        if mapping.has_key(immediateCuase):
+            return mapping[immediateCuase]
+        else:
+            return ''
+
+    def immediateCauseMapping(self, immediateCauseCode):
+        immediateCauseDict = {"ER":"excessive rain",
+                              "SM":"snowmelt",
+                              "RS":"rain and snowmelt", 
+                              "DM":"a dam or levee failure",
+                              "DR":"a dam floodgate release",
+                              "GO":"a glacier-dammed lake outburst",
+                              "IJ":"an ice jam", 
+                              "IC":"rain and/or snow melt and/or ice jam",
+                              "FS":"upstream flooding plus storm surge", 
+                              "FT":"upstream flooding plus tidal effects",
+                              "ET":"elevated upstream flow plus tidal effects",
+                              "WT":"wind and/or tidal effects",
+                              "OT":"other effects",
+                              "MC":"multiple causes",
+                              "UU":"Unknown" }
+        immediateCauseText = immediateCauseDict[immediateCauseCode]
+        return immediateCauseText

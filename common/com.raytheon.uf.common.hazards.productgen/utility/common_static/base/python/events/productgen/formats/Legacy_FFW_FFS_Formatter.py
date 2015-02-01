@@ -6,24 +6,56 @@
     ------------ ---------- ----------- --------------------------
     Oct 24, 2014    4933    Robert.Blum Initial creation
     Jan 12  2015    4937    Robert.Blum Refactor to inherit from new
-                            formatter classes.
+                                        formatter classes.
+    Jan 31, 2015    4937    Robert.Blum General cleanup along with implementing a dictionary
+                                        mapping of productParts to the associated methods.
 '''
 
-import FormatTemplate
+
 import datetime
 
 import types, re, sys
-from KeyInfo import KeyInfo
 from com.raytheon.uf.common.hazards.productgen import ProductUtils
-from QueryAfosToAwips import QueryAfosToAwips
-from Bridge import Bridge
-from TextProductCommon import TextProductCommon
 import Legacy_Hydro_Formatter
 
 class Format(Legacy_Hydro_Formatter.Format):
 
     def initialize(self) :
+        self.initProductPartMethodMapping()
         super(Format, self).initialize()
+
+    def initProductPartMethodMapping(self):
+        self.productPartMethodMapping = {
+            'wmoHeader': self._wmoHeader,
+            'ugcHeader': self._ugcHeader,
+            'easMessage': self._easMessage,
+            'productHeader': self._productHeader,
+            'vtecRecords': self._vtecRecords,
+            'areaList': self._areaList,
+            'issuanceTimeDate': self._issuanceTimeDate,
+            'callsToAction': self._callsToAction,
+            'polygonText': self._polygonText,
+            'cityList': self._cityList,
+            'summaryHeadlines': self._summaryHeadlines,
+            'basisAndImpactsStatement_segmentLevel': self._basisAndImpactsStatement_segmentLevel,
+            'emergencyHeadline': self._emergencyHeadline,
+            'attribution': self._attribution,
+            'firstBullet': self._firstBullet,
+            'timeBullet': self._timeBullet,
+            'basisBullet': self._basisBullet,
+            'emergencyStatement': self._emergencyStatement,
+            'locationsAffected': self._locationsAffected,
+            'endingSynopsis': self._endingSynopsis,
+            'floodPointHeader': self._floodPointHeader,
+            'floodPointHeadline': self._floodPointHeadline,
+            'observedStageBullet': self._observedStageBullet,
+            'floodStageBullet': self._floodStageBullet,
+            'floodCategoryBullet': self._floodCategoryBullet,
+            'otherStageBullet': self._otherStageBullet,
+            'forecastStageBullet': self._forecastStageBullet,
+            'pointImpactsBullet': self._pointImpactsBullet,
+            'floodPointTable': self._floodPointTable
+                                }
 
     def execute(self, productDict):
         self.productDict = productDict
@@ -54,100 +86,16 @@ class Format(Legacy_Hydro_Formatter.Format):
                     print 'Legacy Part:', name, ': ', 
 
             partText = ''
-            if name == 'wmoHeader':
-                partText = self._wmoHeader(self._productID, self._siteID, self._startTime) + '\n\n'
-            elif name == 'wmoHeader_noCR': 
-                partText = self._wmoHeader(self._productID, self._siteID, self._startTime) + '\n'
-            elif name == 'setUp_product':
+            if name in self.productPartMethodMapping:
+                partText = self.productPartMethodMapping[name](productDict)
+            elif name in ['setUp_product', 'setUp_segment', 'setUp_section']:
                 pass
-            elif name == 'setUp_segment':
-                pass
-            elif name == 'ugcHeader':
-                partText = self._ugcHeader(productDict)
-            elif name == 'easMessage':
-                easMessage = self._easMessage(productDict['vtecRecords'])
-                if easMessage is not None:
-                    partText = easMessage + '\n'
-            elif name == 'productHeader':
-                partText = self._productHeader()
-            elif name == 'overview':
-                partText = '|* DEFAULT OVERVIEW SECTION *|\n\n'
-            elif name == 'vtecRecords':
-                partText = self._vtecRecords(productDict)
-            elif name == 'areaList':
-                partText = self._areaList(productDict)
-            elif name == 'issuanceTimeDate':
-                partText = self._issuanceTimeDate()
-            elif name == 'callsToAction':
-                partText = self._callsToAction(productDict, name)
-                if (self._runMode == 'Practice'):
-                    partText += 'This is a test message. Do not take action based on this message. \n\n'
-            elif name == 'polygonText':
-                partText = self._polygonText(productDict)
             elif name == 'endSegment':
                 partText = '\n$$\n\n' 
             elif name == 'CR':
                 partText = '\n'
-            elif name == 'cityList':
-                partText = self._cityList(productDict)
-            elif name == 'summaryHeadlines':
-                partText = self._summaryHeadlines(productDict)
-            elif name == 'basisAndImpactsStatement_segmentLevel':
-                partText = self._basisAndImpactsStatement_segmentLevel(productDict)
-            elif name == 'segments':
-                partText = self.processSubParts(productDict['segments'], infoDicts) 
-            elif name == 'sections':
-                partText = self.processSubParts(self.productDict['segments'], infoDicts)
-            elif name == 'setUp_section':
-                pass
-            elif name == 'attribution':
-                hazards = productDict['hazards']
-                # There is only 1 hazard
-                for hazard in hazards:
-                    partText += self._attribution(hazard, productDict) + '\n'
-            elif name == 'firstBullet':
-                hazards = productDict['hazards']
-                # There is only 1 hazard
-                for hazard in hazards:
-                    partText += self._firstBullet(hazard, productDict) + '\n'
-            elif name == 'timeBullet':
-                partText = self._timeBullet(productDict) + '\n'
-            elif name == 'basisBullet':
-                partText = self._basisBullet(productDict)
-            elif name == 'emergencyHeadline':
-                if (self._runMode == 'Practice'):
-                    partText = '...This message is for test purposes only... \n\n'
-                includeChoices = productDict['include']
-                if includeChoices and 'ffwEmergency' in includeChoices:
-                    partText += '...Flash Flood Emergency for ' + productDict['includeEmergencyLocation'] + '...\n\n'
-            elif name == 'emergencyStatement':
-                includeChoices = productDict['include']
-                if includeChoices and 'ffwEmergency' in includeChoices:
-                    partText = '  This is a Flash Flood Emergency for ' + productDict['includeEmergencyLocation'] + '\n\n'
-            elif name == 'locationsAffected':
-                partText = self._locationsAffected(productDict)
-            elif name == 'endingSynopsis':
-                partText = productDict.get('endingSynopsis', '')
-                if partText != '':
-                    partText += '\n\n'
-            elif name == 'floodPointHeader':
-                partText = self._floodPointHeader() + '\n'
-            elif name == 'floodPointHeadline':
-                partText = self._floodPointHeadline() + '\n'
-            elif name == 'observedStageBullet':
-                partText = '* ' + self._observedStageBullet(productDict) + '\n'
-            elif name == 'floodStageBullet':
-                partText = '* ' + self._floodStageBullet(productDict) + '\n'
-            elif name == 'floodCategoryBullet':
-                partText = '* ' + self._floodCategoryBullet(productDict) + '\n'
-            elif name == 'otherStageBullet':
-                partText = self._otherStageBullet(productDict) + '\n'
-            elif name == 'forecastStageBullet':
-                partText = self._forecastStageBullet(productDict) + '\n'
-            elif name == 'pointImpactsBullet':
-                partText = self._pointImpactsBullet(productDict)
-            elif name == 'floodPointTable':
-                partText = '\n' + self._floodPointTable(productDict) + '\n'
+            elif name in ['segments', 'sections']:
+                partText = self.processSubParts(productDict.get(name), infoDicts)
             else:
                 textStr = self._tpc.getVal(productDict, name)
                 if textStr:
@@ -160,156 +108,108 @@ class Format(Legacy_Hydro_Formatter.Format):
             text += partText
         return text
 
-    def processSubParts(self, infoDicts, subParts):
-        """
-        Generates Legacy text from a list of subParts e.g. segments or sections
-        @param infoDicts: a list of dictionaries for each subPart
-        @param subParts: a list of Product Parts for each segment
-        @return: Returns the legacy text of the subParts
-        """
-        text = '' 
-        for i in range(len(subParts)):
-            text += self._processProductParts(infoDicts[i], subParts[i].get('partsList'))
-        return text
-
     ######################################################
     #  Product Part Methods 
     ######################################################
 
     ################# Product Level
 
-    def _easMessage(self, vtecRecords):
+    def _easMessage(self, productDict):
+        vtecRecords = productDict.get('vtecRecords')
         for vtecRecord in vtecRecords:
             if 'sig' in vtecRecord:
                 if vtecRecord['sig'] is 'A':
-                    return 'Urgent - Immediate broadcast requested'
-        return 'Bulletin - EAS activation requested'
+                    return 'Urgent - Immediate broadcast requested\n'
+        return 'Bulletin - EAS activation requested\n'
 
     ################# Segment Level
 
     ################# Section Level
-    def _attribution(self, hazardEvent, productDict):
+    def _attribution(self, segmentDict):
         nwsPhrase = 'The National Weather Service in ' + self._wfoCity + ' has '
         attribution = ''
-        areaPhrase = self.createAreaPhrase(productDict)
+        areaPhrase = self.createAreaPhrase(segmentDict)
 
         # Use this to determine which first bullet format to use.
-        vtecRecords = productDict['vtecRecords']
-        for vtecRecord in vtecRecords:  # NOTE there is only one vtecRecord / hazard to process
-            hazName = vtecRecord['hdln']
+        vtecRecord = segmentDict.get('vtecRecord')
+        hazName = hazName = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
 
-            if len(vtecRecord['hdln']):
-                action = vtecRecord['act']
+        if hazName:
+            action = vtecRecord.get('act')
 
-            if action == 'NEW':
-                attribution = nwsPhrase + 'issued a'
-            elif action == 'CON':
-                attribution = 'the ' + hazName + ' remains in effect for...'
-            elif action == 'EXT':
-                attribution = 'the ' + hazName + ' is now in effect for...' 
-            elif action == 'CAN':
+        if action == 'NEW':
+            attribution = nwsPhrase + 'issued a'
+        elif action == 'CON':
+            attribution = 'the ' + hazName + ' remains in effect for...'
+        elif action == 'EXT':
+            attribution = nwsPhrase + 'has extended the'
+#                 attribution = 'the ' + hazName + ' is now in effect for...' 
+        elif action == 'CAN':
+            attribution = 'the ' + hazName + \
+               ' for... ' + areaPhrase + ' has been canceled.'
+        elif action == 'EXP':
+            expTimeCurrent = self._issueTime
+            if vtecRecord.get('endTime') <= expTimeCurrent:
                 attribution = 'the ' + hazName + \
-                   ' for... ' + areaPhrase + ' has been cancelled.'
-            elif action == 'EXP':
-                expTimeCurrent = self._startTime
-                if vtecRecord['endTime'] <= expTimeCurrent:
-                    attribution = 'the ' + hazName + \
-                      ' for ' + areaPhrase + ' has expired.'
-                else:
-                   timeWords = self._tpc.getTimingPhrase(vtecRecord, [], expTimeCurrent, timeZones=self.timezones)
-                   attribution = 'the ' + hazName + \
-                      ' for ' + areaPhrase + ' will expire ' + timeWords + '.'
-        return attribution + '\n'
+                  ' for ' + areaPhrase + ' has expired.'
+            else:
+               timeWords = self._tpc.getTimingPhrase(vtecRecord, [], expTimeCurrent, timeZones=self.timezones)
+               attribution = 'the ' + hazName + \
+                  ' for ' + areaPhrase + ' will expire ' + timeWords + '.'
+        return attribution + '\n\n'
 
-    def _firstBullet(self, hazard, productDict):
-        headPhrase = '* '
-        areaPhrase = self.getAreaPhraseBullet(productDict)
+    def _firstBullet(self, segmentDict):
+        firstBullet = '* '
+        areaPhrase = self.getAreaPhrase(segmentDict)
 
         if self._runMode == 'Practice':
             testText = 'This is a test message.  '
-            headPhrase = headPhrase + testText
+            firstBullet = firstBullet + testText
 
         # Use this to determine which first bullet format to use.
-        vtecRecords = productDict['vtecRecords']
-        for vtecRecord in vtecRecords:  # NOTE there is only one vtecRecord / hazard to process
-            hazName = vtecRecord['hdln']
+        vtecRecord = segmentDict.get('vtecRecord')
+        hazName = hazName = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
 
-            if len(vtecRecord['hdln']):
-                action = vtecRecord['act']
+        if hazName:
+            action = vtecRecord.get('act')
 
-            if action == 'NEW':
-                headPhrase += hazName + ' for...\n'
-                # TODO - Fix this
-                headPhrase += productDict['typeOfFlooding'] + '\n'
-                headPhrase += areaPhrase
-            elif action == 'CON':
-                headPhrase +=  areaPhrase
-            elif action == 'EXT':
-                headPhrase += ' ' + areaPhrase
+        if action == 'NEW':
+            firstBullet += hazName + ' for...\n'
+            firstBullet += areaPhrase
+        elif action == 'CON':
+            firstBullet +=  areaPhrase
+        elif action == 'EXT':
+            firstBullet += hazName + ' for...\n'
+            firstBullet += areaPhrase
 
-        return headPhrase
+        return firstBullet + '\n'
 
-    def _basisBullet(self, segment):
+    def _timeBullet(self, segmentDict):
+        bulletText = super(Format, self)._timeBullet(segmentDict)
+        return bulletText + '\n'
+
+    def _basisBullet(self, sectionDict):
         bulletText = '* '
         if self._runMode == 'Practice':
             bulletText += 'This is a test message.  '
 
-        elements = KeyInfo.getElements('basisBullet', segment)
-        if len(elements) > 0:
-            basis = segment[elements[0]]
-        else:
-            basis = segment['basisBullet']
+        vtecRecord = sectionDict.get('vtecRecord')
+        phen = vtecRecord.get('phen')
+        sig = vtecRecord.get('sig')
+        subType = sectionDict.get('subType')
+        hazardType = phen + '.' + sig + '.' + subType
+        basis = self.basisText.getBulletText(hazardType, sectionDict)
+        basis = self._tpc.substituteParameters(sectionDict, basis)
 
         if basis is None :
              basis = '...Flash Flooding was reported'
 
         # Create basis statement
-        vtecRecords = segment['vtecRecords']
-        for vtecRecord in vtecRecords:  # NOTE there is only one vtecRecord / hazard to process
-            eventTime = vtecRecord.get('startTime')
-            eventTime = self._tpc.getFormattedTime(eventTime, '%I%M %p %Z ', stripLeading=True, timeZones=self.timezones)
-            bulletText += 'At ' + eventTime
-            bulletText += basis
+        eventTime = vtecRecord.get('startTime')
+        eventTime = self._tpc.getFormattedTime(eventTime, '%I%M %p %Z ', stripLeading=True, timeZones=self.timezones)
+        bulletText += 'At ' + eventTime
+        bulletText += basis
         return bulletText + '\n\n'
-
-    def _locationsAffected(self, segmentDict):
-        heading = '* '
-        locationsAffected = ''
-
-        if (self._runMode == 'Practice'):
-            heading += "This is a test message.  "
-
-        immediateCause = segmentDict.get('immediateCause', None)
-        if immediateCause == 'DM' or immediateCause == 'DR':
-            damOrLeveeName = segmentDict['damOrLeveeName']
-            if damOrLeveeName:
-                damInfo = self._damInfo().get(damOrLeveeName)
-                if damInfo:
-                    # Scenario
-                    scenario = segmentDict['scenario']
-                    if scenario:
-                        scenarios = damInfo['scenarios']
-                        if scenarios:
-                            scenarioText = scenarios[scenario]
-                            if scenarioText:
-                                locationsAffected += scenarioText + '\n\n'
-                    # Rule of Thumb
-                    ruleOfThumb = damInfo['ruleOfThumb']
-                    if ruleOfThumb:
-                        locationsAffected += ruleOfThumb + '\n\n'
-
-        # Need to check for List of cities here
-        if segmentDict['citiesListFlag'] == True:
-            locationsAffected += 'Locations impacted include...' + self.formatCityList(segmentDict) + '\n\n'
-
-        if not locationsAffected:
-            locationsAffected = "Some locations that will experience flash flooding include..."
-            locationsAffected += self.createImpactedLocations(segmentDict) + '\n\n'
-
-        # Add any other additional Info
-        locationsAffected += self.createAdditionalComments(segmentDict)
-
-        return heading + locationsAffected
 
     def _damInfo(self):
         return {

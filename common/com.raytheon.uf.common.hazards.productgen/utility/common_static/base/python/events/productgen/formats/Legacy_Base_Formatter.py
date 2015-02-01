@@ -5,6 +5,8 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     Jan 12, 2015    4937    Robert.Blum Initial creation
+    Jan 31, 2015    4937    Robert.Blum General cleanup and added business
+                            logic for nextIssuanceStatement from V2.
 '''
 
 import FormatTemplate
@@ -17,6 +19,7 @@ from QueryAfosToAwips import QueryAfosToAwips
 from Bridge import Bridge
 from TextProductCommon import TextProductCommon
 import ProductTextUtil
+from BasisText import BasisText
 
 from abc import *
 
@@ -24,21 +27,21 @@ class Format(FormatTemplate.Formatter):
 
     def initialize(self) :
         self.bridge = Bridge()
+        self.basisText = BasisText()
         areaDict = self.bridge.getAreaDictionary()
         self._tpc = TextProductCommon()
         self._tpc.setUp(areaDict)
         self.timezones = []
 
-        self._productID = self.productDict['productID']
-        self._productName = self.productDict['productName']
-        self._productCategory = self.productDict['productCategory']
-        self._siteID = self.productDict['siteID']
-        self._backupSiteID = self.productDict['backupSiteID']
-        self._startTime = self.productDict['startTime']
-        self._endTime = self.productDict['endTime']
-        self._issueTime = self.productDict['issueTime']
-        self._issueFlag = self.productDict['issueFlag']
-        self._runMode = self.productDict['runMode']
+        self._productID = self.productDict.get('productID')
+        self._productName = self.productDict.get('productName')
+        self._productCategory = self.productDict.get('productCategory')
+        self._siteID = self.productDict.get('siteID')
+        self._backupSiteID = self.productDict.get('backupSiteID')
+        self._issueTime = self.productDict.get('issueTime')
+        self._issueFlag = self.productDict.get('issueFlag')
+        self._purgeHours = self.productDict.get('purgeHours')
+        self._runMode = self.productDict.get('runMode')
         if self._runMode == 'Practice':
             self._testMode = True
         self._siteInfo = self.bridge.getSiteInfo()
@@ -64,13 +67,13 @@ class Format(FormatTemplate.Formatter):
 
     def _createTextProduct(self):
         # Setup the Time Zones
-        segments = self.productDict['segments']
+        segments = self.productDict.get('segments')
         for segment in segments:
-            self.timezones += segment['timeZones']
+            self.timezones += segment.get('timeZones')
 
         # Build the text product based on the productParts
         text = ''
-        productParts = self.productDict['productParts']
+        productParts = self.productDict.get('productParts')
         text += self._processProductParts(self.productDict, productParts)
         return text
 
@@ -95,25 +98,34 @@ class Format(FormatTemplate.Formatter):
 
     ################# Product Level
 
-    def _wmoHeader(self, productID, siteID, startTime):
-        siteEntry = self._siteInfo.get(siteID)
+    def _wmoHeader(self, productDict):
+        siteEntry = self._siteInfo.get(self._siteID)
         fullStationID = siteEntry.get('fullStationID')  # KBOU
-        ddhhmmTime = self._tpc.getFormattedTime(startTime, '%d%H%M', stripLeading=False)
-        a2a = QueryAfosToAwips(productID, siteID)
+        ddhhmmTime = self._tpc.getFormattedTime(self._issueTime, '%d%H%M', stripLeading=False)
+        a2a = QueryAfosToAwips(self._productID, self._siteID)
         wmoID = a2a.getWMOprod()  # e.g. WUUS53
         header = wmoID + ' ' + fullStationID + ' ' + ddhhmmTime + '\n'
-        header += productID + siteID
-        return header
+        header += self._productID + self._siteID
+        return header + '\n\n'
 
-    def _productHeader(self):
+    def _productHeader(self, productDict):
         text = ''
         if (self._runMode == 'Practice'):
             text += 'Test...' + self._productName + '...Test \n'
         else:
             text += self._productName + '\n'
         text += 'National Weather Service ' + self._wfoCityState + '\n'
-        text += self._issuanceTimeDate()
+        text += self._issuanceTimeDate(productDict)
         return text
+
+    def _easMessage(self, productDict):
+        segments = self._tpc.getVal(productDict, 'segments', altDict=self.productDict)
+        for segment in segments:
+            vtecRecords = segment.get('vtecRecords')
+            for vtecRecord in vtecRecords:
+                if vtecRecord.get('sig') is 'A':
+                    return 'Urgent - Immediate broadcast requested\n'
+        return 'Bulletin - EAS activation requested\n'
 
     def _overviewSynopsis_area(self, productDict):
         productLabel = productDict.get('productLabel')
@@ -131,46 +143,38 @@ class Format(FormatTemplate.Formatter):
             synopsis += '\n\n'
         return synopsis
 
-    def _overviewHeadline_area(self):
-        text =  '|* Overview Headline *|'
-        return text + '\n\n'
+    def _overviewHeadline_point(self, productDict):
+        new_ext_productSegments = []
+        con_productSegments = []
+        can_exp_productSegments = [] 
+        for segment in self.productDict.get('segments'):
+            vtecRecords = segment.get('vtecRecords')
+            for vtecRecord in vtecRecords:
+                action = vtecRecord.get('act')
+                if action in ('NEW','EXT'):
+                    new_ext_productSegments.append(segment)
+                elif action == 'CON':
+                    con_productSegments.append(segment)
+                else:  # CAN, EXP
+                    can_exp_productSegments.append(segment) 
 
-    ################# Segment Level
+        overviewHeadline = ''
+        for segments in  [
+                        new_ext_productSegments,
+                        con_productSegments,
+                        can_exp_productSegments]: 
+            if segments:
+                overviewHeadline += self.getOverviewHeadlinePhrase(segments)
+        return overviewHeadline
 
-    def _ugcHeader(self, segment):
-        ugcList = []
-        for area in segment['impactedAreas']:
-            ugcList.append(area['ugc'])
-        ugcList.sort()
-        ugctext = self._tpc.makeUGCString(ugcList)
-        endTime = self._endTime
-        return ugctext + '-' + endTime.strftime('%d%H%m-') + '\n'
-
-    def _areaList(self, segment):
-        ugcList = []
-        for area in segment['impactedAreas']:
-            ugcList.append(area['ugc'])
-        ugcList.sort()
-        return self._tpc.formatUGC_names(ugcList) + '\n'
-
-    def _cityList(self, segment):
-        cities = 'Including the cities of '
-        elements = KeyInfo.getElements('cityList', segment)
-        cityList = segment[elements[0]]
-        cities += self._tpc.getTextListStr(cityList)
-        return cities + '\n'
-
-    def _callsToAction(self, productDict, name):
+    def _callsToAction_productLevel(self, productDict):
         text = ''
-        if name == 'callsToAction_productLevel':
-            productLabel = productDict.get('productLabel')
-            ctaKey = 'callsToAction_productLevel_' + productLabel
-        else:
-            ctaKey = name
+        productLabel = productDict.get('productLabel')
+        ctaKey = 'callsToAction_productLevel_' + productLabel
 
         elements = KeyInfo.getElements(ctaKey, productDict)
         if len(elements) > 0:
-            callsToAction = productDict[elements[0]]
+            callsToAction = productDict.get(elements[0])
         else:
             callsToAction = productDict.get(ctaKey, None)
 
@@ -180,16 +184,108 @@ class Format(FormatTemplate.Formatter):
                 cta = cta.strip('\n\t\r')
                 cta = re.sub('\s+',' ',cta)
                 text += cta + '\n\n'
-            if name == 'callsToAction':
-                text += '&&\n\n'
         return text
 
-    def _polygonText(self, segment):
-        polyStr = 'LAT...LON'
+    def _nextIssuanceStatement(self, productDict):
+        expireTime = self._tpc.getExpireTime(
+                    self._issueTime, self._purgeHours, [], fixedExpire=True)
+        ### want description from timingWordTableFUZZY4, hence [2]
+        ### Using only first timezone. Don't think 1 hr diff enough to include extra description
+        nextIssue = self._tpc.timingWordTableFUZZY4(self._issueTime, expireTime, self.timezones[0], 'startTime')[2] + ' at'
+        for timeZone in self.timezones:
+            fmtIssueTme = self._tpc.getFormattedTime(expireTime, timeZones=[timeZone], format='%I%M %p %Z')
+            ### If more than one timezone, will read like: 
+            ### "The next statement will be issued at Tuesday morning at 600 AM CST. 500 AM MST."
+            nextIssue += ' ' + fmtIssueTme + '.'
+        
+        partText = 'The next statement will be issued at ' + nextIssue
+        partText += '\n\n&&\n\n'
+        return partText
+
+    def _additionalInfoStatement(self, productDict):
+        # Please override this method for your site
+        return 'Additional information is available at <Web site URL>.\n\n'
+
+    def _rainFallStatement(self, productDict):
+        return 'The segments in this product are river forecasts for selected locations in the watch area.\n\n'
+
+    ################# Segment Level
+
+    def _emergencyHeadline(self, segmentDict):
+        partText = ''
+        includeChoices = segmentDict.get('include')
+        if includeChoices and 'ffwEmergency' in includeChoices:
+            partText += '...Flash Flood Emergency for ' + segmentDict.get('includeEmergencyLocation') + '...\n\n'
+        return partText
+
+    def _ugcHeader(self, segmentDict):
+        ugcHeader = self._tpc.formatUGCs(segmentDict.get('ugcs'), segmentDict.get('expireTime'))
+        return ugcHeader + '\n'
+
+    def _areaList(self, segmentDict):
+        return self._tpc.formatUGC_names(segmentDict.get('ugcs')) + '\n'
+
+    def _cityList(self, segmentDict):
+        cities = 'Including the cities of '
+        cityList = segmentDict.get('cityList', [])
+        cities += self._tpc.getTextListStr(cityList)
+        return cities + '\n'
+
+    def _callsToAction(self, segmentDict):
+        text = ''
+        elements = KeyInfo.getElements('callsToAction', segmentDict)
+        if len(elements) > 0:
+            callsToAction = segmentDict.get(elements[0])
+        else:
+            callsToAction = segmentDict.get('callsToAction', None)
+
+        if callsToAction:
+            text = 'Precautionary/Preparedness actions...\n\n'
+            for cta in callsToAction:
+                cta = cta.strip('\n\t\r')
+                cta = re.sub('\s+',' ',cta)
+                text += cta + '\n\n'
+            text += '&&\n\n'
+
+        return text
+
+    # This can be called either at the segment or section level
+    # depending on hazard type.
+    def _endingSynopsis(self, dictionary):
+        # Try to get from the dictionary
+        endingSynopsis = dictionary.get('endingSynopsis')
+        if endingSynopsis is None:
+            # Try to get from sectionDictionary
+            sections = dictionary.get('sections')
+            if sections:
+                endingSynopsis = sections[0].get('endingSynopsis')
+
+            if endingSynopsis is None:
+                # Try to get from dialogInputMap  (case of partial cancellation)
+                elements = KeyInfo.getElements('endingSynopsis', self.productDict)
+                if len(elements) > 0:
+                    endingSynopsis = self.productDict.get(elements[0], None)
+                else:
+                     endingSynopsis = self.productDict.get('endingSynopsis', None)
+
+        if endingSynopsis is None:
+            # If still none use framed text
+            return '|* Brief post-synopsis of hydrometeorological activity *|\n\n'
+
+        return endingSynopsis + '\n\n'
+
+    def _polygonText(self, segmentDict):
+        polyStr = ''
+
+        if (self._runMode == 'Practice'):
+            polyStr += 'This is a test message. Do not take action based on this message. \n\n'
+    
+        polyStr += 'LAT...LON'
 
         polygonPointLists = []
-        for geometry in segment['geometry']:
-            polygonPointLists.append(list(geometry.exterior.coords))
+        for section in segmentDict.get('sections'):
+            for geometry in section.get('geometry'):
+                polygonPointLists.append(list(geometry.exterior.coords))
 
         for polygon in polygonPointLists:
             # 4 points per line
@@ -211,6 +307,22 @@ class Format(FormatTemplate.Formatter):
                 pointsOnLine += 1
         return polyStr + '\n'
 
+    def _issuanceTimeDate(self, segmentDict):
+        text = ''
+        for tz in self.timezones:
+            text = self._tpc.formatDatetime(self._issueTime, '%l%M %p %Z %a %b %e %Y', tz).strip()
+            # only need the first time zone for issue time
+            break
+        text += '\n'
+
+        # The upper() is needed to pass the WarningDecoder.
+        text.upper()
+
+        if (self._runMode == 'Practice'):
+            text += '\n...This message is for test purposes only...\n'
+
+        return text
+
     def _summaryHeadlines(self, segmentDict, includeTiming=True):
         '''
         Creates the summary Headline
@@ -218,7 +330,6 @@ class Format(FormatTemplate.Formatter):
         @param segmentDict:  dictionary for the segment.
         '''
         headlines = []
-        headlineStr = ''
         vtecRecords = segmentDict.get('vtecRecords', None)
         hList = copy.deepcopy(vtecRecords)
         if len(hList):
@@ -241,21 +352,60 @@ class Format(FormatTemplate.Formatter):
             #assemble the vtecRecord type
             hazStr = vtecRecord['hdln']
 
-            # add on the action
+            #determine the actionWords
             actionWords = self._tpc.actionControlWord(vtecRecord, self._issueTime)
-            hazStr = hazStr + ' ' + actionWords
-            
+
+            # get the immediateCause defaulting to 'ER' if None
+            immediateCause = segmentDict.get('immediateCause', 'ER')
+
+            if immediateCause in ['DM']:
+                #get the hydrologicCause, damName, and streamName
+                hydrologicCause = segmentDict.get('hydrologicCause')
+
+                # Inconsisentency between FFW and FFA attribute name below
+                damName = segmentDict.get('damOrLeveeName', None)
+                if not damName:
+                    dameName = segmentDict.get('damName', None)
+                streamName = segmentDict.get('riverName', None)
+                if hydrologicCause and hydrologicCause == 'siteImminent':
+                    hazStr = hazStr + ' for the imminent failure of '
+                else:
+                    hazStr = hazStr + ' for the failure of '
+                
+                if damName:
+                    hazStr += damName
+                else:
+                    hazStr += 'the dam'
+
+                if streamName:
+                    hazStr += ' on the ' + streamName
+                hazStr += ' ' + actionWords
+
+            elif immediateCause in ['DR', 'GO', 'IJ', 'RS', 'SM']:
+                typeOfFlooding = self.typeOfFloodingMapping(immediateCause)
+                typeOfFlooding.lower()
+                if typeOfFlooding:
+                    hazStr += ' for ' + typeOfFlooding + ' ' +actionWords
+                else:
+                    hazStr = hazStr + ' ' + actionWords
+            else:
+                # add on the action
+                hazStr = hazStr + ' ' + actionWords
+
             if includeTiming:
                 timeWords = self._tpc.getTimingPhrase(vtecRecord, [], self._issueTime, timeZones=self.timezones)
                 if len(timeWords):
                     hazStr = hazStr + ' ' + timeWords
+
+            ugcPhrase = self._tpc.getAreaPhrase(segmentDict.get('ugcs'))
+            hazStr += ' for ' + ugcPhrase
 
             if len(hazStr):
                 # Call user hook
                 localStr = self._tpc.hazard_hook(
                   None, None, vtecRecord['phen'], vtecRecord['sig'], vtecRecord['act'],
                   vtecRecord['startTime'], vtecRecord['endTime'])  # May need to add leading space if non-null 
-                headlineStr = headlineStr + '...' + hazStr + localStr + '...\n'
+                headlineStr = '...' + hazStr + localStr + '...\n'
 
             # Add replaceStr
             replacedBy = segmentDict.get('replacedBy')
@@ -273,15 +423,15 @@ class Format(FormatTemplate.Formatter):
 
         return headlineStr
 
-    def _basisAndImpactsStatement_segmentLevel(self, segment):
+    def _basisAndImpactsStatement_segmentLevel(self, segmentDict):
         bulletText = '|* Current hydrometeorological situation and expected impacts *|'
         return bulletText + '\n\n'
 
     ###################### Section Level
 
-    def _vtecRecords(self, segment):
+    def _vtecRecords(self, segmentDict):
         vtecString = ''
-        vtecRecords = segment['vtecRecords']
+        vtecRecords = segmentDict.get('vtecRecords')
         for vtecRecord in vtecRecords:
             vtecString += vtecRecord['vtecstr'] + '\n'
             if 'hvtecstr' in vtecRecord:
@@ -289,11 +439,11 @@ class Format(FormatTemplate.Formatter):
                     vtecString += vtecRecord['hvtecstr'] + '\n'
         return vtecString
 
-    def _timeBullet(self, segment, roundMinutes=15):
-        endTime = self._endTime
+    def _timeBullet(self, segmentDict, roundMinutes=15):
+        endTime = segmentDict.get('endTime')
         expireTime = self.round(endTime, roundMinutes)
         text = '* '
-        if (self._runMode == 'Practice' and segment['geoType'] != 'point'):
+        if (self._runMode == 'Practice' and segmentDict.get('geoType') != 'point'):
             text += "This is a test message.  "
 
         text += 'Until '
@@ -307,35 +457,79 @@ class Format(FormatTemplate.Formatter):
 
         return text + '\n'
 
-    def _impactsBullet(self, segment):
+    def _emergencyStatement(self, segmentDict):
+        includeChoices = segmentDict.get('include')
+        if includeChoices and 'ffwEmergency' in includeChoices:
+            return '  This is a Flash Flood Emergency for ' + segmentDict.get('includeEmergencyLocation') + '\n\n'
+        else:
+            return ''
+
+    def _impactsBullet(self, segmentDict):
         bulletText = '* '
         if (self._runMode == 'Practice'):
             bulletText += "This is a test message.  "
 
-        impacts = segment['impacts']
+        impacts = segmentDict.get('impacts')
         if not impacts:
             impacts = self._tpc.frame('(Optional) Potential impacts of flooding')
             
         bulletText += impacts + '\n'
 
         # Add any additioinal comments here, listOfDrainages, floodMoving, etc.
-        additionalCommentsText = self.createAdditionalComments(segment)
+        additionalCommentsText = self.createAdditionalComments(segmentDict)
+        if additionalCommentsText:
+            bulletText += '\n' + additionalCommentsText
+        return bulletText + '\n'
+
+    def _basisAndImpactsStatement(self, segmentDict):
+        #TODO Warngen seems to just have the basis here. Does impacts
+        # still need to be added?
+        bulletText = self._basisBullet(segmentDict)
+
+        # Add any additioinal comments here, listOfDrainages, floodMoving, etc.
+        additionalCommentsText = self.createAdditionalComments(segmentDict)
         if additionalCommentsText:
             bulletText += '\n' + additionalCommentsText
         return bulletText
 
-    def _basisAndImpactsStatement(self, segment):
-        #TODO Warngen seems to just have the basis here. Does impacts
-        # still need to be added?
-        bulletText = self._basisBullet(segment)
+    def _locationsAffected(self, segmentDict):
+        heading = '* '
+        locationsAffected = ''
 
-        # Add any additioinal comments here, listOfDrainages, floodMoving, etc.
-        additionalCommentsText = self.createAdditionalComments(segment)
-        if additionalCommentsText:
-            bulletText += '\n' + additionalCommentsText
-            return bulletText
-        else:
-            return bulletText
+        if (self._runMode == 'Practice'):
+            heading += "This is a test message.  "
+
+        immediateCause = segmentDict.get('immediateCause', None)
+        if immediateCause == 'DM' or immediateCause == 'DR':
+            damOrLeveeName = segmentDict.get('damOrLeveeName')
+            if damOrLeveeName:
+                damInfo = self._damInfo().get(damOrLeveeName)
+                if damInfo:
+                    # Scenario
+                    scenario = segmentDict.get('scenario')
+                    if scenario:
+                        scenarios = damInfo.get('scenarios')
+                        if scenarios:
+                            scenarioText = scenarios.get(scenario)
+                            if scenarioText:
+                                locationsAffected += scenarioText + '\n\n'
+                    # Rule of Thumb
+                    ruleOfThumb = damInfo.get('ruleOfThumb')
+                    if ruleOfThumb:
+                        locationsAffected += ruleOfThumb + '\n\n'
+
+        # Need to check for List of cities here
+        if segmentDict.get('citiesListFlag', False) == True:
+            locationsAffected += 'Locations impacted include...' + self.formatCityList(segmentDict) + '\n\n'
+
+        if not locationsAffected:
+            locationsAffected = "Some locations that will experience flash flooding include..."
+            locationsAffected += self.createImpactedLocations(segmentDict) + '\n\n'
+
+        # Add any other additional Info
+        locationsAffected += self.createAdditionalComments(segmentDict)
+
+        return heading + locationsAffected
 
     ###################### Utility methods
 
@@ -353,11 +547,11 @@ class Format(FormatTemplate.Formatter):
         self._backupWfoCityState = siteEntry.get('wfoCityState')
         self._backupFullStationID = siteEntry.get('fullStationID')
 
-    def createImpactedLocations(self, segment):
+    def createImpactedLocations(self, segmentDict):
         nullReturn = "mainly rural areas of the aforementioned areas."
         columns = ["name", "warngenlev"]
         try :
-            cityGeoms = self._tpc.mapDataQuery("city", columns, segment["geometry"])
+            cityGeoms = self._tpc.mapDataQuery("city", columns, segmentDict.get("geometry"))
         except :
             return nullReturn
         if not isinstance(cityGeoms, list) :
@@ -383,13 +577,13 @@ class Format(FormatTemplate.Formatter):
             return self._tpc.formatDelimitedList(namesOther)
         return nullReturn
 
-    def formatCityList(self, segment):
-        impactedLocationsDict = segment['impactedLocations']
-        elements = KeyInfo.getElements('cityList', segment['impactedLocations'])
+    def formatCityList(self, segmentDict):
+        impactedLocationsDict = segmentDict.get('impactedLocations')
+        elements = KeyInfo.getElements('cityList', segmentDict.get('impactedLocations'))
         if len(elements) > 0:
-             locations = impactedLocationsDict[elements[0]]
+             locations = impactedLocationsDict.get(elements[0])
         else:
-             locations = impactedLocationsDict['cityList']
+             locations = impactedLocationsDict.get('cityList')
 
         text = ''
         counter = 0
@@ -409,17 +603,94 @@ class Format(FormatTemplate.Formatter):
                 counter += 1
         return text
 
-    def getAreaPhraseBullet(self, productDict):
+    def getOverviewHeadlinePhrase(self, segments, lineLength=69):
+        '''
+            ...THE NATIONAL WEATHER SERVICE IN DES MOINES HAS ISSUED A FLOOD
+            ADVISORY FOR THE WINNEBAGO RIVER AT MASON CITY...SHELL ROCK RIVER
+            AT MARBLE ROCK...CEDAR RIVER AT JANESVILLE...CEDAR RIVER AT CEDAR
+            FALLS...AND CEDAR RIVER AT WATERLOO...
+        '''
+        locationPhrases = []
+        areaGroups = []
+
+        # There could be multiple points sharing a VTEC code e.g. NEW
+        for segment in segments:
+            ugcs = segment.get('ugcs')
+
+            pointAreaGroups = self._tpc.getGeneralAreaList(ugcs)
+            areaGroups += pointAreaGroups
+
+            nameDescription, nameTypePhrase = self._tpc.getNameDescription(pointAreaGroups)
+            affected = nameDescription + ' '+ nameTypePhrase
+            section = segment.get('sections')[0]
+            riverName = section.get('riverName_GroupName')
+            proximity = section.get('proximity')
+            if proximity is None:
+                proximity = 'near'
+            riverPointName = section.get('riverPointName')
+            locationPhrases.append(riverName + ' ' + proximity + ' ' + riverPointName + ' affecting ' + affected + '.')
+
+        locationPhrase = '\n'.join(locationPhrases)
+        areaGroups = self._tpc.simplifyAreas(areaGroups)
+        states = self._tpc.getStateDescription(areaGroups)
+        riverPhrase = 'the following rivers in ' + states
+
+        nwsPhrase = 'The National Weather Service in ' + self._wfoCity
+        # Use this to determine which first bullet format to use.
+        vtecRecords = segment.get('vtecRecords')
+        for vtecRecord in vtecRecords:  # NOTE there is only one vtecRecord / hazard to process
+            hazName = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
+
+            if len(hazName):
+                action = vtecRecord.get('act')
+
+            if action == 'NEW':
+                overview = nwsPhrase + ' has issued a ' + hazName + ' for '+ riverPhrase
+
+            elif action == 'CON':
+                overview = nwsPhrase + ' is continuing the ' + hazName + ' for '+ riverPhrase
+    
+            elif action == 'EXT':
+                overview = nwsPhrase + ' is extending the ' + hazName + ' for '+ riverPhrase
+
+            elif action == 'CAN':
+                overview = nwsPhrase + ' is canceling the ' + hazName + ' for '+ riverPhrase
+    
+            elif action == 'EXP':
+                expTimeCurrent = self._issueTime
+                if vtecRecord.get('endTime') <= expTimeCurrent:
+                    overview = 'The ' + hazName + \
+                      ' for ' + riverPhrase + ' has expired '
+                else:
+                    timeWords = self._tpc.getTimingPhrase(vtecRecord, [], expTimeCurrent, timeZones=self.timezones)
+                    overview = 'The ' + hazName + \
+                      ' for ' + riverPhrase + ' will expire ' + timeWords
+
+            elif action == 'ROU':
+                '''
+                ...The National Weather Service in Omaha/Valley is releasing Test 
+                FORECAST INFORMATION for the following rivers in southeast 
+                Nebraska...
+                '''
+                overview = nwsPhrase + ' is releasing ' + hazName + ' for '+ riverPhrase
+
+        overview = '...' + overview + '...\n\n'
+        locationPhrase = self._tpc.indentText(locationPhrase, indentFirstString='  ',
+              indentNextString='  ', maxWidth=69,
+              breakStrings=[' ', '-', '...'])
+        return overview + locationPhrase + '\n\n'
+
+    def getAreaPhraseBullet(self, productDict, bulletFormat=True):
         ugcList = []
         ugcPortions = {}
         ugcPartsOfState = {}
 
-        for area in productDict['impactedAreas']:
-            ugcList.append(area['ugc'])
+        for area in productDict.get('impactedAreas'):
+            ugcList.append(area.get('ugc'))
             if 'portions' in area:
-                ugcPortions[area['ugc']] = area['portions']
+                ugcPortions[area.get('ugc')] = area.get('portions')
             if 'partsOfState' in area:
-                ugcPartsOfState[area['ugc']] = area['partsOfState']
+                ugcPartsOfState[area.get('ugc')] = area.get('partsOfState')
 
         # These need to be ordered by area of state.
         orderedUgcs = []
@@ -439,33 +710,23 @@ class Format(FormatTemplate.Formatter):
             textLine += self._tpc.getInformationForUGC(ugc, "typeSingular")+" in "
             part = ugcPartsOfState.get(ugc, "")
             if part == "" :
-                textLine += self._tpc.getInformationForUGC(ugc, "fullStateName")+"..."
+                textLine += self._tpc.getInformationForUGC(ugc, "fullStateName")+"...\n"
             else :
-                textLine += part+" "+self._tpc.getInformationForUGC(ugc, "fullStateName")+"..."
+                textLine += part+" "+self._tpc.getInformationForUGC(ugc, "fullStateName")+"...\n"
             areaPhrase += textLine
 
         return areaPhrase
 
-    def createAdditionalComments(self, segment):
+    def createAdditionalComments(self, segmentDict):
         additionalComments = ''
-        elements = KeyInfo.getElements('additionalComments', segment)
+        elements = KeyInfo.getElements('additionalComments', segmentDict)
         if len(elements) > 0:
-            for x in segment[elements[0]]:
+            for x in segmentDict.get(elements[0]):
                 additionalComment = x
 
                 if additionalComment != '':
                     additionalComments += additionalComment + '\n\n' 
         return additionalComments
-
-    def _issuanceTimeDate(self):
-        text = ''
-        for tz in self.timezones:
-            text = self._tpc.formatDatetime(self._startTime, '%l%M %p %Z %a %b %e %Y', tz).strip()
-            # only need the first time zone for issue time
-            break
-        text += '\n'
-        # The upper() is needed to pass the WarningDecoder.
-        return text.upper()
 
     def _getFormattedTime(self, time_ms, format=None, stripLeading=True, emptyValue=None, timeZones=['GMT']):
         if not time_ms:
@@ -484,16 +745,17 @@ class Format(FormatTemplate.Formatter):
             tm += datetime.timedelta(minutes=roundMinute)
         return tm
 
-    def createAreaPhrase(self, productDict):
-        phen = productDict['hazards'][0]['phenomenon']
-        sig = productDict['hazards'][0]["significance"]
-        action = productDict['hazards'][0]['act']
-        geoType = productDict['geoType']
+    def createAreaPhrase(self, sectionDict):
+        vtecRecord = sectionDict.get('vtecRecord')
+        phen = vtecRecord.get('phen')
+        sig = vtecRecord.get('sig')
+        action = vtecRecord.get('act')
+        geoType = sectionDict.get('geoType')
 
         if phen in ["FF", "FA", "FL" ] and \
            action in [ "NEW", "EXA", "EXT", "EXB" ] and \
            geoType == 'area' and sig != "A" :
-            areaPhrase = self.getAreaPhraseBullet(productDict)
+            areaPhrase = self.getAreaPhraseBullet(sectionDict)
         else :
-            areaPhrase = self.getAreaPhrase(productDict)
+            areaPhrase = self.getAreaPhrase(sectionDict)
         return areaPhrase

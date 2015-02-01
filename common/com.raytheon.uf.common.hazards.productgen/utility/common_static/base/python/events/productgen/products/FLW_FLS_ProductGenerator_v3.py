@@ -5,6 +5,7 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     Nov 24, 2014    4937    Robert.Blum Initial creation
+    Jan 31, 2015    4937    Robert.Blum General cleanup and bug fixes.
     
     @author Robert.Blum@noaa.gov
     @version 1.0
@@ -15,12 +16,6 @@ import HydroGenerator
 
 # Bring in the interdependencies script from the metadata file.
 import MetaData_FFA_FLW_FLS
-
-# Import all the metaData for hazards covered by this generator
-import MetaData_FA_W
-import MetaData_FA_Y
-import MetaData_FL_W
-import MetaData_FL_Y
 
 class Product(HydroGenerator.Product):
 
@@ -87,110 +82,14 @@ class Product(HydroGenerator.Product):
         self._getVariables(eventSet, dialogInputMap)
         eventSetAttributes = eventSet.getAttributes()
 
-        # Determine the list of segments given the hazard events 
-        segments = self._getSegments(self._inputHazardEvents)
+        if not self._inputHazardEvents:
+            return []
 
-        # Determine the list of products and associated segments given the segments
-        productSegmentGroups = self._groupSegments(segments)
+        productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._inputHazardEvents, eventSetAttributes)
 
-         # List of product dictionaries
-        productDicts = []
-        for productSegmentGroup in productSegmentGroups:
-            # Update these first so they are correct when we init the product dictionary.
-            self._productID = productSegmentGroup.productID
-            self._productName = productSegmentGroup.productName
-            self._productLabel = productSegmentGroup.productLabel
+        return productDicts, hazardEvents
 
-            # Init the productDict
-            productDict = collections.OrderedDict()
-            self._initializeProductDict(productDict, eventSetAttributes)
-            productDict['productLabel'] = self._productLabel
-
-            # Add productParts to the dictionary
-            productParts = productSegmentGroup.productParts
-            productDict['productParts'] = productParts
-
-            # Add dialogInputMap entries to the product dictionary
-            for key in dialogInputMap.keys():
-                # The dialogInputMap only contains the identifier for the CTAs
-                # and not the productString. The below code gets the productStrings.
-                # TODO Figure out how the replacements should be done.
-                # For example #riverName#.
-                if key == 'callsToAction_productLevel_' + self._productLabel:
-                    dictList = self._productLevelMetaData_dict.get(self._productLabel)
-                    for dict in dictList:
-                        if dict.get('fieldName') == key:
-                            cta_dict = dict
-                            break
-
-                    # list of the productStrings to be passed to the formatter
-                    newCTAs = []
-
-                    # Loop over the selected CTAs from the staging dialog
-                    for value in cta_dict.get('values'):
-                        # Compare value with each identifier to find a match
-                        for choice in cta_dict.get('choices'):
-                            if value == choice.get('identifier'):
-                                # Found a match so grab the productString
-                                productString = choice.get('productString')
-
-                                # Clean up the productString
-                                productString = productString.replace('  ', '')
-                                productString = productString.replace('\n', ' ')
-                                productString = productString.replace('</br>', '\n')
-
-                                # Add it to the list to be passed to the formatter
-                                newCTAs.append(productString)
-                                break
-                    productDict[key] = newCTAs
-                else:
-                    # Pass the value as is
-                    productDict[key] = dialogInputMap[key]
-
-            segments = []
-            event = None
-            for productSegment in productSegmentGroup.productSegments:
-                self._productSegment = productSegment
-
-                for vtecRecord in productSegment.vtecRecords:
-                    for event in eventSet:
-                        if event.getEventID() in vtecRecord.get('eventID'):
-                            break
-                self._initializeMetaData(event)
-
-                # Setup and Create the dict for each segment
-                self._setupSegment(event)
-                segmentDict = self._prepareSegment(event, vtecRecord)
-                segments.append(segmentDict)
-
-            productDict['segments'] = segments
-            productDict['startTime'] = event.getStartTime()
-            productDict['endTime'] = event.getEndTime()
-            productDicts.append(productDict)
-
-        # If issuing, save the VTEC records for legacy products
-        self._saveVTEC(self._generatedHazardEvents)
-
-        return productDicts, self._generatedHazardEvents
-
-    def _initializeMetaData(self, event):
-        hazardType = event.getHazardType()
-        if hazardType == 'FA.W':
-            self._metadata = MetaData_FA_W.MetaData()
-        elif hazardType == 'FA.Y':
-            self._metadata = MetaData_FA_Y.MetaData()
-        elif hazardType == 'FL.W':
-            self._metadata = MetaData_FL_W.MetaData()
-        elif hazardType == 'FL.Y':
-            self._metadata = MetaData_FL_Y.MetaData()
-        else: # HY.S
-            self._metadata = None
-
-        if hazardType != 'HY.S':
-            self._metadataDict = self._metadata.execute(hazardEvent=event)
-
-    def _prepareSegment(self, event, vtecRecord):
-        self._setProductInformation(vtecRecord, event)
+    def _prepareSection(self, event, vtecRecord, metaData):
         attributes = event.getHazardAttributes()
 
         # This creates a list of ints for the eventIDs and also formats the UGCs correctly.
@@ -199,77 +98,54 @@ class Product(HydroGenerator.Product):
         # Attributes that get skipped. They get added to the dictionary indirectly.
         noOpAttributes = ('ugcs', 'ugcPortions', 'ugcPartsOfState')
 
-        segment = {}
-        segment['hazards'] = [{'act': vtecRecord.get('act'),
-                               'phenomenon': vtecRecord.get("phen"),
-                               'significance': vtecRecord.get("sig")}]
+        section = {}
         for attribute in attributes:
             # Special case attributes that need additional work before adding to the dictionary
             if attribute == 'additionalInfo':
-                additionalInfo, citiesListFlag = self._prepareAdditionalInfo(attributes[attribute] , event)
+                additionalInfo, citiesListFlag = self._prepareAdditionalInfo(attributes[attribute] , event, metaData)
                 additionalCommentsKey = KeyInfo('additionalComments', self._productCategory, self._productID, eventIDs, ugcList, True, label='Additional Comments')
-                segment[additionalCommentsKey] = additionalInfo
-                segment['citiesListFlag'] = citiesListFlag
+                section[additionalCommentsKey] = additionalInfo
+                section['citiesListFlag'] = citiesListFlag
             elif attribute == 'cta':
                 if vtecRecord.get("phen") != "HY":
-                    callsToActionValue = self._tpc.getProductStrings(event, self._metadataDict, 'cta')
-                else:
-                    callsToActionValue = []
-
-                # If the list of CTAs is a list of empty strings
-                # do not make it a KeyInfo....this avoids the megawidget
-                # error.
-                keyInfo = False
-                for cta in callsToActionValue:
-                    if cta:
-                        keyInfo = True
-                        break
-                if keyInfo:
-                    callsToActionKey = KeyInfo('callsToAction', self._productCategory, self._productID, eventIDs, ugcList, True, label='Calls To Action')
-                    segment[callsToActionKey] = callsToActionValue
-                else:
-                    segment['callsToAction'] = callsToActionValue
-            elif attribute in ['warningType', 'advisoryType', 'optionalSpecificType']:
-                segment[attribute] = self._tpc.getProductStrings(event, self._metadataDict, attribute)
+                    # These are now added at the segment level. Do we want to add here as well?
+                    callsToActionValue = self._tpc.getProductStrings(event, metaData, 'cta')
+                    section['callsToAction'] = callsToActionValue
+            elif attribute in ['warningType', 'optionalSpecificType']:
+                    section[attribute] = self._tpc.getProductStrings(event, metaData, attribute)
             elif attribute in noOpAttributes:
                 continue
             else:
-                segment[attribute] = attributes.get(attribute, None)
+                section[attribute] = attributes.get(attribute, None)
+                # Add both the identifier and the productString for this attributes.
+                # The identifiers are needed for the BasisText module.
+                if attribute == 'advisoryType':
+                    section[attribute + '_productString'] = self._tpc.getProductStrings(event, metaData, attribute)
 
-        # Use basisFromHazardEvent for WarnGen only hazards
-        if vtecRecord.get('phensig', '') in ['FA.W', 'FA.Y']:
-            basisText = self.basisFromHazardEvent(event)
-        else:
-            # TODO Need to create basisText for Non-WarnGen hazards
-            basisText = ''
-
-        # Add it to the dictionary
-        basisKey = KeyInfo('basisBullet', self._productCategory, self._productID, eventIDs, ugcList, True, label='Basis')
-        segment[basisKey] = basisText
-
-        segment['typeOfFlooding'] = self.immediateCauseMapping(attributes.get('immediateCause',None))
-        segment['impactedAreas'] = self._prepareImpactedAreas(attributes)
-        segment['impactedLocations'] = self._prepareImpactedLocations(event.getGeometry(), [])
-        segment['geometry'] = event.getGeometry()
-        segment['subType'] = event.getSubType()
-        segment['impactsStringForStageFlowTextArea'] = event.get('impactsStringForStageFlowTextArea', None)
-        segment['timeZones'] = self._productSegment.timeZones
-        segment['vtecRecords'] = self._productSegment.vtecRecords
+        section['impactedAreas'] = self._prepareImpactedAreas(attributes)
+        section['impactedLocations'] = self._prepareImpactedLocations(event.getGeometry(), [])
+        section['geometry'] = event.getGeometry()
+        section['subType'] = event.getSubType()
+        section['timeZones'] = self._productSegment.timeZones
+        section['vtecRecord'] = vtecRecord
         if vtecRecord.get("phen") != "HY":
             # TODO this does not seem to work, causing the placeholder to be in final product.
-            segment['impacts'] = self._tpc.getProductStrings(event, self._metadataDict, 'impacts')
+            section['impacts'] = self._tpc.getProductStrings(event, metaData, 'impacts')
         else:
-            segment['impacts'] = ''
-        segment['endingSynopsis'] = self._endingSynopsis(event)
-        segment['replacedBy'] = event.get('replacedBy', None)
-        segment['replaces'] = event.get('replaces', None)
-        self._cityList(segment, event)
+            section['impacts'] = ''
+        section['endingSynopsis'] = event.get('endingSynopsis')
+        section['replacedBy'] = event.get('replacedBy', None)
+        section['replaces'] = event.get('replaces', None)
+        section['startTime'] = event.getStartTime()
+        section['endTime'] = event.getEndTime()
+        self._cityList(section, event)
 
         if event.get('pointID'):
             # Add RiverForecastPoint data to the dictionary
-            self._prepareRiverForecastPointData(event.get('pointID'), segment, event)
+            self._prepareRiverForecastPointData(event.get('pointID'), section, event)
 
-        return segment
+        self._setProductInformation(vtecRecord, event)
+        return section
 
     def _getSegments(self, hazardEvents):
         return self._getSegments_ForPointsAndAreas(hazardEvents)
