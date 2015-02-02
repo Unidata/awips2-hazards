@@ -33,6 +33,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * ------------ ---------- ----------- --------------------------
  * May 23, 2013 1257       bsteffen    Initial creation
  * Jan 19, 2015 4193       rferrel     Added disseminationOrder.
+ * Feb 10, 2015 3961       chris.cody  Add gagePointFirstRecommender startup property
  * 
  * </pre>
  * 
@@ -46,6 +47,9 @@ public class StartUpConfig {
 
     @JsonProperty("disseminationOrder")
     private String[] disseminationOrder;
+
+    @JsonProperty("gagePointFirstRecommender")
+    private String gagePointFirstRecommender;
 
     public Console getConsole() {
         return console;
@@ -61,6 +65,14 @@ public class StartUpConfig {
 
     public void setDisseminationOrder(String[] disseminationOrder) {
         this.disseminationOrder = disseminationOrder;
+    }
+
+    public String getGagePointFirstRecommender() {
+        return gagePointFirstRecommender;
+    }
+
+    public void setGagePointFirstRecommender(String gagePointFirstRecommender) {
+        this.gagePointFirstRecommender = gagePointFirstRecommender;
     }
 
     @Override

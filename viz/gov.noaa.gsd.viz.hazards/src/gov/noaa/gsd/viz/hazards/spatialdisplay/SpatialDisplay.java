@@ -14,6 +14,7 @@ import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
+import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDrawableBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
@@ -62,6 +63,10 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
+import org.eclipse.ui.IPerspectiveDescriptor;
+import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.IWorkbenchWindow;
+import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -79,6 +84,7 @@ import com.raytheon.uf.viz.core.drawables.FillPatterns;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.core.drawables.IShadedShape;
 import com.raytheon.uf.viz.core.drawables.PaintProperties;
+import com.raytheon.uf.viz.core.drawables.ResourcePair;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.core.rsc.IResourceDataChanged;
@@ -88,14 +94,21 @@ import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory.ResourceOrder;
 import com.raytheon.uf.viz.core.rsc.tools.AbstractMovableToolLayer;
 import com.raytheon.uf.viz.d2d.core.time.D2DTimeMatcher;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.viz.awipstools.IToolChangedListener;
 import com.raytheon.viz.core.rsc.jts.JTSCompiler;
+import com.raytheon.viz.hydro.perspective.HydroPerspectiveManager;
+import com.raytheon.viz.hydro.resource.MultiPointResource;
+import com.raytheon.viz.hydrocommon.data.GageData;
 import com.raytheon.viz.ui.VizWorkbenchManager;
+import com.raytheon.viz.ui.cmenu.AbstractRightClickAction;
 import com.raytheon.viz.ui.cmenu.IContextMenuContributor;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -152,6 +165,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  *                                        and with ObservedSettings.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Feb 09, 2015 6260       Dan Schaffer   Fixed bugs in multi-polygon handling
+ * Feb 10, 2015  3961     Chris.Cody      Add Context Menu (R-Click) for River Point (GageData) objects
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -474,7 +488,9 @@ public class SpatialDisplay extends
         for (IAction action : actions) {
             menuManager.add(action);
         }
+        menuManager.add(new RiverGageFloodAction());
         menuManager.add(new Separator());
+
     }
 
     @Override
@@ -1209,7 +1225,6 @@ public class SpatialDisplay extends
                 .getSessionManager();
         ContextMenuHelper helper = new ContextMenuHelper(getAppBuilder()
                 .getSpatialPresenter(), sessionManager);
-
         List<IAction> actions = new ArrayList<>();
 
         ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
@@ -1221,7 +1236,7 @@ public class SpatialDisplay extends
                     .newAction(ContextMenuHelper.ContextMenuSelections.REMOVE_POTENTIAL_HAZARDS
                             .getValue()));
         }
-        IAction action = helper.createMenu("Manage hazards...",
+        IAction action = helper.createMenu("Manage hazards",
                 items.toArray(new IContributionItem[0]));
 
         if (action != null) {
@@ -1247,6 +1262,7 @@ public class SpatialDisplay extends
         if (action != null) {
             actions.add(action);
         }
+
         return actions;
     }
 
@@ -1701,4 +1717,148 @@ public class SpatialDisplay extends
 
     }
 
+    /**
+     * Capture and process MultiPointResource (GageData) for Hazard Services in
+     * a Hydro perspective.
+     * <p>
+     * The SpatialDisplay object (layer) is only visible when Hazard Services
+     * has been activated.
+     * 
+     * This Action object is automatically added to the Context Menu (right
+     * click menu) for Hazard Services.
+     * 
+     * <pre>
+     */
+    private class RiverGageFloodAction extends AbstractRightClickAction {
+
+        /*
+         * (non-Javadoc)
+         * 
+         * @see org.eclipse.jface.action.Action#getText()
+         */
+        @Override
+        public String getText() {
+            return "Create Hazard";
+        }
+
+        /*
+         * (non-Javadoc)
+         * 
+         * @see org.eclipse.jface.action.Action#isHidden()
+         */
+        @Override
+        public boolean isHidden() {
+            IWorkbenchWindow window = PlatformUI.getWorkbench()
+                    .getActiveWorkbenchWindow();
+            IWorkbenchPage page = window.getActivePage();
+            IPerspectiveDescriptor perspectiveDescriptor = page
+                    .getPerspective();
+            if (perspectiveDescriptor != null) {
+                String perspectiveId = perspectiveDescriptor.getId();
+                if ((perspectiveId != null)
+                        && (perspectiveId
+                                .equals(HydroPerspectiveManager.HYDRO_PERSPECTIVE))) {
+                    return (false);
+                }
+            }
+            return (true);
+        }
+
+        /*
+         * (non-Javadoc)
+         * 
+         * @see org.eclipse.jface.action.Action#run()
+         */
+        @Override
+        public void run() {
+
+            IWorkbenchWindow window = PlatformUI.getWorkbench()
+                    .getActiveWorkbenchWindow();
+            IWorkbenchPage page = window.getActivePage();
+            IPerspectiveDescriptor perspectiveDescriptor = page
+                    .getPerspective();
+            if (perspectiveDescriptor != null) {
+                String perspectiveId = perspectiveDescriptor.getId();
+                if ((perspectiveId != null)
+                        && (perspectiveId
+                                .equals(HydroPerspectiveManager.HYDRO_PERSPECTIVE))) {
+                    processHydroPerspectiveAction();
+                }
+            }
+        }
+
+        private void processHydroPerspectiveAction() {
+            for (ResourcePair pair : descriptor.getResourceList()) {
+                if (pair.getResource() instanceof MultiPointResource) {
+                    MultiPointResource mpr = (MultiPointResource) pair
+                            .getResource();
+                    GageData gageData = mpr.getSelectedGage();
+                    runRecommender(gageData);
+                    return;
+                }
+            }
+        }
+
+        /**
+         * Process a Right Mouse Button Click on a MultiPointResource (GageData)
+         * object. Run the recommender (Tool) associated with the selected
+         * hazard type.
+         * <p>
+         * The tool that is run is configured in StartUpConfig.py :
+         * gagePointFirstRecommender property.
+         * <p>
+         * 
+         * @param gageData
+         *            River data from the Selected Gage
+         */
+        private void runRecommender(GageData gageData) {
+
+            if (gageData == null) {
+                return;
+            }
+            String riverGageLid = gageData.getLid();
+
+            /*
+             * NOTE: Taken from HazardTypeFirstPresenter.java TODO: Currently,
+             * the business logic for running recommenders exist within the
+             * HazardServicesMessageHandler. We do not have time to extract said
+             * logic and place it in some more appropriate place, and thus will
+             * use the deprecated publish() method to send a deprecated
+             * notification to run the tool, which the message handler will
+             * receive and deal with.
+             * 
+             * When the message handler is refactored into oblivion, there will
+             * be either some sort of helper class for running recommenders, or
+             * the session manager will handle it. At that time, this will be
+             * changed to directly run the tool, instead of using this
+             * deprecated code.
+             */
+
+            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = SpatialDisplay.this.appBuilder
+                    .getSessionManager();
+
+            ISessionConfigurationManager<ObservedSettings> configManager = sessionManager
+                    .getConfigurationManager();
+            StartUpConfig startupConfig = configManager.getStartUpConfig();
+            String gagePointFirstRecommender = startupConfig
+                    .getGagePointFirstRecommender();
+
+            ObservedSettings settings = configManager.getSettings();
+            Tool tool = settings.getTool(gagePointFirstRecommender);
+
+            if (tool != null) {
+                Map<String, Serializable> riverGageInfo = new HashMap<>();
+                riverGageInfo.put("selectedPointID", riverGageLid);
+
+                eventBus.publishAsync(new ToolAction(
+                        ToolAction.RecommenderActionEnum.RUN_RECOMMENDER_WITH_PARAMETERS,
+                        tool, riverGageInfo, ""));
+            } else {
+                statusHandler
+                        .warn("No Hazard Generation Tool associated with configured value "
+                                + gagePointFirstRecommender
+                                + " Discarding request.\n Check value set in StartUpConfig.py script.");
+            }
+        }
+    }
 }

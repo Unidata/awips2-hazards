@@ -139,6 +139,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
         @return: A list of potential events. 
         """
+        
         millis = SimulatedTime.getSystemTime().getMillis()
         currentTime = datetime.datetime.fromtimestamp(millis / 1000)
         self._rfp = RiverForecastPoints(currentTime)
@@ -150,6 +151,15 @@ class Recommender(RecommenderTemplate.Recommender):
         
         sessionMap = JUtil.pyDictToJavaMap(sessionAttributes)
         inputMap = JUtil.pyDictToJavaMap({"includeNonFloodPoints": True})
+        selectedPointID = None
+        try:
+            selectedPointID = dialogInputMap.get("selectedPointID")
+        except:
+            pass
+            
+        if selectedPointID is not None:
+              inputMap.put("selectedPointID", selectedPointID)
+                    
         spatialMap = JUtil.pyDictToJavaMap(spatialInputMap)
         
         javaEventList = self._riverProFloodRecommender.getRecommendation(sessionMap,
@@ -283,7 +293,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
             attributesDict = hazardEvent.getHazardAttributes()
             pointID = attributesDict.get(POINT_ID)
-            
+
             riverMile = self._rfp.getRiverMile(pointID)
             hazardEvent.addHazardAttribute("riverMile", riverMile)
             
@@ -301,7 +311,6 @@ class Recommender(RecommenderTemplate.Recommender):
                 hazardEvent.setPhenomenon("HY")
                 hazardEvent.setSignificance("S")
                 
-        
     def addFloodPolygons(self, hazardEvents):
         """
         Inserts flood polygons for each river forecast point

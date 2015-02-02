@@ -8,5 +8,6 @@ StartUpConfig = {
     "disseminationOrder" : [ 'FFW', 'FLW', 'FFS', 'FLS', 'FFA'],
     "Console": {
                 "TimeLineNavigation": "onToolBar", # "onToolBar" or "belowTimeLine",
-                }
+                },
+    "gagePointFirstRecommender" : "RiverFloodRecommender"
     }
