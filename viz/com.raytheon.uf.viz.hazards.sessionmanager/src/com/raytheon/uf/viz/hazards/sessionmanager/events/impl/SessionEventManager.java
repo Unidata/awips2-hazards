@@ -220,6 +220,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      only possible on a hazard attribute state
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards.
  * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
+ * Feb  2, 2015 4930       Dan Schaffer Fixed problem where reduction of multi-polygons 
+ *                                      can still yield a geometry with more than 20 points.
  * </pre>
  * 
  * @author bsteffen
@@ -2235,52 +2237,30 @@ public class SessionEventManager implements
 
                     if (pointLimit > 0) {
 
-                        List<Geometry> geometryList = new ArrayList<>();
-
                         /**
                          * TODO: Eventually we want to share the same logic
                          * WarnGen uses to reduce points. This is not accessible
                          * right not, at least without creating a dependency
                          * between Hazard Services and WarnGen.
                          */
-                        Geometry geometryCollection = selectedEvent
-                                .getGeometry();
+                        Geometry geometry = selectedEvent.getGeometry();
 
-                        for (int i = 0; i < geometryCollection
-                                .getNumGeometries(); ++i) {
+                        if (geometry.getNumPoints() > pointLimit) {
 
-                            Geometry geometry = geometryCollection
-                                    .getGeometryN(i);
+                            double distanceTolerance = DEFAULT_DISTANCE_TOLERANCE;
 
-                            if (geometry.getNumPoints() > pointLimit) {
+                            DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(
+                                    geometry);
 
-                                double distanceTolerance = DEFAULT_DISTANCE_TOLERANCE;
-
-                                DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(
-                                        geometry);
-                                Geometry newGeometry = null;
-
-                                do {
-                                    simplifier
-                                            .setDistanceTolerance(distanceTolerance);
-                                    newGeometry = simplifier
-                                            .getResultGeometry();
-                                    distanceTolerance += DEFAULT_DISTANCE_TOLERANCE_INCREMENT;
-                                } while (newGeometry.getNumPoints() > pointLimit);
-
-                                if (!newGeometry.isEmpty()) {
-                                    geometryList.add(newGeometry);
-                                }
-
-                            } else {
-                                geometryList.add(geometry);
-                            }
+                            do {
+                                simplifier
+                                        .setDistanceTolerance(distanceTolerance);
+                                geometry = simplifier.getResultGeometry();
+                                distanceTolerance += DEFAULT_DISTANCE_TOLERANCE_INCREMENT;
+                            } while (geometry.getNumPoints() > pointLimit);
                         }
 
-                        Geometry geoCollection = geoFactory
-                                .createGeometryCollection(geometryList
-                                        .toArray(new Geometry[0]));
-                        selectedEvent.setGeometry(geoCollection);
+                        selectedEvent.setGeometry(geometry);
                         Serializable containedUgcs = (Serializable) buildContainedUGCs(selectedEvent);
                         selectedEvent.addHazardAttribute(CONTAINED_UGCS,
                                 containedUgcs);
