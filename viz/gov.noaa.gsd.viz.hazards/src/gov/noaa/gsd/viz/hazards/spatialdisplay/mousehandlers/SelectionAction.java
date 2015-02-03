@@ -62,6 +62,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes.  Also 5591, 
  *                                      fix of intermittent inability to select/deselect hazards
  * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove polygons from hazards
+ * Feb  3, 2015 6096       Dan Schaffer Fixed spatial display panning.
  * 
  * </pre>
  * 
@@ -625,20 +626,9 @@ public class SelectionAction extends NonDrawingAction {
             AbstractDrawableComponent selectedComponent = getSpatialDisplay()
                     .getSelectedDE();
 
-            boolean isEditable = false;
-            boolean isMovable = false;
-
-            if (selectedComponent != null) {
-                isEditable = SelectionAction.this
-                        .isComponentEditable(selectedComponent);
-                isMovable = SelectionAction.this
-                        .isComponentMovable(selectedComponent);
-            }
-
             if ((selectedComponent != null
                     && (selectedComponent != getSpatialDisplay()
-                            .getSelectedHazardLayer()) && !(selectedComponent instanceof HazardServicesSymbol))
-                    || (!isEditable && !isMovable)) {
+                            .getSelectedHazardLayer()) && !(selectedComponent instanceof HazardServicesSymbol))) {
                 allowPanning = true;
             }
 

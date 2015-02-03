@@ -704,8 +704,8 @@ public class GeoMapUtilities {
         double inclusionAreaInSqKm = hazardTypeEntry.getInclusionAreaInSqKm();
 
         return testInclusion(mapGeometry, hazardGeometry,
-                inclusionFractionTest, inclusionFraction,
-                inclusionAreaTest, inclusionAreaInSqKm);
+                inclusionFractionTest, inclusionFraction, inclusionAreaTest,
+                inclusionAreaInSqKm);
     }
 
     /*
@@ -719,6 +719,27 @@ public class GeoMapUtilities {
                 DEFAULT_INTEROPERABILITY_OVERLAP_REQUIREMENT, false, 0.0);
     }
 
+    /**
+     * Test if the given map geometry should be included. The test depends on
+     * the given hazardGeometry and user configuration of thresholds.
+     * 
+     * Note that even if the configuration says not to do the
+     * inclusionFractionTest, we have to test for the inclusion being greater
+     * than a small number to mitigate the round-off errors in the JTS
+     * intersection calculations If we don't do this then, due to round-off
+     * error, if you create a hazard by selecting by area, and specify a polygon
+     * based hazard type (such as FA.W), the hatching will show neighboring
+     * counties erroneously included. And the ultimate product will be wrong as
+     * well.
+     * 
+     * @param mapGeometry
+     * @param hazardGeometry
+     * @param inclusionFractionTest
+     * @param inclusionFraction
+     * @param inclusionAreaTest
+     * @param inclusionAreaInSqKm
+     * @return true if the mapGeometry should be included.
+     */
     private boolean testInclusion(Geometry mapGeometry,
             Geometry hazardGeometry, boolean inclusionFractionTest,
             double inclusionFraction, boolean inclusionAreaTest,
