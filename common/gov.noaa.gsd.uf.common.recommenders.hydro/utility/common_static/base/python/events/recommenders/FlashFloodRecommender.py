@@ -18,6 +18,7 @@ import EventSetFactory
 from ufpy.dataaccess import DataAccessLayer
 
 from com.raytheon.uf.common.monitor.config import FFMPSourceConfigurationManager
+from com.raytheon.uf.common.monitor.config import FFMPRunConfigurationManager
 
 #
 # Keys to values in the attributes dictionary produced
@@ -69,9 +70,9 @@ GEOMETRY_KEY = 'geometry'
 # shown to the forecaster in the recommender dialog.
 # See ffmp/FFMPSourceConfig.xml for available FFMP
 # data sources.
-supportedQPESourceList = [{'displayString':'DHR', 'identifier':'DHR'}]
-supportedGuidanceSourceList = [{'displayString':'DHR', 'identifier':'DHR'}]
-supportedForecastSourceList = []
+QPESourceDict = {}
+GuidanceSourceList = [{'displayString':'RFCFFG', 'identifier':'RFCFFG'}]
+ForecastSourceList = []
 
      
 class Recommender(RecommenderTemplate.Recommender):
@@ -83,11 +84,34 @@ class Recommender(RecommenderTemplate.Recommender):
         # this recommender to support a new QPE/FFG/Forecast source,
         # new strategy methods can be added to handle these new
         # datasets, and these dicts can be updated to reflect them.
-        self.QPEStrategies = {'DHR':self.getAccumulatedDHR}
-        self.GuidanceStrategies = {'DHR':self.getRFCGuidance}
+        self.QPEStrategies = {}
+        self.GuidanceStrategies = {'RFCFFG':self.getRFCGuidance}
         
         self.smallBasinMap = {}
 
+        # Dynamically populate the QPE sources from the FFMP config
+        runner = FFMPRunConfigurationManager.getInstance().getRunner(CWA)
+        if runner is not None:
+            products = runner.getProducts()
+            if products is not None:
+                for i in range(0,products.size()):
+                    productKey = str(products.get(i).getProductKey())
+                    productName = str(products.get(i).getProductName())
+                    identifier = productKey+'_'+productName
+                    
+                    entry = {'displayString':productKey, 
+                             'identifier':identifier, 
+                             'dataKey':DATA_KEY, 
+                             'siteKey':SITE_KEY, 
+                             'productName':productName}
+                    
+                    if productName == 'DHR':
+                        entry['dataKey'] = productKey
+                        entry['siteKey'] = productKey
+                        
+                    QPESourceDict[identifier] = entry 
+                    
+                    self.QPEStrategies[identifier] = self.getAccumulatedDHR;                     
 
     def defineScriptMetadata(self):
         '''
@@ -114,85 +138,53 @@ class Recommender(RecommenderTemplate.Recommender):
         '''        
         dialogDict = {'title': 'Flash Flood Recommender'}
         
-        qpeChoices = []
-        qpfChoices = []
-        guidChoices = []
-        
-        qpeDisplayNames = []
-        qpfDisplayNames = []
-        guidDisplayNames = []
-        
-        #
-        # Process supported FFMP QPE sources
-        for choiceDict in supportedQPESourceList:
-            qpeChoices.append(choiceDict)
-            qpeDisplayNames.append(choiceDict['displayString'])
-             
-        #
-        # Process supported FFMP Guidance sources       
-        for choiceDict in supportedGuidanceSourceList:
-            guidChoices.append(choiceDict)
-            guidDisplayNames.append(choiceDict['displayString'])
-            
-        #
-        # Process supported FFMP forecast sources
-        for choiceDict in supportedForecastSourceList:
-            qpfChoices.append(choiceDict)
-            qpfDisplayNames.append(choiceDict['displayString'])
-        
         valueDict = {}            
-        qpeDict = {}
-        fieldDictList = []
-        qpeDict['fieldType'] = 'ComboBox'
-        qpeDict['fieldName'] = QPE_SOURCE
-        qpeDict['label'] = 'QPE Source:'
-        qpeDict['choices'] = qpeChoices
-        qpeDict['defaultValues'] = qpeChoices[0]['identifier']
-        valueDict[QPE_SOURCE] =  qpeDict['defaultValues']
-        fieldDictList.append(qpeDict)
-
-        if qpfChoices:
-            checkBoxDict = {}
-            checkBoxDict['fieldType'] = 'CheckBoxes'
-            checkBoxDict['fieldName'] = 'includeQPF'
-            checkBoxDict['choices'] = [{'displayString':'Include QPF', 'identifier':'yes'}]
-            checkBoxDict['defaultValues'] = 'yes'
-            valueDict['includeQPF'] = 'yes'
-            fieldDictList.append(checkBoxDict)
+        dialogDict['fields'] = [{
+                              'fieldType':'ComboBox', 
+                              'fieldName':QPE_SOURCE,
+                              'label':'QPE DHR Source',
+                              'choices':QPESourceDict.values()
+                              }]
+        dialogDict['valueDict'] = {
+                                   ACCUMULATION_INTERVAL : 0.25,
+                                   QPE_SOURCE: QPESourceDict.values()[0]['identifier'],
+                                   GUID_SOURCE: GuidanceSourceList[0]['identifier']
+                                   }
         
-            qpfDict = {}
-            qpfDict['fieldType'] = 'ComboBox'
-            qpfDict['fieldName'] = FORECAST_SOURCE
-            qpfDict['label'] = 'QPF Source:'
-            qpfDict['choices'] = qpfChoices
-            qpfDict['defaultValues'] = qpfChoices[0]['identifier']
-            valueDict[FORECAST_SOURCE] = qpfDict['defaultValues']
-            fieldDictList.append(qpfDict)
+
+        if ForecastSourceList:
+            dialogDict['valueDict']['includeQPF'] = 'yes'
             
-
-        guidDict = {}
-        guidDict['fieldType'] = 'ComboBox'
-        guidDict['fieldName'] = GUID_SOURCE
-        guidDict['label'] = 'Guidance Source:'
-        guidDict['choices'] = guidChoices
-        guidDict['defaultValues'] = guidChoices[0]['identifier']
-        valueDict[GUID_SOURCE] = guidDict['defaultValues']
-        fieldDictList.append(guidDict)
+            dialogDict['fields'].append({
+                                  'fieldType':'CheckBoxes',
+                                  'fieldName':'includeQPF',
+                                  'choices':[{'displayString':'Include QPF', 'identifier':'yes'}],
+                                  'defaultValues':'yes'
+                                  })
+            
+            dialogDict['fields'].append({
+                                  'fieldType':'ComboBox',
+                                  'fieldName':FORECAST_SOURCE,
+                                  'label':'QPF Source',
+                                  'choices':ForecastSourceList
+                                  })
+            dialogDict['valueDict'][FORECAST_SOURCE] = ForecastSourceList[0]['identifier']
         
-        accumulationIntervalDict = {}
-        accumulationIntervalDict['fieldType'] = 'IntegerSpinner'
-        accumulationIntervalDict['showScale'] = 1
-        accumulationIntervalDict['fieldName'] = ACCUMULATION_INTERVAL
-        accumulationIntervalDict['label'] = 'Accumulation Interval'
-        accumulationIntervalDict['minValue'] = 1
-        accumulationIntervalDict['maxValue'] = 24
-        accumulationIntervalDict['incrementDelta'] = 1
-        valueDict[ACCUMULATION_INTERVAL] = 1
-        fieldDictList.append(accumulationIntervalDict)
-
-        dialogDict['fields'] = fieldDictList
+        dialogDict['fields'].append({
+                              'fieldType':'ComboBox',
+                              'fieldName':GUID_SOURCE,
+                              'label':'Guidance Source:',
+                              'choices':GuidanceSourceList})
         
-        dialogDict['valueDict'] = valueDict
+        dialogDict['fields'].append({
+                              'fieldType':'FractionSpinner',
+                              'precision':2,
+                              'showScale':1,
+                              'fieldName':ACCUMULATION_INTERVAL,
+                              'label':'Accumulation Interval',
+                              'minValue':0.25,
+                              'maxValue':24,
+                              'incrementDelta':0.25})
         
         return dialogDict
     
@@ -212,9 +204,8 @@ class Recommender(RecommenderTemplate.Recommender):
         '''
 
         self.sessionAttributes = eventSet.getAttributes()
-    
-        self.sourceName = dialogInputMap.get(QPE_SOURCE)   
-        self.ffgName = dialogInputMap.get(GUID_SOURCE)
+        self.selectedQPESource = QPESourceDict[dialogInputMap.get(QPE_SOURCE)]   
+        self.selectedGuidanceSource = dialogInputMap.get(GUID_SOURCE)
         self.accumulationHours = int(dialogInputMap.get(ACCUMULATION_INTERVAL))
         self.getRecommendation()
        
@@ -235,14 +226,14 @@ class Recommender(RecommenderTemplate.Recommender):
         Calls the correct QPE processing strategy method based
         on the user-selected QPE source. 
         '''
-        self.QPEStrategies[self.sourceName]()
+        self.QPEStrategies[self.selectedQPESource['identifier']]()
 
     def getGuidanceValues(self):
         '''
         Calls the correct FFG processing strategy method based
         on the user-selected FFG source.
         '''
-        self.GuidanceStrategies[self.ffgName]()
+        self.GuidanceStrategies[self.selectedGuidanceSource]()
         
            
     def getAccumulatedDHR(self):
@@ -254,15 +245,17 @@ class Recommender(RecommenderTemplate.Recommender):
         # Expiration time of the DHR source in seconds.
         SOURCE_EXPIRATION = 600   # seconds
         
+        dataKey = self.selectedQPESource['dataKey']
+        siteKey = self.selectedQPESource['siteKey']
         #
         # Retrieve a list of available times for DHR
         # data
         request = DataAccessLayer.newDataRequest()
         request.setDatatype(FFMP_KEY)
-        request.setParameters(self.sourceName)
+        request.setParameters(self.selectedQPESource['productName'])
         request.addIdentifier(WFO_KEY, WFO)
-        request.addIdentifier(SITE_REQUEST_KEY, SITE_KEY)
-        request.addIdentifier(DATA_REQUEST_KEY, DATA_KEY)
+        request.addIdentifier(SITE_REQUEST_KEY, siteKey)
+        request.addIdentifier(DATA_REQUEST_KEY, dataKey)
         request.addIdentifier(HUC_REQUEST_KEY, ALL_HUC)
         availableTimes = DataAccessLayer.getAvailableTimes(request)
         
@@ -303,7 +296,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     factor = (float(previousDate.getRefTime().getTime() - accumulateDate.getRefTime().getTime())/float(SECONDS_PER_HOUR * 1000))
                 
                 for geometryData in geometryDataList:
-                    precipitationValue = geometryData.getNumber(self.sourceName)
+                    precipitationValue = geometryData.getNumber(self.selectedQPESource['productName'])
                     precipitationValue = precipitationValue * factor
                     self.storeQPEValue(geometryData.getLocationName(), precipitationValue, \
                                        geometryData.getGeometry()) 
@@ -322,9 +315,9 @@ class Recommender(RecommenderTemplate.Recommender):
         #
         # Read the available data sets for the specified source. 
         ffmpSourceConfigManager = FFMPSourceConfigurationManager.getInstance()
-        bestGuidanceSource = ffmpSourceConfigManager.getSource(self.sourceName)
+        bestGuidanceSource = ffmpSourceConfigManager.getSource(self.selectedQPESource['productName'])
         if not bestGuidanceSource:
-            raise LookupError('Unable to find the source configuration for FFMP source: ' + self.sourceName)
+            raise LookupError('Unable to find the source configuration for FFMP source: ' + self.selectedQPESource['productName'])
                 
         #
         # Retrieve a list of available times for this dataset.        
@@ -333,7 +326,7 @@ class Recommender(RecommenderTemplate.Recommender):
         request.setDatatype(FFMP_KEY)
         request.setParameters(bestGuidanceSourceName)
         request.addIdentifier(WFO_KEY, WFO)
-        request.addIdentifier(SITE_REQUEST_KEY, SITE_KEY)
+        request.addIdentifier(SITE_REQUEST_KEY, self.selectedQPESource['siteKey'])
         request.addIdentifier(HUC_REQUEST_KEY, ALL_HUC)
         availableTimes = DataAccessLayer.getAvailableTimes(request)
 

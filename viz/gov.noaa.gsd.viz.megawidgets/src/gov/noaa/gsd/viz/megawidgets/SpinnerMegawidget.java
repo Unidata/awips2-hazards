@@ -76,6 +76,7 @@ import com.google.common.collect.ImmutableSet;
  *                                           available space.
  * Oct 22, 2014   5050     Chris.Golden      Minor change: Used "or" instead of
  *                                           addition for SWT flags.
+ * Feb 04, 2015   5919     Benjamin.Phillippe Added getRoundedValue function
  * </pre>
  * 
  * @author Chris.Golden
@@ -196,6 +197,7 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
         spinner.setMinimum(convertValueToSpinner(specifier.getMinimumValue()));
         spinner.setMaximum(convertValueToSpinner(specifier.getMaximumValue()));
         T incrementDelta = specifier.getIncrementDelta();
+        spinner.setIncrement(convertValueToSpinner(incrementDelta));
         spinner.setPageIncrement(convertValueToSpinner(incrementDelta));
         spinner.setDigits(getSpinnerPrecision());
         spinner.setEnabled(specifier.isEnabled());
@@ -223,6 +225,7 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
             setScaleBounds(convertValueToSpinner(specifier.getMinimumValue()),
                     convertValueToSpinner(specifier.getMaximumValue()));
             scale.setPageIncrement(convertValueToSpinner(incrementDelta));
+            scale.setIncrement(convertValueToSpinner(incrementDelta));
             scale.setEnabled(specifier.isEnabled());
 
             /*
@@ -383,8 +386,7 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
                      * If the state is changing, make a record of the change and
                      * alter the spinner to match.
                      */
-                    int state = SpinnerMegawidget.this.scale.getSelection()
-                            - scaleOffset;
+                    int state = getRoundedScaleValue();
                     if ((SpinnerMegawidget.this.state == null)
                             || (state != convertValueToSpinner(SpinnerMegawidget.this.state))) {
                         SpinnerMegawidget.this.state = convertSpinnerToValue(state);
@@ -632,6 +634,25 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
         scale.setSelection(state == scale.getMinimum() ? scale.getMaximum()
                 : scale.getMinimum());
         scale.setSelection(state);
+    }
+    
+    /**
+     * Gets the value of the scale rounded to the nearest increment
+     * 
+     * @return The rounded value
+     */
+    private int getRoundedScaleValue(){
+        double currentState = SpinnerMegawidget.this.scale.getSelection()
+                - scaleOffset;
+        double increment = scale.getIncrement();
+
+        /*
+         * Snaps the scale widget value to the current increment
+         */
+        double lower = (currentState - currentState % increment);
+        double upper = (lower + increment);
+        double mid = (upper - lower) / 2 + lower;
+        return (int)(currentState >= mid ? upper : lower);
     }
 
     /**
