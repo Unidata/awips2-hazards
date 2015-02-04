@@ -10,6 +10,7 @@
     1/12         4937       Robert.Blum    PGFv3 changes for FLW_FLS
     01/26/2015   4936       chris.cody     Implement scripts for Flash Flood Watch Products (FFA,FAA,FLA)
     01/31/2015   4937       Robert.Blum    Removed unneeded code.
+
 '''
 import types, collections
 
@@ -191,12 +192,13 @@ class HydroProductParts():
             action = vtecRecord.get('act')
             section = {
                 'arguments': ((segment, vtecRecords), vtecRecord, {'bulletFormat':'bulletFormat_CR'}),
-                'partsList': ['setUp_section'],
+                'partsList': ['setUp_section', 'locationsAffected'],
                 }
             sectionParts.append(section)
           
         if action in ['CAN', 'EXP']:
             parts = [
+                ('sections', sectionParts),
                'endingSynopsis',
                'polygonText',
                ]
@@ -211,6 +213,7 @@ class HydroProductParts():
             parts = [
                 #'emergencyStatement', # optional
                 'basisAndImpactsStatement_segmentLevel',
+                ('sections', sectionParts),
                 'callsToAction',
                 'polygonText',
                 ('pointSections', pointSections), # Sections are optional --only if points are included                   
@@ -226,7 +229,6 @@ class HydroProductParts():
                     'CR',
                     'summaryHeadlines',
                     'CR',
-                    ('sections', sectionParts), # Sections so not have information displayed, but need to call section_setUp 
                     ] + parts +
                     ['endSegment']
                 }
@@ -247,7 +249,6 @@ class HydroProductParts():
                 'forecastStageBullet',
                 'pointImpactsBullet',
                 'floodPointTable',
-                'locationsAffected'
                 ]
 
     #############################################################################################################
@@ -299,6 +300,8 @@ class HydroProductParts():
         @productSegment -- (segment, vtecRecords)
         @return  productParts for the given segment
         '''
+        
+        productVtecRecord = None
         segment = productSegment.segment
         vtecRecords = productSegment.vtecRecords
         sectionParts = []
@@ -306,6 +309,8 @@ class HydroProductParts():
         non_CAN_EXP = True
         phen = None
         for vtecRecord in vtecRecords:
+            #This product has a single vtecRecord
+            productVtecRecord = vtecRecord
             section = {
                 'arguments': ((segment, vtecRecords), vtecRecord, {'bulletFormat':'bulletFormat_CR'}),
                 'partsList': self._sectionPartsList_FFA_FLW_FLS_area(vtecRecord),
@@ -346,7 +351,12 @@ class HydroProductParts():
         # TODO Example doesn't match directive 
         # Should the statement be part of the CTA's (example) or separate (directive)?
         #if pil == 'FFA' and non_CAN_EXP: 
-            #partsList.append('meaningOfStatement')
+            #partsList.append('meaningOfStatement')           
+        phensig = ""
+        if productVtecRecord is not None: 
+            phensig = productVtecRecord['phensig']
+            
+        #if ((non_CAN_EXP) and (phensig != 'FA.A')):
         if (non_CAN_EXP):
             partsList.append('callsToAction')
             
@@ -446,6 +456,7 @@ class HydroProductParts():
             
         if non_CAN_EXP:
             partsList += [
+                'groupSummary', 
                 'callsToAction_productLevel',  #(optional)
                 'additionalInfoStatement',     #(optional)
                 'nextIssuanceStatement',
@@ -529,6 +540,23 @@ class HydroProductParts():
             # NOT for FFA, FLS FL.Y
             partsList.append('floodHistoryBullet')  
         return partsList
+
+
+
+    ######################################################
+    #  Product Parts for RVS         
+    ######################################################
+    def _productParts_RVS(self, productSegments):            
+        return {
+            'partsList': [
+                'setUp_product',
+                'wmoHeader',
+                'headlineStatement',
+                'narrativeInformation',
+                'floodPointTable',
+            ]
+            }
+
     
     def flush(self):
         ''' Flush the print buffer '''

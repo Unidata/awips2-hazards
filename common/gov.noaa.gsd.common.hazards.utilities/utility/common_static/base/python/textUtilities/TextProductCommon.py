@@ -712,7 +712,7 @@ class TextProductCommon(object):
             else:
                 replaceVal = self.frame(hashTag)
             if hashTag in formatHashTags:
-                formattedVal = formatMethod(hazardEvent.getCreationTime(), replaceVal)
+                formattedVal = formatMethod(hazardEvent.getCreationTime(), hashTag, replaceVal)
             else:
                 formattedVal = self.formatAsNecessary(replaceVal)
             returnVal = returnVal.replace('#' + hashTag + '#', formattedVal)
@@ -2564,11 +2564,11 @@ class TextProductCommon(object):
             if laterActive is not None:
                 expireTime = min(expireTime, laterActive)
             elif canExpFound and not activeFound:
-                expireTime = min(expireTime, issueTime + 3600)  # 1hr from now
+                expireTime = min(expireTime, issueTime+3600*1000)  #1hr from now
                 
-        # ensure expireTime is not before issueTime, and is at least 1 hour
-        if expireTime - issueTime < 3600:
-            expireTime = issueTime + 3600 * 1000
+        #ensure expireTime is not before issueTime, and is at least 1 hour
+        if expireTime - issueTime < 3600*1000:
+            expireTime = issueTime + 3600*1000
 
         # round to next 'roundMinutes'
         roundValue = roundMinutes * 60 * 1000  # in milliseconds

@@ -54,7 +54,6 @@ class Format(FormatTemplate.Formatter):
         productParts = self._tpc.getVal(productDict, 'productParts', [])
         text = self._processProductParts(productDict, productParts.get('partsList'))
         text = self._tpc.endline(text)
-        text = text.upper()
         return [[str(text)], self._editableParts]
     
     def _printDebugProductParts(self):   

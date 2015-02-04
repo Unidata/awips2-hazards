@@ -20,7 +20,7 @@
 
 #    Formats a dictionary 'data' and generates XML. The dictionary keys
 #    will be represent the XMG tag whereas the dictionary value will be  
-#    the text surrounded by the XML tag. 
+#    the text surrounded by the XML tag.         [[str(text)], self._editableParts]
 #
 #    If the value is a dictionary, then the value will become a sub-XML tag. 
 #    If the value is a list, then sub-XML tags with the same tag will be created.
@@ -51,7 +51,9 @@ class Format(FormatTemplate.Formatter):
         '''
         xml = Element('product')
         self.dictionary(xml, productDict)
-        return ProductUtils.prettyXML(tostring(xml), True)
+        self._editableProductParts = self._getEditableParts(productDict)   
+        self._editableParts = {}
+        return [[ProductUtils.prettyXML(tostring(xml), True)], self._editableParts]
     
     def xmlKeys(self): 
         return [   

@@ -108,7 +108,7 @@ public interface IFloodDAO {
      * 
      *         For example: new Object[] {"1|FF|DCTN1|HG"}
      */
-    public List<Object[]> getIngestTable();
+    public List<Object[]> getIngestTable(String primary_pe);
 
     /**
      * Retrieves IngestFilter settings for a given station and physical element.
@@ -229,7 +229,7 @@ public interface IFloodDAO {
 
     public String getPhysicalElement(String lid, String physicalElement,
             int duration, String typeSource, String extremum, String timeArg,
-            String derivationInstruction, boolean timeFlag);
+            String derivationInstruction, boolean timeFlag, long currentTime_ms);
 
     // public String getImpact
     /**

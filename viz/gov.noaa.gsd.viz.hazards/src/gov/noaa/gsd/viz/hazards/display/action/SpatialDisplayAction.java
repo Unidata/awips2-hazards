@@ -27,7 +27,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
  * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
- * 
+ * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -37,7 +37,7 @@ public class SpatialDisplayAction {
     public enum ActionType {
         DRAWING, FRAME_CHANGED, ADD_PENDING_TO_SELECTED, CONTEXT_MENU_SELECTED,
 
-        SELECTED_EVENTS_CHANGED, DMTS, DISPLAY_DISPOSED, RUN_TOOL,
+        SELECTED_EVENTS_CHANGED, DISPLAY_DISPOSED, RUN_TOOL,
 
         UPDATE_EVENT_METADATA, UNDO, REDO, ADD_GEOMETRY_TO_SELECTED
     }

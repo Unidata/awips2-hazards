@@ -217,7 +217,7 @@ public class FloodRecommenderDCTN1TestDAO implements IFloodDAO {
     }
 
     @Override
-    public List<Object[]> getIngestTable() {
+    public List<Object[]> getIngestTable(String primary_pe) {
         /*
          * load the type source which pe starts as 'H' or 'Q' and ts starts as
          * 'F'. Only load once.
@@ -506,7 +506,7 @@ public class FloodRecommenderDCTN1TestDAO implements IFloodDAO {
     @Override
     public String getPhysicalElement(String lid, String physicalElement,
             int duration, String typeSource, String extremum, String timeArg,
-            String derivationInstruction, boolean timeFlag) {
+            String derivationInstruction, boolean timeFlag, long currentTime_ms) {
         throw new UnsupportedOperationException();
     }
 

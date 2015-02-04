@@ -108,27 +108,28 @@ class Product(Legacy_ProductGenerator.Product):
         productSegments = productSegmentGroup.productSegments
         productSegmentGroup.setProductParts(self._hydroProductParts._productParts_ESF(productSegments))
     
-    def _narrativeForecastInformation(self, segmentDict, productSegmentGroup, productSegment):        
-        segmentDict['narrativeForecastInformation'] = '''
-         |* 
-         Headline defining the type of flooding being addressed 
-              (e.g., flash flooding, main stem
-              river flooding, snow melt flooding)
+    def _narrativeForecastInformation(self, segmentDict, productSegmentGroup, productSegment):  
+        default = '''
+|* 
+ Headline defining the type of flooding being addressed 
+      (e.g., flash flooding, main stem
+      river flooding, snow melt flooding)
 
-         Area covered
+ Area covered
+ 
+ Possible timing of the event
+ 
+ Relevant factors 
+         (e.g., synoptic conditions, 
+         quantitative precipitation forecasts (QPF), or
+         soil conditions)
          
-         Possible timing of the event
-         
-         Relevant factors 
-                 (e.g., synoptic conditions, 
-                 quantitative precipitation forecasts (QPF), or
-                 soil conditions)
-                 
-         Definition of an outlook (tailored to the specific situation)
-         
-         A closing statement indicating when additional information will be provided.
-         *|
-         '''
+ Definition of an outlook (tailored to the specific situation)
+ 
+ A closing statement indicating when additional information will be provided.
+*|
+         '''  
+        segmentDict['narrativeForecastInformation'] = self._section.hazardEvent.get('narrativeForecastInformation', default)
 
     def executeFrom(self, dataList, prevDataList=None):
         if prevDataList is not None:

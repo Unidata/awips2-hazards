@@ -152,11 +152,14 @@ public abstract class FunctionalTest<E extends Enum<E>> {
 
     protected HazardEventBuilder hazardEventBuilder;
 
+    protected final ObservedSettings settings;
+
     public FunctionalTest(HazardServicesAppBuilder appBuilder) {
         this.appBuilder = appBuilder;
         this.sessionManager = appBuilder.getSessionManager();
         this.eventManager = sessionManager.getEventManager();
         this.configManager = sessionManager.getConfigurationManager();
+        this.settings = configManager.getSettings();
         this.eventBus = appBuilder.getEventBus();
         this.autoTestUtilities = new AutoTestUtilities(appBuilder);
         this.hazardEventBuilder = autoTestUtilities.getHazardEventBuilder();

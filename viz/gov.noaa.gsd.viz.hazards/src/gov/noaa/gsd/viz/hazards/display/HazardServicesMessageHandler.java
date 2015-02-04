@@ -80,6 +80,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
@@ -197,6 +198,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Dec 13, 2014 4959       Dan Schaffer       Spatial Display cleanup and other bug fixes
  * Jan 29, 2015 3626       Chris.Golden       Added ability to pass event type when running
  *                                            a recommender.
+ * Jan 29, 2015 4375       Dan Schaffer       Console initiation of RVS product generation
  * </pre>
  * 
  * @author bryon.lawrence
@@ -287,29 +289,28 @@ public final class HazardServicesMessageHandler implements
     // Methods
 
     /**
-     * This method runs a tool chosen from the Toolbar. If parameters must be
-     * gathered from the user, this method will do so. If not, it will simply
-     * run the tool.
+     * Runs a recommender. If parameters must be gathered from the user, this
+     * method will do so. If not, it will simply run the recommender.
      * 
-     * @param toolName
-     *            The name of the tool to run.
+     * @param recommenderName
+     *            The name of the recommender to run.
      */
-    public void runTool(String toolName) {
+    public void runRecommender(String recommenderName) {
         AbstractRecommenderEngine<?> recommenderEngine = appBuilder
                 .getSessionManager().getRecommenderEngine();
 
         // Check if this tool requires user input from the display...
         Map<String, Serializable> spatialInput = recommenderEngine
-                .getSpatialInfo(toolName);
+                .getSpatialInfo(recommenderName);
         EventSet<IEvent> eventSet = new EventSet<>();
         eventSet.addAttribute(HazardConstants.EVENT_TYPE, eventType);
         Map<String, Serializable> dialogInput = recommenderEngine
-                .getDialogInfo(toolName, eventSet);
+                .getDialogInfo(recommenderName, eventSet);
 
         if (!spatialInput.isEmpty() || !dialogInput.isEmpty()) {
             if (!spatialInput.isEmpty()) {
                 // This will generally need to be asynchronous
-                processSpatialInput(toolName, spatialInput);
+                processSpatialInput(recommenderName, spatialInput);
             }
 
             if (!dialogInput.isEmpty()) {
@@ -317,15 +318,16 @@ public final class HazardServicesMessageHandler implements
                 // subview for gathering tool parameters.
                 if (!dialogInput.isEmpty()) {
                     dialogInput.put(FILE_PATH_KEY, recommenderEngine
-                            .getInventory(toolName).getFile().getFile()
+                            .getInventory(recommenderName).getFile().getFile()
                             .getPath());
-                    appBuilder.showToolParameterGatherer(toolName, eventType,
-                            dialogInput);
+                    Tool tool = sessionConfigurationManager.getSettings()
+                            .getTool(recommenderName);
+                    appBuilder.showToolParameterGatherer(tool, eventType, dialogInput);
                 }
             }
         } else {
-            // Otherwise, just run the tool.
-            runTool(toolName, null, null);
+            // Otherwise, just run the recommender.
+            runRecommender(recommenderName, null, null);
         }
     }
 
@@ -370,11 +372,13 @@ public final class HazardServicesMessageHandler implements
     }
 
     /**
-     * This method is called when a tool is run and parameters have already been
-     * collected for the tool execution.
+     * This method is called when a recommender is run and parameters have
+     * already been collected for the recommender execution.
      * 
-     * @param toolName
-     *            The name of the tool to run
+     * @param recommenderName
+     *            The name of the recommender to run
+     * @param sourceKey
+     *            The source of the runData
      * @param spatialInfo
      *            Spatial info to pass to the tool.
      * @param dialogInfo
@@ -382,7 +386,7 @@ public final class HazardServicesMessageHandler implements
      * 
      * @throws VizException
      */
-    private void runTool(String toolName,
+    private void runRecommender(String recommenderName,
             Map<String, Serializable> spatialInfo,
             Map<String, Serializable> dialogInfo) {
 
@@ -432,18 +436,20 @@ public final class HazardServicesMessageHandler implements
                         .toString() : HazardEventManager.Mode.OPERATIONAL
                         .toString());
 
-        sessionManager.getRecommenderEngine().runExecuteRecommender(toolName,
-                eventSet, spatialInfo, dialogInfo,
-                getRecommenderListener(toolName));
+        sessionManager.getRecommenderEngine().runExecuteRecommender(
+                recommenderName, eventSet, spatialInfo, dialogInfo,
+                getRecommenderListener(recommenderName));
 
         appBuilder.setCursor(SpatialViewCursorTypes.MOVE_VERTEX_CURSOR);
 
     }
 
     private IPythonJobListener<EventSet<IEvent>> getRecommenderListener(
-            String toolName) {
+            String recommenderName) {
+        ObservedSettings settings = sessionConfigurationManager.getSettings();
+        Tool tool = settings.getTool(recommenderName);
         return new HazardServicesRecommenderJobListener(
-                appBuilder.getEventBus(), toolName);
+                appBuilder.getEventBus(), tool);
     }
 
     /**
@@ -580,7 +586,7 @@ public final class HazardServicesMessageHandler implements
 
     @Handler
     public void handleStormTrackModification(ModifyStormTrackAction action) {
-        runTool(HazardConstants.MODIFY_STORM_TRACK_TOOL,
+        runRecommender(HazardConstants.MODIFY_STORM_TRACK_TOOL,
                 action.getParameters(), null);
     }
 
@@ -1225,12 +1231,6 @@ public final class HazardServicesMessageHandler implements
             }
             break;
 
-        case DMTS:
-            String lonLat = spatialDisplayAction.getDragToLongitude() + ","
-                    + spatialDisplayAction.getDragToLatitude();
-            runTool(lonLat, null, null);
-            break;
-
         case CONTEXT_MENU_SELECTED:
             String label = spatialDisplayAction.getContextMenuLabel();
             handleContextMenuSelection(label);
@@ -1246,7 +1246,7 @@ public final class HazardServicesMessageHandler implements
             break;
 
         case RUN_TOOL:
-            runTool(spatialDisplayAction.getToolName(),
+            runRecommender(spatialDisplayAction.getToolName(),
                     spatialDisplayAction.getToolParameters(), null);
             break;
 
@@ -1497,27 +1497,41 @@ public final class HazardServicesMessageHandler implements
      *            Action received.
      */
     @Handler
-    public void toolActionOccurred(final ToolAction action) {
-        switch (action.getActionType()) {
-        case RUN_TOOL:
-            eventType = action.getEventType();
-            runTool(action.getToolName());
+    public void toolActionOccurred(final ToolAction toolAction) {
+        switch (toolAction.getToolType()) {
+        case RECOMMENDER:
+            switch (toolAction.getRecommenderActionType()) {
+            case RUN_RECOMENDER:
+            	eventType = toolAction.getEventType();
+                runRecommender(toolAction.getToolName());
+                break;
+
+            case RUN_RECOMMENDER_WITH_PARAMETERS:
+            	eventType = toolAction.getEventType();
+                runRecommender(toolAction.getToolName(), null,
+                        toolAction.getAuxiliaryDetails());
+                break;
+
+            case RECOMMENDATIONS:
+                EventSet<IEvent> eventList = toolAction
+                        .getRecommendedEventList();
+                handleRecommenderResults(eventList);
+                break;
+
+            default:
+                statusHandler.debug("Unrecognized tool action :"
+                        + toolAction.getRecommenderActionType());
+                break;
+            }
             break;
 
-        case RUN_TOOL_WITH_PARAMETERS:
-            eventType = action.getEventType();
-            runTool(action.getToolName(), null, action.getAuxiliaryDetails());
-            break;
-
-        case TOOL_RECOMMENDATIONS:
-            EventSet<IEvent> eventList = action.getRecommendedEventList();
-            handleRecommenderResults(eventList);
+        case PRODUCT_GENERATOR:
+            sessionProductManager.generateProducts(toolAction.getToolName());
             break;
 
         default:
-            statusHandler
-                    .debug("HazardServicesMessageListener: Unrecognized tool action :"
-                            + action.getActionType());
+            statusHandler.debug("Unrecognized tool type :"
+                    + toolAction.getRecommenderActionType());
             break;
         }
 

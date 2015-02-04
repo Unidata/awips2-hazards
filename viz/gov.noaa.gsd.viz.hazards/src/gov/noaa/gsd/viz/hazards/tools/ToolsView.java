@@ -15,7 +15,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -35,6 +34,7 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 
 /**
  * Tools view, an implementation of IToolsView that provides an SWT-based view.
@@ -52,7 +52,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  *                                           cases.
  * Jul 15, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * Dec 05, 2014   4124     Chris.Golden      Corrected header comment.
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Dec 13, 2014   4959     Dan Schaffer      Spatial Display cleanup and other bug fixes
+ * Jan 29, 2015   4375     Dan Schaffer      Console initiation of RVS product generation
  * Jan 30, 2015   3626     Chris.Golden      Added ability to pass event type when
  *                                           running a recommender.
  * </pre>
@@ -104,8 +105,8 @@ public class ToolsView implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 presenter.publish(new ToolAction(
-                        ToolAction.ToolActionEnum.RUN_TOOL,
-                        (String) event.widget.getData()));
+                        ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
+                        (Tool) event.widget.getData(), "tbd"));
             }
         };
 
@@ -156,12 +157,18 @@ public class ToolsView implements
                 /*
                  * Iterate through the tools, if any, creating an item for each.
                  */
-                for (Entry<String, String> entry : toolIdentifiersForNames
-                        .entrySet()) {
-                    MenuItem item = new MenuItem(menu, SWT.PUSH);
-                    item.setText(entry.getKey());
-                    item.setData(entry.getValue());
-                    item.addSelectionListener(listener);
+                for (String name : toolIdentifiersForNames.keySet()) {
+                    Tool tool = toolIdentifiersForNames.get(name);
+                    if (tool.getToolType() == ToolType.RECOMMENDER) {
+                        addToolToMenu(menu, name, tool);
+                    }
+                }
+                new MenuItem(menu, SWT.SEPARATOR);
+                for (String name : toolIdentifiersForNames.keySet()) {
+                    Tool tool = toolIdentifiersForNames.get(name);
+                    if (tool.getToolType() == ToolType.PRODUCT_GENERATOR) {
+                        addToolToMenu(menu, name, tool);
+                    }
                 }
 
                 /*
@@ -175,6 +182,17 @@ public class ToolsView implements
              */
             return menu;
         }
+
+        /**
+         * @param
+         * @return
+         */
+        private void addToolToMenu(Menu menu, String text, Tool tool) {
+            MenuItem item = new MenuItem(menu, SWT.PUSH);
+            item.setText(text);
+            item.setData(tool);
+            item.addSelectionListener(listener);
+        }
     }
 
     // Private Variables
@@ -187,7 +205,7 @@ public class ToolsView implements
     /**
      * Map of tool names to their associated identifiers.
      */
-    private final Map<String, String> toolIdentifiersForNames = new LinkedHashMap<>();
+    private final Map<String, Tool> toolIdentifiersForNames = new LinkedHashMap<>();
 
     /**
      * Tools pulldown action.
@@ -248,8 +266,8 @@ public class ToolsView implements
     }
 
     @Override
-    public final void showToolParameterGatherer(String toolName,
-            String eventType, String jsonParams) {
+    public final void showToolParameterGatherer(Tool tool, String eventType,
+            String jsonParams) {
         if (toolDialog != null) {
             Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                     .getShell();
@@ -262,7 +280,7 @@ public class ToolsView implements
             return;
         }
         toolDialog = new ToolDialog(presenter, PlatformUI.getWorkbench()
-                .getActiveWorkbenchWindow().getShell(), toolName, eventType,
+                .getActiveWorkbenchWindow().getShell(), tool, eventType,
                 jsonParams);
         toolDialog.open();
         toolDialog.getShell().addDisposeListener(dialogDisposeListener);
@@ -276,8 +294,7 @@ public class ToolsView implements
          */
         toolIdentifiersForNames.clear();
         for (Tool tool : tools) {
-            toolIdentifiersForNames.put(tool.getDisplayName(),
-                    tool.getToolName());
+            toolIdentifiersForNames.put(tool.getDisplayName(), tool);
         }
 
         /*

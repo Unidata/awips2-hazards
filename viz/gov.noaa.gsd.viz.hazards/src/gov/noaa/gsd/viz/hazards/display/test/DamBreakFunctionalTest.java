@@ -92,7 +92,8 @@ class DamBreakFunctionalTest extends
          */
         this.step = Steps.RUN_DAM_BREAK_LOW_CONFIDENCE;
         eventBus.publishAsync(new ToolAction(
-                ToolAction.ToolActionEnum.RUN_TOOL, DAM_BREAK_FLOOD_RECOMMENDER));
+                ToolAction.RecommenderActionEnum.RUN_RECOMENDER, settings
+                        .getTool(DAM_BREAK_FLOOD_RECOMMENDER), "tbd"));
     }
 
     @Handler(priority = -1)
@@ -110,8 +111,8 @@ class DamBreakFunctionalTest extends
                 stepCompleted();
                 step = Steps.RUN_DAM_BREAK_HIGH_CONFIDENCE;
                 eventBus.publishAsync(new ToolAction(
-                        ToolAction.ToolActionEnum.RUN_TOOL,
-                        DAM_BREAK_FLOOD_RECOMMENDER));
+                        ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
+                        settings.getTool(DAM_BREAK_FLOOD_RECOMMENDER), "tbd"));
                 break;
 
             case RECEIVE_DAM_BREAK_HIGH_CONFIDENCE_EVENTS:
@@ -124,8 +125,8 @@ class DamBreakFunctionalTest extends
                 stepCompleted();
                 step = Steps.RUN_DAM_BREAK_DAM_FAILED;
                 eventBus.publishAsync(new ToolAction(
-                        ToolAction.ToolActionEnum.RUN_TOOL,
-                        DAM_BREAK_FLOOD_RECOMMENDER));
+                        ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
+                        settings.getTool(DAM_BREAK_FLOOD_RECOMMENDER), "tbd"));
 
                 break;
 
@@ -153,8 +154,8 @@ class DamBreakFunctionalTest extends
     @Handler(priority = -1)
     public void toolActionOccurred(final ToolAction action) {
         try {
-            switch (action.getActionType()) {
-            case RUN_TOOL:
+            switch (action.getRecommenderActionType()) {
+            case RUN_RECOMENDER:
                 switch (step) {
                 case RUN_DAM_BREAK_LOW_CONFIDENCE:
 
@@ -180,7 +181,7 @@ class DamBreakFunctionalTest extends
                 }
                 break;
 
-            case TOOL_RECOMMENDATIONS:
+            case RECOMMENDATIONS:
                 switch (step) {
                 case RUN_DAM_BREAK_LOW_CONFIDENCE:
                     stepCompleted();

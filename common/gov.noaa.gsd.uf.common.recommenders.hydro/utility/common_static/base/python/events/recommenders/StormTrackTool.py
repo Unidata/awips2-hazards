@@ -117,18 +117,19 @@ class Recommender(TrackToolCommon.TrackToolCommon):
         
         eventType = sessionAttributes.get('eventType')
         if eventType:
-            eventTypeFields = eventType.split('.')
-            phenomena, significance = eventTypeFields[0], eventTypeFields[1]
+            if  '.' in eventType:
+                eventTypeFields = eventType.split('.')
+                phenomena, significance = eventTypeFields[0], eventTypeFields[1]
             
-            if len(eventTypeFields) == 3:
-                subType = eventTypeFields[2]
-            else:
-                subType = None
-            
-            phenSig = '.'.join([phenomena, significance])
-            
-            return ( phenomena, significance, subType, phenSig )
-        
+                if len(eventTypeFields) == 3:
+                    subType = eventTypeFields[2]
+                else:
+                    subType = None
+                
+                phenSig = '.'.join([phenomena, significance])
+                
+                return ( phenomena, significance, subType, phenSig )
+           
         
         # Pickup the hazard type stuff from the event that was passed in
         # if that was possible.  Otherwise, for now we default it to convective

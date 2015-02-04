@@ -935,12 +935,32 @@ public class RiverForecastPoint {
                     .getRank();
         }
     }
+    
+    /** Get the highest ranked type source given a primary physical element
+     * 
+     */
+    public String getForecastTopRankedTypeSource(String primary_pe) {
+    	List<Object[]> ingestResults = floodDAO.getIngestTable(primary_pe);
+        if ((ingestResults == null) || (ingestResults.size() == 0)) {
+                return "";
+        	}
+
+        for (Object[] ingestRecord : ingestResults) {
+              String[] fields = ingestRecord[0].toString().split("\\|");
+                if (fields.length != 4) {
+                    /* An error was encountered parsing the unique string. */
+                    break;
+                }
+                return fields[1];
+        }
+        return "";
+        }
 
     /**
      * Loads or reloads updated observed and forecast data into the hydrographs
      * contained by this forecast point.
      */
-    public void loadTimeSeries() {
+    public void loadTimeSeries(String primary_pe) {
         int obshrs;
         int fcsthrs;
 
@@ -987,7 +1007,7 @@ public class RiverForecastPoint {
          * timeseries is limited from current time to the current time plus look
          * forward hours.
          */
-        retrieveRiverForecast(fcstEtime, basisBtime);
+        retrieveRiverForecast(fcstEtime, basisBtime, primary_pe);
 
         /*
          * Recompute the obs and forecast point mofo info. Always recompute the
@@ -1254,7 +1274,7 @@ public class RiverForecastPoint {
      * @param basisBtime
      *            The forecast basis time (the time the forecast starts at)
      */
-    private void retrieveRiverForecast(long fcstEtime, long basisBtime) {
+    private void retrieveRiverForecast(long fcstEtime, long basisBtime, String primary_pe) {
         boolean maxForecastFound = false;
 
         /**
@@ -1269,7 +1289,7 @@ public class RiverForecastPoint {
         this.maximumForecastCategory = HydroFloodCategories.NULL_CATEGORY
                 .getRank();
 
-        List<Object[]> ingestResults = floodDAO.getIngestTable();
+        List<Object[]> ingestResults = floodDAO.getIngestTable(primary_pe);
 
         if ((ingestResults == null) || (ingestResults.size() == 0)) {
             return;

@@ -149,7 +149,8 @@ TOR = {
     "toolbarTools": [
         {
             "toolName": "StormTrackTool", 
-            "displayName": "Storm Track"
+            "displayName": "Storm Track",
+            "toolType": "RECOMMENDER"
         }
     ] 
 }

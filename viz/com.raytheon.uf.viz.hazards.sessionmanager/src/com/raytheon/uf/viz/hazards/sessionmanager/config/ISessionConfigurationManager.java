@@ -35,6 +35,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
@@ -61,8 +62,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Sep 16, 2014 4753       Chris.Golden Added mutable properties to event script.
  * Dec 05, 2014 4124       Chris.Golden Changed to have generic ISettings parameter,
  *                                      in support of proper use of ObservedSettings.
- * Jan 21, 2014 3626       Chris.Golden Added method to retrieve hazard-type-first
+ * Jan 21, 2015 3626       Chris.Golden Added method to retrieve hazard-type-first
  *                                      recommender based upon hazard type.
+ * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * </pre>
  * 
  * @author bsteffen
@@ -259,10 +261,10 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * @param hazardType
      *            Type of the hazard for which the type-first recommender is
      *            desired.
-     * @return Identifier of the associated recommender, or <code>null</code> if
-     *         there is none.
+     * @return The associated recommender, or <code>null</code> if there is
+     *         none.
      */
-    public String getTypeFirstRecommender(String hazardType);
+    public Tool getTypeFirstRecommender(String hazardType);
 
     /**
      * Get the hazard category from the hazardCategories configuration file for

@@ -46,6 +46,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Dec 05, 2014 4124       Chris.Golden Made implementation of new ISettings
  *                                      interface, needed to allow for proper
  *                                      use of ObservedSettings.
+ * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * </pre>
  * 
  * @author bsteffen
@@ -71,7 +72,7 @@ public class Settings implements ISettings {
     private Set<String> visibleStatuses;
 
     /**
-     * Which product generators can be run
+     * Which tools can be run
      */
     private List<Tool> toolbarTools;
 
@@ -346,6 +347,24 @@ public class Settings implements ISettings {
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings#getTool
+     * (java.lang.String)
+     */
+    @Override
+    public Tool getTool(String toolName) {
+        for (Tool tool : toolbarTools) {
+            if (tool.getToolName().equals(toolName)) {
+                return tool;
+            }
+        }
+        return null;
+
     }
 
 }

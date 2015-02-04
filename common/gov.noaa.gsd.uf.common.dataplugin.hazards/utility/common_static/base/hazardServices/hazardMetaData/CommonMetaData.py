@@ -760,11 +760,48 @@ class MetaData(object):
          "lines": 6,
          "expandHorizontally": True
         }
-        
+
+    '''
+    Typical wording one might want to use:
+    
+    ********
+    Heavy rain ended:
+    
+    Excess runoff from heavy rain has ended over the warned area. 
+    If flooding has been observed...Please report it
+    to your local law enforcement agency.
+    
+    The threat for Flash Flooding has ended over the warned area.
+    Rainfall amounts were generally light over the region and Flash Flooding
+    is no longer expected. 
+    
+    The heavy rain has ended...and flooding is no longer expected to pose
+    a threat.
+    
+    *********
+    Water is receding:
+    
+    Flood waters have receded...and are no longer expected to pose a
+    threat to life or property.  Please continue to heed any road 
+    closures.
+
+    Excess runoff from heavy rain has ended over the warned area. Streams
+    and creeks in the warned area have receded or were beginning to
+    recede...ending the flood threat. If flooding has been observed...
+    please report it to your local law enforcement agency.
+    
+    Moderate to heavy rain has ended in the area and Flash Flooding is
+    no longer a concern. 
+    
+    '''        
     def getEndingOption(self):
         choices = [
-                    "Water is receding",
-                    "Heavy rain ended",
+                    {"displayString": "Water is receding","identifier": "Water is receding",
+                     "productString": '''Flood waters have receded...and are no longer expected to pose a threat to life or property.
+                     Please continue to heed any road closures.'''},
+                    {"displayString": "Heavy rain ended","identifier": "Heavy rain ended",
+                     "productString": '''Excess runoff from heavy rain has ended over the warned area. If flooding has been observed...Please report it
+                     to your local law enforcement agency.'''},
                     ]
         return {
              "fieldType":"RadioButtons",

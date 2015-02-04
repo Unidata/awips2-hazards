@@ -49,6 +49,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Jan 29, 2015    3626    Chris.Golden Added the passing of the event type
  *                                      chosen to a recommender that is being
  *                                      run as a result of that choice.
+ * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * </pre>
  * 
  * @author Chris.Golden
@@ -396,9 +397,9 @@ public class HazardTypeFirstPresenter extends
          * session manager will handle it. At that time, this will be changed to
          * directly run the tool, instead of using this deprecated code.
          */
-        publish(new ToolAction(ToolAction.ToolActionEnum.RUN_TOOL, getModel()
-                .getConfigurationManager()
-                .getTypeFirstRecommender(selectedType), selectedType));
+        publish(new ToolAction(ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
+                getModel().getConfigurationManager().getTypeFirstRecommender(
+                        selectedType), selectedType));
     }
 
     /**

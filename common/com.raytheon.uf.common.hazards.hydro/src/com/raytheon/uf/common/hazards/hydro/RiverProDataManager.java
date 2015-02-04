@@ -186,7 +186,8 @@ public class RiverProDataManager {
      */
     private void loadTimeSeries() {
         for (RiverForecastPoint forecastPoint : forecastPointList) {
-            forecastPoint.loadTimeSeries();
+            String primary_pe = forecastPoint.getPhysicalElement();
+            forecastPoint.loadTimeSeries(primary_pe);
         }
     }
 

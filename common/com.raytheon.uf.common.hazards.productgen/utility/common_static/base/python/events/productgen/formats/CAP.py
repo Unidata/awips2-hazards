@@ -257,7 +257,10 @@ class Format(FormatTemplate.Formatter):
                 xml.attrib['xmlns'] = self.capVersion
                 self.createCAP_Message(xml, productDict, segDict)
                 messages.append(ProductUtils.prettyXML(tostring(xml),True))
-        return messages
+                
+        self._editableProductParts = self._getEditableParts(productDict)   
+        self._editableParts = {}
+        return [messages, self._editableParts]
    
     def createCAP_Message(self, xml, productDict, segDict):
         '''

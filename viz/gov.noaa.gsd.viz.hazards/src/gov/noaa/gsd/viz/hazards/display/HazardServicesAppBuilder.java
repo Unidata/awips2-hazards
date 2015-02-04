@@ -118,6 +118,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.SessionManagerFactory;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -199,9 +200,11 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Jan 21, 2015 3795       rferrel             Use ProductGenConfirmationDlg for getUserAnswer dialog.
  * Jan 21, 2015 3626       Chris.Golden        Added use of new hazard-type-first presenter and
  *                                             view.
+ * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * Jan 29, 2015 3795       Robert.Blum         Fixed NullPointer on Display.getCurrent().getActiveShell().
  * Jan 30, 2015 3626       Chris.Golden        Added ability to pass event type when running a
  *                                             recommender.
+ * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -1074,24 +1077,24 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * Show a tool subview that is used to gather parameter values for a tool
      * that is to be executed.
      * 
-     * @param toolName
-     *            Name of the tool for which parameters are to be gathered.
      * @param eventType
      *            The type of the event that this tool is to create; if present,
      *            the tool is being run as a result of a hazard-type-first
      *            invocation. Otherwise, it will be <code>null</code>.
+     * @param tool
+     *            The tool for which parameters are to be gathered.
      * @param dialogInput
      *            the parameters for this subview. Within the set of all fields
      *            that are defined by these parameters, all the fields
      *            (megawidget specifiers) must have unique identifiers.
      */
-    public void showToolParameterGatherer(String toolName, String eventType,
+    public void showToolParameterGatherer(Tool tool, String eventType,
             Map<String, Serializable> dialogInput) {
         Dict dict = new Dict();
         for (String parameter : dialogInput.keySet()) {
             dict.put(parameter, dialogInput.get(parameter));
         }
-        toolsPresenter.showToolParameterGatherer(toolName, eventType,
+        toolsPresenter.showToolParameterGatherer(tool, eventType,
                 dict.toJSONString());
     }
 

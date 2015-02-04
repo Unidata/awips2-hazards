@@ -15,7 +15,7 @@ import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
-import gov.noaa.gsd.viz.hazards.display.action.ToolAction.ToolActionEnum;
+import gov.noaa.gsd.viz.hazards.display.action.ToolAction.RecommenderActionEnum;
 import gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.DamBreakUrgencyLevels;
 
 import java.util.Collection;
@@ -222,8 +222,8 @@ public class AddNewPendingToSelectedTest extends
     public void toolActionOccurred(final ToolAction action) {
         try {
             if ((step == Steps.RUN_TOOL)
-                    && action.getActionType().equals(
-                            ToolActionEnum.TOOL_RECOMMENDATIONS)) {
+                    && action.getRecommenderActionType().equals(
+                            RecommenderActionEnum.RECOMMENDATIONS)) {
                 stepCompleted();
                 step = Steps.PREVIEW;
                 autoTestUtilities.previewFromHID();

@@ -98,6 +98,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Page;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -157,6 +158,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      implements, and to use ObservedSetttings.
  * Jan 21, 2014 3626       Chris.Golden Added method to retrieve hazard-type-first recommender
  *                                      based upon hazard type.
+ * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * </pre>
  * 
  * @author bsteffen
@@ -932,7 +934,7 @@ public class SessionConfigurationManager implements
     }
 
     @Override
-    public String getTypeFirstRecommender(String hazardType) {
+    public Tool getTypeFirstRecommender(String hazardType) {
 
         /*
          * If the type-first recommenders for hazard types map has not yet been
@@ -950,8 +952,9 @@ public class SessionConfigurationManager implements
                 }
             }
         }
+        String toolName = typeFirstRecommendersForHazardTypes.get(hazardType);
 
-        return typeFirstRecommendersForHazardTypes.get(hazardType);
+        return settings.getTool(toolName);
     }
 
     @Override

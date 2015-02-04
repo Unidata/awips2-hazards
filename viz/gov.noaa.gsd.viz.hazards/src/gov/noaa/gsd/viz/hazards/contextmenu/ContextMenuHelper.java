@@ -62,6 +62,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * Dec 05, 2014    4124    Chris.Golden Changed to work with newly
  *                                      parameterized config manager.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * </pre>
  * 
  * @author mnash
@@ -262,18 +263,19 @@ public class ContextMenuHelper {
         return items;
     }
 
+    /**
+     * Logic to handle hazard-specific contributions to the context menu. This
+     * is used, for example, by the "Add/Remove Shapes" entry which applies to
+     * hazard geometries created by the draw-by-area tool.
+     */
     public List<IContributionItem> getSpatialHazardItems(boolean drawing,
             boolean moving) {
         List<IContributionItem> items = new ArrayList<>();
         for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
             if (event.getHazardType() != null) {
                 items.add(newAction(HazardConstants.CONTEXT_MENU_SHOW_PRODUCT_GEOMETRY));
-            }/*
-              * Logic to handle hazard-specific contributions to the context
-              * menu. This is used, for example, by the "Add/Remove Shapes"
-              * entry which applies to hazard geometries created by the
-              * draw-by-area tool.
-              */
+            }
+
             @SuppressWarnings("unchecked")
             List<String> contextMenuEntries = (List<String>) event
                     .getHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);

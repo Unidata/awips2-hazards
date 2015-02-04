@@ -128,8 +128,8 @@ public class StormTrackFunctionalTest extends
     @Handler(priority = -1)
     public void toolActionOccurred(final ToolAction action) {
         try {
-            switch (action.getActionType()) {
-            case TOOL_RECOMMENDATIONS:
+            switch (action.getRecommenderActionType()) {
+            case RECOMMENDATIONS:
                 if (step.equals(Steps.START)) {
                     EventSet<IEvent> events = action.getRecommendedEventList();
                     assertEquals(events.size(), 1);

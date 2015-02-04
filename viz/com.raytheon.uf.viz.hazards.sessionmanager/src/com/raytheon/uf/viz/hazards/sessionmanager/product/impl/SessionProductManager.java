@@ -184,7 +184,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Jan 15, 2015 4193       rferrel      Implement dissemination ordering.
  * Jan 20, 2015 4476       rferrel      Implement shutdown of ProductGeneration.
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
- * 
+ * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * </pre>
  * 
  * @author bsteffen
@@ -324,7 +324,7 @@ public class SessionProductManager implements ISessionProductManager {
         ProductGeneratorTable pgt = configManager.getProductGeneratorTable();
 
         for (Entry<String, ProductGeneratorEntry> entry : pgt.entrySet()) {
-            if (entry.getValue().isReservedNameNotYetImplemented()) {
+            if (entry.getValue().isReservedNameNotYetImplemented() || entry.getValue().getAutoSelect() == false) {
                 continue;
             }
             Set<IHazardEvent> productEvents = new HashSet<>();
@@ -835,30 +835,97 @@ public class SessionProductManager implements ISessionProductManager {
     @Override
     public void generateProducts(boolean issue) {
 
-        /*
-         * Ensure that the hazards all have valid types.
-         */
         List<ObservedHazardEvent> selectedEvents = eventManager
                 .getSelectedEvents();
-        List<String> noTypeEventIds = new ArrayList<>(selectedEvents.size());
-        for (ObservedHazardEvent event : selectedEvents) {
-            if ((event.getPhenomenon() == null)
-                    || (event.getSignificance() == null)) {
-                noTypeEventIds.add(event.getEventID());
-            }
-        }
-        if (noTypeEventIds.isEmpty() == false) {
-            showWarningMessage(noTypeEventIds,
-                    (noTypeEventIds.size() > 1 ? "have " : "has ")
-                            + "no event type.");
-            setPreviewOrIssueOngoing(issue, false);
+        if (!areValidEvents(selectedEvents, issue)) {
             return;
         }
 
         /*
+         * Compile the preliminary product generation information and cache it.
+         */
+        Collection<ProductGeneratorInformation> allProductGeneratorInfo = this
+                .getPreliminaryProductGeneratorInformationForSelectedHazards(issue);
+        productGeneratorInformationForSelectedHazardsCache.put(issue,
+                allProductGeneratorInfo);
+
+        generate(issue, allProductGeneratorInfo);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager
+     * #generateProducts(java.lang.String)
+     */
+    @Override
+    public void generateProducts(String productGeneratorName) {
+        List<ObservedHazardEvent> selectedEvents = eventManager
+                .getSelectedEvents();
+        if (!areValidEvents(selectedEvents, false)) {
+            return;
+        }
+
+        boolean matchingAllowedHazards = isAtLeastOneSelectedAllowed(
+                productGeneratorName, selectedEvents);
+        if (!matchingAllowedHazards) {
+            messenger.getWarner().warnUser("Product Generation Error",
+                    "Generation not supported for selected hazards");
+            return;
+        }
+        Collection<ProductGeneratorInformation> allProductGeneratorInfo = productGeneratorInfoFromName(
+                productGeneratorName, selectedEvents);
+        productGeneratorInformationForSelectedHazardsCache.put(false,
+                allProductGeneratorInfo);
+        generate(false, allProductGeneratorInfo);
+    }
+
+    private boolean isAtLeastOneSelectedAllowed(String productGeneratorName,
+            List<ObservedHazardEvent> selectedEvents) {
+        ProductGeneratorTable pgTable = configManager
+                .getProductGeneratorTable();
+        ProductGeneratorEntry pgEntry = pgTable.get(productGeneratorName);
+        for (ObservedHazardEvent selectedEvent : selectedEvents) {
+            for (String[] allowedHazards : pgEntry.getAllowedHazards()) {
+                if (selectedEvent.getHazardType().equals(allowedHazards[0])) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private Collection<ProductGeneratorInformation> productGeneratorInfoFromName(
+            String productGeneratorName,
+            List<ObservedHazardEvent> selectedEvents) {
+        Collection<ProductGeneratorInformation> allProductGeneratorInfo = new ArrayList<>();
+        ProductGeneratorInformation productGeneratorInfo = new ProductGeneratorInformation();
+        productGeneratorInfo.setProductGeneratorName(productGeneratorName);
+
+        productGeneratorInfo
+                .setPossibleProductEvents(new HashSet<IHazardEvent>());
+        productGeneratorInfo.setProductEvents(new HashSet<IHazardEvent>(
+                selectedEvents));
+        productGeneratorInfo.setProductFormats(configManager
+                .getProductGeneratorTable().getProductFormats(
+                        productGeneratorName));
+        EventSet<IEvent> eventSet = buildEventSet(productGeneratorInfo, false,
+                LocalizationManager.getInstance().getCurrentSite());
+        Map<String, Serializable> dialogInfo = productGen.getDialogInfo(
+                productGeneratorName, eventSet);
+        productGeneratorInfo.setDialogSelections(dialogInfo);
+        allProductGeneratorInfo.add(productGeneratorInfo);
+        return allProductGeneratorInfo;
+    }
+
+    private void generate(boolean issue,
+            Collection<ProductGeneratorInformation> allProductGeneratorInfo) {
+        /*
          * See if staging is required; if it is, request it and do nothing more.
          */
-        StagingRequired stagingRequired = getProductStagingRequired(issue);
+        StagingRequired stagingRequired = getProductStagingRequired(
+                allProductGeneratorInfo, issue);
         if (stagingRequired == StagingRequired.NO_APPLICABLE_EVENTS) {
             setPreviewOrIssueOngoing(issue, false);
             return;
@@ -905,6 +972,35 @@ public class SessionProductManager implements ISessionProductManager {
         } else {
             setPreviewOrIssueOngoing(issue, false);
         }
+    }
+
+    /*
+     * Ensure selected hazards meet criteria for product generation
+     */
+    private boolean areValidEvents(List<ObservedHazardEvent> selectedEvents,
+            boolean issue) {
+        if (selectedEvents.isEmpty()) {
+            messenger.getWarner().warnUser("Product Generation Error",
+                    "No selected events");
+            return false;
+        }
+
+        List<String> noTypeEventIds = new ArrayList<>(selectedEvents.size());
+        for (ObservedHazardEvent event : selectedEvents) {
+            if ((event.getPhenomenon() == null)
+                    || (event.getSignificance() == null)) {
+                noTypeEventIds.add(event.getEventID());
+            }
+        }
+        if (noTypeEventIds.isEmpty() == false) {
+            showWarningMessage(noTypeEventIds,
+                    (noTypeEventIds.size() > 1 ? "have " : "has ")
+                            + "no event type.");
+            setPreviewOrIssueOngoing(issue, false);
+            return false;
+        }
+
+        return true;
     }
 
     @Override
@@ -959,26 +1055,18 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     /**
-     * Determines if product staging is needed before generation can occur. This
-     * method has the side effect of populating the product generator
-     * information cache for the currently selected events. Thus, this method
-     * must be called before invoking
-     * {@link #createProductsFromPreliminaryProductStaging(boolean, Map)} .
+     * Determines if product staging is needed before generation can occur.
+     * 
+     * @param allProductGeneratorInfo
      * 
      * @param issue
      *            Flag indicating whether or not the hazard events are to be
      *            issued; if false, they are to be previewed.
      * @return Type of staging required before generation can occur.
      */
-    private StagingRequired getProductStagingRequired(boolean issue) {
-
-        /*
-         * Compile the preliminary product generation information and cache it.
-         */
-        Collection<ProductGeneratorInformation> allProductGeneratorInfo = this
-                .getPreliminaryProductGeneratorInformationForSelectedHazards(issue);
-        productGeneratorInformationForSelectedHazardsCache.put(issue,
-                allProductGeneratorInfo);
+    private StagingRequired getProductStagingRequired(
+            Collection<ProductGeneratorInformation> allProductGeneratorInfo,
+            boolean issue) {
 
         /*
          * If any of the product generation information objects has unselected

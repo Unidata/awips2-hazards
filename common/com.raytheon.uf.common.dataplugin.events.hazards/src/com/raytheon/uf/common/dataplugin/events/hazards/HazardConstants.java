@@ -65,6 +65,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Dec 05, 2014 4124      Chris.Golden  Added sort priority constants.
  * Jan 22, 2015 4959      Dan Schaffer  MB3 to add/remove UGCs to a hazard
  * Jan 29, 2015 3626      Chris.Golden  Added event type constant for recommenders.
+ * Jan 29, 2015 5005      Dan Schaffer  Fixed bug in MB3 context menu for showing product geometry
  * </pre>
  * 
  * @author mnash

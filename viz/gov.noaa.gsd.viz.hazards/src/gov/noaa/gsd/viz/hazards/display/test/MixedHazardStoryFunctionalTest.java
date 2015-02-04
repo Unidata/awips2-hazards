@@ -195,7 +195,8 @@ class MixedHazardStoryFunctionalTest extends
     protected void runFirstStep() {
         this.step = Steps.RUN_DAM_BREAK;
         eventBus.publishAsync(new ToolAction(
-                ToolAction.ToolActionEnum.RUN_TOOL, DAM_BREAK_FLOOD_RECOMMENDER));
+                ToolAction.RecommenderActionEnum.RUN_RECOMENDER, settings
+                        .getTool(DAM_BREAK_FLOOD_RECOMMENDER), "tbd"));
     }
 
     @Handler(priority = -1)
@@ -406,8 +407,8 @@ class MixedHazardStoryFunctionalTest extends
                 stepCompleted();
                 step = Steps.RUN_FLOOD;
                 eventBus.publishAsync(new ToolAction(
-                        ToolAction.ToolActionEnum.RUN_TOOL,
-                        RIVER_FLOOD_RECOMMENDER));
+                        ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
+                        settings.getTool(RIVER_FLOOD_RECOMMENDER), "tbd"));
                 break;
 
             case RUN_FLOOD:
@@ -465,8 +466,8 @@ class MixedHazardStoryFunctionalTest extends
     @Handler(priority = -1)
     public void toolActionOccurred(final ToolAction action) {
         try {
-            switch (action.getActionType()) {
-            case RUN_TOOL:
+            switch (action.getRecommenderActionType()) {
+            case RUN_RECOMENDER:
                 switch (step) {
                 case RUN_DAM_BREAK:
 
@@ -482,8 +483,9 @@ class MixedHazardStoryFunctionalTest extends
                     riverFloodInfo.put(WARNING_THRESHOLD, 24);
 
                     eventBus.publishAsync(new ToolAction(
-                            ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
-                            RIVER_FLOOD_RECOMMENDER, riverFloodInfo));
+                            ToolAction.RecommenderActionEnum.RUN_RECOMMENDER_WITH_PARAMETERS,
+                            settings.getTool(RIVER_FLOOD_RECOMMENDER),
+                            riverFloodInfo, "tbd"));
                     break;
                 default:
                     testError();

@@ -47,8 +47,9 @@ public class ToolsViewForTesting implements
     }
 
     @Override
-    public void showToolParameterGatherer(String toolName, String eventType,
+    public void showToolParameterGatherer(Tool tool, String eventType,
             String jsonParams) {
+
     }
 
     @Override

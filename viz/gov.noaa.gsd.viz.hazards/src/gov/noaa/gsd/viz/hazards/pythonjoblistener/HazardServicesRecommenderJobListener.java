@@ -9,14 +9,14 @@ package gov.noaa.gsd.viz.hazards.pythonjoblistener;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
-import gov.noaa.gsd.viz.hazards.display.action.ToolAction.ToolActionEnum;
+import gov.noaa.gsd.viz.hazards.display.action.ToolAction.RecommenderActionEnum;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 
 /**
  * Description: This listens for the results from an asynchronous run of a
@@ -29,6 +29,7 @@ import com.raytheon.uf.viz.core.VizApp;
  * ------------ ---------- ----------- --------------------------
  * Mar 19, 2013            Bryon.Lawrence    Initial creation
  * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
+ * Jan 29, 2015 4375       Dan Schaffer      Console initiation of RVS product generation
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -38,7 +39,7 @@ public class HazardServicesRecommenderJobListener implements
         IPythonJobListener<EventSet<IEvent>> {
     private final BoundedReceptionEventBus<Object> eventBus;
 
-    private final String toolID;
+    private final Tool tool;
 
     /**
      * For logging...
@@ -49,13 +50,13 @@ public class HazardServicesRecommenderJobListener implements
     /**
      * @param eventBus
      *            Event bus to use to transmit messages.
-     * @param toolID
-     *            The name of the tool which produced this recommendation.
+     * @param tool
+     *            The tool which produced this recommendation.
      */
     public HazardServicesRecommenderJobListener(
-            BoundedReceptionEventBus<Object> eventBus, String toolID) {
+            BoundedReceptionEventBus<Object> eventBus, Tool tool) {
         this.eventBus = eventBus;
-        this.toolID = toolID;
+        this.tool = tool;
     }
 
     /**
@@ -68,7 +69,7 @@ public class HazardServicesRecommenderJobListener implements
     @Override
     public void jobFinished(final EventSet<IEvent> result) {
         ToolAction action = new ToolAction(
-                ToolActionEnum.TOOL_RECOMMENDATIONS, result, toolID);
+                RecommenderActionEnum.RECOMMENDATIONS, result, tool);
         eventBus.publishAsync(action);
     }
 
@@ -80,6 +81,6 @@ public class HazardServicesRecommenderJobListener implements
      */
     @Override
     public void jobFailed(Throwable e) {
-        statusHandler.error("Recommender " + toolID + " failed.", e);
+        statusHandler.error("Recommender " + tool + " failed.", e);
     }
 }

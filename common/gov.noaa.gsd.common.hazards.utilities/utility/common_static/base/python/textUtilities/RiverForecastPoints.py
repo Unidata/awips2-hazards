@@ -284,7 +284,7 @@ class RiverForecastPoints(object):
 
     def getGroupMaximumForecastFloodCategoryName(self, forecastPointID):
         '''
-        Emulates the functionality of the <GrpMaxCurCatName> template variable.
+        Emulates the functionality of the <GrpMaxFcstCatName> template variable.
         e.g. RECORD
                 
         Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT/
@@ -871,7 +871,7 @@ class RiverForecastPoints(object):
         stageWindowLower = filters['Stage Window Lower']
         stageWindowUpper = filters['Stage Window Upper']
         
-        ### yearLookBack foubd only in Crests.  Expect 'None' for impacts
+        ### yearLookBack found only in Crests.  Expect 'None' for impacts
         yearLookBack = filters.get('Year Lookback')
         
         searchType = filters['Search Type']
@@ -1050,7 +1050,11 @@ class RiverForecastPoints(object):
         '''
         return self.getStageFlowUnits(forecastPointID)
 
-              
+    def getForecastTopRankedTypeSource(self, forecastPointID):
+        riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
+        primaryPE = self.getPrimaryPhysicalElement(forecastPointID)
+        return riverForecastPoint.getForecastTopRankedTypeSource(primaryPE)
+    
     ###############################################################
     #
     # Forecast Point Previous Template Variables
@@ -1077,7 +1081,7 @@ class RiverForecastPoints(object):
     ###############################################################
     
     def getPhysicalElementValue(self, forecastPointID, physicalElement, duration,
-                                typeSource, extremum, timeArg, derivationInstruction='', timeFlag=False):    
+                                typeSource, extremum, timeArg, derivationInstruction='', timeFlag=False, currentTime_ms=0):    
         '''
         Emulates the functionality of the <PEVal> template variable.
         e.g. 35
@@ -1089,8 +1093,9 @@ class RiverForecastPoints(object):
         @return: The value for the specified physical element and
                  forecast point. 
         '''
+                
         data = self.riverProDataManager.getFloodDAO().getPhysicalElement(forecastPointID, physicalElement, duration,
-                                typeSource, extremum, timeArg, derivationInstruction, timeFlag)
+                                typeSource, extremum, timeArg, derivationInstruction, timeFlag, currentTime_ms)
         
         if not timeFlag :
             data = float(data)
@@ -1488,7 +1493,10 @@ class RiverForecastPoints(object):
         @return:  The forecast crest stage for this river forecast point.
         '''
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
-        return riverForecastPoint.getForecastCrestValue()
+        returnVal = riverForecastPoint.getForecastCrestValue()
+        if returnVal == self.MISSING_VALUE:
+            returnVal = None
+        return returnVal
 
     def getForecastCrestTime(self, forecastPointID):
         '''
@@ -1499,7 +1507,7 @@ class RiverForecastPoints(object):
                    load_variable_value.c -  load_stage_ffp_variable_value()
         
         @param forecastPointID: The river forecast point identifier.
-        @return:  The forecast crest time for this river forecast point  in milliseconds
+        @return:  The forecast crest time for this river forecast point in milliseconds
         '''
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
         return self._convertToMS(riverForecastPoint.getForecastCrestTime())

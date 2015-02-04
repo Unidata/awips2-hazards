@@ -37,9 +37,9 @@ class Product(Legacy_Base_Generator.Product):
         '''
             Adds all data related to RiverForecastPoints to the segment dictionary.
         '''
+        millis = SimulatedTime.getSystemTime().getMillis()
+        currentTime = datetime.datetime.fromtimestamp(millis / 1000)
         if self._rfp is None:
-            millis = SimulatedTime.getSystemTime().getMillis()
-            currentTime = datetime.datetime.fromtimestamp(millis / 1000)
             self._rfp = RiverForecastPoints(currentTime)
 
         segment['pointID'] = pointID
@@ -74,11 +74,7 @@ class Product(Legacy_Base_Generator.Product):
         segment['forecastCrestStage'] = self._rfp.getForecastCrestStage(pointID)
         segment['forecastCrestTime_ms'] = self._rfp.getForecastCrestTime(pointID)
         # Fall
-        forecastFallBelowFloodStageTime_ms = self._rfp.getForecastFallBelowFloodStageTime(pointID)
-
-        if not forecastFallBelowFloodStageTime_ms:
-             forecastFallBelowFloodStageTime_ms = self._rfp.MISSING_VALUE
-        segment['forecastFallBelowFloodStageTime_ms'] = forecastFallBelowFloodStageTime_ms
+        segment['forecastFallBelowFloodStageTime_ms'] = self._rfp.getForecastFallBelowFloodStageTime(pointID)
 
         segment['stageFlowUnits'] = self._rfp.getStageFlowUnits(pointID)
         # Trend
@@ -87,6 +83,13 @@ class Product(Legacy_Base_Generator.Product):
         segment['pointImpacts'] = self._preparePointImpacts(event)
         segment['impactCompUnits'] = self._rfp.getImpactCompUnits(pointID)
         segment['crestsSelectedForecastPointsComboBox'] = event.get('crestsSelectedForecastPointsComboBox')
+
+        # Spec values
+        forecastTypeSource = self._rfp.getForecastTopRankedTypeSource(pointID)
+        segment['specValue'] = self._rfp.getPhysicalElementValue(
+                pointID, primaryPE, 0, forecastTypeSource, 'Z', '4|1200|1', timeFlag=False, currentTime_ms=millis)
+        segment['specTime'] = self._rfp.getPhysicalElementValue(
+                pointID, primaryPE, 0, forecastTypeSource, 'Z', '4|1200|1', timeFlag=True, currentTime_ms=millis)
 
     def _preparePointImpacts(self, hazardEvent):
         # Pull out the list of chosen impact text fields

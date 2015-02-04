@@ -9,9 +9,13 @@ package com.raytheon.uf.common.hazards.hydro;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.Map.Entry;
+
+import org.apache.commons.lang.time.DateUtils;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil;
@@ -22,6 +26,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.util.Pair;
+
 
 /**
  * Description: Product data accessor implementation of the IFloodDAO.
@@ -507,7 +512,7 @@ public class FloodDAO implements IFloodDAO {
      *         For example: new Object[] {"1|FF|DCTN1|HG"}
      */
     @Override
-    public List<Object[]> getIngestTable() {
+    public List<Object[]> getIngestTable(String primary_pe) {
         /*
          * load the type source which pe starts as 'H' or 'Q' and ts starts as
          * 'F'. Only load once.
@@ -517,7 +522,8 @@ public class FloodDAO implements IFloodDAO {
             StringBuffer query = new StringBuffer(
                     "SELECT DISTINCT(ts_rank||'|'||ts||'|'||lid||'|'||pe) ");
             query.append("FROM IngestFilter WHERE ts LIKE 'F%%' ");
-            query.append("AND ( pe LIKE 'H%%' OR pe LIKE 'Q%%') ");
+            query.append("AND (pe = '"+primary_pe+"') ");
+            //query.append("AND ingest = 'T' order by ts_rank");
             query.append("AND ingest = 'T'");
 
             ingestResults = DatabaseQueryUtil.executeDatabaseQuery(
@@ -776,7 +782,35 @@ public class FloodDAO implements IFloodDAO {
     @Override
     public String getPhysicalElement(String lid, String physicalElement,
             int duration, String typeSource, String extremum, String timeArg,
-            String derivationInstruction, boolean timeFlag) {
+            String derivationInstruction, boolean timeFlag, long currentTime_ms) {
+
+    	/* 
+    	 * Build the validTime from timeArg
+    	 */
+    	String queryTime = "";
+    	String lowerBoundStr = "";
+        if (!"NEXT".equals(timeArg)) {
+        	String [] stringArray = timeArg.split("\\|");
+        	int dayOffset = Integer.parseInt(stringArray[0]);
+        	int baseHours = Integer.parseInt(stringArray[1]);
+        	int windowHours = Integer.parseInt(stringArray[2]);
+
+        	Date referenceTime = DateUtils.addHours(DateUtils.truncate(
+        			new Date(currentTime_ms), Calendar.DATE),
+        			dayOffset * 24 + baseHours);
+        	Date lowerBound = DateUtils.addHours(referenceTime, -windowHours);
+        	Date upperBound = DateUtils.addHours(referenceTime, windowHours);
+
+        	SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.0");
+
+        	lowerBoundStr = formatter.format(lowerBound);
+        	String upperBoundStr = formatter.format(upperBound);
+        	if (typeSource.startsWith("r") || typeSource.startsWith("R")) {
+        		queryTime = "(obstime >= '"+lowerBoundStr+"' and obstime <= '"+upperBoundStr+"')";
+        	}
+        	else if (typeSource.startsWith("f") || typeSource.startsWith("F")) {
+        		queryTime = "(validtime >= '"+lowerBoundStr+"' and validtime <= '"+upperBoundStr+"')";
+           }
 
         /*
          * Set the table name to use.
@@ -784,25 +818,25 @@ public class FloodDAO implements IFloodDAO {
         String tableName = "";
 
         if ((physicalElement.startsWith("h") || physicalElement.startsWith("H"))
-                && (typeSource.startsWith("f'") || typeSource.startsWith("F"))) {
+                && (typeSource.startsWith("f") || typeSource.startsWith("F"))) {
             tableName = "fcstheight";
         } else if ((physicalElement.startsWith("q") || physicalElement
                 .startsWith("Q"))
-                && (typeSource.startsWith("f'") || typeSource.startsWith("F"))) {
+                && (typeSource.startsWith("f") || typeSource.startsWith("F"))) {
             tableName = "fcstdischarge";
         } else if ((physicalElement.startsWith("h") || physicalElement
                 .startsWith("H"))
-                && (typeSource.startsWith("r'") || typeSource.startsWith("R"))) {
+                && (typeSource.startsWith("r") || typeSource.startsWith("R"))) {
             tableName = "height";
         } else if ((physicalElement.startsWith("q") || physicalElement
                 .startsWith("Q"))
-                && (typeSource.startsWith("r'") || typeSource.startsWith("R"))) {
+                && (typeSource.startsWith("r") || typeSource.startsWith("R"))) {
             tableName = "discharge";
         }
 
         StringBuffer query = new StringBuffer();
         String selectItem = "value, validTime";
-        String basisTime = "";
+        String basisTime = lowerBoundStr;
 
         /*
          * if forecast: pull out basis time and send into next query to get
@@ -834,23 +868,21 @@ public class FloodDAO implements IFloodDAO {
              * and then find the validTime closest to the HH:MM within the +/- y
              * interval
              */
-            // TODO, this needs to be passed in
-            String currentTime = "2011-02-08 04:00:00.0";
             String validTimeCondition;
+            query = new StringBuffer();
+            validTimeCondition = ">= '" + currentTime_ms + "'";
+            query.append("SELECT " + selectItem + " FROM " + tableName
+                    + " ");
+            query.append("WHERE lid = '" + lid + "' ");
+            query.append("AND pe = '" + physicalElement + "' ");
+            query.append("AND ts = '" + typeSource + "' ");
+            query.append("AND basistime = '" + basisTime + "' ");
+            query.append("AND extremum = '" + extremum + "' ");
             if ("NEXT".equals(timeArg)) {
-                query = new StringBuffer();
-                validTimeCondition = ">= '" + currentTime + "'";
-                query.append("SELECT " + selectItem + " FROM " + tableName
-                        + " ");
-                query.append("WHERE lid = '" + lid + "' ");
-                query.append("AND pe = '" + physicalElement + "' ");
-                query.append("AND ts = '" + typeSource + "' ");
-                query.append("AND basistime = '" + basisTime + "' ");
-                query.append("AND extremum = '" + extremum + "' ");
                 query.append("AND validTime " + validTimeCondition + " ");
                 query.append("ORDER BY validTime limit 1");
             } else {
-                validTimeCondition = null;
+                query.append("AND "+queryTime + " ");   
             }
         } else {
             if (timeFlag) {
@@ -858,18 +890,37 @@ public class FloodDAO implements IFloodDAO {
             }
         }
 
-        List<Object[]> forecastResults = DatabaseQueryUtil
+        List<Object[]> results = DatabaseQueryUtil
                 .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
                         query.toString(), IHFS, "physical element");
-        if (forecastResults.isEmpty() == false) {
+        
+        if (results.isEmpty() == false) {
+			int closestIndex = 0;
+			long minDiff=0;
+			SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.0");
+			Date resultDate;
+			//loop through results and valid time results from query and choose the closest value/time to the given value time (ref time)
+			for (int i = 0; i < results.size(); ++i) {
+				try {
+					resultDate = dateFormatter.parse(results.get(i)[1].toString());
+				} catch (Exception e) {
+					statusHandler.error("Invalid result date: "+results.get(i)[1], e);
+					return MISSING_VALUE;
+				}
+				long diff = Math.abs(resultDate.getTime() - referenceTime.getTime());
+				if (i==0 || diff < minDiff) {
+					minDiff = diff;
+					closestIndex = i;
+				}
+			}
             if (timeFlag) {
-                return forecastResults.get(0)[1].toString();
+                return results.get(closestIndex)[1].toString();
             } else {
-                return forecastResults.get(0)[0].toString();
+                return results.get(closestIndex)[0].toString();
             }
-        }
-
-        return MISSING_VALUE;
+        }      	
+       }
+       return MISSING_VALUE;
 
     }
 

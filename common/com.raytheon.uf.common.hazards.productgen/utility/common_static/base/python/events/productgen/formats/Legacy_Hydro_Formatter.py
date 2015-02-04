@@ -13,6 +13,7 @@ import collections
 import types, re, sys
 import Legacy_Base_Formatter
 from abc import *
+from ForecastStageText import ForecastStageText
 
 # Need to import this for the Missing_Value_Constant
 import RiverForecastPoints
@@ -116,76 +117,8 @@ class Format(Legacy_Base_Formatter.Format):
         return bulletContent + '\n'
 
     def _forecastStageBullet(self, segmentDict):
-        action = segmentDict.get('vtecRecord').get('act')
-        riverDescription = self._getRiverDescription(segmentDict)
-        forecastCrestStage = segmentDict.get('forecastCrestStage')
-
-        maximumForecastStage = segmentDict.get('maximumForecastStage')
-        maximumForecastTime_ms = segmentDict.get('maximumForecastTime_ms', self.MISSING_VALUE)
-        maximumForecastTime_str = self._getFormattedTime(maximumForecastTime_ms, emptyValue='at time unknown', timeZones=self.timezones)
-        observedStage = segmentDict.get('observedStage')
-        floodStage = segmentDict.get('floodStage')
-        stageTrend = segmentDict.get('stageTrend')
-        stageFlowUnits = segmentDict.get('stageFlowUnits')
-        forecastCrestTime_ms = segmentDict.get('forecastCrestTime_ms', self.MISSING_VALUE)
-        forecastCrestTime_str = self._getFormattedTime(forecastCrestTime_ms, timeZones=self.timezones)
-        forecastFallBelowFloodStageTime_ms = segmentDict.get('forecastFallBelowFloodStageTime_ms', self.MISSING_VALUE)
-        forecastFallBelowFloodStageTime_str = self._getFormattedTime(forecastFallBelowFloodStageTime_ms, timeZones=self.timezones)
-        forecastRiseAboveFloodStageTime_ms = segmentDict.get('forecastRiseAboveFloodStageTime_ms', self.MISSING_VALUE)
-        forecastRiseAboveFloodStageTime_str = self._getFormattedTime(forecastRiseAboveFloodStageTime_ms, timeZones=self.timezones)
-
-        bulletContent = ''
-        # Create bullet content
-        if maximumForecastStage == self.MISSING_VALUE :
-            bulletContent = '|* Forecast is missing, insert forecast bullet here. *|'
-        elif action != 'ROU':
-            if observedStage == self.MISSING_VALUE:
-                if maximumForecastStage >= floodStage:
-                    bulletContent = riverDescription + ' is forecast to have a maximum value of '+`maximumForecastStage`+' '+stageFlowUnits+\
-                      ' by '+maximumForecastTime_str+'. '
-                elif maximumForecastStage < floodStage:
-                    bulletContent = riverDescription + ' is forecast below flood stage with a maximum value of '+`maximumForecastStage`+' '+stageFlowUnits+\
-                      ' by '+maximumForecastTime_str+'. '
-            elif observedStage < floodStage:
-                if maximumForecastStage == floodStage:
-                    bulletContent = riverDescription + ' is expected to rise to near flood stage by '+ maximumForecastTime_str
-                elif forecastCrestStage > floodStage and forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
-                    bulletContent = 'rise above flood stage by '+ forecastRiseAboveFloodStageTime_str + \
-                        ' and continue to rise to near ' + `forecastCrestStage` + ' '+stageFlowUnits + ' by '+ forecastCrestTime_str+'. '
-                elif maximumForecastStage > floodStage and forecastCrestStage == self.MISSING_VALUE and +\
-                    forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
-                    bulletContent = 'rise above flood stage by '+forecastRiseAboveFloodStageTime_str +\
-                       ' and continue to rise to near '+`maximumForecastStage`+' '+stageFlowUnits+' by '+\
-                       maximumForecastTime_str+'. Additional rises are possible thereafter.'
-                elif forecastCrestStage > floodStage and forecastFallBelowFloodStageTime_ms != self.MISSING_VALUE:
-                    bulletContent = 'rise above flood stage by '+forecastRiseAboveFloodStageTime_str + \
-                       ' and continue to rise to near '+ `forecastCrestStage`+' '+stageFlowUnits+' by '+forecastCrestTime_str + \
-                       '. The river will fall below flood stage by '+forecastFallBelowFloodStageTime_str+'. '
-            else:
-                if maximumForecastStage > observedStage and forecastCrestStage == self.MISSING_VALUE and \
-                     forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
-                     bulletContent = riverDescription + ' will continue rising to near '+ `maximumForecastStage`+' '+stageFlowUnits + \
-                     ' by '+ maximumForecastTime_str + '. Additional rises may be possible thereafter. '
-                elif forecastCrestStage > observedStage and forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
-                        bulletContent = riverDescription + ' will continue rising to near '+`forecastCrestStage`+' '+stageFlowUnits+' by '+\
-                        forecastCrestTime_str+ ' then begin falling.'
-                elif forecastCrestStage > observedStage and forecastFallBelowFloodStageTime_ms != self.MISSING_VALUE:
-                    bulletContent = riverDescription + ' will continue rising to near '+`forecastCrestStage`+' '+stageFlowUnits+' by '+\
-                       forecastCrestTime_str+'. ' + riverDescription + 'will fall below flood stage by ' +  forecastFallBelowFloodStageTime_str + '.'
-                elif maximumForecastStage <= observedStage and stageTrend == 'falling' and \
-                    forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
-                    # TODO Need SpecFcstStg and SpecFcstStgTime
-                    bulletContent = ''
-                elif maximumForecastStage <= observedStage and stageTrend == 'steady' and \
-                    forecastFallBelowFloodStageTime_ms == self.MISSING_VALUE:
-                    bulletContent = riverDescription + ' will remain near '+`maximumForecastStage`+' '+stageFlowUnits+'. '
-                elif maximumForecastStage <= observedStage and forecastFallBelowFloodStageTime_ms != self.MISSING_VALUE:
-                    bulletContent = riverDescription + ' will continue to fall to below flood stage by '+forecastFallBelowFloodStageTime_str+'.'
-        elif action in ['ROU']:
-            if maximumForecastStage != self.MISSING_VALUE:
-                bulletContent = riverDescription + ' will rise to near '+`maximumForecastStage`+' '+stageFlowUnits+\
-                      ' by '+maximumForecastTime_str+'. '
-        return '* Forecast...' + bulletContent + '\n'
+        bulletContent = ForecastStageText().getForecastStageText(segmentDict, self.timezones)
+        return '* Forecast...' + bulletContent
 
     def _getRiverDescription(self, segmentDict):
         '''

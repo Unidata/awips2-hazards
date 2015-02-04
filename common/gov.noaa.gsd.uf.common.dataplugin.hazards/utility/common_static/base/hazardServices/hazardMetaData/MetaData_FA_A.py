@@ -15,6 +15,8 @@ class MetaData(CommonMetaData.MetaData):
         else:
             metaData = [
                     self.getImmediateCause(),
+                    self.basisStatement(),
+                    self.getCTAs(), 
                     # Preserving CAP defaults for future reference.
 #                     self.getCAP_Fields([
 #                                         ("urgency", "Future"),
@@ -27,3 +29,18 @@ class MetaData(CommonMetaData.MetaData):
                 METADATA_KEY: metaData
                 }    
             
+    # CALLS TO ACTION
+    def getCTA_Choices(self):
+        return [
+            self.ctaSafety(),
+            self.ctaStayAway(),
+            ]
+
+    def basisStatement(self):
+        return {
+             "fieldType": "Text",
+             "fieldName": "basisStatement",
+             "expandHorizontally": True,
+             "visibleChars": 12,
+             "values": "Enter basis text",
+            } 

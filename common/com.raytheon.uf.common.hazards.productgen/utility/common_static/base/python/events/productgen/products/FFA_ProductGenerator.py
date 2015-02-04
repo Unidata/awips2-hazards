@@ -137,7 +137,7 @@ class Product(Legacy_ProductGenerator.Product):
 
     def getBasisPhrase(self, vtecRecord, hazardEvent, metaData, lineLength=69):
         # Basis bullet
-        return hazardEvent.get('basis')
+        return hazardEvent.get('basisStatement')
     
 
 # Allow interdependencies for the dialog's megawidgets to work.     

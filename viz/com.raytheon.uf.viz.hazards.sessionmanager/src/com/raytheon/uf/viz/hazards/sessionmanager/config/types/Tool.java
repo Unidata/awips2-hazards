@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlType;
+import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
@@ -39,6 +40,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * ------------ ---------- ----------- --------------------------
  * Jun 17, 2013            bsteffen     Initial creation
  * Dec 05, 2014    4124    Chris.Golden Added copy constructor.
+ * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * </pre>
  * 
  * @author bsteffen
@@ -51,6 +53,9 @@ public class Tool {
 
     private String displayName;
 
+    @XmlJavaTypeAdapter(ToolTypeAdapter.class)
+    private ToolType toolType;
+
     public Tool() {
 
         /*
@@ -61,6 +66,7 @@ public class Tool {
     public Tool(Tool other) {
         this.toolName = other.toolName;
         this.displayName = other.displayName;
+        this.toolType = other.toolType;
     }
 
     public String getToolName() {
@@ -92,6 +98,21 @@ public class Tool {
     @Override
     public boolean equals(Object obj) {
         return EqualsBuilder.reflectionEquals(this, obj);
+    }
+
+    /**
+     * @return the toolType
+     */
+    public ToolType getToolType() {
+        return toolType;
+    }
+
+    /**
+     * @param toolType
+     *            the toolType to set
+     */
+    public void setToolType(ToolType toolType) {
+        this.toolType = toolType;
     }
 
 }

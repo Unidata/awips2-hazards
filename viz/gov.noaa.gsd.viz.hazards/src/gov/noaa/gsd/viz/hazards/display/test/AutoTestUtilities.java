@@ -174,11 +174,15 @@ public class AutoTestUtilities {
 
     private final HazardEventBuilder hazardEventBuilder;
 
+    private final ISettings settings;
+
     public AutoTestUtilities(HazardServicesAppBuilder appBuilder) {
         this.appBuilder = appBuilder;
         this.eventBus = appBuilder.getEventBus();
         this.hazardEventBuilder = new HazardEventBuilder(
                 appBuilder.getSessionManager());
+        this.settings = appBuilder.getSessionManager()
+                .getConfigurationManager().getSettings();
     }
 
     void createEvent(Double centerX, Double centerY) {
@@ -299,8 +303,9 @@ public class AutoTestUtilities {
         damBreakInfo.put(DAM_NAME, BRANCHED_OAK_DAM);
         damBreakInfo.put(URGENCY_LEVEL, urgencyLevel.toString());
         eventBus.publishAsync(new ToolAction(
-                ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
-                FunctionalTest.DAM_BREAK_FLOOD_RECOMMENDER, damBreakInfo));
+                ToolAction.RecommenderActionEnum.RUN_RECOMMENDER_WITH_PARAMETERS,
+                settings.getTool(FunctionalTest.DAM_BREAK_FLOOD_RECOMMENDER),
+                damBreakInfo, "tbd"));
     }
 
     void setAddToPendingMode(SpatialDisplayAction.ActionIdentifier mode) {

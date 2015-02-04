@@ -48,6 +48,7 @@ import com.raytheon.uf.common.hazards.productgen.data.ProductData;
  *                                      using megawidgets). Also made many public, interface-
  *                                      specified methods private, as they are only to be
  *                                      used internally by this class.
+ * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * </pre>
  * 
  * @author bsteffen
@@ -186,4 +187,11 @@ public interface ISessionProductManager {
     public void createProductsFromFinalProductStaging(
             boolean issue,
             Map<String, Map<String, Serializable>> metadataMapsForProductGeneratorNames);
+
+    /**
+     * Run the given product generator for selected hazard events
+     * 
+     * @param productGeneratorName
+     */
+    public void generateProducts(String productGeneratorName);
 }

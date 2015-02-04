@@ -47,6 +47,8 @@ public class ProductGeneratorEntry {
     private String[] previewFormatters;
 
     private String[] issueFormatters;
+    
+    private boolean autoSelect = true;
 
     public String[][] getAllowedHazards() {
         return allowedHazards;
@@ -106,4 +108,13 @@ public class ProductGeneratorEntry {
     public void setIssueFormatters(String[] issueFormatters) {
         this.issueFormatters = issueFormatters;
     }
+
+    public void setAutoSelect(
+            boolean autoSelect) {
+        this.autoSelect = autoSelect;
+    }
+
+    public boolean getAutoSelect() {
+		return autoSelect;
+	}
 }

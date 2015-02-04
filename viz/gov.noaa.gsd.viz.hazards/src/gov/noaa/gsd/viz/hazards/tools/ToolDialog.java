@@ -48,6 +48,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 
 /**
  * Tool dialog, used to allow the user to specify parameters for tool
@@ -151,11 +152,6 @@ class ToolDialog extends BasicDialog {
     private final ToolsPresenter presenter;
 
     /**
-     * Name of the tool to be executed when the "Run" button is invoked.
-     */
-    private final String toolName;
-
-    /**
      * Dialog dictionary, used to hold the dialog's parameters.
      */
     private Dict dialogDict = null;
@@ -204,6 +200,8 @@ class ToolDialog extends BasicDialog {
      */
     private final String eventType;
 
+    private final Tool tool;
+
     // Public Constructors
 
     /**
@@ -213,8 +211,8 @@ class ToolDialog extends BasicDialog {
      *            Presenter.
      * @param parent
      *            Parent shell.
-     * @param toolName
-     *            Name of the tool to be executed.
+     * @param tool
+     *            the tool to be executed.
      * @param eventType
      *            The type of the event that this tool is to create; if present,
      *            the tool is being run as a result of a hazard-type-first
@@ -225,11 +223,11 @@ class ToolDialog extends BasicDialog {
      *            the fields (megawidget specifiers) must have unique
      *            identifiers.
      */
-    public ToolDialog(ToolsPresenter presenter, Shell parent, String toolName,
+    public ToolDialog(ToolsPresenter presenter, Shell parent, Tool tool,
             String eventType, String jsonParams) {
         super(parent);
         this.presenter = presenter;
-        this.toolName = toolName;
+        this.tool = tool;
         this.eventType = eventType;
         setShellStyle(SWT.CLOSE | SWT.MODELESS | SWT.BORDER | SWT.TITLE
                 | SWT.RESIZE);
@@ -426,18 +424,7 @@ class ToolDialog extends BasicDialog {
                         @Override
                         public void commandInvoked(MegawidgetManager manager,
                                 String identifier) {
-
-                            /*
-                             * Fire off the action if the invoked megawidget is
-                             * a tool-running trigger.
-                             */
-                            if (runToolTriggerIdentifiers.contains(identifier)) {
-                                presenter
-                                        .publish(new ToolAction(
-                                                ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
-                                                identifier, eventType,
-                                                ToolDialog.this.getState()));
-                            }
+                            System.out.println("TBD do something about this");
                         }
 
                         @Override
@@ -488,9 +475,10 @@ class ToolDialog extends BasicDialog {
     protected void buttonPressed(int buttonId) {
         super.buttonPressed(buttonId);
         if (buttonId == IDialogConstants.OK_ID) {
-            presenter.publish(new ToolAction(
-                    ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
-                    toolName, eventType, getState()));
+            presenter
+                    .publish(new ToolAction(
+                            ToolAction.RecommenderActionEnum.RUN_RECOMMENDER_WITH_PARAMETERS,
+                            tool, getState(), eventType));
         }
     }
 

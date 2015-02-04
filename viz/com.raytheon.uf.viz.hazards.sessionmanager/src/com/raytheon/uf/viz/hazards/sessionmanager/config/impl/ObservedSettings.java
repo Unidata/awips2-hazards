@@ -69,6 +69,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                      to provide similar notification
  *                                      functionality to that provided by
  *                                      ObservedHazardEvent.
+ * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * </pre>
  * 
  * @author bsteffen
@@ -242,6 +243,11 @@ public class ObservedSettings implements ISettings {
     @Override
     public Set<String> getPerspectiveIDs() {
         return getSetCopy(delegate.getPerspectiveIDs());
+    }
+
+    @Override
+    public Tool getTool(String toolName) {
+        return delegate.getTool(toolName);
     }
 
     @Override
@@ -685,4 +691,5 @@ public class ObservedSettings implements ISettings {
         }
         setVisibleTypes(types, originator);
     }
+
 }

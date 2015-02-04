@@ -23,6 +23,7 @@ import java.util.Set;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Dec 05, 2014    4124    Chris.Golden Initial creation.
+ * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * </pre>
  * 
  * @author Chris.Golden
@@ -52,6 +53,8 @@ public interface ISettings {
     public List<Tool> getToolbarTools();
 
     public void setToolbarTools(List<Tool> toolbarTools);
+
+    public Tool getTool(String toolName);
 
     public Long getDefaultTimeDisplayDuration();
 
