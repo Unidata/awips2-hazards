@@ -334,8 +334,8 @@ class Format(Legacy_Hydro_Formatter.Format):
         # Use basisFromHazardEvent for WarnGen only hazards
         if phen == 'FA' and sig in ['W', 'Y']:
             hazardType = phen + '.' + sig
-            basis = self.basisText.getBulletText(hazardType, segmentDict)
-            basis = self._tpc.substituteParameters(segmentDict, basis)
+            basis = self.basisText.getBulletText(hazardType, sectionDict)
+            basis = self._tpc.substituteParameters(sectionDict, basis)
         else:
             # TODO Need to create basisText for Non-WarnGen hazards
             basis = "...Flooding from heavy rain. This rain was located over the warned area."
