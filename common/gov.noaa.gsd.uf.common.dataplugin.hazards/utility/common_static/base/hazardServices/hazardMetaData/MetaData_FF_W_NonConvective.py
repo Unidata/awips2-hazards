@@ -3,6 +3,7 @@
 '''
 import CommonMetaData
 from HazardConstants import *
+from MapsDatabaseAccessor import MapsDatabaseAccessor
 
 class MetaData(CommonMetaData.MetaData):
     
@@ -420,19 +421,17 @@ class MetaData(CommonMetaData.MetaData):
     
     
     def damOrLeveeChoices(self):
-        return [
-                self.BranchedOakDam(),
-                self.CouncilBluffsLevee()
-                ]        
-    def BranchedOakDam(self):
-        return {"identifier":"Branched Oak Dam", 
-                "displayString": "Branched Oak Dam",
-                "productString": "Branched Oak Dam"}
-    def CouncilBluffsLevee(self):
-        return {"identifier":"Council Bluffs Levee", 
-                "displayString": "Council Bluffs Levee",
-                "productString": "Council Bluffs Levee"}    
-
+        damList = []
+        mapsAccessor = MapsDatabaseAccessor()
+        damInfoList = mapsAccessor.getAllDamInfo()
+        for damInfo in damInfoList:
+            ids = {}
+            ids["identifier"] = damInfo["name"]
+            ids["displayString"] = damInfo["name"]
+            ids["productString"] = damInfo["name"]
+            damList.append(ids)
+        
+        return damList
 
     def getScenario(self):
         return {

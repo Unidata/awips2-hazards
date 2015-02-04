@@ -212,29 +212,24 @@ class Format(Legacy_Hydro_Formatter.Format):
         return bulletText + '\n\n'
 
     def _damInfo(self):
-        return {
-                'Big Rock Dam': {
-                        'riverName': 'Phil River',
-                        'cityInfo': 'Evan...located about 3 miles',
-                        'scenarios': {
-                            'highFast': 'If a complete failure of the dam occurs...the water depth at Evan could exceed 18 feet in 16 minutes.',
-                            'highNormal': 'If a complete failure of the dam occurs...the water depth at Evan could exceed 23 feet in 31 minutes.',
-                            'mediumFast': 'If a complete failure of the dam occurs...the water depth at Evan could exceed 14 feet in 19 minutes.',
-                            'mediumNormal': 'If a complete failure of the dam occurs...the water depth at Evan could exceed 17 feet in 32 minutes.',
-                            },
-                        'ruleOfThumb': '''Flood wave estimate based on the dam in Idaho: Flood initially half of original height behind the dam 
-                                        and 3-4 mph; 5 miles in 1/2 hours; 10 miles in 1 hour; and 20 miles in 9 hours.''',
-                    },
-                'Branched Oak Dam': {
-                        'riverName': 'Kells River',
-                        'cityInfo': 'Dangelo...located about 6 miles',
-                        'scenarios': {
-                            'highFast': 'If a complete failure of the dam occurs...the water depth at Dangelo could exceed 19 feet in 32 minutes.',
-                            'highNormal': 'If a complete failure of the dam occurs...the water depth at Dangelo could exceed 26 feet in 56 minutes.',
-                            'mediumFast': 'If a complete failure of the dam occurs...the water depth at Dangelo could exceed 14 feet in 33 minutes.',
-                            'mediumNormal': 'If a complete failure of the dam occurs...the water depth at Dangelo could exceed 20 feet in 60 minutes.',
-                            },
-                        'ruleOfThumb': '''Flood wave estimate based on the dam in Idaho: Flood initially half of original height behind the dam 
-                                        and 3-4 mph; 5 miles in 1/2 hours; 10 miles in 1 hour; and 20 miles in 9 hours.''',
-                    },
-                }
+        from MapsDatabaseAccessor import MapsDatabaseAccessor
+        damList = []
+        mapsAccessor = MapsDatabaseAccessor()
+        damInfoList = mapsAccessor.getAllDamInfo()
+        
+        damInfoDict = {}
+        for damInfo in damInfoList:
+            scenarios = {}
+            scenarios['highFast'] = damInfo['scenario_high_fast']
+            scenarios['highNormal'] = damInfo['scenario_high_normal']
+            scenarios['mediumFast'] = damInfo['scenario_medium_fast']
+            scenarios['mediumNormal'] = damInfo['scenario_medium_normal']
+            basicInfo = {}
+            basicInfo['riverName'] = damInfo['river_name']
+            basicInfo['cityInfo'] = damInfo['city_info']
+            basicInfo['ruleOfThumb'] = damInfo['rule_of_thumb']
+            basicInfo['scenarios'] = scenarios
+            damInfoDict[damInfo['name']] = basicInfo
+            
+        return damInfoDict
+            

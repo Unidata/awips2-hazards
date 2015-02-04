@@ -12,13 +12,16 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_SERVICES_LOCALIZATION_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_TYPES_LOCALIZATION_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_BRIDGE_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_DATA_ACCESS_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_DATA_STORAGE_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_EVENTS_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_GEO_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_GFE_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_TIME_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_UTILITIES_DIR;
@@ -51,6 +54,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * ------------ ---------- ------------ --------------------------
  * Aug 19, 2014    4243    Chris.Golden Initial creation.
  * Sep 16, 2014    4753    Chris.Golden Changed to include mutable properties.
+ * Feb 4,  2015    5691    kmanross     Changed include paths for DataAccess
  * </pre>
  * 
  * @author Chris.Golden
@@ -160,6 +164,12 @@ public class ConfigScriptFactory extends
                     LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
             String pythonPath = pathManager.getFile(localizationContext,
                     PYTHON_LOCALIZATION_DIR).getPath();
+            String localizationAccessPath = FileUtil.join(pythonPath,
+                    PYTHON_LOCALIZATION_DATA_ACCESS_DIR);
+            String localizationGfePath = FileUtil.join(pythonPath,
+                    PYTHON_LOCALIZATION_GFE_DIR);
+            String localizationDataTimePath = FileUtil.join(pythonPath,
+                    PYTHON_LOCALIZATION_TIME_DIR);
             String localizationUtilitiesPath = FileUtil.join(pythonPath,
                     PYTHON_LOCALIZATION_UTILITIES_DIR);
             String vtecUtilitiesPath = FileUtil.join(pythonPath,
@@ -195,6 +205,8 @@ public class ConfigScriptFactory extends
 
             String includePath = PyUtil.buildJepIncludePath(pythonPath,
                     localizationUtilitiesPath, logUtilitiesPath,
+                    localizationAccessPath, localizationDataTimePath,
+                    localizationGfePath,
                     tbdWorkaroundToUEngineInLocalizationPath,
                     vtecUtilitiesPath, geoUtilitiesPath, shapeUtilitiesPath,
                     textUtilitiesPath, dataStoragePath, eventsPath,
@@ -203,6 +215,7 @@ public class ConfigScriptFactory extends
             ClassLoader classLoader = this.getClass().getClassLoader();
             ContextSwitchingPythonEval result = new ContextSwitchingPythonEval(
                     includePath, classLoader, PYTHON_PRE_EVALS);
+
             return result;
         } catch (JepException e) {
             statusHandler.error(
