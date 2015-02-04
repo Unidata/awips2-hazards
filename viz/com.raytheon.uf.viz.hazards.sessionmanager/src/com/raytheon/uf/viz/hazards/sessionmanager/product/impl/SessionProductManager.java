@@ -1563,16 +1563,6 @@ public class SessionProductManager implements ISessionProductManager {
                                     .getEventSet()
                                     .addAttribute(HazardConstants.ISSUE_FLAG,
                                             issue);
-                            /*
-                             * FIXME??? We've had sequencing issues with these
-                             * next 2 lines of code in the past. We need the
-                             * affected IHazardEvents to always finish storage
-                             * before calling issue() otherwise server-side
-                             * interoperability code will not be able to tie the
-                             * decoded ActiveTableRecords to an IHazardEvent and
-                             * will instead create an unnecessary duplicate
-                             * event.
-                             */
 
                             if (issue
                                     && !productGeneratorInformation
@@ -1698,10 +1688,23 @@ public class SessionProductManager implements ISessionProductManager {
                                             .get(key);
                                     if (!pgiSet
                                             .contains(productGeneratorInformation)) {
-                                        issue(productGeneratorInformation);
+                                        /*
+                                         * FIXME??? We've had sequencing issues
+                                         * with these next 2 lines of code in
+                                         * the past. We need the affected
+                                         * IHazardEvents to always finish
+                                         * storage before calling issue()
+                                         * otherwise server-side
+                                         * interoperability code will not be
+                                         * able to tie the decoded
+                                         * ActiveTableRecords to an IHazardEvent
+                                         * and will instead create an
+                                         * unnecessary duplicate event.
+                                         */
                                         notificationSender
                                                 .postNotification(new ProductGenerated(
                                                         productGeneratorInformation));
+                                        issue(productGeneratorInformation);
                                         pgiSet.add(productGeneratorInformation);
                                     }
                                 }

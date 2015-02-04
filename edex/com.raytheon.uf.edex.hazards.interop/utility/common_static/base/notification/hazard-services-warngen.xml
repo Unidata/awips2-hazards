@@ -1,4 +1,7 @@
+<!--  FIXME: Uncomment out below XML when interoperability for WarnGen products i fixed. -->
+
 <pluginNotificationList>
+    <!-- 
     <pluginNotification>
         <endpointName>hazards.warngenIngest</endpointName>
         <format>PDO</format>
@@ -12,5 +15,6 @@
             </mapping>
         </metadataMap>
     </pluginNotification>
+     -->
 </pluginNotificationList>
 
