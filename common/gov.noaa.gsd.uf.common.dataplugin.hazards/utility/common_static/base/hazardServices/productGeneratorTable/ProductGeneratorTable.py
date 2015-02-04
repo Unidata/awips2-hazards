@@ -6,6 +6,7 @@
     ------------ ---------- ----------- --------------------------
                                         Initial implementation
     Jan 26, 2015   4936     Chris.Cody  Implement scripts for Flash Flood Watch Products (FFA,FAA,FLA)
+    Feb 04, 2015   6322     Robert.Blum Added Twitter and HTML sample formatters.
     
     @author 
     @version 1.0
@@ -18,7 +19,7 @@ ProductGeneratorTable = {
              ('FA.A', "Flood"),
              ('FL.A', "Flood1"),
              ],
-            "previewFormatters": ["Legacy_FFA_Formatter"],
+            "previewFormatters": ["Legacy_FFA_Formatter", "Twitter", "HTML"],
             "issueFormatters": ["Legacy_FFA_Formatter"], 
             },
         "FLW_FLS_ProductGenerator_v3" : {
@@ -29,7 +30,7 @@ ProductGeneratorTable = {
              ('FL.Y', "Flood4"),             
              ('HY.S', "Flood5"),
             ],
-            "previewFormatters": ["Legacy_FLW_FLS_Formatter"],
+            "previewFormatters": ["Legacy_FLW_FLS_Formatter", "Twitter", "HTML"],
             "issueFormatters": ["Legacy_FLW_FLS_Formatter"],  
             },
         "FFW_FFS_ProductGenerator_v3" : {
@@ -38,7 +39,7 @@ ProductGeneratorTable = {
              ('FF.W.NonConvective',  "Flood"),
              ('FF.W.BurnScar',  "Flood"),
              ],
-            "previewFormatters": ["Legacy_FFW_FFS_Formatter"],
+            "previewFormatters": ["Legacy_FFW_FFS_Formatter", "Twitter", "HTML"],
             "issueFormatters": ["Legacy_FFW_FFS_Formatter"],
             },
         "ESF_ProductGenerator": {

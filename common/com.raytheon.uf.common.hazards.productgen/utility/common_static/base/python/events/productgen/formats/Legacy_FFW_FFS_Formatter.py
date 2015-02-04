@@ -137,7 +137,7 @@ class Format(Legacy_Hydro_Formatter.Format):
 
         # Use this to determine which first bullet format to use.
         vtecRecord = segmentDict.get('vtecRecord')
-        hazName = hazName = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
+        hazName = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
 
         if hazName:
             action = vtecRecord.get('act')
@@ -173,7 +173,7 @@ class Format(Legacy_Hydro_Formatter.Format):
 
         # Use this to determine which first bullet format to use.
         vtecRecord = segmentDict.get('vtecRecord')
-        hazName = hazName = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
+        hazName = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
 
         if hazName:
             action = vtecRecord.get('act')
