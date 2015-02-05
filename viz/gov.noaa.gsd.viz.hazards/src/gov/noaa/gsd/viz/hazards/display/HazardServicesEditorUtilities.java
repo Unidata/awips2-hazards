@@ -17,7 +17,7 @@ import java.util.List;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
-import com.raytheon.viz.ui.VizWorkbenchManager;
+import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
 /**
@@ -29,6 +29,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 30, 2013     752       daniel.s.schaffer@noaa.gov      Initial creation
+ * Feb 03, 2015    3865    Chris.Cody   Check for valid Active Editor class
  * 
  * </pre>
  * 
@@ -48,24 +49,16 @@ public class HazardServicesEditorUtilities {
 
     public static final String CURRENT_FRAME = "currentFrame";
 
-    /**
-     * Convenience method for retrieving the current editor. Each perspective
-     * has its own editor. So, when a reference to the current editor is needed,
-     * it is safer to query for the current editor than to rely on a stored
-     * editor reference.
-     * 
-     * @return Reference to the current CAVE editor.
-     */
-    public static AbstractEditor getCurrentEditor() {
-        return ((AbstractEditor) VizWorkbenchManager.getInstance()
-                .getActiveEditor());
-    }
-
     public static Dict buildFrameInformation() {
-        AbstractEditor editor = HazardServicesEditorUtilities.getCurrentEditor();
-        FramesInfo framesInfo = editor.getActiveDisplayPane().getDescriptor()
-                .getFramesInfo();
-        DataTime currentFrame = framesInfo.getCurrentFrame();
+        FramesInfo framesInfo = null;
+        DataTime currentFrame = null;
+        AbstractEditor editor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        if (editor != null) {
+            framesInfo = editor.getActiveDisplayPane().getDescriptor()
+                    .getFramesInfo();
+            currentFrame = framesInfo.getCurrentFrame();
+        }
 
         Dict frameDict = new Dict();
         frameDict.put(CURRENT_FRAME, currentFrame);

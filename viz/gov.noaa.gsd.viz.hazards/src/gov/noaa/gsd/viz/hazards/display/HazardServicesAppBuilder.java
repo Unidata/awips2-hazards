@@ -108,8 +108,10 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.util.FileUtil;
+import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.VizConstants;
+import com.raytheon.uf.viz.core.drawables.IDescriptor;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.globals.IGlobalChangedListener;
 import com.raytheon.uf.viz.core.globals.VizGlobalsManager;
@@ -124,7 +126,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager.StagingRequired;
-import com.raytheon.viz.ui.VizWorkbenchManager;
+import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
 /**
@@ -205,6 +207,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Jan 30, 2015 3626       Chris.Golden        Added ability to pass event type when running a
  *                                             recommender.
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
+ * Feb 03, 2015 3865       Chris.Cody          Shutdown Hazard Services on perspective change hen unsupported by current editor
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -1107,7 +1110,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         // Close Hazard Services if there is no active editor in the new pers-
         // pective.
-        if (VizWorkbenchManager.getInstance().getActiveEditor() == null) {
+        AbstractEditor activeEditor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        if (activeEditor == null) {
             closeHazardServices("Hazard Services cannot run in the "
                     + perspective.getLabel()
                     + " perspective, and must therefore shut down.");
@@ -1138,10 +1143,18 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         // Create a new tool layer for the new perspective.
         try {
+            IDescriptor descriptor = null;
+            AbstractEditor abstractEditor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
+            if (abstractEditor != null) {
+                IDisplayPane displayPane = abstractEditor
+                        .getActiveDisplayPane();
+                if (displayPane != null) {
+                    descriptor = displayPane.getDescriptor();
+                }
+            }
             spatialDisplay = spatialDisplayResourceData.construct(
-                    new LoadProperties(), ((AbstractEditor) VizWorkbenchManager
-                            .getInstance().getActiveEditor())
-                            .getActiveDisplayPane().getDescriptor());
+                    new LoadProperties(), descriptor);
         } catch (VizException e1) {
             statusHandler.error("Error creating spatial display", e1);
         }

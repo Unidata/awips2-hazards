@@ -7,7 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
-import com.raytheon.viz.ui.VizWorkbenchManager;
+import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -19,6 +19,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * 4/11/12                 Bryon.Lawrence    Initial creation
+ * Feb 03, 2015    3865    Chris.Cody        Check for valid Active Editor class
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -64,14 +65,17 @@ public enum TextPositioner {
      *         centered on this point.
      */
     public Coordinate getLabelPosition(final Coordinate centerPoint) {
-        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                .getInstance().getActiveEditor());
 
-        double[] centerXY = editor.translateInverseClick(centerPoint);
-        centerXY[0] = computeXpos(centerXY[0]);
-        centerXY[1] = computeYpos(centerXY[1]);
-        Coordinate centerCoord = editor
-                .translateClick(centerXY[0], centerXY[1]);
+        Coordinate centerCoord = null;
+        AbstractEditor editor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+
+        if (editor != null) {
+            double[] centerXY = editor.translateInverseClick(centerPoint);
+            centerXY[0] = computeXpos(centerXY[0]);
+            centerXY[1] = computeYpos(centerXY[1]);
+            centerCoord = editor.translateClick(centerXY[0], centerXY[1]);
+        }
 
         // It is possible that this text position will not be in
         // the view area. This seems to be a problem when

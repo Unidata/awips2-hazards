@@ -49,6 +49,8 @@ import com.vividsolutions.jts.geom.Polygon;
  * Nov 23, 2013    1462    bryon.lawrence      Set hazard border color to hazard fill color.
  * Dec 05, 2014    4124    Chris.Golden        Changed to work with newly parameterized
  *                                             config manager.
+ * Feb 03, 2015    3865    Chris.Cody          Check for valid Active Editor class
+ * 
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -76,7 +78,7 @@ public abstract class HazardServicesDrawingAttributes extends Line {
 
     protected LineStyle lineStyle;
 
-    private final IDescriptor descriptor;
+    private IDescriptor descriptor;
 
     protected AbstractEditor editor;
 
@@ -86,7 +88,9 @@ public abstract class HazardServicesDrawingAttributes extends Line {
         super();
         this.configurationManager = configurationManager;
         editor = EditorUtil.getActiveEditorAs(AbstractEditor.class);
-        descriptor = editor.getActiveDisplayPane().getDescriptor();
+        if (editor != null) {
+            descriptor = editor.getActiveDisplayPane().getDescriptor();
+        }
         lineStyle = LineStyle.LINE_SOLID;
         lineWidth = 2.0f;
     }

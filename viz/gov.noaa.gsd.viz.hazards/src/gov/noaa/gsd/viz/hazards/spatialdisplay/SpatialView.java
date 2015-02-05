@@ -70,7 +70,7 @@ import com.raytheon.uf.viz.core.rsc.ResourceList.AddListener;
 import com.raytheon.uf.viz.core.rsc.ResourceList.RemoveListener;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.viz.ui.VizWorkbenchManager;
+import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
 /**
@@ -98,6 +98,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Dec 05, 2014    4124    Chris.Golden      Changed to work with ObservedSettings.
  * Dec 15, 2014    3846    Tracy Hansen      Added ability to draw points back in
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Feb 03, 2015    3865    Chris.Cody        Check for valid Active Editor class
  * </pre>
  * 
  * @author Chris.Golden
@@ -279,6 +280,9 @@ public class SpatialView implements
          */
         private SelectByAreaMapsPulldownAction() {
             super("");
+            if ((this.addListener == null) || (this.removeListener == null)) {
+                return;
+            }
             setImageDescriptor(getImageDescriptorForFile("mapsForSelectByArea.png"));
             setToolTipText("Maps for Select by Area");
 
@@ -292,11 +296,20 @@ public class SpatialView implements
             // determine what maps are available, if any, for select
             // by area operations, and to enable or disable this
             // action accordingly.
-            ResourceList resourceList = ((AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor()).getActiveDisplayPane()
-                    .getDescriptor().getResourceList();
-            resourceList.addPostAddListener(addListener);
-            resourceList.addPostRemoveListener(removeListener);
+            if ((this.addListener != null) && (this.removeListener != null)) {
+                AbstractEditor abstractEditor = EditorUtil
+                        .getActiveEditorAs(AbstractEditor.class);
+                if (abstractEditor != null) {
+                    IDisplayPane displayPane = abstractEditor
+                            .getActiveDisplayPane();
+                    if (displayPane != null) {
+                        ResourceList resourceList = displayPane.getDescriptor()
+                                .getResourceList();
+                        resourceList.addPostAddListener(this.addListener);
+                        resourceList.addPostRemoveListener(this.removeListener);
+                    }
+                }
+            }
         }
 
         /**
@@ -308,15 +321,17 @@ public class SpatialView implements
 
             // Remove the listeners for resource list changes.
             // Only do this if there is an active editor.
-            AbstractEditor abstractEditor = (AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor();
-
+            AbstractEditor abstractEditor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
             if (abstractEditor != null) {
-                ResourceList resourceList = abstractEditor
-                        .getActiveDisplayPane().getDescriptor()
-                        .getResourceList();
-                resourceList.removePostAddListener(addListener);
-                resourceList.removePostRemoveListener(removeListener);
+                IDisplayPane displayPane = abstractEditor
+                        .getActiveDisplayPane();
+                if (displayPane != null) {
+                    ResourceList resourceList = displayPane.getDescriptor()
+                            .getResourceList();
+                    resourceList.removePostAddListener(addListener);
+                    resourceList.removePostRemoveListener(removeListener);
+                }
             }
         }
 
@@ -344,17 +359,22 @@ public class SpatialView implements
                 }
             }
 
+            IDescriptor descriptor = null;
             // Load the current editor.
-            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor());
-
+            AbstractEditor abstractEditor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
+            if (abstractEditor != null) {
+                IDisplayPane displayPane = abstractEditor
+                        .getActiveDisplayPane();
+                if (displayPane != null) {
+                    descriptor = displayPane.getDescriptor();
+                }
+            }
             // Load the list of viz resources associated with it,
             // and iterate through the resource pairs, looking
             // for those that are database map resources. For
             // each of these that is visible, add a menu item.
-            IDescriptor descriptor = editor.getActiveDisplayPane()
-                    .getDescriptor();
-            if (descriptor instanceof IMapDescriptor) {
+            if ((descriptor != null) && (descriptor instanceof IMapDescriptor)) {
                 IMapDescriptor mapDescriptor = (IMapDescriptor) descriptor;
                 ResourceList resourceList = mapDescriptor.getResourceList();
                 for (ResourcePair pair : resourceList) {
@@ -411,42 +431,43 @@ public class SpatialView implements
             // area operations, this action should be enabled.
             boolean enable = false;
 
+            IDescriptor descriptor = null;
             /*
              * Only do this if there is an active editor.
              */
-            AbstractEditor activeEditor = (AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor();
+            AbstractEditor abstractEditor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
+            if (abstractEditor != null) {
+                IDisplayPane displayPane = abstractEditor
+                        .getActiveDisplayPane();
+                if (displayPane != null) {
+                    descriptor = displayPane.getDescriptor();
+                }
+            }
+            if ((descriptor != null) && (descriptor instanceof IMapDescriptor)) {
+                IMapDescriptor mapDescriptor = (IMapDescriptor) descriptor;
+                ResourceList resourceList = mapDescriptor.getResourceList();
+                for (ResourcePair pair : resourceList) {
+                    if (pair.getResource() instanceof DbMapResource) {
 
-            if (activeEditor != null) {
-                IDescriptor descriptor = activeEditor.getActiveDisplayPane()
-                        .getDescriptor();
+                        // For now, just take the first one.
+                        String tableName = ((DbMapResource) pair.getResource())
+                                .getResourceData().getTable();
 
-                if (descriptor instanceof IMapDescriptor) {
-                    IMapDescriptor mapDescriptor = (IMapDescriptor) descriptor;
-                    ResourceList resourceList = mapDescriptor.getResourceList();
-                    for (ResourcePair pair : resourceList) {
-                        if (pair.getResource() instanceof DbMapResource) {
-
-                            // For now, just take the first one.
-                            String tableName = ((DbMapResource) pair
-                                    .getResource()).getResourceData()
-                                    .getTable();
-
-                            // Make sure that this is an acceptable
-                            // overlay table.
-                            if (ACCEPTABLE_MAP_OVERLAYS.contains(tableName)) {
-                                enable = true;
-                                break;
-                            }
+                        // Make sure that this is an acceptable
+                        // overlay table.
+                        if (ACCEPTABLE_MAP_OVERLAYS.contains(tableName)) {
+                            enable = true;
+                            break;
                         }
                     }
                 }
-
-                // Enable or disable this action based upon whether
-                // any maps were found that may be used in select
-                // by area operations.
-                setEnabled(enable);
             }
+
+            // Enable or disable this action based upon whether
+            // any maps were found that may be used in select
+            // by area operations.
+            setEnabled(enable);
         }
     }
 
@@ -565,30 +586,32 @@ public class SpatialView implements
          * Initialize the spatial display and add it to the CAVE editor's
          * resource list.
          */
-        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                .getInstance().getActiveEditor());
-
-        IDisplayPane displayPane = editor.getActiveDisplayPane();
-        displayPane.getBounds();
-        displayPane.getRenderableDisplay().getView();
-
-        IDescriptor idesc = editor.getActiveDisplayPane().getDescriptor();
-
         IMapDescriptor desc = null;
+        IDescriptor idesc = null;
+        AbstractEditor abstractEditor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        if (abstractEditor != null) {
+            IDisplayPane displayPane = abstractEditor.getActiveDisplayPane();
+            if (displayPane != null) {
+                displayPane.getBounds();
+                displayPane.getRenderableDisplay().getView();
+                idesc = displayPane.getDescriptor();
 
-        if (idesc instanceof IMapDescriptor) {
-            desc = (IMapDescriptor) idesc;
+                if ((idesc != null) && (idesc instanceof IMapDescriptor)) {
+                    desc = (IMapDescriptor) idesc;
+
+                    try {
+                        desc.getResourceList().add(spatialDisplay);
+                        spatialDisplay.initInternal(displayPane.getTarget());
+                    } catch (Exception e) {
+                        statusHandler.error(
+                                "Error initializing spatial display", e);
+                    }
+
+                    idesc.addFrameChangedListener(this);
+                }
+            }
         }
-
-        try {
-            desc.getResourceList().add(spatialDisplay);
-            spatialDisplay.initInternal(editor.getActiveDisplayPane()
-                    .getTarget());
-        } catch (Exception e) {
-            statusHandler.error("Error initializing spatial display", e);
-        }
-
-        idesc.addFrameChangedListener(this);
 
         // Create the cursors that will be used by Hazard Services.
         Display display = Display.getCurrent();
@@ -665,14 +688,17 @@ public class SpatialView implements
         String perspectiveID = getCurrentPerspectiveDescriptor().getId();
 
         if (!perspectiveID.equals("GFE")) {
-            IDisplayPane pane = ((AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor()).getActiveDisplayPane();
-            IRenderableDisplay display = pane.getRenderableDisplay();
+            AbstractEditor abstractEditor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
+            if (abstractEditor != null) {
+                IDisplayPane pane = abstractEditor.getActiveDisplayPane();
+                IRenderableDisplay display = pane.getRenderableDisplay();
 
-            double[] lonLat = { longitude, latitude };
-            display.getExtent().reset();
-            display.recenter(lonLat);
-            display.zoom(1.0 / multiplier);
+                double[] lonLat = { longitude, latitude };
+                display.getExtent().reset();
+                display.recenter(lonLat);
+                display.zoom(1.0 / multiplier);
+            }
         }
     }
 
@@ -923,22 +949,28 @@ public class SpatialView implements
         long smallestDiff = Long.MAX_VALUE;
 
         // The selected time to switch CAVE to...
-        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                .getInstance().getActiveEditor());
-        IDescriptor idesc = editor.getActiveDisplayPane().getDescriptor();
         IMapDescriptor descriptor = null;
-
-        if (idesc instanceof IMapDescriptor) {
-            descriptor = (IMapDescriptor) idesc;
+        int numberOfFrames = 0;
+        DataTime[] availableDataTimes = null;
+        AbstractEditor abstractEditor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        if (abstractEditor != null) {
+            IDescriptor idesc = abstractEditor.getActiveDisplayPane()
+                    .getDescriptor();
+            if ((idesc != null) && (idesc instanceof IMapDescriptor)) {
+                descriptor = (IMapDescriptor) idesc;
+                if (descriptor != null) {
+                    numberOfFrames = descriptor.getFramesInfo().getFrameCount();
+                    if (numberOfFrames > 0) {
+                        availableDataTimes = descriptor.getFramesInfo()
+                                .getFrameTimes();
+                    }
+                }
+            }
         }
 
-        int numberOfFrames = descriptor.getFramesInfo().getFrameCount();
         // Try to find the closest valid time
-
-        if (numberOfFrames > 0) {
-            DataTime[] availableDataTimes = descriptor.getFramesInfo()
-                    .getFrameTimes();
-
+        if (availableDataTimes != null) {
             for (DataTime time : availableDataTimes) {
                 Calendar cal = time.getValidTime();
                 diff = Math.abs(cal.getTimeInMillis() - selectedTimeMS);
@@ -978,7 +1010,6 @@ public class SpatialView implements
 
             issueRefresh();
         }
-
     }
 
     /**
@@ -990,11 +1021,10 @@ public class SpatialView implements
     @Override
     public void unregisterCurrentMouseHandler() {
         if (currentMouseHandler != null) {
-            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor());
-
-            if (editor != null && currentMouseHandler != null) {
-                editor.unregisterMouseHandler(currentMouseHandler);
+            AbstractEditor abstractEditor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
+            if (abstractEditor != null) {
+                abstractEditor.unregisterMouseHandler(currentMouseHandler);
                 currentMouseHandler = null;
             }
         }
@@ -1008,37 +1038,38 @@ public class SpatialView implements
     @Override
     public void addGeometryDisplayResourceToPerspective() {
 
-        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                .getInstance().getActiveEditor());
+        AbstractEditor abstractEditor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        if (abstractEditor != null) {
+            IDescriptor idesc = abstractEditor.getActiveDisplayPane()
+                    .getDescriptor();
 
-        IDescriptor idesc = editor.getActiveDisplayPane().getDescriptor();
+            if (idesc instanceof IMapDescriptor) {
+                IMapDescriptor desc = (IMapDescriptor) idesc;
 
-        if (idesc instanceof IMapDescriptor) {
+                // This is ugly, but remove all instances of IHISDbMapResource
+                // resources from the list.
+                ResourceList rescList = desc.getResourceList();
 
-            IMapDescriptor desc = (IMapDescriptor) idesc;
-
-            // This is ugly, but remove all instances of IHISDbMapResource
-            // resources from the list.
-            ResourceList rescList = desc.getResourceList();
-
-            for (ResourcePair pair : rescList) {
-                if (pair.getResource() instanceof SelectByAreaDbMapResource) {
-                    rescList.removeRsc(pair.getResource());
-                }
-            }
-
-            if (selectableGeometryDisplay != null) {
-
-                rescList = desc.getResourceList();
-
-                if (rescList.containsRsc(selectableGeometryDisplay)) {
-                    rescList.removeRsc(selectableGeometryDisplay);
+                for (ResourcePair pair : rescList) {
+                    if (pair.getResource() instanceof SelectByAreaDbMapResource) {
+                        rescList.removeRsc(pair.getResource());
+                    }
                 }
 
-                desc.getResourceList().add(selectableGeometryDisplay);
+                if (selectableGeometryDisplay != null) {
+
+                    rescList = desc.getResourceList();
+
+                    if (rescList.containsRsc(selectableGeometryDisplay)) {
+                        rescList.removeRsc(selectableGeometryDisplay);
+                    }
+
+                    desc.getResourceList().add(selectableGeometryDisplay);
+
+                }
 
             }
-
         }
     }
 
@@ -1219,17 +1250,19 @@ public class SpatialView implements
     // Private Methods
 
     private double[] getDisplayZoomParameters() {
-        AbstractEditor editor = (AbstractEditor) VizWorkbenchManager
-                .getInstance().getActiveEditor();
-        IDisplayPane pane = editor.getActiveDisplayPane();
-        IRenderableDisplay display = pane.getRenderableDisplay();
         double[] params = new double[3];
-        double[] center = pane.getDescriptor().pixelToWorld(
-                display.getExtent().getCenter());
-        for (int j = 0; j < center.length; j++) {
-            params[j] = center[j];
+        AbstractEditor abstractEditor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        if (abstractEditor != null) {
+            IDisplayPane pane = abstractEditor.getActiveDisplayPane();
+            IRenderableDisplay display = pane.getRenderableDisplay();
+            double[] center = pane.getDescriptor().pixelToWorld(
+                    display.getExtent().getCenter());
+            for (int j = 0; j < center.length; j++) {
+                params[j] = center[j];
+            }
+            params[2] = 1.0 / display.getZoom();
         }
-        params[2] = 1.0 / display.getZoom();
         return params;
     }
 
@@ -1313,8 +1346,18 @@ public class SpatialView implements
      * @return The descriptor of the current perspective.
      */
     private IPerspectiveDescriptor getCurrentPerspectiveDescriptor() {
-        return VizWorkbenchManager.getInstance().getActiveEditor().getSite()
-                .getPage().getPerspective();
+
+        IPerspectiveDescriptor perspectiveDescriptor = null;
+        AbstractEditor abstractEditor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        if (abstractEditor != null) {
+            perspectiveDescriptor = abstractEditor.getSite().getPage()
+                    .getPerspective();
+        } else {
+            perspectiveDescriptor = null;
+        }
+
+        return (perspectiveDescriptor);
     }
 
     /**
@@ -1359,23 +1402,26 @@ public class SpatialView implements
     private void removeGeometryDisplay() {
 
         if (selectableGeometryDisplay != null) {
-            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor());
+            AbstractEditor abstractEditor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
+            if (abstractEditor != null) {
+                IDescriptor idesc = abstractEditor.getActiveDisplayPane()
+                        .getDescriptor();
+                IMapDescriptor desc = null;
 
-            IDescriptor idesc = editor.getActiveDisplayPane().getDescriptor();
-            IMapDescriptor desc = null;
+                if (idesc instanceof IMapDescriptor) {
+                    desc = (IMapDescriptor) idesc;
 
-            if (idesc instanceof IMapDescriptor) {
-                desc = (IMapDescriptor) idesc;
-
-                try {
-                    desc.getResourceList().removeRsc(selectableGeometryDisplay);
-                } catch (Exception e) {
-                    // ignore
+                    try {
+                        desc.getResourceList().removeRsc(
+                                selectableGeometryDisplay);
+                    } catch (Exception e) {
+                        // ignore
+                    }
                 }
-            }
 
-            selectableGeometryDisplay = null;
+                selectableGeometryDisplay = null;
+            }
         }
 
     }
@@ -1387,19 +1433,21 @@ public class SpatialView implements
      * @return true - the resource is loaded, false - the resource is not loaded
      */
     private boolean isGeometryDisplayResourceLoaded() {
-        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                .getInstance().getActiveEditor());
+        AbstractEditor abstractEditor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        if (abstractEditor != null) {
+            IDescriptor idesc = abstractEditor.getActiveDisplayPane()
+                    .getDescriptor();
+            IMapDescriptor desc = null;
 
-        IDescriptor idesc = editor.getActiveDisplayPane().getDescriptor();
-        IMapDescriptor desc = null;
+            if (selectableGeometryDisplay != null) {
+                if (idesc instanceof IMapDescriptor) {
+                    desc = (IMapDescriptor) idesc;
 
-        if (selectableGeometryDisplay != null) {
-            if (idesc instanceof IMapDescriptor) {
-                desc = (IMapDescriptor) idesc;
+                    ResourceList rescList = desc.getResourceList();
 
-                ResourceList rescList = desc.getResourceList();
-
-                return rescList.containsRsc(selectableGeometryDisplay);
+                    return rescList.containsRsc(selectableGeometryDisplay);
+                }
             }
         }
 
@@ -1412,15 +1460,18 @@ public class SpatialView implements
      */
     private void unloadGeometryDisplayResource() {
         if (selectableGeometryDisplay != null) {
-            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor());
-            IDescriptor idesc = editor.getActiveDisplayPane().getDescriptor();
-            IMapDescriptor desc = null;
+            AbstractEditor abstractEditor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
+            if (abstractEditor != null) {
+                IDescriptor idesc = abstractEditor.getActiveDisplayPane()
+                        .getDescriptor();
+                IMapDescriptor desc = null;
 
-            if (idesc instanceof IMapDescriptor) {
-                desc = (IMapDescriptor) idesc;
-                ResourceList rescList = desc.getResourceList();
-                rescList.removeRsc(selectableGeometryDisplay);
+                if (idesc instanceof IMapDescriptor) {
+                    desc = (IMapDescriptor) idesc;
+                    ResourceList rescList = desc.getResourceList();
+                    rescList.removeRsc(selectableGeometryDisplay);
+                }
             }
         }
     }

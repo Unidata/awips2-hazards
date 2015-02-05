@@ -95,6 +95,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
 import com.raytheon.viz.core.mode.CAVEMode;
+import com.raytheon.viz.ui.EditorUtil;
+import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
 
 /**
@@ -199,6 +201,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Jan 29, 2015 3626       Chris.Golden       Added ability to pass event type when running
  *                                            a recommender.
  * Jan 29, 2015 4375       Dan Schaffer       Console initiation of RVS product generation
+ * Feb 03, 2015 3865       Chris.Cody         Check for valid Active Editor class
+ * 
  * </pre>
  * 
  * @author bryon.lawrence
@@ -322,7 +326,8 @@ public final class HazardServicesMessageHandler implements
                             .getPath());
                     Tool tool = sessionConfigurationManager.getSettings()
                             .getTool(recommenderName);
-                    appBuilder.showToolParameterGatherer(tool, eventType, dialogInput);
+                    appBuilder.showToolParameterGatherer(tool, eventType,
+                            dialogInput);
                 }
             }
         } else {
@@ -905,15 +910,19 @@ public final class HazardServicesMessageHandler implements
              * Make sure the HazardServices selected time is in-sync with the
              * frame being viewed.
              */
-            Integer frameCount = frameDict
-                    .getDynamicallyTypedValue(HazardServicesEditorUtilities.FRAME_COUNT);
-            Integer frameIndex = frameDict
-                    .getDynamicallyTypedValue(HazardServicesEditorUtilities.FRAME_INDEX);
-            List<Long> dataTimeList = frameDict
-                    .getDynamicallyTypedValue(HazardServicesEditorUtilities.FRAME_TIMES);
-            if ((frameCount > 0) && (frameIndex != -1)) {
-                updateSelectedTimeFromCave(new Date(
-                        dataTimeList.get(frameIndex)));
+            AbstractEditor abstractEditor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
+            if (abstractEditor != null) {
+                Integer frameCount = frameDict
+                        .getDynamicallyTypedValue(HazardServicesEditorUtilities.FRAME_COUNT);
+                Integer frameIndex = frameDict
+                        .getDynamicallyTypedValue(HazardServicesEditorUtilities.FRAME_INDEX);
+                List<Long> dataTimeList = frameDict
+                        .getDynamicallyTypedValue(HazardServicesEditorUtilities.FRAME_TIMES);
+                if ((frameCount > 0) && (frameIndex != -1)) {
+                    updateSelectedTimeFromCave(new Date(
+                            dataTimeList.get(frameIndex)));
+                }
             }
         }
 
@@ -1502,12 +1511,12 @@ public final class HazardServicesMessageHandler implements
         case RECOMMENDER:
             switch (toolAction.getRecommenderActionType()) {
             case RUN_RECOMENDER:
-            	eventType = toolAction.getEventType();
+                eventType = toolAction.getEventType();
                 runRecommender(toolAction.getToolName());
                 break;
 
             case RUN_RECOMMENDER_WITH_PARAMETERS:
-            	eventType = toolAction.getEventType();
+                eventType = toolAction.getEventType();
                 runRecommender(toolAction.getToolName(), null,
                         toolAction.getAuxiliaryDetails());
                 break;
