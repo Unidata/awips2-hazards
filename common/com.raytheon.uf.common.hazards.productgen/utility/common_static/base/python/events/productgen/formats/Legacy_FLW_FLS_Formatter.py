@@ -132,7 +132,9 @@ class Format(Legacy_Hydro_Formatter.Format):
         areaPhrase = self.createAreaPhrase(segmentDict)
 
         # Get the text for the type of flooding based on immediateCause
-        typeOfFlooding = self.immediateCauseMapping(segmentDict.get('immediateCause', None))
+        immediateCause = segmentDict.get('immediateCause', None)
+        if immediateCause:
+            typeOfFlooding = self.immediateCauseMapping(immediateCause)
         warningType = segmentDict.get('warningType')
 
         # Use this to determine which first bullet format to use.
