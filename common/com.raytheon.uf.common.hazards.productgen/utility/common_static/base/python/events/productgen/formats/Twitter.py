@@ -37,7 +37,7 @@ class Format(FormatTemplate.Formatter):
         self.productDict = productDict
         self.initialize()
 
-        return self.createTwitterProduct()
+        return [[self.createTwitterProduct()], {}]
 
     def createTwitterProduct(self):
         text = ''
@@ -48,7 +48,8 @@ class Format(FormatTemplate.Formatter):
             sections = segment.get('sections')
             for section in sections:
                 text += self.createAttribution(section)
-                text += self.addCTAs(section)
+            # CTAs are segment level
+            text += self.addCTAs(segment)
             #Add break between segments
             if (index + 1 < size):
                 text += '\n\n'
@@ -104,12 +105,12 @@ class Format(FormatTemplate.Formatter):
             areaPhrase += ' county'
         return areaPhrase
 
-    def addCTAs(self, sectionDict):
-        elements = KeyInfo.getElements('callsToAction', sectionDict)
+    def addCTAs(self, segmentDict):
+        elements = KeyInfo.getElements('callsToAction', segmentDict)
         if len(elements) > 0:
-            callsToAction = sectionDict.get(elements[0])
+            callsToAction = segmentDict.get(elements[0])
         else:
-            callsToAction = sectionDict.get('callsToAction', None)
+            callsToAction = segmentDict.get('callsToAction', None)
 
         if callsToAction:
             ctaText = '\n\n'

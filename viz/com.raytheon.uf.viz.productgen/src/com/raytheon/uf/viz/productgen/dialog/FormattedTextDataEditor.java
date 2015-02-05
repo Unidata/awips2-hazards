@@ -61,6 +61,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * 01/15/2015   5109       bphillip     Initial creation
+ * 02/05/2015   6322       Robert.Blum  Changed return value if editableRanges is empty.
  * 
  * </pre>
  * 
@@ -469,7 +470,7 @@ public class FormattedTextDataEditor extends AbstractDataEditor {
      */
     public boolean isTextRangeEditable(int startIndex, int endIndex) {
         if (editableRanges.isEmpty()) {
-            return true;
+            return false;
         }
         // Iterate through the editable ranges to determine if they are both
         // contained in an editable range

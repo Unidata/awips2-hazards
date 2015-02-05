@@ -11,6 +11,7 @@
 '''
 
 import FormatTemplate
+import HazardConstants
 import os
 import time
 import collections
@@ -19,12 +20,13 @@ class Format(FormatTemplate.Formatter):
 
     def execute(self, productDict):
         '''
-        Returns an html formatted string.
+        Returns an html formatted string and a map of editable parts that
+        is currently blank for this format.
         @param productDict: dictionary values
-        @return: Returns the html string
+        @return: Returns the html string and map of editable parts
         '''
         self.productDict = productDict
-        return self.createHTMLProduct()
+        return [[self.createHTMLProduct()], {}]
 
     def createHTMLProduct(self):
         html = "<!DOCTYPE html>\n"
@@ -125,7 +127,7 @@ class Format(FormatTemplate.Formatter):
                 legacyFormatter = Legacy_ESF_Formatter.Format()
             else:
                 return 'There is no product formatter for this hazard type: ' + productCategory
-            legacyText = legacyFormatter.execute(self.productDict)
+            legacyText = legacyFormatter.execute(self.productDict)[0][0]
         except:
             legacyText = 'Error running legacy formatter.'
         return legacyText
@@ -137,7 +139,13 @@ class Format(FormatTemplate.Formatter):
             sections = segment.get('sections')
             for section in sections:
                 for geometry in section.get('geometry'):
-                    polygonPointLists.append(list(geometry.exterior.coords))
+                    if geometry.geom_type == HazardConstants.SHAPELY_POLYGON:
+                        polygonPointLists.append(list(geometry.exterior.coords))
+                    elif geometry.geom_type == HazardConstants.SHAPELY_POINT or geometry.geom_type == HazardConstants.SHAPELY_LINE:
+                        polygonPointLists.append(list(geometry.coords))
+                    else:
+                        for geo in geometry:
+                            polygonPointLists.append(list(geo.exterior.coords))
         return polygonPointLists
 
     def addImpactedLocationsToTable(self):
