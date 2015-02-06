@@ -446,7 +446,10 @@ public class SessionConfigurationManager implements
         try {
             contents.append(mapper.defaultPrettyPrintingWriter()
                     .writeValueAsString(settings));
-            f.write(contents.toString().getBytes());
+            String contentsAsString = contents.toString();
+            contentsAsString = contentsAsString.replaceAll("true", "True")
+                    .replaceAll("false", "False");
+            f.write(contentsAsString.getBytes());
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM, "Unable to save settings.",
                     e);

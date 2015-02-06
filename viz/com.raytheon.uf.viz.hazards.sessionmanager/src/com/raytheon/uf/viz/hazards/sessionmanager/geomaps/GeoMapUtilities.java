@@ -40,6 +40,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
+import com.raytheon.uf.common.hazards.productgen.ProductGenerationException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -79,6 +80,7 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      config manager.
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
+ * Feb  6, 2015 4375       Dan Schaffer Added error check for empty UGCs.
  * </pre>
  * 
  * @author blawrenc
@@ -343,6 +345,10 @@ public class GeoMapUtilities {
             @SuppressWarnings("unchecked")
             List<String> hazardUGCs = (List<String>) hazardEvent
                     .getHazardAttribute(CONTAINED_UGCS);
+            if (hazardUGCs.isEmpty()) {
+                throw new ProductGenerationException(
+                        "No UGCs included in hazard.  Check inclusions in HazardTypes.py");
+            }
             for (String ugc : hazardUGCs) {
                 result.add(mapping.get(ugc));
             }

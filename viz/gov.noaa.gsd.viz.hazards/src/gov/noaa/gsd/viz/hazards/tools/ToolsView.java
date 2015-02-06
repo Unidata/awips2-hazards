@@ -159,14 +159,16 @@ public class ToolsView implements
                  */
                 for (String name : toolIdentifiersForNames.keySet()) {
                     Tool tool = toolIdentifiersForNames.get(name);
-                    if (tool.getToolType() == ToolType.RECOMMENDER) {
+                    if (tool.getToolType() == ToolType.RECOMMENDER
+                            && tool.isVisible()) {
                         addToolToMenu(menu, name, tool);
                     }
                 }
                 new MenuItem(menu, SWT.SEPARATOR);
                 for (String name : toolIdentifiersForNames.keySet()) {
                     Tool tool = toolIdentifiersForNames.get(name);
-                    if (tool.getToolType() == ToolType.PRODUCT_GENERATOR) {
+                    if (tool.getToolType() == ToolType.PRODUCT_GENERATOR
+                            && tool.isVisible()) {
                         addToolToMenu(menu, name, tool);
                     }
                 }

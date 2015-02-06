@@ -26,7 +26,9 @@ import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ActionContributionItem;
@@ -63,6 +65,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                      parameterized config manager.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
+ * Feb  7, 2015 4375       Dan Schaffer Fixed duplicate context menu entries bug
  * </pre>
  * 
  * @author mnash
@@ -270,10 +273,11 @@ public class ContextMenuHelper {
      */
     public List<IContributionItem> getSpatialHazardItems(boolean drawing,
             boolean moving) {
-        List<IContributionItem> items = new ArrayList<>();
+        Set<String> itemNames = new HashSet<>();
         for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
             if (event.getHazardType() != null) {
-                items.add(newAction(HazardConstants.CONTEXT_MENU_SHOW_PRODUCT_GEOMETRY));
+                itemNames
+                        .add(HazardConstants.CONTEXT_MENU_SHOW_PRODUCT_GEOMETRY);
             }
 
             @SuppressWarnings("unchecked")
@@ -290,18 +294,22 @@ public class ContextMenuHelper {
                             continue;
                         }
 
-                        items.add(newAction(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));
+                        itemNames
+                                .add(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
                         break;
                     }
                 }
             }
         }
         if (moving) {
-            items.add(newAction(CONTEXT_MENU_DELETE_VERTEX));
+            itemNames.add(CONTEXT_MENU_DELETE_VERTEX);
         } else if (drawing) {
-            items.add(newAction(CONTEXT_MENU_ADD_VERTEX));
+            itemNames.add(CONTEXT_MENU_ADD_VERTEX);
         }
-
+        List<IContributionItem> items = new ArrayList<>();
+        for (String itemName : itemNames) {
+            items.add(newAction(itemName));
+        }
         return items;
     }
 

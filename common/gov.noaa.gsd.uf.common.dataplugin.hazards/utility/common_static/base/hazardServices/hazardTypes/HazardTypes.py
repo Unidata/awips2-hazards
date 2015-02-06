@@ -9,16 +9,13 @@
 #                         zones in the associated WSW when issued. 
 #                         An FA.A will be translated into a 
 #                         collection of counties in the associated FFA when issued.
-#                         Some possible values include: county, zone, polygon. 
+#                         Some possible values include: county and zone. 
 #                         These are the names of the corresponding tables
 #                         in the maps db.
-#                         Polygon is used when the polygon will represent the
-#                         warned area in the associated product, as is the case
-#                         with a TO.W. 
 #         ugcLabel The label field to associate with the ugcType. 
 #                          This corresponds to the label field associated with
 #                          the maps db table which backs the hatch area. If
-#                          hatch area is Polygon, then label field does not apply.
+#                          hatch area is county, then label field does not apply.
 #    inclusionFractionTest True - perform inclusion test
 #                          False - do not perform inclusion test
 #                          If this attribute is omitted, then inclusion testing will not
@@ -359,7 +356,7 @@ HazardTypes = {
               'allowTimeChange': False,
               'expirationTime': (-10, 10),
               'hazardConflictList': ['TO.W', 'SV.W'],
-              'ugcType': 'polygon', 
+              'ugcType': 'county', 
               'ugcLabel': '',
               'hazardClipArea' : 'cwa',
               'inclusionFractionTest' : True,
@@ -399,6 +396,10 @@ HazardTypes = {
               'defaultDuration': 3 * HOURS,
               'durationIncrement': 15,
               'allowUntilFurtherNotice': True,
+              'inclusionFractionTest': True,
+              'inclusionFraction': 0.1,
+              'inclusionAreaTest' : True,
+              'inclusionAreaInSqKm' : 1.0,
               },
     'FA.Y' : {'headline': 'AREAL FLOOD ADVISORY',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -417,9 +418,9 @@ HazardTypes = {
               'defaultDuration': 3 * HOURS,
               'durationIncrement': 15, 
               'allowUntilFurtherNotice': True, 
-              'inclusionFractionTest': False,
+              'inclusionFractionTest': True,
               'inclusionFraction': 0.1,
-              'inclusionAreaTest' : False,
+              'inclusionAreaTest' : True,
               'inclusionAreaInSqKm' : 1.0,
               },
     'FF.A' : {'headline': 'FLASH FLOOD WATCH',
@@ -451,11 +452,12 @@ HazardTypes = {
               'ugcLabel': '',
               'hazardClipArea' : 'cwa',
               'hazardPointLimit' : 20,
-              'defaultDuration': 3 * HOURS,
+              'durationChoiceList': [ "30 min", "45 min", "60 min", "90 min", "120 min", "3 hrs",  "4 hrs", "6 hrs", "8 hrs" ],
+              'defaultDuration': 45 * MINUTES,
               'durationIncrement': 15, 
-              'inclusionFractionTest': False,
+              'inclusionFractionTest': True,
               'inclusionFraction': 0.1,
-              'inclusionAreaTest' : False,
+              'inclusionAreaTest' : True,
               'inclusionAreaInSqKm' : 1.0,
               'hazardTypeFirstRecommender':'StormTrackTool',
               },
@@ -476,9 +478,9 @@ HazardTypes = {
               'defaultDuration': 1 * HOURS,
               'durationIncrement': 15,
               'hazardTypeFirstRecommender':'StormTrackTool',
-              'inclusionFractionTest': False,
+              'inclusionFractionTest': True,
               'inclusionFraction': 0.1,
-              'inclusionAreaTest' : False,
+              'inclusionAreaTest' : True,
               'inclusionAreaInSqKm' : 1.0,
               },
     'FF.W.NonConvective' : {
@@ -497,6 +499,7 @@ HazardTypes = {
               'durationChoiceList': [ "60 min", "90 min", "120 min", "3 hrs", "6 hrs", "9 hrs", "12 hrs", "24 hrs", "1 day 12 hrs", "2 days", "2 days 12 hrs", "3 days", "4 days", "5 days", "6 days", "7 days" ],
               'defaultDuration': 3 * HOURS,
               'durationIncrement': 15, 
+              # For now leave this off to sidestep the issue discussed in RM 6323
               'inclusionFractionTest': False,
               'inclusionFraction': 0.1,
               'inclusionAreaTest' : False,
@@ -993,7 +996,7 @@ HazardTypes = {
               'allowTimeChange': False,
               'expirationTime': (-10, 10),
               'hazardConflictList': [],
-              'ugcType': 'polygon', 
+              'ugcType': 'county', 
               'ugcLabel': '',
               'inclusionFractionTest' : True,
               'inclusionFraction': 0.1,
@@ -1218,7 +1221,7 @@ HazardTypes = {
               'allowTimeChange': False,
               'expirationTime': (-10, 10),
               'hazardConflictList': [],
-              'ugcType': 'polygon', 
+              'ugcType': 'county', 
               'ugcLabel': '',
               'hazardClipArea' : 'cwa',
               'defaultDuration': 30 * MINUTES,
@@ -1261,7 +1264,7 @@ HazardTypes = {
               'allowTimeChange': False,
               'expirationTime': (-10, 10),
               'hazardConflictList': [],
-              'ugcType': 'polygon', 
+              'ugcType': 'county', 
               'ugcLabel': '',
               'hazardClipArea' : 'cwa',
               'defaultDuration': 30 * MINUTES,

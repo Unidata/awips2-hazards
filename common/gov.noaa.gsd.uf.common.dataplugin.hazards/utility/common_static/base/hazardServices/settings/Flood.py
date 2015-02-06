@@ -178,32 +178,43 @@ Flood = {
         {
             "toolName": "DamBreakFloodRecommender", 
             "displayName": "Dam/Levee Break Flood Recommender",
-            "toolType": "RECOMMENDER"
+            "toolType": "RECOMMENDER",
+	    "visible":True,
         }, 
         {
             "toolName": "BurnScarFloodRecommender", 
             "displayName": "Burn Scar Flood Recommender",
-            "toolType": "RECOMMENDER"
+            "toolType": "RECOMMENDER",
+	    "visible":True,
         }, 
         {
             "toolName": "RiverFloodRecommender", 
             "displayName": "River Flood Recommender",
-            "toolType": "RECOMMENDER"
+            "toolType": "RECOMMENDER",
+	    "visible":True,
         },
         {
             "toolName": "FlashFloodRecommender", 
             "displayName": "Flash Flood Recommender",
-            "toolType": "RECOMMENDER"
+            "toolType": "RECOMMENDER",
+	    "visible":True,
         },
         {
             "toolName": "StormTrackTool", 
             "displayName": "Storm Track",
-            "toolType": "RECOMMENDER"
+            "toolType": "RECOMMENDER",
+	    "visible":True,
+        },
+        {
+            "toolName": "ModifyStormTrackTool", 
+            "toolType": "RECOMMENDER",
+	    "visible":False,
         },
         {
             "toolName": "RVS_ProductGenerator", 
             "displayName": "Generate RVS",
-            "toolType": "PRODUCT_GENERATOR"
+            "toolType": "PRODUCT_GENERATOR",
+	    "visible":True,
         }
     ]
 }

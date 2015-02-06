@@ -64,8 +64,9 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             fill by default.
  * Sep 09, 2014     3994   Robert.Blum         Added handleMouseEnter to reset the 
  *                                             cursor type.
- * Dec 05, 2014     4124   hris.Golden         Changed to work with newly parameterized
+ * Dec 05, 2014     4124   Chris.Golden        Changed to work with newly parameterized
  *                                             config manager.
+ * Feb  6, 2015     4375   Dan Schaffer        Slight patch to geometry intersection error message
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -304,7 +305,7 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
                 hazardEventBuilder.addEvent(hazardEvent, getSpatialPresenter());
             } catch (InvalidGeometryException e) {
                 statusHandler.handle(Priority.WARN,
-                        "Error drawing vertex polygon: ", e);
+                        "Error drawing vertex polygon: " + e.getMessage(), e);
             }
             points.clear();
         }

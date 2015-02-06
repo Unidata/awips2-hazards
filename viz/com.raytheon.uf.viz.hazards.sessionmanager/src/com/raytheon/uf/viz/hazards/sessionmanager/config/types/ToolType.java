@@ -21,6 +21,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 29, 2015 4375       Dan Schaffer initial creation
+ * Feb  6, 2015 4375       Fixed bug in deserialization
  * 
  * </pre>
  * 
@@ -28,7 +29,7 @@ import java.util.Map;
  * @version 1.0
  */
 public enum ToolType {
-    RECOMMENDER("recommender"), PRODUCT_GENERATOR("productGenerator");
+    RECOMMENDER, PRODUCT_GENERATOR;
 
     private static final Map<String, ToolType> stringToEnum = new HashMap<>();
 
@@ -42,14 +43,8 @@ public enum ToolType {
         return stringToEnum.get(symbol);
     }
 
-    private final String toolType;
-
-    private ToolType(String toolType) {
-        this.toolType = toolType;
-    }
-
     public String asString() {
-        return toolType;
+        return this.name();
     }
 
 }

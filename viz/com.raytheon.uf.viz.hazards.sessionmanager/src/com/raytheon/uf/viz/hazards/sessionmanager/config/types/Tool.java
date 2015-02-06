@@ -41,6 +41,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Jun 17, 2013            bsteffen     Initial creation
  * Dec 05, 2014    4124    Chris.Golden Added copy constructor.
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
+ * Feb  6, 2015 4375       Dan Schaffer Fixed bug in storm track modification
  * </pre>
  * 
  * @author bsteffen
@@ -56,6 +57,8 @@ public class Tool {
     @XmlJavaTypeAdapter(ToolTypeAdapter.class)
     private ToolType toolType;
 
+    private boolean visible;
+
     public Tool() {
 
         /*
@@ -67,6 +70,7 @@ public class Tool {
         this.toolName = other.toolName;
         this.displayName = other.displayName;
         this.toolType = other.toolType;
+        this.visible = other.visible;
     }
 
     public String getToolName() {
@@ -113,6 +117,21 @@ public class Tool {
      */
     public void setToolType(ToolType toolType) {
         this.toolType = toolType;
+    }
+
+    /**
+     * @return the visible
+     */
+    public boolean isVisible() {
+        return visible;
+    }
+
+    /**
+     * @param visible
+     *            the visible to set
+     */
+    public void setVisible(boolean visible) {
+        this.visible = visible;
     }
 
 }
