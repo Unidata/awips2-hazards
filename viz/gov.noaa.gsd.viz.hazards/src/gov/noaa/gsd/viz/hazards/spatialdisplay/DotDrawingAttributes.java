@@ -11,14 +11,11 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_DASHED_4;
 
-import java.util.List;
-
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * The PGEN drawing attributes associated with a dot drawn on the Spatial
@@ -34,6 +31,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Dec 05, 2014 4124       Chris.Golden        Changed to work with newly parameterized
  *                                             config manager.
+ * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -66,11 +64,4 @@ public class DotDrawingAttributes extends HazardServicesDrawingAttributes {
         setPointTime(shapeNum, hazardEvent);
     }
 
-    @Override
-    public List<Coordinate> buildCoordinates(int shapeNum,
-            IHazardEvent hazardEvent) {
-        throw new UnsupportedOperationException(
-                "Needs to be coded once the storm track tool is properly designed");
-
-    }
 }

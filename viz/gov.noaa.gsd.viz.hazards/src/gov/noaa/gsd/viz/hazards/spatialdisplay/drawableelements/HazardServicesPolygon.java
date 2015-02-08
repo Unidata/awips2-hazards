@@ -8,7 +8,6 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 
 import java.util.List;
@@ -16,10 +15,6 @@ import java.util.List;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.geom.LinearRing;
-import com.vividsolutions.jts.geom.Polygon;
 
 /**
  * Base class for polygon Hazard-Geometries in Hazard Services.
@@ -31,14 +26,13 @@ import com.vividsolutions.jts.geom.Polygon;
  * June 2011               Bryon.Lawrence      Initial creation
  * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
  *                                             points.
+ * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
 public class HazardServicesPolygon extends HazardServicesShape {
-    private final Polygon geometry;
-
-    private final LineString editableGeometry;
+    private final Geometry geometry;
 
     /**
      * 
@@ -50,8 +44,8 @@ public class HazardServicesPolygon extends HazardServicesShape {
      * @param pgenType
      *            The PGEN type of this drawable. Not used by Hazard Services
      *            but required by PGEN.
-     * @param points
-     *            The list points defining this drawable.
+     * @param geometry
+     *            The geometry defining this drawable.
      * @param activeLayer
      *            The PGEN layer this will be drawn to.
      * @param id
@@ -59,38 +53,21 @@ public class HazardServicesPolygon extends HazardServicesShape {
      */
     public HazardServicesPolygon(
             HazardServicesDrawingAttributes drawingAttributes,
-            String pgenCategory, String pgenType, List<Coordinate> points,
+            String pgenCategory, String pgenType, Geometry geometry,
             Layer activeLayer, String id) {
         super(id, drawingAttributes);
+        List<Coordinate> points = Lists.newArrayList(geometry.getCoordinates());
         setLinePoints(points);
         update(drawingAttributes);
         setPgenCategory(pgenCategory);
         setPgenType(pgenType);
         setParent(activeLayer);
-
-        GeometryFactory gf = new GeometryFactory();
-
-        List<Coordinate> drawnPoints = Lists.newArrayList();
-
-        for (Coordinate coord : points) {
-            drawnPoints.add((Coordinate) coord.clone());
-        }
-
-        Utilities.closeCoordinatesIfNecessary(drawnPoints);
-        LinearRing ls = gf.createLinearRing(drawnPoints
-                .toArray(new Coordinate[0]));
-        geometry = gf.createPolygon(ls, null);
-        editableGeometry = geometry.getExteriorRing();
+        this.geometry = geometry;
     }
 
     @Override
     public Geometry getGeometry() {
         return geometry;
-    }
-
-    @Override
-    public LineString getEditableVertices() {
-        return editableGeometry;
     }
 
 }

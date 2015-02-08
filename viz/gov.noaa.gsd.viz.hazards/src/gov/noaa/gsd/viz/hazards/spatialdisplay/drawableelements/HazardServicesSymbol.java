@@ -24,7 +24,6 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Point;
 
@@ -39,6 +38,7 @@ import com.vividsolutions.jts.geom.Point;
  * April 2011              Bryon.Lawrence      Initial creation
  * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
  *                                             points.
+ * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -198,11 +198,6 @@ public class HazardServicesSymbol extends Symbol implements
     @Override
     public Geometry getGeometry() {
         return geometry;
-    }
-
-    @Override
-    public LineString getEditableVertices() {
-        return null;
     }
 
     /**

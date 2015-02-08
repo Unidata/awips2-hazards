@@ -12,6 +12,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesMultiPolygon;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPolygon;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
@@ -23,6 +24,7 @@ import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -41,6 +43,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
 
@@ -64,6 +67,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove polygons from hazards
  * Feb  3, 2015 6096       Dan Schaffer Fixed spatial display panning.
  * 
+ * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -375,7 +379,8 @@ public class SelectionAction extends NonDrawingAction {
             List<Coordinate> coords = null;
             if (selectedDEclass.equals(HazardServicesPoint.class)) {
                 coords = Lists.newArrayList(((Symbol) ghostEl).getLocation());
-            } else if ((selectedDEclass.equals(HazardServicesPolygon.class))
+            } else if ((selectedDEclass.equals(HazardServicesPolygon.class) || selectedDEclass
+                    .equals(HazardServicesMultiPolygon.class))
                     || (selectedDEclass.equals(HazardServicesLine.class))) {
                 coords = ((Line) ghostEl).getPoints();
             }
@@ -423,10 +428,49 @@ public class SelectionAction extends NonDrawingAction {
                 result = geometryFactory.createPolygon(
                         geometryFactory.createLinearRing(coordinatesAsArray),
                         null);
+            } else if (origShape.getClass() == HazardServicesMultiPolygon.class) {
+                result = buildNewMultiPolygon(
+                        (MultiPolygon) origShape.getGeometry(),
+                        coordinatesAsArray);
             } else {
                 throw new IllegalArgumentException("Unexpected geometry "
                         + origShape.getClass());
             }
+            return result;
+        }
+
+        private Geometry buildNewMultiPolygon(MultiPolygon origGeometry,
+                Coordinate[] coordinates) {
+            List<Polygon> polygons = new ArrayList<>();
+            int coordinateNum = -1;
+            for (int polygonNum = 0; polygonNum < origGeometry
+                    .getNumGeometries(); polygonNum++) {
+                int polygonSize = origGeometry.getGeometryN(polygonNum)
+                        .getNumPoints();
+                List<Coordinate> coordinatesForThisPolygon = new ArrayList<>(
+                        polygonSize);
+
+                /*
+                 * Skip the duplicate last point
+                 */
+                for (int i = 0; i < polygonSize - 1; i++) {
+                    coordinateNum += 1;
+                    coordinatesForThisPolygon.add(coordinates[coordinateNum]);
+                }
+                Utilities
+                        .closeCoordinatesIfNecessary(coordinatesForThisPolygon);
+                coordinateNum += 1;
+                Coordinate[] coordinatesAsArray = coordinatesForThisPolygon
+                        .toArray(new Coordinate[coordinatesForThisPolygon
+                                .size()]);
+                polygons.add(geometryFactory.createPolygon(
+                        geometryFactory.createLinearRing(coordinatesAsArray),
+                        null));
+            }
+            Polygon[] polygonsAsArray = polygons.toArray(new Polygon[polygons
+                    .size()]);
+            Geometry result = geometryFactory
+                    .createMultiPolygon(polygonsAsArray);
             return result;
         }
 
@@ -455,7 +499,9 @@ public class SelectionAction extends NonDrawingAction {
                 String hazardID = ((IHazardServicesShape) hazard).getID();
 
                 if (hazardID.equals(eventID)) {
-                    if (hazardClass.equals(HazardServicesPolygon.class)) {
+                    if (hazardClass.equals(HazardServicesPolygon.class)
+                            || hazardClass
+                                    .equals(HazardServicesMultiPolygon.class)) {
                         Geometry geometry = ((IHazardServicesShape) hazard)
                                 .getGeometry();
                         result.add(geometry);
@@ -755,17 +801,13 @@ public class SelectionAction extends NonDrawingAction {
                                     Coordinate mouseScreenCoord = new Coordinate(
                                             x, y);
 
-                                    GeometryFactory gf = shape
-                                            .getEditableVertices().getFactory();
-
-                                    Point clickPointScreen = gf
+                                    Point clickPointScreen = geometryFactory
                                             .createPoint(mouseScreenCoord);
 
                                     // Create a line string with screen
                                     // coordinates.
                                     Coordinate[] shapeCoords = shape
-                                            .getEditableVertices()
-                                            .getCoordinates();
+                                            .getGeometry().getCoordinates();
 
                                     Coordinate[] shapeScreenCoords = new Coordinate[shapeCoords.length];
 
@@ -776,7 +818,7 @@ public class SelectionAction extends NonDrawingAction {
                                                 coords[0], coords[1]);
                                     }
 
-                                    LineString ls2 = gf
+                                    LineString ls2 = geometryFactory
                                             .createLineString(shapeScreenCoords);
 
                                     double dist = clickPointScreen
@@ -865,9 +907,8 @@ public class SelectionAction extends NonDrawingAction {
                 /*
                  * Try using the geometry associated with the drawable.
                  */
-                LineString ls = ((IHazardServicesShape) selectedElement)
-                        .getEditableVertices();
-                Coordinate[] coords = ls.getCoordinates();
+                IHazardServicesShape shape = ((IHazardServicesShape) selectedElement);
+                Coordinate[] coords = shape.getGeometry().getCoordinates();
 
                 int numCoordPoints = coords.length;
 

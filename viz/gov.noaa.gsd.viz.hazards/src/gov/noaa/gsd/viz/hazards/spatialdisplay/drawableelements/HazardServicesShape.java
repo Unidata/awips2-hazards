@@ -13,7 +13,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.LineString;
 
 /**
  * Description: A hazard services drawing shape.
@@ -25,6 +24,7 @@ import com.vividsolutions.jts.geom.LineString;
  * ------------ ---------- ----------- --------------------------
  * Aug 23, 2013   1264      daniel.s.schaffer@noaa.gov      Initial creation
  * 
+ * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -61,9 +61,6 @@ public abstract class HazardServicesShape extends Line implements
     public String getID() {
         return id;
     }
-
-    @Override
-    public abstract LineString getEditableVertices();
 
     @Override
     public abstract Geometry getGeometry();

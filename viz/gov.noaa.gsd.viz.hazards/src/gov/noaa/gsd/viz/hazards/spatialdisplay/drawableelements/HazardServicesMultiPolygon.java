@@ -15,8 +15,6 @@ import java.util.List;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.LineString;
 
 /**
  * Base class for polygon Hazard-Geometries in Hazard Services.
@@ -25,17 +23,13 @@ import com.vividsolutions.jts.geom.LineString;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * June 2011               Bryon.Lawrence      Initial creation
- * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
- *                                             points.
- * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
+ * Feb 09, 2015 6260       Dan Schaffer        Initial creation.                                        points.
  * </pre>
  * 
- * @author Bryon.Lawrence
+ * @author daniel.s.schaffer
  */
-public class HazardServicesLine extends HazardServicesShape {
-
-    private final LineString geometry;
+public class HazardServicesMultiPolygon extends HazardServicesShape {
+    private final Geometry geometry;
 
     /**
      * 
@@ -47,34 +41,25 @@ public class HazardServicesLine extends HazardServicesShape {
      * @param pgenType
      *            The PGEN type of this drawable. Not used by Hazard Services
      *            but required by PGEN.
-     * @param points
-     *            The list points defining this drawable.
+     * @param geometry
+     *            The geometry defining this drawable.
      * @param activeLayer
      *            The PGEN layer this will be drawn to.
      * @param id
      *            The id associated with this drawable.
      */
-    public HazardServicesLine(
+    public HazardServicesMultiPolygon(
             HazardServicesDrawingAttributes drawingAttributes,
-            String pgenCategory, String pgenType, List<Coordinate> points,
+            String pgenCategory, String pgenType, Geometry geometry,
             Layer activeLayer, String id) {
         super(id, drawingAttributes);
+        List<Coordinate> points = Lists.newArrayList(geometry.getCoordinates());
         setLinePoints(points);
         update(drawingAttributes);
         setPgenCategory(pgenCategory);
         setPgenType(pgenType);
         setParent(activeLayer);
-
-        GeometryFactory gf = new GeometryFactory();
-
-        List<Coordinate> drawnPoints = Lists.newArrayList();
-
-        for (Coordinate coord : points) {
-            drawnPoints.add((Coordinate) coord.clone());
-        }
-
-        geometry = gf.createLineString(drawnPoints
-                .toArray(new Coordinate[drawnPoints.size()]));
+        this.geometry = geometry;
     }
 
     @Override

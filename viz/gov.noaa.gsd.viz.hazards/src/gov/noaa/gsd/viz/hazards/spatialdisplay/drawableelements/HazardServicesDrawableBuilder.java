@@ -18,6 +18,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.StarDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.StormTrackDotDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.TextPositioner;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
@@ -50,6 +51,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Lineal;
+import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
@@ -81,6 +83,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
+ * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * </pre>
  * 
  * @author bryon.lawrence
@@ -112,6 +115,8 @@ public class HazardServicesDrawableBuilder {
 
     private final GeoMapUtilities geoMapUtilities;
 
+    private final GeometryFactory geometryFactory = new GeometryFactory();
+
     public HazardServicesDrawableBuilder(
             ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager) {
         this.sessionManager = sessionManager;
@@ -127,8 +132,8 @@ public class HazardServicesDrawableBuilder {
                     PointDrawingAttributes.Element.OUTER);
             drawingAttributes.setAttributes(shapeNum, hazardEvent);
             drawingAttributes.setTextPosition(TextPositioner.TOP);
-            List<Coordinate> points = drawingAttributes.buildCoordinates(
-                    shapeNum, hazardEvent);
+            List<Coordinate> points = buildPointCoordinates(shapeNum,
+                    hazardEvent);
 
             collectionComponent.add(new HazardServicesPoint(drawingAttributes,
                     symbol, symbol, points, activeLayer, hazardEvent
@@ -137,7 +142,6 @@ public class HazardServicesDrawableBuilder {
             HazardServicesDrawingAttributes drawingAttributes = new PointDrawingAttributes(
                     sessionManager, PointDrawingAttributes.Element.INNER);
             drawingAttributes.setAttributes(shapeNum, hazardEvent);
-            points = drawingAttributes.buildCoordinates(shapeNum, hazardEvent);
 
             collectionComponent.add(new HazardServicesPoint(drawingAttributes,
                     symbol, symbol, points, activeLayer, hazardEvent
@@ -162,8 +166,7 @@ public class HazardServicesDrawableBuilder {
         try {
             drawingAttributes = new LineDrawingAttributes(sessionManager);
 
-            List<Coordinate> points = drawingAttributes.buildCoordinates(
-                    shapeNum, hazardEvent);
+            List<Coordinate> points = buildCoordinates(shapeNum, hazardEvent);
             drawingAttributes.setAttributes(shapeNum, hazardEvent);
 
             drawableComponent = new HazardServicesLine(drawingAttributes, LINE,
@@ -225,12 +228,21 @@ public class HazardServicesDrawableBuilder {
             drawingAttributes = new PolygonDrawingAttributes(drawFilled,
                     sessionManager);
 
-            List<Coordinate> points = drawingAttributes.buildCoordinates(
-                    shapeNum, hazardEvent);
+            List<Coordinate> points = buildCoordinates(shapeNum, hazardEvent);
             drawingAttributes.setAttributes(shapeNum, hazardEvent);
 
+            List<Coordinate> drawnPoints = Lists.newArrayList();
+
+            for (Coordinate coord : points) {
+                drawnPoints.add((Coordinate) coord.clone());
+            }
+
+            Utilities.closeCoordinatesIfNecessary(drawnPoints);
+            LinearRing ls = geometryFactory.createLinearRing(drawnPoints
+                    .toArray(new Coordinate[0]));
+            Polygon polygon = geometryFactory.createPolygon(ls, null);
             drawableComponent = new HazardServicesPolygon(drawingAttributes,
-                    LINE, drawingAttributes.getLineStyle().toString(), points,
+                    LINE, drawingAttributes.getLineStyle().toString(), polygon,
                     activeLayer, hazardEvent.getEventID());
 
         } catch (VizException e) {
@@ -252,10 +264,6 @@ public class HazardServicesDrawableBuilder {
         try {
             drawingAttributes = new PolygonDrawingAttributes(sessionManager);
 
-            List<Coordinate> points = Lists
-                    .newArrayList(((Polygon) hazardHatchArea).getExteriorRing()
-                            .getCoordinates());
-
             drawingAttributes.setLineWidth(1);
             drawingAttributes.setColors(drawingAttributes
                     .buildHazardEventColors(hazardEvent,
@@ -264,7 +272,7 @@ public class HazardServicesDrawableBuilder {
             drawingAttributes.setSelected(false);
 
             drawableComponent = new HazardServicesPolygon(drawingAttributes,
-                    LINE, "LINE_DASHED_2", points, activeLayer,
+                    LINE, "LINE_DASHED_2", hazardHatchArea, activeLayer,
                     hazardEvent.getEventID());
 
         } catch (VizException e) {
@@ -304,7 +312,7 @@ public class HazardServicesDrawableBuilder {
     }
 
     public AbstractDrawableComponent buildText(Geometry geometry, String id,
-            Layer activeLayer, GeometryFactory geoFactory) {
+            Layer activeLayer) {
         Point centerPoint;
 
         centerPoint = geometry.getCentroid();
@@ -399,6 +407,32 @@ public class HazardServicesDrawableBuilder {
         addHazardHatchArea(spatialDisplay, hazardEvent, activeLayer,
                 hatchedAreas, hatchedAreaAnnotations);
 
+    }
+
+    private List<Coordinate> buildCoordinates(int shapeNum,
+            IHazardEvent hazardEvent) {
+        Geometry geometry = hazardEvent.getGeometry().getGeometryN(shapeNum);
+
+        return Lists.newArrayList(geometry.getCoordinates());
+    }
+
+    /**
+     * TODO Handle MultiPoint
+     */
+    private List<Coordinate> buildPointCoordinates(int shapeNum,
+            IHazardEvent hazardEvent) {
+        Boolean selected = (Boolean) hazardEvent
+                .getHazardAttribute(HAZARD_EVENT_SELECTED);
+        double radius = 3.0;
+        if (selected) {
+            radius = 5.0;
+        }
+        Coordinate centerPointInWorld = hazardEvent.getGeometry()
+                .getGeometryN(shapeNum).getCoordinate();
+
+        List<Coordinate> result = drawingAttributes.buildCircleCoordinates(
+                radius, centerPointInWorld);
+        return result;
     }
 
     @SuppressWarnings("unchecked")
@@ -682,22 +716,47 @@ public class HazardServicesDrawableBuilder {
 
         if (geometryClass.equals(Point.class)) {
             result = buildPoint(hazardEvent, shapeNum, activeLayer, DOT);
-
         } else if (geometryClass.equals(LineString.class)) {
             result = buildLine(hazardEvent, shapeNum, activeLayer);
-        } else if (geometryClass.equals(Polygon.class)
-                || geometryClass.equals(MultiPolygon.class)) {
+        } else if (geometryClass.equals(Polygon.class)) {
             result = buildPolygon(hazardEvent, shapeNum, false, activeLayer);
+        } else if (geometryClass.equals(MultiPolygon.class)) {
+            result = buildMultiPolygon(hazardEvent, shapeNum, false,
+                    activeLayer);
         }
 
-        /**
-         * TODO Handle stars for Storm track tool
-         */
         else {
             throw new IllegalArgumentException("Not yet supporting geometry "
                     + geometryClass);
         }
         return result;
+    }
+
+    private AbstractDrawableComponent buildMultiPolygon(
+            IHazardEvent hazardEvent, int shapeNum, boolean drawFilled,
+            Layer activeLayer) {
+        AbstractDrawableComponent drawableComponent = null;
+
+        try {
+            drawingAttributes = new PolygonDrawingAttributes(drawFilled,
+                    sessionManager);
+
+            Geometry geometry = hazardEvent.getGeometry()
+                    .getGeometryN(shapeNum);
+            drawingAttributes.setAttributes(shapeNum, hazardEvent);
+
+            drawableComponent = new HazardServicesMultiPolygon(
+                    drawingAttributes, LINE, drawingAttributes.getLineStyle()
+                            .toString(), geometry, activeLayer,
+                    hazardEvent.getEventID());
+
+        } catch (VizException e) {
+            statusHandler.error(
+                    "HazardServicesDrawableBuilder.buildPolygon(): build "
+                            + "of shape failed.", e);
+        }
+
+        return drawableComponent;
     }
 
     /**
@@ -724,8 +783,7 @@ public class HazardServicesDrawableBuilder {
 
             AbstractDrawableComponent text = buildText(
                     hazardEvent.getGeometry(), hazardEvent.getEventID(),
-                    spatialDisplay.getActiveLayer(),
-                    spatialDisplay.getGeoFactory());
+                    spatialDisplay.getActiveLayer());
             spatialDisplay.addElement(text);
             drawableComponents.add(text);
         }
@@ -739,8 +797,7 @@ public class HazardServicesDrawableBuilder {
             IHazardServicesShape shape = (IHazardServicesShape) (associatedShape instanceof DECollection ? ((DECollection) associatedShape)
                     .getPrimaryDE() : associatedShape);
             AbstractDrawableComponent text = buildText(shape.getGeometry(), id,
-                    spatialDisplay.getActiveLayer(),
-                    spatialDisplay.getGeoFactory());
+                    spatialDisplay.getActiveLayer());
             spatialDisplay.addElement(text);
             drawableComponents.add(text);
         }

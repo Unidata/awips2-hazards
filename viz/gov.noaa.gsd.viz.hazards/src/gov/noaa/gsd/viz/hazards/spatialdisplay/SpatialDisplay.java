@@ -101,7 +101,6 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygonal;
 
@@ -152,6 +151,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Dec 05, 2014  4124      Chris.Golden   Changed to work with newly parameterized config manager
  *                                        and with ObservedSettings.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Feb 09, 2015 6260       Dan Schaffer   Fixed bugs in multi-polygon handling
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1008,23 +1008,20 @@ public class SpatialDisplay extends
                 if (p != null) {
                     // Convert the polygon vertices into pixels
                     Coordinate[] coords = p.getCoordinates();
-                    Coordinate[] screenCoords = new Coordinate[coords.length];
 
                     for (int i = 0; i < coords.length; ++i) {
                         screenCoord = editor.translateInverseClick(coords[i]);
-                        screenCoords[i] = new Coordinate(screenCoord[0],
-                                screenCoord[1]);
-                    }
+                        Point geometryPoint = geoFactory
+                                .createPoint(new Coordinate(screenCoord[0],
+                                        screenCoord[1]));
 
-                    // Create the new Polygon...
-                    GeometryFactory gf = p.getFactory();
-                    LinearRing linearRing = gf.createLinearRing(screenCoords);
+                        double distance = clickScreenPoint
+                                .distance(geometryPoint);
 
-                    double distance = clickScreenPoint.distance(linearRing);
-
-                    if (distance < minDist) {
-                        minDist = distance;
-                        closestSymbol = comp;
+                        if (distance < minDist) {
+                            minDist = distance;
+                            closestSymbol = comp;
+                        }
                     }
                 }
             }

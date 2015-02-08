@@ -10,7 +10,6 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
 
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.LineString;
 
 /**
  * 
@@ -24,6 +23,7 @@ import com.vividsolutions.jts.geom.LineString;
  * Aug 03, 2012            bryon.lawrence      Initial creation
  * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
  *                                             points.
+ * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * </pre>
  * 
  * @author bryon.lawrence
@@ -54,17 +54,6 @@ public interface IHazardServicesShape {
      * @return the ID associated with this hazard.
      */
     public String getID();
-
-    /**
-     * 
-     * 
-     * Returns the JTS line string containing the editable vertices of the
-     * shape, if vertices may be edited.
-     * 
-     * @return JTS line string of editable vertices, or <code>null</code> if no
-     *         editable vertices are available.
-     */
-    public LineString getEditableVertices();
 
     /**
      * Returns the JTS geometry version of this shape. All Hazard Services

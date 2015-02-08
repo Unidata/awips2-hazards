@@ -16,7 +16,6 @@ import java.util.ArrayList;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Point;
 
 /**
@@ -30,6 +29,7 @@ import com.vividsolutions.jts.geom.Point;
  * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
  *                                             points.
  * Nov 23, 2013   1462     Bryon.Lawrence      Set text to bold.
+ * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -161,11 +161,6 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
     @Override
     public float getFontSize() {
         return 15;
-    }
-
-    @Override
-    public LineString getEditableVertices() {
-        return null;
     }
 
     @Override

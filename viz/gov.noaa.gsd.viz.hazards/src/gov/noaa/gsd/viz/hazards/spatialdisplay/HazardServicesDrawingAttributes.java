@@ -30,8 +30,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.Polygon;
 
 /**
  * This is the base class for most of the Hazard Services renderables.
@@ -50,7 +48,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * Dec 05, 2014    4124    Chris.Golden        Changed to work with newly parameterized
  *                                             config manager.
  * Feb 03, 2015    3865    Chris.Cody          Check for valid Active Editor class
- * 
+ * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -100,22 +98,6 @@ public abstract class HazardServicesDrawingAttributes extends Line {
     }
 
     public abstract void setDashedLineStyle();
-
-    public List<Coordinate> buildCoordinates(int shapeNum,
-            IHazardEvent hazardEvent) {
-        Geometry geometry = hazardEvent.getGeometry().getGeometryN(shapeNum);
-
-        List<Coordinate> coordinateList = null;
-
-        if (geometry instanceof Polygon) {
-            coordinateList = Lists.newArrayList(((Polygon) geometry)
-                    .getExteriorRing().getCoordinates());
-        } else {
-            coordinateList = Lists.newArrayList(geometry.getCoordinates());
-        }
-
-        return coordinateList;
-    }
 
     public void setAttributes(int shapeNum, IHazardEvent hazardEvent) {
 
@@ -311,4 +293,5 @@ public abstract class HazardServicesDrawingAttributes extends Line {
     public gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle getLineStyle() {
         return lineStyle;
     }
+
 }
