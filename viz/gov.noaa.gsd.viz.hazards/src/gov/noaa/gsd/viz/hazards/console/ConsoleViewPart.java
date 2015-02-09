@@ -55,6 +55,10 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           display.
  * Nov 18, 2014   4124     Chris.Golden      Adapted to new time manager.
  * Dec 05, 2014   4124     Chris.Golden      Changed to use ObservedSettings.
+ * Feb 09, 2015   6370     Chris.Golden      Fixed problem with header menu in
+ *                                           Console not always showing columns that
+ *                                           are available in the current settings
+ *                                           if the latter has been changed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -297,7 +301,7 @@ public class ConsoleViewPart extends DockTrackingViewPart {
         temporalDisplay.clearEvents();
         temporalDisplay.updateHazardEvents(hazardEvents);
         temporalDisplay.updateSettings(currentSettings);
-        temporalDisplay.updateConsole(null);
+        temporalDisplay.updateConsole();
     }
 
     /**

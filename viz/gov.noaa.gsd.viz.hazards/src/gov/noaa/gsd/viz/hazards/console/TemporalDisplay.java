@@ -238,11 +238,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           two levels, primary and secondary sort,
  *                                           for now, but it could be expanded by simply
  *                                           expanding the menus).
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Dec 13, 2014   4959     Dan Schaffer      Spatial Display cleanup and other bug fixes
  * Jan 08, 2015   2394     Chris.Golden      Fixed bug that caused column cell values
  *                                           that were not strings or dates to throw an
  *                                           exception. Also changed number-populated
  *                                           columns to be right-adjusted.
+ * Feb 09, 2015   6370     Chris.Golden      Fixed problem with header menu in Console
+ *                                           not always showing columns that are
+ *                                           available in the current settings if the
+ *                                           latter has been changed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -691,6 +695,12 @@ class TemporalDisplay {
      * for use as visual time range indicators. .
      */
     private final Map<String, Color> timeRangeColorsForRGBs = new HashMap<>();
+
+    /**
+     * JSON-encoded string holding a list of maps, each of the latter being a
+     * filter megawidget specifier to be shown in column header menus.
+     */
+    private String filterMegawidgets = null;
 
     /**
      * Selected time mode combo box.
@@ -1714,6 +1724,7 @@ class TemporalDisplay {
         this.presenter = presenter;
         this.eventManager = presenter.getSessionManager().getEventManager();
         this.eventIdentifiersAllowingUntilFurtherNotice = eventIdentifiersAllowingUntilFurtherNotice;
+        this.filterMegawidgets = filterMegawidgets;
 
         // If the controls are to be shown in the toolbar, hide the
         // ones in the composite; otherwise, delete the ones in the
@@ -1763,7 +1774,7 @@ class TemporalDisplay {
         clearEvents();
         updateHazardEvents(hazardEvents);
         updateSettings(currentSettings);
-        updateConsole(filterMegawidgets);
+        updateConsole();
 
         // Add the mouse wheel filter, used to handle mouse wheel
         // events properly when they should apply to the table.
@@ -2248,16 +2259,9 @@ class TemporalDisplay {
     // Private Methods
 
     /**
-     * Set the specified hazard events as the events to be shown in the table.
-     * 
-     * @param filterMegawidgets
-     *            JSON string holding an array of dictionaries, each of the
-     *            latter holding a filter megawidget as a set of key-value
-     *            pairs. This needs to be be present only the first time this
-     *            method is called, in order to construct the context menus; it
-     *            is ignored otherwise.
+     * Update the console table to show the events that it knows about.
      */
-    void updateConsole(String filterMegawidgets) {
+    void updateConsole() {
 
         // Prepare for the addition and/or removal of columns.
         boolean lastIgnoreResize = ignoreResize;
@@ -2645,6 +2649,9 @@ class TemporalDisplay {
      */
     private void disposeInternal() {
 
+        // Delete any header menus for the columns.
+        deleteColumnHeaderMenus();
+
         // Dispose of the countdown timer display manager.
         if (countdownTimersDisplayManager != null) {
             countdownTimersDisplayManager.dispose();
@@ -2666,6 +2673,19 @@ class TemporalDisplay {
 
         // Remove the mouse wheel filter.
         table.getDisplay().removeFilter(SWT.MouseWheel, mouseWheelFilter);
+    }
+
+    /**
+     * Delete the column header menus, if they were created.
+     */
+    private void deleteColumnHeaderMenus() {
+        if (headerMenusForColumnNames != null) {
+            for (Menu menu : headerMenusForColumnNames.values()) {
+                menu.dispose();
+            }
+            headerMenusForColumnNames.clear();
+            headerMenusForColumnNames = null;
+        }
     }
 
     /**
@@ -2780,6 +2800,11 @@ class TemporalDisplay {
     }
 
     void updateSettings(ObservedSettings currentSettings) {
+
+        /*
+         * Delete any header menus for the columns.
+         */
+        deleteColumnHeaderMenus();
 
         /*
          * Get the column definitions, and the visible column names.
