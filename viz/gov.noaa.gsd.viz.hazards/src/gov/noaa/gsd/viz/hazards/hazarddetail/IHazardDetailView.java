@@ -14,11 +14,13 @@ import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.Command;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.DisplayableEventIdentifier;
 import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
 import java.util.Map;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Range;
 import com.raytheon.uf.common.time.TimeRange;
 
 /**
@@ -44,12 +46,26 @@ import com.raytheon.uf.common.time.TimeRange;
  *                                      megawidgets.
  * Sep 16, 2014    4753    Chris.Golden Changed event script running to include
  *                                      mutable properties.
+ * Feb 03, 2015    2331    Chris.Golden Added support for limiting the values
+ *                                      that an event's start or end time can
+ *                                      take on.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public interface IHazardDetailView {
+
+    // Public Enumerated Types
+
+    /**
+     * Time range boundary components.
+     */
+    public enum TimeRangeBoundary {
+        START, END
+    };
+
+    // Public Methods
 
     /**
      * Initialize the view.
@@ -110,6 +126,22 @@ public interface IHazardDetailView {
      * @return Time range state changer.
      */
     public IStateChanger<String, TimeRange> getTimeRangeChanger();
+
+    /**
+     * Get the time range boundaries state changer. The qualifier is that of the
+     * hazard event, while the identifier indicates which boundary.
+     * <p>
+     * <strong>Note</strong>: This class uses a {@link Range} instead of a
+     * {@link TimeRange} because the latter is not intended to have a
+     * zero-length interval between its start and end times (such an instance is
+     * considered invalid by its {@link TimeRange#isInvalid()} method). However,
+     * the allowable boundaries for event start and end times may have
+     * zero-length intervals.
+     * </p>
+     * 
+     * @return Time range state changer.
+     */
+    public IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> getTimeRangeBoundariesChanger();
 
     /**
      * Get the duration changer. This is only used to set the choices for

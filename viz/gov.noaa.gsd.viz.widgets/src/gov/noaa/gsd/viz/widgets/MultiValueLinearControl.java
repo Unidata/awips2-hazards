@@ -137,6 +137,9 @@ import org.eclipse.swt.widgets.Composite;
  *                                           values for constrained thumbs,
  *                                           with such boundaries being
  *                                           individual to each thumb.
+ * Feb 03, 2015    2331    Chris.Golden      Fixed bug that disallowed
+ *                                           zero-length value boundary
+ *                                           ranges.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1026,11 +1029,11 @@ public abstract class MultiValueLinearControl extends Canvas {
      *            Index of the constrained thumb for which the minimum and
      *            maximum possible values are to be set.
      * @param minimumValue
-     *            New absolute minimum possible value; must be less than
-     *            <code>maximumValue</code>.
+     *            New absolute minimum possible value; must be less than or
+     *            equal to <code>maximumValue</code>.
      * @param maximumValue
-     *            New absolute maximum possible value; must be greater than
-     *            <code>minimumValue</code>.
+     *            New absolute maximum possible value; must be greater than or
+     *            equal to <code>minimumValue</code>.
      * @return True if the minimum and maximum possible values for the specified
      *         thumb were set successfully, false otherwise. The latter occurs
      *         if said values would result in the thumb being too close to its
@@ -1041,11 +1044,12 @@ public abstract class MultiValueLinearControl extends Canvas {
             long minimumValue, long maximumValue) {
 
         /*
-         * Ensure that the minimum value is less than the maximum value.
+         * Ensure that the minimum value is less than or equal to the maximum
+         * value.
          */
-        if (minimumValue >= maximumValue) {
+        if (minimumValue > maximumValue) {
             throw new IllegalArgumentException(
-                    "minimum value must be less than maximum");
+                    "minimum value must be less than or equal to maximum");
         }
 
         /*

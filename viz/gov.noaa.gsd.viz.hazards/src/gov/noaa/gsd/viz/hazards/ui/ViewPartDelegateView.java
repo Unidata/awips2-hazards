@@ -78,6 +78,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Aug 22, 2013   1936     Chris.Golden Added console countdown timers.
  * May 08, 2014   2925     Chris.Golden Added notification callbacks to creation
  *                                      listeners, and moved to its own package.
+ * Feb 06, 2015   2331     Chris.Golden Removed bogus debug message.
  * </pre>
  * 
  * @author Chris.Golden
@@ -345,7 +346,6 @@ public abstract class ViewPartDelegateView<V extends ViewPart> implements
             try {
                 PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                         .getActivePage().hideView(viewPart);
-                statusHandler.debug("Closing view part.");
             } catch (Exception e) {
                 statusHandler.info("Could not close view: " + e);
             }

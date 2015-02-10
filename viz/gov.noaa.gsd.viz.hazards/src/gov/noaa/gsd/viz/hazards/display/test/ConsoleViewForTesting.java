@@ -2,18 +2,25 @@ package gov.noaa.gsd.viz.hazards.display.test;
 
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
 import gov.noaa.gsd.viz.hazards.console.IConsoleView;
+import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.mvp.IMainUiContributor;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
+import org.eclipse.jface.action.Action;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
  * Description: {@link IConsoleView} used for {@link AutomatedTests}.
@@ -33,14 +40,14 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-@SuppressWarnings("rawtypes")
-public class ConsoleViewForTesting implements IConsoleView {
+public class ConsoleViewForTesting implements
+        IConsoleView<Action, RCPMainUserInterfaceElement> {
 
-    private List hazardEvents;
+    private List<Dict> hazardEvents;
 
     private ObservedSettings currentSettings;
 
-    private ImmutableList activeAlerts;
+    private ImmutableList<IHazardAlert> activeAlerts;
 
     public ConsoleViewForTesting() {
         hazardEvents = Lists.newArrayList();
@@ -52,22 +59,8 @@ public class ConsoleViewForTesting implements IConsoleView {
     }
 
     @Override
-    public List contributeToMainUI(Enum type) {
+    public List<Action> contributeToMainUI(RCPMainUserInterfaceElement type) {
         throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void initialize(ConsolePresenter presenter, Date selectedTime,
-            Date currentTime, long visibleTimeRange, List hazardEvents,
-            ObservedSettings currentSettings, List settings,
-            String jsonFilters, ImmutableList activeAlerts,
-            Set eventIdentifiersAllowingUntilFurtherNotice,
-            boolean temporalControlsInToolBar) {
-    }
-
-    @Override
-    public void acceptContributionsToMainUI(List contributors, Enum type) {
-
     }
 
     @Override
@@ -106,13 +99,6 @@ public class ConsoleViewForTesting implements IConsoleView {
     }
 
     @Override
-    public void setHazardEvents(List hazardEvents,
-            ObservedSettings currentSettings) {
-        this.hazardEvents = hazardEvents;
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
     public void updateHazardEvent(String hazardEventJSON) {
         Dict updatedEvent = Dict.getInstance(hazardEventJSON);
         String eventID = updatedEvent
@@ -130,7 +116,7 @@ public class ConsoleViewForTesting implements IConsoleView {
     }
 
     @Override
-    public void setActiveAlerts(ImmutableList activeAlerts) {
+    public void setActiveAlerts(ImmutableList<IHazardAlert> activeAlerts) {
         this.activeAlerts = activeAlerts;
     }
 
@@ -140,7 +126,7 @@ public class ConsoleViewForTesting implements IConsoleView {
     }
 
     @Override
-    public void setSettings(String currentSettingsID, List settings) {
+    public void setSettings(String currentSettingsID, List<Settings> settings) {
     }
 
     @Override
@@ -157,7 +143,34 @@ public class ConsoleViewForTesting implements IConsoleView {
         return ToStringBuilder.reflectionToString(this);
     }
 
-    ImmutableList getActiveAlerts() {
+    ImmutableList<IHazardAlert> getActiveAlerts() {
         return activeAlerts;
+    }
+
+    @Override
+    public void updateEventTimeRangeBoundaries(Set<String> eventIds) {
+    }
+
+    @Override
+    public void setHazardEvents(List<Dict> eventsAsDicts,
+            ObservedSettings currentSettings) {
+        this.hazardEvents = eventsAsDicts;
+    }
+
+    @Override
+    public void acceptContributionsToMainUI(
+            List<? extends IMainUiContributor<Action, RCPMainUserInterfaceElement>> contributors,
+            RCPMainUserInterfaceElement type) {
+    }
+
+    @Override
+    public void initialize(ConsolePresenter presenter, Date selectedTime,
+            Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
+            Map<String, Range<Long>> startTimeBoundariesForEventIds,
+            Map<String, Range<Long>> endTimeBoundariesForEventIds,
+            ObservedSettings currentSettings, List<Settings> availableSettings,
+            String jsonFilters, ImmutableList<IHazardAlert> activeAlerts,
+            Set<String> eventIdentifiersAllowingUntilFurtherNotice,
+            boolean temporalControlsInToolBar) {
     }
 }

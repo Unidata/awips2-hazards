@@ -21,6 +21,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IActionBars;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Range;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -59,6 +60,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           Console not always showing columns that
  *                                           are available in the current settings
  *                                           if the latter has been changed.
+ * Feb 09, 2015   2331     Chris.Golden      Changed to use time range boundaries
+ *                                           for the events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -124,8 +127,15 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      *            Amount of time visible at once in the time line as an epoch
      *            time range in milliseconds.
      * @param hazardEvents
+     *            Hazard events, each in dictionary form.
+     * @param startTimeBoundariesForEventIds
+     *            Map of event identifiers to their start time range boundaries.
+     * @param endTimeBoundariesForEventIds
+     *            Map of event identifiers to their end time range boundaries.
      * @param currentSettings
+     *            Currently selected settings.
      * @param availableSettings
+     *            All available settings.
      * @param jsonFilters
      *            JSON string holding a list of dictionaries providing filter
      *            megawidget specifiers.
@@ -146,6 +156,8 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      */
     public void initialize(ConsolePresenter presenter, Date selectedTime,
             Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
+            Map<String, Range<Long>> startTimeBoundariesForEventIds,
+            Map<String, Range<Long>> endTimeBoundariesForEventIds,
             ObservedSettings currentSettings, List<Settings> availableSettings,
             String jsonFilters, ImmutableList<IHazardAlert> activeAlerts,
             Set<String> eventIdentifiersAllowingUntilFurtherNotice,
@@ -155,7 +167,8 @@ public class ConsoleViewPart extends DockTrackingViewPart {
         String currentSettingsID = currentSettings.getSettingsID();
         setSettings(currentSettingsID, availableSettings);
         temporalDisplay.initialize(presenter, selectedTime, currentTime,
-                visibleTimeRange, hazardEvents, currentSettings, jsonFilters,
+                visibleTimeRange, hazardEvents, startTimeBoundariesForEventIds,
+                endTimeBoundariesForEventIds, currentSettings, jsonFilters,
                 activeAlerts, eventIdentifiersAllowingUntilFurtherNotice,
                 temporalControlsInToolBar);
     }
@@ -282,6 +295,17 @@ public class ConsoleViewPart extends DockTrackingViewPart {
     }
 
     /**
+     * Update the time range boundaries for the events.
+     * 
+     * @param eventIds
+     *            Identifiers of the events that have had their time range
+     *            boundaries changed.
+     */
+    public void updateEventTimeRangeBoundaries(Set<String> eventIds) {
+        temporalDisplay.updateEventTimeRangeBoundaries(eventIds);
+    }
+
+    /**
      * Get the list of the current hazard events.
      * 
      * @return List of the current hazard events.
@@ -294,7 +318,9 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      * Add the specified hazard events.
      * 
      * @param hazardEvents
-     * @param currentSetttings
+     *            Hazard events, each in dictionary form.
+     * @param currentSettings
+     *            Currently selected settings.
      */
     public void updateConsoleForChanges(List<Dict> hazardEvents,
             ObservedSettings currentSettings) {

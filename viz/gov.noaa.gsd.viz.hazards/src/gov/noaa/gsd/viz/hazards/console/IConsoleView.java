@@ -15,9 +15,11 @@ import gov.noaa.gsd.viz.mvp.IView;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Range;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
@@ -38,6 +40,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  *                                           "until further notice" to the view.
  * Nov 18, 2014    4124    Chris.Golden      Adapted to new time manager.
  * Dec 05, 2014    4124    Chris.Golden      Changed to use ObservedSettings.
+ * Feb 10, 2015    2331    Chris.Golden      Changed to use time range boundaries
+ *                                           for the events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -60,8 +64,15 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      *            Amount of time visible at once in the time line as an epoch
      *            time range in milliseconds.
      * @param hazardEvents
+     *            Hazard events, each in dictionary form.
+     * @param startTimeBoundariesForEventIds
+     *            Map of event identifiers to their start time range boundaries.
+     * @param endTimeBoundariesForEventIds
+     *            Map of event identifiers to their end time range boundaries.
      * @param currentSettings
+     *            Currently selected settings.
      * @param availableSettings
+     *            All available settings.
      * @param jsonFilters
      *            JSON string holding a list of dictionaries providing filter
      *            megawidget specifiers.
@@ -82,6 +93,8 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      */
     public void initialize(ConsolePresenter presenter, Date selectedTime,
             Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
+            Map<String, Range<Long>> startTimeBoundariesForEventIds,
+            Map<String, Range<Long>> endTimeBoundariesForEventIds,
             ObservedSettings currentSettings, List<Settings> availableSettings,
             String jsonFilters, ImmutableList<IHazardAlert> activeAlerts,
             Set<String> eventIdentifiersAllowingUntilFurtherNotice,
@@ -147,6 +160,15 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
             String jsonLatestVisibleTime);
 
     /**
+     * Update the time range boundaries for the events.
+     * 
+     * @param eventIds
+     *            Identifiers of the events that have had their time range
+     *            boundaries changed.
+     */
+    public void updateEventTimeRangeBoundaries(Set<String> eventIds);
+
+    /**
      * Get the list of the current hazard events.
      * 
      * @return List of the current hazard events.
@@ -157,7 +179,9 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      * Set the hazard events to those specified.
      * 
      * @param eventsAsDicts
+     *            List of maps, each representing a hazard event.
      * @param currentSettings
+     *            Currently selected settings.
      */
     public void setHazardEvents(List<Dict> eventsAsDicts,
             ObservedSettings currentSettings);

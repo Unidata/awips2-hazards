@@ -61,6 +61,7 @@ import gov.noaa.gsd.viz.widgets.TimeHatchMarkGroup;
 import java.awt.image.BufferedImage;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -72,6 +73,7 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang.time.DateUtils;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ActionContributionItem;
 import org.eclipse.jface.action.IContributionItem;
@@ -247,6 +249,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           not always showing columns that are
  *                                           available in the current settings if the
  *                                           latter has been changed.
+ * Feb 09, 2015   2331     Chris.Golden      Changed current time marker to always show
+ *                                           the current minute, instead of rounding up
+ *                                           to next minute when the current time was
+ *                                           30 seconds or more into a minute. Also
+ *                                           changed to use time range boundaries for
+ *                                           the events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -810,6 +818,16 @@ class TemporalDisplay {
      * events themselves. All keys are found in {@link #eventIdentifiers}.
      */
     private final Map<String, Dict> dictsForEventIdentifiers;
+
+    /**
+     * Map of hazard event identifiers to allowable start time ranges.
+     */
+    private Map<String, Range<Long>> startTimeBoundariesForEventIds;
+
+    /**
+     * Map of hazard event identifiers to allowable end time ranges.
+     */
+    private Map<String, Range<Long>> endTimeBoundariesForEventIds;
 
     /**
      * Indices of items that are currently selected.
@@ -1587,8 +1605,6 @@ class TemporalDisplay {
                         // to be read-only.
                         MultiValueScale scale = (MultiValueScale) tableEditorsForIdentifiers
                                 .get(identifier).getEditor();
-                        scale.setConstrainedThumbEditable(1,
-                                !newUntilFurtherNotice);
                         eventDict.put(
                                 HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
                                 newUntilFurtherNotice);
@@ -1693,6 +1709,11 @@ class TemporalDisplay {
      *            Amount of time visible at once in the time line as an epoch
      *            time range in milliseconds.
      * @param hazardEvents
+     *            Hazard events, each in dictionary form.
+     * @param startTimeBoundariesForEventIds
+     *            Map of event identifiers to their start time range boundaries.
+     * @param endTimeBoundariesForEventIds
+     *            Map of event identifiers to their end time range boundaries.
      * @param currentSettings
      * @param filterMegawidgets
      *            JSON string holding a list of dictionaries providing filter
@@ -1714,6 +1735,8 @@ class TemporalDisplay {
      */
     public void initialize(ConsolePresenter presenter, Date selectedTime,
             Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
+            Map<String, Range<Long>> startTimeBoundariesForEventIds,
+            Map<String, Range<Long>> endTimeBoundariesForEventIds,
             ObservedSettings currentSettings, String filterMegawidgets,
             ImmutableList<IHazardAlert> activeAlerts,
             Set<String> eventIdentifiersAllowingUntilFurtherNotice,
@@ -1725,6 +1748,8 @@ class TemporalDisplay {
         this.eventManager = presenter.getSessionManager().getEventManager();
         this.eventIdentifiersAllowingUntilFurtherNotice = eventIdentifiersAllowingUntilFurtherNotice;
         this.filterMegawidgets = filterMegawidgets;
+        this.startTimeBoundariesForEventIds = startTimeBoundariesForEventIds;
+        this.endTimeBoundariesForEventIds = endTimeBoundariesForEventIds;
 
         // If the controls are to be shown in the toolbar, hide the
         // ones in the composite; otherwise, delete the ones in the
@@ -1874,10 +1899,19 @@ class TemporalDisplay {
 
     /**
      * Update the current time.
-     * 
      */
     public void updateCurrentTime(Date currentTime) {
-        this.currentTime = currentTime.getTime();
+
+        /*
+         * Round the current time down to the nearest minute before using it.
+         */
+        this.currentTime = DateUtils.truncate(currentTime, Calendar.MINUTE)
+                .getTime();
+
+        /*
+         * Update the current time marker on the time ruler and the hazard event
+         * scale widgets.
+         */
         if (ruler.isDisposed() == false) {
             ruler.setFreeMarkedValue(0, this.currentTime);
             for (TableEditor tableEditor : tableEditorsForIdentifiers.values()) {
@@ -1899,6 +1933,51 @@ class TemporalDisplay {
      */
     public void updateSelectedTimeRange(Date start, Date end) {
         setSelectedTimeRange(start.getTime(), end.getTime());
+    }
+
+    /**
+     * Update the time range boundaries for the events.
+     * 
+     * @param eventIds
+     *            Identifiers of the events that have had their time range
+     *            boundaries changed.
+     */
+    public void updateEventTimeRangeBoundaries(Set<String> eventIds) {
+        for (String identifier : eventIds) {
+            Range<Long> startTimeRange = (startTimeBoundariesForEventIds
+                    .containsKey(identifier) == false ? Ranges.closed(
+                    HazardConstants.MIN_TIME, HazardConstants.MAX_TIME)
+                    : startTimeBoundariesForEventIds.get(identifier));
+            MultiValueScale scale = (MultiValueScale) tableEditorsForIdentifiers
+                    .get(identifier).getEditor();
+            scale.setAllowableConstrainedValueRange(0,
+                    startTimeRange.lowerEndpoint(),
+                    startTimeRange.upperEndpoint());
+            scale.setConstrainedThumbEditable(
+                    0,
+                    (startTimeRange.lowerEndpoint().equals(
+                            startTimeRange.upperEndpoint()) == false));
+            Range<Long> endTimeRange = (scale
+                    .isConstrainedThumbIntervalLocked()
+                    || (endTimeBoundariesForEventIds.containsKey(identifier) == false) ? Ranges
+                    .closed(HazardConstants.MIN_TIME, HazardConstants.MAX_TIME)
+                    : endTimeBoundariesForEventIds.get(identifier));
+            scale.setAllowableConstrainedValueRange(1,
+                    endTimeRange.lowerEndpoint(), endTimeRange.upperEndpoint());
+
+            /*
+             * If the end time can only be one value, or the interval is locked
+             * and the start time can only be one value, make the end time
+             * uneditable.
+             */
+            scale.setConstrainedThumbEditable(
+                    1,
+                    (endTimeRange.lowerEndpoint().equals(
+                            endTimeRange.upperEndpoint()) == false)
+                            && ((scale.isConstrainedThumbIntervalLocked() == false) || (startTimeRange
+                                    .lowerEndpoint().equals(
+                                            startTimeRange.upperEndpoint()) == false)));
+        }
     }
 
     /**
@@ -2041,10 +2120,6 @@ class TemporalDisplay {
                         }
                     } else if (key
                             .equals(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
-                        scale.setConstrainedThumbEditable(
-                                1,
-                                !Boolean.TRUE.equals(dict
-                                        .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)));
                         configureScaleIntervalLockingForEvent(scale, dict);
                     } else if (!key.equals(HAZARD_EVENT_IDENTIFIER)) {
 
@@ -2786,6 +2861,7 @@ class TemporalDisplay {
     }
 
     void updateHazardEvents(List<Dict> hazardEvents) {
+
         /*
          * Add each hazard event to the list of event dictionaries
          */
@@ -2980,6 +3056,8 @@ class TemporalDisplay {
      * 
      * @param item
      *            Table item that this scale will reside within.
+     * @param eventId
+     *            Event identifier.
      * @param color
      *            Event color.
      * @param startTime
@@ -2991,8 +3069,9 @@ class TemporalDisplay {
      *            "Until further notice".
      * @return Time scale widget.
      */
-    private MultiValueScale createTimeScale(TableItem item, Color color,
-            long startTime, long endTime, boolean endTimeUntilFurtherNotice) {
+    private MultiValueScale createTimeScale(TableItem item, String eventId,
+            Color color, long startTime, long endTime,
+            boolean endTimeUntilFurtherNotice) {
 
         // Create a time scale widget with two thumbs and configure it
         // appropriately. Note that the right inset of the widget is
@@ -3018,9 +3097,14 @@ class TemporalDisplay {
         scale.setMinimumDeltaBetweenConstrainedThumbs(TIME_RANGE_MINIMUM_INTERVAL);
         scale.setConstrainedThumbValues(startTime, endTime);
         scale.setConstrainedThumbRangeColor(1, color);
-        if (endTimeUntilFurtherNotice) {
-            scale.setConstrainedThumbEditable(1, false);
-        }
+        Range<Long> startTimeRange = (startTimeBoundariesForEventIds
+                .containsKey(eventId) == false ? Ranges.closed(
+                HazardConstants.MIN_TIME, HazardConstants.MAX_TIME)
+                : startTimeBoundariesForEventIds.get(eventId));
+        scale.setAllowableConstrainedValueRange(0,
+                startTimeRange.lowerEndpoint(), startTimeRange.upperEndpoint());
+        scale.setConstrainedThumbEditable(0, (startTimeRange.lowerEndpoint()
+                .equals(startTimeRange.upperEndpoint()) == false));
         if (selectedTimeMode.equals(SELECTED_TIME_MODE_RANGE)) {
             scale.setFreeMarkedValues(currentTime);
             scale.setFreeMarkedValueColor(0, currentTimeColor);
@@ -4103,7 +4187,8 @@ class TemporalDisplay {
             // Set the row's identifier to equal that of the hazard event.
             Dict eventDict = dictsForEventIdentifiers.get(eventIdentifiers
                     .get(j));
-            item.setData(eventDict.get(HAZARD_EVENT_IDENTIFIER));
+            String eventId = (String) eventDict.get(HAZARD_EVENT_IDENTIFIER);
+            item.setData(eventId);
             item.setChecked((Boolean) eventDict.get(HAZARD_EVENT_CHECKED));
 
             // For each column in the row, insert the text appropriate
@@ -4127,6 +4212,7 @@ class TemporalDisplay {
                     .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE));
             MultiValueScale scale = createTimeScale(
                     item,
+                    eventId,
                     getTimeRangeColorForRGB((String) eventDict
                             .get(HAZARD_EVENT_COLOR)),
                     ((Number) eventDict.get(HAZARD_EVENT_START_TIME))
@@ -4168,13 +4254,32 @@ class TemporalDisplay {
          * hazard event has duration choices, and if its end time is not
          * currently "until further notice".
          */
+        String eventId = (String) eventDict.get(HAZARD_EVENT_IDENTIFIER);
         IHazardEvent event = presenter.getSessionManager().getEventManager()
-                .getEventById((String) eventDict.get(HAZARD_EVENT_IDENTIFIER));
+                .getEventById(eventId);
         boolean lockedByDefault = (presenter.getSessionManager()
                 .getConfigurationManager().getDurationChoices(event).size() > 0);
-        scale.setConstrainedThumbIntervalLocked(lockedByDefault
-                && !Boolean.TRUE.equals(eventDict
-                        .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)));
+        boolean lock = (lockedByDefault && !Boolean.TRUE.equals(eventDict
+                .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)));
+        scale.setConstrainedThumbIntervalLocked(lock);
+        Range<Long> endTimeRange = (lock
+                || (endTimeBoundariesForEventIds.containsKey(eventId) == false) ? Ranges
+                .closed(HazardConstants.MIN_TIME, HazardConstants.MAX_TIME)
+                : endTimeBoundariesForEventIds.get(eventId));
+        scale.setAllowableConstrainedValueRange(1,
+                endTimeRange.lowerEndpoint(), endTimeRange.upperEndpoint());
+
+        /*
+         * If the end time can only be one value, or the interval is locked and
+         * the start time can only be one value, make the end time uneditable.
+         */
+        scale.setConstrainedThumbEditable(
+                1,
+                (endTimeRange.lowerEndpoint().equals(
+                        endTimeRange.upperEndpoint()) == false)
+                        && ((lock == false) || (scale
+                                .getMinimumAllowableConstrainedValue(0) != scale
+                                .getMaximumAllowableConstrainedValue(0))));
     }
 
     /**

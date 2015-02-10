@@ -36,6 +36,10 @@ import com.google.common.collect.ImmutableSet;
  *                                      defining of valid boundaries for the
  *                                      values, with potentially a different
  *                                      boundary for each state identifier.
+ * Feb 03, 2015   2331     Chris.Golden Fixed bug that caused last thumb to be
+ *                                      read-only when the interval between the
+ *                                      thumbs was locked and the first thumb
+ *                                      was movable.
  * </pre>
  * 
  * @author Chris.Golden
@@ -403,7 +407,23 @@ public class TimeRangeMegawidget extends MultiTimeMegawidget {
      * time delta component.
      */
     private void synchronizeIntervalLockingWithState() {
+
+        /*
+         * Set the locking as approppriate.
+         */
         getScale().setConstrainedThumbIntervalLocked(
                 !timeDelta.isOtherDeltaTextShowing());
+
+        /*
+         * Refresh the editability of the last thumb in the scale, since if the
+         * interval is locked, the thumb should be editable even if the state
+         * identifier with which it is associated is not, so that the user can
+         * drag it together with the first thumb, keeping the interval between
+         * them constant.
+         */
+        if (isEditable()) {
+            setStateThumbEditable(((MultiTimeMegawidgetSpecifier) getSpecifier())
+                    .getStateIdentifiers().get(1));
+        }
     }
 }

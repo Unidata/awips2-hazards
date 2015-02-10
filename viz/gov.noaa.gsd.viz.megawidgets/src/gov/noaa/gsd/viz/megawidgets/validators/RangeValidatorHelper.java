@@ -31,6 +31,8 @@ import java.util.Map;
  *                                      to manage ranges not defined directly
  *                                      within the megawidget specifiers'
  *                                      parameters.
+ * Feb 03, 2015   2331     Chris.Golden Fixed bug that disallowed zero-length
+ *                                      ranges.
  * </pre>
  * 
  * @author Chris.Golden
@@ -545,11 +547,11 @@ public class RangeValidatorHelper<T extends Comparable<T>> {
             return new RangeCheckProblem(RangeCheckProblemElements.MAXIMUM,
                     maximumValue, "must be no greater than "
                             + highestAllowableValue);
-        } else if (minimumValue.compareTo(maximumValue) >= 0) {
+        } else if (minimumValue.compareTo(maximumValue) > 0) {
             return new RangeCheckProblem(RangeCheckProblemElements.BOTH, null,
-                    "minimum value must be less than " + "maximum (minimum = "
-                            + minimumValue + ", maximum = " + maximumValue
-                            + ")");
+                    "minimum value must be less than or equal to maximum "
+                            + "(minimum = " + minimumValue + ", maximum = "
+                            + maximumValue + ")");
         }
         return NO_RANGE_PROBLEM;
     }

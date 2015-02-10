@@ -179,8 +179,8 @@ public class SessionManager implements
         timeManager = new SessionTimeManager(sender);
         configManager = new SessionConfigurationManager(pathManager,
                 timeManager, sender);
-        eventManager = new SessionEventManager(timeManager, configManager,
-                hazardEventManager, sender, messenger);
+        eventManager = new SessionEventManager(this, timeManager,
+                configManager, hazardEventManager, sender, messenger);
         productManager = new SessionProductManager(this, timeManager,
                 configManager, eventManager, sender, messenger);
         alertsManager = new HazardSessionAlertsManager(sender, timeManager);

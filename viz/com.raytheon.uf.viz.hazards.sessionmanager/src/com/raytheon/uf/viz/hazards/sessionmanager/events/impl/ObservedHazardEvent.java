@@ -93,6 +93,13 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Dec  1, 2014 4188       Dan Schaffer Now allowing hazards to be shrunk or expanded when appropriate.
  * Jan 22, 2015 4959       Dan Schaffer MB3 to add/remove UGCs to a hazard
  * Jan 26, 2015 5952       Dan Schaffer Fix incorrect warned area designation.
+ * Feb 05, 2015 2331       Chris.Golden Removed check to see if start or end
+ *                                      time can be modified; this is handled
+ *                                      by the session event manager now, as
+ *                                      the rules are significantly more
+ *                                      complicated, depending upon hazard
+ *                                      type, status, start and end time at
+ *                                      last issuance, etc.
  * </pre>
  * 
  * @author bsteffen
@@ -543,16 +550,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     protected void setEndTime(Date date, boolean notify, IOriginator originator) {
         if (changed(getEndTime(), date)) {
-            if (eventManager.canChangeTimeRange(this)) {
-                delegate.setEndTime(date);
-                if (notify) {
-                    eventManager
-                            .hazardEventModified(new SessionEventTimeRangeModified(
-                                    eventManager, this, originator));
-                }
-            } else {
-                this.modified = false;
-                throw new IllegalEventModificationException("endTime");
+            delegate.setEndTime(date);
+            if (notify) {
+                eventManager
+                        .hazardEventModified(new SessionEventTimeRangeModified(
+                                eventManager, this, originator));
             }
         }
     }
@@ -560,16 +562,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     protected void setStartTime(Date date, boolean notify,
             IOriginator originator) {
         if (changed(getStartTime(), date)) {
-            if (eventManager.canChangeTimeRange(this)) {
-                delegate.setStartTime(date);
-                if (notify) {
-                    eventManager
-                            .hazardEventModified(new SessionEventTimeRangeModified(
-                                    eventManager, this, originator));
-                }
-            } else {
-                this.modified = false;
-                throw new IllegalEventModificationException("startTime");
+            delegate.setStartTime(date);
+            if (notify) {
+                eventManager
+                        .hazardEventModified(new SessionEventTimeRangeModified(
+                                eventManager, this, originator));
             }
         }
     }

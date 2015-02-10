@@ -56,7 +56,7 @@ public interface ISessionTimeManager {
     /**
      * Get the current time provider.
      * 
-     * @return
+     * @return Current time provider.
      */
     public ICurrentTimeProvider getCurrentTimeProvider();
 

@@ -30,8 +30,10 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.R
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
 import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.megawidgets.TimeMegawidgetSpecifier;
+import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValidatorHelper;
 
 import java.io.File;
 import java.io.Serializable;
@@ -59,8 +61,11 @@ import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.time.DateUtils;
 
+import com.google.common.collect.Range;
+import com.google.common.collect.Ranges;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
@@ -73,6 +78,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.ProductGenerationException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -80,6 +86,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.IEventModifyingScriptJobListener;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -99,6 +106,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventScriptExtra
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionLastChangedEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventConflictsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
@@ -107,6 +115,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSende
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.raytheon.viz.core.mode.CAVEMode;
@@ -223,6 +233,12 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
  * Feb  2, 2015 4930       Dan Schaffer Fixed problem where reduction of multi-polygons 
  *                                      can still yield a geometry with more than 20 points.
+ * Feb  3, 2015 2331       Chris.Golden Added code to track the allowable boundaries of
+ *                                      all hazard events' start and end times, so that
+ *                                      the user will not move them beyond the allowed
+ *                                      ranges. Also added code to advance the start and/
+ *                                      or end times of events as time ticks forward when
+ *                                      appropriate.
  * </pre>
  * 
  * @author bsteffen
@@ -231,6 +247,43 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
 
 public class SessionEventManager implements
         ISessionEventManager<ObservedHazardEvent> {
+
+    // Public Static Constants
+
+    /**
+     * Comparator can be used with sortEvents to send selected events to the
+     * front of the list.
+     */
+    public static final Comparator<ObservedHazardEvent> SEND_SELECTED_FRONT = new Comparator<ObservedHazardEvent>() {
+
+        @Override
+        public int compare(ObservedHazardEvent o1, ObservedHazardEvent o2) {
+            boolean s1 = Boolean.TRUE.equals(o1
+                    .getHazardAttribute(HAZARD_EVENT_SELECTED));
+            boolean s2 = Boolean.TRUE.equals(o2
+                    .getHazardAttribute(HAZARD_EVENT_SELECTED));
+            if (s1) {
+                if (s2) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            } else if (s2) {
+                return -1;
+            }
+            return 0;
+        }
+
+    };
+
+    /**
+     * Comparator can be used with sortEvents to send selected events to the
+     * back of the list.
+     */
+    public static final Comparator<ObservedHazardEvent> SEND_SELECTED_BACK = Collections
+            .reverseOrder(SEND_SELECTED_FRONT);
+
+    // Private Static Constants
 
     private static final String GEOMETRY_MODIFICATION_ERROR = "Geometry Modification Error";
 
@@ -243,9 +296,13 @@ public class SessionEventManager implements
      * Default distance tolerance and increment for use in geometry point
      * reduction algorithm.
      */
-    private static double DEFAULT_DISTANCE_TOLERANCE = 0.001f;
+    private static final double DEFAULT_DISTANCE_TOLERANCE = 0.001f;
 
-    private static double DEFAULT_DISTANCE_TOLERANCE_INCREMENT = 0.001f;
+    private static final double DEFAULT_DISTANCE_TOLERANCE_INCREMENT = 0.001f;
+
+    // Private Variables
+
+    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
     private final ISessionTimeManager timeManager;
 
@@ -270,6 +327,57 @@ public class SessionEventManager implements
     private ISimulatedTimeChangeListener timeListener;
 
     private final Set<String> identifiersOfEventsAllowingUntilFurtherNotice = new HashSet<>();
+
+    private final Map<String, Range<Long>> startTimeBoundariesForEventIdentifiers = new HashMap<>();
+
+    private final Map<String, Range<Long>> endTimeBoundariesForEventIdentifiers = new HashMap<>();
+
+    /**
+     * Map pairing identifiers of issued events with the start times they had
+     * when they were last issued. This information is needed in order to
+     * determine what boundaries to use for the start times of issued events;
+     * the boundaries should be based upon the start time at last issuance, not
+     * what it may have been changed to since issued.
+     */
+    private final Map<String, Long> startTimesForIssuedEventIdentifiers = new HashMap<>();
+
+    /**
+     * Map pairing identifiers of issued events with either the end times they
+     * had when they were last issued, or else the durations they had when last
+     * issued. Those with relative (duration-type) end times will have the
+     * latter stored here, while those with absolute end times will have the
+     * former. This information is needed in order to determine what boundaries
+     * to use for the end times of issued events; the boundaries should be based
+     * upon the end time/duration at last issuance, not what it may have been
+     * changed to since issued.
+     */
+    private final Map<String, Long> endTimesOrDurationsForIssuedEventIdentifiers = new HashMap<>();
+
+    /**
+     * Map pairing identifiers of events with lists of duration choices that are
+     * valid for the events in their current states. Each of these lists is
+     * fetched from the {@link ISessionConfigurationManager} when a hazard event
+     * is added, and is then pruned of any choices that are unavailable to the
+     * hazard event given its current status. As said status changes, this
+     * process is repeated. Any hazard event that does not have a duration will
+     * have an empty list associated with its identifier.
+     */
+    private final Map<String, List<String>> durationChoicesForEventIdentifiers = new HashMap<>();
+
+    /**
+     * Duration choice validator, used to convert lists of duration choice
+     * strings fetched in order to populate
+     * {@link #durationChoicesForEventIdentifiers} into time deltas in
+     * milliseconds so that a determination may be made as to which durations
+     * are allowed for a particular event given its end time limitations.
+     */
+    private final SingleTimeDeltaStringChoiceValidatorHelper durationChoiceValidator = new SingleTimeDeltaStringChoiceValidatorHelper(
+            null);
+
+    /**
+     * Set of identifiers for all events that have "Ending" status.
+     */
+    private final Set<String> eventIdentifiersWithEndingStatus = new HashSet<>();
 
     private final Map<String, Collection<IHazardEvent>> conflictingEventsForSelectedEventIdentifiers = new HashMap<>();
 
@@ -310,43 +418,15 @@ public class SessionEventManager implements
         }
     };
 
-    /**
-     * Comparator can be used with sortEvents to send selected events to the
-     * front of the list.
-     */
-    public static final Comparator<ObservedHazardEvent> SEND_SELECTED_FRONT = new Comparator<ObservedHazardEvent>() {
+    // Public Constructors
 
-        @Override
-        public int compare(ObservedHazardEvent o1, ObservedHazardEvent o2) {
-            boolean s1 = Boolean.TRUE.equals(o1
-                    .getHazardAttribute(HAZARD_EVENT_SELECTED));
-            boolean s2 = Boolean.TRUE.equals(o2
-                    .getHazardAttribute(HAZARD_EVENT_SELECTED));
-            if (s1) {
-                if (s2) {
-                    return 0;
-                } else {
-                    return 1;
-                }
-            } else if (s2) {
-                return -1;
-            }
-            return 0;
-        }
-
-    };
-
-    /**
-     * Comparator can be used with sortEvents to send selected events to the
-     * back of the list.
-     */
-    public static final Comparator<ObservedHazardEvent> SEND_SELECTED_BACK = Collections
-            .reverseOrder(SEND_SELECTED_FRONT);
-
-    public SessionEventManager(ISessionTimeManager timeManager,
+    public SessionEventManager(
+            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
+            ISessionTimeManager timeManager,
             ISessionConfigurationManager<ObservedSettings> configManager,
             IHazardEventManager dbManager,
             ISessionNotificationSender notificationSender, IMessenger messenger) {
+        this.sessionManager = sessionManager;
         this.configManager = configManager;
         this.timeManager = timeManager;
         this.dbManager = dbManager;
@@ -359,6 +439,8 @@ public class SessionEventManager implements
         this.geoMapUtilities = new GeoMapUtilities(this.configManager);
 
     }
+
+    // Public Methods
 
     @Override
     public ObservedHazardEvent getEventById(String eventId) {
@@ -468,11 +550,6 @@ public class SessionEventManager implements
             }
         }
         return events;
-    }
-
-    @Handler(priority = 1)
-    public void settingsModified(SettingsModified notification) {
-        loadEventsForSettings(notification.getSettings());
     }
 
     @Override
@@ -596,9 +673,72 @@ public class SessionEventManager implements
         return (originator != Originator.OTHER);
     }
 
+    @Override
+    public boolean setEventTimeRange(ObservedHazardEvent event, Date startTime,
+            Date endTime, IOriginator originator) {
+
+        /*
+         * Ensure that the start time falls within its allowable boundaries.
+         */
+        long start = startTime.getTime();
+        Range<Long> startBoundaries = startTimeBoundariesForEventIdentifiers
+                .get(event.getEventID());
+        Range<Long> endBoundaries = endTimeBoundariesForEventIdentifiers
+                .get(event.getEventID());
+        if ((start < startBoundaries.lowerEndpoint())
+                || (start > startBoundaries.upperEndpoint())) {
+            return false;
+        }
+
+        /*
+         * Ensure the end time is at least the minimum interval distance from
+         * the start time.
+         */
+        long end = endTime.getTime();
+        if (end - start < HazardConstants.TIME_RANGE_MINIMUM_INTERVAL) {
+            return false;
+        }
+
+        /*
+         * If the event will now have "until further notice" as its end time, or
+         * the event has a duration and the latter has not changed, shift
+         * whichever (or both) end time boundaries to accommodate the new end
+         * time and (if not "until further notice") whatever other possible
+         * durations the event is allowed. This allows duration-equipped hazard
+         * events that have their durations limited (they cannot be expanded, or
+         * cannot be shrunk, or both) to still have their end times displaced as
+         * the user changes the start time, and also allows "until further
+         * notice" to be accommodated. Otherwise, ensure the event end time
+         * falls within the correct bounds.
+         */
+        boolean hasDuration = (configManager.getDurationChoices(event)
+                .isEmpty() == false);
+        if ((end == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)
+                || (hasDuration && (event.getEndTime().getTime()
+                        - event.getStartTime().getTime() == end - start))) {
+            updateEndTimeBoundariesForSingleEvent(event, start, end);
+        } else if ((end < endBoundaries.lowerEndpoint())
+                || (end > endBoundaries.upperEndpoint())) {
+            return false;
+        }
+
+        /*
+         * Set the new time range for the event.
+         */
+        event.setTimeRange(startTime, endTime, originator);
+        return true;
+    }
+
+    @Handler(priority = 1)
+    public void settingsModified(SettingsModified notification) {
+        loadEventsForSettings(notification.getSettings());
+    }
+
     /**
      * Respond to the addition of a hazard event by firing off a notification
-     * that the list of selected events has changed, if appropriate.
+     * that the list of selected events has changed, if appropriate, as well as
+     * by updating the event's start and end time editability boundaries, and by
+     * modifying the event conflict tracking data as appropriate.
      * 
      * @param change
      *            Change that occurred.
@@ -611,13 +751,18 @@ public class SessionEventManager implements
                     .postNotificationAsync(new SessionSelectedEventsModified(
                             this, change.getOriginator()));
         }
+        updateSavedTimesForEventIfIssued(change.getEvent(), false);
+        updateTimeBoundariesForEvents(change.getEvent(), false);
+        updateDurationChoicesForEvent(change.getEvent(), false);
         updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
                 false);
     }
 
     /**
-     * Respond to the addition of a hazard event by firing off a notification
-     * that the list of selected events has changed, if appropriate.
+     * Respond to the removal of a hazard event by firing off a notification
+     * that the list of selected events has changed, if appropriate, as well as
+     * by updating the event's start and end time editability boundaries, and by
+     * modifying the event conflict tracking data as appropriate.
      * 
      * @param change
      *            Change that occurred.
@@ -630,19 +775,26 @@ public class SessionEventManager implements
                     .postNotificationAsync(new SessionSelectedEventsModified(
                             this, change.getOriginator()));
         }
+        updateSavedTimesForEventIfIssued(change.getEvent(), true);
+        updateTimeBoundariesForEvents(change.getEvent(), true);
+        updateDurationChoicesForEvent(change.getEvent(), true);
         updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
                 true);
     }
 
     /**
-     * Respond to a hazard event's type change by firing off a notification that
-     * the event may have new metadata.
+     * Respond to a hazard event's type change by updating the event's start and
+     * end time editability boundaries, and by firing off a notification that
+     * the event may have new metadata, as well as modifying the event conflict
+     * tracking data as appropriate.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler(priority = 1)
     public void hazardTypeChanged(SessionEventTypeModified change) {
+        updateTimeBoundariesForEvents(change.getEvent(), false);
+        updateDurationChoicesForEvent(change.getEvent(), false);
         updateEventMetadata(change.getEvent());
         updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
                 false);
@@ -650,14 +802,115 @@ public class SessionEventManager implements
 
     /**
      * Respond to a hazard event's status change by firing off a notification
-     * that the event may have new metadata.
+     * that the event may have new metadata. Also, if the event has changed its
+     * status to ending, or reverted from ending back to issued, update its time
+     * boundaries and duration choices.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler(priority = 1)
     public void hazardStatusChanged(SessionEventStatusModified change) {
-        updateEventMetadata(change.getEvent());
+        ObservedHazardEvent event = change.getEvent();
+        if (event.getStatus() == HazardStatus.ENDING) {
+            eventIdentifiersWithEndingStatus.add(event.getEventID());
+            updateTimeBoundariesForEvents(event, false);
+            updateDurationChoicesForEvent(event, false);
+        } else if ((event.getStatus() == HazardStatus.ISSUED)
+                && eventIdentifiersWithEndingStatus
+                        .contains(event.getEventID())) {
+            eventIdentifiersWithEndingStatus.remove(event.getEventID());
+            updateTimeBoundariesForEvents(event, false);
+            updateDurationChoicesForEvent(event, false);
+        }
+        updateEventMetadata(event);
+    }
+
+    /**
+     * Respond to the completion of product generation by updating the
+     * associated events' parameters, and by recalculating said events' start
+     * and end time boundaries if necessary.
+     * 
+     * @param productGenerationComplete
+     *            Notification that is being received.
+     */
+    @Handler(priority = 1)
+    public void handleProductGenerationCompletion(
+            IProductGenerationComplete productGenerationComplete) {
+
+        /*
+         * If the product generation resulted in issuance, iterate through the
+         * generated products, and for each one, iterate through the hazard
+         * events used to generate it, updating their states as necessary.
+         */
+        if (productGenerationComplete.isIssued()) {
+            for (GeneratedProductList generatedProductList : productGenerationComplete
+                    .getGeneratedProducts()) {
+                for (IEvent event : generatedProductList.getEventSet()) {
+                    IHazardEvent hazardEvent = (IHazardEvent) event;
+                    ObservedHazardEvent oEvent = getEventById(hazardEvent
+                            .getEventID());
+
+                    /*
+                     * If the hazard is pending or proposed, make it issued;
+                     * otherwise, if it needs a change to the ended status, do
+                     * this.
+                     */
+                    HazardStatus hazardStatus = oEvent.getStatus();
+                    if (hazardStatus.equals(HazardStatus.PENDING)
+                            || hazardStatus.equals(HazardStatus.PROPOSED)) {
+                        oEvent.setStatus(HazardStatus.ISSUED);
+                        oEvent.clearUndoRedo();
+                        oEvent.setModified(false);
+                    } else if (isChangeToEndedStatusNeeded(hazardEvent)) {
+                        oEvent.setStatus(HazardStatus.ENDED);
+                    }
+
+                    /*
+                     * If the hazard now has issued status (i.e. it has not just
+                     * been changed to ended), adjust its start and end times
+                     * and their boundaries. Then update its duration choices
+                     * list, if applicable.
+                     */
+                    if (oEvent.getStatus().equals(HazardStatus.ISSUED)) {
+                        updateTimeRangeBoundariesOfJustIssuedEvent(
+                                oEvent,
+                                (Long) hazardEvent
+                                        .getHazardAttribute(HazardConstants.ISSUE_TIME));
+                        updateDurationChoicesForEvent(oEvent, false);
+                    }
+                }
+            }
+
+            /*
+             * Now that issuance is complete, reset the issuance-ongoing flag.
+             */
+            sessionManager.setIssueOngoing(false);
+        }
+    }
+
+    /**
+     * If an ending hazard is issued or an issued hazard is replaced, we need to
+     * change it's state to ended.
+     * 
+     * @param hazardEvent
+     * @return
+     */
+    private boolean isChangeToEndedStatusNeeded(IHazardEvent hazardEvent) {
+        return hazardEvent.getStatus().equals(HazardStatus.ENDING)
+                || hazardEvent.getHazardAttribute(REPLACED_BY) != null;
+    }
+
+    /**
+     * Respond to a CAVE current time tick by updating all the events' start and
+     * end time editability boundaries.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler(priority = 1)
+    public void currentTimeChanged(CurrentTimeChanged change) {
+        updateTimeBoundariesForEvents(null, false);
     }
 
     @Override
@@ -670,6 +923,11 @@ public class SessionEventManager implements
         }
         updateEventMetadata(event);
         return megawidgetSpecifiersForEventIdentifiers.get(event.getEventID());
+    }
+
+    @Override
+    public List<String> getDurationChoices(ObservedHazardEvent event) {
+        return durationChoicesForEventIdentifiers.get(event.getEventID());
     }
 
     @Override
@@ -1003,6 +1261,18 @@ public class SessionEventManager implements
                 .unmodifiableSet(identifiersOfEventsAllowingUntilFurtherNotice);
     }
 
+    @Override
+    public Map<String, Range<Long>> getStartTimeBoundariesForEventIds() {
+        return Collections
+                .unmodifiableMap(startTimeBoundariesForEventIdentifiers);
+    }
+
+    @Override
+    public Map<String, Range<Long>> getEndTimeBoundariesForEventIds() {
+        return Collections
+                .unmodifiableMap(endTimeBoundariesForEventIdentifiers);
+    }
+
     /**
      * Set the end time for the specified event with respect to the specified
      * value for "until further notice".
@@ -1034,6 +1304,9 @@ public class SessionEventManager implements
                         HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE,
                         interval);
             }
+            updateEndTimeBoundariesForSingleEvent(event, event.getStartTime()
+                    .getTime(),
+                    HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
             event.setEndTime(new Date(
                     HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS));
         } else if ((event.getEndTime() != null)
@@ -1044,7 +1317,10 @@ public class SessionEventManager implements
             if (interval == null) {
                 interval = configManager.getDefaultDuration(event);
             }
-            event.setEndTime(new Date(event.getStartTime().getTime() + interval));
+            long startTime = event.getStartTime().getTime();
+            updateEndTimeBoundariesForSingleEvent(event, startTime, startTime
+                    + interval);
+            event.setEndTime(new Date(startTime + interval));
         }
     }
 
@@ -1253,8 +1529,10 @@ public class SessionEventManager implements
             }
         }
 
-        // verify that the hazard was not created server-side to fulfill
-        // interoperability requirements
+        /*
+         * Verify that the hazard was not created server-side to fulfill
+         * interoperability requirements.
+         */
         if ((event.getStatus() == null
                 || event.getStatus() == HazardStatus.PENDING || event
                 .getStatus() == HazardStatus.POTENTIAL)
@@ -1286,7 +1564,10 @@ public class SessionEventManager implements
                 GeometryCollection geometryCollection = geoFactory
                         .createGeometryCollection(geometryList
                                 .toArray(new Geometry[geometryList.size()]));
-                // combine the geometryCollection together!
+
+                /*
+                 * Combine the geometryCollection together!
+                 */
                 Geometry geom = geometryCollection.union();
                 existingEvent.setGeometry(geom);
                 existingEvent
@@ -1344,11 +1625,17 @@ public class SessionEventManager implements
         String sig = oevent.getSignificance();
         if (sig != null) {
             try {
-                // Validate significance since some recommenders use full name
+
+                /*
+                 * Validate significance, since some recommenders use the full
+                 * name.
+                 */
                 HazardConstants.significanceFromAbbreviation(sig);
             } catch (IllegalArgumentException e) {
-                // This will throw an exception if its not a valid name or
-                // abbreviation.
+                /*
+                 * This will throw an exception if its not a valid name or
+                 * abbreviation.
+                 */
                 Significance s = Significance.valueOf(sig);
                 oevent.setSignificance(s.getAbbreviation(), false, originator);
             }
@@ -1360,7 +1647,10 @@ public class SessionEventManager implements
             productClass = ProductClass.OPERATIONAL;
             break;
         case PRACTICE:
-            // TODO, for now do it this way, maybe need to add user changeable
+
+            /*
+             * TODO, for now do it this way, maybe need to add user changeable.
+             */
             productClass = ProductClass.OPERATIONAL;
             break;
         default:
@@ -1424,9 +1714,13 @@ public class SessionEventManager implements
             IOriginator originator) {
         synchronized (events) {
             if (events.remove(event)) {
-                // TODO this should never delete operation issued events
-                // TODO this should not delete the whole list, just any pending
-                // or proposed items on the end of the list.
+                /*
+                 * TODO this should never delete operation issued events.
+                 */
+                /*
+                 * TODO this should not delete the whole list, just any pending
+                 * or proposed items on the end of the list.
+                 */
                 String eventIdentifier = event.getEventID();
                 if (delete) {
                     HazardHistoryList histList = dbManager
@@ -1588,9 +1882,11 @@ public class SessionEventManager implements
                     }
                 };
                 Date scheduledTime = event.getEndTime();
-                // need to determine what to do with this, somewhere we need to
-                // be resetting the expiration time if we manually end the
-                // hazard?
+                /*
+                 * TODO: Need to determine what to do with this, somewhere we
+                 * need to be resetting the expiration time if we manually end
+                 * the hazard?
+                 */
                 // if (event.getHazardAttribute(HazardConstants.EXPIRATIONTIME)
                 // != null) {
                 // scheduledTime = new Date(
@@ -1600,8 +1896,10 @@ public class SessionEventManager implements
                 // .getHazardAttribute(HazardConstants.EXPIRATIONTIME));
                 // }
 
-                // round down to the nearest minute, so we see exactly when it
-                // happens
+                /*
+                 * Round down to the nearest minute, so we see exactly when it
+                 * happens.
+                 */
                 scheduledTime = DateUtils.truncate(scheduledTime,
                         Calendar.MINUTE);
                 long scheduleTimeMillis = Math.max(0, scheduledTime.getTime()
@@ -1682,21 +1980,6 @@ public class SessionEventManager implements
     }
 
     @Override
-    public boolean canChangeTimeRange(ObservedHazardEvent event) {
-        if (hasEverBeenIssued(event)) {
-            HazardTypes hts = configManager.getHazardTypes();
-            HazardTypeEntry ht = hts.get(HazardEventUtilities
-                    .getHazardType(event));
-            if (ht != null) {
-                if (!ht.isAllowTimeChange()) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    @Override
     public boolean canChangeType(ObservedHazardEvent event) {
         if (hasEverBeenIssued(event)) {
             return false;
@@ -1712,6 +1995,608 @@ public class SessionEventManager implements
     public Map<String, Collection<IHazardEvent>> getConflictingEventsForSelectedEvents() {
         return Collections
                 .unmodifiableMap(conflictingEventsForSelectedEventIdentifiers);
+    }
+
+    /**
+     * Round the specified epoch time in milliseconds down to the nearest
+     * minute.
+     * 
+     * @param time
+     *            Time to be rounded down.
+     * @return Rounded down time.
+     */
+    private long roundTimeDownToNearestMinute(Date time) {
+        return DateUtils.truncate(time, Calendar.MINUTE).getTime();
+    }
+
+    /**
+     * Get the allowable end time range for an event with the specified end time
+     * that has not yet been issued.
+     * 
+     * @param endTime
+     *            Event end time.
+     * @return Allowable range for the event's end times.
+     */
+    private Range<Long> getEndTimeRangeForPreIssuedEvent(long endTime) {
+        boolean untilFurtherNotice = (endTime == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+        return Ranges.closed((untilFurtherNotice ? endTime : 0L),
+                (untilFurtherNotice ? endTime : HazardConstants.MAX_TIME));
+    }
+
+    /**
+     * Get an allowable end time range for the specified event given the
+     * specified end time.
+     * 
+     * @parma event Event for which to determine the allowable range.
+     * @param endTime
+     *            Event end time.
+     * @return Allowable range for the event's end times.
+     */
+    private Range<Long> getEndTimeRangeForIssuedEventBasedOnEndTime(
+            IHazardEvent event, long endTime) {
+
+        /*
+         * If the end time is "until further notice", limit the end times to
+         * just that value.
+         */
+        if (endTime == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
+            return Ranges.closed(endTime, endTime);
+        }
+
+        /*
+         * Use the end time as the lower and/or upper bound of the allowable end
+         * times, as appropriate given the event's type's ability to be shrunk
+         * or expanded after issuance.
+         */
+        return Ranges
+                .closed((configManager.isAllowTimeShrink(event) ? 0L : endTime),
+                        (configManager.isAllowTimeExpand(event) ? HazardConstants.MAX_TIME
+                                : endTime));
+    }
+
+    /**
+     * Get the allowable end time range for the specified event with the
+     * specified start and end times that has been issued but is not yet ending.
+     * 
+     * @parma event Event for which to determine the allowable range.
+     * @param startTime
+     *            Event start time.
+     * @param endTime
+     *            Event end time.
+     * @return Allowable range for the event's end times.
+     */
+    private Range<Long> getEndTimeRangeForIssuedEvent(IHazardEvent event,
+            long startTime, long endTime) {
+
+        /*
+         * If the end time is "until further notice", limit the end times to
+         * just that value.
+         */
+        if (endTime == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
+            return getEndTimeRangeForIssuedEventBasedOnEndTime(event, endTime);
+        }
+
+        /*
+         * If the event has an absolute end time, fin the potential end time
+         * boundary one way; if it is a duration-type event, find it another
+         * way.
+         */
+        if (configManager.getDurationChoices(event).isEmpty()) {
+
+            /*
+             * Determine the end time of the event when it was last issued, and
+             * use that as a potential end time boundary.
+             */
+            endTime = endTimesOrDurationsForIssuedEventIdentifiers.get(event
+                    .getEventID());
+        } else {
+
+            /*
+             * Determine the duration of the event when it was last issued, then
+             * add that as an offset to the event's start time and use the sum
+             * as the potential end time boundary. This is different from events
+             * with absolute end times (handled in the previous block) because
+             * whether a hazard end time can shrink (move backward in time) or
+             * expand has a different meaning for duration-type events; for
+             * them, the end time boundaries must be adjusted relative to the
+             * start time.
+             */
+            endTime = startTime
+                    + endTimesOrDurationsForIssuedEventIdentifiers.get(event
+                            .getEventID());
+        }
+
+        /*
+         * Given the modified end time, get the range.
+         */
+        return getEndTimeRangeForIssuedEventBasedOnEndTime(event, endTime);
+    }
+
+    /**
+     * Get the allowable range for an event with the specified end time that is
+     * ending or has ended.
+     * 
+     * @param endTime
+     *            Event end time.
+     * @return Allowable range for the event's end times.
+     */
+    private Range<Long> getEndTimeRangeForEndingEvent(long endTime) {
+        return Ranges.closed(endTime, endTime);
+    }
+
+    /**
+     * Update the maps holding the end time allowable range for the specified
+     * event based upon whether "until further notice" has been toggled on or
+     * off, sending off a notification of the change if one is made to the
+     * boundaries.
+     * 
+     * @param event
+     *            Event to have its end time boundaries modified.
+     * @param newEndTime
+     *            New end time, in epoch time in milliseconds; if this is equal
+     *            to
+     *            {@link HazardConstants#UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS}
+     *            , then "until further notice" has been turned on.
+     */
+    private void updateEndTimeBoundariesForSingleEvent(IHazardEvent event,
+            long newStartTime, long newEndTime) {
+        Range<Long> endTimeRange = null;
+        switch (event.getStatus()) {
+        case POTENTIAL:
+        case PENDING:
+        case PROPOSED:
+            endTimeRange = getEndTimeRangeForPreIssuedEvent(newEndTime);
+            break;
+        case ISSUED:
+            endTimeRange = getEndTimeRangeForIssuedEvent(event, newStartTime,
+                    newEndTime);
+            break;
+        case ENDING:
+        case ENDED:
+            endTimeRange = getEndTimeRangeForEndingEvent(newEndTime);
+        }
+        if (endTimeRange.equals(endTimeBoundariesForEventIdentifiers.get(event
+                .getEventID())) == false) {
+            endTimeBoundariesForEventIdentifiers.put(event.getEventID(),
+                    endTimeRange);
+            notificationSender
+                    .postNotificationAsync(new SessionEventsTimeRangeBoundariesModified(
+                            this, Sets.newHashSet(event.getEventID()),
+                            Originator.OTHER));
+        }
+    }
+
+    /**
+     * Set the specified event's start and end time ranges as specified.
+     * 
+     * @param event
+     *            Event to have its ranges modified.
+     * @param startTimeRange
+     *            New allowable range of start times.
+     * @param endTimeRange
+     *            New allowable range of end times.
+     * @return True if the new ranges are different from the previous ranges,
+     *         false otherwise.
+     */
+    private boolean setEventTimeRangeBoundaries(IHazardEvent event,
+            Range<Long> startTimeRange, Range<Long> endTimeRange) {
+        boolean changed = false;
+        if (startTimeRange.equals(startTimeBoundariesForEventIdentifiers
+                .get(event.getEventID())) == false) {
+            startTimeBoundariesForEventIdentifiers.put(event.getEventID(),
+                    startTimeRange);
+            changed = true;
+        }
+        if (endTimeRange.equals(endTimeBoundariesForEventIdentifiers.get(event
+                .getEventID())) == false) {
+            endTimeBoundariesForEventIdentifiers.put(event.getEventID(),
+                    endTimeRange);
+            changed = true;
+        }
+        return changed;
+    }
+
+    /**
+     * Update the allowable ranges for start and end time of the specified event
+     * to be correct given the event's status and other relevant properties.
+     * 
+     * @param event
+     *            Event for which to update the start and end time allowable
+     *            ranges.
+     * @param currentTime
+     *            Current CAVE time, as far as the event is concerned.
+     * @return True if the time boundaries were modified, false otherwise.
+     */
+    private boolean updateTimeBoundariesForSingleEvent(IHazardEvent event,
+            long currentTime) {
+
+        /*
+         * Handle pre-issued hazard events differently from ones that have been
+         * issued at least once. Pre-issued ones have their start time marching
+         * forward with CAVE clock time, and some allow the start time to be
+         * after the current CAVE clock time, while some do not. End times can
+         * be anything if unissued, but issued ones may be limited by by the
+         * hazard type's contraints Finally, ending and ended hazards cannot
+         * have their times changed.
+         */
+        Range<Long> startTimeRange = null;
+        Range<Long> endTimeRange = null;
+        long startTime = event.getStartTime().getTime();
+        long endTime = event.getEndTime().getTime();
+        switch (event.getStatus()) {
+        case POTENTIAL:
+        case PENDING:
+        case PROPOSED:
+            startTimeRange = Ranges.closed(currentTime, (configManager
+                    .isStartTimeIsCurrentTime(event) ? currentTime
+                    : HazardConstants.MAX_TIME));
+            endTimeRange = getEndTimeRangeForPreIssuedEvent(endTime);
+            break;
+        case ISSUED:
+            long startTimeWhenLastIssued = startTimesForIssuedEventIdentifiers
+                    .get(event.getEventID());
+            startTimeRange = Ranges
+                    .closed((startTimeWhenLastIssued < currentTime ? startTimeWhenLastIssued
+                            : currentTime),
+                            (configManager.isStartTimeIsCurrentTime(event) ? startTimeWhenLastIssued
+                                    : HazardConstants.MAX_TIME));
+            endTimeRange = getEndTimeRangeForIssuedEvent(event, startTime,
+                    endTime);
+            break;
+        case ENDING:
+        case ENDED:
+            startTimeRange = Ranges.closed(startTime, startTime);
+            endTimeRange = getEndTimeRangeForEndingEvent(endTime);
+        }
+
+        /*
+         * Use the generated ranges.
+         */
+        return setEventTimeRangeBoundaries(event, startTimeRange, endTimeRange);
+    }
+
+    /**
+     * Post a notification indicating that the specified events have had their
+     * time range boundaries modified.
+     * 
+     * @param eventIdentifiers
+     *            Events that have had their time range boundaries modified.
+     */
+    private void postTimeRangeBoundariesModifiedNotification(
+            Set<String> eventIdentifiers) {
+        notificationSender
+                .postNotificationAsync(new SessionEventsTimeRangeBoundariesModified(
+                        this, eventIdentifiers, Originator.OTHER));
+    }
+
+    /**
+     * Update the allowable ranges for start and end time of the specified event
+     * that has just been issued, as well as its start and end times themselves.
+     * A notification is sent off of the changes made if any boundaries are
+     * changed.
+     * 
+     * @param event
+     *            Event that has just been issued.
+     * @param issueTime
+     *            Issue time, as epoch time in milliseconds.
+     */
+    private void updateTimeRangeBoundariesOfJustIssuedEvent(
+            ObservedHazardEvent event, long issueTime) {
+
+        /*
+         * Get the old start time, and then get the actual issuance time for the
+         * hazard, and round it down to the nearest minute. If the start time is
+         * less than the rounded-down issue time, set the former to be the
+         * latter, since the start time should never be less than when the event
+         * was last issued.
+         */
+        long startTime = event.getStartTime().getTime();
+        issueTime = roundTimeDownToNearestMinute(new Date(issueTime));
+        if (startTime < issueTime) {
+            startTime = issueTime;
+        }
+
+        /*
+         * Determine the allowable range for the start time. The minimum must be
+         * the issue time from the issuance that occurred. The maximum is either
+         * the same value (if the start time is always the same as the current
+         * time) or else practically unlimited.
+         */
+        Range<Long> startTimeRange = Ranges.closed(issueTime, (configManager
+                .isStartTimeIsCurrentTime(event) ? issueTime
+                : HazardConstants.MAX_TIME));
+
+        /*
+         * Get the end time as it was previously, and if the event has an
+         * absolute end time, only change it if it is too close to the new start
+         * time. If the event has a duration instead of an absolute end time,
+         * change the end time so that the duration remains the same as it was
+         * before.
+         */
+        long endTime = event.getEndTime().getTime();
+        if (endTime != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
+            if (configManager.getDurationChoices(event).isEmpty()) {
+                if (endTime - startTime < HazardConstants.TIME_RANGE_MINIMUM_INTERVAL) {
+                    endTime = startTime
+                            + HazardConstants.TIME_RANGE_MINIMUM_INTERVAL;
+                }
+            } else {
+                endTime += startTime - event.getStartTime().getTime();
+            }
+        }
+
+        /*
+         * Get the allowable range for the end time.
+         */
+        Range<Long> endTimeRange = getEndTimeRangeForIssuedEventBasedOnEndTime(
+                event, endTime);
+
+        /*
+         * Use the new ranges; if these are different from the previous ranges,
+         * post a notification to that effect.
+         */
+        if (setEventTimeRangeBoundaries(event, startTimeRange, endTimeRange)) {
+            postTimeRangeBoundariesModifiedNotification(Sets.newHashSet(event
+                    .getEventID()));
+        }
+
+        /*
+         * Set the new start and end times.
+         */
+        event.setTimeRange(new Date(startTime), new Date(endTime),
+                Originator.OTHER);
+
+        /*
+         * Make a record of the event's start and its end time/duration at
+         * issuance time, which now becomes the most recent issuance for this
+         * event.
+         */
+        updateSavedTimesForEventIfIssued(event, false);
+    }
+
+    /**
+     * Update the allowable ranges for start and end times of the specified
+     * event, or of all events, as well as the start and end times themselves.
+     * This is to be called whenever something that affects any of the events'
+     * start/end time boundaries has potentially changed, other than an event
+     * having just been issued. A notification is sent off of the changes made
+     * if any boundaries are changed.
+     * 
+     * @param singleEvent
+     *            Event that has been added, removed, or modified. If
+     *            <code>null</code>, all events should be updated. In this case,
+     *            the assumption is made that no events have been removed.
+     * @param removed
+     *            Flag indicating whether or not the change is the removal of
+     *            the event; this is ignored if <code>event</code> is
+     *            <code>null</code>.
+     */
+    private void updateTimeBoundariesForEvents(IHazardEvent singleEvent,
+            boolean removed) {
+
+        /*
+         * Get the start of the current minute; this is used in place of the
+         * actual current time, since it is assumed that event start times that
+         * must be altered should be set to the start of the current minute, at
+         * least for user-interface purposes.
+         */
+        long startOfCurrentMinute = roundTimeDownToNearestMinute(SimulatedTime
+                .getSystemTime().getTime());
+
+        /*
+         * If all events should be checked, iterate through them, adding any
+         * that have their boundaries changed to the set recording changed
+         * events. Otherwise, handle the single event's potential change.
+         */
+        Set<String> identifiersWithChangedBoundaries = new HashSet<>();
+        if (singleEvent == null) {
+            for (ObservedHazardEvent thisEvent : events) {
+                if (updateTimeBoundariesForSingleEvent(thisEvent,
+                        startOfCurrentMinute)) {
+                    identifiersWithChangedBoundaries
+                            .add(thisEvent.getEventID());
+                }
+            }
+        } else {
+            if (removed) {
+                startTimeBoundariesForEventIdentifiers.remove(singleEvent
+                        .getEventID());
+                endTimeBoundariesForEventIdentifiers.remove(singleEvent
+                        .getEventID());
+            } else if (updateTimeBoundariesForSingleEvent(singleEvent,
+                    startOfCurrentMinute)) {
+                identifiersWithChangedBoundaries.add(singleEvent.getEventID());
+            }
+        }
+
+        /*
+         * If any events' boundaries have changed, send out a notification to
+         * that effect, and ensure that those that have changed have their start
+         * and end times falling within the new boundaries.
+         */
+        if (identifiersWithChangedBoundaries.isEmpty() == false) {
+            postTimeRangeBoundariesModifiedNotification(identifiersWithChangedBoundaries);
+            for (String identifier : identifiersWithChangedBoundaries) {
+                ObservedHazardEvent thisEvent = getEventById(identifier);
+                long startTime = thisEvent.getStartTime().getTime();
+                long endTime = thisEvent.getEndTime().getTime();
+                long duration = endTime - startTime;
+
+                /*
+                 * Determine whether the start time no longer falls within the
+                 * allowable range, and if this is the case, move it so that it
+                 * is equal to whichever range endpoint it is closest.
+                 */
+                boolean changed = false;
+                Range<Long> startRange = startTimeBoundariesForEventIdentifiers
+                        .get(identifier);
+                if (startTime < startRange.lowerEndpoint()) {
+                    changed = true;
+                    startTime = startRange.lowerEndpoint();
+                } else if (startTime > startRange.upperEndpoint()) {
+                    changed = true;
+                    startTime = startRange.upperEndpoint();
+                }
+
+                /*
+                 * If this event's end time is set to "until further notice", do
+                 * not alter it.
+                 */
+                if (endTime != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
+
+                    /*
+                     * If this event type uses durations instead of absolute end
+                     * times, set the new end time to be the same distance from
+                     * the new start time as the old one was from the old start
+                     * time. Otherwise, boundary-check the end time.
+                     */
+                    if (configManager.getDurationChoices(thisEvent).isEmpty() == false) {
+                        if (changed) {
+                            endTime = startTime + duration;
+                        }
+                    } else {
+
+                        /*
+                         * Ensure that the end time is at least the minimum
+                         * interval away from the start time.
+                         */
+                        if (endTime - startTime < HazardConstants.TIME_RANGE_MINIMUM_INTERVAL) {
+                            changed = true;
+                            endTime = startTime
+                                    + HazardConstants.TIME_RANGE_MINIMUM_INTERVAL;
+                        }
+
+                        /*
+                         * Ensure that the end time does not fall outside the
+                         * allowable boundaries; if it does, move it so that it
+                         * is equal to whichever range endpoint it is closest.
+                         */
+                        Range<Long> endRange = endTimeBoundariesForEventIdentifiers
+                                .get(identifier);
+                        if (endTime < endRange.lowerEndpoint()) {
+                            changed = true;
+                            endTime = endRange.lowerEndpoint();
+                        } else if (endTime > endRange.upperEndpoint()) {
+                            changed = true;
+                            endTime = endRange.upperEndpoint();
+                        }
+                    }
+                }
+
+                /*
+                 * If the start and/or end time need changing, make the changes.
+                 */
+                if (changed) {
+                    thisEvent.setTimeRange(new Date(startTime), new Date(
+                            endTime), Originator.OTHER);
+                }
+            }
+        }
+    }
+
+    /**
+     * Update the saved absolute or relative end time (the latter being
+     * duration) for the specified event if the latter is issued.
+     * 
+     * @param event
+     *            Event that needs its saved end time or duration updated to
+     *            reflect its current state.
+     * @param removed
+     *            Flag indicating whether or not the event has been removed.
+     */
+    private void updateSavedTimesForEventIfIssued(IHazardEvent event,
+            boolean removed) {
+        String eventId = event.getEventID();
+        if (removed) {
+            startTimesForIssuedEventIdentifiers.remove(eventId);
+            endTimesOrDurationsForIssuedEventIdentifiers.remove(eventId);
+        } else if (event.getStatus() == HazardStatus.ISSUED) {
+            startTimesForIssuedEventIdentifiers.put(eventId, event
+                    .getStartTime().getTime());
+            if (configManager.getDurationChoices(event).isEmpty()) {
+                endTimesOrDurationsForIssuedEventIdentifiers.put(eventId, event
+                        .getEndTime().getTime());
+            } else {
+                endTimesOrDurationsForIssuedEventIdentifiers.put(eventId, event
+                        .getEndTime().getTime()
+                        - event.getStartTime().getTime());
+            }
+        }
+    }
+
+    /**
+     * Update the duration choices list associated with the specified event.
+     * 
+     * @param event
+     *            Event for which the duration choices are to be updated.
+     * @param removed
+     *            Flag indicating whether or not the event has been removed.
+     */
+    private void updateDurationChoicesForEvent(IHazardEvent event,
+            boolean removed) {
+
+        /*
+         * If the event has been removed, remove any duration choices associated
+         * with it. Otherwise, update the choices.
+         */
+        if (removed) {
+            durationChoicesForEventIdentifiers.remove(event.getEventID());
+        } else {
+
+            /*
+             * Get all the choices available for this hazard type, and prune
+             * them of any that do not fit within the allowable end time range.
+             */
+            List<String> durationChoices = configManager
+                    .getDurationChoices(event);
+            if (durationChoices.isEmpty() == false) {
+
+                /*
+                 * Get a map of the choice strings to their associated time
+                 * deltas in milliseconds. The map will iterate in the order the
+                 * choices are specified in the list used to generate it.
+                 */
+                Map<String, Long> deltasForDurations = null;
+                try {
+                    deltasForDurations = durationChoiceValidator
+                            .convertToAvailableMapForProperty(durationChoices);
+                } catch (MegawidgetPropertyException e) {
+                    statusHandler
+                            .error("invalid list of duration choices for event of type "
+                                    + HazardEventUtilities.getHazardType(event),
+                                    e);
+                    durationChoicesForEventIdentifiers.put(event.getEventID(),
+                            Collections.<String> emptyList());
+                    return;
+                }
+
+                /*
+                 * Iterate through the choices, checking each in turn to see if,
+                 * when a choice's delta is added to the current event start
+                 * time, the sum falls within the allowable end time range. If
+                 * it does, add it to the list of approved choices.
+                 */
+                long startTime = event.getStartTime().getTime();
+                Range<Long> endTimeRange = endTimeBoundariesForEventIdentifiers
+                        .get(event.getEventID());
+                List<String> allowableDurationChoices = new ArrayList<>(
+                        durationChoices.size());
+                for (Map.Entry<String, Long> entry : deltasForDurations
+                        .entrySet()) {
+                    long possibleEndTime = startTime + entry.getValue();
+                    if (endTimeRange.contains(possibleEndTime)) {
+                        allowableDurationChoices.add(entry.getKey());
+                    }
+                }
+                durationChoices = allowableDurationChoices;
+            }
+
+            /*
+             * Cache the list of approved choices.
+             */
+            durationChoicesForEventIdentifiers.put(event.getEventID(),
+                    durationChoices);
+        }
     }
 
     /**
@@ -2152,8 +3037,7 @@ public class SessionEventManager implements
         boolean success = true;
 
         HazardTypes hazardTypes = configManager.getHazardTypes();
-        Collection<ObservedHazardEvent> selectedEvents = this
-                .getSelectedEvents();
+        Collection<ObservedHazardEvent> selectedEvents = getSelectedEvents();
         String cwa = configManager.getSiteID();
 
         for (ObservedHazardEvent selectedEvent : selectedEvents) {

@@ -42,6 +42,7 @@ import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
@@ -75,6 +76,7 @@ import org.eclipse.swt.widgets.Group;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -215,6 +217,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           megawidgets.
  * Jan 07, 2015   5699     Chris.Golden      Removed persisting of megawidget extraData
  *                                           between refreshes of metadata megawidgets.
+ * Feb 03, 2015   2331     Chris.Golden      Added support for limiting the values that an
+ *                                           event's start or end time can take on.
  * </pre>
  * 
  * @author Chris.Golden
@@ -921,7 +925,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         @Override
         public String getState(String identifier) {
-            return getSelectedCategory();
+            throw new UnsupportedOperationException(
+                    "cannot get state of category");
         }
 
         @Override
@@ -980,7 +985,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         @Override
         public String getState(String identifier) {
-            return getSelectedType();
+            throw new UnsupportedOperationException("cannot get state of type");
         }
 
         @Override
@@ -1034,7 +1039,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         @Override
         public TimeRange getState(String identifier) {
-            return getTimeRange();
+            throw new UnsupportedOperationException(
+                    "cannot get state of time range");
         }
 
         @Override
@@ -1054,6 +1060,57 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         public void setStateChangeHandler(
                 IStateChangeHandler<String, TimeRange> handler) {
             timeRangeChangeHandler = handler;
+        }
+    };
+
+    /**
+     * Time range allowable boundaries state changer. The qualifier is the
+     * identifier of the hazard event, while the identifier indicates the
+     * boundary.
+     */
+    private final IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> timeRangeBoundariesChanger = new IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>>() {
+
+        @Override
+        public void setEnabled(String qualifier, TimeRangeBoundary identifier,
+                boolean enable) {
+            throw new UnsupportedOperationException(
+                    "cannot enable/disable time range boundaries");
+        }
+
+        @Override
+        public void setEditable(String qualifier, TimeRangeBoundary identifier,
+                boolean editable) {
+            throw new UnsupportedOperationException(
+                    "cannot change editability of time range boundaries");
+        }
+
+        @Override
+        public Range<Long> getState(String qualifier,
+                TimeRangeBoundary identifier) {
+            throw new UnsupportedOperationException(
+                    "cannot get state of time range boundaries");
+        }
+
+        @Override
+        public void setState(String qualifier, TimeRangeBoundary identifier,
+                Range<Long> value) {
+            throw new UnsupportedOperationException(
+                    "cannot change single state for time range boundaries");
+        }
+
+        @Override
+        public void setStates(String qualifier,
+                Map<TimeRangeBoundary, Range<Long>> valuesForIdentifiers) {
+            if (qualifier.equals(visibleEventIdentifier)) {
+                setTimeRangeBoundaries(valuesForIdentifiers);
+            }
+        }
+
+        @Override
+        public void setStateChangeHandler(
+                IQualifiedStateChangeHandler<String, TimeRangeBoundary, Range<Long>> handler) {
+            throw new UnsupportedOperationException(
+                    "time range boundaries are never modified by the view");
         }
     };
 
@@ -1277,7 +1334,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                 .get(1) ? 0 : 1);
                 setEndTimeUntilFurtherNotice(otherUntilFurtherNoticeMegawidget,
                         untilFurtherNotice);
-                setEndTimeEditability(!untilFurtherNotice);
                 if (metadataChangeHandler != null) {
                     metadataChangeHandler.stateChanged(visibleEventIdentifier,
                             identifier, (Serializable) state);
@@ -1621,6 +1677,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     @Override
+    public IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> getTimeRangeBoundariesChanger() {
+        return timeRangeBoundariesChanger;
+    }
+
+    @Override
     public IChoiceStateChanger<String, String, String, String> getDurationChanger() {
         return durationChanger;
     }
@@ -1943,47 +2004,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Get the selected category.
-     * 
-     * @return Selected category.
-     */
-    private String getSelectedCategory() {
-        return getComboBoxSelectedChoice(categoryMegawidget,
-                CATEGORY_IDENTIFIER);
-    }
-
-    /**
-     * Get the selected type.
-     * 
-     * @return Selected type.
-     */
-    private String getSelectedType() {
-        return getComboBoxSelectedChoice(typeMegawidget, TYPE_IDENTIFIER);
-    }
-
-    /**
-     * Get the specified combo box's selected choice.
-     * 
-     * @param comboBox
-     *            Combo box from which to get the selected choice.
-     * @param identifier
-     *            Identifier of the state the combo box holds.
-     * @return Selected choice.
-     */
-    private String getComboBoxSelectedChoice(ComboBoxMegawidget comboBox,
-            String identifier) {
-        if (comboBox != null) {
-            try {
-                return (String) comboBox.getState(identifier);
-            } catch (Exception e) {
-                statusHandler.error("unexpected error while getting "
-                        + identifier + " megawidget state", e);
-            }
-        }
-        return null;
-    }
-
-    /**
      * Set the selected category.
      * 
      * @param category
@@ -2027,25 +2047,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Get the time range.
-     * 
-     * @return Time range.
-     */
-    private TimeRange getTimeRange() {
-        if (isAlive() && (timeRangeMegawidget != null)) {
-            try {
-                return new TimeRange(
-                        (Long) timeRangeMegawidget.getState(START_TIME_STATE),
-                        (Long) timeRangeMegawidget.getState(END_TIME_STATE));
-            } catch (Exception e) {
-                statusHandler.error("unexpected error while getting "
-                        + TIME_RANGE_IDENTIFIER + " megawidget values", e);
-            }
-        }
-        return null;
-    }
-
-    /**
      * Set the time range to that specified.
      * 
      * @param megawidget
@@ -2056,6 +2057,38 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private void setTimeRange(MultiTimeMegawidget megawidget, TimeRange range) {
         if (isAlive() && (megawidget != null)) {
             try {
+
+                /*
+                 * If the megawidget is the time scale, not the time range, and
+                 * its end time is limited to one value, and the new end time
+                 * falls outside that value, change its end time allowable
+                 * boundaries to equal the new end time. This must be done
+                 * because the time range megawidget allows the end time to move
+                 * if, for example, the duration is to be frozen but the user
+                 * moves the start time, which displaces the end time.
+                 */
+                if (megawidget != timeRangeMegawidget) {
+                    long newEndTime = range.getEnd().getTime();
+                    Map<String, Long> minimumAllowableTimes = megawidget
+                            .getMinimumAllowableTimes();
+                    Map<String, Long> maximumAllowableTimes = megawidget
+                            .getMaximumAllowableTimes();
+                    long minimumEndTime = minimumAllowableTimes
+                            .get(END_TIME_STATE);
+                    long maximumEndTime = maximumAllowableTimes
+                            .get(END_TIME_STATE);
+                    if ((minimumEndTime == maximumEndTime)
+                            && ((newEndTime < minimumEndTime) || (newEndTime > maximumEndTime))) {
+                        minimumAllowableTimes.put(END_TIME_STATE, newEndTime);
+                        maximumAllowableTimes.put(END_TIME_STATE, newEndTime);
+                        megawidget.setAllowableRanges(minimumAllowableTimes,
+                                maximumAllowableTimes);
+                    }
+                }
+
+                /*
+                 * Give the megawidget the new values it should hold.
+                 */
                 megawidget.setUncommittedState(START_TIME_STATE, range
                         .getStart().getTime());
                 megawidget.setUncommittedState(END_TIME_STATE, range.getEnd()
@@ -2077,6 +2110,87 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private void setTimeRange(TimeRange range) {
         for (MultiTimeMegawidget megawidget : timeMegawidgets) {
             setTimeRange(megawidget, range);
+        }
+    }
+
+    /**
+     * Set the time range boundaries to those specified.
+     * 
+     * @param rangesForBoundaries
+     *            Map of time range boundaries to their associated allowable
+     *            ranges.
+     */
+    private void setTimeRangeBoundaries(
+            Map<TimeRangeBoundary, Range<Long>> rangesForBoundaries) {
+        if (isAlive()) {
+
+            /*
+             * Get the minimum and maximum values for the start and end times.
+             */
+            Map<String, Object> minimumValues = new HashMap<>(2, 1.0f);
+            Range<Long> startTimeRange = rangesForBoundaries
+                    .get(TimeRangeBoundary.START);
+            Range<Long> endTimeRange = rangesForBoundaries
+                    .get(TimeRangeBoundary.END);
+            minimumValues.put(START_TIME_STATE, startTimeRange.lowerEndpoint());
+            minimumValues.put(END_TIME_STATE, endTimeRange.lowerEndpoint());
+            Map<String, Object> maximumValues = new HashMap<>(2, 1.0f);
+            maximumValues.put(START_TIME_STATE, startTimeRange.upperEndpoint());
+            maximumValues.put(END_TIME_STATE, endTimeRange.upperEndpoint());
+
+            /*
+             * Determine whether or not the start and end times should be
+             * editable; if they have zero-length ranges, they should not be.
+             */
+            boolean startTimeEditable = (startTimeRange.lowerEndpoint().equals(
+                    startTimeRange.upperEndpoint()) == false);
+            boolean endTimeEditable = (endTimeRange.lowerEndpoint().equals(
+                    endTimeRange.upperEndpoint()) == false);
+
+            /*
+             * Get the duration of the event as it stands.
+             */
+            long duration;
+            try {
+                duration = (Long) timeRangeMegawidget.getState(END_TIME_STATE)
+                        - (Long) timeRangeMegawidget.getState(START_TIME_STATE);
+            } catch (Exception e) {
+                statusHandler.error("unexpected error while getting "
+                        + TIME_RANGE_IDENTIFIER + " megawidget values", e);
+                return;
+            }
+
+            /*
+             * For each megawidget, set the states' editability and ranges.
+             */
+            for (MultiTimeMegawidget megawidget : timeMegawidgets) {
+                try {
+                    megawidget.setStateEditable(START_TIME_STATE,
+                            startTimeEditable);
+                    megawidget
+                            .setStateEditable(END_TIME_STATE, endTimeEditable);
+                    megawidget.setAllowableRanges(minimumValues, maximumValues);
+                } catch (Exception e) {
+                    statusHandler.error("unexpected error while setting "
+                            + TIME_RANGE_IDENTIFIER
+                            + " megawidget value boundaries", e);
+                }
+            }
+
+            /*
+             * To avoid the time range megawidget briefly showing no valid
+             * duration, use the duration calculated above as an offset from the
+             * new start time for the new end time.
+             */
+            try {
+                long startTime = (Long) timeRangeMegawidget
+                        .getState(START_TIME_STATE);
+                setTimeRange(timeRangeMegawidget, new TimeRange(startTime,
+                        startTime + duration));
+            } catch (Exception e) {
+                statusHandler.error("unexpected error while setting "
+                        + TIME_RANGE_IDENTIFIER + " megawidget values", e);
+            }
         }
     }
 
@@ -2143,44 +2257,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private void setEndTimeUntilFurtherNotice(Object untilFurtherNotice) {
         for (CheckBoxMegawidget megawidget : untilFurtherNoticeToggleMegawidgets) {
             setEndTimeUntilFurtherNotice(megawidget, untilFurtherNotice);
-        }
-        setEndTimeEditability(!Boolean.TRUE.equals(untilFurtherNotice));
-    }
-
-    /**
-     * Set the time range megawidget so that its end time state has the
-     * specified editability.
-     * 
-     * @param megawidget
-     *            Megawidget to be manipulated.
-     * @param editable
-     *            Flag indicating whether the end time state should be editable.
-     */
-    private void setEndTimeEditability(IStateful megawidget, boolean editable) {
-        Map<String, Boolean> stateEditables = new HashMap<>();
-        stateEditables.put(START_TIME_STATE, true);
-        stateEditables.put(END_TIME_STATE, editable);
-        try {
-            megawidget.setMutableProperty(
-                    TimeScaleSpecifier.MEGAWIDGET_STATE_EDITABLES,
-                    stateEditables);
-        } catch (Exception e) {
-            statusHandler.error("unexpected error while setting "
-                    + END_TIME_STATE + " editability in megawidget", e);
-        }
-    }
-
-    /**
-     * Set both time range megawidgets so that their end time states have the
-     * specified editability.
-     * 
-     * @param editable
-     *            Flag indicating whether the end time states should be
-     *            editable.
-     */
-    private void setEndTimeEditability(boolean editable) {
-        for (MultiTimeMegawidget megawidget : timeMegawidgets) {
-            setEndTimeEditability(megawidget, editable);
         }
     }
 

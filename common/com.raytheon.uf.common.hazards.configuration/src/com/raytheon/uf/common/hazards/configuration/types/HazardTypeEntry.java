@@ -45,9 +45,12 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Jul 03, 2014 3512       Chris.Golden Added durationChoiceList
  *                                      field.
  * Jan 16, 2015 4959       Dan Schaffer Add/Remove UGC capability
- * 
  * Jan 21, 2015 3626       Chris.Golden Added hazard-type-first
  *                                      recommender field.
+ * Feb 01, 2015 2331       Chris.Golden Added fields for flags
+ *                                      indicating the constraints
+ *                                      the type puts on start and
+ *                                      end time editability.
  * </pre>
  * 
  * @author bsteffen
@@ -62,6 +65,12 @@ public class HazardTypeEntry {
     private boolean allowAreaChange;
 
     private boolean allowTimeChange;
+
+    private boolean startTimeIsCurrentTime;
+
+    private boolean allowTimeExpand = true;
+
+    private boolean allowTimeShrink = true;
 
     private int[] expirationTime;
 
@@ -123,6 +132,30 @@ public class HazardTypeEntry {
 
     public void setAllowTimeChange(boolean allowTimeChange) {
         this.allowTimeChange = allowTimeChange;
+    }
+
+    public boolean isStartTimeIsCurrentTime() {
+        return startTimeIsCurrentTime;
+    }
+
+    public void setStartTimeIsCurrentTime(boolean startTimeIsCurrentTime) {
+        this.startTimeIsCurrentTime = startTimeIsCurrentTime;
+    }
+
+    public boolean isAllowTimeExpand() {
+        return allowTimeExpand;
+    }
+
+    public void setAllowTimeExpand(boolean allowTimeExpand) {
+        this.allowTimeExpand = allowTimeExpand;
+    }
+
+    public boolean isAllowTimeShrink() {
+        return allowTimeShrink;
+    }
+
+    public void setAllowTimeShrink(boolean allowTimeShrink) {
+        this.allowTimeShrink = allowTimeShrink;
     }
 
     public int[] getExpirationTime() {

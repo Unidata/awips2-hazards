@@ -156,9 +156,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      a scrollable megawidget.
  * Dec 05, 2014  4124      Chris.Golden Changed to work with parameterized interface that it
  *                                      implements, and to use ObservedSetttings.
- * Jan 21, 2014 3626       Chris.Golden Added method to retrieve hazard-type-first recommender
+ * Jan 21, 2014  3626      Chris.Golden Added method to retrieve hazard-type-first recommender
  *                                      based upon hazard type.
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
+ * Feb 01, 2015  2331      Chris.Golden Added methods to determine the value of flags
+ *                                      indicating the constraints that a hazard event type
+ *                                      puts on start and end time editability.
  * </pre>
  * 
  * @author bsteffen
@@ -273,6 +276,12 @@ public class SessionConfigurationManager implements
     private Map<String, ImmutableList<String>> durationChoicesForHazardTypes;
 
     private Map<String, String> typeFirstRecommendersForHazardTypes;
+
+    private Map<String, Boolean> startTimeIsCurrentTimeForHazardTypes;
+
+    private Map<String, Boolean> allowTimeExpandForHazardTypes;
+
+    private Map<String, Boolean> allowTimeShrinkForHazardTypes;
 
     SessionConfigurationManager() {
 
@@ -932,6 +941,75 @@ public class SessionConfigurationManager implements
         }
 
         return durationChoicesForHazardTypes.get(HazardEventUtilities
+                .getHazardType(event.getPhenomenon(), event.getSignificance(),
+                        event.getSubType()));
+    }
+
+    @Override
+    public boolean isStartTimeIsCurrentTime(IHazardEvent event) {
+
+        /*
+         * If the flags for hazard types map has not yet been initialized, do so
+         * now. Include an entry of an empty list for the null hazard type, so
+         * that hazard events without a type have an entry.
+         */
+        if (startTimeIsCurrentTimeForHazardTypes == null) {
+            startTimeIsCurrentTimeForHazardTypes = new HashMap<>();
+            for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
+                    .getConfig().entrySet()) {
+                startTimeIsCurrentTimeForHazardTypes.put(entry.getKey(), entry
+                        .getValue().isStartTimeIsCurrentTime());
+            }
+            startTimeIsCurrentTimeForHazardTypes.put(null, false);
+        }
+
+        return startTimeIsCurrentTimeForHazardTypes.get(HazardEventUtilities
+                .getHazardType(event.getPhenomenon(), event.getSignificance(),
+                        event.getSubType()));
+    }
+
+    @Override
+    public boolean isAllowTimeExpand(IHazardEvent event) {
+
+        /*
+         * If the flags for hazard types map has not yet been initialized, do so
+         * now. Include an entry of an empty list for the null hazard type, so
+         * that hazard events without a type have an entry.
+         */
+        if (allowTimeExpandForHazardTypes == null) {
+            allowTimeExpandForHazardTypes = new HashMap<>();
+            for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
+                    .getConfig().entrySet()) {
+                allowTimeExpandForHazardTypes.put(entry.getKey(), entry
+                        .getValue().isAllowTimeExpand());
+            }
+            allowTimeExpandForHazardTypes.put(null, true);
+        }
+
+        return allowTimeExpandForHazardTypes.get(HazardEventUtilities
+                .getHazardType(event.getPhenomenon(), event.getSignificance(),
+                        event.getSubType()));
+    }
+
+    @Override
+    public boolean isAllowTimeShrink(IHazardEvent event) {
+
+        /*
+         * If the flags for hazard types map has not yet been initialized, do so
+         * now. Include an entry of an empty list for the null hazard type, so
+         * that hazard events without a type have an entry.
+         */
+        if (allowTimeShrinkForHazardTypes == null) {
+            allowTimeShrinkForHazardTypes = new HashMap<>();
+            for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
+                    .getConfig().entrySet()) {
+                allowTimeShrinkForHazardTypes.put(entry.getKey(), entry
+                        .getValue().isAllowTimeShrink());
+            }
+            allowTimeShrinkForHazardTypes.put(null, true);
+        }
+
+        return allowTimeShrinkForHazardTypes.get(HazardEventUtilities
                 .getHazardType(event.getPhenomenon(), event.getSignificance(),
                         event.getSubType()));
     }

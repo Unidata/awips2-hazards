@@ -28,6 +28,7 @@ import java.util.Map;
 
 import net.engio.mbassy.listener.Handler;
 
+import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -43,8 +44,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
@@ -86,7 +89,14 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
  *                                           hazard attribute is always included in
  *                                           the dictionaries sent to the view when it
  *                                           is present in the original events.
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Dec 13, 2014    4959    Dan Schaffer      Spatial Display cleanup and other bug
+ *                                           fixes
+ * Jan 30, 2015    2331    Chris.Golden      Changed to receive notifications of time
+ *                                           change using handlers instead of via the
+ *                                           modelChanged() method, since said
+ *                                           notifications now come from the session
+ *                                           time manager. Also changed to use time
+ *                                           range boundaries for the events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -119,6 +129,16 @@ public class ConsolePresenter extends
      */
     private final JSONConverter jsonConverter = new JSONConverter();
 
+    /**
+     * Map of hazard event identifiers to allowable start time ranges.
+     */
+    private Map<String, Range<Long>> startTimeBoundariesForEventIds;
+
+    /**
+     * Map of hazard event identifiers to allowable end time ranges.
+     */
+    private Map<String, Range<Long>> endTimeBoundariesForEventIds;
+
     // Public Constructors
 
     /**
@@ -138,9 +158,21 @@ public class ConsolePresenter extends
     // Public Methods
 
     /**
+     * Respond to the current CAVE time changing.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void currentTimeChanged(CurrentTimeChanged change) {
+        getView().updateCurrentTime(change.getTimeManager().getCurrentTime());
+    }
+
+    /**
      * Respond to the selected time changing.
      * 
-     * @change Change that occurred.
+     * @param change
+     *            Change that occurred.
      */
     @Handler
     public void selectedTimeChanged(SelectedTimeChanged change) {
@@ -154,9 +186,22 @@ public class ConsolePresenter extends
     }
 
     /**
+     * Respond to the events' time range boundaries changing.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void sessionEventsTimeRangeBoundariesChanged(
+            SessionEventsTimeRangeBoundariesModified change) {
+        getView().updateEventTimeRangeBoundaries(change.getChangedEvents());
+    }
+
+    /**
      * Respond to the current settings changing.
      * 
-     * @change Change that occurred.
+     * @param change
+     *            Change that occurred.
      */
     @Handler
     public void currentSettingsChanged(SettingsModified change) {
@@ -169,9 +214,6 @@ public class ConsolePresenter extends
     @Deprecated
     public final void modelChanged(EnumSet<HazardConstants.Element> changed) {
         ISessionTimeManager timeManager = getModel().getTimeManager();
-        if (changed.contains(HazardConstants.Element.CURRENT_TIME)) {
-            getView().updateCurrentTime(timeManager.getCurrentTime());
-        }
         if (changed.contains(HazardConstants.Element.VISIBLE_TIME_DELTA)) {
             String timeDelta = Long.toString(getModel()
                     .getConfigurationManager().getSettings()
@@ -235,13 +277,18 @@ public class ConsolePresenter extends
         /*
          * Initialize the view.
          */
+        startTimeBoundariesForEventIds = getModel().getEventManager()
+                .getStartTimeBoundariesForEventIds();
+        endTimeBoundariesForEventIds = getModel().getEventManager()
+                .getEndTimeBoundariesForEventIds();
         ISessionTimeManager timeManager = getModel().getTimeManager();
         view.initialize(this, new Date(timeManager.getSelectedTime()
                 .getLowerBound()), timeManager.getCurrentTime(), getModel()
                 .getConfigurationManager().getSettings()
-                .getDefaultTimeDisplayDuration(), eventsAsDicts, getModel()
-                .getConfigurationManager().getSettings(), getModel()
-                .getConfigurationManager().getAvailableSettings(),
+                .getDefaultTimeDisplayDuration(), eventsAsDicts,
+                startTimeBoundariesForEventIds, endTimeBoundariesForEventIds,
+                getModel().getConfigurationManager().getSettings(), getModel()
+                        .getConfigurationManager().getAvailableSettings(),
                 jsonConverter.toJson(getModel().getConfigurationManager()
                         .getFilterConfig()), getModel().getAlertsManager()
                         .getActiveAlerts(), getModel().getEventManager()

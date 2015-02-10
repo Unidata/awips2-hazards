@@ -52,8 +52,7 @@ import org.eclipse.ui.internal.WorkbenchPage;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
+import com.google.common.collect.Range;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
@@ -86,7 +85,10 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Apr 23, 2014    1480    jsanchez          Added a Correct menu to the console.
  * Nov 18, 2014    4124    Chris.Golden      Adapted to new time manager.
  * Dec 05, 2014    4124    Chris.Golden      Changed to use ObservedSettings.
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Dec 13, 2014    4959    Dan Schaffer      Spatial Display cleanup and other bug fixes
+ * Feb 06, 2015    2331    Chris.Golden      Removed bogus debug message, and also
+ *                                           changed to use time range boundaries for
+ *                                           the events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -156,12 +158,6 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
      * the same perspective is true.
      */
     private static final String LAST_DETACHED_BOUNDS_HEIGHT_SUFFIX = ".lastDetachedBoundsHeight";
-
-    /**
-     * Logging mechanism.
-     */
-    private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(ConsoleView.class);
 
     // Package Interfaces
 
@@ -466,8 +462,6 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
         @Override
         public void partClosed(IWorkbenchPartReference partRef) {
             if (partRef == getViewPartReference()) {
-                statusHandler
-                        .debug("ConsoleView.partClosed(): console view part closed.");
                 presenter.publish(new ConsoleAction(
                         ConsoleAction.ActionType.CLOSE, (String) null));
             }
@@ -586,6 +580,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     public final void initialize(final ConsolePresenter presenter,
             final Date selectedTime, final Date currentTime,
             final long visibleTimeRange, final List<Dict> hazardEvents,
+            final Map<String, Range<Long>> startTimeBoundariesForEventIds,
+            final Map<String, Range<Long>> endTimeBoundariesForEventIds,
             final ObservedSettings currentSettings,
             final List<Settings> availableSettings, final String jsonFilters,
             final ImmutableList<IHazardAlert> activeAlerts,
@@ -597,7 +593,9 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             @Override
             public void run() {
                 getViewPart().initialize(presenter, selectedTime, currentTime,
-                        visibleTimeRange, hazardEvents, currentSettings,
+                        visibleTimeRange, hazardEvents,
+                        startTimeBoundariesForEventIds,
+                        endTimeBoundariesForEventIds, currentSettings,
                         availableSettings, jsonFilters, activeAlerts,
                         eventIdentifiersAllowingUntilFurtherNotice,
                         temporalControlsInToolBar);
@@ -784,6 +782,16 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             @Override
             public void run() {
                 getViewPart().updateVisibleTimeDelta(jsonVisibleTimeDelta);
+            }
+        });
+    }
+
+    @Override
+    public final void updateEventTimeRangeBoundaries(final Set<String> eventIds) {
+        executeOnCreatedViewPart(new Runnable() {
+            @Override
+            public void run() {
+                getViewPart().updateEventTimeRangeBoundaries(eventIds);
             }
         });
     }

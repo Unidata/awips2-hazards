@@ -15,7 +15,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.REPLACED_BY;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
@@ -35,7 +34,6 @@ import gov.noaa.gsd.viz.hazards.servicebackup.ChangeSiteAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
-import gov.noaa.gsd.viz.hazards.timer.TimerAction;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.io.Serializable;
@@ -68,8 +66,6 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
-import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.exception.VizException;
@@ -197,19 +193,20 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            new time manager.
  * Dec 05, 2014  4124      Chris.Golden       Changed to work with newly parameterized
  *                                            config manager, and with ObservedSettings.
- * Dec 13, 2014 4959       Dan Schaffer       Spatial Display cleanup and other bug fixes
- * Jan 29, 2015 3626       Chris.Golden       Added ability to pass event type when running
+ * Dec 13, 2014  4959      Dan Schaffer       Spatial Display cleanup and other bug fixes
+ * Jan 29, 2015  3626      Chris.Golden       Added ability to pass event type when running
  *                                            a recommender.
- * Jan 29, 2015 4375       Dan Schaffer       Console initiation of RVS product generation
- * Feb 03, 2015 3865       Chris.Cody         Check for valid Active Editor class
- * 
+ * Jan 29, 2015  4375      Dan Schaffer       Console initiation of RVS product generation
+ * Feb 03, 2015  3865      Chris.Cody         Check for valid Active Editor class
+ * Feb 04, 2015  2331      Chris.Golden       Removed listener for time changes; these are
+ *                                            now handled by individual presenters as
+ *                                            necessary.
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
-public final class HazardServicesMessageHandler implements
-        ISimulatedTimeChangeListener {
+public final class HazardServicesMessageHandler {
 
     // Private Constants
 
@@ -287,7 +284,6 @@ public final class HazardServicesMessageHandler implements
 
         sessionConfigurationManager.changeSettings(staticSettingID,
                 Originator.OTHER);
-        SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(this);
     }
 
     // Methods
@@ -492,43 +488,10 @@ public final class HazardServicesMessageHandler implements
     @Handler
     public void handleProductGenerationCompletion(
             IProductGenerationComplete productGenerationComplete) {
-        if (productGenerationComplete.isIssued()) {
-            for (GeneratedProductList generatedProductList : productGenerationComplete
-                    .getGeneratedProducts()) {
-                for (IEvent event : generatedProductList.getEventSet()) {
-                    IHazardEvent hazardEvent = (IHazardEvent) event;
-                    ObservedHazardEvent oEvent = sessionEventManager
-                            .getEventById(hazardEvent.getEventID());
-                    HazardStatus hazardStatus = oEvent.getStatus();
-                    if (hazardStatus.equals(HazardStatus.PENDING)
-                            || hazardStatus.equals(HazardStatus.PROPOSED)) {
-                        oEvent.setStatus(HazardStatus.ISSUED);
-                        oEvent.clearUndoRedo();
-                        oEvent.setModified(false);
-
-                    } else if (isChangeToEndedStateNeeded(hazardEvent)) {
-                        oEvent.setStatus(HazardStatus.ENDED);
-                    }
-
-                }
-            }
-            sessionManager.setIssueOngoing(false);
-        } else {
+        if (productGenerationComplete.isIssued() == false) {
             appBuilder.showProductEditorView(productGenerationComplete
                     .getGeneratedProducts());
         }
-    }
-
-    /**
-     * If an ending hazard is issued or an issued hazard is replaced, we need to
-     * change it's state to ended.
-     * 
-     * @param hazardEvent
-     * @return
-     */
-    private boolean isChangeToEndedStateNeeded(IHazardEvent hazardEvent) {
-        return hazardEvent.getStatus().equals(HazardStatus.ENDING)
-                || hazardEvent.getHazardAttribute(REPLACED_BY) != null;
     }
 
     /**
@@ -767,6 +730,7 @@ public final class HazardServicesMessageHandler implements
         if (oEvent == null) {
             return;
         }
+        Date newStartTime = null, newEndTime = null;
         for (String key : map.keySet()) {
             if (HazardConstants.HAZARD_EVENT_IDENTIFIER.equals(key)) {
                 ;
@@ -777,13 +741,9 @@ public final class HazardServicesMessageHandler implements
                 sessionEventManager.setEventType(oEvent, phenSigSubType[0],
                         phenSigSubType[1], phenSigSubType[2], originator);
             } else if (HAZARD_EVENT_START_TIME.equals(key)) {
-                oEvent.setStartTime(
-                        new Date(((Number) map.get(key)).longValue()),
-                        originator);
+                newStartTime = new Date(((Number) map.get(key)).longValue());
             } else if (HAZARD_EVENT_END_TIME.equals(key)) {
-                oEvent.setEndTime(
-                        new Date(((Number) map.get(key)).longValue()),
-                        originator);
+                newEndTime = new Date(((Number) map.get(key)).longValue());
             } else if (map.get(key) instanceof Collection) {
                 List<String> stringList = new ArrayList<>(
                         (Collection<String>) map.get(key));
@@ -832,6 +792,40 @@ public final class HazardServicesMessageHandler implements
             }
         }
 
+        /*
+         * Set the start and end time atomically, since setting one before the
+         * other could result in a rejection of the first of the two because the
+         * resulting range in between the actions of setting them each would be
+         * invalid.
+         * 
+         * TODO: When this method goes away and its functionality taken on by
+         * the ConsolePresenter (i.e. when refactoring of the console happens to
+         * bring it into line with the MVP architecture), a false result from
+         * the setEventTimeRange() invocation should merely result in the
+         * setting of the console's copy of the time range back to the original
+         * value, without having to explicitly do so asynchronously, since that
+         * will all be taken care of by the various IStateChanger
+         * thread-boundary-crossing classes.
+         */
+        if ((newStartTime != null) || (newEndTime != null)) {
+            if (newStartTime == null) {
+                newStartTime = oEvent.getStartTime();
+            }
+            if (newEndTime == null) {
+                newEndTime = oEvent.getEndTime();
+            }
+            if (sessionEventManager.setEventTimeRange(oEvent, newStartTime,
+                    newEndTime, originator) == false) {
+                VizApp.runAsync(new Runnable() {
+                    @Override
+                    public void run() {
+                        appBuilder.notifyModelChanged(EnumSet
+                                .of(HazardConstants.Element.EVENTS));
+                    }
+                });
+            }
+        }
+
         if (isUserInitiated) {
             oEvent.setModified(true);
         }
@@ -848,24 +842,6 @@ public final class HazardServicesMessageHandler implements
         sessionConfigurationManager.getSettings().apply(settings, originator);
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.CURRENT_SETTINGS));
-    }
-
-    /**
-     * This method is invoked when the current CAVE time changes.
-     * 
-     * @param UIOriginator
-     *            The UIOriginator of the current time update. For the moment,
-     *            this should be set to "Cave". This should be an enumeration
-     *            not a string.
-     * 
-     * @throws VizException
-     */
-    private void updateCurrentTime(IOriginator originator) throws VizException {
-
-        if (originator == Originator.OTHER) {
-            appBuilder.notifyModelChanged(EnumSet
-                    .of(HazardConstants.Element.CURRENT_TIME));
-        }
     }
 
     private void updateSite(String site) {
@@ -1036,25 +1012,6 @@ public final class HazardServicesMessageHandler implements
         }
 
         appBuilder.closeProductEditorView();
-    }
-
-    /**
-     * Handles a timer action.
-     * 
-     * @param caveTime
-     *            CAVE time.
-     */
-    private void handleTimerAction(Date caveTime) {
-        if (appBuilder.getTimer().isAlive()
-                && !appBuilder.getTimer().isInterrupted()) {
-
-            try {
-                updateCurrentTime(Originator.OTHER);
-            } catch (VizException e) {
-                statusHandler.error(
-                        "Error updating Hazard Services components", e);
-            }
-        }
     }
 
     /**
@@ -1487,18 +1444,6 @@ public final class HazardServicesMessageHandler implements
     }
 
     /**
-     * Handle a received timer action. This method is called implicitly by the
-     * event bus when actions of this type are sent across the latter.
-     * 
-     * @param timerAction
-     *            Action received.
-     */
-    @Handler
-    public void timerActionOccurred(final TimerAction timerAction) {
-        handleTimerAction(timerAction.getCaveTime());
-    }
-
-    /**
      * Handle a received tool action. This method is called implicitly by the
      * event bus when actions of this type are sent across the latter.
      * 
@@ -1674,15 +1619,5 @@ public final class HazardServicesMessageHandler implements
         }
 
         return userSelection;
-    }
-
-    @Override
-    public void timechanged() {
-        try {
-            updateCurrentTime(Originator.OTHER);
-        } catch (VizException e) {
-            statusHandler.error("Error updating Hazard Services current time",
-                    e);
-        }
     }
 }

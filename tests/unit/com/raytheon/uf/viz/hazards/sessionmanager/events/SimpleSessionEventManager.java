@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -64,6 +65,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      that an event-modifying script is to be executed.
  * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
+ * Feb 03, 2015 2331       Chris.Golden Changed to support allowable boundaries for event start
+ *                                      and end times.
  * </pre>
  * 
  * @author bsteffen
@@ -73,19 +76,16 @@ import com.vividsolutions.jts.geom.Geometry;
 public class SimpleSessionEventManager implements
         ISessionEventManager<ObservedHazardEvent> {
 
-    private final boolean canChangeTimeRange;
-
     private final boolean canChangeType;
 
     private final List<ObservedHazardEvent> events = new ArrayList<ObservedHazardEvent>();
 
     public SimpleSessionEventManager() {
-        this(true, true, true);
+        this(true, true);
     }
 
     public SimpleSessionEventManager(boolean canChangeGeometry,
-            boolean canChangeTimeRange, boolean canChangeType) {
-        this.canChangeTimeRange = canChangeTimeRange;
+            boolean canChangeType) {
         this.canChangeType = canChangeType;
     }
 
@@ -93,6 +93,11 @@ public class SimpleSessionEventManager implements
     public MegawidgetSpecifierManager getMegawidgetSpecifiers(
             ObservedHazardEvent hazardEvent) {
         return null;
+    }
+
+    @Override
+    public List<String> getDurationChoices(ObservedHazardEvent event) {
+        return Collections.emptyList();
     }
 
     @Override
@@ -132,11 +137,6 @@ public class SimpleSessionEventManager implements
     @Override
     public Collection<ObservedHazardEvent> getEvents() {
         return events;
-    }
-
-    @Override
-    public boolean canChangeTimeRange(ObservedHazardEvent event) {
-        return canChangeTimeRange;
     }
 
     @Override
@@ -353,6 +353,22 @@ public class SimpleSessionEventManager implements
      */
     @Override
     public List<String> buildContainedUGCs(IHazardEvent hazardEvent) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Map<String, Range<Long>> getStartTimeBoundariesForEventIds() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Map<String, Range<Long>> getEndTimeBoundariesForEventIds() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean setEventTimeRange(ObservedHazardEvent event, Date startTime,
+            Date endTime, IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 

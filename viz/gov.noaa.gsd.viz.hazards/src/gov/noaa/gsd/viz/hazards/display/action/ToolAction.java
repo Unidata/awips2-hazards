@@ -36,6 +36,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
  * Jan 29, 2015 3626       Chris.Golden      Added ability to pass event type when running
  *                                           a recommender.
  * Jan 29, 2015 4375       Dan Schaffer      Console initiation of RVS product generation
+ * Feb 05, 2015 2331       Chris.Golden      Removed unused and ideologically suspect method.
  * </pre>
  * 
  * @author Chris Golden
@@ -216,13 +217,5 @@ public class ToolAction {
      */
     public ToolType getToolType() {
         return tool.getToolType();
-    }
-
-    /**
-     * @param toolType
-     *            the toolType to set
-     */
-    public void setToolType(ToolType toolType) {
-        this.tool.setToolType(toolType);
     }
 }

@@ -51,6 +51,10 @@ import com.google.common.collect.Sets;
  *                                      defining of valid boundaries for the
  *                                      values, with potentially a different
  *                                      boundary for each state identifier.
+ * Feb 03, 2015   2331     Chris.Golden Fixed bug that caused last thumb to be
+ *                                      read-only when the interval between the
+ *                                      thumbs was locked and the first thumb
+ *                                      was movable.
  * </pre>
  * 
  * @author Chris.Golden
@@ -707,12 +711,10 @@ public abstract class MultiTimeMegawidget extends
     /**
      * Set the minimum and maximum values.
      * 
-     * @param minimumValue
-     *            New minimum value; must be less than or equal to <code>
-     *            maximumValue</code>.
-     * @param maximumValue
-     *            New maximum value; must be greater than or equal to
-     *            <code>minimumValue</code>.
+     * @param minimumValues
+     *            Map of state identifiers to their minimum values.
+     * @param maximumValues
+     *            Map of state identifiers to their maximum values.
      * @throws MegawidgetPropertyException
      *             If the new values are not valid.
      */
@@ -786,14 +788,26 @@ public abstract class MultiTimeMegawidget extends
         editabilityForIds.put(identifier, editable);
         if (isEditable()) {
             timeComponentsForIds.get(identifier).setEditable(editable, helper);
-            scale.setConstrainedThumbEditable(
-                    ((MultiTimeMegawidgetSpecifier) getSpecifier())
-                            .getIndicesForStateIdentifiers().get(identifier),
-                    isScaleThumbEditable(identifier));
+            setStateThumbEditable(identifier);
         }
     }
 
     // Protected Methods
+
+    /**
+     * Set the thumb in the scale widget that goes with the specified identifier
+     * to have the correct editability.
+     * 
+     * @param identifier
+     *            State identifier which which the thumb to have its editability
+     *            updated is associated.
+     */
+    protected final void setStateThumbEditable(String identifier) {
+        scale.setConstrainedThumbEditable(
+                ((MultiTimeMegawidgetSpecifier) getSpecifier())
+                        .getIndicesForStateIdentifiers().get(identifier),
+                isScaleThumbEditable(identifier));
+    }
 
     /**
      * Create a time component for the specified state.

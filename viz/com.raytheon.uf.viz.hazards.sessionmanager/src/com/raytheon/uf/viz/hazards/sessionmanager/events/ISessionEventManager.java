@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -73,6 +74,9 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      that an event-modifying script is to be executed.
  * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
+ * Feb  1, 2015 2331       Chris.Golden Added code to track the allowable boundaries of all hazard
+ *                                      events' start and end times, so that the user will not move
+ *                                      them beyond the allowed ranges.
  * </pre>
  * 
  * @author bsteffen
@@ -155,6 +159,23 @@ public interface ISessionEventManager<E extends IHazardEvent> {
             String significance, String subType, IOriginator originator);
 
     /**
+     * Set the specified event's time range.
+     * 
+     * @param event
+     *            Event to be modified.
+     * @param startTime
+     *            New start time.
+     * @param endTime
+     *            New end time.
+     * @originator Originator of this change.
+     * @return True if the new time range is now in use, false if it was
+     *         rejected because one or both values fell outside their allowed
+     *         boundaries.
+     */
+    public boolean setEventTimeRange(ObservedHazardEvent event, Date startTime,
+            Date endTime, IOriginator originator);
+
+    /**
      * Get the megawidget specifier manager for the specified event. Note that
      * this method must be implemented to return a cached manager if
      * appropriate, unlike the
@@ -168,6 +189,22 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *         the megawidgets.
      */
     public MegawidgetSpecifierManager getMegawidgetSpecifiers(E event);
+
+    /**
+     * Get the duration selector choices that are available for the specified
+     * event, given the latter's status.
+     * 
+     * @param event
+     *            Event for which to fetch the duration selector choices.
+     * @return List of choices; each of these is of the form given by the
+     *         description of the
+     *         {@link gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValidatorHelper}
+     *         class. The list is pruned of any choices that are not currently
+     *         available for the specified event if its end time cannot shrink
+     *         or expand. If the specified event does not use a duration
+     *         selector for its end time, an empty list is returned.
+     */
+    public List<String> getDurationChoices(E event);
 
     /**
      * Receive notification that a command was invoked within the user interface
@@ -268,14 +305,6 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public Collection<E> getEventsForCurrentSettings();
 
     /**
-     * Tests whether it is valid to change a hazards start or end time
-     * 
-     * @param event
-     * @return
-     */
-    public boolean canChangeTimeRange(E event);
-
-    /**
      * Tests whether it is valid to change a hazard type(includes phen, sig, and
      * subtype).
      * 
@@ -368,6 +397,40 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *         their end time "until further notice" mode toggled.
      */
     public Set<String> getEventIdsAllowingUntilFurtherNotice();
+
+    /**
+     * Get a map of hazard event identifiers to their corresponding start time
+     * editability limitations. Each hazard event being managed must have an
+     * entry in this map. The returned object will be kept current by the
+     * instance of this class, so that it will continue to be valid as long as
+     * the session event manager exists. At any given instant after it is
+     * fetched via this method, it may be queried to determine the start time
+     * boundaries for a specific hazard event within this session.
+     * <p>
+     * Note that the map is unmodifiable; attempts to modify it will result in
+     * an {@link UnsupportedOperationException}.
+     * 
+     * @return Map of hazard event identifiers to their corresponding start time
+     *         editability limitations.
+     */
+    public Map<String, Range<Long>> getStartTimeBoundariesForEventIds();
+
+    /**
+     * Get a map of hazard event identifiers to their corresponding end time
+     * editability limitations. Each hazard event being managed must have an
+     * entry in this map. The returned object will be kept current by the
+     * instance of this class, so that it will continue to be valid as long as
+     * the session event manager exists. At any given instant after it is
+     * fetched via this method, it may be queried to determine the end time
+     * boundaries for a specific hazard event within this session.
+     * <p>
+     * Note that the map is unmodifiable; attempts to modify it will result in
+     * an {@link UnsupportedOperationException}.
+     * 
+     * @return Map of hazard event identifiers to their corresponding end time
+     *         editability limitations.
+     */
+    public Map<String, Range<Long>> getEndTimeBoundariesForEventIds();
 
     /**
      * Sets the state of the event to ENDED, persists it to the database and

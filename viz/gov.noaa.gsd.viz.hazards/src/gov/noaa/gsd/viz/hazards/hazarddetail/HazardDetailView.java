@@ -19,6 +19,7 @@ import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.ui.BasicWidgetDelegateHelper;
 import gov.noaa.gsd.viz.hazards.ui.ChoiceStateChangerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.CommandInvokerDelegate;
+import gov.noaa.gsd.viz.hazards.ui.QualifiedStateChangerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.StateChangerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.ViewPartDelegateView;
 import gov.noaa.gsd.viz.hazards.ui.ViewPartQualifiedWidgetDelegateHelper;
@@ -26,6 +27,7 @@ import gov.noaa.gsd.viz.hazards.ui.ViewPartWidgetDelegateHelper;
 import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
 import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IWidget;
@@ -45,6 +47,7 @@ import org.eclipse.ui.internal.WorkbenchPage;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Range;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.VizApp;
 
@@ -116,6 +119,9 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                           scroll origins for each hazard event to
  *                                           more comprehensive megawidget display
  *                                           settings.
+ * Feb 03, 2015   2331     Chris.Golden      Added support for limiting the values
+ *                                           that an event's start or end time can
+ *                                           take on.
  * </pre>
  * 
  * @author Chris.Golden
@@ -446,6 +452,21 @@ public class HazardDetailView extends
                     }, this), RUNNABLE_ASYNC_SCHEDULER);
 
     /**
+     * Time range boundaries state changer delegate.
+     */
+    private final IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> timeRangeBoundariesChanger = new QualifiedStateChangerDelegate<>(
+            new ViewPartQualifiedWidgetDelegateHelper<>(
+                    new Callable<IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>>>() {
+
+                        @Override
+                        public IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> call()
+                                throws Exception {
+                            return getViewPart()
+                                    .getTimeRangeBoundariesChanger();
+                        }
+                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
      * Duration state changer delegate.
      */
     private final IChoiceStateChanger<String, String, String, String> durationChanger = new ChoiceStateChangerDelegate<>(
@@ -684,6 +705,11 @@ public class HazardDetailView extends
     @Override
     public IStateChanger<String, TimeRange> getTimeRangeChanger() {
         return timeRangeChanger;
+    }
+
+    @Override
+    public IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> getTimeRangeBoundariesChanger() {
+        return timeRangeBoundariesChanger;
     }
 
     @Override

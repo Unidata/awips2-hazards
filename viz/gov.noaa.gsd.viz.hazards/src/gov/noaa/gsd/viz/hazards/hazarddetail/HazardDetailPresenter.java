@@ -14,6 +14,7 @@ import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction.ActionType;
+import gov.noaa.gsd.viz.hazards.hazarddetail.IHazardDetailView.TimeRangeBoundary;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
@@ -39,6 +40,7 @@ import com.google.common.base.Predicates;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
@@ -59,6 +61,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventScriptExtra
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionLastChangedEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventConflictsModified;
@@ -129,13 +132,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Nov 18, 2014    4124    Chris.Golden      Adapted to new time manager.
  * Dec 05, 2014    4124    Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Dec 13, 2014    4959    Dan Schaffer      Spatial Display cleanup and other bug fixes
  * Jan 08, 2015    5700    Chris.Golden      Changed to generalize the meaning of a
  *                                           command invocation for a particular
  *                                           event, since it no longer only means
  *                                           that an event-modifying script is to be
  *                                           executed; it may instead trigger a
  *                                           metadata refresh.
+ * Feb 03, 2015    2331    Chris.Golden      Added support for limiting the values that
+ *                                           an event's start or end time can take on.
  * </pre>
  * 
  * @author Chris.Golden
@@ -458,11 +463,20 @@ public class HazardDetailPresenter extends
 
         @Override
         public void stateChanged(String identifier, TimeRange value) {
+
+            /*
+             * Do nothing unless the event is around. If it is, but the setting
+             * of its time range fails, it is because the time range would have
+             * violated the start and/or end time boundaries; in that case,
+             * notify the view of the reset to the original values.
+             */
             ObservedHazardEvent event = getEventByIdentifier(identifier);
-            if (event != null) {
-                event.setTimeRange(new Date(value.getStart().getTime()),
-                        new Date(value.getEnd().getTime()),
-                        UIOriginator.HAZARD_INFORMATION_DIALOG);
+            if ((event != null)
+                    && (getModel().getEventManager().setEventTimeRange(event,
+                            new Date(value.getStart().getTime()),
+                            new Date(value.getEnd().getTime()),
+                            UIOriginator.HAZARD_INFORMATION_DIALOG) == false)) {
+                updateViewTimeRange(event);
             }
         }
 
@@ -841,6 +855,24 @@ public class HazardDetailPresenter extends
     }
 
     /**
+     * Respond to an event's time range boundaries having changed.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void sessionEventTimeRangeBoundariesModified(
+            final SessionEventsTimeRangeBoundariesModified change) {
+        if (detailViewShowing && isVisibleEventInCollection(change.getEvents())) {
+            ObservedHazardEvent event = getVisibleEvent();
+            if (event != null) {
+                updateViewTimeRangeBoundaries(event);
+                updateViewDurations(event);
+            }
+        }
+    }
+
+    /**
      * Respond to an event's metadata megawidget specifiers having changed.
      * 
      * @param change
@@ -1069,6 +1101,26 @@ public class HazardDetailPresenter extends
     }
 
     /**
+     * Determine whether or not the currently visible event is found within the
+     * specified collection of events.
+     * 
+     * @param events
+     *            Events to be checked for containment of the currently visible
+     *            event.
+     * @return True if the currently visible event is found within the specified
+     *         events, false otherwise.
+     */
+    private boolean isVisibleEventInCollection(
+            Collection<ObservedHazardEvent> events) {
+        for (ObservedHazardEvent event : events) {
+            if (event.getEventID().equals(visibleEventIdentifier)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Determine whether or not this presenter is the originator of the
      * specified modification.
      * 
@@ -1231,6 +1283,22 @@ public class HazardDetailPresenter extends
     }
 
     /**
+     * Update the view to use the current time range boundaries for the event.
+     * 
+     * @param event
+     *            Event for which the update should occur.
+     */
+    private void updateViewTimeRangeBoundaries(ObservedHazardEvent event) {
+        Map<TimeRangeBoundary, Range<Long>> map = new HashMap<>(2, 1.0f);
+        map.put(TimeRangeBoundary.START, getModel().getEventManager()
+                .getStartTimeBoundariesForEventIds().get(event.getEventID()));
+        map.put(TimeRangeBoundary.END, getModel().getEventManager()
+                .getEndTimeBoundariesForEventIds().get(event.getEventID()));
+        getView().getTimeRangeBoundariesChanger().setStates(event.getEventID(),
+                map);
+    }
+
+    /**
      * Update the view to use the duration list goes with the current event.
      * 
      * @param event
@@ -1238,8 +1306,8 @@ public class HazardDetailPresenter extends
      */
     private void updateViewDurations(ObservedHazardEvent event) {
         getView().getDurationChanger().setChoices(event.getEventID(),
-                getModel().getConfigurationManager().getDurationChoices(event),
-                null, null);
+                getModel().getEventManager().getDurationChoices(event), null,
+                null);
     }
 
     /**
@@ -1327,6 +1395,7 @@ public class HazardDetailPresenter extends
             updateViewCategory(event);
             updateViewCategoryEditability(event);
             updateViewTypeList(event);
+            updateViewTimeRangeBoundaries(event);
             updateViewTimeRange(event);
             updateViewMetadataSpecifiers(event);
             updateViewEndTimeUntilFurtherNoticeEnabled(event);

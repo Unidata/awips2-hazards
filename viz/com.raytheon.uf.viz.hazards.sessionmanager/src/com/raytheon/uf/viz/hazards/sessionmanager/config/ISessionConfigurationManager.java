@@ -65,6 +65,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Jan 21, 2015 3626       Chris.Golden Added method to retrieve hazard-type-first
  *                                      recommender based upon hazard type.
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
+ * Feb 01, 2015 2331       Chris.Golden Added methods to determine the value of flags
+ *                                      indicating the constraints that a hazard event
+ *                                      type puts on start and end time editability.
  * </pre>
  * 
  * @author bsteffen
@@ -243,6 +246,13 @@ public interface ISessionConfigurationManager<S extends ISettings> {
     /**
      * Get the duration selector choices from the hazard types configuration
      * file for an event.
+     * <p>
+     * <strong>Note</strong>: The list of choices that is returned is the
+     * complete list as specified for the event's type. If the list should be
+     * pruned so that it only includes choices available for the event's current
+     * status, {@link ISessionEventManager#getDurationChoices(IHazardEvent)}
+     * should be used instead.
+     * </p>
      * 
      * @param event
      *            Event for which to fetch the duration selector choices.
@@ -253,6 +263,39 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      *         for its end time, an empty list is returned.
      */
     public List<String> getDurationChoices(IHazardEvent event);
+
+    /**
+     * Get the start-time-is-current-time flag from the hazard types
+     * configuration file for an event.
+     * 
+     * @param event
+     *            Event for which to fetch the flag.
+     * @return True if the (unissued) event's start time should be the CAVE
+     *         current time,
+     */
+    public boolean isStartTimeIsCurrentTime(IHazardEvent event);
+
+    /**
+     * Get allow-time-to-expand flag from the hazard types configuration file
+     * for an event.
+     * 
+     * @param event
+     *            Event for which to fetch the flag.
+     * @return True if the (issued) event's end time should be allowed to be
+     *         pushed farther into the future.
+     */
+    public boolean isAllowTimeExpand(IHazardEvent event);
+
+    /**
+     * Get allow-time-to-shrink flag from the hazard types configuration file
+     * for an event.
+     * 
+     * @param event
+     *            Event for which to fetch the flag.
+     * @return True if the (issued) event's end time should be allowed to be
+     *         pushed closer to the start time.
+     */
+    public boolean isAllowTimeShrink(IHazardEvent event);
 
     /**
      * Get the recommender identifier associated with the specified hazard type

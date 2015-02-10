@@ -60,6 +60,16 @@
 #         polygonBased      True if the hazard type is based on polygons  (TODO Better explanation)
 #         hazardTypeFirstRecommender  Set the name of the recommender you want launched if the 
 #                                     forecaster opts for the Hazard Type First workflow 
+#
+#         startTimeIsCurrentTime: Affects unissued and issued; if true, start time is never editable by the user, 
+#                                 and must be the current CAVE clock time.  Default is False.
+#         allowTimeExpand: Affects issued events only; if true, an event can have its end time pulled right (made later than it was)
+#                          Default is True.
+#         allowTimeShrink: Affects issued events only; if true, an event can have its end time pulled left (made sooner than what it was)
+#                          Default is True.
+#
+#         allowTimeChange: Ignored by the GUI; used in VTEC processing
+#         allowAreaChange: Ignored by the GUI; used in VTEC processing
 
 HOURS = 3600000
 MINUTES = 60000
@@ -208,7 +218,7 @@ HazardTypes = {
               'hazardConflictList': ['CF.W', 'CF.Y', 'HU.A', 'HU.W', 'SS.A', 'SS.W', 'TR.A', 'TY.A', 'TR.W'],
               'ugcType': 'zone', 
               'ugcLabel': 'name',
-              'hazrdClipArea': 'cwa',
+              'hazardClipArea': 'cwa',
               'inclusionFractionTest' : True,
               'inclusionFraction': 0.1,
               'defaultDuration': 8 * HOURS,
@@ -363,6 +373,9 @@ HazardTypes = {
               'inclusionFraction': 0.1,
               'defaultDuration': 30 * MINUTES,
               'durationIncrement': 1, 
+              'startTimeIsCurrentTime': True,
+              'allowTimeExpand': False,
+              'allowTimeShrink': False,
               },
     'FA.A' : {'headline': 'AREAL FLOOD WATCH',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -400,6 +413,9 @@ HazardTypes = {
               'inclusionFraction': 0.1,
               'inclusionAreaTest' : True,
               'inclusionAreaInSqKm' : 1.0,
+              'startTimeIsCurrentTime': True,
+              'allowTimeExpand': True,
+              'allowTimeShrink': False,
               },
     'FA.Y' : {'headline': 'AREAL FLOOD ADVISORY',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -422,6 +438,9 @@ HazardTypes = {
               'inclusionFraction': 0.1,
               'inclusionAreaTest' : True,
               'inclusionAreaInSqKm' : 1.0,
+              'startTimeIsCurrentTime': True,
+              'allowTimeExpand': True,
+              'allowTimeShrink': False,
               },
     'FF.A' : {'headline': 'FLASH FLOOD WATCH',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -460,6 +479,9 @@ HazardTypes = {
               'inclusionAreaTest' : True,
               'inclusionAreaInSqKm' : 1.0,
               'hazardTypeFirstRecommender':'StormTrackTool',
+              'startTimeIsCurrentTime': True,
+              'allowTimeExpand': True,
+              'allowTimeShrink': False,
               },
     'FF.W.Convective' : {
               'headline': 'FLASH FLOOD WARNING',
@@ -482,6 +504,9 @@ HazardTypes = {
               'inclusionFraction': 0.1,
               'inclusionAreaTest' : True,
               'inclusionAreaInSqKm' : 1.0,
+              'startTimeIsCurrentTime': True,
+              'allowTimeExpand': True,
+              'allowTimeShrink': False,
               },
     'FF.W.NonConvective' : {
               'headline': 'FLASH FLOOD WARNING',
@@ -505,6 +530,9 @@ HazardTypes = {
               'inclusionAreaTest' : False,
               'inclusionAreaInSqKm' : 1.0,
               'hazardTypeFirstRecommender':'StormTrackTool',
+              'startTimeIsCurrentTime': True,
+              'allowTimeExpand': True,
+              'allowTimeShrink': False,
               },
     'FG.Y' : {'headline': 'DENSE FOG ADVISORY',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -747,6 +775,8 @@ HazardTypes = {
               'hazardClipArea' : 'cwa',
               'defaultDuration': 8 * HOURS,
               'durationIncrement': 60, 
+              'allowTimeExpand': False,
+              'allowTimeShrink': False,
               },
     'HW.A' : {'headline': 'HIGH WIND WATCH',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -1003,6 +1033,9 @@ HazardTypes = {
               'hazardClipArea' : 'marinezones',
               'defaultDuration': 30 * MINUTES,
               'durationIncrement': 15, 
+              'startTimeIsCurrentTime': True,
+              'allowTimeExpand': False,
+              'allowTimeShrink': False,
               },
     'MF.Y' : {'headline': 'DENSE FOG ADVISORY',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -1226,6 +1259,9 @@ HazardTypes = {
               'hazardClipArea' : 'cwa',
               'defaultDuration': 30 * MINUTES,
               'durationIncrement': 15, 
+              'startTimeIsCurrentTime': True,
+              'allowTimeExpand': False,
+              'allowTimeShrink': False,
               },
     'SW.Y' : {'headline': 'SMALL CRAFT ADVISORY FOR HAZARDOUS SEAS',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -1269,6 +1305,9 @@ HazardTypes = {
               'hazardClipArea' : 'cwa',
               'defaultDuration': 30 * MINUTES,
               'durationIncrement': 15, 
+              'startTimeIsCurrentTime': True,
+              'allowTimeExpand': False,
+              'allowTimeShrink': False,
               },
     'TR.A' : {'headline': 'TROPICAL STORM WATCH',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -1284,6 +1323,8 @@ HazardTypes = {
               'inclusionFraction': 0.1,
               'defaultDuration': 8 * HOURS,
               'durationIncrement': 60, 
+              'allowTimeExpand': False,
+              'allowTimeShrink': False,
               },
     'TR.W' : {'headline': 'TROPICAL STORM WARNING',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -1299,6 +1340,8 @@ HazardTypes = {
               'inclusionFraction': 0.1,
               'defaultDuration': 8 * HOURS,
               'durationIncrement': 60, 
+              'allowTimeExpand': False,
+              'allowTimeShrink': False,
               },
     'TS.A' : {'headline': 'TSUNAMI WATCH',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -1344,6 +1387,8 @@ HazardTypes = {
               'hazardClipArea' : 'cwa',
               'defaultDuration': 8 * HOURS,
               'durationIncrement': 60, 
+              'allowTimeExpand': False,
+              'allowTimeShrink': False,
               },
     'TY.W' : {'headline': 'TYPHOON WARNING',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -1359,6 +1404,8 @@ HazardTypes = {
               'inclusionFraction': 0.1,
               'defaultDuration': 8 * HOURS,
               'durationIncrement': 60, 
+              'allowTimeExpand': False,
+              'allowTimeShrink': False,
               },
     'UP.A' : {'headline': 'HEAVY FREEZING SPRAY WATCH',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],

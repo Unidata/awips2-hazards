@@ -23,6 +23,7 @@ import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
@@ -34,6 +35,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.eclipse.jface.action.Action;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Range;
 import com.raytheon.uf.common.time.TimeRange;
 
 /**
@@ -54,6 +56,8 @@ import com.raytheon.uf.common.time.TimeRange;
  * Jul 03, 2014  3512      Chris.Golden   Changed to implement new parts of interface.
  * Sep 16, 2014  4753      Chris.Golden   Changed event script running to include mutable
  *                                        properties.
+ * Feb 03, 2015  2331      Chris.Golden   Added support for limiting the values that an
+ *                                        event's start or end time can take on.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -195,6 +199,40 @@ public class HazardDetailViewForTesting implements
         }
     };
 
+    private final IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> timeRangeBoundariesChanger = new IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>>() {
+
+        @Override
+        public void setEnabled(String qualifier, TimeRangeBoundary identifier,
+                boolean enable) {
+        }
+
+        @Override
+        public void setEditable(String qualifier, TimeRangeBoundary identifier,
+                boolean editable) {
+        }
+
+        @Override
+        public Range<Long> getState(String qualifier,
+                TimeRangeBoundary identifier) {
+            return null;
+        }
+
+        @Override
+        public void setState(String qualifier, TimeRangeBoundary identifier,
+                Range<Long> value) {
+        }
+
+        @Override
+        public void setStates(String qualifier,
+                Map<TimeRangeBoundary, Range<Long>> valuesForIdentifiers) {
+        }
+
+        @Override
+        public void setStateChangeHandler(
+                IQualifiedStateChangeHandler<String, TimeRangeBoundary, Range<Long>> handler) {
+        }
+    };
+
     private final IMetadataStateChanger metadataChanger = new IMetadataStateChanger() {
 
         @Override
@@ -315,6 +353,11 @@ public class HazardDetailViewForTesting implements
     @Override
     public IStateChanger<String, TimeRange> getTimeRangeChanger() {
         return timeRangeChanger;
+    }
+
+    @Override
+    public IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> getTimeRangeBoundariesChanger() {
+        return timeRangeBoundariesChanger;
     }
 
     @Override

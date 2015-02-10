@@ -20,26 +20,34 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.time.impl;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
 import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.time.DateUtils;
 
 import com.google.common.collect.Range;
 import com.google.common.collect.Ranges;
+import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
@@ -70,6 +78,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                     events' time ranges whenever the
  *                                     event selection changes or the start
  *                                     or end time of an event changes.
+ * Jan 30, 2015 2331       C. Golden   Added timer that at regular intervals
+ *                                     fires off time tick notifications.
  * </pre>
  * 
  * @author bsteffen
@@ -78,6 +88,44 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
 
 public class SessionTimeManager implements ISessionTimeManager {
 
+    // Private Static Constants
+
+    /**
+     * Scheduler to be used to ensure that timer notifications are published on
+     * the main thread. For now, the main thread is the UI thread; when this is
+     * changed, this will be rendered obsolete, as at that point there will need
+     * to be a blocking queue of {@link Runnable} instances available to allow
+     * the new worker thread to be fed jobs. At that point, this should be
+     * replaced with an object that enqueues the <code>Runnable</code>s,
+     * probably a singleton that may be accessed by the various components in
+     * gov.noaa.gsd.viz.hazards and elsewhere (presumably passed to the session
+     * manager when the latter is created).
+     */
+    @Deprecated
+    private static final IRunnableAsynchronousScheduler RUNNABLE_ASYNC_SCHEDULER = new IRunnableAsynchronousScheduler() {
+
+        @Override
+        public void schedule(Runnable runnable) {
+
+            /*
+             * Since the UI thread is currently the thread being used for nearly
+             * everything, just run any asynchronous tasks there.
+             */
+            VizApp.runAsync(runnable);
+        }
+    };
+
+    /**
+     * Number of milliseconds in a minute.
+     */
+    private static final long MINUTE_AS_MILLISECONDS = TimeUnit.MINUTES
+            .toMillis(1L);
+
+    // Private Variables
+
+    /**
+     * Provider of the current time.
+     */
     private final ICurrentTimeProvider currentTimeProvider = new ICurrentTimeProvider() {
         @Override
         public long getCurrentTime() {
@@ -85,39 +133,96 @@ public class SessionTimeManager implements ISessionTimeManager {
         }
     };
 
+    /**
+     * Notification sender, used to send out time-related notifications.
+     */
     private final ISessionNotificationSender notificationSender;
 
+    /**
+     * Currently selected time.
+     */
     private SelectedTime selectedTime;
 
+    /**
+     * Time range that is "visible" in temporal displays.
+     */
     private TimeRange visibleTimeRange = new TimeRange(0,
             TimeUnit.DAYS.toMillis(1));
 
+    /**
+     * Timer used to fire off regular time tick notifications when time is
+     * ticking.
+     */
+    private Timer timer;
+
+    /**
+     * Simulated time change listener, used to receive notifications that the
+     * time has been set by the user, or frozen, or set back to current real
+     * time.
+     */
+    private final ISimulatedTimeChangeListener simulatedTimeChangeListener = new ISimulatedTimeChangeListener() {
+
+        @Override
+        public void timechanged() {
+
+            /*
+             * Remove the scheduled timer events.
+             */
+            if (timer != null) {
+                timer.cancel();
+                timer = null;
+            }
+
+            /*
+             * Notify any listeners that the CAVE current time has changed.
+             */
+            publishNotificationOfTimeChange();
+
+            /*
+             * If the CAVE current time is not frozen, schedule notifications to
+             * occur on the minute.
+             */
+            scheduleTimerNotifications();
+        }
+    };
+
+    // Public Constructors
+
+    /**
+     * Construct a standard instance.
+     * 
+     * @param notificationSender
+     *            Notification sender, used to send out time-related
+     *            notifications.
+     */
     public SessionTimeManager(ISessionNotificationSender notificationSender) {
         this.notificationSender = notificationSender;
         Date currentTime = getCurrentTime();
         selectedTime = new SelectedTime(currentTime.getTime());
+
+        /*
+         * Create a timer that fires every CAVE current time minute, and
+         * schedule the firings. Also subscribe to notifications of simulated
+         * time changes, and for each such change, reschedule the timer
+         * notifications if simulated time has not been frozen.
+         */
+        scheduleTimerNotifications();
+        SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(
+                simulatedTimeChangeListener);
     }
+
+    // Public Methods
 
     @Override
     public ICurrentTimeProvider getCurrentTimeProvider() {
         return currentTimeProvider;
     }
 
-    /**
-     * Get the current system time, as an epoch time in milliseconds.
-     * 
-     * @return Current system time, as an epoch time in milliseconds.
-     */
     @Override
     public long getCurrentTimeInMillis() {
         return getCurrentTime().getTime();
     }
 
-    /**
-     * Get the current system time.
-     * 
-     * @return Current system time.
-     */
     @Override
     public Date getCurrentTime() {
         return SimulatedTime.getSystemTime().getTime();
@@ -215,10 +320,77 @@ public class SessionTimeManager implements ISessionTimeManager {
 
     @Override
     public void shutdown() {
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
+        SimulatedTime.getSystemTime().removeSimulatedTimeChangeListener(
+                simulatedTimeChangeListener);
+    }
+
+    // Private Methods
+
+    /**
+     * Schedule the timer notifications.
+     */
+    private void scheduleTimerNotifications() {
 
         /*
-         * Nothing to do right now.
+         * If time is frozen, do not start a timer.
          */
+        if (SimulatedTime.getSystemTime().isFrozen()) {
+            return;
+        }
+
+        /*
+         * Create the timer.
+         */
+        timer = new Timer(true);
+
+        /*
+         * Get the number of milliseconds between the current simulated time and
+         * when the simulated time rolls over to the next minute.
+         */
+        Date simulatedTimeCurrent = SimulatedTime.getSystemTime().getTime();
+        Date simulatedTimeStartOfCurrentMinute = DateUtils.truncate(
+                simulatedTimeCurrent, Calendar.MINUTE);
+        long offsetUntilFirstSimulatedMinuteChange = simulatedTimeStartOfCurrentMinute
+                .getTime()
+                + MINUTE_AS_MILLISECONDS
+                - simulatedTimeCurrent.getTime();
+
+        /*
+         * Schedule the timer to fire a notification off each minute. Using this
+         * method instead of schedule() ensures that even if something delays
+         * the notifications of the minute changing, future notifications will
+         * occur on the minute change.
+         * 
+         * TODO: It is possible for the "scale" of time to be set in
+         * SimulatedTime, which changes time's rate of change (simulating the
+         * speeding up or slowing down of time's passage). This ability is not
+         * currently used, but if it ever is, the delay calculated above would
+         * need to be adjusted accordingly, as would the interval between
+         * firings.
+         */
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
+                    @Override
+                    public void run() {
+                        publishNotificationOfTimeChange();
+                    }
+                });
+            }
+        }, offsetUntilFirstSimulatedMinuteChange, MINUTE_AS_MILLISECONDS);
+    }
+
+    /**
+     * Publish notification of a time change.
+     */
+    private void publishNotificationOfTimeChange() {
+        notificationSender.postNotificationAsync(new CurrentTimeChanged(
+                Originator.OTHER, SessionTimeManager.this));
     }
 
     /**
@@ -301,8 +473,10 @@ public class SessionTimeManager implements ISessionTimeManager {
      */
     private void ensureVisibleTimeRangeIncludesLowerSelectedTime() {
 
-        // Ensure that the selected time is visible, and not just at
-        // the edge of the ruler.
+        /*
+         * Ensure that the selected time is visible, and not just at the edge of
+         * the ruler.
+         */
         long lower = visibleTimeRange.getStart().getTime();
         long upper = visibleTimeRange.getEnd().getTime();
         long range = visibleTimeRange.getDuration();
@@ -314,5 +488,4 @@ public class SessionTimeManager implements ISessionTimeManager {
             setVisibleTimeRange(new TimeRange(lower, upper), Originator.OTHER);
         }
     }
-
 }
