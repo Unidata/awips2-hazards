@@ -20,6 +20,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * ------------ ---------- ----------- --------------------------
  * 4/11/12                 Bryon.Lawrence    Initial creation
  * Feb 03, 2015    3865    Chris.Cody        Check for valid Active Editor class
+ * Feb 12, 2015 4959       Dan Schaffer      Modify MB3 add/remove UGCs to match Warngen
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -70,20 +71,23 @@ public enum TextPositioner {
         AbstractEditor editor = EditorUtil
                 .getActiveEditorAs(AbstractEditor.class);
 
-        if (editor != null) {
+        if (editor != null && centerPoint != null) {
             double[] centerXY = editor.translateInverseClick(centerPoint);
             centerXY[0] = computeXpos(centerXY[0]);
             centerXY[1] = computeYpos(centerXY[1]);
             centerCoord = editor.translateClick(centerXY[0], centerXY[1]);
         }
 
-        // It is possible that this text position will not be in
-        // the view area. This seems to be a problem when
-        // switching from the D2D to GFE perspectives.
+        /*
+         * It is possible that this text position will not be in the view area.
+         * This seems to be a problem when switching from the D2D to GFE
+         * perspectives. Also when handling multi-polygons.
+         */
         if (centerCoord != null) {
             return centerCoord;
         } else {
             return centerPoint;
         }
+
     }
 }

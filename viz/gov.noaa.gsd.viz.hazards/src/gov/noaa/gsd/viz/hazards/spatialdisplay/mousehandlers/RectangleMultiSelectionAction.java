@@ -58,6 +58,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Dec 05, 2014     4124    Chris.Golden      Changed to work with newly parameterized
  *                                            config manager.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -134,7 +135,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
          * Geometry factory. Do not need to recreate this every time it is
          * needed.
          */
-        private final GeometryFactory geoFactory = new GeometryFactory();
+        private final GeometryFactory geometryFactory = new GeometryFactory();
 
         /**
          * Attribute dialog for displaying track points info
@@ -303,7 +304,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
 
                 Envelope envelope = new Envelope(anchorCorner, dragCorner);
 
-                Geometry polygon = geoFactory.toGeometry(envelope);
+                Geometry polygon = geometryFactory.toGeometry(envelope);
                 getSpatialDisplay().removeGhostLine();
 
                 anchorCorner = null;
@@ -388,7 +389,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                 dragCorner = loc;
 
                 Envelope envelope = new Envelope(anchorCorner, dragCorner);
-                Geometry polygon = geoFactory.toGeometry(envelope);
+                Geometry polygon = geometryFactory.toGeometry(envelope);
 
                 Coordinate[] points = polygon.getCoordinates();
                 // create the ghost element and put it in the drawing layer

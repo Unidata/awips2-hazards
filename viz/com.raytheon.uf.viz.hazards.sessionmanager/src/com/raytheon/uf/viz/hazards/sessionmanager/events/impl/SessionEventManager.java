@@ -19,9 +19,12 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTAINED_UGCS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ETNS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EXPIRATION_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_ALL;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_INTERSECTION;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_NONE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUE_TIME;
@@ -124,6 +127,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.TopologyException;
 import com.vividsolutions.jts.operation.valid.IsValidOp;
@@ -239,6 +243,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      ranges. Also added code to advance the start and/
  *                                      or end times of events as time ticks forward when
  *                                      appropriate.
+ * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * </pre>
  * 
  * @author bsteffen
@@ -400,7 +405,7 @@ public class SessionEventManager implements
      */
     private final IMessenger messenger;
 
-    private final GeometryFactory geoFactory;
+    private final GeometryFactory geometryFactory;
 
     private ObservedHazardEvent currentEvent;
 
@@ -435,7 +440,7 @@ public class SessionEventManager implements
         SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(
                 createTimeListener());
         this.messenger = messenger;
-        geoFactory = new GeometryFactory();
+        geometryFactory = new GeometryFactory();
         this.geoMapUtilities = new GeoMapUtilities(this.configManager);
 
     }
@@ -1555,7 +1560,7 @@ public class SessionEventManager implements
                     geometryList.add(newGeometries.getGeometryN(i));
                 }
 
-                GeometryCollection geometryCollection = geoFactory
+                GeometryCollection geometryCollection = geometryFactory
                         .createGeometryCollection(geometryList
                                 .toArray(new Geometry[geometryList.size()]));
 
@@ -2708,7 +2713,7 @@ public class SessionEventManager implements
 
                     String ugcLabel = hazardTypeEntry.getUgcLabel();
 
-                    Set<IGeometryData> hatchedAreasForEvent = geoMapUtilities
+                    List<IGeometryData> hatchedAreasForEvent = geoMapUtilities
                             .buildHazardAreaForEvent(ugcType, ugcLabel, cwa,
                                     eventToCompare);
 
@@ -2779,7 +2784,7 @@ public class SessionEventManager implements
                                             .getUgcLabel();
 
                                     if (hazardTypeEntry != null) {
-                                        Set<IGeometryData> hatchedAreasEventToCheck = geoMapUtilities
+                                        List<IGeometryData> hatchedAreasEventToCheck = geoMapUtilities
                                                 .buildHazardAreaForEvent(
                                                         otherUgcType,
                                                         otherUgcLabel, cwa,
@@ -2892,8 +2897,8 @@ public class SessionEventManager implements
      */
     private Map<IHazardEvent, Collection<String>> buildConflictMap(
             IHazardEvent firstEvent, IHazardEvent secondEvent,
-            Set<IGeometryData> hatchedAreasFirstEvent,
-            Set<IGeometryData> hatchedAreasSecondEvent,
+            List<IGeometryData> hatchedAreasFirstEvent,
+            List<IGeometryData> hatchedAreasSecondEvent,
             String firstEventLabelParameter, String secondEventLabelParameter) {
 
         Map<IHazardEvent, Collection<String>> conflictingHazardsMap = new HashMap<>();
@@ -2920,7 +2925,7 @@ public class SessionEventManager implements
         } else {
 
             String labelFieldName = null;
-            Set<IGeometryData> geoWithLabelInfo = null;
+            List<IGeometryData> geoWithLabelInfo = null;
 
             if (!geoMapUtilities.isPolygonBased(firstEvent)) {
                 labelFieldName = firstEventLabelParameter;
@@ -3022,135 +3027,140 @@ public class SessionEventManager implements
                 && event.getPhenomenon() != null;
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
+     * #buildSelectedHazardProductGeometries()
+     */
     @Override
-    public boolean clipSelectedHazardGeometries() {
-        /*
-         * Clip the selected hazard polygons to the forecast area boundary. If
-         * the returned polygon is empty, then do not generate the product.
-         */
+    public boolean buildSelectedHazardProductGeometries() {
         boolean success = true;
 
         HazardTypes hazardTypes = configManager.getHazardTypes();
         Collection<ObservedHazardEvent> selectedEvents = getSelectedEvents();
-        String cwa = configManager.getSiteID();
 
         for (ObservedHazardEvent selectedEvent : selectedEvents) {
 
-            if (!selectedEvent.isClipped()) {
-                HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
-                        .getHazardType());
+            HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
+                    .getHazardType());
 
-                if (canBeClipped(selectedEvent, hazardType)) {
+            if (canBeClipped(selectedEvent, hazardType)) {
 
-                    Set<IGeometryData> geoDataSet = geoMapUtilities
-                            .getClippedMapGeometries(
-                                    hazardType.getHazardClipArea(), null, cwa,
-                                    selectedEvent);
+                List<IGeometryData> geoDataSet = geoMapUtilities
+                        .buildHazardAreaForEvent(selectedEvent);
 
-                    List<Geometry> geometryList = new ArrayList<>();
+                Geometry productGeometry = geometryFactory
+                        .createMultiPolygon(null);
+                for (IGeometryData geoData : geoDataSet) {
+                    Geometry geometry = geoData.getGeometry();
+                    productGeometry = recursiveUnion(productGeometry, geometry);
 
-                    for (IGeometryData geoData : geoDataSet) {
-                        for (int i = 0; i < geoData.getGeometry()
-                                .getNumGeometries(); ++i) {
-                            Geometry geometry = geoData.getGeometry()
-                                    .getGeometryN(i);
+                }
 
-                            if (!geometry.isEmpty()) {
-                                geometryList.add(geometry);
-                            }
-                        }
-                    }
-
-                    if (geometryList.isEmpty()) {
-                        StringBuffer warningMessage = new StringBuffer();
-                        warningMessage.append("Event "
-                                + selectedEvent.getEventID() + " ");
-                        warningMessage
-                                .append("is outside of the forecast area.\n");
-                        warningMessage.append("Product generation halted.");
-                        messenger.getWarner().warnUser("Clip Error",
-                                warningMessage.toString());
-                        success = false;
-                        break;
-                    }
-
-                    Geometry geoCollection = geoFactory
-                            .createGeometryCollection(geometryList
-                                    .toArray(new Geometry[0]));
-                    selectedEvent.setGeometry(geoCollection);
-                    selectedEvent.setClipped(true);
+                if (productGeometry.isEmpty()) {
+                    StringBuffer warningMessage = new StringBuffer();
+                    warningMessage.append("Event " + selectedEvent.getEventID()
+                            + " ");
+                    warningMessage
+                            .append("has no hazard areas inside of the forecast area.\n");
+                    messenger.getWarner().warnUser(
+                            "Product geometry calculation error",
+                            warningMessage.toString());
+                    success = false;
+                    break;
+                } else {
+                    productGeometry = reduceGeometry(productGeometry,
+                            hazardType);
+                    selectedEvent.setGeometry(productGeometry);
                 }
             }
+
         }
 
         return success;
     }
 
+    /*
+     * In edge case situations, it's possible to end up with nested polygons.
+     * Handle the nested polygons using recurstion. It is also possible to end
+     * up with points or lines, etc. For example, if you use select by area to
+     * create a an FF.W that encompasses the entire county and then MB3 to
+     * remove the county. Handle gracefully as possible by just skipping over
+     * them.
+     */
+    private Geometry recursiveUnion(Geometry result, Geometry geometry) {
+        if (geometry.getClass().isAssignableFrom(GeometryCollection.class)) {
+            GeometryCollection gc = (GeometryCollection) geometry;
+            for (int i = 0; i < gc.getNumGeometries(); i++) {
+                result = recursiveUnion(result, gc.getGeometryN(i));
+            }
+        } else {
+            if (!(geometry instanceof Point || (geometry instanceof LineString))) {
+                result = result.union(geometry);
+            }
+        }
+        return result;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
+     * #updateHazardAreas
+     * (com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent)
+     */
+    @Override
+    public void updateHazardAreas(IHazardEvent event) {
+        if (event.getHazardType() != null) {
+            Map<String, String> ugcHatchingAlgorithms = buildInitialHazardAreas(event);
+            event.addHazardAttribute(HAZARD_AREA,
+                    (Serializable) ugcHatchingAlgorithms);
+        }
+    }
+
     private boolean canBeClipped(ObservedHazardEvent selectedEvent,
             HazardTypeEntry hazardType) {
         return hazardType != null
+                && geoMapUtilities.isPolygonBased(selectedEvent)
                 && (!HazardStatus.hasEverBeenIssued(selectedEvent.getStatus()) || (HazardStatus
                         .issuedButNotEnded(selectedEvent.getStatus()) && selectedEvent
                         .isModified()));
     }
 
-    @Override
-    public void reduceSelectedHazardGeometries() {
+    private Geometry reduceGeometry(Geometry geometry,
+            HazardTypeEntry hazardTypeEntry) {
 
-        HazardTypes hazardTypes = configManager.getHazardTypes();
-        Collection<ObservedHazardEvent> selectedEvents = getSelectedEvents();
+        /*
+         * Test if point reduction is necessary...
+         */
+        int pointLimit = hazardTypeEntry.getHazardPointLimit();
 
-        for (ObservedHazardEvent selectedEvent : selectedEvents) {
+        if (pointLimit > 0) {
 
-            if (!selectedEvent.isReduced()) {
-                boolean clippedState = selectedEvent.isClipped();
-                HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
-                        .getHazardType());
+            /**
+             * TODO: Eventually we want to share the same logic WarnGen uses to
+             * reduce points. This is not accessible right not, at least without
+             * creating a dependency between Hazard Services and WarnGen.
+             */
+            if (geometry.getNumPoints() > pointLimit) {
 
-                if (canBeClipped(selectedEvent, hazardType)) {
+                double distanceTolerance = DEFAULT_DISTANCE_TOLERANCE;
 
-                    /*
-                     * Test if point reduction is necessary...
-                     */
-                    int pointLimit = hazardType.getHazardPointLimit();
+                DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(
+                        geometry);
 
-                    if (pointLimit > 0) {
-
-                        /**
-                         * TODO: Eventually we want to share the same logic
-                         * WarnGen uses to reduce points. This is not accessible
-                         * right not, at least without creating a dependency
-                         * between Hazard Services and WarnGen.
-                         */
-                        Geometry geometry = selectedEvent.getGeometry();
-
-                        if (geometry.getNumPoints() > pointLimit) {
-
-                            double distanceTolerance = DEFAULT_DISTANCE_TOLERANCE;
-
-                            DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(
-                                    geometry);
-
-                            do {
-                                simplifier
-                                        .setDistanceTolerance(distanceTolerance);
-                                geometry = simplifier.getResultGeometry();
-                                distanceTolerance += DEFAULT_DISTANCE_TOLERANCE_INCREMENT;
-                            } while (geometry.getNumPoints() > pointLimit);
-                        }
-
-                        selectedEvent.setGeometry(geometry);
-                        Serializable containedUgcs = (Serializable) buildContainedUGCs(selectedEvent);
-                        selectedEvent.addHazardAttribute(CONTAINED_UGCS,
-                                containedUgcs);
-
-                        selectedEvent.setReduced(true);
-                        selectedEvent.setClipped(clippedState);
-                    }
-
-                }
+                do {
+                    simplifier.setDistanceTolerance(distanceTolerance);
+                    geometry = simplifier.getResultGeometry();
+                    distanceTolerance += DEFAULT_DISTANCE_TOLERANCE_INCREMENT;
+                } while (geometry.getNumPoints() > pointLimit);
             }
         }
+        return geometry;
+
     }
 
     @Override
@@ -3214,42 +3224,6 @@ public class SessionEventManager implements
     }
 
     @Override
-    public List<String> buildUGCs(IHazardEvent hazardEvent) {
-        String mapDBtableName = geoMapUtilities.getMapDBtableName(hazardEvent);
-
-        Set<IGeometryData> hazardArea;
-
-        if (geoMapUtilities.isPolygonBased(hazardEvent)) {
-            hazardArea = geoMapUtilities.getIntersectingMapGeometries(true,
-                    hazardEvent);
-        } else {
-            hazardArea = geoMapUtilities.buildHazardAreaForEvent(hazardEvent);
-        }
-        Set<String> ugcs = geoMapUtilities.getUgcsGeometryDataMapping(
-                mapDBtableName, hazardArea).keySet();
-
-        return new ArrayList<>(ugcs);
-    }
-
-    @Override
-    public List<String> buildContainedUGCs(IHazardEvent hazardEvent) {
-
-        Set<IGeometryData> hazardArea;
-        if (geoMapUtilities.isPolygonBased(hazardEvent)) {
-            hazardArea = geoMapUtilities.getContainedMapGeometries(hazardEvent);
-        } else {
-            hazardArea = geoMapUtilities
-                    .getIntersectingMapGeometries(hazardEvent);
-        }
-        String mapDBtableName = geoMapUtilities.getMapDBtableName(hazardEvent);
-
-        Set<String> ugcs = geoMapUtilities.getUgcsGeometryDataMapping(
-                mapDBtableName, hazardArea).keySet();
-
-        return new ArrayList<>(ugcs);
-    }
-
-    @Override
     public boolean isValidGeometryChange(Geometry geometry,
             ObservedHazardEvent hazardEvent) {
         boolean result = true;
@@ -3285,13 +3259,30 @@ public class SessionEventManager implements
         return result;
     }
 
-    private Collection<ObservedHazardEvent> fromIDs(Collection<String> eventIDs) {
-        Collection<ObservedHazardEvent> events = new ArrayList<>(
-                eventIDs.size());
-        for (String eventId : eventIDs) {
-            events.add(getEventById(eventId));
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
+     * #buildInitialHatching
+     * (com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent,
+     * java.util.List)
+     */
+    @Override
+    public Map<String, String> buildInitialHazardAreas(IHazardEvent hazardEvent) {
+        List<String> ugcs = buildUGCs(hazardEvent);
+        String hazardArea;
+        if (geoMapUtilities.isPolygonBased(hazardEvent)) {
+            hazardArea = HAZARD_AREA_INTERSECTION;
+        } else {
+            hazardArea = HAZARD_AREA_ALL;
         }
-        return events;
+        Map<String, String> result = new HashMap<>();
+        for (String ugc : ugcs) {
+            result.put(ugc, hazardArea);
+        }
+        return result;
+
     }
 
     /*
@@ -3328,8 +3319,9 @@ public class SessionEventManager implements
             }
 
             @SuppressWarnings("unchecked")
-            List<String> hazardUGCs = (List<String>) hazardEvent
-                    .getHazardAttribute(CONTAINED_UGCS);
+            Map<String, String> hazardAreas = (Map<String, String>) hazardEvent
+                    .getHazardAttribute(HAZARD_AREA);
+            hazardAreas = new HashMap<>(hazardAreas);
             String mapDBtableName = geoMapUtilities
                     .getMapDBtableName(hazardEvent);
 
@@ -3337,7 +3329,7 @@ public class SessionEventManager implements
                     .getMapLabelParameter(hazardEvent);
 
             String cwa = configManager.getSiteID();
-            Geometry locationAsGeometry = geoFactory.createPoint(location);
+            Geometry locationAsGeometry = geometryFactory.createPoint(location);
             Set<IGeometryData> mapGeometryData = geoMapUtilities
                     .getMapGeometries(mapDBtableName, mapLabelParameter, cwa);
             Set<IGeometryData> mapGeometryDataContainingLocation = geoMapUtilities
@@ -3375,37 +3367,133 @@ public class SessionEventManager implements
                     Geometry enclosingUgcGeometry = allUGCs.get(enclosingUGC)
                             .getGeometry();
 
-                    if (hazardUGCs.contains(enclosingUGC)) {
+                    String hazardArea = hazardAreas.get(enclosingUGC);
+                    if (geoMapUtilities.isPolygonBased(hazardEvent)) {
+                        polygonBasedAddRemove(hazardAreas, locationAsGeometry,
+                                nonPointGeometry, enclosingUGC, hazardArea);
+                        if (!(hazardAreas.values().contains(HAZARD_AREA_ALL) || hazardAreas
+                                .values().contains(HAZARD_AREA_INTERSECTION))) {
+                            statusHandler.warn(EMPTY_GEOMETRY_ERROR);
+                            return;
+                        }
+                    }
 
-                        nonPointGeometry = nonPointGeometry
-                                .difference(enclosingUgcGeometry);
-
+                    else {
+                        nonPointGeometry = nonPolygonAddRemoveUGCs(hazardAreas,
+                                nonPointGeometry, enclosingUGC,
+                                enclosingUgcGeometry, hazardArea);
                         if (nonPointGeometry.isEmpty()) {
                             statusHandler.warn(EMPTY_GEOMETRY_ERROR);
                             return;
                         }
-                        hazardUGCs.remove(enclosingUGC);
-                    } else {
-                        nonPointGeometry = nonPointGeometry
-                                .union(enclosingUgcGeometry);
-                        hazardUGCs.add(enclosingUGC);
+
                     }
+
                 }
                 modifiedGeometries.add(nonPointGeometry);
             }
 
-            hazardEventGeometry = geoFactory
+            hazardEventGeometry = geometryFactory
                     .createGeometryCollection(modifiedGeometries
                             .toArray(new Geometry[0]));
             hazardEvent.setGeometry(hazardEventGeometry);
-            hazardEvent.addHazardAttribute(CONTAINED_UGCS,
-                    (Serializable) hazardUGCs);
+            hazardEvent.addHazardAttribute(HAZARD_AREA,
+                    (Serializable) hazardAreas, true);
         } catch (TopologyException e) {
             /*
              * /* TODO Use {@link GeometryPrecisionReducer}?
              */
             statusHandler.error("Encountered topology exception", e);
         }
+    }
+
+    private List<String> buildUGCs(IHazardEvent hazardEvent) {
+        if (geoMapUtilities.isPolygonBased(hazardEvent)) {
+            return buildPolygonIncludedUGCs(hazardEvent);
+        } else {
+            return buildNonPolygonIncludedUGCs(hazardEvent);
+        }
+    }
+
+    private List<String> buildPolygonIncludedUGCs(IHazardEvent hazardEvent) {
+        String mapDBtableName = geoMapUtilities.getMapDBtableName(hazardEvent);
+
+        Set<IGeometryData> hazardArea = geoMapUtilities
+                .getIntersectingMapGeometries(true, hazardEvent);
+
+        Set<String> ugcs = geoMapUtilities.getUgcsGeometryDataMapping(
+                mapDBtableName, hazardArea).keySet();
+
+        return new ArrayList<>(ugcs);
+    }
+
+    private List<String> buildNonPolygonIncludedUGCs(IHazardEvent hazardEvent) {
+
+        Set<IGeometryData> hazardArea = geoMapUtilities
+                .getIntersectingMapGeometries(hazardEvent);
+
+        String mapDBtableName = geoMapUtilities.getMapDBtableName(hazardEvent);
+
+        Set<String> ugcs = geoMapUtilities.getUgcsGeometryDataMapping(
+                mapDBtableName, hazardArea).keySet();
+
+        return new ArrayList<>(ugcs);
+    }
+
+    private void polygonBasedAddRemove(Map<String, String> enclosingHazardArea,
+            Geometry locationAsGeometry, Geometry nonPointGeometry,
+            String enclosingUGC, String hazardArea) {
+        if (nonPointGeometry.intersects(locationAsGeometry)) {
+            /*
+             * hazardArea is none when due to thresholding the hatching in this
+             * area not defined to begin with.
+             */
+            if (hazardArea == null || hazardArea.equals(HAZARD_AREA_NONE)) {
+                enclosingHazardArea.put(enclosingUGC, HAZARD_AREA_INTERSECTION);
+            } else {
+                enclosingHazardArea.put(enclosingUGC, HAZARD_AREA_NONE);
+            }
+        }
+
+        else {
+            /*
+             * The hazardArea is null when the user clicks on a UGC that wasn't
+             * previously included in the hazardArea
+             */
+            if (hazardArea == null || !hazardArea.equals(HAZARD_AREA_ALL)) {
+                enclosingHazardArea.put(enclosingUGC, HAZARD_AREA_ALL);
+            } else {
+                enclosingHazardArea.put(enclosingUGC, HAZARD_AREA_NONE);
+            }
+        }
+    }
+
+    private Geometry nonPolygonAddRemoveUGCs(Map<String, String> hazardAreas,
+            Geometry nonPointGeometry, String enclosingUGC,
+            Geometry enclosingUgcGeometry, String enclosingHazardArea) {
+        if (enclosingHazardArea == null
+                || !enclosingHazardArea.equals(HAZARD_AREA_ALL)) {
+            nonPointGeometry = nonPointGeometry.union(enclosingUgcGeometry);
+            hazardAreas.put(enclosingUGC, HAZARD_AREA_ALL);
+
+        }
+
+        else {
+            nonPointGeometry = nonPointGeometry
+                    .difference(enclosingUgcGeometry);
+
+            hazardAreas.put(enclosingUGC, HAZARD_AREA_NONE);
+        }
+        return nonPointGeometry;
+    }
+
+    private Collection<ObservedHazardEvent> fromIDs(Collection<String> eventIDs) {
+        Collection<ObservedHazardEvent> events = new ArrayList<>(
+                eventIDs.size());
+        for (String eventId : eventIDs) {
+            events.add(getEventById(eventId));
+        }
+        return events;
     }
 
     private List<Geometry> collectPointGeometries(
@@ -3439,4 +3527,5 @@ public class SessionEventManager implements
         }
         return result;
     }
+
 }

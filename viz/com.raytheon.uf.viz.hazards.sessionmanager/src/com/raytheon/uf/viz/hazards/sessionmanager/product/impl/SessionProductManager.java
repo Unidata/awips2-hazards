@@ -186,6 +186,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Jan 20, 2015 4476       rferrel      Implement shutdown of ProductGeneration.
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
+ * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Feb 15, 2015 2271       Dan Schaffer Incur recommender/product generator init costs immediately
  * </pre>
  * 
@@ -605,7 +606,7 @@ public class SessionProductManager implements ISessionProductManager {
          * do.
          */
         if (!validateSelectedHazardsForProductGeneration()
-                || !eventManager.clipSelectedHazardGeometries()) {
+                || !eventManager.buildSelectedHazardProductGeometries()) {
             setPreviewOrIssueOngoing(issue, false);
             return false;
         }
@@ -1275,10 +1276,9 @@ public class SessionProductManager implements ISessionProductManager {
     private EventSet<IEvent> buildEventSet(
             ProductGeneratorInformation productGeneratorInformation,
             boolean issue, String locMgrSite) {
-        if (eventManager.clipSelectedHazardGeometries() == false) {
+        if (eventManager.buildSelectedHazardProductGeometries() == false) {
             return null;
         }
-        eventManager.reduceSelectedHazardGeometries();
 
         /*
          * Update the UGC information in the Hazard Event

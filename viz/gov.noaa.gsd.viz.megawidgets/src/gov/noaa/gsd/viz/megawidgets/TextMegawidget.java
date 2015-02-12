@@ -82,6 +82,7 @@ import com.raytheon.uf.viz.spellchecker.text.SpellCheckTextViewer;
  * Aug 05, 2014   3777     Robert.Blum       Added inline spell check functionality.
  * Feb 17, 2015   4756     Chris.Golden      Added display settings saving and
  *                                           restoration.
+ * Feb 19, 2015   4959     Dan Schaffer      Fixed bug where wasn't ensuring non-null
  * </pre>
  * 
  * @author Chris.Golden
@@ -452,7 +453,8 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
                     @Override
                     public void run() {
                         StyledText textWidget = textViewer.getTextWidget();
-                        if (textWidget.isDisposed() == false) {
+                        if (textWidget != null
+                                && textWidget.isDisposed() == false) {
 
                             /*
                              * Use the caret offset specified.

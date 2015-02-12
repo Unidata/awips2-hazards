@@ -99,6 +99,8 @@ public class SelectByAreaDrawingActionGeometryResource extends
      */
     private final Map<String, List<Geometry>> hazardGeometryList;
 
+    private final GeometryFactory geometryFactory = new GeometryFactory();
+
     @Override
     public void setSpatialPresenter(SpatialPresenter spatialPresenter) {
         super.setSpatialPresenter(spatialPresenter);
@@ -285,11 +287,12 @@ public class SelectByAreaDrawingActionGeometryResource extends
                         @Override
                         public void run() {
                             // Try this polygon merging technique instead...
-                            GeometryFactory geoFactory = selectedGeometryAsList
-                                    .get(0).getFactory();
-                            Geometry selectedGeometry = geoFactory
-                                    .createGeometryCollection(selectedGeometryAsList
-                                            .toArray(new Geometry[1]));
+                            Geometry selectedGeometry = geometryFactory
+                                    .createMultiPolygon(null);
+                            for (Geometry geometry : selectedGeometryAsList) {
+                                selectedGeometry = selectedGeometry
+                                        .union(geometry);
+                            }
 
                             /*
                              * Clone the list of selected geometries.

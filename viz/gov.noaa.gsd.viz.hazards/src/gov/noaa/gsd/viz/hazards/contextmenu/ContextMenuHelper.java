@@ -66,6 +66,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * Feb  7, 2015 4375       Dan Schaffer Fixed duplicate context menu entries bug
+ * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * </pre>
  * 
  * @author mnash
@@ -306,7 +307,7 @@ public class ContextMenuHelper {
         } else if (drawing) {
             itemNames.add(CONTEXT_MENU_ADD_VERTEX);
         }
-        List<IContributionItem> items = new ArrayList<>();
+        List<IContributionItem> items = new ArrayList<>(itemNames.size());
         for (String itemName : itemNames) {
             items.add(newAction(itemName));
         }

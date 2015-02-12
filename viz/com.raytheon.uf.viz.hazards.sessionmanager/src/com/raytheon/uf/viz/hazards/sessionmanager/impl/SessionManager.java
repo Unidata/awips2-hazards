@@ -19,12 +19,13 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.impl;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTAINED_UGCS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.Map;
 
 import com.raytheon.uf.common.activetable.request.ClearPracticeVTECTableRequest;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -34,7 +35,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEvent
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeInteropRecordsRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeWarningRequest;
-import com.raytheon.uf.common.hazards.productgen.ProductGenerationException;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
@@ -98,6 +98,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Dec 05, 2014 2124       C. Golden   Changed to work with parameterized config manager.
  * Dec 08, 2014 2826       dgilling    Clear interoperability tables on reset events.
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove polygons from hazards
+ * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * </pre>
  * 
  * @author bsteffen
@@ -415,9 +416,10 @@ public class SessionManager implements
         for (IEvent event : eventList) {
             if (event instanceof IHazardEvent) {
                 IHazardEvent hevent = (IHazardEvent) event;
-                Serializable ugcs = (Serializable) eventManager
-                        .buildContainedUGCs(hevent);
-                hevent.addHazardAttribute(CONTAINED_UGCS, ugcs);
+                Map<String, String> ugcHatchingAlgorithms = eventManager
+                        .buildInitialHazardAreas(hevent);
+                hevent.addHazardAttribute(HAZARD_AREA,
+                        (Serializable) ugcHatchingAlgorithms);
                 hevent = eventManager.addEvent(hevent, Originator.OTHER);
             }
         }
@@ -471,7 +473,7 @@ public class SessionManager implements
         }
         try {
             productManager.generateProducts(issue);
-        } catch (ProductGenerationException e) {
+        } catch (Exception e) {
             setPreviewOngoing(false);
             setIssueOngoing(false);
             statusHandler.error("Error during product generation", e);

@@ -169,6 +169,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Feb 09, 2015 6260       Dan Schaffer   Fixed bugs in multi-polygon handling
  * Feb 10, 2015  3961     Chris.Cody      Add Context Menu (R-Click) for River Point (GageData) objects
+ * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Feb 15, 2015 2271       Dan Schaffer   Incur recommender/product generator init costs immediately
  * </pre>
  * 
@@ -232,7 +233,7 @@ public class SpatialDisplay extends
 
     private AbstractDrawableComponent selectedHazardLayer = null;
 
-    private final GeometryFactory geoFactory;
+    private final GeometryFactory geometryFactory;
 
     // Flag indicating whether or not to draw the handlebars
     // on the selected element.
@@ -351,7 +352,7 @@ public class SpatialDisplay extends
 
         displayMap = new ConcurrentHashMap<>();
         elSelected = new ArrayList<>();
-        geoFactory = new GeometryFactory();
+        geometryFactory = new GeometryFactory();
 
         dataManager = new SpatialDisplayDataManager();
         persistentShapeMap = new HashMap<>();
@@ -1024,7 +1025,7 @@ public class SpatialDisplay extends
         Iterator<AbstractDrawableComponent> iterator = dataManager
                 .getActiveLayer().getComponentIterator();
 
-        Point clickScreenPoint = geoFactory.createPoint(new Coordinate(
+        Point clickScreenPoint = geometryFactory.createPoint(new Coordinate(
                 screenCoord[0], screenCoord[1]));
 
         AbstractDrawableComponent closestSymbol = null;
@@ -1042,7 +1043,7 @@ public class SpatialDisplay extends
 
                     for (int i = 0; i < coords.length; ++i) {
                         screenCoord = editor.translateInverseClick(coords[i]);
-                        Point geometryPoint = geoFactory
+                        Point geometryPoint = geometryFactory
                                 .createPoint(new Coordinate(screenCoord[0],
                                         screenCoord[1]));
 
@@ -1088,7 +1089,7 @@ public class SpatialDisplay extends
          * tree and storing/resusing the Geometries.
          * 
          */
-        Point clickPoint = geoFactory.createPoint(point);
+        Point clickPoint = geometryFactory.createPoint(point);
         Geometry clickPointWithSlop = clickPoint
                 .buffer(getTranslatedHitTestSlopDistance(point, x, y));
 
@@ -1137,7 +1138,7 @@ public class SpatialDisplay extends
          * many of these. However, we can make this more efficient by using a
          * tree and storing/resusing the Geometries.
          */
-        Point clickPoint = geoFactory.createPoint(point);
+        Point clickPoint = geometryFactory.createPoint(point);
         Geometry clickPointWithSlop = clickPoint
                 .buffer(getTranslatedHitTestSlopDistance(point, x, y));
 
@@ -1216,6 +1217,7 @@ public class SpatialDisplay extends
 
         if (sessionEventManager.isValidGeometryChange(geometry, hazardEvent)) {
             hazardEvent.setGeometry(geometry);
+            sessionEventManager.updateHazardAreas(hazardEvent);
         }
     }
 
@@ -1377,13 +1379,6 @@ public class SpatialDisplay extends
      */
     public void setAllowDisposeMessage(boolean allowDisposeMessage) {
         this.allowDisposeMessage = allowDisposeMessage;
-    }
-
-    /**
-     * @return the geoFactory
-     */
-    public GeometryFactory getGeoFactory() {
-        return geoFactory;
     }
 
     /**

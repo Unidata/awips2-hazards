@@ -19,15 +19,12 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTAINED_UGCS;
-
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
@@ -100,6 +97,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      complicated, depending upon hazard
  *                                      type, status, start and end time at
  *                                      last issuance, etc.
+ * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * </pre>
  * 
  * @author bsteffen
@@ -145,17 +143,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
      * was last persisted.
      */
     private volatile Boolean modified = false;
-
-    /*
-     * Flag indicating whether or not the hazard geometry has been clipped.
-     */
-    private volatile Boolean clipped = false;
-
-    /*
-     * Flag indicating whether or not the hazard geometry has had its points
-     * reduced.
-     */
-    private volatile Boolean reduced = false;
 
     private final GeometryFactory geometryFactory = new GeometryFactory();
 
@@ -413,11 +400,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         setHazardMode(productClass, true, originator);
     }
 
-    public void setHazardAttributes(Map<String, Serializable> attributes,
-            IOriginator originator) {
-        setHazardAttributes(attributes, true, originator);
-    }
-
     public void addHazardAttribute(String key, Serializable value,
             IOriginator originator) {
         addHazardAttribute(key, value, true, originator);
@@ -530,7 +512,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         setSignificance(significance, false, originator);
         setSubType(subtype, false, originator);
 
-        updateContainedUGCs(notify);
+        eventManager.updateHazardAreas(this);
         if (notify) {
             eventManager.hazardEventModified(new SessionEventTypeModified(
                     eventManager, this, originator));
@@ -595,15 +577,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         if (changed(getGeometry(), geom)) {
             pushToStack("setGeometry", Geometry.class, getGeometry());
             delegate.setGeometry(geom);
-            updateContainedUGCs(notify);
-
-            /*
-             * Reset the clipped and point reduction flags when the geometry
-             * changes. This indicates that clipping and point reduction may
-             * need to be redone on this event.
-             */
-            this.clipped = false;
-            this.reduced = false;
 
             if (notify) {
                 eventManager
@@ -625,7 +598,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         }
     }
 
-    protected void setHazardAttributes(Map<String, Serializable> attributes,
+    private void setHazardAttributes(Map<String, Serializable> attributes,
             boolean notify, IOriginator originator) {
         Set<String> changedKeys = getChangedAttributes(attributes, true);
         if (changedKeys.isEmpty() == false) {
@@ -844,67 +817,9 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         this.modified = modified;
     }
 
-    /**
-     * Returns the clipped state of the geometry associated with this hazard.
-     * 
-     * @param
-     * @return true - the geometry associated with this hazard has been clipped
-     *         false - the geometry associated with this hazard has not been
-     *         clipped
-     */
-    public boolean isClipped() {
-        return clipped;
-    }
-
-    /**
-     * Sets the clipped state of the geometry associated with this hazard event.
-     * 
-     * @param isClipped
-     *            true - the geometry has been clipped false - the geometry has
-     *            not been clipped or the geometry was clipped but has now been
-     *            modified and needs to be reclipped.
-     * @return
-     */
-    public void setClipped(boolean isClipped) {
-        clipped = isClipped;
-    }
-
-    /**
-     * Returns the reduced state of the geometry associated with this hazard.
-     * 
-     * @param
-     * @return true - the geometry associated with this hazard has had point
-     *         reduction applied to it. false - the geometry associated with
-     *         this hazard has not had point reduction applied to it
-     */
-    public boolean isReduced() {
-        return reduced;
-    }
-
-    /**
-     * Sets the reduced state of the geometry associated with this hazard event.
-     * 
-     * @param isReduced
-     *            true - the geometry has had point reduction applied to it.
-     *            false - the geometry has not had point reduction applied to it
-     *            or the geometry was reduced but has now been modified and
-     *            needs to have point reduction reapplied to it.
-     * @return
-     */
-    public void setReduced(boolean isReduced) {
-        reduced = isReduced;
-    }
-
     @Override
     public String toString() {
         return delegate.toString();
     }
 
-    private void updateContainedUGCs(boolean notify) {
-        if (getHazardType() != null) {
-            List<String> ugcs = eventManager.buildContainedUGCs(this);
-            addHazardAttribute(CONTAINED_UGCS, (Serializable) ugcs, notify,
-                    Originator.OTHER);
-        }
-    }
 }

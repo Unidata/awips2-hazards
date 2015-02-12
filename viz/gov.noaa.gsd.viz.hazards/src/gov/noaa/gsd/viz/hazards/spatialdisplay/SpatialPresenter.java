@@ -32,6 +32,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
@@ -73,6 +74,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                           config manager.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
+ * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * </pre>
  * 
  * @author Chris.Golden
@@ -127,6 +129,12 @@ public class SpatialPresenter extends
             updateCaveSelectedTime();
         }
 
+        updateSpatialDisplay();
+    }
+
+    @Handler
+    public void sessionEventAttributesModified(
+            SessionEventAttributesModified notification) {
         updateSpatialDisplay();
     }
 

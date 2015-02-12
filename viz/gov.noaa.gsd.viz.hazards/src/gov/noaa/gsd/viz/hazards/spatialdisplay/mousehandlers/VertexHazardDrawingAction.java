@@ -67,6 +67,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Dec 05, 2014     4124   Chris.Golden        Changed to work with newly parameterized
  *                                             config manager.
  * Feb  6, 2015     4375   Dan Schaffer        Slight patch to geometry intersection error message
+ * Feb 12, 2015     4959   Dan Schaffer        Modify MB3 add/remove UGCs to match Warngen
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -302,7 +303,10 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
                     hazardEvent = hazardEventBuilder
                             .buildLineHazardEvent(pointsAsArray());
                 }
-                hazardEventBuilder.addEvent(hazardEvent, getSpatialPresenter());
+                ObservedHazardEvent modifiedEvent = hazardEventBuilder
+                        .addEvent(hazardEvent, getSpatialPresenter());
+                sessionManager.getEventManager().updateHazardAreas(
+                        modifiedEvent);
             } catch (InvalidGeometryException e) {
                 statusHandler.handle(Priority.WARN,
                         "Error drawing vertex polygon: " + e.getMessage(), e);

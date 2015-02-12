@@ -28,7 +28,6 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
@@ -84,6 +83,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
  * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
+ * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * </pre>
  * 
  * @author bryon.lawrence
@@ -660,7 +660,7 @@ public class HazardServicesDrawableBuilder {
 
             String cwa = hazardEvent.getSiteID();
 
-            Set<IGeometryData> hazardArea = geoMapUtilities
+            List<IGeometryData> hazardArea = geoMapUtilities
                     .buildHazardAreaForEvent(mapDBtableName, mapLabelParameter,
                             cwa, hazardEvent);
 
@@ -684,24 +684,19 @@ public class HazardServicesDrawableBuilder {
                 }
             }
 
-            /*
-             * TODO: We will need to refine the "W" annotation used by WarnGEN
-             * to indicate which counties are covered by a portion of the hazard
-             * polgyon.
-             */
             if (isPolygonBased) {
-
-                hazardArea = geoMapUtilities.getIntersectingMapGeometries(true,
-                        hazardEvent);
-
                 for (IGeometryData geometryData : hazardArea) {
-                    Point centroid = geometryData.getGeometry().getCentroid();
+                    Geometry geometry = geometryData.getGeometry();
+                    if (!geometry.isEmpty()) {
+                        Point centroid = geometryData.getGeometry()
+                                .getCentroid();
 
-                    AbstractDrawableComponent textComponent = new HazardServicesText(
-                            drawingAttributes, hazardEvent.getSignificance(),
-                            TEXT, centroid, activeLayer,
-                            hazardEvent.getSignificance());
-                    hatchedAreaAnnotations.add(textComponent);
+                        AbstractDrawableComponent textComponent = new HazardServicesText(
+                                drawingAttributes,
+                                hazardEvent.getSignificance(), TEXT, centroid,
+                                activeLayer, hazardEvent.getSignificance());
+                        hatchedAreaAnnotations.add(textComponent);
+                    }
                 }
             }
 

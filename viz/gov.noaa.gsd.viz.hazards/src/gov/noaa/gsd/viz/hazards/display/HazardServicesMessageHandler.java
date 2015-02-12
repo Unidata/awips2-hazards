@@ -201,6 +201,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Feb 04, 2015  2331      Chris.Golden       Removed listener for time changes; these are
  *                                            now handled by individual presenters as
  *                                            necessary.
+ * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * </pre>
  * 
  * @author bryon.lawrence
@@ -946,8 +947,7 @@ public final class HazardServicesMessageHandler {
                     .sortEvents(SessionEventManager.SEND_SELECTED_FRONT);
         } else if (label
                 .equals(HazardConstants.CONTEXT_MENU_SHOW_PRODUCT_GEOMETRY)) {
-            sessionEventManager.clipSelectedHazardGeometries();
-            sessionEventManager.reduceSelectedHazardGeometries();
+            sessionEventManager.buildSelectedHazardProductGeometries();
         } else {
             throw new IllegalArgumentException("Unexpected label " + label);
         }

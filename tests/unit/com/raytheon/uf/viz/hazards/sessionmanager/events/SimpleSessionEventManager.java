@@ -67,6 +67,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
  * Feb 03, 2015 2331       Chris.Golden Changed to support allowable boundaries for event start
  *                                      and end times.
+ * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * </pre>
  * 
  * @author bsteffen
@@ -219,12 +220,7 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public boolean clipSelectedHazardGeometries() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void reduceSelectedHazardGeometries() {
+    public boolean buildSelectedHazardProductGeometries() {
         throw new UnsupportedOperationException();
     }
 
@@ -335,11 +331,12 @@ public class SimpleSessionEventManager implements
      * 
      * @see
      * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
-     * #buildUGCs
-     * (com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent)
+     * #buildInitialHatching
+     * (com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent,
+     * java.util.List)
      */
     @Override
-    public List<String> buildUGCs(IHazardEvent hazardEvent) {
+    public Map<String, String> buildInitialHazardAreas(IHazardEvent hazardEvent) {
         throw new UnsupportedOperationException();
     }
 
@@ -348,11 +345,11 @@ public class SimpleSessionEventManager implements
      * 
      * @see
      * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
-     * #buildContainedUGCs
+     * #updateHazardAreas
      * (com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent)
      */
     @Override
-    public List<String> buildContainedUGCs(IHazardEvent hazardEvent) {
+    public void updateHazardAreas(IHazardEvent hazardEvent) {
         throw new UnsupportedOperationException();
     }
 

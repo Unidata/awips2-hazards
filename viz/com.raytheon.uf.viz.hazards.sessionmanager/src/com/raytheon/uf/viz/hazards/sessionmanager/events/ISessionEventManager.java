@@ -77,6 +77,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Feb  1, 2015 2331       Chris.Golden Added code to track the allowable boundaries of all hazard
  *                                      events' start and end times, so that the user will not move
  *                                      them beyond the allowed ranges.
+ * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * </pre>
  * 
  * @author bsteffen
@@ -490,24 +491,17 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public void proposeEvents(Collection<E> events, IOriginator originator);
 
     /**
-     * Clips the selected hazard geometries to the cwa or hsa boundaries as
-     * specified in the hazard type definition in HazardTypes.py.
+     * Builds and stores the product representation of the selected hazard
+     * geometries. This includes clipping to the CWA, modifying the polygons to
+     * conform to the hazard areas and simplifying the polygons to conform to
+     * the max 20 point rule.
      * 
      * @param
      * @return true - this function successfully clipped the hazard geometries
      *         false - this function failed, probably because a geometry was
      *         outside of the forecast area (cwa or hsa).
      */
-    boolean clipSelectedHazardGeometries();
-
-    /**
-     * If a point limit is specified in hazard types, then the number of points
-     * in the geometry are reduced to match that limit.
-     * 
-     * @param
-     * @return
-     */
-    void reduceSelectedHazardGeometries();
+    public boolean buildSelectedHazardProductGeometries();
 
     /**
      * Updates the UGC information associated with the selected hazard events.
@@ -576,14 +570,15 @@ public interface ISessionEventManager<E extends IHazardEvent> {
 
     /**
      * @param hazardEvent
-     * @return UGCs intersected by the geometry of a hazard event.
+     * @return the initial hazardAreas for the given hazardEvent
      */
-    public List<String> buildUGCs(IHazardEvent hazardEvent);
+    public Map<String, String> buildInitialHazardAreas(IHazardEvent hazardEvent);
 
     /**
+     * Update the hazard areas.
+     * 
      * @param hazardEvent
-     * @return UGCs contained within the geometry of a hazard event.
      */
-    public List<String> buildContainedUGCs(IHazardEvent hazardEvent);
+    public void updateHazardAreas(IHazardEvent hazardEvent);
 
 }
