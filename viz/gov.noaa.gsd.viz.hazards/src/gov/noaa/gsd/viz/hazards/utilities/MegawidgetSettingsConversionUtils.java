@@ -49,6 +49,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.MapCenter;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Page;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
@@ -64,6 +65,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Feb 18, 2014 2915       bkowal      Initial creation
  * Dec 05, 2014 4124       Chris.Golden Changed to work with newly parameterized
  *                                      config manager.
+ * Feb 12, 2015 6456       Dan Schaffer Fixed bug where tools menu was empty after changing settings
  * </pre>
  * 
  * @author bkowal
@@ -344,6 +346,17 @@ public class MegawidgetSettingsConversionUtils {
             }
             if (toolbarMap.containsKey("displayName")) {
                 tool.setDisplayName(toolbarMap.get("displayName").toString());
+            }
+            if (toolbarMap.containsKey("toolType")) {
+                String toolTypeAsString = (String) toolbarMap.get("toolType");
+                ToolType toolType = ToolType.fromString(toolTypeAsString
+                        .toUpperCase());
+                tool.setToolType(toolType);
+            }
+            if (toolbarMap.containsKey("visible")) {
+                String visibleAsString = (String) toolbarMap.get("visible");
+                Boolean visible = Boolean.valueOf(visibleAsString);
+                tool.setVisible(visible);
             }
             toolbarTools.add(tool);
         }
