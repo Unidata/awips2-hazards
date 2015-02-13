@@ -88,31 +88,7 @@ class Recommender(RecommenderTemplate.Recommender):
         self.GuidanceStrategies = {'RFCFFG':self.getRFCGuidance}
         
         self.smallBasinMap = {}
-
-        # Dynamically populate the QPE sources from the FFMP config
-        runner = FFMPRunConfigurationManager.getInstance().getRunner(CWA)
-        if runner is not None:
-            products = runner.getProducts()
-            if products is not None:
-                for i in range(0,products.size()):
-                    productKey = str(products.get(i).getProductKey())
-                    productName = str(products.get(i).getProductName())
-                    identifier = productKey+'_'+productName
                     
-                    entry = {'displayString':productKey, 
-                             'identifier':identifier, 
-                             'dataKey':DATA_KEY, 
-                             'siteKey':SITE_KEY, 
-                             'productName':productName}
-                    
-                    if productName == 'DHR':
-                        entry['dataKey'] = productKey
-                        entry['siteKey'] = productKey
-                        
-                    QPESourceDict[identifier] = entry 
-                    
-                    self.QPEStrategies[identifier] = self.getAccumulatedDHR;                     
-
     def defineScriptMetadata(self):
         '''
         @return: A dictionary containing information about this
@@ -136,6 +112,7 @@ class Recommender(RecommenderTemplate.Recommender):
         new objects to return 
         @return: A dialog definition to solicit user input before running tool
         '''        
+        self.initializeFFMPConfig()
         dialogDict = {'title': 'Flash Flood Recommender'}
         
         valueDict = {}            
@@ -444,6 +421,31 @@ class Recommender(RecommenderTemplate.Recommender):
                     pythonEventSet.add(hazardEvent)
                
         return pythonEventSet
+    
+    def initializeFFMPConfig(self):            
+        # Dynamically populate the QPE sources from the FFMP config
+        runner = FFMPRunConfigurationManager.getInstance().getRunner(CWA)
+        if runner is not None:
+            products = runner.getProducts()
+            if products is not None:
+                for i in range(0,products.size()):
+                    productKey = str(products.get(i).getProductKey())
+                    productName = str(products.get(i).getProductName())
+                    identifier = productKey+'_'+productName
+                    
+                    entry = {'displayString':productKey, 
+                             'identifier':identifier, 
+                             'dataKey':DATA_KEY, 
+                             'siteKey':SITE_KEY, 
+                             'productName':productName}
+                    
+                    if productName == 'DHR':
+                        entry['dataKey'] = productKey
+                        entry['siteKey'] = productKey
+                        
+                    QPESourceDict[identifier] = entry 
+                    
+                    self.QPEStrategies[identifier] = self.getAccumulatedDHR;
         
         
     def toString(self):
