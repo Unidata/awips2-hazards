@@ -66,6 +66,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Jan 22, 2015 4959      Dan Schaffer  MB3 to add/remove UGCs to a hazard
  * Jan 29, 2015 3626      Chris.Golden  Added event type constant for recommenders.
  * Jan 29, 2015 5005      Dan Schaffer  Fixed bug in MB3 context menu for showing product geometry
+ * Feb 15, 2015 2271      Dan Schaffer  Incur recommender/product generator init costs immediately
  * </pre>
  * 
  * @author mnash
@@ -523,6 +524,37 @@ public final class HazardConstants {
     /*
      * The following are related to product generation.
      */
+    /**
+     * Legacy ASCII Product Key
+     */
+    public static final String ASCII_PRODUCT_KEY = "Legacy";
+
+    /**
+     * Partner XML Product Key
+     */
+    public static final String XML_PRODUCT_KEY = "XML";
+
+    /**
+     * Partner CAP Product Key
+     */
+    public static final String CAP_PRODUCT_KEY = "CAP";
+
+    /**
+     * Product identifier
+     */
+    public static final String PRODUCT_ID = "productID";
+
+    /**
+     * Key for the collection of products generated.
+     */
+    public static final String PRODUCTS = "products";
+
+    /**
+     * The null product generator run at Hazard Services startup so that the
+     * product generation framework can be initialized immediately.
+     */
+    public static final String NULL_PRODUCT_GENERATOR = "Null_ProductGenerator";
+
     public static final String ISSUE_FLAG = "issueFlag";
 
     public static final String CORRECTION_FLAG = "correctionFlag";
@@ -598,6 +630,12 @@ public final class HazardConstants {
      * Maximum initial height key.
      */
     public static final String MAX_INITIAL_HEIGHT_KEY = "maxInitialHeight";
+
+    /**
+     * The null recommender run at Hazard Services startup so that the
+     * recommender framework can be initialized immediately.
+     */
+    public static final String NULL_RECOMMENDER = "NullRecommender";
 
     /*
      * The following are related to hazard geometries and their supporting meta

@@ -56,6 +56,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
  * Jan 29, 2015   4375     Dan Schaffer      Console initiation of RVS product generation
  * Jan 30, 2015   3626     Chris.Golden      Added ability to pass event type when
  *                                           running a recommender.
+ * Feb 15, 2015 2271       Dan Schaffer      Incur recommender/product generator init costs immediately
  * </pre>
  * 
  * @author Chris.Golden
@@ -106,7 +107,7 @@ public class ToolsView implements
             public void widgetSelected(SelectionEvent event) {
                 presenter.publish(new ToolAction(
                         ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
-                        (Tool) event.widget.getData(), "tbd"));
+                        (Tool) event.widget.getData()));
             }
         };
 

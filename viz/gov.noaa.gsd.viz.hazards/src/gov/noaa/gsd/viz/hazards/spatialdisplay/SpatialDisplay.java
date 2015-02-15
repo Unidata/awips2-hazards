@@ -8,6 +8,8 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NULL_PRODUCT_GENERATOR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NULL_RECOMMENDER;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
@@ -15,6 +17,7 @@ import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
+import gov.noaa.gsd.viz.hazards.display.action.ToolAction.RecommenderActionEnum;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDrawableBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
@@ -166,6 +169,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Feb 09, 2015 6260       Dan Schaffer   Fixed bugs in multi-polygon handling
  * Feb 10, 2015  3961     Chris.Cody      Add Context Menu (R-Click) for River Point (GageData) objects
+ * Feb 15, 2015 2271       Dan Schaffer   Incur recommender/product generator init costs immediately
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -252,12 +256,6 @@ public class SpatialDisplay extends
     private IInputHandler mouseHandler = null;
 
     private boolean allowDisposeMessage = true;
-
-    /*
-     * The previous list of events drawn. Used for testing if a redraw is
-     * necessary.
-     */
-    private Collection<ObservedHazardEvent> previousEvents;
 
     /*
      * reference to eventBus singleton instance
@@ -398,11 +396,28 @@ public class SpatialDisplay extends
                 if (settings != null) {
                     SpatialDisplay.this.appBuilder.setCurrentSettings(settings,
                             UIOriginator.SPATIAL_DISPLAY);
+
                 } else {
+                    ObservedSettings observedSettings = SpatialDisplay.this.appBuilder
+                            .getCurrentSettings();
                     ((SpatialDisplayResourceData) getResourceData())
-                            .setSettings(SpatialDisplay.this.appBuilder
-                                    .getCurrentSettings());
+                            .setSettings(observedSettings);
+                    Tool nullRecommenderTool = observedSettings
+                            .getTool(NULL_RECOMMENDER);
+                    ToolAction nullRecommenderAction = new ToolAction(
+                            RecommenderActionEnum.RUN_RECOMENDER,
+                            nullRecommenderTool);
+                    eventBus.publishAsync(nullRecommenderAction);
+
+                    Tool nullProductGeneratorTool = observedSettings
+                            .getTool(NULL_PRODUCT_GENERATOR);
+                    ToolAction nullProductGeneratorAction = new ToolAction(
+                            RecommenderActionEnum.RUN_RECOMENDER,
+                            nullProductGeneratorTool);
+                    eventBus.publishAsync(nullProductGeneratorAction);
+
                 }
+
             }
         };
 

@@ -62,6 +62,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Apr 23, 2014 1480       jsanchez     Passed correction flag to update method.
  * Oct 03, 2014 4042       Chris.Golden Added ability to get product script file path.
  * Jan 20, 2015 4476       rferrel      Implement shutdown of PythonJobCoordinator.
+ * Feb 15, 2015 2271       Dan Schaffer Incur recommender/product generator init costs immediately
  * </pre>
  * 
  * @author jsanchez
@@ -210,7 +211,6 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
         Validate.notNull(formats, "'FORMATS' must be set.");
         Validate.notNull(product, "'PRODUCT' must be set.");
         Validate.notNull(eventSet, "'HAZARD EVENT SET' must be set");
-        Validate.isTrue(!eventSet.isEmpty(), "HAZARD EVENT SET can't be empty");
         Validate.notNull(listener, "'listener' must be set.");
     }
 

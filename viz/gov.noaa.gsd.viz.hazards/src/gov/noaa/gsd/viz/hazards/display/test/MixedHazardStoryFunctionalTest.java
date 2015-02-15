@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ASCII_PRODUCT_KEY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CREATION_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ENDING_SYNOPSIS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_COLOR;
@@ -44,7 +45,6 @@ import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.DamBreakUrgencyLevels;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 import gov.noaa.gsd.viz.megawidgets.IContainerSpecifier;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
@@ -196,7 +196,7 @@ class MixedHazardStoryFunctionalTest extends
         this.step = Steps.RUN_DAM_BREAK;
         eventBus.publishAsync(new ToolAction(
                 ToolAction.RecommenderActionEnum.RUN_RECOMENDER, settings
-                        .getTool(DAM_BREAK_FLOOD_RECOMMENDER), "tbd"));
+                        .getTool(DAM_BREAK_FLOOD_RECOMMENDER)));
     }
 
     @Handler(priority = -1)
@@ -408,7 +408,7 @@ class MixedHazardStoryFunctionalTest extends
                 step = Steps.RUN_FLOOD;
                 eventBus.publishAsync(new ToolAction(
                         ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
-                        settings.getTool(RIVER_FLOOD_RECOMMENDER), "tbd"));
+                        settings.getTool(RIVER_FLOOD_RECOMMENDER)));
                 break;
 
             case RUN_FLOOD:
@@ -638,8 +638,8 @@ class MixedHazardStoryFunctionalTest extends
                 .get(NumberUtils.INTEGER_ZERO);
         assertEquals(generatedProduct0.getProductID(), FLOOD_WATCH_PRODUCT_ID);
         final String legacy0 = generatedProduct0.getEntries()
-                .get(ProductConstants.ASCII_PRODUCT_KEY)
-                .get(NumberUtils.INTEGER_ZERO).toString();
+                .get(ASCII_PRODUCT_KEY).get(NumberUtils.INTEGER_ZERO)
+                .toString();
         assertTrue(legacy0.contains(NEW_VTEC_STRING + "."
                 + FLOOD_WATCH_PHEN_SIG));
         assertTrue(legacy0.contains(FLOOD_WATCH));
@@ -648,8 +648,8 @@ class MixedHazardStoryFunctionalTest extends
                 .get(NumberUtils.INTEGER_ONE);
         assertEquals(generatedProduct1.getProductID(), FLOOD_WATCH_PRODUCT_ID);
         final String legacy1 = generatedProduct1.getEntries()
-                .get(ProductConstants.ASCII_PRODUCT_KEY)
-                .get(NumberUtils.INTEGER_ZERO).toString();
+                .get(ASCII_PRODUCT_KEY).get(NumberUtils.INTEGER_ZERO)
+                .toString();
         assertTrue(legacy1.contains(NEW_VTEC_STRING + "."
                 + FLASH_FLOOD_WATCH_PHEN_SIG));
         assertTrue(legacy1.contains(FLASH_FLOOD_WATCH));

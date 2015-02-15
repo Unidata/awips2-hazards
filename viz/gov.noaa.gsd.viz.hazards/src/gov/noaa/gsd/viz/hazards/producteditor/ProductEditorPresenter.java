@@ -64,7 +64,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Jul 28, 2014 3412        jsanchez         Close the product editor on regeneration request.
  * Dec 05, 2014 4124       Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Dec 13, 2014 4959       Dan Schaffer      Spatial Display cleanup and other bug fixes
+ * Feb 15, 2015 2271       Dan Schaffer      Incur recommender/product generator init costs immediately
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -106,8 +107,18 @@ public class ProductEditorPresenter extends
 
     public final void showProductEditorDetail(
             List<GeneratedProductList> generatedProductsList) {
-        if (generatedProductsList != null
-                && generatedProductsList.isEmpty() == false) {
+        boolean showProductEditor = true;
+        if (generatedProductsList == null) {
+            showProductEditor = false;
+        } else if (generatedProductsList.isEmpty()) {
+            showProductEditor = false;
+        } else if (generatedProductsList.size() == 1) {
+            GeneratedProductList g = generatedProductsList.get(0);
+            if (g.isEmpty()) {
+                showProductEditor = false;
+            }
+        }
+        if (showProductEditor) {
             this.getView().showProductEditorDetail(generatedProductsList);
             this.bind();
             this.getView().openDialog();

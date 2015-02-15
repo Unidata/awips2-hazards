@@ -23,6 +23,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.MAPDATA_COUNTY;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NULL_PRODUCT_GENERATOR;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
@@ -185,6 +186,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Jan 20, 2015 4476       rferrel      Implement shutdown of ProductGeneration.
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
+ * Feb 15, 2015 2271       Dan Schaffer Incur recommender/product generator init costs immediately
  * </pre>
  * 
  * @author bsteffen
@@ -324,7 +326,8 @@ public class SessionProductManager implements ISessionProductManager {
         ProductGeneratorTable pgt = configManager.getProductGeneratorTable();
 
         for (Entry<String, ProductGeneratorEntry> entry : pgt.entrySet()) {
-            if (entry.getValue().isReservedNameNotYetImplemented() || entry.getValue().getAutoSelect() == false) {
+            if (entry.getValue().isReservedNameNotYetImplemented()
+                    || entry.getValue().getAutoSelect() == false) {
                 continue;
             }
             Set<IHazardEvent> productEvents = new HashSet<>();
@@ -863,16 +866,18 @@ public class SessionProductManager implements ISessionProductManager {
     public void generateProducts(String productGeneratorName) {
         List<ObservedHazardEvent> selectedEvents = eventManager
                 .getSelectedEvents();
-        if (!areValidEvents(selectedEvents, false)) {
-            return;
-        }
+        if (!productGeneratorName.equals(NULL_PRODUCT_GENERATOR)) {
+            if (!areValidEvents(selectedEvents, false)) {
+                return;
+            }
 
-        boolean matchingAllowedHazards = isAtLeastOneSelectedAllowed(
-                productGeneratorName, selectedEvents);
-        if (!matchingAllowedHazards) {
-            messenger.getWarner().warnUser("Product Generation Error",
-                    "Generation not supported for selected hazards");
-            return;
+            boolean matchingAllowedHazards = isAtLeastOneSelectedAllowed(
+                    productGeneratorName, selectedEvents);
+            if (!matchingAllowedHazards) {
+                messenger.getWarner().warnUser("Product Generation Error",
+                        "Generation not supported for selected hazards");
+                return;
+            }
         }
         Collection<ProductGeneratorInformation> allProductGeneratorInfo = productGeneratorInfoFromName(
                 productGeneratorName, selectedEvents);

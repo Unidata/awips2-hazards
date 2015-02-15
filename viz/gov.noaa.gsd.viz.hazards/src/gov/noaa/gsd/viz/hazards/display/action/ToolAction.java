@@ -37,6 +37,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
  *                                           a recommender.
  * Jan 29, 2015 4375       Dan Schaffer      Console initiation of RVS product generation
  * Feb 05, 2015 2331       Chris.Golden      Removed unused and ideologically suspect method.
+ * Feb 15, 2015 2271       Dan Schaffer      Incur recommender/product generator init costs immediately
  * </pre>
  * 
  * @author Chris Golden
@@ -81,8 +82,6 @@ public class ToolAction {
 
     // Public Constructors
     /**
-     * Construct a standard instance.
-     * 
      * @param recommenderActionType
      *            Type of the recommender action that is occurring.
      * @param tool
@@ -94,6 +93,18 @@ public class ToolAction {
         this.recommenderActionType = recommenderActionType;
         this.tool = tool;
         this.eventType = eventType;
+    }
+
+    /**
+     * @param recommenderActionType
+     *            Type of the recommender action that is occurring.
+     * @param tool
+     * 
+     */
+    public ToolAction(RecommenderActionEnum recommenderActionType, Tool tool) {
+        this.recommenderActionType = recommenderActionType;
+        this.tool = tool;
+        this.eventType = "";
     }
 
     /**

@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NULL_PRODUCT_GENERATOR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NULL_RECOMMENDER;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -47,6 +50,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  *                                      interface, needed to allow for proper
  *                                      use of ObservedSettings.
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
+ * Feb 15, 2015 2271       Dan Schaffer Incur recommender/product generator init costs immediately
  * </pre>
  * 
  * @author bsteffen
@@ -212,6 +216,17 @@ public class Settings implements ISettings {
     @Override
     public void setToolbarTools(List<Tool> toolbarTools) {
         this.toolbarTools = toolbarTools;
+        Tool nullRecommender = new Tool();
+        nullRecommender.setToolName(NULL_RECOMMENDER);
+        nullRecommender.setToolType(ToolType.RECOMMENDER);
+        nullRecommender.setVisible(false);
+        this.toolbarTools.add(nullRecommender);
+
+        Tool nullProductGenerator = new Tool();
+        nullProductGenerator.setToolName(NULL_PRODUCT_GENERATOR);
+        nullProductGenerator.setToolType(ToolType.PRODUCT_GENERATOR);
+        nullProductGenerator.setVisible(false);
+        this.toolbarTools.add(nullProductGenerator);
     }
 
     @Override

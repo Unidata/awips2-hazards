@@ -93,7 +93,7 @@ class DamBreakFunctionalTest extends
         this.step = Steps.RUN_DAM_BREAK_LOW_CONFIDENCE;
         eventBus.publishAsync(new ToolAction(
                 ToolAction.RecommenderActionEnum.RUN_RECOMENDER, settings
-                        .getTool(DAM_BREAK_FLOOD_RECOMMENDER), "tbd"));
+                        .getTool(DAM_BREAK_FLOOD_RECOMMENDER)));
     }
 
     @Handler(priority = -1)
@@ -112,7 +112,7 @@ class DamBreakFunctionalTest extends
                 step = Steps.RUN_DAM_BREAK_HIGH_CONFIDENCE;
                 eventBus.publishAsync(new ToolAction(
                         ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
-                        settings.getTool(DAM_BREAK_FLOOD_RECOMMENDER), "tbd"));
+                        settings.getTool(DAM_BREAK_FLOOD_RECOMMENDER)));
                 break;
 
             case RECEIVE_DAM_BREAK_HIGH_CONFIDENCE_EVENTS:
@@ -126,7 +126,7 @@ class DamBreakFunctionalTest extends
                 step = Steps.RUN_DAM_BREAK_DAM_FAILED;
                 eventBus.publishAsync(new ToolAction(
                         ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
-                        settings.getTool(DAM_BREAK_FLOOD_RECOMMENDER), "tbd"));
+                        settings.getTool(DAM_BREAK_FLOOD_RECOMMENDER)));
 
                 break;
 

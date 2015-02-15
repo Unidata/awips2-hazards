@@ -175,20 +175,21 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
     def createProductsFromDictionary(self, dataList):
         generatedProductList = ArrayList()
         
-        for data in dataList:
-            if isinstance(data, OrderedDict):
-                if 'productID' in data:
-                    productID = data.get('productID')
-                else:
-                    wmoHeader = data.get('wmoHeader') 
-                    if wmoHeader:
-                        productID = wmoHeader.get('productID')
+        if dataList is not None:
+            for data in dataList:
+                if isinstance(data, OrderedDict):
+                    if 'productID' in data:
+                        productID = data.get('productID')
+                    else:
+                        wmoHeader = data.get('wmoHeader') 
+                        if wmoHeader:
+                            productID = wmoHeader.get('productID')
                   
-                generatedProduct = GeneratedProduct(productID)
-                generatedProduct.setData(JUtil.pyValToJavaObj(self.pyDictToKeyInfoDict(data)));
-            else:
-                generatedProduct = GeneratedProduct(None)
-            generatedProductList.add(generatedProduct)
+                    generatedProduct = GeneratedProduct(productID)
+                    generatedProduct.setData(JUtil.pyValToJavaObj(self.pyDictToKeyInfoDict(data)));
+                else:
+                    generatedProduct = GeneratedProduct(None)
+                generatedProductList.add(generatedProduct)
 
         return generatedProductList
     
