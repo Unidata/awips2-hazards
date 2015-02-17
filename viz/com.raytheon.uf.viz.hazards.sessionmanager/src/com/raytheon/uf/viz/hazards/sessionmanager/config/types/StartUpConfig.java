@@ -29,12 +29,12 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 23, 2013 1257       bsteffen    Initial creation
- * Jan 19, 2015 4193       rferrel     Added disseminationOrder.
- * Feb 10, 2015 3961       chris.cody  Add gagePointFirstRecommender startup property
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * May 23, 2013 1257       bsteffen     Initial creation
+ * Jan 19, 2015 4193       rferrel      Added disseminationOrder.
+ * Feb 10, 2015 3961       chris.cody   Add gagePointFirstRecommender startup property
+ * Feb 10, 2015 6393       Chris.Golden Added hazard detail tab text.
  * </pre>
  * 
  * @author bsteffen
@@ -50,6 +50,9 @@ public class StartUpConfig {
 
     @JsonProperty("gagePointFirstRecommender")
     private String gagePointFirstRecommender;
+
+    @JsonProperty("hazardDetailTabText")
+    private String[] hazardDetailTabText;
 
     public Console getConsole() {
         return console;
@@ -73,6 +76,14 @@ public class StartUpConfig {
 
     public void setGagePointFirstRecommender(String gagePointFirstRecommender) {
         this.gagePointFirstRecommender = gagePointFirstRecommender;
+    }
+
+    public String[] getHazardDetailTabText() {
+        return hazardDetailTabText;
+    }
+
+    public void setHazardDetailTabText(String[] hazardDetailTabText) {
+        this.hazardDetailTabText = hazardDetailTabText;
     }
 
     @Override

@@ -45,11 +45,13 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventParameterDescriber;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionAutoCheckConflictsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAllowUntilFurtherNoticeModified;
@@ -141,6 +143,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           metadata refresh.
  * Feb 03, 2015    2331    Chris.Golden      Added support for limiting the values that
  *                                           an event's start or end time can take on.
+ * Feb 10, 2015    6393    Chris.Golden      Added use of hazard event parameter
+ *                                           describers in descriptive text for each
+ *                                           hazard event, so that the elements of each
+ *                                           hazard event shown in the tab text may be
+ *                                           localized.
  * </pre>
  * 
  * @author Chris.Golden
@@ -334,6 +341,12 @@ public class HazardDetailPresenter extends
     private final Map<String, Collection<IHazardEvent>> conflictingEventsForSelectedEventIdentifiers;
 
     /**
+     * Tab text describers, used to generate the title text for a particular
+     * hazard event's tab.
+     */
+    private List<IHazardEventParameterDescriber> tabTextDescribers;
+
+    /**
      * Detail view visibility change handler. The identifier is ignored.
      */
     private final IStateChangeHandler<String, Boolean> detailViewVisibilityChangeHandler = new IStateChangeHandler<String, Boolean>() {
@@ -394,6 +407,7 @@ public class HazardDetailPresenter extends
                 getModel().getEventManager().setEventCategory(event,
                         selectedCategory,
                         UIOriginator.HAZARD_INFORMATION_DIALOG);
+                updateSelectedEventDisplayablesIfChanged();
                 if (identifier.equals(visibleEventIdentifier)) {
                     updateViewTypeList(event);
                 }
@@ -499,6 +513,7 @@ public class HazardDetailPresenter extends
             if (event != null) {
                 event.addHazardAttribute(identifier, value,
                         UIOriginator.HAZARD_INFORMATION_DIALOG);
+                updateSelectedEventDisplayablesIfChanged();
             }
         }
 
@@ -509,6 +524,7 @@ public class HazardDetailPresenter extends
             if (event != null) {
                 event.addHazardAttributes(valuesForIdentifiers,
                         UIOriginator.HAZARD_INFORMATION_DIALOG);
+                updateSelectedEventDisplayablesIfChanged();
             }
         }
     };
@@ -798,18 +814,7 @@ public class HazardDetailPresenter extends
         if (detailViewShowing == false) {
             return;
         }
-
-        /*
-         * Rebuild the list of selected event displayables; if it has changed,
-         * notify the view.
-         */
-        List<ObservedHazardEvent> selectedEvents = getModel().getEventManager()
-                .getSelectedEvents();
-        List<DisplayableEventIdentifier> selectedEventDisplayables = compileSelectedEventDisplayables(selectedEvents);
-        if (this.selectedEventDisplayables.equals(selectedEventDisplayables) == false) {
-            this.selectedEventDisplayables = selectedEventDisplayables;
-            updateViewSelectedEvents();
-        }
+        updateSelectedEventDisplayablesIfChanged();
     }
 
     /**
@@ -833,6 +838,7 @@ public class HazardDetailPresenter extends
             if (event != null) {
                 updateViewType(event);
             }
+            updateSelectedEventDisplayablesIfChanged();
         }
     }
 
@@ -944,6 +950,7 @@ public class HazardDetailPresenter extends
                 }
                 updateViewMetadataValues(event, change.getAttributeKeys());
             }
+            updateSelectedEventDisplayablesIfChanged();
         }
     }
 
@@ -960,6 +967,7 @@ public class HazardDetailPresenter extends
             if (isVisibleEventModified(change)) {
                 updateViewCategoryEditability(getVisibleEvent());
             }
+            updateSelectedEventDisplayablesIfChanged();
             updateViewButtonsEnabledStates();
         }
     }
@@ -996,6 +1004,17 @@ public class HazardDetailPresenter extends
 
     @Override
     protected void initialize(IHazardDetailViewDelegate<?, ?> view) {
+
+        /*
+         * Get the list of hazard event parameter describers that will be used
+         * to generate tab title text.
+         */
+        StartUpConfig startUpConfig = getModel().getConfigurationManager()
+                .getStartUpConfig();
+        String[] tabText = (startUpConfig != null ? startUpConfig
+                .getHazardDetailTabText() : null);
+        tabTextDescribers = HazardEventUtilities
+                .getHazardParameterDescribers(tabText);
 
         /*
          * Initialize the view.
@@ -1166,7 +1185,11 @@ public class HazardDetailPresenter extends
                     selectedEvents.size());
             boolean showConflicts = getModel().isAutoHazardCheckingOn();
             for (ObservedHazardEvent event : selectedEvents) {
-                String type = HazardEventUtilities.getHazardType(event);
+
+                /*
+                 * Determine whether or not there is a conflict with other
+                 * hazard events.
+                 */
                 boolean conflict = false;
                 if (showConflicts) {
                     Collection<IHazardEvent> conflictingEvents = conflictingEventsForSelectedEventIdentifiers
@@ -1174,12 +1197,45 @@ public class HazardDetailPresenter extends
                     conflict = ((conflictingEvents != null) && (conflictingEvents
                             .size() > 0));
                 }
-                list.add(new DisplayableEventIdentifier(event.getEventID()
-                        + (type != null ? " " + type : ""), conflict));
+
+                /*
+                 * Put together the title text.
+                 */
+                StringBuffer buffer = new StringBuffer("");
+                for (IHazardEventParameterDescriber describer : tabTextDescribers) {
+                    String description = describer.getDescription(event);
+                    if ((description != null)
+                            && (description.isEmpty() == false)) {
+                        if (buffer.length() > 0) {
+                            buffer.append(" ");
+                        }
+                        buffer.append(description);
+                    }
+                }
+
+                list.add(new DisplayableEventIdentifier(buffer.toString(),
+                        conflict));
             }
             return list;
         }
         return Collections.emptyList();
+    }
+
+    /**
+     * Update the selected event displayables if they have changed.
+     */
+    private void updateSelectedEventDisplayablesIfChanged() {
+
+        /*
+         * Rebuild the list of selected event displayables; if it has changed,
+         * notify the view.
+         */
+        List<DisplayableEventIdentifier> eventDisplayables = compileSelectedEventDisplayables(getModel()
+                .getEventManager().getSelectedEvents());
+        if (selectedEventDisplayables.equals(eventDisplayables) == false) {
+            selectedEventDisplayables = eventDisplayables;
+            updateViewSelectedEvents();
+        }
     }
 
     /**

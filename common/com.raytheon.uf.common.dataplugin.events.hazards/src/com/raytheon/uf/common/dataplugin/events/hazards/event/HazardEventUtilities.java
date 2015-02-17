@@ -19,12 +19,17 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
@@ -53,13 +58,91 @@ import com.raytheon.uf.common.serialization.comm.RequestRouter;
  * Apr 08, 2014 3357       bkowal     Removed unused methods.
  * May 14, 2014 2925       Chris.Golden Cleaned up code and added comments for
  *                                      hazard full-type/type conversion methods.
+ * Feb 10, 2015 6393       Chris.Golden Added method to provide describers, which
+ *                                      generate descriptive text from hazard
+ *                                      events.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-
 public class HazardEventUtilities {
+
+    // Private Static Classes
+
+    /**
+     * Hazard event attribute describer.
+     */
+    private static class HazardEventAttributeDescriber implements
+            IHazardEventParameterDescriber {
+
+        // Private Variables
+
+        /**
+         * Name of the attribute to be described.
+         */
+        private final String name;
+
+        // Public Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param name
+         *            Name of the attribute to be described.
+         */
+        public HazardEventAttributeDescriber(String name) {
+            this.name = name;
+        }
+
+        // Public Methods
+
+        @Override
+        public String getDescription(IHazardEvent event) {
+            Serializable value = event.getHazardAttribute(name);
+            if (value != null) {
+                return value.toString();
+            }
+            return null;
+        }
+    }
+
+    // Public Static Constants
+
+    /**
+     * String associated with hazard event identifier describer.
+     */
+    public static final String DESCRIBER_KEY_HAZARD_EVENT_ID = "eventID";
+
+    /**
+     * String associated with hazard event site identifier describer.
+     */
+    public static final String DESCRIBER_KEY_HAZARD_SITE_ID = "siteID";
+
+    /**
+     * String associated with hazard event status describer.
+     */
+    public static final String DESCRIBER_KEY_HAZARD_STATUS = "status";
+
+    /**
+     * String associated with hazard event phenomenon describer.
+     */
+    public static final String DESCRIBER_KEY_HAZARD_PHENOMENON = "phenomenon";
+
+    /**
+     * String associated with hazard event significance describer.
+     */
+    public static final String DESCRIBER_KEY_HAZARD_SIGNIFICANCE = "significance";
+
+    /**
+     * String associated with hazard event subtype describer.
+     */
+    public static final String DESCRIBER_KEY_HAZARD_SUBTYPE = "subType";
+
+    /**
+     * String associated with hazard event type describer.
+     */
+    public static final String DESCRIBER_KEY_HAZARD_TYPE = "hazardType";
 
     // Private Static Constants
 
@@ -69,7 +152,142 @@ public class HazardEventUtilities {
      */
     private static final String[] EMPTY_PHEN_SIG_SUBTYPE = new String[3];
 
+    /**
+     * Event identifier describer for hazard events.
+     */
+    private static final IHazardEventParameterDescriber HAZARD_EVENT_ID_DESCRIBER = new IHazardEventParameterDescriber() {
+
+        @Override
+        public String getDescription(IHazardEvent event) {
+            return event.getEventID();
+        }
+    };
+
+    /**
+     * Site identifier describer for hazard events.
+     */
+    private static final IHazardEventParameterDescriber HAZARD_SITE_ID_DESCRIBER = new IHazardEventParameterDescriber() {
+
+        @Override
+        public String getDescription(IHazardEvent event) {
+            return event.getSiteID();
+        }
+    };
+
+    /**
+     * Status describer for hazard events.
+     */
+    private static final IHazardEventParameterDescriber HAZARD_STATUS_DESCRIBER = new IHazardEventParameterDescriber() {
+
+        @Override
+        public String getDescription(IHazardEvent event) {
+            return event.getStatus().getValue();
+        }
+    };
+
+    /**
+     * Phenomenon describer for hazard events.
+     */
+    private static final IHazardEventParameterDescriber HAZARD_PHEN_DESCRIBER = new IHazardEventParameterDescriber() {
+
+        @Override
+        public String getDescription(IHazardEvent event) {
+            return event.getPhenomenon();
+        }
+    };
+
+    /**
+     * Significance describer for hazard events.
+     */
+    private static final IHazardEventParameterDescriber HAZARD_SIG_DESCRIBER = new IHazardEventParameterDescriber() {
+
+        @Override
+        public String getDescription(IHazardEvent event) {
+            return event.getSignificance();
+        }
+    };
+
+    /**
+     * Subtype describer for hazard events.
+     */
+    private static final IHazardEventParameterDescriber HAZARD_SUBTYPE_DESCRIBER = new IHazardEventParameterDescriber() {
+
+        @Override
+        public String getDescription(IHazardEvent event) {
+            return event.getSubType();
+        }
+    };
+
+    /**
+     * Type describer for hazard events.
+     */
+    private static final IHazardEventParameterDescriber HAZARD_TYPE_DESCRIBER = new IHazardEventParameterDescriber() {
+
+        @Override
+        public String getDescription(IHazardEvent event) {
+            return getHazardType(event);
+        }
+    };
+
+    /**
+     * Default hazard event describers list.
+     */
+    private static final List<IHazardEventParameterDescriber> DEFAULT_HAZARD_DESCRIBERS;
+    static {
+        List<IHazardEventParameterDescriber> describers = Lists.newArrayList(
+                HAZARD_EVENT_ID_DESCRIBER, HAZARD_TYPE_DESCRIBER);
+        DEFAULT_HAZARD_DESCRIBERS = ImmutableList.copyOf(describers);
+    }
+
+    /**
+     * Map of hazard event parameter names to their describers.
+     */
+    private static final Map<String, IHazardEventParameterDescriber> HAZARD_PARAMETER_DESCRIBERS_FOR_NAMES;
+    static {
+        Map<String, IHazardEventParameterDescriber> map = new HashMap<>(7, 1.0f);
+        map.put(DESCRIBER_KEY_HAZARD_EVENT_ID, HAZARD_EVENT_ID_DESCRIBER);
+        map.put(DESCRIBER_KEY_HAZARD_SITE_ID, HAZARD_SITE_ID_DESCRIBER);
+        map.put(DESCRIBER_KEY_HAZARD_STATUS, HAZARD_STATUS_DESCRIBER);
+        map.put(DESCRIBER_KEY_HAZARD_PHENOMENON, HAZARD_PHEN_DESCRIBER);
+        map.put(DESCRIBER_KEY_HAZARD_SIGNIFICANCE, HAZARD_SIG_DESCRIBER);
+        map.put(DESCRIBER_KEY_HAZARD_SUBTYPE, HAZARD_SUBTYPE_DESCRIBER);
+        map.put(DESCRIBER_KEY_HAZARD_TYPE, HAZARD_TYPE_DESCRIBER);
+        HAZARD_PARAMETER_DESCRIBERS_FOR_NAMES = ImmutableMap.copyOf(map);
+    }
+
     // Public Static Methods
+
+    /**
+     * Take the specified array of hazard event parameter specifiers and turn
+     * them into a list of hazard event parameter describers. If the array is
+     * zero-length or <code>null</code>, the default parameter specifiers is
+     * returned. This method assumes that any parameters it does not recognize
+     * as describable first-class elements of a hazard event are names of event
+     * attributes.
+     * 
+     * @param parameterNames
+     *            Names of the parameters.
+     * @return List of describers corresponding to the specified parameter
+     *         names, or the default parameter specifiers if the list of names
+     *         was zero-length or <code>null</code>.
+     */
+    public static List<IHazardEventParameterDescriber> getHazardParameterDescribers(
+            String[] parameterNames) {
+        if ((parameterNames == null) || (parameterNames.length == 0)) {
+            return DEFAULT_HAZARD_DESCRIBERS;
+        }
+        List<IHazardEventParameterDescriber> describers = new ArrayList<>(
+                parameterNames.length);
+        for (String name : parameterNames) {
+            IHazardEventParameterDescriber describer = HAZARD_PARAMETER_DESCRIBERS_FOR_NAMES
+                    .get(name);
+            if (describer == null) {
+                describer = new HazardEventAttributeDescriber(name);
+            }
+            describers.add(describer);
+        }
+        return describers;
+    }
 
     /**
      * Get a full type from the specified hazard event.

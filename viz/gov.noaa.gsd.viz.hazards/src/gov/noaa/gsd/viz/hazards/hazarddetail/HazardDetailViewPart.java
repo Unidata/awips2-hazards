@@ -219,6 +219,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           between refreshes of metadata megawidgets.
  * Feb 03, 2015   2331     Chris.Golden      Added support for limiting the values that an
  *                                           event's start or end time can take on.
+ * Feb 11, 2015   6393     Chris.Golden      Added checks to ensure that no errors occur
+ *                                           if the tab displayables outnumber the tabs.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1878,7 +1880,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             tabsBeingChanged = false;
         } else {
             for (int j = 0; j < choiceDisplayables.size(); j++) {
-                tabItems[j].setText(choiceDisplayables.get(j).getDescription());
+                if (j < tabItems.length) {
+                    tabItems[j].setText(choiceDisplayables.get(j)
+                            .getDescription());
+                }
             }
         }
 
@@ -1888,13 +1893,15 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          */
         tabItems = eventTabFolder.getItems();
         for (int j = 0; j < choiceDisplayables.size(); j++) {
-            if (choiceDisplayables.get(j).isConflicting()) {
-                conflictExists = true;
-                tabItems[j].setImage(CONFLICT_TAB_ICON);
-                tabItems[j].setToolTipText(CONFLICT_TOOLTIP);
-            } else {
-                tabItems[j].setImage(null);
-                tabItems[j].setToolTipText(null);
+            if (j < tabItems.length) {
+                if (choiceDisplayables.get(j).isConflicting()) {
+                    conflictExists = true;
+                    tabItems[j].setImage(CONFLICT_TAB_ICON);
+                    tabItems[j].setToolTipText(CONFLICT_TOOLTIP);
+                } else {
+                    tabItems[j].setImage(null);
+                    tabItems[j].setToolTipText(null);
+                }
             }
         }
 
