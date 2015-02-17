@@ -67,7 +67,8 @@ import com.vividsolutions.jts.geom.Polygon;
  * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove polygons from hazards
  * Feb  3, 2015 6096       Dan Schaffer Fixed spatial display panning.
  * 
- * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
+ * Feb 09, 2015 6260       Dan Schaffer Fixed bugs in multi-polygon handling
+ * Feb 17, 2015 4209       Dan Schaffer Fixed bug in lassoing hazards
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -178,7 +179,6 @@ public class SelectionAction extends NonDrawingAction {
 
             if (key == SWT.CTRL) {
                 ctrlKeyIsDown = true;
-
             } else if (key == SWT.SHIFT) {
                 shiftKeyIsDown = true;
             }
@@ -197,12 +197,12 @@ public class SelectionAction extends NonDrawingAction {
          */
         @Override
         public boolean handleKeyUp(int key) {
-            if (key == SWT.SHIFT) {
-                shiftKeyIsDown = false;
-            } else if (key == SWT.CTRL) {
+            if (key == SWT.CTRL) {
                 ctrlKeyIsDown = false;
+            } else if (key == SWT.SHIFT) {
+                shiftKeyIsDown = false;
             }
-            return false;
+            return true;
         }
 
         /**
@@ -598,35 +598,7 @@ public class SelectionAction extends NonDrawingAction {
                     .getInstance().getActiveEditor());
 
             Coordinate loc = editor.translateClick(anX, aY);
-            List<AbstractDrawableComponent> containingComponentsList = getSpatialDisplay()
-                    .getContainingComponents(loc, anX, aY);
 
-            /*
-             * Check if the user is holding down the Ctrl or Shift keys with the
-             * mouse pointer outside of a displayed hazard geometry. If so,
-             * treat this as a multiselection action.
-             */
-            if (containingComponentsList == null
-                    || containingComponentsList.size() == 0) {
-
-                if (shiftKeyIsDown) {
-                    getSpatialPresenter()
-                            .getView()
-                            .setMouseHandler(
-                                    HazardServicesMouseHandlers.RECTANGLE_MULTI_SELECTION,
-                                    new String[] {});
-                    return true;
-
-                } else if (ctrlKeyIsDown) {
-                    getSpatialPresenter()
-                            .getView()
-                            .setMouseHandler(
-                                    HazardServicesMouseHandlers.FREE_HAND_MULTI_SELECTION,
-                                    new String[] {});
-                    return true;
-
-                }
-            }
             /*
              * Check to see if the user is moving a point in a hazard polygon...
              */
@@ -663,6 +635,23 @@ public class SelectionAction extends NonDrawingAction {
                 }
 
                 return true;
+            }
+
+            /*
+             * Handle multiselection action.
+             */
+            if (shiftKeyIsDown) {
+                getSpatialPresenter().getView().setMouseHandler(
+                        HazardServicesMouseHandlers.RECTANGLE_MULTI_SELECTION,
+                        new String[] {});
+                return true;
+
+            } else if (ctrlKeyIsDown) {
+                getSpatialPresenter().getView().setMouseHandler(
+                        HazardServicesMouseHandlers.FREE_HAND_MULTI_SELECTION,
+                        new String[] {});
+                return true;
+
             }
 
             /*
@@ -885,6 +874,8 @@ public class SelectionAction extends NonDrawingAction {
 
         @Override
         public boolean handleMouseEnter(Event event) {
+            ctrlKeyIsDown = (event.stateMask & SWT.CTRL) == SWT.CTRL;
+            shiftKeyIsDown = (event.stateMask & SWT.SHIFT) == SWT.SHIFT;
             return handleMouseMove(event.x, event.y);
         }
 

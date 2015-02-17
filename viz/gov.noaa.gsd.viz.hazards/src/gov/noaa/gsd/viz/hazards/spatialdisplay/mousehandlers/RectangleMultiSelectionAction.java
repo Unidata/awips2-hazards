@@ -321,8 +321,8 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                     AbstractDrawableComponent comp = iterator.next();
                     Geometry p = ((IHazardServicesShape) comp).getGeometry();
 
-                    // The event is inside the selected area
-                    if (p != null && polygon.contains(p)) {
+                    // The event is intersected by the selected area
+                    if (p != null && polygon.intersects(p)) {
                         // What it's thevent ID
                         String selectedEventId = getSpatialDisplay()
                                 .eventIDForElement(comp);
