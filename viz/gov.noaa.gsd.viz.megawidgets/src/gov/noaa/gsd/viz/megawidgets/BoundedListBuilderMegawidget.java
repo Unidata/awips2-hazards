@@ -9,6 +9,10 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.displaysettings.DualListSettings;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.ListSettings;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -36,7 +40,9 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.ScrollBar;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
@@ -84,6 +90,8 @@ import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
  *                                           changed.
  * Oct 22, 2014   5050     Chris.Golden      Minor change: Used "or" instead of
  *                                           addition for SWT flags.
+ * Feb 17, 2015   4756     Chris.Golden      Added display settings saving and
+ *                                           restoration.
  * </pre>
  * 
  * @author Chris.Golden
@@ -243,6 +251,13 @@ public class BoundedListBuilderMegawidget extends
      */
     private final ControlComponentHelper helper;
 
+    /**
+     * Display settings. The "first" list in the dual list settings is the
+     * available items list, while the "second" is the selected items list.
+     */
+    private final DualListSettings<String> displaySettings = new DualListSettings<>(
+            getClass());
+
     // Protected Constructors
 
     /**
@@ -355,14 +370,39 @@ public class BoundedListBuilderMegawidget extends
         associateChoiceIdentifiersWithNames();
 
         /*
-         * Create the table selection listener.
+         * Create the table selection listener that responds to changes in
+         * selection for either the available or selected items table by
+         * recording the selection, and by enabling and disabling the buttons as
+         * appropriate.
          */
         SelectionListener listListener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                Table table = (Table) e.widget;
+                ListSettings<String> listSettings = getListSettingsForTable(table);
+                Set<String> selectedChoices = new HashSet<>(
+                        table.getSelectionCount(), 1.0f);
+                for (TableItem item : table.getSelection()) {
+                    selectedChoices.add((String) item.getData());
+                }
+                listSettings.setSelectedChoices(selectedChoices);
                 if (isEditable()) {
                     enableOrDisableButtons();
                 }
+            }
+        };
+
+        /*
+         * Create the vertical scrollbar selection listener that responds to
+         * scrollbar movements for either table by recording the topmost item in
+         * the corresponding table.
+         */
+        SelectionListener scrollListener = new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                Table table = (Table) ((ScrollBar) e.widget).getParent();
+                ListSettings<String> listSettings = getListSettingsForTable(table);
+                recordTopmostVisibleChoiceForTable(table, listSettings);
             }
         };
 
@@ -376,6 +416,7 @@ public class BoundedListBuilderMegawidget extends
             item.setText(0, specifier.getNameOfNode(choice));
             item.setData(specifier.getIdentifierOfNode(choice));
         }
+        availableTable.getVerticalBar().addSelectionListener(scrollListener);
         column.pack();
 
         /*
@@ -439,6 +480,7 @@ public class BoundedListBuilderMegawidget extends
          * provided in SWT by tables over lists.
          */
         selectedTable = buildTable(panel, listListener, specifier);
+        selectedTable.getVerticalBar().addSelectionListener(scrollListener);
 
         /*
          * Create a panel to hold the buttons to the right of the selected list.
@@ -793,6 +835,80 @@ public class BoundedListBuilderMegawidget extends
         doSetChoices(value);
     }
 
+    @Override
+    public IDisplaySettings getDisplaySettings() {
+        return displaySettings;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void setDisplaySettings(IDisplaySettings displaySettings) {
+        if ((displaySettings.getMegawidgetClass() == getClass())
+                && (displaySettings instanceof DualListSettings)) {
+            final DualListSettings<String> dualListSettings = (DualListSettings<String>) displaySettings;
+            Display.getDefault().asyncExec(new Runnable() {
+
+                @Override
+                public void run() {
+                    if (availableTable.isDisposed() == false) {
+
+                        /*
+                         * For each table, synchronize it with any settings
+                         * provided.
+                         */
+                        Table[] tables = { availableTable, selectedTable };
+                        for (Table table : tables) {
+                            ListSettings<String> listSettings = (table == availableTable ? dualListSettings
+                                    .getFirstListSettings() : dualListSettings
+                                    .getSecondListSettings());
+                            Map<String, Integer> indicesForChoices = getIndicesForChoices(table);
+
+                            /*
+                             * Set any choices that exist now and that were
+                             * selected before to be selected now.
+                             */
+                            Set<String> selectedChoices = listSettings
+                                    .getSelectedChoices();
+                            if ((selectedChoices != null)
+                                    && (selectedChoices.isEmpty() == false)) {
+                                int[] indices = UiBuilder.getIndicesOfChoices(
+                                        selectedChoices, indicesForChoices);
+                                table.setSelection(indices);
+                            }
+
+                            /*
+                             * Set the topmost visible choice in the scrollable
+                             * viewport for the table to be what it was before
+                             * if the latter is found in table's choices.
+                             */
+                            String topmostChoice = listSettings
+                                    .getTopmostVisibleChoice();
+                            if (topmostChoice != null) {
+                                Integer index = indicesForChoices
+                                        .get(topmostChoice);
+                                if (index != null) {
+                                    table.setTopIndex(index);
+                                }
+                            }
+                        }
+
+                        /*
+                         * Since selecting choices may change button state,
+                         * ensure the buttons are enabled and/or disabled as
+                         * appropriate.
+                         */
+                        enableOrDisableButtons();
+
+                        /*
+                         * Record the changes.
+                         */
+                        recordDisplaySettings();
+                    }
+                }
+            });
+        }
+    }
+
     // Protected Methods
 
     @Override
@@ -855,15 +971,25 @@ public class BoundedListBuilderMegawidget extends
         for (Table table : tables) {
             List<String> selectedChoiceIdentifiers = (table == availableTable ? selectedAvailableChoiceIdentifiers
                     : selectedSelectedChoiceIdentifiers);
+            Set<String> actuallySelectedChoices = new HashSet<>(
+                    selectedChoiceIdentifiers.size());
             List<TableItem> selectedTableItems = new ArrayList<>();
             for (TableItem item : table.getItems()) {
                 if (selectedChoiceIdentifiers.contains(item.getData())) {
                     selectedTableItems.add(item);
+                    actuallySelectedChoices.add((String) item.getData());
                 }
             }
             if (selectedTableItems.size() > 0) {
                 table.setSelection(selectedTableItems
                         .toArray(new TableItem[selectedTableItems.size()]));
+            }
+            if (table == availableTable) {
+                displaySettings.getFirstListSettings().setSelectedChoices(
+                        actuallySelectedChoices);
+            } else {
+                displaySettings.getSecondListSettings().setSelectedChoices(
+                        actuallySelectedChoices);
             }
         }
 
@@ -878,6 +1004,14 @@ public class BoundedListBuilderMegawidget extends
          */
         availableTable.getVerticalBar().setSelection(availableScrollPosition);
         selectedTable.getVerticalBar().setSelection(selectedScrollPosition);
+
+        /*
+         * Record the topmost visible choice for each table.
+         */
+        recordTopmostVisibleChoiceForTable(availableTable,
+                displaySettings.getFirstListSettings());
+        recordTopmostVisibleChoiceForTable(selectedTable,
+                displaySettings.getSecondListSettings());
     }
 
     @Override
@@ -899,6 +1033,9 @@ public class BoundedListBuilderMegawidget extends
             item.setData(choice);
         }
         selectedTable.getColumn(0).pack();
+        displaySettings.getFirstListSettings().setSelectedChoices(null);
+        recordTopmostVisibleChoiceForTable(availableTable,
+                displaySettings.getFirstListSettings());
 
         /*
          * Determine which choices are left over, and set the available list's
@@ -915,6 +1052,9 @@ public class BoundedListBuilderMegawidget extends
             }
         }
         availableTable.getColumn(0).pack();
+        displaySettings.getSecondListSettings().setSelectedChoices(null);
+        recordTopmostVisibleChoiceForTable(selectedTable,
+                displaySettings.getSecondListSettings());
 
         /*
          * Enable or disable buttons as appropriate.
@@ -933,6 +1073,8 @@ public class BoundedListBuilderMegawidget extends
         if (enable == false) {
             availableTable.setSelection(UiBuilder.NO_SELECTION);
             selectedTable.setSelection(UiBuilder.NO_SELECTION);
+            displaySettings.getFirstListSettings().setSelectedChoices(null);
+            displaySettings.getSecondListSettings().setSelectedChoices(null);
         }
         availableTable.setEnabled(enable);
         selectedTable.setEnabled(enable);
@@ -1064,6 +1206,72 @@ public class BoundedListBuilderMegawidget extends
     }
 
     /**
+     * Get the list settings object from the display settings that goes with the
+     * specified event.
+     * 
+     * @param table
+     *            Table for which the list settings object is desired.
+     * @return List settings object that goes with the specified table.
+     */
+    private ListSettings<String> getListSettingsForTable(Table table) {
+        return (table == availableTable ? displaySettings
+                .getFirstListSettings() : displaySettings
+                .getSecondListSettings());
+    }
+
+    /**
+     * Get a map of the choices within the specified table to their indices.
+     * 
+     * @param table
+     *            Table from which to get the choices' indices.
+     * @return Map of choices to their indices for the specified table.
+     */
+    private Map<String, Integer> getIndicesForChoices(Table table) {
+        Map<String, Integer> indicesForChoices = new HashMap<>(
+                table.getItemCount(), 1.0f);
+        for (int j = 0; j < table.getItemCount(); j++) {
+            indicesForChoices.put(table.getItem(j).getText(), j);
+        }
+        return indicesForChoices;
+    }
+
+    /**
+     * Record the topmost visible choice for the specified table in the
+     * specified list settings.
+     * 
+     * @param table
+     *            Table for which to record the topmost visible choice.
+     * @param listSettings
+     *            List settings in which to record.
+     */
+    private void recordTopmostVisibleChoiceForTable(Table table,
+            ListSettings<String> listSettings) {
+        if (table.getItemCount() > 0) {
+            listSettings.setTopmostVisibleChoice((String) table.getItem(
+                    table.getTopIndex()).getData());
+        } else {
+            listSettings.setTopmostVisibleChoice(null);
+        }
+    }
+
+    /**
+     * Record all display settings changes.
+     */
+    private void recordDisplaySettings() {
+        displaySettings.getFirstListSettings().setSelectedChoices(
+                new HashSet<>(
+                        getItemsFromList(availableTable, true, true, null)));
+        displaySettings.getSecondListSettings()
+                .setSelectedChoices(
+                        new HashSet<>(getItemsFromList(selectedTable, true,
+                                true, null)));
+        recordTopmostVisibleChoiceForTable(availableTable,
+                displaySettings.getFirstListSettings());
+        recordTopmostVisibleChoiceForTable(selectedTable,
+                displaySettings.getSecondListSettings());
+    }
+
+    /**
      * Update the buttons enabled state as is appropriate to the current states
      * of the other widgets.
      */
@@ -1163,6 +1371,11 @@ public class BoundedListBuilderMegawidget extends
          * Show the selection in the selected list.
          */
         selectedTable.showSelection();
+
+        /*
+         * Record the selected items and topmost visible items for each table.
+         */
+        recordDisplaySettings();
     }
 
     /**
@@ -1211,6 +1424,11 @@ public class BoundedListBuilderMegawidget extends
          */
         availableTable.showSelection();
         selectedTable.showSelection();
+
+        /*
+         * Record the selected items and topmost visible items for each table.
+         */
+        recordDisplaySettings();
     }
 
     /**
@@ -1241,6 +1459,11 @@ public class BoundedListBuilderMegawidget extends
          * Show the selection in the available list.
          */
         availableTable.showSelection();
+
+        /*
+         * Record the selected items and topmost visible items for each table.
+         */
+        recordDisplaySettings();
     }
 
     /**
@@ -1305,6 +1528,11 @@ public class BoundedListBuilderMegawidget extends
          */
         availableTable.showSelection();
         selectedTable.showSelection();
+
+        /*
+         * Record the selected items and topmost visible items for each table.
+         */
+        recordDisplaySettings();
     }
 
     /**
@@ -1340,6 +1568,11 @@ public class BoundedListBuilderMegawidget extends
          * Show the selection in the selected list.
          */
         selectedTable.showSelection();
+
+        /*
+         * Record the selected items and topmost visible items for each table.
+         */
+        recordDisplaySettings();
     }
 
     /**
@@ -1373,6 +1606,11 @@ public class BoundedListBuilderMegawidget extends
          * Show the selection in the selected list.
          */
         selectedTable.showSelection();
+
+        /*
+         * Record the selected items and topmost visible items for each table.
+         */
+        recordDisplaySettings();
     }
 
     /**
@@ -1422,6 +1660,11 @@ public class BoundedListBuilderMegawidget extends
          * Show the selection.
          */
         selectedTable.showSelection();
+
+        /*
+         * Record the selected items and topmost visible items for each table.
+         */
+        recordDisplaySettings();
     }
 
     /**

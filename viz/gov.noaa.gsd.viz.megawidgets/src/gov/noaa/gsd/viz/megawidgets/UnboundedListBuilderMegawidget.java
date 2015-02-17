@@ -9,11 +9,14 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.ListSettings;
 import gov.noaa.gsd.viz.megawidgets.validators.UnboundedChoiceValidator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +45,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
@@ -49,6 +53,7 @@ import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
 
 /**
@@ -81,6 +86,8 @@ import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
  *                                           properties.
  * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
  *                                           of NotifierMegawidget.
+ * Feb 17, 2015   4756     Chris.Golden      Added display settings saving and
+ *                                           restoration.
  * </pre>
  * 
  * @author Chris.Golden
@@ -212,6 +219,12 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
      */
     private final UnboundedChoiceValidator stateValidator;
 
+    /**
+     * Display settings.
+     */
+    private final ListSettings<String> displaySettings = new ListSettings<>(
+            getClass());
+
     // Protected Constructors
 
     /**
@@ -256,11 +269,19 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
         label = UiBuilder.buildLabel(panel, specifier, 2);
 
         /*
-         * Create the table selection listener.
+         * Create the table selection listener that responds to changes in
+         * selection by recording the selection, and by enabling and disabling
+         * the buttons as appropriate.
          */
         SelectionListener listListener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                Set<String> selectedChoices = new HashSet<>(
+                        table.getSelectionCount(), 1.0f);
+                for (TableItem item : table.getSelection()) {
+                    selectedChoices.add(item.getText());
+                }
+                displaySettings.setSelectedChoices(selectedChoices);
                 if (isEditable()) {
                     enableOrDisableSidePanel();
                 }
@@ -277,6 +298,22 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
             item.setText(0, choice);
         }
         column.pack();
+
+        /*
+         * Bind table scrollbar movements to record the topmost item in the
+         * list.
+         */
+        table.getVerticalBar().addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (table.getItemCount() > 0) {
+                    displaySettings.setTopmostVisibleChoice(table.getItem(
+                            table.getTopIndex()).getText());
+                } else {
+                    displaySettings.setTopmostVisibleChoice(null);
+                }
+            }
+        });
 
         /*
          * Create a panel to hold the widgets to the right.
@@ -622,6 +659,66 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
          */
     }
 
+    @Override
+    public IDisplaySettings getDisplaySettings() {
+        return displaySettings;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void setDisplaySettings(IDisplaySettings displaySettings) {
+        if ((displaySettings.getMegawidgetClass() == getClass())
+                && (displaySettings instanceof ListSettings)) {
+            final ListSettings<String> listSettings = (ListSettings<String>) displaySettings;
+            Display.getDefault().asyncExec(new Runnable() {
+
+                @Override
+                public void run() {
+                    if (table.isDisposed() == false) {
+
+                        /*
+                         * Set any choices that exist now and that were selected
+                         * before to be selected now.
+                         */
+                        Map<String, Integer> indicesForChoices = getIndicesForChoices();
+                        Set<String> selectedChoices = listSettings
+                                .getSelectedChoices();
+                        if ((selectedChoices != null)
+                                && (selectedChoices.isEmpty() == false)) {
+                            int[] indices = UiBuilder.getIndicesOfChoices(
+                                    selectedChoices, indicesForChoices);
+                            table.setSelection(indices);
+                            recordSelectedChoices();
+                        }
+
+                        /*
+                         * Set the topmost visible choice in the scrollable
+                         * viewport to be what it was before if the latter is
+                         * found in the available choices.
+                         */
+                        String topmostChoice = listSettings
+                                .getTopmostVisibleChoice();
+                        if (topmostChoice != null) {
+                            Integer index = indicesForChoices
+                                    .get(topmostChoice);
+                            if (index != null) {
+                                table.setTopIndex(index);
+                                recordTopmostVisibleChoice();
+                            }
+                        }
+
+                        /*
+                         * Since selecting choices may change button state,
+                         * ensure the buttons are enabled and/or disabled as
+                         * appropriate.
+                         */
+                        enableOrDisableSidePanel();
+                    }
+                }
+            });
+        }
+    }
+
     // Protected Methods
 
     @Override
@@ -631,6 +728,7 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
         }
         if (enable == false) {
             table.setSelection(UiBuilder.NO_SELECTION);
+            displaySettings.setSelectedChoices(null);
         }
         table.setEnabled(enable);
         enableOrDisableSidePanel();
@@ -662,6 +760,15 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
         }
         this.state.clear();
         this.state.addAll(newState);
+
+        /*
+         * Reset the record of the choices that are visibly selected, as well as
+         * the topmost index.
+         */
+        displaySettings.setSelectedChoices(null);
+        displaySettings
+                .setTopmostVisibleChoice(table.getItemCount() > 0 ? (String) table
+                        .getItem(0).getText() : null);
 
         /*
          * Synchronize the widgets to the new state.
@@ -731,6 +838,7 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
         if (selectedTableItems.size() > 0) {
             table.setSelection(selectedTableItems
                     .toArray(new TableItem[selectedTableItems.size()]));
+            displaySettings.setSelectedChoices(new HashSet<>(selectedChoices));
         }
 
         /*
@@ -742,9 +850,32 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
          * Set the scrollbar positions to be similar to what it was before.
          */
         table.getVerticalBar().setSelection(scrollPosition);
+        recordTopmostVisibleChoice();
     }
 
     // Private Methods
+
+    /**
+     * Record the selected choices.
+     */
+    private void recordSelectedChoices() {
+        TableItem[] selectedItems = table.getSelection();
+        Set<String> selectedChoices = new HashSet<>(selectedItems.length, 1.0f);
+        for (TableItem item : selectedItems) {
+            selectedChoices.add(item.getText());
+        }
+        displaySettings.setSelectedChoices(selectedChoices);
+    }
+
+    /**
+     * Record the topmost visible choice.
+     */
+    private void recordTopmostVisibleChoice() {
+        if (table.getItemCount() > 0) {
+            displaySettings.setTopmostVisibleChoice(table.getItem(
+                    table.getTopIndex()).getText());
+        }
+    }
 
     /**
      * Determine whether or not the megawidget is currently read-only (that is,
@@ -969,6 +1100,20 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
     }
 
     /**
+     * Get a map of the available choices to their indices.
+     * 
+     * @return Map of available choices to their indices.
+     */
+    private Map<String, Integer> getIndicesForChoices() {
+        Map<String, Integer> indicesForChoices = new HashMap<>(
+                table.getItemCount(), 1.0f);
+        for (int j = 0; j < table.getItemCount(); j++) {
+            indicesForChoices.put(table.getItem(j).getText(), j);
+        }
+        return indicesForChoices;
+    }
+
+    /**
      * Add the new choice from the text field to the table after the specified
      * index.
      * 
@@ -979,6 +1124,8 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
         addItem(text.getText(), index);
         setTextEntryContents("");
         table.showSelection();
+        recordSelectedChoices();
+        recordTopmostVisibleChoice();
     }
 
     /**
@@ -1004,6 +1151,8 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
             addItems(list, index);
         }
         table.showSelection();
+        recordSelectedChoices();
+        recordTopmostVisibleChoice();
     }
 
     /**
@@ -1028,6 +1177,8 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
          */
         if (firstUnselectedAfterSelected > -1) {
             table.setSelection(firstUnselectedAfterSelected);
+            displaySettings.setSelectedChoices(Sets.newHashSet(table.getItem(
+                    firstUnselectedAfterSelected).getText()));
         }
 
         /*
@@ -1040,6 +1191,7 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
          * Show the selection in the table.
          */
         table.showSelection();
+        recordTopmostVisibleChoice();
     }
 
     /**
@@ -1068,11 +1220,13 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
          * Select the just-moved items.
          */
         table.setSelection(indices);
+        recordSelectedChoices();
 
         /*
          * Show the selection in the table.
          */
         table.showSelection();
+        recordTopmostVisibleChoice();
     }
 
     /**
@@ -1099,11 +1253,13 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
          * Select the just-moved items.
          */
         table.setSelection(indices);
+        recordSelectedChoices();
 
         /*
          * Show the selection in the table.
          */
         table.showSelection();
+        recordTopmostVisibleChoice();
     }
 
     /**
@@ -1147,11 +1303,13 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
          */
         addItems(identifiers,
                 (index == -1 ? -1 : table.indexOf(insertionIndexItem)));
+        recordSelectedChoices();
 
         /*
          * Show the selection.
          */
         table.showSelection();
+        recordTopmostVisibleChoice();
     }
 
     /**

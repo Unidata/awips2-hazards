@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.TextSettings;
 import gov.noaa.gsd.viz.megawidgets.validators.TextValidator;
 
 import java.util.HashSet;
@@ -17,6 +19,8 @@ import java.util.Set;
 
 import org.eclipse.jface.text.TextViewer;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.CaretEvent;
+import org.eclipse.swt.custom.CaretListener;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
@@ -26,15 +30,19 @@ import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.FontMetrics;
 import org.eclipse.swt.graphics.GC;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Range;
+import com.google.common.collect.Ranges;
 import com.raytheon.uf.viz.spellchecker.text.SpellCheckTextViewer;
 
 /**
@@ -72,6 +80,8 @@ import com.raytheon.uf.viz.spellchecker.text.SpellCheckTextViewer;
  * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
  *                                           of NotifierMegawidget.
  * Aug 05, 2014   3777     Robert.Blum       Added inline spell check functionality.
+ * Feb 17, 2015   4756     Chris.Golden      Added display settings saving and
+ *                                           restoration.
  * </pre>
  * 
  * @author Chris.Golden
@@ -149,6 +159,12 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
      */
     private String lastForwardedValue;
 
+    /**
+     * Display settings.
+     */
+    private final TextSettings<String, Integer, Point> displaySettings = new TextSettings<>(
+            getClass());
+
     // Protected Constructors
 
     /**
@@ -168,6 +184,8 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
         helper = new ControlComponentHelper(specifier);
         stateValidator = specifier.getStateValidator().copyOf();
         state = (String) specifier.getStartingState(specifier.getIdentifier());
+        displaySettings.setText(state);
+        displaySettings.setScrollOrigin(new Point(0, 0));
 
         /*
          * Create the composite holding the components, and the label if
@@ -236,9 +254,9 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
 
         /*
          * If only ending state changes are to result in notifications, bind
-         * entry field focus loss and default selection (Enter key) to trigger a
-         * notification if the value has changed in such a way that the state
-         * change listener was not notified.
+         * entry field focus loss to trigger a notification if the value has
+         * changed in such a way that the state change listener was not
+         * notified.
          */
         if (onlySendEndStateChanges) {
             textViewer.getTextWidget().addFocusListener(new FocusAdapter() {
@@ -247,14 +265,37 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
                     notifyListenersOfEndingStateChange();
                 }
             });
-            textViewer.getTextWidget().addSelectionListener(
-                    new SelectionAdapter() {
-                        @Override
-                        public void widgetDefaultSelected(SelectionEvent e) {
+        }
+
+        /*
+         * Bind selection changes to update the display settings appropriately,
+         * and if only ending state changes are to result in notifications, bind
+         * default selection (Enter key) events to trigger a notification if the
+         * value has changed in such a way that the state change listener was
+         * not notified.
+         */
+        textViewer.getTextWidget().addSelectionListener(
+                new SelectionListener() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        Display.getCurrent().asyncExec(new Runnable() {
+                            @Override
+                            public void run() {
+                                Point selection = textViewer.getTextWidget()
+                                        .getSelection();
+                                displaySettings.setSelectionRange(Ranges
+                                        .closed(selection.x, selection.y));
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void widgetDefaultSelected(SelectionEvent e) {
+                        if (onlySendEndStateChanges) {
                             notifyListenersOfEndingStateChange();
                         }
-                    });
-        }
+                    }
+                });
 
         /*
          * Bind the text's change event to trigger a change in the record of the
@@ -265,7 +306,52 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
             public void modifyText(ModifyEvent e) {
                 String value = textViewer.getTextWidget().getText();
                 state = value;
+                displaySettings.setText(state);
                 notifyListenersOfRapidStateChange();
+            }
+        });
+
+        /*
+         * If the text area is multi-line, bind vertical scrollbar movements to
+         * be recorded as part of the display settings.
+         */
+        if (specifier.getNumVisibleLines() > 1) {
+            textViewer.getTextWidget().getVerticalBar()
+                    .addSelectionListener(new SelectionAdapter() {
+                        @Override
+                        public void widgetSelected(final SelectionEvent e) {
+                            Display.getCurrent().asyncExec(new Runnable() {
+                                @Override
+                                public void run() {
+                                    displaySettings.getScrollOrigin().y = textViewer
+                                            .getTextWidget().getTopPixel();
+                                }
+                            });
+                        }
+                    });
+        }
+
+        /*
+         * Bind caret changes to be recorded as part of the display settings,
+         * and if a single-line text field, to record the horizontal offset of
+         * the viewport as well.
+         */
+        textViewer.getTextWidget().addCaretListener(new CaretListener() {
+            @Override
+            public void caretMoved(CaretEvent event) {
+                Display.getCurrent().asyncExec(new Runnable() {
+                    @Override
+                    public void run() {
+                        StyledText textWidget = textViewer.getTextWidget();
+                        displaySettings.setCaretPosition(textWidget
+                                .getCaretOffset());
+                        if (((TextSpecifier) getSpecifier())
+                                .getNumVisibleLines() == 1) {
+                            displaySettings.getScrollOrigin().x = textWidget
+                                    .getHorizontalPixel();
+                        }
+                    }
+                });
             }
         });
 
@@ -348,6 +434,78 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
          */
     }
 
+    @Override
+    public IDisplaySettings getDisplaySettings() {
+        return displaySettings;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void setDisplaySettings(IDisplaySettings displaySettings) {
+        if ((displaySettings.getMegawidgetClass() == getClass())
+                && (displaySettings instanceof TextSettings)) {
+            final TextSettings<String, Integer, Point> textSettings = (TextSettings<String, Integer, Point>) displaySettings;
+            if ((textSettings.getText() != null)
+                    && textSettings.getText().equals(state)) {
+                Display.getDefault().asyncExec(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        StyledText textWidget = textViewer.getTextWidget();
+                        if (textWidget.isDisposed() == false) {
+
+                            /*
+                             * Use the caret offset specified.
+                             */
+                            Integer caretPosition = textSettings
+                                    .getCaretPosition();
+                            if (caretPosition != null) {
+                                textWidget.setCaretOffset(caretPosition);
+                                TextMegawidget.this.displaySettings
+                                        .setCaretPosition(caretPosition);
+                            }
+
+                            /*
+                             * Use whatever selection range was specified.
+                             */
+                            Range<Integer> selectionRange = textSettings
+                                    .getSelectionRange();
+                            if ((selectionRange != null)
+                                    && (selectionRange.lowerEndpoint() != selectionRange
+                                            .upperEndpoint())) {
+                                textWidget.setSelection(
+                                        selectionRange.lowerEndpoint(),
+                                        selectionRange.upperEndpoint());
+                                TextMegawidget.this.displaySettings
+                                        .setSelectionRange(selectionRange);
+                            }
+
+                            /*
+                             * Use only the vertical portion of the scroll
+                             * origin if multi-line, and only the horizontal
+                             * portion if single-line.
+                             */
+                            Point scrollOrigin = textSettings.getScrollOrigin();
+                            if (scrollOrigin != null) {
+                                if (((TextSpecifier) getSpecifier())
+                                        .getNumVisibleLines() > 1) {
+                                    textWidget.setTopPixel(scrollOrigin.y);
+                                    TextMegawidget.this.displaySettings
+                                            .getScrollOrigin().y = scrollOrigin.y;
+                                } else {
+                                    textWidget
+                                            .setHorizontalPixel(scrollOrigin.x);
+                                    TextMegawidget.this.displaySettings
+                                            .getScrollOrigin().x = scrollOrigin.x;
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    }
+
     // Protected Methods
 
     @Override
@@ -373,6 +531,7 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
             throws MegawidgetStateException {
         try {
             this.state = stateValidator.convertToStateValue(state);
+            updateDisplaySettingsForChangedState();
         } catch (MegawidgetException e) {
             throw new MegawidgetStateException(e);
         }
@@ -406,6 +565,16 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
         textViewer.getTextWidget().setBackground(
                 helper.getBackgroundColor(isEnabled() && editable,
                         textViewer.getTextWidget(), label));
+    }
+
+    /**
+     * Update the display settings following a programmatic state change.
+     */
+    private void updateDisplaySettingsForChangedState() {
+        displaySettings.setText(state);
+        displaySettings.setCaretPosition(0);
+        displaySettings.setScrollOrigin(new Point(0, 0));
+        displaySettings.setSelectionRange(null);
     }
 
     /**

@@ -9,6 +9,9 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.displaysettings.HierarchicalListSettings;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -20,9 +23,12 @@ import java.util.Set;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.TreeEvent;
+import org.eclipse.swt.events.TreeListener;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
@@ -61,6 +67,8 @@ import com.google.common.collect.ImmutableSet;
  *                                           items before being disabled.
  * Oct 22, 2014   5050     Chris.Golden      Minor change: Used "or" instead of
  *                                           addition for SWT flags.
+ * Feb 17, 2015   4756     Chris.Golden      Added display settings saving and
+ *                                           restoration.
  * </pre>
  * 
  * @author Chris.Golden
@@ -160,6 +168,12 @@ public class HierarchicalChoicesTreeMegawidget extends
      */
     private final ControlComponentHelper helper;
 
+    /**
+     * Display settings.
+     */
+    private final HierarchicalListSettings<String> displaySettings = new HierarchicalListSettings<>(
+            getClass());
+
     // Protected Constructors
 
     /**
@@ -178,6 +192,7 @@ public class HierarchicalChoicesTreeMegawidget extends
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
         helper = new ControlComponentHelper(specifier);
+        displaySettings.setExpandedChoices(new HashSet<List<String>>());
 
         /*
          * Create the composite holding the components, and the label if
@@ -237,16 +252,19 @@ public class HierarchicalChoicesTreeMegawidget extends
 
         /*
          * Bind check events to trigger a change in the record of the state for
-         * the megawidget.
+         * the megawidget. Also bind selection events to record the new
+         * selection.
          */
         tree.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
 
                 /*
-                 * If this is not a check event, do nothing.
+                 * If this is not a check event, record the current selection
+                 * and do nothing more.
                  */
                 if (e.detail != SWT.CHECK) {
+                    recordSelectedChoices();
                     return;
                 }
 
@@ -274,6 +292,33 @@ public class HierarchicalChoicesTreeMegawidget extends
                     HierarchicalChoicesTreeMegawidget.this.tree.setRedraw(true);
                     return;
                 }
+            }
+        });
+
+        /*
+         * Bind tree events to record the newly expanded or contracted items.
+         */
+        tree.addTreeListener(new TreeListener() {
+            @Override
+            public void treeCollapsed(TreeEvent e) {
+                List<String> choiceHierarchy = getChoiceHierarchyIdentifiersForItem((TreeItem) e.item);
+                displaySettings.getExpandedChoices().remove(choiceHierarchy);
+            }
+
+            @Override
+            public void treeExpanded(TreeEvent e) {
+                List<String> choiceHierarchy = getChoiceHierarchyIdentifiersForItem((TreeItem) e.item);
+                displaySettings.getExpandedChoices().add(choiceHierarchy);
+            }
+        });
+
+        /*
+         * Bind scrollbar movements to record the topmost item in the tree.
+         */
+        tree.getVerticalBar().addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                recordTopmostVisibleChoice();
             }
         });
 
@@ -353,6 +398,74 @@ public class HierarchicalChoicesTreeMegawidget extends
         /*
          * No action.
          */
+    }
+
+    @Override
+    public IDisplaySettings getDisplaySettings() {
+        return displaySettings;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void setDisplaySettings(IDisplaySettings displaySettings) {
+        if ((displaySettings.getMegawidgetClass() == getClass())
+                && (displaySettings instanceof HierarchicalListSettings)) {
+            final HierarchicalListSettings<String> listSettings = (HierarchicalListSettings<String>) displaySettings;
+            Display.getDefault().asyncExec(new Runnable() {
+
+                @Override
+                public void run() {
+                    if (tree.isDisposed() == false) {
+
+                        /*
+                         * Set any choices that exist now and that were selected
+                         * (as in selected within the GUI, not checked) before
+                         * to be selected now.
+                         */
+                        Set<List<String>> selectedChoices = listSettings
+                                .getSelectedChoices();
+                        if ((selectedChoices != null)
+                                && (selectedChoices.isEmpty() == false)) {
+                            TreeItem[] items = getItemsForChoiceHierarchies(selectedChoices);
+                            tree.setSelection(items);
+                            recordSelectedChoices();
+                        }
+
+                        /*
+                         * Ensure that any choices that were expanded before are
+                         * also expanded now.
+                         */
+                        Set<List<String>> expandedChoices = listSettings
+                                .getExpandedChoices();
+                        collapseItems(tree.getItems());
+                        if ((expandedChoices != null)
+                                && (expandedChoices.isEmpty() == false)) {
+                            TreeItem[] items = getItemsForChoiceHierarchies(selectedChoices);
+                            for (TreeItem item : items) {
+                                item.setExpanded(true);
+                            }
+                            recordExpandedNodes();
+                        }
+
+                        /*
+                         * Set the topmost visible choice in the scrollable
+                         * viewport to be what it was before if the latter is
+                         * found in the available choices.
+                         */
+                        List<String> topmostChoice = listSettings
+                                .getTopmostVisibleChoice();
+                        if (topmostChoice != null) {
+                            TreeItem topmostItem = getItemForChoiceHierarchyIdentifiers(topmostChoice);
+                            if (topmostItem != null) {
+                                tree.setTopItem(topmostItem);
+                            }
+                        } else {
+                            recordTopmostVisibleChoice();
+                        }
+                    }
+                }
+            });
+        }
     }
 
     // Protected Methods
@@ -448,6 +561,11 @@ public class HierarchicalChoicesTreeMegawidget extends
         }
         if (itemToSelect != null) {
             tree.setSelection(itemToSelect);
+            Set<List<String>> set = new HashSet<>(1, 1.0f);
+            set.add(getChoiceHierarchyIdentifiersForItem(itemToSelect));
+            displaySettings.setSelectedChoices(set);
+        } else {
+            displaySettings.setSelectedChoices(null);
         }
 
         /*
@@ -463,9 +581,26 @@ public class HierarchicalChoicesTreeMegawidget extends
         synchronizeComponentWidgetsToState();
 
         /*
+         * Record the new selection state and expanded nodes.
+         */
+        if (itemToSelect != null) {
+            Set<List<String>> set = new HashSet<>(1, 1.0f);
+            set.add(getChoiceHierarchyIdentifiersForItem(itemToSelect));
+            displaySettings.setSelectedChoices(set);
+        } else {
+            displaySettings.setSelectedChoices(null);
+        }
+        recordExpandedNodes();
+
+        /*
          * Set the scrollbar position to be similar to what it was before.
          */
         tree.getVerticalBar().setSelection(scrollPosition);
+
+        /*
+         * Record the topmost visible choice.
+         */
+        recordTopmostVisibleChoice();
     }
 
     @Override
@@ -486,6 +621,13 @@ public class HierarchicalChoicesTreeMegawidget extends
          * children's states.
          */
         updateNonLeafStates(tree);
+
+        /*
+         * Update the display setting records to match the new state.
+         */
+        displaySettings.setSelectedChoices(null);
+        displaySettings.getExpandedChoices().clear();
+        recordTopmostVisibleChoice();
     }
 
     // Private Methods
@@ -891,6 +1033,38 @@ public class HierarchicalChoicesTreeMegawidget extends
     }
 
     /**
+     * Record any nodes (items) that are currently expanded in the specified
+     * set.
+     * 
+     * @param items
+     *            Items to be checked to see if they are expanded.
+     * @param expandedChoices
+     *            Set to which to add the choice hierarchies for any items that
+     *            are found to be expanded.
+     */
+    private void recordExpandedNodes(TreeItem[] items,
+            Set<List<String>> expandedChoices) {
+        for (TreeItem item : items) {
+            if ((item.getItemCount() > 0) && item.getExpanded()) {
+                expandedChoices.add(getChoiceHierarchyIdentifiersForItem(item));
+                recordExpandedNodes(item.getItems(), expandedChoices);
+            }
+        }
+    }
+
+    /**
+     * Record any nodes that are expanded in the display settings.
+     */
+    private void recordExpandedNodes() {
+        Set<List<String>> expandedChoices = displaySettings
+                .getExpandedChoices();
+        expandedChoices.clear();
+        if (tree.getItemCount() > 0) {
+            recordExpandedNodes(tree.getItems(), expandedChoices);
+        }
+    }
+
+    /**
      * Record any nodes (items) that are currently expanded, returning a nodes
      * map of any that are.
      * 
@@ -910,10 +1084,125 @@ public class HierarchicalChoicesTreeMegawidget extends
                 if (map == null) {
                     map = new NodesMap();
                 }
-                NodesMap childMap = recordExpandedNodes(item.getItems(), null);
+                NodesMap childMap = recordExpandedNodes(item.getItems(),
+                        (NodesMap) null);
                 map.put((String) item.getData(), childMap);
             }
         }
         return map;
+    }
+
+    /**
+     * Get the choice hierarchy identifiers for the specified item.
+     * 
+     * @param item
+     *            Tree item for which to get the choice hierarchy.
+     * @return Choice hierarchy identifiers, a list in which each item within
+     *         the hierarchy for the specified item (including the item itself)
+     *         having its identifier in the list. The list is ordered from
+     *         rooted ancestor to the choice.
+     */
+    private List<String> getChoiceHierarchyIdentifiersForItem(TreeItem item) {
+        List<String> choiceHierarchy = new ArrayList<>();
+        TreeItem theItem = item;
+        do {
+            choiceHierarchy.add((String) theItem.getData());
+            theItem = theItem.getParentItem();
+        } while (theItem != null);
+        Collections.reverse(choiceHierarchy);
+        return choiceHierarchy;
+    }
+
+    /**
+     * Record the topmost visible choice in the display settings.
+     */
+    private void recordTopmostVisibleChoice() {
+        displaySettings
+                .setTopmostVisibleChoice((tree.getItemCount() > 0)
+                        && (tree.getTopItem() != null) ? this
+                        .getChoiceHierarchyIdentifiersForItem(tree.getTopItem())
+                        : null);
+    }
+
+    /**
+     * Get the tree item that corresponds to the specified choice hierarchy
+     * identifiers. The latter is a list of the identifiers of the ancestors of
+     * a choice (and the choice itself), ordered from root ancestor to the
+     * choice.
+     * 
+     * @param choiceHierarchy
+     *            List of choice hierarchy identifiers.
+     * @return Tree item, or <code>null</code> if there is no item for the
+     *         specified choice hierarchy.
+     */
+    private TreeItem getItemForChoiceHierarchyIdentifiers(
+            List<String> choiceHierarchy) {
+        TreeItem[] items = tree.getItems();
+        TreeItem foundItem = null;
+        for (String identifier : choiceHierarchy) {
+            foundItem = null;
+            for (TreeItem item : items) {
+                if (item.getData().equals(identifier)) {
+                    foundItem = item;
+                    break;
+                }
+            }
+            if (foundItem == null) {
+                return null;
+            }
+            items = foundItem.getItems();
+        }
+        return foundItem;
+    }
+
+    /**
+     * Get all the tree items that have corresponding entries in the specified
+     * set of choice hierarchies.
+     * 
+     * @param choiceHierarchies
+     *            Set of choice hierarchies.
+     * @return Tree items.
+     */
+    private TreeItem[] getItemsForChoiceHierarchies(
+            Set<List<String>> choiceHierarchies) {
+        List<TreeItem> treeItems = new ArrayList<>(choiceHierarchies.size());
+        for (List<String> choiceHierarchy : choiceHierarchies) {
+            TreeItem item = getItemForChoiceHierarchyIdentifiers(choiceHierarchy);
+            if (item != null) {
+                treeItems.add(item);
+            }
+        }
+        return treeItems.toArray(new TreeItem[treeItems.size()]);
+    }
+
+    /**
+     * Record the selected (as in visibly selected in the GUI, not checked)
+     * choices.
+     */
+    private void recordSelectedChoices() {
+        Set<List<String>> selectedChoices = new HashSet<>(
+                tree.getSelectionCount(), 1.0f);
+        for (TreeItem item : tree.getSelection()) {
+            List<String> choiceHierarchy = getChoiceHierarchyIdentifiersForItem(item);
+            selectedChoices.add(choiceHierarchy);
+        }
+        displaySettings.setSelectedChoices(selectedChoices);
+    }
+
+    /**
+     * Collapse all the specified tree items and their descendants.
+     * 
+     * @param items
+     *            Tree items to be collapsed.
+     */
+    private void collapseItems(TreeItem[] items) {
+        for (TreeItem item : items) {
+            if (item.getExpanded()) {
+                item.setExpanded(false);
+            }
+            if (item.getItemCount() > 0) {
+                collapseItems(item.getItems());
+            }
+        }
     }
 }

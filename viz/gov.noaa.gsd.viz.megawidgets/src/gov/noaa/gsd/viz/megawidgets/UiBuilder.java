@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
@@ -750,6 +751,41 @@ public class UiBuilder {
      */
     public static boolean isDateTimeValueChanger(KeyEvent event) {
         return ((event.keyCode == SWT.ARROW_UP) || (event.keyCode == SWT.ARROW_DOWN));
+    }
+
+    /**
+     * Get an array of indices that hold the specified choices.
+     * 
+     * @param choices
+     *            Potential choices for which indices are desired; any choice in
+     *            this list that is not one of the available choices is skipped.
+     * @param indicesForChoices
+     *            Map of all available choices to their indices.
+     * @return Array of indices that hold the specified choices.
+     */
+    public static int[] getIndicesOfChoices(Set<String> choices,
+            Map<String, Integer> indicesForChoices) {
+
+        /*
+         * Find the indices of all the provided choices; any that are not found
+         * are skipped.
+         */
+        List<Integer> indices = new ArrayList<>(choices.size());
+        for (String choice : choices) {
+            Integer index = indicesForChoices.get(choice);
+            if (index != null) {
+                indices.add(index);
+            }
+        }
+
+        /*
+         * Turn the compiled list of indices into an array and return it.
+         */
+        int[] indicesArray = new int[indices.size()];
+        for (int j = 0; j < indices.size(); j++) {
+            indicesArray[j] = indices.get(j);
+        }
+        return indicesArray;
     }
 
     // Private Static Methods

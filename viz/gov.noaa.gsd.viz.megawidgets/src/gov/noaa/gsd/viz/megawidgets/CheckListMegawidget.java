@@ -9,7 +9,11 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.ListSettings;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -21,12 +25,14 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Checklist megawidget, allowing the selection of zero or more choices, each
@@ -66,6 +72,8 @@ import com.google.common.collect.ImmutableSet;
  * Jun 24, 2014   4023     Chris.Golden      Changed to prune old state to new
  *                                           choices when available choices are
  *                                           changed.
+ * Feb 17, 2015   4756     Chris.Golden      Added display settings saving and
+ *                                           restoration.
  * </pre>
  * 
  * @author Chris.Golden
@@ -131,6 +139,12 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
      * Control component helper.
      */
     private final ControlComponentHelper helper;
+
+    /**
+     * Display settings.
+     */
+    private final ListSettings<String> displaySettings = new ListSettings<>(
+            getClass());
 
     // Protected Constructors
 
@@ -219,16 +233,24 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
 
         /*
          * Bind check events to trigger a change in the record of the state for
-         * the widget if editable, or to undo the change if read-only.
+         * the widget if editable, or to undo the change if read-only. Also bind
+         * selection events to record the new selection.
          */
         table.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
 
                 /*
-                 * If this is not a check event, do nothing.
+                 * If this is not a check event, record the current selection
+                 * and do nothing more.
                  */
                 if (e.detail != SWT.CHECK) {
+                    Set<String> selectedChoices = new HashSet<>(table
+                            .getSelectionCount(), 1.0f);
+                    for (TableItem item : table.getSelection()) {
+                        selectedChoices.add((String) item.getData());
+                    }
+                    displaySettings.setSelectedChoices(selectedChoices);
                     return;
                 }
 
@@ -253,6 +275,16 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
                     item.setChecked(!item.getChecked());
                     CheckListMegawidget.this.table.setRedraw(true);
                 }
+            }
+        });
+
+        /*
+         * Bind scrollbar movements to record the topmost item in the list.
+         */
+        table.getVerticalBar().addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                recordTopmostVisibleChoice();
             }
         });
 
@@ -348,6 +380,68 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
         doSetChoices(value);
     }
 
+    @Override
+    public IDisplaySettings getDisplaySettings() {
+        return displaySettings;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void setDisplaySettings(IDisplaySettings displaySettings) {
+        if ((displaySettings.getMegawidgetClass() == getClass())
+                && (displaySettings instanceof ListSettings)) {
+            final ListSettings<String> listSettings = (ListSettings<String>) displaySettings;
+            Display.getDefault().asyncExec(new Runnable() {
+
+                @Override
+                public void run() {
+                    if (table.isDisposed() == false) {
+
+                        /*
+                         * Set any choices that exist now and that were selected
+                         * (as in selected within the GUI, not checked) before
+                         * to be selected now.
+                         */
+                        Map<String, Integer> indicesForChoices = getIndicesForChoices();
+                        Set<String> selectedChoices = listSettings
+                                .getSelectedChoices();
+                        if ((selectedChoices != null)
+                                && (selectedChoices.isEmpty() == false)) {
+                            int[] indices = UiBuilder.getIndicesOfChoices(
+                                    selectedChoices, indicesForChoices);
+                            table.setSelection(indices);
+                            selectedChoices = new HashSet<>(indices.length);
+                            for (int index : indices) {
+                                selectedChoices.add((String) table.getItem(
+                                        index).getData());
+                            }
+                            CheckListMegawidget.this.displaySettings
+                                    .setSelectedChoices(selectedChoices);
+                        }
+
+                        /*
+                         * Set the topmost visible choice in the scrollable
+                         * viewport to be what it was before if the latter is
+                         * found in the available choices.
+                         */
+                        String topmostChoice = listSettings
+                                .getTopmostVisibleChoice();
+                        if (topmostChoice != null) {
+                            Integer index = indicesForChoices
+                                    .get(topmostChoice);
+                            if (index != null) {
+                                table.setTopIndex(index);
+                            }
+                            CheckListMegawidget.this.displaySettings
+                                    .setTopmostVisibleChoice((String) table
+                                            .getItem(index).getData());
+                        }
+                    }
+                }
+            });
+        }
+    }
+
     // Protected Methods
 
     @Override
@@ -394,35 +488,53 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
         createTableItemsForChoices();
 
         /*
+         * Ensure that the new table items are synced with the old state.
+         */
+        synchronizeComponentWidgetsToState();
+
+        /*
          * Select the appropriate choice, if one with the same identifier as the
          * one selected before is found.
          */
+        displaySettings.setSelectedChoices(null);
         if (selectedChoiceIdentifier != null) {
             for (TableItem item : table.getItems()) {
                 if (item.getData().equals(selectedChoiceIdentifier)) {
                     table.setSelection(item);
+                    displaySettings.setSelectedChoices(Sets
+                            .newHashSet(selectedChoiceIdentifier));
                     break;
                 }
             }
         }
 
         /*
-         * Ensure that the new table items are synced with the old state.
-         */
-        synchronizeComponentWidgetsToState();
-
-        /*
          * Set the scrollbar position to be similar to what it was before.
          */
         table.getVerticalBar().setSelection(scrollPosition);
+
+        /*
+         * Record the topmost visible choice.
+         */
+        recordTopmostVisibleChoice();
     }
 
     @Override
     protected final void doSynchronizeComponentWidgetsToState() {
+
+        /*
+         * Set the selected items to be checked.
+         */
         for (int line = 0; line < table.getItemCount(); line++) {
             TableItem item = table.getItem(line);
             item.setChecked(state.contains(item.getData()));
         }
+
+        /*
+         * Update the display setting records to match the new state.
+         */
+        displaySettings.setSelectedChoices(null);
+        recordTopmostVisibleChoice();
     }
 
     @Override
@@ -482,6 +594,35 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
         for (TableItem item : table.getItems()) {
             item.setChecked(checked);
         }
+    }
+
+    /**
+     * Record the topmost visible choice in the display settings.
+     */
+    private void recordTopmostVisibleChoice() {
+        if (table.getItemCount() > 0) {
+            displaySettings.setTopmostVisibleChoice((String) table.getItem(
+                    table.getTopIndex()).getData());
+        } else {
+            displaySettings.setTopmostVisibleChoice(null);
+        }
+    }
+
+    /**
+     * Get a map of the available choices to their indices.
+     * 
+     * @return Map of available choices to their indices.
+     */
+    private Map<String, Integer> getIndicesForChoices() {
+        List<?> availableChoices = getStateValidator().getAvailableChoices();
+        Map<String, Integer> indicesForChoices = new HashMap<>(
+                availableChoices.size(), 1.0f);
+        CheckListSpecifier specifier = getSpecifier();
+        for (int j = 0; j < availableChoices.size(); j++) {
+            indicesForChoices.put(
+                    specifier.getIdentifierOfNode(availableChoices.get(j)), j);
+        }
+        return indicesForChoices;
     }
 
     /**
