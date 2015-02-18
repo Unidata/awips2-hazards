@@ -37,10 +37,11 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                           exception due to Float being found
  *                                           where Integer was expected.
  * Apr 1, 2014  3581       bkowal       Updated to use common hazards hydro
- * Dec 12, 2014   4124     Kevin.Manross     Change logic to return list of 
+ * Dec 12, 2014 4124       Kevin.Manross     Change logic to return list of 
  *                                           potential river points without
  *                                           setting Phen/Sig which is now
  *                                           handled in python (RiverForecastPoints.py)
+ * Feb 18, 2014 3961       Kevin.Manross     Modify for single point workflow
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -63,6 +64,12 @@ public class RiverProFloodRecommender {
      * recommendation.
      */
     private static final String INCLUDE_NONFLOOD_POINTS = "includeNonFloodPoints";
+
+    /**
+     * Key value for in dialogInputMap for single point workflow
+     * 
+     */
+    private static final String SELECTED_POINT_ID = "selectedPointID";
 
     /**
      * Represents the first character of a river flow PE.
@@ -112,7 +119,8 @@ public class RiverProFloodRecommender {
         boolean includeNonFloodPoints = Boolean.TRUE.equals(dialogInputMap
                 .get(INCLUDE_NONFLOOD_POINTS));
 
-        EventSet<IHazardEvent> potentialHazardEventSet = getPotentialRiverHazards(includeNonFloodPoints);
+        EventSet<IHazardEvent> potentialHazardEventSet = getPotentialRiverHazards(
+                includeNonFloodPoints, dialogInputMap);
 
         return potentialHazardEventSet;
     }
@@ -121,88 +129,116 @@ public class RiverProFloodRecommender {
      * Builds a set of hazard recommendations based on the output from the river
      * flood recommender.
      * 
-     * @param isWarning
-     *            true - create FL.W hazards, false - create FL.A hazards
      * @param includeNonFloodPoints
      *            true - include nonFloodPoints in a recommendation if at least
      *            one point in the group is flooding. false - include only flood
      *            points.
+     * @param riverForecastPoint
+     *            - particular RiverForecastPoint on which attributes will be
+     *            set.
+     */
+    private IHazardEvent setRiverHazard(boolean includeNonFloodPoints,
+            RiverForecastPoint riverForecastPoint) {
+
+        IHazardEvent riverHazard = new BaseHazardEvent();
+        Map<String, Serializable> hazardAttributes = new HashMap<String, Serializable>();
+
+        if (riverForecastPoint.isIncludedInRecommendation()
+                || includeNonFloodPoints) {
+
+            riverHazard.setEventID("");
+            riverHazard.setStatus(HazardStatus.POTENTIAL);
+
+            hazardAttributes.put(HazardConstants.POINTID,
+                    riverForecastPoint.getId());
+            hazardAttributes.put(HazardConstants.STREAM_NAME,
+                    riverForecastPoint.getStream());
+
+            hazardAttributes.put(HazardConstants.FLOOD_STAGE,
+                    riverForecastPoint.getFloodStage());
+            hazardAttributes.put(HazardConstants.ACTION_STAGE,
+                    riverForecastPoint.getActionStage());
+
+            double currentStage = riverForecastPoint.getCurrentObservation()
+                    .getValue();
+
+            hazardAttributes.put(HazardConstants.CURRENT_STAGE, currentStage);
+
+            long currentStageTime = riverForecastPoint.getCurrentObservation()
+                    .getValidTime();
+            hazardAttributes.put(HazardConstants.CURRENT_STAGE_TIME,
+                    currentStageTime);
+
+            if (riverForecastPoint.isIncludedInRecommendation()) {
+                buildFloodAttributes(riverForecastPoint, hazardAttributes,
+                        riverHazard);
+
+            } else {
+                buildNonFloodAttributes(riverForecastPoint, hazardAttributes,
+                        riverHazard);
+            }
+
+            riverHazard.setCreationTime(TimeUtil.newCalendar().getTime());
+
+            List<Double> pointCoords = Lists.newArrayList();
+            Coordinate pointLocation = riverForecastPoint.getLocation();
+            pointCoords.add(pointLocation.x);
+            pointCoords.add(pointLocation.y);
+
+            Map<String, Serializable> forecastPointAttributes = Maps
+                    .newHashMap();
+            forecastPointAttributes.put(HazardConstants.POINT_TYPE,
+                    (Serializable) pointCoords);
+            forecastPointAttributes.put(HazardConstants.RIVER_POINT_ID,
+                    riverForecastPoint.getId());
+            forecastPointAttributes.put(HazardConstants.RIVER_POINT_NAME,
+                    riverForecastPoint.getName());
+            hazardAttributes.put(HazardConstants.FORECAST_POINT,
+                    (Serializable) forecastPointAttributes);
+
+            riverHazard.setHazardAttributes(hazardAttributes);
+        }
+
+        return riverHazard;
+    }
+
+    /**
+     * Builds a set of hazard recommendations based on the output from the river
+     * flood recommender.
+     * 
+     * @param includeNonFloodPoints
+     *            true - include nonFloodPoints in a recommendation if at least
+     *            one point in the group is flooding. false - include only flood
+     *            points.
+     * @param dialogInputMap
+     *            - used for single point selection workflow.
      * @return A set of recommended hazards.
      */
     public EventSet<IHazardEvent> getPotentialRiverHazards(
-            boolean includeNonFloodPoints) {
+            boolean includeNonFloodPoints, Map<String, Object> dialogInputMap) {
         EventSet<IHazardEvent> potentialRiverEventSet = new EventSet<IHazardEvent>();
+
+        String pointID = (String) dialogInputMap.get(SELECTED_POINT_ID);
 
         for (RiverForecastGroup riverGroup : this.riverProDataManager
                 .getRiverGroupList()) {
             if (riverGroup.isIncludedInRecommendation()) {
                 for (RiverForecastPoint riverForecastPoint : riverGroup
                         .getForecastPointList()) {
-                    if (riverForecastPoint.isIncludedInRecommendation()
-                            || includeNonFloodPoints) {
 
-                        Map<String, Serializable> hazardAttributes = new HashMap<String, Serializable>();
-                        IHazardEvent riverHazard = new BaseHazardEvent();
-                        potentialRiverEventSet.add(riverHazard);
-                        riverHazard.setEventID("");
-                        riverHazard.setStatus(HazardStatus.POTENTIAL);
-
-                        hazardAttributes.put(HazardConstants.POINTID,
-                                riverForecastPoint.getId());
-                        hazardAttributes.put(HazardConstants.STREAM_NAME,
-                                riverForecastPoint.getStream());
-
-                        hazardAttributes.put(HazardConstants.FLOOD_STAGE,
-                                riverForecastPoint.getFloodStage());
-                        hazardAttributes.put(HazardConstants.ACTION_STAGE,
-                                riverForecastPoint.getActionStage());
-
-                        double currentStage = riverForecastPoint
-                                .getCurrentObservation().getValue();
-
-                        hazardAttributes.put(HazardConstants.CURRENT_STAGE,
-                                currentStage);
-
-                        long currentStageTime = riverForecastPoint
-                                .getCurrentObservation().getValidTime();
-                        hazardAttributes.put(
-                                HazardConstants.CURRENT_STAGE_TIME,
-                                currentStageTime);
-
-                        if (riverForecastPoint.isIncludedInRecommendation()) {
-                            buildFloodAttributes(riverForecastPoint,
-                                    hazardAttributes, riverHazard);
-
-                        } else {
-                            buildNonFloodAttributes(riverForecastPoint,
-                                    hazardAttributes, riverHazard);
+                    if (pointID != null) {
+                        if (riverForecastPoint.getId().equals(pointID)) {
+                            IHazardEvent riverHazard = setRiverHazard(
+                                    includeNonFloodPoints, riverForecastPoint);
+                            riverHazard.setStatus(HazardStatus.PENDING);
+                            potentialRiverEventSet.add(riverHazard);
+                            return potentialRiverEventSet;
                         }
-
-                        riverHazard.setCreationTime(TimeUtil.newCalendar()
-                                .getTime());
-
-                        List<Double> pointCoords = Lists.newArrayList();
-                        Coordinate pointLocation = riverForecastPoint
-                                .getLocation();
-                        pointCoords.add(pointLocation.x);
-                        pointCoords.add(pointLocation.y);
-
-                        Map<String, Serializable> forecastPointAttributes = Maps
-                                .newHashMap();
-                        forecastPointAttributes.put(HazardConstants.POINT_TYPE,
-                                (Serializable) pointCoords);
-                        forecastPointAttributes.put(
-                                HazardConstants.RIVER_POINT_ID,
-                                riverForecastPoint.getId());
-                        forecastPointAttributes.put(
-                                HazardConstants.RIVER_POINT_NAME,
-                                riverForecastPoint.getName());
-                        hazardAttributes.put(HazardConstants.FORECAST_POINT,
-                                (Serializable) forecastPointAttributes);
-
-                        riverHazard.setHazardAttributes(hazardAttributes);
+                    } else {
+                        IHazardEvent riverHazard = setRiverHazard(
+                                includeNonFloodPoints, riverForecastPoint);
+                        potentialRiverEventSet.add(riverHazard);
                     }
-
                 }
             }
         }

@@ -49,6 +49,7 @@ DEFAULT_POLYGON_BUFFER = 0.05
 # Keys to values in the attributes dictionary produced
 # by the flood recommender.
 POINT_ID = "pointID"
+SELECTED_POINT_ID = "selectedPointID"
 POINT = "point"
 FORECAST_POINT = "forecastPoint"
      
@@ -153,12 +154,12 @@ class Recommender(RecommenderTemplate.Recommender):
         inputMap = JUtil.pyDictToJavaMap({"includeNonFloodPoints": True})
         selectedPointID = None
         try:
-            selectedPointID = dialogInputMap.get("selectedPointID")
+            selectedPointID = dialogInputMap.get(SELECTED_POINT_ID)
         except:
             pass
             
         if selectedPointID is not None:
-              inputMap.put("selectedPointID", selectedPointID)
+              inputMap.put(SELECTED_POINT_ID, selectedPointID)
                     
         spatialMap = JUtil.pyDictToJavaMap(spatialInputMap)
         
@@ -167,6 +168,7 @@ class Recommender(RecommenderTemplate.Recommender):
                                                                    spatialMap)
 
         pythonEventSet = EventSet(javaEventList)
+        
         self.assignHazardType(pythonEventSet)
         filteredPythonEventSet = self.filterHazards(pythonEventSet, dialogInputMap)
         self.addFloodPolygons(filteredPythonEventSet)
@@ -211,6 +213,8 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def getWarningTimeThreshold(self, startEpoch):
         hrs = self._warningThreshold
+        if not hrs:
+            hrs = self._getWarningThreshold()
         return startEpoch + datetime.timedelta(hours=hrs).total_seconds()
     
             
@@ -249,9 +253,9 @@ class Recommender(RecommenderTemplate.Recommender):
             return False    
 
     def filterHazards(self,hazardEvents, dMap):
-        #dMap = JUtil.javaMapToPyDict(dialogMap)
         filterType = dMap.get('forecastType')
         includeNonFloodPts = dMap.get("includePointsBelowAdvisory")
+        selectedPointID = dMap.get(SELECTED_POINT_ID)
 
         returnEventSet = EventSet(None)
 
@@ -281,6 +285,9 @@ class Recommender(RecommenderTemplate.Recommender):
             elif phenSig == 'HY.S' and includeNonFloodPts:
                 returnEventSet.add(hazardEvent)
                     
+            elif selectedPointID:
+                returnEventSet.add(hazardEvent)
+                
             else:
                 pass
         

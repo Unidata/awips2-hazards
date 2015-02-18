@@ -182,7 +182,7 @@ class MetaData(object):
                       {"displayString": "NO (Record Flood Not Expected)","identifier": "NO"},
                       {"displayString": "NR (Near Record or Record Flood Expected)","identifier": "NR"},
                       {"displayString": "UU (Flood Without a Period of Record to Compare)","identifier": "UU"},
-                      {"displayString": "OO (for areal flood warnings, areal flash flood products, and flood advisories (point and areal))","identifier": "OO"},
+                      {"displayString": "OO (Flood record status is not applicable)","identifier": "OO"},
                      ],
             }
          

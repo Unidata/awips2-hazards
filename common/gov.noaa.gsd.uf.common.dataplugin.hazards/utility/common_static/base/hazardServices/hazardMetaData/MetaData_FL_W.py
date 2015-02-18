@@ -45,7 +45,7 @@ class MetaData(CommonMetaData.MetaData):
                     "rightMargin": 10,
                     "topMargin": 10,
                     "bottomMargin": 10,
-                    "expandHorizontally": True,
+                    "expandHorizontally": False,
                     "expandVertically": True,
                     "pages": [
                                   {
@@ -53,15 +53,7 @@ class MetaData(CommonMetaData.MetaData):
                                     "pageFields": pointDetails
                                    },
                                   {
-                                    "pageName": "Crest Comparison",
-                                    "pageFields": crests
-                                   },
-                                  {
-                                    "pageName": "Impacts Statement",
-                                    "pageFields": impacts
-                                   },
-                                  {
-                                    "pageName": "CTA and CAP",
+                                    "pageName": "CTA",
                                     "pageFields": [
                                                    self.getCTAs(["stayTunedCTA"]),
                                                    # Preserving CAP defaults for future reference.
@@ -72,6 +64,14 @@ class MetaData(CommonMetaData.MetaData):
                                                    #                    ("responseType", "None"),
                                                    #                    ]) 
                                                    ]
+                                   },
+                                  {
+                                    "pageName": "Crest Comparison",
+                                    "pageFields": crests
+                                   },
+                                  {
+                                    "pageName": "Impacts Statement",
+                                    "pageFields": impacts
                                    }
                             ]
                      
@@ -109,7 +109,7 @@ class MetaData(CommonMetaData.MetaData):
             "rightMargin": 10,
             "topMargin": 10,
             "bottomMargin": 10,
-            "expandHorizontally": True,
+            "expandHorizontally": False,
             "expandVertically": False,
             "fields": [searchFields]
         }
@@ -122,7 +122,7 @@ class MetaData(CommonMetaData.MetaData):
             "rightMargin": 10,
             "topMargin": 10,
             "bottomMargin": 10,
-            "expandHorizontally": True,
+            "expandHorizontally": False,
             "expandVertically": False,
             "pages": [{ "pageName": parm.capitalize() + " Search Parameters", "pageFields": [expandGroup]}]
         }
@@ -143,7 +143,7 @@ class MetaData(CommonMetaData.MetaData):
             "rightMargin": 10,
             "topMargin": 10,
             "bottomMargin": 10,
-            "expandHorizontally": True,
+            "expandHorizontally": False,
             "expandVertically": False,
             "fields": fields
         }
@@ -178,7 +178,7 @@ class MetaData(CommonMetaData.MetaData):
             "rightMargin": 10,
             "topMargin": 10,
             "bottomMargin": 10,
-            "expandHorizontally": True,
+            "expandHorizontally": False,
             "expandVertically": False,
             "fields": [refStageFlow,stgWindow,searchType,apply]
         }
@@ -248,7 +248,7 @@ class MetaData(CommonMetaData.MetaData):
         group = {
                  "fieldType": "Group",
                  "fieldName": parm + "ForecastPointsGoup",
-                 "expandHorizontally": True,
+                 "expandHorizontally": False,
                  "expandVertically": True,
                  "fields" : [riverLabel,headerLabel,valuesLabel]
                  
@@ -264,7 +264,7 @@ class MetaData(CommonMetaData.MetaData):
                             "label": "Reference Stage Flow",
                             "choices": ["Current Observed", "Max Forecast", "Current Obs/Max Fcst"],
                             "values": "Current Observed",
-                            "expandHorizontally": True 
+                            "expandHorizontally": False 
                         }
         return refStageFlow
 
@@ -277,7 +277,7 @@ class MetaData(CommonMetaData.MetaData):
                         "minValue": -150,
                         "maxValue": -1,
                         "values": -10,
-                        "expandHorizontally": True,
+                        "expandHorizontally": False,
                         "showScale": True
                     } 
         return lookback
@@ -313,7 +313,7 @@ class MetaData(CommonMetaData.MetaData):
                "label": "Search Type",
                "choices": choices,
                "values": values,
-               "expandHorizontally": True 
+               "expandHorizontally": False 
             }
         
     # Stage Widow search criteria widgets (sliders and text fields)
@@ -326,7 +326,7 @@ class MetaData(CommonMetaData.MetaData):
             "topMargin": 5,
             "bottomMargin": 5,
             "numColumns": 2,
-            "expandHorizontally": True,
+            "expandHorizontally": False,
             "expandVertically": False,
             "fields": [
                     {
@@ -336,7 +336,7 @@ class MetaData(CommonMetaData.MetaData):
                         "minValue": low,
                         "maxValue": 0,
                         "values": low+1,
-                        "expandHorizontally": True,
+                        "expandHorizontally": False,
                         "showScale": True
                     },
                     {
@@ -346,7 +346,7 @@ class MetaData(CommonMetaData.MetaData):
                         "minValue": 0,
                         "maxValue": hi,
                         "values": hi-1,
-                        "expandHorizontally": True,
+                        "expandHorizontally": False,
                         "showScale": True
                     },
                     {
@@ -357,7 +357,7 @@ class MetaData(CommonMetaData.MetaData):
                         "maxValue": 0,
                         "values": -3,
                         "width": 2,
-                        "expandHorizontally": True,
+                        "expandHorizontally": False,
                         "showScale": True
                     },
                     {
@@ -367,7 +367,7 @@ class MetaData(CommonMetaData.MetaData):
                         "minValue": 0,
                         "maxValue": 100,
                         "values": 10,
-                        "expandHorizontally": True,
+                        "expandHorizontally": False,
                         "showScale": False
                     },
                     {
@@ -377,7 +377,7 @@ class MetaData(CommonMetaData.MetaData):
                         "minValue": 0,
                         "maxValue": 100,
                         "values": 10,
-                        "expandHorizontally": True,
+                        "expandHorizontally": False,
                         "showScale": False
                     },
                     {
@@ -388,7 +388,7 @@ class MetaData(CommonMetaData.MetaData):
                         "maxValue": 100,
                         "values": 10,
                         "width": 2,
-                        "expandHorizontally": True,
+                        "expandHorizontally": False,
                         "showScale": False
                     }
             ]
@@ -420,7 +420,7 @@ class MetaData(CommonMetaData.MetaData):
                 "rightMargin": 5,
                 "topMargin": 10,
                 "bottomMargin": 10,
-                "expandHorizontally": True,
+                "expandHorizontally": False,
                 "expandVertically": False,
                 "fields": [ 
                             {
@@ -435,7 +435,7 @@ class MetaData(CommonMetaData.MetaData):
                                 "values": value,
                                 "visibleChars": 4,
                                 "lines": 1,
-                                "expandHorizontally": True,
+                                "expandHorizontally": False,
                             }
                         ]
         }
@@ -501,7 +501,7 @@ class MetaData(CommonMetaData.MetaData):
                     "fieldName": parm + "SelectedForecastPointsComboBox",
                     "choices": choices,
                     "values": value,
-                    "expandHorizontally": True,
+                    "expandHorizontally": False,
                     "expandVertically": True
             }
             
@@ -530,7 +530,7 @@ class MetaData(CommonMetaData.MetaData):
             "fieldName": parm+"PointsAndTextFieldGroup",
             "fieldType":"Group",
             "label": "",
-            "expandHorizontally": True,
+            "expandHorizontally": False,
             "expandVertically": True,
             "fields": fields
             }

@@ -607,7 +607,7 @@ class EndTime12ShiftHoursTest extends spock.lang.Specification {
 
         then: "One hazard should be recommended"
 
-        Set<IHazardEvent> resultSet = recommender.getPotentialRiverHazards(false)
+        Set<IHazardEvent> resultSet = recommender.getPotentialRiverHazards(false, dialogInputMap)
         resultSet.size() == 1
 
         and: "The hazard end time should be 12 hours ahead of the fall below time"
