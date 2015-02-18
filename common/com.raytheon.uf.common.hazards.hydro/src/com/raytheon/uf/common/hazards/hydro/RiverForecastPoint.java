@@ -24,7 +24,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * May 1, 2014  3581       bkowal      Relocate to common hazards hydro
  * Sep 19, 2014   2394     mpduff for nash  interface changes
  * Dec 17, 2014 2394       Ramer/Manross    Updated Interface
- * 
+ * Feb 19, 2015  4375      Hansen           Removed getForecastTopRankedTypeSource
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -935,26 +935,6 @@ public class RiverForecastPoint {
                     .getRank();
         }
     }
-    
-    /** Get the highest ranked type source given a primary physical element
-     * 
-     */
-    public String getForecastTopRankedTypeSource(String primary_pe) {
-    	List<Object[]> ingestResults = floodDAO.getIngestTable(primary_pe);
-        if ((ingestResults == null) || (ingestResults.size() == 0)) {
-                return "";
-        	}
-
-        for (Object[] ingestRecord : ingestResults) {
-              String[] fields = ingestRecord[0].toString().split("\\|");
-                if (fields.length != 4) {
-                    /* An error was encountered parsing the unique string. */
-                    break;
-                }
-                return fields[1];
-        }
-        return "";
-        }
 
     /**
      * Loads or reloads updated observed and forecast data into the hydrographs
@@ -1274,7 +1254,8 @@ public class RiverForecastPoint {
      * @param basisBtime
      *            The forecast basis time (the time the forecast starts at)
      */
-    private void retrieveRiverForecast(long fcstEtime, long basisBtime, String primary_pe) {
+    private void retrieveRiverForecast(long fcstEtime, long basisBtime,
+            String primary_pe) {
         boolean maxForecastFound = false;
 
         /**

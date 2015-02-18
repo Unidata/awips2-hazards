@@ -127,7 +127,6 @@ class DamBreakFunctionalTest extends
                 eventBus.publishAsync(new ToolAction(
                         ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
                         settings.getTool(DAM_BREAK_FLOOD_RECOMMENDER)));
-
                 break;
 
             case RECEIVE_DAM_BREAK_DAM_FAILED_EVENTS:

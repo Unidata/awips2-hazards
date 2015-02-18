@@ -92,7 +92,7 @@ class Product(HydroGenerator.Product):
         eventIDs, ugcList = self.parameterSetupForKeyInfo(list(vtecRecord.get('eventID', None)), attributes.get('ugcs', None))
 
         # Attributes that get skipped. They get added to the dictionary indirectly.
-        noOpAttributes = ['ugcs', 'ugcPortions', 'ugcPartsOfState']
+        noOpAttributes = [] # Needed for attribution / firstBullet ['ugcs', 'ugcPortions', 'ugcPartsOfState']
 
         section = collections.OrderedDict()
         for attribute in attributes:
@@ -119,6 +119,8 @@ class Product(HydroGenerator.Product):
         section['vtecRecord'] = vtecRecord
         section['startTime'] = event.getStartTime()
         section['endTime'] = event.getEndTime()
+        section['metaData'] = metaData
+        section['creationTime'] = event.getCreationTime()        
         self._cityList(section, event)
 
         self._setProductInformation(vtecRecord, event)

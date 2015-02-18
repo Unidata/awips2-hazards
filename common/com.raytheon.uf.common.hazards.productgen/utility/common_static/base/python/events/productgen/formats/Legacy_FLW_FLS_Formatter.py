@@ -57,7 +57,8 @@ class Format(Legacy_Hydro_Formatter.Format):
             'floodHistoryBullet': self._floodHistoryBullet,
             'otherStageBullet': self._otherStageBullet,
             'forecastStageBullet': self._forecastStageBullet,
-            'floodPointTable': self._floodPointTable
+            'floodPointTable': self._floodPointTable,
+            'setUp_segment': self._setUp_segment,
                                 }
 
     def execute(self, productDict):
@@ -93,7 +94,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             partText = ''
             if name in self.productPartMethodMapping:
                 partText = self.productPartMethodMapping[name](productDict)
-            elif name in ['setUp_product', 'setUp_segment', 'setUp_section', 'wrapUp_product']:
+            elif name in ['setUp_product', 'setUp_section', 'wrapUp_product']:
                 pass
             elif name == 'endSegment':
                 partText = '\n$$\n\n' 
@@ -127,194 +128,20 @@ class Format(Legacy_Hydro_Formatter.Format):
     ################# Section Level
 
     def _attribution(self, segmentDict):
-        nwsPhrase = 'The National Weather Service in ' + self._wfoCity + ' has '
-        attribution = ''
-        areaPhrase = self.createAreaPhrase(segmentDict)
-
-        # Get the text for the type of flooding based on immediateCause
-        immediateCause = segmentDict.get('immediateCause', None)
-        if immediateCause:
-            typeOfFlooding = self.immediateCauseMapping(immediateCause)
-        warningType = segmentDict.get('warningType')
-
-        # Use this to determine which first bullet format to use.
-        vtecRecord = segmentDict.get('vtecRecord')
-        hazName = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
-
-        if len(vtecRecord.get('hdln')):
-            action = vtecRecord.get('act')
-
-        if action == 'NEW':
-            attribution = nwsPhrase + 'issued a'
-        elif action == 'CON':
-            attribution += '...The ' + hazName
-            if vtecRecord.get('phensig') == 'FA.W':
-                if warningType:
-                    attribution += ' for ' + warningType
-                if typeOfFlooding:
-                    attribution += ' for ' + typeOfFlooding
-            attribution += ' remains in effect for ' + areaPhrase + '...'
-        elif action == 'EXT':
-            attribution = nwsPhrase + 'extended the '
-        elif action == 'CAN':
-            attribution = '...The ' + hazName
-            if vtecRecord.get('phensig') == 'FA.W':
-                if warningType:
-                    attribution += ' for ' + warningType
-                if typeOfFlooding:
-                    attribution += ' for ' + typeOfFlooding
-            attribution += ' for ' + areaPhrase + ' has been canceled...'
-        elif action == 'EXP':
-            expTimeCurrent = self._issueTime
-            if vtecRecord.get('endTime') <= expTimeCurrent:
-                attribution = 'The ' + hazName + \
-                  ' for ' + areaPhrase + ' has expired.'
-            else:
-               timeWords = self._tpc.getTimingPhrase(vtecRecord, [], expTimeCurrent, timeZones=self.timezones)
-               attribution = 'The ' + hazName + \
-                  ' for ' + areaPhrase + ' will expire ' + timeWords + '.'
-        elif action == 'ROU':
-            attribution = nwsPhrase + 'released '
-
-        return attribution + '\n\n'
+        return self.attributionFirstBullet.getAttributionText()
 
     def _attribution_point(self, segmentDict):
-        nwsPhrase = 'The National Weather Service in ' + self._wfoCity + ' has '
-        attribution = ''
-        areaPhrase = self.createAreaPhrase(segmentDict)
-
-        # Use this to determine which first bullet format to use.
-        vtecRecord = segmentDict.get('vtecRecord')
-        hazName = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
-
-        if len(vtecRecord.get('hdln')):
-            action = vtecRecord.get('act')
-
-        if action == 'NEW':
-            attribution = nwsPhrase + 'issued a'
-        elif action == 'CON':
-            attribution = 'The ' + hazName + ' remains in effect for...'
-        elif action == 'EXT':
-            attribution = 'The ' + hazName + ' is now in effect for...' 
-        elif action == 'CAN':
-            attribution = 'The ' + hazName + \
-               ' for... ' + areaPhrase + ' has been canceled.'
-        elif action == 'EXP':
-            expTimeCurrent = self._issueTime
-            if vtecRecord.get('endTime') <= expTimeCurrent:
-                attribution = 'The ' + hazName + \
-                  ' for ' + areaPhrase + ' has expired.'
-            else:
-               timeWords = self._tpc.getTimingPhrase(vtecRecord, [], expTimeCurrent, timeZones=self.timezones)
-               attribution = 'The ' + hazName + \
-                  ' for ' + areaPhrase + ' will expire ' + timeWords + '.'
-        return attribution + '\n'
+        return self.attributionFirstBullet.getAttributionText()
 
     def _firstBullet(self, segmentDict):
-        firstBullet = '* '
-        areaPhrase = self.createAreaPhrase(segmentDict)
-
-        if self._runMode == 'Practice':
-            firstBullet += 'This is a test message.  '
-
-        warningType = segmentDict.get('warningType')
-        typeOfFlooding = segmentDict.get('typeOfFlooding')
-        advisoryType = segmentDict.get('advisoryType_productString')
-        optionalSpecificType = segmentDict.get('optionalSpecificType')
-
-        # Use this to determine which first bullet format to use.
-        vtecRecord = segmentDict.get('vtecRecord')
-        hazName = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
-
-        if len(vtecRecord.get('hdln')):
-            action = vtecRecord.get('act')
-
-        if action == 'NEW':
-            if vtecRecord.get('phensig') == 'FA.W':
-                if warningType:
-                    firstBullet += hazName + ' for ' + warningType + ' for...\n'
-                else:
-                    firstBullet += hazName + ' for...\n'
-                if typeOfFlooding:
-                    #TODO ProductUtils.wrapLegacy should handle the below indent
-                    firstBullet += '  ' + typeOfFlooding + ' in...\n'
-                firstBullet += areaPhrase
-            elif vtecRecord.get('phensig') == 'FA.Y':
-                # Add advisoryType to first bullet if in dictionary
-                if advisoryType:
-                    firstBullet += advisoryType + ' ' + hazName
-                else:
-                    firstBullet += hazName
-                # Add optionalSpecificType to first bullet if in dictionary
-                if optionalSpecificType:
-                    firstBullet+= ' for ' +  optionalSpecificType + ' for...\n'
-                else:
-                    firstBullet += ' for...\n'
-                # Add typeOfFlooding to first bullet if in dictionary
-                if typeOfFlooding:
-                    #TODO ProductUtils.wrapLegacy should handle the below indent
-                    firstBullet += '  ' + typeOfFlooding + ' in...\n'
-                firstBullet += areaPhrase
-            else:
-                firstBullet += hazName + ' for'
-                firstBullet += areaPhrase
-
-        elif action == 'CON':
-            if vtecRecord.get('phensig') == 'FA.W':
-                firstBullet += '...The ' + hazName
-                if warningType:
-                    firstBullet += ' for ' + warningType
-                if typeOfFlooding:
-                    firstBullet += ' for ' + typeOfFlooding
-                firstBullet += ' remains in effect for...'
-            firstBullet +=  areaPhrase
-
-        elif action == 'EXT':
-            if vtecRecord.get('phensig') == 'FA.W':
-                if warningType:
-                    firstBullet += hazName + ' for ' + warningType + ' for...\n'
-                else:
-                    firstBullet += hazName + ' for...\n'
-                if typeOfFlooding:
-                    #TODO ProductUtils.wrapLegacy should handle the below indent
-                    firstBullet += '  ' + typeOfFlooding + ' in...\n'
-                firstBullet += areaPhrase
-            else:
-                firstBullet += hazName + ' for...\n'
-                firstBullet += areaPhrase
-
-        elif action == 'CAN':
-            firstBullet = ''
-
-        elif action == 'EXP':
-            firstBullet = ''
-
-        elif action == 'ROU':
-            firstBullet += hazName + ' for '
-            firstBullet += areaPhrase
-        return firstBullet + '\n'
+        return '* '+self.attributionFirstBullet.getFirstBulletText()
 
     def _firstBullet_point(self, segmentDict):
         firstBullet = ''
-        areaPhrase = self.createAreaPhrase(segmentDict)
-
-        # Use this to determine which first bullet format to use.
-        vtecRecord = segmentDict.get('vtecRecord')
-        hazName = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
-
-        if len(vtecRecord.get('hdln')):
-            action = vtecRecord.get('act')
-
-        if action == 'NEW':
-            firstBullet += '* ' + hazName + ' for\n'
-            firstBullet += areaPhrase
-        elif action in ['CON', 'EXT']:
-            firstBullet +=  'The ' + hazName + ' continues for\n' + '  ' + areaPhrase
-        elif action == 'CAN':
-            firstBullet +=  'The ' + hazName + ' is canceled for\n' + '  ' + areaPhrase
-        elif action == 'ROU':
-            firstBullet += hazName + ' for\n' + '  ' + areaPhrase
-        return firstBullet + '\n'
+        if segmentDict.get('vtecRecord').get('act') == 'NEW':
+            firstBullet += '* '
+        firstBullet += self.attributionFirstBullet.getFirstBulletText()
+        return firstBullet
 
     def _basisBullet(self, sectionDict):
         vtecRecord = sectionDict.get('vtecRecord')

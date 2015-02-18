@@ -54,8 +54,9 @@ class Format(Legacy_Hydro_Formatter.Format):
             'otherStageBullet': self._otherStageBullet,
             'forecastStageBullet': self._forecastStageBullet,
             'pointImpactsBullet': self._pointImpactsBullet,
-            'floodPointTable': self._floodPointTable
-                                }
+            'floodPointTable': self._floodPointTable,
+            'setUp_segment': self._setUp_segment,
+                               }
 
     def execute(self, productDict):
         self.productDict = productDict
@@ -89,7 +90,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             partText = ''
             if name in self.productPartMethodMapping:
                 partText = self.productPartMethodMapping[name](productDict)
-            elif name in ['setUp_product', 'setUp_segment', 'setUp_section']:
+            elif name in ['setUp_product', 'setUp_section']:
                 pass
             elif name == 'endSegment':
                 partText = '\n$$\n\n' 
@@ -131,64 +132,11 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     ################# Section Level
     def _attribution(self, segmentDict):
-        nwsPhrase = 'The National Weather Service in ' + self._wfoCity + ' has '
-        attribution = ''
-        areaPhrase = self.createAreaPhrase(segmentDict)
-
-        # Use this to determine which first bullet format to use.
-        vtecRecord = segmentDict.get('vtecRecord')
-        hazName = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
-
-        if hazName:
-            action = vtecRecord.get('act')
-
-        if action == 'NEW':
-            attribution = nwsPhrase + 'issued a'
-        elif action == 'CON':
-            attribution = 'the ' + hazName + ' remains in effect for...'
-        elif action == 'EXT':
-            attribution = nwsPhrase + 'has extended the'
-#                 attribution = 'the ' + hazName + ' is now in effect for...' 
-        elif action == 'CAN':
-            attribution = 'the ' + hazName + \
-               ' for... ' + areaPhrase + ' has been canceled.'
-        elif action == 'EXP':
-            expTimeCurrent = self._issueTime
-            if vtecRecord.get('endTime') <= expTimeCurrent:
-                attribution = 'the ' + hazName + \
-                  ' for ' + areaPhrase + ' has expired.'
-            else:
-               timeWords = self._tpc.getTimingPhrase(vtecRecord, [], expTimeCurrent, timeZones=self.timezones)
-               attribution = 'the ' + hazName + \
-                  ' for ' + areaPhrase + ' will expire ' + timeWords + '.'
-        return attribution + '\n\n'
-
+        return self.attributionFirstBullet.getAttributionText()
+    
     def _firstBullet(self, segmentDict):
-        firstBullet = '* '
-        areaPhrase = self.getAreaPhrase(segmentDict)
-
-        if self._runMode == 'Practice':
-            testText = 'This is a test message.  '
-            firstBullet = firstBullet + testText
-
-        # Use this to determine which first bullet format to use.
-        vtecRecord = segmentDict.get('vtecRecord')
-        hazName = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
-
-        if hazName:
-            action = vtecRecord.get('act')
-
-        if action == 'NEW':
-            firstBullet += hazName + ' for...\n'
-            firstBullet += areaPhrase
-        elif action == 'CON':
-            firstBullet +=  areaPhrase
-        elif action == 'EXT':
-            firstBullet += hazName + ' for...\n'
-            firstBullet += areaPhrase
-
-        return firstBullet + '\n'
-
+        return '* '+self.attributionFirstBullet.getFirstBulletText()
+                
     def _timeBullet(self, segmentDict):
         bulletText = super(Format, self)._timeBullet(segmentDict)
         return bulletText + '\n'

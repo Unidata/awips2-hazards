@@ -496,7 +496,7 @@ class Product(ProductTemplate.Product):
             segmentDict = collections.OrderedDict()
             self._productSegment = productSegment
 
-            # Setup critical info the the segment
+            # Setup critical info for the segment
             self._setupSegment()
 
             # Create and order the sections for the segment:     
@@ -539,7 +539,7 @@ class Product(ProductTemplate.Product):
         productDict['segments'] = segmentDicts
 
     def _addSectionsToSegment(self, segmentDict):
-        # If no sections add a empty list and return
+        # If no sections add an empty list and return
         if not self._productSegment.sections:
             segmentDict['sections'] = []
             return
@@ -566,7 +566,7 @@ class Product(ProductTemplate.Product):
         @param metaDataList: list of (metaData, hazardEvent) for the segment
         @param productID: product ID e.g. FFA, CWF, etc.
         @param issueTime: in seconds so that it compares to the vtec records
-        '''
+        '''        
         sections = []
         hList = copy.deepcopy(vtecRecords)
 
@@ -604,7 +604,7 @@ class Product(ProductTemplate.Product):
 
     def _showProductParts(self):
         # IF True will label the editable pieces in the Product Editor with product parts
-        return True
+        return False
 
     ######################################################
     #  Product Segment determination         
@@ -894,7 +894,7 @@ class Product(ProductTemplate.Product):
                     additionalInfo.append(productString)
         return additionalInfo, citiesListFlag
 
-    def floodTimeStr(self, creationTime, flood_time_ms):
+    def floodTimeStr(self, creationTime, hashTag, flood_time_ms):
         creationTimeInSeconds = int(creationTime.strftime("%s"))
         floodTimeInSeconds = flood_time_ms/1000
         floodTime = datetime.datetime.fromtimestamp(floodTimeInSeconds)

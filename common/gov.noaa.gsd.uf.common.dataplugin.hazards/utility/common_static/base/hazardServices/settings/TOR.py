@@ -151,12 +151,12 @@ TOR = {
             "toolName": "StormTrackTool", 
             "displayName": "Storm Track",
             "toolType": "RECOMMENDER",
-	    "visible":True,
+            "visible":True,
         },
         {
             "toolName": "ModifyStormTrackTool", 
             "toolType": "RECOMMENDER",
-	    "visible":False,
+            "visible":False,
         },
     ] 
 }

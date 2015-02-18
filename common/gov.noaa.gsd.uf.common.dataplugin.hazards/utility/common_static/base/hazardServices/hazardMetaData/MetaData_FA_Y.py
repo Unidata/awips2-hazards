@@ -13,7 +13,7 @@ class MetaData(CommonMetaData.MetaData):
                         self.getEndingOption(),
                         self.getEndingSynopsis(),
                         ]
-        else:
+        elif self.hazardStatus == 'pending':
             metaData = [
                     self.getAdvisoryType(),
                     self.getImmediateCause(),
@@ -30,6 +30,17 @@ class MetaData(CommonMetaData.MetaData):
 #                                           ("responseType", "Avoid"),
 #                                         ]) 
                     ]
+        else: # 'issued'
+            metaData = [
+                    self.getBasisAndImpacts('basisAndImpactsStatement'),
+                    self.getAdvisoryType(),
+                    self.getImmediateCause(),
+                    self.getOptionalSpecificType(),
+                    self.getEventSpecificSource(),
+                    self.getRainAmt(),
+                    self.getAdditionalInfo(),
+                    self.getCTAs(),   
+                ]
         return {
                 METADATA_KEY: metaData
                 }    

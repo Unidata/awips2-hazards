@@ -54,7 +54,20 @@ class MetaData(object):
              "label": "Forecast Point:",
              "maxChars": 5,
             }
-        
+    
+    def getBasisAndImpacts(self, fieldName='basisAndImpactsStatement'):
+        # TODO populate with previous text is possible
+        label = 'Enter Basis and Impacts '
+        return {
+         'fieldName': fieldName,
+         'fieldType':'Text',
+         'label': label, 
+         'values': '',
+         "visibleChars": 60,
+         "lines": 6,
+         "expandHorizontally": True
+        }
+    
     def getImmediateCause(self):
         return {
             "fieldName": "immediateCause",
@@ -91,7 +104,7 @@ class MetaData(object):
     def immediateCauseSM(self):
         return {"identifier":"SM", "displayString":"SM (Snow Melt)"}
     def immediateCauseRS(self):
-        return {"identifier":"RS", "displayString":"RS (Rain and Snow Melt)"}
+        return {"identifier":"RS", "displayString":"RS (Rain and Snow Melt)", "productString":"Rain and Snowmelt in"}
     def immediateCauseDM(self):
         return {"identifier":"DM", "displayString":"DM (Dam or Levee Failure)"}
     def immediateCauseDR(self):
@@ -479,6 +492,7 @@ class MetaData(object):
                 '''The heavy rain has ended...and flooding is no longer expected to pose a threat.''',}
  
     def getRiver(self, editable=True):
+        riverName = self.hazardEvent.get('riverName','')
         return {
              "fieldType": "Text",
              "fieldName": "riverName",
@@ -487,6 +501,7 @@ class MetaData(object):
              "maxChars": 40,
              "visibleChars": 12,
              "editable": editable,
+             "values": riverName,
             } 
 
     def getFloodLocation(self):
@@ -804,7 +819,7 @@ class MetaData(object):
                      to your local law enforcement agency.'''},
                     ]
         return {
-             "fieldType":"RadioButtons",
+             "fieldType":"MenuButton",
              "fieldName": "endingOption",
              "label":"Ending Option:",
              "values": choices[0],
@@ -853,7 +868,7 @@ class MetaData(object):
                    { 
                     'fieldName': 'severity',
                     'fieldType':'ComboBox',
-                    'label':'Severity:',
+                    'labeMenuItemsl':'Severity:',
                     'expandHorizontally': True,
                     'values': 'Severe',
                     'choices': ['Extreme','Severe','Moderate','Minor','Unknown']
@@ -1020,13 +1035,39 @@ def applyRiseCrestFallUntilFurtherNoticeInterdependencies(triggerIdentifiers, mu
 
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
 
-    propertyChanges = {}
-    if (triggerIdentifiers == None or "endingOption" in triggerIdentifiers) and \
-        "endingOption" in mutableProperties:
-        endingOption = mutableProperties["endingOption"]["values"]
-        propertyChanges["endingSynopsis"] = {
-                        "values" : endingOption,                        
-                        }        
+    # See if the trigger identifiers list contains any of the identifiers from the
+    # endingSynopsis canned choices; if so, change the text's value to match the associated
+    # canned choice text.
+
+    #  Example:
+    #  triggerIdentifiers ['endingOption.Water is receding']
+    #  mutableProperties {'__scrollableWrapper__': {'enable': True, 'editable': True, 'extraData': {}}, 
+    #              'endingOption': {'enable': True, 'editable': True, 'extraData': {}, 'choices': 
+    #              [{'displayString': 'Water is receding', 'identifier': 'Water is receding', u
+    #                 'productString': 'Flood waters have receded...and are no longer expected to pose a threat to life or property.\n
+    #                 Please continue to heed any road closures.'}, 
+    #               {'displayString': 'Heavy rain ended', 'identifier': 'Heavy rain ended', 
+    #                 'productString': 'Excess runoff from heavy rain has ended over the warned area. If flooding has been observed...
+    #                 Please report it\n     to your local law enforcement agency.'}]}, 
+    #              'endingSynopsis': {'editable': True, 'enable': True, 'values': '', 'extraData': {}}}
+    propertyChanges = None
+    if triggerIdentifiers:
+        propertyChanges = {}
+        for triggerIdentifier in triggerIdentifiers:
+            if triggerIdentifier.find('endingOption') >= 0:
+                chosen = triggerIdentifier.split('.')[1]
+                choices = mutableProperties.get("endingOption").get("choices")
+                for choice in choices:
+                    if choice['identifier'] == chosen:
+                        endingOption = choice.get('productString', chosen)
+                        endingOption = endingOption.replace('  ', '')
+                        endingOption = endingOption.replace('\n', ' ')
+                        endingOption = endingOption.replace('<br/>', '\n')
+                        endingOption = endingOption.replace('<br />', '\n')
+                        endingOption = endingOption.replace('<br>', '\n')
+                propertyChanges["endingSynopsis"] = {
+                                "values" : endingOption,                        
+                                } 
     return propertyChanges
                 
 def toBasis(eventType, eventTypeToBasis):   

@@ -1050,10 +1050,9 @@ class RiverForecastPoints(object):
         '''
         return self.getStageFlowUnits(forecastPointID)
 
-    def getForecastTopRankedTypeSource(self, forecastPointID):
-        riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
-        primaryPE = self.getPrimaryPhysicalElement(forecastPointID)
-        return riverForecastPoint.getForecastTopRankedTypeSource(primaryPE)
+    def getForecastTopRankedTypeSource(self, forecastPointID, primaryPE, duration, extremum):
+        floodDAO = self.riverProDataManager.getFloodDAO()
+        return floodDAO.getForecastTopRankedTypeSource(forecastPointID, primaryPE, duration, extremum)
     
     ###############################################################
     #

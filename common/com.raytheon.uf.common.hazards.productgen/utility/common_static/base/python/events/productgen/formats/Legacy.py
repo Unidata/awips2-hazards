@@ -58,7 +58,7 @@ class Format(FormatTemplate.Formatter):
     
     def _printDebugProductParts(self):   
         # IF True will print the product parts and associated text during execution
-        return False
+        return True
     
     def _processProductParts(self, productDict, productParts, skipParts=[]):
         '''
@@ -80,7 +80,7 @@ class Format(FormatTemplate.Formatter):
 
             if self._printDebugProductParts():
                 if name not in ['segments', 'sections']:
-                    print 'Legacy Part:', name, ': ', 
+                    print 'Legacy V2 Part:', name, ': ', 
             
             partText = ''                                   
             if name == 'wmoHeader': 

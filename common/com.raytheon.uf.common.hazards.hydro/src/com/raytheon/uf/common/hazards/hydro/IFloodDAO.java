@@ -227,6 +227,9 @@ public interface IFloodDAO {
             long endValidTime, long basisBTime, boolean useLatestForecast,
             List<Object[]> basisTimeResults);
 
+    public String getForecastTopRankedTypeSource(String lid, String primary_pe,
+            int duration, String extremum);
+
     public String getPhysicalElement(String lid, String physicalElement,
             int duration, String typeSource, String extremum, String timeArg,
             String derivationInstruction, boolean timeFlag, long currentTime_ms);

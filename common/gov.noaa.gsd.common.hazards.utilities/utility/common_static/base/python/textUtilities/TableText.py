@@ -77,7 +77,7 @@ class FloodPointTable:
                 columnHeading2+= day1Label + '  '+day2Label+ '  '+day3Label
             else:               
                 columnHeading2 += self.format(column.labelLine2, column.width, column.labelAlign2)
-        return columnHeading1 + columnHeading2 + '\n'
+        return columnHeading1 + '\n' + columnHeading2 + '\n\n'
         return self.format(columnHeadings)
            
     def makeRiverRows(self, streamName, hazardEvents): 
@@ -102,7 +102,9 @@ class FloodPointTable:
             observedStage, shefCode = self.rfp.getObservedStage(pointID)
             colValue = `observedStage` + ' ' + timeStr
         elif column.variable == 'forecastStage_next3days':
-            fcstTypeSource = self.rfp.getForecastTopRankedTypeSource(pointID)
+            duration = 0
+            extremum = 'Z'
+            fcstTypeSource = self.rfp.getForecastTopRankedTypeSource(pointID, primaryPE, duration, extremum)
             observedTime = self.rfp.getObservedTime(pointID)
             baseTime = self.tpc.getFormattedTime(observedTime, '%H%M')
             # Build timeArgs  e.g. '1|1200|1'
@@ -110,15 +112,12 @@ class FloodPointTable:
             for i in range(3):
                 timeArgs.append(str(i+1)+'|'+baseTime+'|1')  
             # TODO Fix getPhysicalElementValue              
-            day1 = self.rfp.getPhysicalElementValue(pointID, primaryPE, 0, fcstTypeSource, 'Z', timeArgs[0], timeFlag=False, 
+            day1 = self.rfp.getPhysicalElementValue(pointID, primaryPE, duration, fcstTypeSource, extremum, timeArgs[0], timeFlag=False, 
                                                     currentTime_ms=self.currentTime_ms)
-            day2 = self.rfp.getPhysicalElementValue(pointID, primaryPE, 0, fcstTypeSource, 'Z', timeArgs[1], timeFlag=False, 
+            day2 = self.rfp.getPhysicalElementValue(pointID, primaryPE, duration, fcstTypeSource, extremum, timeArgs[1], timeFlag=False, 
                                                     currentTime_ms=self.currentTime_ms)
-            day3 = self.rfp.getPhysicalElementValue(pointID, primaryPE, 0, fcstTypeSource, 'Z', timeArgs[2], timeFlag=False, 
-                                                    currentTime_ms=self.currentTime_ms)           
-            day1 = '25.0'
-            day2 = '26.7'
-            day3 = '27.0'
+            day3 = self.rfp.getPhysicalElementValue(pointID, primaryPE, duration, fcstTypeSource, extremum, timeArgs[2], timeFlag=False, 
+                                                    currentTime_ms=self.currentTime_ms) 
             colValue = self.format(day1, 6) + self.format(day2, 6) + self.format(day3, 6)
         return self.format(colValue, column.width, column.align) 
       
@@ -145,7 +144,9 @@ class FloodPointTable:
 
 # For Focal Points to work more on this logic
 #
-# def generateTestCases(issueTime):
+# def generateTestCases():
+#     import time
+#     issueTime = time.time() 
 #     columns = []
 #     columns.append(Column('floodStage', width=6, align='<', labelLine1='Fld', labelAlign1='<', labelLine2='Stg', labelAlign2='<'))
 #     columns.append(Column('observedStage', issueTime, width=20, align='<',labelLine1='Observed', labelAlign1='^', labelLine2='Stg    Day    Time', labelAlign2='<'))
@@ -154,22 +155,28 @@ class FloodPointTable:
 #         'pointID': 'DCTN1',
 #         'streamName': 'Missouri River',
 #         }
-#     testCase1 = (hazardEvents, columns)
+#     testCase1 = ([hazardEvent], columns)
 #     return [testCase1]
-#     
+#      
 # class RiverForecastPoints:
 #     def getRiverPointName(self, pointID):
 #         return 'Dodge'
 #     def getFloodStage(self, pointID):
 #         return '35.0'
 #     def getObservedStage(self, pointID):
-#         return '25.0'
+#         return 25.0, 10
 #     def getObservedTime(self, pointID):
-#         return 'Wed  7pm'
-#     def getPhysicalElement(self, pointID, primaryPE, duration, fcstTypeSource, extremum, timeArg, timeFlag=False):
+#         return time.time()
+#     def getPrimaryPhysicalElement(self, pointID):
+#         return 'HG'
+#     def getPhysicalElementValue(self, pointID, primaryPE, duration, fcstTypeSource, extremum, timeArg, timeFlag=False, currentTime_ms=None):
 #         return '28.0'
-                            
+#     def getForecastTopRankedTypeSource(self, pointID, primaryPE, duration, extremum):
+#         return 'FG'
+#                               
+# import time
 # testCases = generateTestCases()
 # for hazardEvents, columns in testCases:
-#     FloodPointTable(hazardEvents, columns, RiverForecastPoints()).makeTable()
+#     fpt = FloodPointTable(hazardEvents, columns, time.time(), ['CST7CDT'], RiverForecastPoints())
+#     print fpt.makeTable()
 

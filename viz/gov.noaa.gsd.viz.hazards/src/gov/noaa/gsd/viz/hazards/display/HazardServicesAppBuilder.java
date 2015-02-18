@@ -200,8 +200,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Jan 21, 2015 3795       rferrel             Use ProductGenConfirmationDlg for getUserAnswer dialog.
  * Jan 21, 2015 3626       Chris.Golden        Added use of new hazard-type-first presenter and
  *                                             view.
+ * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * Jan 29, 2015 3795       Robert.Blum         Fixed NullPointer on Display.getCurrent().getActiveShell().
- * Jan 29, 2015 4375       Dan Schaffer        Console initiation of RVS product generation
  * Jan 30, 2015 3626       Chris.Golden        Added ability to pass event type when running a
  *                                             recommender.
  * Feb 03, 2015 3865       Chris.Cody          Shutdown Hazard Services on perspective change when

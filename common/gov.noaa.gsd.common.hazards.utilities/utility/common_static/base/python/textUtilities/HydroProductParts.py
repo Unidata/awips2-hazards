@@ -245,7 +245,7 @@ class HydroProductParts():
                 'observedStageBullet',
                 'floodStageBullet',
                 'floodCategoryBullet',
-                'otherStageBullet',
+                #'otherStageBullet',
                 'forecastStageBullet',
                 'pointImpactsBullet',
                 'floodPointTable',
@@ -400,12 +400,6 @@ class HydroProductParts():
                     'impactsBullet'
                     ]
         # Otherwise (FLS)
-        elif action == 'CON':
-            partsList = [
-                    'setUp_section',
-                    'attribution',
-                    'basisAndImpactsStatement',
-                    ]
         else:
             partsList = [
                     'setUp_section',
@@ -529,7 +523,7 @@ class HydroProductParts():
             partsList += [
                 'observedStageBullet',
                 'floodStageBullet',
-                'otherStageBullet',  
+                #'otherStageBullet',  
                 'floodCategoryBullet', 
                 'recentActivityBullet',  
                 'forecastStageBullet',

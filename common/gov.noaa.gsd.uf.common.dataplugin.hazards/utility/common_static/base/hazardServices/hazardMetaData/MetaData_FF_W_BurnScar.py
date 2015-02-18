@@ -10,7 +10,7 @@ class MetaData(CommonMetaData.MetaData):
                         self.getEndingOption(),
                         self.getEndingSynopsis()
                         ]
-        else:
+        elif self.hazardStatus == 'pending':
            metaData = [
                      self.getInclude(),
                      self.setBurnScarNameLabel(hazardEvent),
@@ -28,6 +28,18 @@ class MetaData(CommonMetaData.MetaData):
 #                                           ("responseType", "Avoid"),
 #                                          ])
                     ]
+        else: # issued
+           metaData = [
+                     self.getBasisAndImpacts('basisAndImpactsStatement_segmentLevel'), 
+                     self.getInclude(),
+                     self.setBurnScarNameLabel(hazardEvent),
+                     self.getImmediateCause(),
+                     self.getEventSpecificSource(),
+                     self.getDebrisFlowOptions(),                                       
+                     self.getRainAmt(),
+                     self.getAdditionalInfo(),
+                     self.getCTAs(), 
+            ]
         return {
                 METADATA_KEY: metaData
                 }    

@@ -605,7 +605,6 @@ class TextProductCommon(object):
             If no value is specified in the hazardEvent, return empty string.
         
         For example, In the Hazard Information Dialog, there is a field for specifying the Flood Severity.  
-        This is specified in the Meta Data for certain flood type hazards.  The key field would be 
         'immediateCause', the user-entered value might be 'ER (Excessive Rainfall)' and the productString 
         returned would then be 'Excessive rain causing Flash Flooding was occurring over the warned area.'
         '''   
@@ -688,18 +687,23 @@ class TextProductCommon(object):
         returnVal = ''
 
         widget = self.getEmbeddedDict(metaData, 'fieldName', fieldName)
-        
         if widget is not None:
-            for choice in widget.get('choices'):
-                if choice.get('identifier') == value or choice.get('displayString') == value:
-                    returnVal = choice.get('productString')
-                    if returnVal is None:
-                        returnVal = choice.get('displayString')
-                    returnVal = returnVal.replace('  ', '')
-                    returnVal = returnVal.replace('\n', ' ')
-                    returnVal = returnVal.replace('</br>', '\n')
-                    returnVal = self.substituteParameters(hazardEvent, returnVal, formatMethod, formatHashTags)
-                    break
+            choices = widget.get('choices')
+            if choices:
+                for choice in widget.get('choices'):
+                    if choice.get('identifier') == value or choice.get('displayString') == value:
+                        returnVal = choice.get('productString')
+                        if returnVal is None:
+                            returnVal = choice.get('displayString')
+                        returnVal = returnVal.replace('  ', '')
+                        returnVal = returnVal.replace('\n', ' ')
+                        returnVal = returnVal.replace('<br/>', '\n')
+                        returnVal = returnVal.replace('<br />', '\n')
+                        returnVal = returnVal.replace('<br>', '\n')
+                        returnVal = self.substituteParameters(hazardEvent, returnVal, formatMethod, formatHashTags)
+                        break
+            elif widget.get('fieldName'):
+                returnVal = widget.get('fieldName')
         return returnVal
     
     def substituteParameters(self, hazardEvent, returnVal, formatMethod=None, formatHashTags=[]):
@@ -712,7 +716,11 @@ class TextProductCommon(object):
             else:
                 replaceVal = self.frame(hashTag)
             if hashTag in formatHashTags:
-                formattedVal = formatMethod(hazardEvent.getCreationTime(), hashTag, replaceVal)
+                try:
+                    creationTime = hazardEvent.getCreationTime()
+                except:
+                    creationTime = hazardEvent.get('creationTime')
+                formattedVal = formatMethod(creationTime, hashTag, replaceVal)
             else:
                 formattedVal = self.formatAsNecessary(replaceVal)
             returnVal = returnVal.replace('#' + hashTag + '#', formattedVal)

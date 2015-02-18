@@ -396,6 +396,12 @@ public class FloodRecommenderTestDAO implements IFloodDAO {
     }
 
     @Override
+    public String getForecastTopRankedTypeSource(String lid, String primary_pe,
+            int duration, String extremum) {
+        return "";
+    }
+
+    @Override
     public String getPhysicalElement(String lid, String physicalElement,
             int duration, String typeSource, String extremum, String timeArg,
             String derivationInstruction, boolean timeFlag, long currentTime_ms) {

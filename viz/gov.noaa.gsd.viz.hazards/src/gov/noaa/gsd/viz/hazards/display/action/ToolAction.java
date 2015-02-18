@@ -82,6 +82,9 @@ public class ToolAction {
 
     // Public Constructors
     /**
+     * Construct a standard instance.
+     * 
+     * 
      * @param recommenderActionType
      *            Type of the recommender action that is occurring.
      * @param tool
@@ -96,6 +99,8 @@ public class ToolAction {
     }
 
     /**
+     * 
+     * 
      * @param recommenderActionType
      *            Type of the recommender action that is occurring.
      * @param tool

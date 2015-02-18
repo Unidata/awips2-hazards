@@ -12,7 +12,7 @@
 import FormatTemplate
 import datetime
 import collections
-import types, re, sys, copy
+import types, re, sys, copy, os
 from KeyInfo import KeyInfo
 from com.raytheon.uf.common.hazards.productgen import ProductUtils
 from QueryAfosToAwips import QueryAfosToAwips
@@ -20,6 +20,7 @@ from Bridge import Bridge
 from TextProductCommon import TextProductCommon
 import ProductTextUtil
 from BasisText import BasisText
+from AttributionFirstBulletText import AttributionFirstBulletText
 
 from abc import *
 
@@ -54,7 +55,7 @@ class Format(FormatTemplate.Formatter):
     @abstractmethod
     def _processProductParts(self, eventSet):
         '''
-        Must be overridden by the Product Fromatter
+        Must be overridden by the Product Formatter
         '''
         pass
 
@@ -210,6 +211,14 @@ class Format(FormatTemplate.Formatter):
         return 'The segments in this product are river forecasts for selected locations in the watch area.\n\n'
 
     ################# Segment Level
+    
+    def _setUp_segment(self, segmentDict):
+        # ToDo -- Post-Hydro there could be more than one section in a segment
+        sectionDict = segmentDict.get('sections')[0]
+        self.attributionFirstBullet = AttributionFirstBulletText()
+        self.attributionFirstBullet.initialize(
+            sectionDict, self._productID, self._issueTime, self._testMode, self._wfoCity, self._tpc)
+        return ''
 
     def _emergencyHeadline(self, segmentDict):
         partText = ''
@@ -420,12 +429,20 @@ class Format(FormatTemplate.Formatter):
 
             # always remove the main vtecRecord from the list
             hList.remove(vtecRecord)
-
+        
+        # NOTE: When called by the Legacy_FFA_Formatter for a cancellation, this incorrectly returns a long string e.g.
+        #   ...FLASH FLOOD WATCH is cancelled for portions of southwest Iowa and southeast Nebraska...including the following 
+        #   AREAS...In southwest Iowa...Fremont and Mills. In southeast Nebraska...Cass...
+        # instead of the correct headline:
+        #   ...FLASH FLOOD WATCH is cancelled...
+        # This works in V2 so that can be used to investigate.
         return headlineStr
 
     def _basisAndImpactsStatement_segmentLevel(self, segmentDict):
-        bulletText = '|* Current hydrometeorological situation and expected impacts *|'
-        return bulletText + '\n\n'
+        sectionDict = segmentDict.get('sections', {})[0]
+        statement = sectionDict.get('basisAndImpactsStatement_segmentLevel', 
+                                    '|* Current hydrometeorological situation and expected impacts *| \n')
+        return statement + '\n\n'
 
     ###################### Section Level
 
@@ -484,9 +501,11 @@ class Format(FormatTemplate.Formatter):
     def _basisAndImpactsStatement(self, segmentDict):
         #TODO Warngen seems to just have the basis here. Does impacts
         # still need to be added?
-        bulletText = self._basisBullet(segmentDict)
+        bulletText = segmentDict.get('basisAndImpactsStatement',
+                            '|* Current hydrometeorological situation and expected impacts *|')
+        bulletText += '\n'
 
-        # Add any additioinal comments here, listOfDrainages, floodMoving, etc.
+        # Add any additional comments here, listOfDrainages, floodMoving, etc.
         additionalCommentsText = self.createAdditionalComments(segmentDict)
         if additionalCommentsText:
             bulletText += '\n' + additionalCommentsText
@@ -759,3 +778,7 @@ class Format(FormatTemplate.Formatter):
         else :
             areaPhrase = self.getAreaPhrase(sectionDict)
         return areaPhrase
+        
+    def flush(self):
+        ''' Flush the print buffer '''
+        os.sys.__stdout__.flush()

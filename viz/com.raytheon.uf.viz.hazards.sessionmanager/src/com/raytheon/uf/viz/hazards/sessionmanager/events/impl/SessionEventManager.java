@@ -954,17 +954,11 @@ public class SessionEventManager implements
         Map<String, String> eventModifyingFunctionNamesForIdentifiers = eventModifyingScriptsForEventIdentifiers
                 .get(event.getEventID());
         if (eventModifyingFunctionNamesForIdentifiers == null) {
-            statusHandler
-                    .error("No event modifying script identifiers found for event "
-                            + event.getEventID());
             return;
         }
         String eventModifyingFunctionName = eventModifyingFunctionNamesForIdentifiers
                 .get(identifier);
         if (eventModifyingFunctionName == null) {
-            statusHandler
-                    .error("No event modifying script function name found for identifier "
-                            + identifier + " for event " + event.getEventID());
             return;
         }
         configManager.runEventModifyingScript(event,

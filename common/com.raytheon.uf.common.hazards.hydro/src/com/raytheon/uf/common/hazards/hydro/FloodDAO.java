@@ -13,7 +13,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
-import java.util.Map.Entry;
 
 import org.apache.commons.lang.time.DateUtils;
 
@@ -26,7 +25,6 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.util.Pair;
-
 
 /**
  * Description: Product data accessor implementation of the IFloodDAO.
@@ -51,6 +49,8 @@ import com.raytheon.uf.common.util.Pair;
  */
 public class FloodDAO implements IFloodDAO {
 
+    private static final String NEXT = "NEXT";
+
     private static final String IHFS = "ihfs";
 
     private static final String MISSING_VALUE = "-9999";
@@ -66,10 +66,16 @@ public class FloodDAO implements IFloodDAO {
             .getHandler(FloodDAO.class);
 
     /**
-     * Standard date format for hydro data.
+     * ThreadLocal instance of Standard date format for hydro data.
      */
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat(
-            "yyyy-MM-dd HH:mm:ss");
+    private final ThreadLocal<SimpleDateFormat> dateFormat = new ThreadLocal<SimpleDateFormat>() {
+        @Override
+        protected SimpleDateFormat initialValue() {
+            SimpleDateFormat sTemp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            sTemp.setTimeZone(TimeZone.getTimeZone("GMT"));
+            return sTemp;
+        }
+    };
 
     /**
      * Default hours to look for forecast basis time.
@@ -190,7 +196,6 @@ public class FloodDAO implements IFloodDAO {
      * class.
      */
     private FloodDAO() {
-        dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
         getHourValues();
     }
 
@@ -445,9 +450,9 @@ public class FloodDAO implements IFloodDAO {
         query.append("SELECT * FROM RiverStatus ");
         query.append("WHERE lid = '" + id + "' ");
         query.append("AND pe = '" + physicalElement + "' ");
-        query.append("AND ( validtime >= '" + dateFormat.format(beginValidTime)
-                + "' ");
-        query.append("AND validtime <= '" + dateFormat.format(systemTime)
+        query.append("AND ( validtime >= '"
+                + dateFormat.get().format(beginValidTime) + "' ");
+        query.append("AND validtime <= '" + dateFormat.get().format(systemTime)
                 + "') ");
         query.append("AND basistime IS NULL ");
 
@@ -522,8 +527,8 @@ public class FloodDAO implements IFloodDAO {
             StringBuffer query = new StringBuffer(
                     "SELECT DISTINCT(ts_rank||'|'||ts||'|'||lid||'|'||pe) ");
             query.append("FROM IngestFilter WHERE ts LIKE 'F%%' ");
-            query.append("AND (pe = '"+primary_pe+"') ");
-            //query.append("AND ingest = 'T' order by ts_rank");
+            query.append("AND (pe = '" + primary_pe + "') ");
+            // query.append("AND ingest = 'T' order by ts_rank");
             query.append("AND ingest = 'T'");
 
             ingestResults = DatabaseQueryUtil.executeDatabaseQuery(
@@ -581,9 +586,9 @@ public class FloodDAO implements IFloodDAO {
         query.append("AND pe = '" + physicalElement + "' ");
         query.append("AND ts = '" + typeSource + "' ");
         query.append("AND obstime >= '"
-                + dateFormat.format(new Date(obsBeginTime)) + "' ");
+                + dateFormat.get().format(new Date(obsBeginTime)) + "' ");
         query.append("AND obstime <= '"
-                + dateFormat.format(new Date(obsEndTime)) + "' ");
+                + dateFormat.get().format(new Date(obsEndTime)) + "' ");
         query.append("AND value != " + RiverForecastPoint.MISSINGVAL + " ");
         query.append("AND quality_code >= " + QUESTIONABLE_BAD_THRESHOLD + " ");
         query.append("ORDER BY obstime ASC ");
@@ -644,11 +649,11 @@ public class FloodDAO implements IFloodDAO {
         query.append("AND pe = '" + physicalElement + "' ");
         query.append("AND ts = '" + typeSource + "' ");
         query.append("AND probability < 0.0 ");
-        query.append("AND ( validtime >= '" + dateFormat.format(systemTime)
-                + "' ");
-        query.append("AND validtime <= '" + dateFormat.format(endValidTime)
-                + "') ");
-        query.append("AND basistime >= '" + dateFormat.format(basisBTime)
+        query.append("AND ( validtime >= '"
+                + dateFormat.get().format(systemTime) + "' ");
+        query.append("AND validtime <= '"
+                + dateFormat.get().format(endValidTime) + "') ");
+        query.append("AND basistime >= '" + dateFormat.get().format(basisBTime)
                 + "' ");
         query.append("AND value != " + RiverForecastPoint.MISSINGVAL + " ");
         query.append("AND quality_code >= " + QUESTIONABLE_BAD_THRESHOLD + " ");
@@ -719,10 +724,10 @@ public class FloodDAO implements IFloodDAO {
             query.append("AND pe = '" + physicalElement + "' ");
             query.append("AND ts = '" + typeSource + "' ");
             query.append("AND probability < 0.0 ");
-            query.append("AND ( validtime >= '" + dateFormat.format(systemTime)
-                    + "' ");
-            query.append("AND validtime <= '" + dateFormat.format(endValidTime)
-                    + "') ");
+            query.append("AND ( validtime >= '"
+                    + dateFormat.get().format(systemTime) + "' ");
+            query.append("AND validtime <= '"
+                    + dateFormat.get().format(endValidTime) + "') ");
             query.append("AND basistime = '" + basisTime + "' ");
             query.append("AND value != " + RiverForecastPoint.MISSINGVAL + " ");
             query.append("AND quality_code >= "
@@ -734,12 +739,12 @@ public class FloodDAO implements IFloodDAO {
             query.append("AND pe = '" + physicalElement + "' ");
             query.append("AND ts = '" + typeSource + "' ");
             query.append("AND probability < 0.0 ");
-            query.append("AND ( validtime >= '" + dateFormat.format(systemTime)
-                    + "' ");
-            query.append("AND validtime <= '" + dateFormat.format(endValidTime)
-                    + "') ");
-            query.append("AND basistime >= '" + dateFormat.format(basisBTime)
-                    + "' ");
+            query.append("AND ( validtime >= '"
+                    + dateFormat.get().format(systemTime) + "' ");
+            query.append("AND validtime <= '"
+                    + dateFormat.get().format(endValidTime) + "') ");
+            query.append("AND basistime >= '"
+                    + dateFormat.get().format(basisBTime) + "' ");
             query.append("AND value != " + RiverForecastPoint.MISSINGVAL + " ");
             query.append("AND quality_code >= "
                     + Hydrograph.QUESTIONABLE_BAD_THRESHOLD + " ");
@@ -754,7 +759,37 @@ public class FloodDAO implements IFloodDAO {
     }
 
     /**
-     * Retrieves the given physical element for a river forecast point.
+     * Get the highest ranked type source given a primary physical element
+     * 
+     */
+    @Override
+    public String getForecastTopRankedTypeSource(String lid, String primary_pe,
+            int duration, String extremum) {
+        StringBuffer query = new StringBuffer();
+        /*
+         * select ts_rank from ingestFilter where ingest = 'T' and lid = 'BRON1'
+         * and extremum = ‘ex’ and dur = ‘dur’ order by ts_rank, ts;
+         */
+        query.append(
+                "SELECT ts, ts_rank FROM ingestFilter where ingest = 'T' and lid ='")
+                .append(lid).append("' ");
+        query.append("AND extremum = '").append(extremum).append("' ");
+        query.append("AND dur = ").append(duration).append(" ");
+        query.append("ORDER BY ts_rank, ts");
+        List<Object[]> results = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                        query.toString(), IHFS, "type source");
+        String typeSource = "";
+        for (Object[] oa : results) {
+            typeSource = (String) oa[0];
+            break;
+        }
+        return typeSource;
+    }
+
+    /**
+     * Retrieves the given physical element value for a river forecast point.
+     * TODO Rename this method to getPhysicalElementValue
      * 
      * @param lid
      *            The river forecast point identifier
@@ -766,8 +801,10 @@ public class FloodDAO implements IFloodDAO {
      * @param extremum
      *            e.g. Z, X
      * @param timeArg
-     *            The time specification e.g. 0|12:00|1 day|hh:mm|interval
-     *            around hour in hours -- 0 today, 1 tomorrow etc.
+     *            The time specification dayOffset|hhmm|interval e.g. 0|1200|1
+     *            where dayOffset is 0 today, 1 tomorrow etc. hhmm is the GMT
+     *            hour of the day (24 hour clock) interval is the number of
+     *            hours to create window around
      * @param derivationInstruction
      *            e.g. "Time", "Max24", etc.
      * 
@@ -777,6 +814,11 @@ public class FloodDAO implements IFloodDAO {
      *            "2011-02-08 18:00:00", "2011-02-08 15:06:00", 39.91, "Z",
      *            1879048191, 1, "KKRFRVFMOM", "2011-02-08 15:15:00",
      *            "2011-02-08 15:15:10" });
+     * @param timeFlag
+     *            -- if True return a time string for requested value, otherwise
+     *            return requested value
+     * @param currentTime_ms
+     *            -- current time in milliseconds
      * 
      */
     @Override
@@ -784,144 +826,153 @@ public class FloodDAO implements IFloodDAO {
             int duration, String typeSource, String extremum, String timeArg,
             String derivationInstruction, boolean timeFlag, long currentTime_ms) {
 
-    	/* 
-    	 * Build the validTime from timeArg
-    	 */
-    	String queryTime = "";
-    	String lowerBoundStr = "";
-        if (!"NEXT".equals(timeArg)) {
-        	String [] stringArray = timeArg.split("\\|");
-        	int dayOffset = Integer.parseInt(stringArray[0]);
-        	int baseHours = Integer.parseInt(stringArray[1]);
-        	int windowHours = Integer.parseInt(stringArray[2]);
+        String queryTimeConstraint = "";
+        if (!NEXT.equals(timeArg)) {
+            boolean isForecast = typeSource.startsWith("f")
+                    || typeSource.startsWith("F");
 
-        	Date referenceTime = DateUtils.addHours(DateUtils.truncate(
-        			new Date(currentTime_ms), Calendar.DATE),
-        			dayOffset * 24 + baseHours);
-        	Date lowerBound = DateUtils.addHours(referenceTime, -windowHours);
-        	Date upperBound = DateUtils.addHours(referenceTime, windowHours);
-
-        	SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.0");
-
-        	lowerBoundStr = formatter.format(lowerBound);
-        	String upperBoundStr = formatter.format(upperBound);
-        	if (typeSource.startsWith("r") || typeSource.startsWith("R")) {
-        		queryTime = "(obstime >= '"+lowerBoundStr+"' and obstime <= '"+upperBoundStr+"')";
-        	}
-        	else if (typeSource.startsWith("f") || typeSource.startsWith("F")) {
-        		queryTime = "(validtime >= '"+lowerBoundStr+"' and validtime <= '"+upperBoundStr+"')";
-           }
-
-        /*
-         * Set the table name to use.
-         */
-        String tableName = "";
-
-        if ((physicalElement.startsWith("h") || physicalElement.startsWith("H"))
-                && (typeSource.startsWith("f") || typeSource.startsWith("F"))) {
-            tableName = "fcstheight";
-        } else if ((physicalElement.startsWith("q") || physicalElement
-                .startsWith("Q"))
-                && (typeSource.startsWith("f") || typeSource.startsWith("F"))) {
-            tableName = "fcstdischarge";
-        } else if ((physicalElement.startsWith("h") || physicalElement
-                .startsWith("H"))
-                && (typeSource.startsWith("r") || typeSource.startsWith("R"))) {
-            tableName = "height";
-        } else if ((physicalElement.startsWith("q") || physicalElement
-                .startsWith("Q"))
-                && (typeSource.startsWith("r") || typeSource.startsWith("R"))) {
-            tableName = "discharge";
-        }
-
-        StringBuffer query = new StringBuffer();
-        String selectItem = "value, validTime";
-        String basisTime = lowerBoundStr;
-
-        /*
-         * if forecast: pull out basis time and send into next query to get
-         * value I’m looking for
-         * 
-         * if obs use value passed in translate into database format -- see Date
-         * formats)
-         */
-
-        if (typeSource.startsWith("f") || typeSource.startsWith("F")) {
             /*
-             * pull out the basistime for the next query
+             * Build the validTime from timeArg
              */
-            query.append("SELECT basistime FROM " + tableName + " ");
-            query.append("WHERE lid = '" + lid + "' ");
-            query.append("AND pe = '" + physicalElement + "' ");
-            query.append("AND ts = '" + typeSource + "' ");
-            query.append("AND extremum = '" + extremum + "' ");
-            query.append("ORDER BY basisTime desc limit 1");
-            List<Object[]> basisTimes = DatabaseQueryUtil.executeDatabaseQuery(
+            String[] stringArray = timeArg.split("\\|");
+            int dayOffset = Integer.parseInt(stringArray[0]);
+            int baseHours = Integer.parseInt(stringArray[1]);
+            int windowHours = Integer.parseInt(stringArray[2]);
+
+            Date referenceTime = DateUtils
+                    .addHours(DateUtils.truncate(new Date(currentTime_ms),
+                            Calendar.DATE), dayOffset * 24 + baseHours / 100);
+            Date lowerBound = DateUtils.addHours(referenceTime, -windowHours);
+            Date upperBound = DateUtils.addHours(referenceTime, windowHours);
+
+            String lowerBoundStr = dateFormat.get().format(lowerBound);
+            String upperBoundStr = dateFormat.get().format(upperBound);
+            if (isForecast) {
+                queryTimeConstraint = "(validtime >= '" + lowerBoundStr
+                        + "' and validtime <= '" + upperBoundStr + "')";
+            } else {
+                queryTimeConstraint = "(obstime >= '" + lowerBoundStr
+                        + "' and obstime <= '" + upperBoundStr + "')";
+            }
+
+            /*
+             * Set the table name to use.
+             */
+            String tableName = getTableName(physicalElement, isForecast);
+
+            StringBuffer query = new StringBuffer();
+            String selectItem = "value, validTime";
+            String basisTime = lowerBoundStr;
+
+            /*
+             * if forecast: pull out basis time and send into next query to get
+             * value I’m looking for
+             * 
+             * if obs use value passed in translate into database format -- see
+             * Date formats)
+             */
+
+            if (isForecast) {
+                /*
+                 * pull out the basistime for the next query
+                 */
+                query.append("SELECT basistime FROM ").append(tableName)
+                        .append(" ");
+                query.append("WHERE lid = '").append(lid).append("' ");
+                query.append("AND pe = '").append(physicalElement).append("' ");
+                query.append("AND ts = '").append(typeSource).append("' ");
+                query.append("AND extremum = '").append(extremum).append("' ");
+                query.append("ORDER BY basisTime desc limit 1");
+                List<Object[]> basisTimes = DatabaseQueryUtil
+                        .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                                query.toString(), IHFS, "basis time");
+                if (!basisTimes.isEmpty()) {
+                    basisTime = basisTimes.get(0)[0].toString();
+                }
+                /*
+                 * For typeSource "F" -- Building validTime from timeArg if
+                 * 'NEXT', validTime = current time else if x|HH:MM|y, current
+                 * time + x days and then find the validTime closest to the
+                 * HH:MM within the +/- y interval
+                 */
+                String validTimeCondition;
+                query = new StringBuffer();
+
+                dateFormat.get().format(lowerBound);
+
+                String currentTime_ms_str = dateFormat.get().format(
+                        DateUtils.truncate(new Date(currentTime_ms),
+                                Calendar.DATE));
+                validTimeCondition = ">= '" + currentTime_ms_str + "'";
+                query.append("SELECT value, validTime FROM ").append(tableName)
+                        .append(" ");
+                query.append("WHERE lid = '").append(lid).append("' ");
+                query.append("AND pe = '").append(physicalElement).append("' ");
+                query.append("AND ts = '").append(typeSource).append("' ");
+                query.append("AND basistime = '").append(basisTime)
+                        .append("' ");
+                query.append("AND extremum = '").append(extremum).append("' ");
+                if (NEXT.equals(timeArg)) {
+                    /*
+                     * TODO this will never be true because it's checked up
+                     * above
+                     */
+                    query.append("AND validTime ").append(validTimeCondition)
+                            .append(" ");
+                    query.append("ORDER BY validTime limit 1");
+                } else {
+                    query.append("AND ").append(queryTimeConstraint);
+                }
+            } else {
+                /*
+                 * TODO observed needs to be fixed. It currently doesn't do
+                 * anything
+                 */
+                if (timeFlag) {
+                    selectItem = "obsTime";
+                }
+            }
+
+            if (query.length() == 0) {
+                return MISSING_VALUE;
+            }
+
+            List<Object[]> results = DatabaseQueryUtil.executeDatabaseQuery(
                     QUERY_MODE.MODE_SQLQUERY, query.toString(), IHFS,
-                    "basis time");
-            if (basisTimes.isEmpty() == false) {
-                basisTime = basisTimes.get(0)[0].toString();
-            }
-            /*
-             * For typeSource "F" -- Building validTime from timeArg if 'NEXT',
-             * validTime = current time else if x|HH:MM|y, current time + x days
-             * and then find the validTime closest to the HH:MM within the +/- y
-             * interval
-             */
-            String validTimeCondition;
-            query = new StringBuffer();
-            validTimeCondition = ">= '" + currentTime_ms + "'";
-            query.append("SELECT " + selectItem + " FROM " + tableName
-                    + " ");
-            query.append("WHERE lid = '" + lid + "' ");
-            query.append("AND pe = '" + physicalElement + "' ");
-            query.append("AND ts = '" + typeSource + "' ");
-            query.append("AND basistime = '" + basisTime + "' ");
-            query.append("AND extremum = '" + extremum + "' ");
-            if ("NEXT".equals(timeArg)) {
-                query.append("AND validTime " + validTimeCondition + " ");
-                query.append("ORDER BY validTime limit 1");
-            } else {
-                query.append("AND "+queryTime + " ");   
-            }
-        } else {
-            if (timeFlag) {
-                selectItem = "obsTime";
+                    "physical element");
+
+            if (!results.isEmpty()) {
+                int closestIndex = 0;
+                long minDiff = 0;
+                Date resultDate;
+                /*
+                 * loop through results and valid time results from query and
+                 * choose the closest value/time to the given value time (ref
+                 * time)
+                 */
+                for (int i = 0; i < results.size(); ++i) {
+                    try {
+                        resultDate = (Date) results.get(i)[1];
+                    } catch (Exception e) {
+                        statusHandler.error(
+                                "Invalid result date: " + results.get(i)[1], e);
+                        return MISSING_VALUE;
+                    }
+                    long diff = Math.abs(resultDate.getTime()
+                            - referenceTime.getTime());
+                    if (i == 0 || diff < minDiff) {
+                        minDiff = diff;
+                        closestIndex = i;
+                    }
+                }
+                if (timeFlag) {
+                    return results.get(closestIndex)[1].toString();
+                } else {
+                    return results.get(closestIndex)[0].toString();
+                }
             }
         }
-
-        List<Object[]> results = DatabaseQueryUtil
-                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
-                        query.toString(), IHFS, "physical element");
-        
-        if (results.isEmpty() == false) {
-			int closestIndex = 0;
-			long minDiff=0;
-			SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.0");
-			Date resultDate;
-			//loop through results and valid time results from query and choose the closest value/time to the given value time (ref time)
-			for (int i = 0; i < results.size(); ++i) {
-				try {
-					resultDate = dateFormatter.parse(results.get(i)[1].toString());
-				} catch (Exception e) {
-					statusHandler.error("Invalid result date: "+results.get(i)[1], e);
-					return MISSING_VALUE;
-				}
-				long diff = Math.abs(resultDate.getTime() - referenceTime.getTime());
-				if (i==0 || diff < minDiff) {
-					minDiff = diff;
-					closestIndex = i;
-				}
-			}
-            if (timeFlag) {
-                return results.get(closestIndex)[1].toString();
-            } else {
-                return results.get(closestIndex)[0].toString();
-            }
-        }      	
-       }
-       return MISSING_VALUE;
-
+        return MISSING_VALUE;
     }
 
     /**
@@ -975,7 +1026,7 @@ public class FloodDAO implements IFloodDAO {
      */
     @Override
     public SimpleDateFormat getDateFormat() {
-        return dateFormat;
+        return dateFormat.get();
     }
 
     /**
@@ -1326,4 +1377,25 @@ public class FloodDAO implements IFloodDAO {
         return null;
     }
 
+    private String getTableName(String pe, boolean isForecast) {
+        String tableName;
+        boolean isHeight = pe.startsWith("h") || pe.startsWith("H");
+        // Forecast
+        if (isForecast) {
+            if (isHeight) {
+                tableName = "fcstheight";
+            } else {
+                tableName = "fcstdischarge";
+            }
+        } else {
+            // observed
+            if (isHeight) {
+                tableName = "height";
+            } else {
+                tableName = "discharge";
+            }
+        }
+
+        return tableName;
+    }
 }

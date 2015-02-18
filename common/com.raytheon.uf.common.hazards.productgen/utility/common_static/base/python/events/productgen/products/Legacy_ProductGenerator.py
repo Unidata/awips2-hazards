@@ -892,9 +892,10 @@ class Product(ProductTemplate.Product):
         # since that information will apply to all points in the product
         vtecRecord = vtecRecords[0] 
         productSegment = productSegments[0] 
-        attributionFirstBullet = AttributionFirstBulletText(
-                self._product.productID, productSegment, hazardEvent, vtecRecord, {}, self._issueTime, 
-                self._testMode, self._wfoCity, self._tpc, self._rfp, self.hydrologicCauseMapping, {}, areaPhrase=riverPhrase, endString='...') 
+        attributionFirstBullet = AttributionFirstBulletText()
+        attributionFirstBullet.initialize_withHazardEvent(hazardEvent, vtecRecord, {}, 
+                self._product.productID, self._issueTime,  self._testMode, self._wfoCity, 
+                self._tpc, self._rfp, areaPhrase=riverPhrase, endString='...') 
         attribution = attributionFirstBullet.getAttributionText()
         headPhrase = attributionFirstBullet.getFirstBulletText()                 
         overview = '...' + attribution + headPhrase + '\n\n' + locationPhrase + '\n'
@@ -913,9 +914,10 @@ class Product(ProductTemplate.Product):
             pointID = str(list(points)[0])
             groupName = self._rfp.getGroupName(pointID)
             groupList = self._rfp.getGroupForecastPointList(pointID)
+            groupList = groupList.replace(',',', ')
             maxCatName = self._rfp.getGroupMaximumForecastFloodCategoryName(pointID)
             groupSummary = 'For the ' + groupName + '...including ' + groupList + '...' + maxCatName + ' flooding is forecast.'
-            summaryStmt += summaryStmt + '\n'
+            summaryStmt += groupSummary + '\n'
         productDict['groupSummary'] = summaryStmt
         
     def _overviewSynopsis_area(self, productDict, productSegmentGroup, arguments=None):
@@ -1027,7 +1029,6 @@ class Product(ProductTemplate.Product):
         
         '''
     def _setUp_segment(self, segmentDict, productSegmentGroup, productSegment_tuple):  
-        self.flush()
         segment, vtecRecords = productSegment_tuple 
         productSegment = self.createProductSegment(segment, vtecRecords)
         productSegment.metaDataList, productSegment.hazardEvents = self.getSegmentMetaData(segment)
@@ -1163,7 +1164,10 @@ class Product(ProductTemplate.Product):
         segmentDict['emergencyStatement'] = '...A FLASH FLOOD EMERGENCY FOR <geographic area>...'
                   
     def _basisAndImpactsStatement_segmentLevel(self, segmentDict, productSegmentGroup, arguments):
-        segmentDict['basisAndImpactsStatement_segmentLevel'] = '|* Current hydrometeorological situation and expected impacts *| \n'
+        hazardEvent = self._productSegment.hazardEvents[0]
+        statement = hazardEvent.get('basisAndImpactsStatement_segmentLevel', 
+                                    '|* Current hydrometeorological situation and expected impacts *| \n')
+        segmentDict['basisAndImpactsStatement_segmentLevel'] = statement
         
     def _callsToAction(self, segmentDict, productSegmentGroup, arguments):
         segmentDict['callsToAction'] = self._productSegment.ctas
@@ -1203,7 +1207,7 @@ class Product(ProductTemplate.Product):
         ''' 
     def _setUp_section(self, sectionDict, productSegmentGroup, arguments):
         productSegment_tuple, vtecRecord, formatArgs = arguments
-        
+                
         if not self._productSegment.sections:
             return
 
@@ -1229,9 +1233,12 @@ class Product(ProductTemplate.Product):
                 self._section.floodMoving = self._tpc.getProductStrings(
                         self._section.hazardEvent, self._section.metaData, 'additionalInfo', choiceIdentifier='floodMoving',
                         formatMethod=self.floodTimeStr, formatHashTags=['additionalInfoFloodMovingTime'])
-        self._section.attributionFirstBulletText = AttributionFirstBulletText(
-                self._product.productID, self._productSegment, self._section.hazardEvent, self._section.vtecRecord, self._section.metaData, self._issueTime, 
-                self._testMode, self._wfoCity, self._tpc, self._rfp, self.hydrologicCauseMapping, listOfCities=self._section.listOfCities)
+        self._section.hazardEvent.set('cityString', self._productSegment.cityString)
+        self._section.hazardEvent.set('citiesListFlag', self._section.listOfCities)
+        self._section.attributionFirstBulletText = AttributionFirstBulletText()
+        self._section.attributionFirstBulletText.initialize_withHazardEvent(
+                self._section.hazardEvent, self._section.vtecRecord, self._section.metaData,
+                self._product.productID, self._issueTime, self._testMode, self._wfoCity, self._tpc, self._rfp)
         # Format
         self._section.formatArgs = formatArgs
         if 'bulletFormat' in formatArgs:
@@ -1343,7 +1350,7 @@ class Product(ProductTemplate.Product):
         self._section.stageTrend = self._rfp.getStageTrend(pointID)
         
         # Spec values
-        forecastTypeSource = self._rfp.getForecastTopRankedTypeSource(pointID)
+        forecastTypeSource = self._rfp.getForecastTopRankedTypeSource(pointID, self._section.primaryPE, 0, 'Z')
         self._section.specValue = self._rfp.getPhysicalElementValue(
                 pointID, self._section.primaryPE, 0, forecastTypeSource, 'Z', '4|1200|1', timeFlag=False, currentTime_ms=millis)
         self._section.specTime = self._rfp.getPhysicalElementValue(
@@ -1417,7 +1424,8 @@ class Product(ProductTemplate.Product):
             LYING AREAS ARE STILL FLOODED AND DRIVERS NEED TO BE ESPECIALLY CAUTIOUS
             AT NIGHT.
         '''
-        basisAndImpactsStatement = '|* Current hydrometeorological situation and expected impacts *|\n'
+        basisAndImpactsStatement = self._section.hazardEvent.get('basisAndImpactsStatement',
+                            '|* Current hydrometeorological situation and expected impacts *|\n')
         self._tpc.setVal(sectionDict, 'basisAndImpactsStatement', basisAndImpactsStatement, editable=True, label='Basis and Impacts', eventIDs=[self._section.hazardEvent.getEventID()],
                        segment=self._productSegment.segment, formatMethod=self._section.bulletFormat,
                          productCategory=self._productCategory, productID=self._product.productID) 

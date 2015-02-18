@@ -36,8 +36,7 @@ class MetaData(CommonMetaData.MetaData):
                       self.hydrologicCauseVolcano()["identifier"],
                       self.hydrologicCauseVolcanoLahar()["identifier"]
                       ]
-        
-        
+                
         if status == 'pending':
             metaData = [
                      self.getInclude(),
@@ -55,6 +54,7 @@ class MetaData(CommonMetaData.MetaData):
                         ]
         elif status == "issued":
             metaData = [
+                     self.getBasisAndImpacts('basisAndImpactsStatement_segmentLevel'), 
                      self.getFloodSeverity(),
                      self.getHydrologicCause(editable=False),
                      self.getSource(hydrologicCause),
@@ -251,17 +251,17 @@ class MetaData(CommonMetaData.MetaData):
     #     #set($reportType1 = "EXCESSIVE RAIN CAUSING FLASH FLOODING WAS OCCURING OVER THE WARNED AREA")
     # #end
     def getHydrologicCause(self, editable=True):
+        hydrologicCause = self.hazardEvent.get('hydrologicCause','dam')
         return {   
              "fieldType":"ComboBox",
              "fieldName": "hydrologicCause",
              "label":"Hydrologic Cause:",
              "editable": editable,
-             "values": "dam",
+             "values": hydrologicCause,
              "choices": self.hydrologicCauseChoices(),
              "refreshMetadata": True
              }
-        
-        
+             
     def hydrologicCauseChoices(self):
         return [
             self.hydrologicCauseDam(),
@@ -463,50 +463,7 @@ class MetaData(CommonMetaData.MetaData):
         return {"identifier":"mediumNormal", 
                 "displayString": "Medium Normal",
                 "productString": "Medium Normal"}
-       
-
-    def getRiver(self, editable=True):
-        return {
-             "fieldType": "Text",
-             "fieldName": "riverName",
-             "expandHorizontally": True,
-             "maxChars": 40,
-             "visibleChars": 12,
-             "editable": editable,
-             "values": "|* Enter river name *|",
-            } 
-
-    def getFloodLocation(self):
-        return {
-             "fieldType": "Text",
-             "fieldName": "floodLocation",
-             "expandHorizontally": True,
-             "maxChars": 40,
-             "visibleChars": 12,
-             "values": "|* Enter flood location *|",
-            } 
-
-
-    def getUpstreamLocation(self):
-        return {
-             "fieldType": "Text",
-             "fieldName": "upstreamLocation",
-             "expandHorizontally": True,
-             "maxChars": 40,
-             "visibleChars": 12,
-             "values": "|* Enter upstream location *|",
-            } 
- 
-    def getDownstreamLocation(self):
-        return {
-             "fieldType": "Text",
-             "fieldName": "downstreamLocation",
-             "expandHorizontally": True,
-             "maxChars": 40,
-             "visibleChars": 12,
-             "values": "|* Enter downstream location *|",
-            } 
-        
+               
     def getVolcano(self):
         return {
              "fieldType": "Text",

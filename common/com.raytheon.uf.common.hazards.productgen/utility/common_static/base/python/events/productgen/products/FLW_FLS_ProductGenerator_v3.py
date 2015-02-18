@@ -96,7 +96,7 @@ class Product(HydroGenerator.Product):
         eventIDs, ugcList = self.parameterSetupForKeyInfo(list(vtecRecord.get('eventID', None)), attributes.get('ugcs', None))
 
         # Attributes that get skipped. They get added to the dictionary indirectly.
-        noOpAttributes = ('ugcs', 'ugcPortions', 'ugcPartsOfState')
+        noOpAttributes = () # Needed for attribution / firstBullet ('ugcs', 'ugcPortions', 'ugcPartsOfState')
 
         section = {}
         for attribute in attributes:
@@ -111,8 +111,6 @@ class Product(HydroGenerator.Product):
                     # These are now added at the segment level. Do we want to add here as well?
                     callsToActionValue = self._tpc.getProductStrings(event, metaData, 'cta')
                     section['callsToAction'] = callsToActionValue
-            elif attribute in ['warningType', 'optionalSpecificType']:
-                    section[attribute] = self._tpc.getProductStrings(event, metaData, attribute)
             elif attribute in noOpAttributes:
                 continue
             else:
@@ -138,6 +136,8 @@ class Product(HydroGenerator.Product):
         section['replaces'] = event.get('replaces', None)
         section['startTime'] = event.getStartTime()
         section['endTime'] = event.getEndTime()
+        section['metaData'] = metaData
+        section['creationTime'] = event.getCreationTime()
         self._cityList(section, event)
 
         if event.get('pointID'):

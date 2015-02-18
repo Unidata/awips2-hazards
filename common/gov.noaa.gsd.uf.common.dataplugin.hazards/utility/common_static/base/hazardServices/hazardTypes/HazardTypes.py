@@ -471,7 +471,7 @@ HazardTypes = {
               'ugcLabel': '',
               'hazardClipArea' : 'cwa',
               'hazardPointLimit' : 20,
-              'durationChoiceList': [ "30 min", "45 min", "60 min", "90 min", "120 min", "3 hrs",  "4 hrs", "6 hrs", "8 hrs" ],
+              'durationChoiceList': [ "30 min", "45 min", "60 min", "90 min", "120 min", "3 hrs", "4 hrs", "6 hrs", "8 hrs"],
               'defaultDuration': 45 * MINUTES,
               'durationIncrement': 15, 
               'inclusionFractionTest': True,

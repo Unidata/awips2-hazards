@@ -118,7 +118,7 @@ class Format(Legacy_Base_Formatter.Format):
 
     def _forecastStageBullet(self, segmentDict):
         bulletContent = ForecastStageText().getForecastStageText(segmentDict, self.timezones)
-        return '* Forecast...' + bulletContent
+        return '* Forecast...' + bulletContent + '\n'
 
     def _getRiverDescription(self, segmentDict):
         '''
@@ -150,9 +150,9 @@ class Format(Legacy_Base_Formatter.Format):
         if crestContents is not None:
             crest,crestDate = crestContents.split(' ')
             # <ImpCompUnits>
-            crestString = "This crest compares to a previous crest of " + crest + " " + units + " on " + crestDate +"."
+            crestString = "* Flood History...This crest compares to a previous crest of " + crest + " " + units + " on " + crestDate +"."
         else:
-            crestString = 'Flood History...No available flood history available.'
+            crestString = '* Flood History...No available flood history available.'
         return crestString + '\n'
 
     def _floodPointHeader(self, segmentDict):

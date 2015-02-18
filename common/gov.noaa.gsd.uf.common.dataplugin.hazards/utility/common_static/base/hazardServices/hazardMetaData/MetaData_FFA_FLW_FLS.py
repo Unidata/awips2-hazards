@@ -215,9 +215,31 @@ class MetaData(CommonMetaData.MetaData):
 # text area is changed to match.
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     if triggerIdentifiers is not None: 	
-	# See if the trigger identifiers list contains any of the identifiers from the
-	# synopsis canned choices; if so, change the text's value to match the associated
-	# canned choice text.
+    	# See if the trigger identifiers list contains any of the identifiers from the
+    	# synopsis canned choices; if so, change the text's value to match the associated
+    	# canned choice text.
+    
+        # Example:
+        # triggerIdentifiers: ['overviewSynopsisCanned_FFA_area.dayNightTemps']
+        # mutableProperties:  {'overviewSynopsisExplanation_FFA_area': {'enable': True, 'editable': True, 'extraData': {}}, 
+        #          'overviewSynopsis_FFA_area': {'editable': True, 'enable': True, 'values': '', 'extraData': {}}, 
+        #          'overviewSynopsisCanned_FFA_area': {'enable': True, 'editable': True, 'extraData': {}, 'choices': 
+        #           [{'displayString': 'Warm Temperatures and Snow Melt', 'productString': 
+        #                 'Warm temperatures may melt high mountain snowpack and increase river flows.', 'identifier': 'tempSnowMelt'}, 
+        #            {'displayString': 'Warm day and night Temperatures', 'productString': 
+        #                 'Warm daytime temperatures along with low temperatures remaining above freezing overnight may accelerate snow melt. 
+        #                   River flows may increase quickly and remain high for the next week.', 'identifier': 'dayNightTemps'}, 
+        #            {'displayString': 'Snow melt and Reservoir releases', 'productString': 'High mountain snow melt and increased 
+        #                   reservoir releases may cause the river flows to become high. Possible minor flooding downstream from the dam.', 
+        #                   'identifier': 'snowMeltReservoir'}, 
+        #            {'displayString': 'Rain On Snow', 'productString': 'Heavy rain may fall on a deep primed snowpack leading to 
+        #                   the melt increasing. Flows in Rivers may increase quickly and reach critical levels.', 'identifier': 'rainOnSnow'}, 
+        #            {'displayString': 'Ice Jam Flooding', 'productString': 'An ice jam may cause water to infiltrate the 
+        #                   lowlands along the river.', 'identifier': 'iceJamFlooding'}, 
+        #            {'displayString': 'Increase in Category', 'productString': 'Heavy rainfall may increase the severity of 
+        #                   flooding on the #riverName#.', 'identifier': 'categoryIncrease'}]}, 
+        #        'FFA_tabs': {'enable': True, 'editable': True, 'extraData': {}}, 
+        #        'overviewSynopsisContainer_FFA_area': {'enable': True, 'editable': True, 'extraData': {}}}
          
         def extractParts(identifier):
             s1 = identifier.rsplit('.',1)
@@ -226,10 +248,13 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
             s2 = s1[0].split('_',1)
             productLabel = s2[1]
             return productLabel, choice, triggerField
+        
         returnDict = {}
         for triggerIdentifier in triggerIdentifiers:
             # Example: triggerIdentifier:  overviewSynopsisCanned_FLW_area_14550_FA.W.dayNightTemps
             if triggerIdentifier.find('overviewSynopsisCanned') >= 0:
+                # productLabel = FLW_area_14550_FA.W
+                # choice = dayNightTemps
                 productLabel, choice, triggerField = extractParts(triggerIdentifier)
                 # Find productString for choice
                 choices = mutableProperties.get(triggerField).get('choices')

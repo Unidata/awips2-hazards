@@ -85,7 +85,7 @@ class Product(Legacy_Base_Generator.Product):
         segment['crestsSelectedForecastPointsComboBox'] = event.get('crestsSelectedForecastPointsComboBox')
 
         # Spec values
-        forecastTypeSource = self._rfp.getForecastTopRankedTypeSource(pointID)
+        forecastTypeSource = self._rfp.getForecastTopRankedTypeSource(pointID, primaryPE, 0, 'Z')
         segment['specValue'] = self._rfp.getPhysicalElementValue(
                 pointID, primaryPE, 0, forecastTypeSource, 'Z', '4|1200|1', timeFlag=False, currentTime_ms=millis)
         segment['specTime'] = self._rfp.getPhysicalElementValue(

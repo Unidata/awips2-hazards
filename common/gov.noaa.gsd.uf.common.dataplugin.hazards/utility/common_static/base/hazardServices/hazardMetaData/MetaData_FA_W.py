@@ -18,7 +18,7 @@ class MetaData(CommonMetaData.MetaData):
                             ]
             else:
                 metaData = []
-        else:
+        elif self.hazardStatus == 'pending':
             metaData = [
                     self.getWarningType(),
                     self.getImmediateCause(),
@@ -38,6 +38,21 @@ class MetaData(CommonMetaData.MetaData):
 #                                         ("responseType", "None"),
 #                                        ]),
                     ]
+        else: # 'issued'
+            metaData = [
+                    self.getBasisAndImpacts('basisAndImpactsStatement'),
+                    self.getWarningType(),
+                    self.getImmediateCause(),
+                    self.getEventSpecificSource(),
+                    self.getRainAmt(),
+                    self.getAdditionalInfo(),
+                    self.getRiver(editable=self.hazardStatus != "issued"),
+                    self.getFloodLocation(),
+                    self.getUpstreamLocation(),
+                    self.getDownstreamLocation(),
+                    self.getCTAs(), 
+                ] 
+            
         return {
                 METADATA_KEY: metaData
                 }

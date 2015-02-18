@@ -13,7 +13,7 @@ class MetaData(CommonMetaData.MetaData):
                             self.getEndingOption(),
                             self.getEndingSynopsis(), 
                     ]
-        else:
+        elif self.hazardStatus == 'pending':
             metaData = [
                     self.getInclude(),
                     self.getImmediateCause(),
@@ -33,6 +33,20 @@ class MetaData(CommonMetaData.MetaData):
 #                                         ("responseType", "Avoid"),
 #                                        ])
                     ]
+        else: # issued
+            metaData = [
+                    self.getBasisAndImpacts('basisAndImpactsStatement_segmentLevel'), 
+                    self.getInclude(),
+                    self.getImmediateCause(),
+                    self.getEventSpecificSource(),
+                    self.getRainAmt(),
+                    self.getAdditionalInfo(),
+                    self.getRiver(editable=self.hazardStatus != "issued"),
+                    self.getFloodLocation(),
+                    self.getUpstreamLocation(),
+                    self.getDownstreamLocation(),
+                    self.getCTAs(),   
+            ]            
         return {
                 METADATA_KEY: metaData
                 }    
