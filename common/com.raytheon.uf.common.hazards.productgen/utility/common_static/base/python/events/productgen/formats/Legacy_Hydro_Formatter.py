@@ -15,8 +15,10 @@ import types, re, sys
 import Legacy_Base_Formatter
 from abc import *
 from ForecastStageText import ForecastStageText
+from TableText import FloodPointTable
+from TableText import Column
+from com.raytheon.uf.common.time import SimulatedTime
 
-# Need to import this for the Missing_Value_Constant
 import RiverForecastPoints
 
 class Format(Legacy_Base_Formatter.Format):
@@ -48,18 +50,7 @@ class Format(Legacy_Base_Formatter.Format):
     ######################################################
 
     ################# Product Level
-
-    def _floodPointTable(self, productDict):
-        '''
-                                        FLD OBSERVED    24 HR FORECASTS (7 AM)
-        LOCATION                        STG STG DAY/TIME CHG  THU FRI    SAT SUN
-        TOMBIGBEE RIVER BASIN
-            LOWER BEVILL L&D            122 110.0 6 AM 7.1 117.0 122.0 126.0 124.0
-            LOWER GAINESVILLE L&D       101  78.6 6 AM 2.3  83.0  92.0  98.5  96.0
-            LOWER DEMOPOLIS L&D          68  43.6 7 AM 1.4  44.0  45.0  52.0  68.0
-        '''
-        # TODO Determine if product or segment level
-        return '\n| floodPointTable Placeholder |\n'
+    
 
     def _groupSummary(self, productDict):
         '''
@@ -180,6 +171,31 @@ class Format(Legacy_Base_Formatter.Format):
     def _floodPointHeadline(self, segmentDict):
         # TODO This productPart needs to be completed
         return 'Flood point headline' + '\n'
+
+    def _floodPointTable(self, dataDictionary):
+        
+        millis = SimulatedTime.getSystemTime().getMillis() 
+        currentTime = datetime.datetime.fromtimestamp(millis / 1000)
+        rfp = RiverForecastPoints.RiverForecastPoints(currentTime)   
+
+        columns = []
+        columns.append(Column('floodStage', width=6, align='<', labelLine1='Fld', labelAlign1='<', labelLine2='Stg', labelAlign2='<'))
+        columns.append(Column('observedStage', self._issueTime, width=20, align='<',labelLine1='Observed', labelAlign1='^', labelLine2='Stg    Day    Time', labelAlign2='<'))
+        columns.append(Column('forecastStage_next3days', self._issueTime, width=20, labelLine1='Forecast', labelAlign1='^'))
+
+        floodPointTableText = ''
+        
+        floodPointDataList = dataDictionary.get('floodPointTable', None)
+        if (floodPointDataList is None):
+            segments = dataDictionary.get('segments', None)
+            if (segments is not None):
+                floodPointDataList = segments.get('floodPointTable', None)
+        
+        if (floodPointDataList is not None):
+            floodPointTable = FloodPointTable(floodPointDataList, columns, millis, self.timezones, rfp)
+            floodPointTableText = floodPointTable.makeTable()
+        
+        return(floodPointTableText)
 
     ###################### Utility methods
 

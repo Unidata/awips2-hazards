@@ -458,7 +458,7 @@ class HydroProductParts():
                 ]        
         partsList += [
                 ('segments', segmentParts),
-                'floodPointTable',         #(for entire product -- optional)
+                #'floodPointTable',         #(for entire product -- optional (Will require changes to generator)
                 'wrapUp_product',
                 ]
 
@@ -545,8 +545,13 @@ class HydroProductParts():
             'partsList': [
                 'setUp_product',
                 'wmoHeader',
+                'ugcHeader',
+                'productHeader',
+                'CR',
                 'headlineStatement',
+                'CR',
                 'narrativeInformation',
+                'CR',
                 'floodPointTable',
             ]
             }

@@ -41,7 +41,6 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.VerifyEvent;
 import org.eclipse.swt.events.VerifyListener;
 import org.eclipse.swt.graphics.Point;
-import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
@@ -62,6 +61,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ------------ --------------------------
  * 01/15/2015   5109       bphillip     Initial creation
  * 02/05/2015   6322       Robert.Blum  Changed return value if editableRanges is empty.
+ * 02/18/2015   5109       Chris.Cody   Do not display Format specific "Issue" button; keep existing code
  * 
  * </pre>
  * 
@@ -75,7 +75,8 @@ public class FormattedTextDataEditor extends AbstractDataEditor {
             .getHandler(FormattedTextDataEditor.class);
 
     /** Label for the issue button */
-    private static final String ISSUE_BUTTON_LABEL = "Issue";
+    // #5109 Hide Issue Button
+    // private static final String ISSUE_BUTTON_LABEL = "Issue";
 
     /**
      * The key value used to get/set the original text value on the styled text
@@ -92,25 +93,26 @@ public class FormattedTextDataEditor extends AbstractDataEditor {
             '?', '*', '+', '.', '>');
 
     /** The name of the formatter used to format the data */
-    private String format;
+    private final String format;
 
     /**
      * The index into the list of formatted texts for the format in the
      * generated product
      */
-    private int formatIndex;
+    private final int formatIndex;
 
     /** The text content of the formatted product tab */
     private FormattedStyledText styledText;
 
     /** The issue button */
-    private Button issueButton;
+    // #5109 Hide Issue Button
+    // private Button issueButton;
 
     /**
      * List of index ranges which contain editable information in the formatted
      * text
      */
-    private List<EditableRange> editableRanges = new ArrayList<EditableRange>();
+    private final List<EditableRange> editableRanges = new ArrayList<EditableRange>();
 
     /**
      * Creates a new FormattedTextDataEditor object
@@ -175,32 +177,30 @@ public class FormattedTextDataEditor extends AbstractDataEditor {
     @Override
     protected void createEditorButtons(final Composite editorPane) {
         super.createEditorButtons(editorPane);
-        issueButton = new Button(editorButtonPane, SWT.PUSH);
-
+        // #5109 Hide Issue Button
         /*
-         * Configure Save button
+         * issueButton = new Button(editorButtonPane, SWT.PUSH);
+         * 
+         * /* Configure Save button / issueButton.setText(ISSUE_BUTTON_LABEL);
+         * ProductEditorUtil.setButtonGridData(issueButton);
+         * issueButton.addSelectionListener(new SelectionAdapter() {
+         * 
+         * @Override public void widgetSelected(SelectionEvent e) {
+         * saveModifiedValues(); disableSaveButton(); disableRevertButton();
+         * productEditor.issue(product.getProductID(), format); } });
+         * 
+         * // Editor save button is initially enabled
+         * issueButton.setEnabled(true);
          */
-        issueButton.setText(ISSUE_BUTTON_LABEL);
-        ProductEditorUtil.setButtonGridData(issueButton);
-        issueButton.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                saveModifiedValues();
-                disableSaveButton();
-                disableRevertButton();
-                productEditor.issue(product.getProductID(), format);
-            }
-        });
+        // #5109 Hide Issue Button
 
-        // Editor save button is initially enabled
-        issueButton.setEnabled(true);
-        
         saveButton.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                MessageDialog warningBox = new MessageDialog(editorPane.getShell(), "Save Unsupported",
-                        null, "Saving individual formats currently unimplemented",
-                        0, new String[]{"OK"}, 0);
+                MessageDialog warningBox = new MessageDialog(editorPane
+                        .getShell(), "Save Unsupported", null,
+                        "Saving individual formats currently unimplemented", 0,
+                        new String[] { "OK" }, 0);
                 warningBox.open();
             }
         });
@@ -251,6 +251,7 @@ public class FormattedTextDataEditor extends AbstractDataEditor {
         });
     }
 
+    @Override
     public void refresh() {
         // Clears the editable ranges so they can be regenerated
         clearRanges();
@@ -334,14 +335,17 @@ public class FormattedTextDataEditor extends AbstractDataEditor {
         return !this.styledText.getText().equals(getOriginalText());
     }
 
+    @Override
     public boolean isDataEditable() {
         return true;
     }
 
+    @Override
     public boolean requiredFieldsCompleted() {
         return true;
     }
 
+    @Override
     public void saveModifiedValues() {
         // TODO: Implement saving of modified formatted data
     }
@@ -524,14 +528,16 @@ public class FormattedTextDataEditor extends AbstractDataEditor {
      * Enables the issue button
      */
     protected void enableIssueButton() {
-        setButtonEnabled(this.issueButton, true);
+        // #5109 Hide Issue Button
+        // setButtonEnabled(this.issueButton, true);
     }
 
     /**
      * Disables the save button
      */
     protected void disableIssueButton() {
-        setButtonEnabled(this.issueButton, false);
+        // #5109 Hide Issue Button
+        // setButtonEnabled(this.issueButton, false);
     }
 
     /**
@@ -776,6 +782,7 @@ public class FormattedTextDataEditor extends AbstractDataEditor {
         return format;
     }
 
+    @Override
     protected int getButtonCount() {
         return 3;
     }
@@ -840,6 +847,7 @@ public class FormattedTextDataEditor extends AbstractDataEditor {
             return 0;
         }
 
+        @Override
         public String toString() {
             StringBuilder builder = new StringBuilder();
             builder.append("Start: ").append(this.start).append(" End: ")

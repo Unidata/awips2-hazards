@@ -211,7 +211,7 @@ Flood = {
             "visible":False,
         },
         {
-            "toolName": "RVS_ProductGenerator", 
+            "toolName": "RVS_ProductGenerator_v3", 
             "displayName": "Generate RVS",
             "toolType": "PRODUCT_GENERATOR",
             "visible":True,

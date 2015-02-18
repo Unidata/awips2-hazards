@@ -470,7 +470,8 @@ class Product(ProductTemplate.Product):
             # Add productParts to the dictionary
             productParts = productSegmentGroup.productParts
             productDict['productParts'] = productParts
-
+        
+            self._createProductLevelProductDictionaryData(productDict)
             # Add dialogInputMap entries to the product dictionary
             self._addDialogInputMapToDict(self._dialogInputMap, productDict)
 
@@ -488,8 +489,13 @@ class Product(ProductTemplate.Product):
 
         return productDicts, self._generatedHazardEvents
 
+
+    def _createProductLevelProductDictionaryData(self, productDict):
+        pass
+
     def _createAndAddSegmentsToDictionary(self, productDict, productSegmentGroup):
         segmentDicts = []
+
         for productSegment in productSegmentGroup.productSegments:
 
             # Create the segment dicitonary
@@ -537,7 +543,7 @@ class Product(ProductTemplate.Product):
 
         # Add the segmentDicts to the productDict
         productDict['segments'] = segmentDicts
-
+        
     def _addSectionsToSegment(self, segmentDict):
         # If no sections add an empty list and return
         if not self._productSegment.sections:
@@ -1106,6 +1112,21 @@ class Product(ProductTemplate.Product):
         ugcList = str(ugcList)
         return tmpEventIDs, ugcList
 
+    def _floodPointTable(self):
+
+        floodPointDataList = []
+        
+        hazardEventsList = self._generatedHazardEvents
+        if hazardEventsList is not None:
+            for hazardEvent in hazardEventsList:
+                floodPointDict = { }
+                floodPointDict['pointID'] = hazardEvent.get('pointID')
+                floodPointDict['streamName'] = hazardEvent.get('streamName')
+                floodPointDataList.append(floodPointDict)
+                
+        return floodPointDataList
+
     def flush(self):
         ''' Flush the print buffer '''
         os.sys.__stdout__.flush()
+        

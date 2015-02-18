@@ -78,6 +78,7 @@ class Format(Legacy_Hydro_Formatter.Format):
         return [[ProductUtils.wrapLegacy(legacyText)],self._editableParts]
 
     def _processProductParts(self, productDict, productParts, skipParts=[]):
+        
         text = ''
         if type(productParts) is collections.OrderedDict:
             arguments = productParts.get('arguments')
@@ -177,3 +178,4 @@ class Format(Legacy_Hydro_Formatter.Format):
 
         bulletText += '\n\n'
         return bulletText
+

@@ -49,16 +49,16 @@ ProductGeneratorTable = {
             "previewFormatters": ["Legacy_ESF_Formatter"],
             "issueFormatters": ["Legacy_ESF_Formatter"],
             },
-        "RVS_ProductGenerator": {
+        "RVS_ProductGenerator_v3": {
             "allowedHazards": [
-            ('FL.W',     "Flood"),
-            ('FL.Y',     "Flood"),
-            ('FL.A',     "Flood"),
-            ('HY.S',     "Flood"),
+             ('FL.W', "Flood"),
+             ('FL.Y', "Flood"),             
+             ('FL.A', "Flood"),
+             ('HY.S', "Flood"),
              ],
             "autoSelect": False,
-            "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy"],
+            "previewFormatters": ["Legacy_RVS_Formatter"],
+            "issueFormatters": ["Legacy_RVS_Formatter"],
             },
 
         # V2 for business logic to be migrated to V3
@@ -91,6 +91,19 @@ ProductGeneratorTable = {
 #             "previewFormatters": ["Legacy", "XML", "CAP"],
 #             "issueFormatters": ["Legacy"],   
 #             },
+#
+#         "RVS_ProductGenerator": {
+#             "allowedHazards": [
+#              ('FL.W',     "Flood"),
+#              ('FL.Y',     "Flood"),
+#              ('FL.A',     "Flood"),
+#              ('HY.S',     "Flood"),
+#             ],
+#             "autoSelect": False,
+#             "previewFormatters": ["Legacy"],
+#             "issueFormatters": ["Legacy"],
+#             },
+#
 
         "WSW_ProductGenerator" : {
             "allowedHazards": [

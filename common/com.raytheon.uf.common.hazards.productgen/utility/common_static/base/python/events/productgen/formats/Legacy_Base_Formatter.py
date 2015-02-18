@@ -68,9 +68,10 @@ class Format(FormatTemplate.Formatter):
 
     def _createTextProduct(self):
         # Setup the Time Zones
-        segments = self.productDict.get('segments')
-        for segment in segments:
-            self.timezones += segment.get('timeZones')
+        segments = self.productDict.get('segments', None)
+        if segments is not None:
+            for segment in segments:
+                self.timezones += segment.get('timeZones')
 
         # Build the text product based on the productParts
         text = ''
@@ -111,6 +112,7 @@ class Format(FormatTemplate.Formatter):
 
     def _productHeader(self, productDict):
         text = ''
+
         if (self._runMode == 'Practice'):
             text += 'Test...' + self._productName + '...Test \n'
         else:
@@ -782,3 +784,4 @@ class Format(FormatTemplate.Formatter):
     def flush(self):
         ''' Flush the print buffer '''
         os.sys.__stdout__.flush()
+
