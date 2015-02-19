@@ -33,6 +33,7 @@ import jep.JepException;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.utilities.PythonBuildPaths;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
 import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
 import com.raytheon.uf.common.localization.IPathManager;
@@ -86,6 +87,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * Dec 12, 2014 4124       Kevin.Manross Add "textUtilities" to python/JEP include path
  * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
  *                                      info.
+ * Feb 16, 2015 5071       Robert.Blum  Changes to reload Recommenders without restarting Cave.
  * </pre>
  * 
  * @author mnash
@@ -100,8 +102,10 @@ public abstract class AbstractRecommenderScriptManager extends
 
     private static final String GET_SCRIPT_METADATA = "getScriptMetadata";
 
+    private static final String RECOMMENDERS_DIRECTORY = "recommenders";
+
     private static final String RECOMMENDERS_LOCALIZATION_DIR = "python"
-            + File.separator + "events" + File.separator + "recommenders";
+            + File.separator + "events" + File.separator + RECOMMENDERS_DIRECTORY;
 
     private static final String RECOMMENDERS_CONFIG_LOCALIZATION_DIR = RECOMMENDERS_LOCALIZATION_DIR
             + File.separator + "config";
@@ -128,7 +132,12 @@ public abstract class AbstractRecommenderScriptManager extends
         super(filePath, anIncludePath, classLoader, aPythonClassName);
         inventory = new ConcurrentHashMap<String, EventRecommender>();
 
-        String scriptPath = buildRecommenderPath();
+        recommenderDir = PythonBuildPaths
+                .buildLocalizationDirectory(RECOMMENDERS_DIRECTORY);
+        recommenderDir.addFileUpdatedObserver(this);
+
+        String scriptPath = PythonBuildPaths
+                .buildDirectoryPath(RECOMMENDERS_DIRECTORY);
 
         jep.eval(INTERFACE + " = RecommenderInterface('" + scriptPath + "', '"
                 + RECOMMENDERS_LOCALIZATION_DIR + "')");
@@ -147,22 +156,6 @@ public abstract class AbstractRecommenderScriptManager extends
 
         jep.eval("import sys");
         jep.eval("sys.argv = ['RecommenderInterface']");
-    }
-
-    /**
-     * Builds the path to the recommenders in localization.
-     * 
-     * @return
-     */
-    protected static String buildRecommenderPath() {
-        recommenderDir = getLocalizationFile(LocalizationType.COMMON_STATIC,
-                LocalizationLevel.BASE, RECOMMENDERS_LOCALIZATION_DIR);
-        String userPath = constructUserLocalizationRecommenderPath();
-        String sitePath = constructSiteLocalizationRecommenderPath();
-        String regionPath = constructRegionLocalizationRecommenderPath();
-        String basePath = constructBaseLocalizationRecommenderPath();
-        return PyUtil.buildJepIncludePath(basePath, regionPath, sitePath,
-                userPath);
     }
 
     private static String constructBaseLocalizationRecommenderPath() {
@@ -274,7 +267,21 @@ public abstract class AbstractRecommenderScriptManager extends
      *         has been successfully loaded and initialized; otherwise, false
      */
     public boolean verifyRecommenderIsLoaded(String recommenderName) {
-        if (this.inventory.containsKey(recommenderName)) {
+        /*
+         * Determine if some kind of update was made to a python module. If so
+         * then initialize the recommender. This is needed because the
+         * inventory.containsKey does not account for super classes.
+         */
+        boolean updateMade = true;
+        // If no pending updates reset flag to false
+        if (pendingAdds.isEmpty() && pendingReloads.isEmpty()
+                && pendingRemoves.isEmpty()) {
+            updateMade = false;
+        } else {
+            processFileUpdates();
+        }
+        if (this.inventory.containsKey(recommenderName)
+                && (updateMade == false)) {
             return true;
         }
 
@@ -317,7 +324,6 @@ public abstract class AbstractRecommenderScriptManager extends
     }
 
     private boolean initializeRecommender(String recName) {
-        processFileUpdates();
         long startTime = System.currentTimeMillis();
         LocalizationFile localizationFile = this
                 .lookupRecommenderLocalization(recName);
@@ -452,9 +458,8 @@ public abstract class AbstractRecommenderScriptManager extends
         Map<String, Serializable> results = null;
 
         try {
-            if (isInstantiated(modName) == false) {
-                instantiatePythonScript(modName);
-            }
+            reloadModule(modName);
+            instantiatePythonScript(modName);
             Map<String, Object> args = getStarterMap(modName);
             results = (Map<String, Serializable>) execute(GET_SCRIPT_METADATA,
                     INTERFACE, args);

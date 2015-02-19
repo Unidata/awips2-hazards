@@ -36,9 +36,12 @@
 #    10/10/14        3790          Robert.Blum    Reverted to use the RollbackMasterInterface.
 #    10/24/14        4934          mpduff         Additional metadata actions.
 #    01/15/15        5109          bphillip       Separated generated and formatter execution
-# 
+#    02/12/15        5071          Robert.Blum    Changed to inherit from the PythonOverriderInterface once
+#                                                 again along with other changes to allows the incremental 
+#                                                 overrides and also editing without closing Cave.
 #
-import RollbackMasterInterface
+import PythonOverriderInterface
+import PythonOverrider
 import JUtil, importlib
 
 from GeometryHandler import shapelyToJTS, jtsToShapely
@@ -53,19 +56,23 @@ JUtil.registerJavaToPython(javaKeyInfoToPyKeyInfo)
 from collections import OrderedDict
 from java.util import ArrayList
 from com.raytheon.uf.common.hazards.productgen import GeneratedProduct, GeneratedProductList
-import traceback, sys, os
+import traceback, sys, os, string
 import logging, UFStatusHandler
 
 from com.raytheon.uf.common.dataplugin.events import EventSet
 
 from EventSet import EventSet as PythonEventSet
 from KeyInfo import KeyInfo
+from PathManager import PathManager
 
-class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
+class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
 
     def __init__(self, scriptPath, localizationPath):
-        super(ProductInterface, self).__init__(scriptPath)
+        super(ProductInterface, self).__init__(scriptPath, localizationPath)
+        self.pathMgr = PathManager()
+        # Import all the generator python files using PythonOverrider.
         self.importModules()
+        self.importFormatters()
         self.logger = logging.getLogger("ProductInterface")
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             "com.raytheon.uf.common.hazards.productgen", "ProductInterface", level=logging.INFO))
@@ -148,20 +155,21 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
         data = self.keyInfoDictToPythonDict(productData)
         
         if isinstance(data, OrderedDict): 
-        
-            instance = getattr(importlib.import_module(productInfo), 'Product')()
-        
             # Dictionary containing the formatted products
             productDict = {}
             editables = {}
             for format in formats:
                 try:
-                    module = importlib.import_module(format) 
-                    instance = getattr(module, 'Format')()
+                    locPath = 'python/events/productgen/formats/'
+                    scriptName = locPath + format + '.py'
+                    if sys.modules.has_key(format):
+                        self.clearModuleAttributes(format)
+                    formatModule = PythonOverrider.importModule(scriptName)
+                    instance = formatModule.Format()
                     result = instance.execute(data)
                     productDict[format] = result[0]
                     editables[format] = result[1]
-        
+
                 except Exception, e:
                     productDict[format] = ['Failed to execute ' + format + '. Make sure it exists. Check log for errors. ']
                     exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -170,7 +178,7 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
 
             # TODO Use JUtil.pyValToJavaObj() when JUtil.pyDictToJavaMap() is fully resolved
             generatedProduct.setEntries(JUtil.pyDictToJavaMap(productDict))
-            generatedProduct.setEditableEntries(JUtil.pyDictToJavaMap(editables))   
+            generatedProduct.setEditableEntries(JUtil.pyDictToJavaMap(editables))
 
     def createProductsFromDictionary(self, dataList):
         generatedProductList = ArrayList()
@@ -276,3 +284,26 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
             convertedList.append(convertedItem)
     
         return convertedList
+
+    def importFormatters(self):
+        locPath = 'python/events/productgen/formats/'
+        # Use the abstract base class to get the BASE file path
+        moduleName = 'FormatTemplate.py'
+        scriptName = locPath + moduleName
+        filePath = self.pathMgr.getLocalizationFile(scriptName, loctype='COMMON_STATIC', loclevel='BASE').getFile().name;
+        basePath = filePath.replace(moduleName, '')
+
+        # Import all the modules in the formats BASE directory using PythonOverrider.
+        # Need to do this twice since subclasses could get imported before superclasses
+        # resulting in old references being used, resulting in the override not being
+        # picked up.
+        for x in range(2):
+            for s in basePath.split(os.path.pathsep):
+                if os.path.exists(s):
+                    scriptfiles = os.listdir(s)
+                    for filename in scriptfiles:
+                        split = string.split(filename, ".")
+                        if len(split) == 2 and len(split[0]) > 0 and split[1] == "py":
+                            if sys.modules.has_key(split[0]):
+                                self.clearModuleAttributes(split[0])
+                                tmpModule = PythonOverrider.importModule(locPath + filename)

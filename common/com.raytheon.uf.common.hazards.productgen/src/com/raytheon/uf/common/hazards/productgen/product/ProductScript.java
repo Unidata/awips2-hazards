@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import jep.JepException;
 
@@ -37,6 +36,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
 import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
+import com.raytheon.uf.common.localization.ILocalizationFileObserver;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
@@ -63,6 +63,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Sep 23, 2014 3790       Robert.Blum  Updated the inventory and reloaded
  *                                      the module on update.
  * 1/15/2015    5109       bphillip		Changes to accomodate running generators and formatters separately
+ * 2/12/2015    5071       Robert.Blum  Changes for reloading python files without
+ *                                      closing Cave.
  * 
  * </pre>
  * 
@@ -113,13 +115,15 @@ public class ProductScript extends PythonScriptController {
 
     private static final String PYTHON_FILE_EXTENSION = ".py";
 
-    protected Map<String, ProductInfo> inventory = null;
-
-    /** python/events/productgen/products directory */
+    /* python/events/productgen/products directory */
     protected static LocalizationFile productsDir;
 
-    /** python/events/productgen/formats directory */
+    /* python/events/productgen/products directory */
     protected static LocalizationFile formatsDir;
+
+    private ILocalizationFileObserver formatsDirObserver;
+
+    private boolean pendingFormatterUpdates = false;
 
     /**
      * Instantiates a ProductScript object.
@@ -136,7 +140,6 @@ public class ProductScript extends PythonScriptController {
                 PythonBuildPaths.buildDirectoryPath(PRODUCTS_DIRECTORY),
                 PythonBuildPaths.buildIncludePath(), jepIncludePath),
                 ProductScript.class.getClassLoader(), PYTHON_CLASS);
-        inventory = new ConcurrentHashMap<String, ProductInfo>();
 
         productsDir = PythonBuildPaths
                 .buildLocalizationDirectory(PRODUCTS_DIRECTORY);
@@ -144,8 +147,10 @@ public class ProductScript extends PythonScriptController {
 
         formatsDir = PythonBuildPaths
                 .buildLocalizationDirectory(FORMATS_DIRECTORY);
-        formatsDir.addFileUpdatedObserver(this);
+        formatsDirObserver = new FormatsDirectoryUpdateObserver();
+        formatsDir.addFileUpdatedObserver(formatsDirObserver);
 
+        
         String scriptPath = PythonBuildPaths
                 .buildDirectoryPath(PRODUCTS_DIRECTORY);
         jep.eval(INTERFACE + " = " + PYTHON_INTERFACE + "('" + scriptPath
@@ -368,16 +373,6 @@ public class ProductScript extends PythonScriptController {
         String name = dirs[dirs.length - 1];
         String filename = resolveCorrectName(name);
 
-        if (this.inventory.get(filename) != null) {
-            final String modName = resolveCorrectName(name);
-            this.inventory.get(filename).getFile()
-                    .removeFileUpdatedObserver(this);
-            statusHandler.handle(Priority.VERBOSE,
-                    "Removing initialized Product Generator " + modName
-                            + " due to update.");
-            this.inventory.remove(filename);
-        }
-
         if (message.getChangeType() == FileChangeType.DELETED) {
             IPathManager pm = PathManagerFactory.getPathManager();
             LocalizationFile lf = pm.getLocalizationFile(message.getContext(),
@@ -417,9 +412,17 @@ public class ProductScript extends PythonScriptController {
      */
     public boolean verifyProductGeneratorIsLoaded(String productGeneratorName) {
         processFileUpdates();
-        if (this.inventory.containsKey(productGeneratorName)) {
-            return true;
+        // If there are pending formatter updates reload the formatters
+        if (pendingFormatterUpdates) {
+            try {
+                reloadFormatters();
+                pendingFormatterUpdates = false;
+            } catch (JepException e) {
+                statusHandler.handle(Priority.WARN,
+                        "Product Formatters were unable to be imported", e);
+            }
         }
+
         return this.initializeProductGenerator(productGeneratorName);
     }
 
@@ -434,15 +437,12 @@ public class ProductScript extends PythonScriptController {
         }
         // load the product generator.
         ProductInfo productInfo = setMetadata(localizationFile);
-        if (productInfo != null) {
-            inventory.put(productInfo.getName(), productInfo);
-        } else {
+        if (productInfo == null) {
             statusHandler.handle(Priority.PROBLEM,
                     "Failed to initialize Product Generator: "
                             + productGeneratorName + "!");
             return false;
         }
-        localizationFile.addFileUpdatedObserver(this);
         return true;
     }
 
@@ -478,6 +478,16 @@ public class ProductScript extends PythonScriptController {
     }
 
     /**
+     * Reloads the updated formatter modules in the interpreter's "cache".
+     * 
+     * @throws JepException
+     *             If an Error is thrown during python execution.
+     */
+    protected void reloadFormatters() throws JepException {
+        execute("importFormatters", INTERFACE, null);
+    }
+
+    /**
      * Retrieves the metadata of the product generator and sets it in the
      * product info object.
      * 
@@ -490,9 +500,7 @@ public class ProductScript extends PythonScriptController {
         final String modName = resolveCorrectName(file.getFile().getName());
         Map<String, Serializable> results = null;
         try {
-            if (isInstantiated(modName)) {
-                reloadModule(modName);
-            }
+            reloadModule(modName);
             instantiatePythonScript(modName);
             Map<String, Object> args = getStarterMap(modName);
             results = (Map<String, Serializable>) execute(GET_SCRIPT_METADATA,
@@ -514,5 +522,33 @@ public class ProductScript extends PythonScriptController {
             productInfo.setVersion(vers != null ? vers.toString() : "");
         }
         return productInfo;
+    }
+
+    private class FormatsDirectoryUpdateObserver implements
+            ILocalizationFileObserver {
+
+        @Override
+        public void fileUpdated(FileUpdatedMessage message) {
+            IPathManager pm = PathManagerFactory.getPathManager();
+            LocalizationFile lf = pm.getLocalizationFile(message.getContext(),
+                    message.getFileName());
+
+            if (message.getChangeType() == FileChangeType.ADDED) {
+                if (lf != null) {
+                    lf.getFile();
+                }
+            } else if (message.getChangeType() == FileChangeType.DELETED) {
+                if (lf != null) {
+                    File toDelete = lf.getFile();
+                    toDelete.delete();
+                }
+
+            } else if (message.getChangeType() == FileChangeType.UPDATED) {
+                if (lf != null) {
+                    lf.getFile();
+                }
+            }
+            pendingFormatterUpdates = true;
+        }
     }
 }

@@ -48,6 +48,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * Feb 18, 2013            jsanchez     Initial creation
  * May 23, 2014 3790       jsanchez     Used DEFAULT_PRODUCT_GENERATION_JOB_COORDINATOR.
  * Nov 05, 2014 4042       Chris.Golden Added new directories to Python include path.
+ * Feb 19, 2015 5071       Robert.Blum  Added new directories to include path
  * </pre>
  * 
  * @author jsanchez
@@ -84,7 +85,8 @@ public class ProductScriptFactory extends
      * to the Jep path for the product generation framework and product
      * generators.
      */
-    private final static String[] HAZARD_SERVICES_UTILITY_SUBDIRECTORIES = { "hazardMetaData" };
+    private final static String[] HAZARD_SERVICES_UTILITY_SUBDIRECTORIES = {
+            "hazardMetaData", "hazardCategories", "hazardTypes" };
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductScriptFactory.class);

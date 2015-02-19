@@ -53,7 +53,7 @@ class Format(FormatTemplate.Formatter):
         return False
 
     @abstractmethod
-    def _processProductParts(self, eventSet):
+    def _processProductParts(self, productDict, productParts, skipParts=[]):
         '''
         Must be overridden by the Product Formatter
         '''

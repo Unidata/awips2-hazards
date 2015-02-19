@@ -3,12 +3,13 @@
         
 """
 
-import sys, types
+import sys, types, os, string
 from HazardServicesConfig import HazardServicesConfig
 from HazardConstants import *
 
 from PythonOverrider import importModule
-    
+from PathManager import PathManager
+
 def getHazardMetaData(datatype, phenomenon, significance, subType = None) :
     """
     @param datatype: data type representing hazard metadata.  
@@ -33,12 +34,10 @@ def getHazardMetaData(datatype, phenomenon, significance, subType = None) :
             for hazardType in hazardTypesList:
                 if phenomenon in hazardType and significance in hazardType:
                     if subType is None or (subType is not None and subType in hazardType):
-                        metaDataEntry = metaDataDict[CLASS_METADATA]                        
+                        metaDataEntry = metaDataDict[CLASS_METADATA]
                         if type(metaDataEntry) is types.StringType:
-                            locPath = "hazardServices/hazardMetaData/CommonMetaData.py"
-                            importModule(locPath)
                             locPath = "hazardServices/hazardMetaData/" + metaDataEntry + ".py"
-                            result = importModule(locPath)
+                            result = importMetaData(metaDataEntry)
                             m = result.MetaData()
                             return m, locPath
                         elif metaDataEntry is None:
@@ -54,7 +53,37 @@ def getMetaData(fileName) :
     @return: A class object with an execute method for obtaining the metadata
              OR None.
     """
-    locPath = str("hazardServices/hazardMetaData/" + fileName + ".py")
-    result = importModule(locPath) 
+    result = importMetaData(fileName)
     return result.MetaData()
 
+def importMetaData(moduleName):
+    locPath = 'hazardServices/hazardMetaData/'
+    # Use the base class to get the BASE file path
+    scriptName = 'CommonMetaData.py'
+    fileName = locPath + scriptName
+
+    pathMgr = PathManager()
+    filePath = pathMgr.getLocalizationFile(fileName, loctype='COMMON_STATIC', loclevel='BASE').getFile().name;
+    basePath = filePath.replace(scriptName, '')
+
+    # Import all the modules in the formats BASE directory using PythonOverrider.
+    for s in basePath.split(os.path.pathsep):
+        if os.path.exists(s):
+            scriptfiles = os.listdir(s)
+            for filename in scriptfiles:
+                split = string.split(filename, ".")
+                if len(split) == 2 and len(split[0]) > 0 and split[1] == "py":
+                    if sys.modules.has_key(split[0]):
+                        clearModuleAttributes(split[0])
+                    tmpModule = importModule(locPath + filename)
+
+    # Reload the desired metadata module again since above import order
+    # is random which may cause subclasses to have old references to superclasses.
+    return importModule(locPath + moduleName + '.py')
+
+def clearModuleAttributes(moduleName):
+    if sys.modules.has_key(moduleName):
+        mod = sys.modules[moduleName]
+        modGlobalsToRemove = [k for k in mod.__dict__ if not k.startswith('_')]
+        for k in modGlobalsToRemove:
+            mod.__dict__.pop(k)

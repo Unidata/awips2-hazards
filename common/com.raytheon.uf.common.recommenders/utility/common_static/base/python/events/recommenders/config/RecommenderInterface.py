@@ -33,11 +33,14 @@
 #    01/20/14        2766          bkowal         Updated to use the Python Overrider 
 #    10/13/14        3790          Robert.Blum    Reverted to use the RollbackMasterInterface.
 #    01/29/15        3626          Chris.Golden   Added EventSet to arguments for getting dialog info.
+#    02/12/15        5071          Robert.Blum    Changed to inherit from the PythonOverriderInterface once
+#                                                 again. This allows the incremental overrides and also editing
+#                                                 without closing Cave.
 #
 
 import os
 
-import RollbackMasterInterface
+import PythonOverriderInterface
 import JUtil
 from GeometryHandler import shapelyToJTS, jtsToShapely
 JUtil.registerPythonToJava(shapelyToJTS)
@@ -48,10 +51,10 @@ JUtil.registerJavaToPython(javaHazardEventToPyHazardEvent)
 
 from EventSet import EventSet
 
-class RecommenderInterface(RollbackMasterInterface.RollbackMasterInterface):
+class RecommenderInterface(PythonOverriderInterface.PythonOverriderInterface):
     
     def __init__(self, scriptPath, localizationPath):
-        super(RecommenderInterface, self).__init__(scriptPath)
+        super(RecommenderInterface, self).__init__(scriptPath, localizationPath)
         self.importModules()
         
     def getScriptMetadata(self, moduleName, className, **kwargs):

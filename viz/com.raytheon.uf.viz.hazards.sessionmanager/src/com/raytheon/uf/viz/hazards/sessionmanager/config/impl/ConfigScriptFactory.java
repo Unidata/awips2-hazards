@@ -9,6 +9,7 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_CATEGORIES_LOCALIZATION_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_SERVICES_LOCALIZATION_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_TYPES_LOCALIZATION_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_BRIDGE_DIR;
@@ -19,6 +20,8 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.P
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_GEO_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_GFE_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_PRODUCTGEN_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_PRODUCTS_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_TIME_DIR;
@@ -55,6 +58,8 @@ import com.raytheon.uf.common.util.FileUtil;
  * Aug 19, 2014    4243    Chris.Golden Initial creation.
  * Sep 16, 2014    4753    Chris.Golden Changed to include mutable properties.
  * Feb 4,  2015    5691    kmanross     Changed include paths for DataAccess
+ * Feb 18, 2015    5071    Robert.Blum  Added productTextUtilPath and hazardCategoriesPath 
+ *                                      to the include path.
  * </pre>
  * 
  * @author Chris.Golden
@@ -190,9 +195,15 @@ public class ConfigScriptFactory extends
                     PYTHON_LOCALIZATION_DATA_STORAGE_DIR);
             String bridgePath = FileUtil.join(pythonPath,
                     PYTHON_LOCALIZATION_BRIDGE_DIR);
+            String productTextUtilPath = FileUtil.join(pythonPath,
+                    PYTHON_LOCALIZATION_EVENTS_DIR,
+                    PYTHON_LOCALIZATION_PRODUCTGEN_DIR,
+                    PYTHON_LOCALIZATION_PRODUCTS_DIR);
             String hazardServicesPath = pathManager.getFile(
                     localizationContext, HAZARD_SERVICES_LOCALIZATION_DIR)
                     .getPath();
+            String hazardCategoriesPath = FileUtil.join(hazardServicesPath,
+                    HAZARD_CATEGORIES_LOCALIZATION_DIR);
             String hazardTypesPath = FileUtil.join(hazardServicesPath,
                     HAZARD_TYPES_LOCALIZATION_DIR);
 
@@ -211,7 +222,7 @@ public class ConfigScriptFactory extends
                     vtecUtilitiesPath, geoUtilitiesPath, shapeUtilitiesPath,
                     textUtilitiesPath, dataStoragePath, eventsPath,
                     eventsUtilitiesPath, bridgePath, hazardServicesPath,
-                    hazardTypesPath);
+                    hazardTypesPath, productTextUtilPath, hazardCategoriesPath);
             ClassLoader classLoader = this.getClass().getClassLoader();
             ContextSwitchingPythonEval result = new ContextSwitchingPythonEval(
                     includePath, classLoader, PYTHON_PRE_EVALS);

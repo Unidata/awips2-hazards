@@ -33,6 +33,7 @@
                                      specific parameters for retrieving 
                                      different types of hazard information.
  Oct 29, 2014    5070    mpduff      Fix SiteCFG.py that was moved 
+ Feb 19, 2015    5071    Robert.Blum converting unicode strings from json to prevent errors.
 ''' 
 
 import ast, types, time, traceback, os
@@ -285,6 +286,18 @@ class Bridge:
         
         return importModule(fullLocalizationPath, locType)    
 
+    def as_str(self, obj):
+        if isinstance(obj, dict):
+            return {self.as_str(key):self.as_str(value) for key,value in obj.items()}
+        elif isinstance(obj, list):  
+            return [self.as_str(value) for value in obj]
+        elif isinstance(obj, set):  
+            return {self.as_str(value) for value in obj}
+        elif isinstance(obj, unicode):
+            return obj.encode('utf-8')
+        else:
+            return obj
+
     #@deprecated
     def getData(self, criteria):
         '''
@@ -294,6 +307,7 @@ class Bridge:
         @return: The requested data.
         '''
         info = json.loads(criteria, object_pairs_hook=collections.OrderedDict)
+        info = self.as_str(info)
         dataType = info.get(DATA_TYPE_KEY)
         if dataType in [SETTINGS_DATA, HAZARD_TYPES_DATA, HAZARD_CATEGORIES_DATA, \
                         HAZARD_METADATA, PRODUCT_DATA, \

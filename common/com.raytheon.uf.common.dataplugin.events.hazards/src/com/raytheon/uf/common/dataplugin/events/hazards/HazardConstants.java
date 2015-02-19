@@ -69,6 +69,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Feb 12, 2015 4959      Dan Schaffer  Modify MB3 add/remove UGCs to match Warngen
  * Feb 15, 2015 2271      Dan Schaffer  Incur recommender/product generator init costs immediately
  * Feb 22, 2015 6561      Mike Duff     Removed PERSIST_TIME
+ * Feb 19, 2015 5071      Robert.Blum   Added HAZARD_CATEGORIES_LOCALIZATION_DIR
  * </pre>
  * 
  * @author mnash
@@ -1024,6 +1025,8 @@ public final class HazardConstants {
     public static final String HAZARD_SERVICES_LOCALIZATION_DIR = "hazardServices";
 
     public static final String HAZARD_TYPES_LOCALIZATION_DIR = "hazardTypes";
+
+    public static final String HAZARD_CATEGORIES_LOCALIZATION_DIR = "hazardCategories";
 
     public static final String HAZARD_METADATA_DIR = "hazardMetaData";
 

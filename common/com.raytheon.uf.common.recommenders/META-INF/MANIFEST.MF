@@ -14,6 +14,7 @@ Require-Bundle: org.jep;bundle-version="1.0.0",
  com.raytheon.uf.common.serialization.comm;bundle-version="1.12.1174",
  com.raytheon.uf.common.serialization;bundle-version="1.12.1174"
 Import-Package: com.raytheon.uf.common.dataplugin.events,
+ com.raytheon.uf.common.dataplugin.events.utilities,
  com.raytheon.uf.common.status,
  com.raytheon.uf.common.util,
  javax.measure.unit
