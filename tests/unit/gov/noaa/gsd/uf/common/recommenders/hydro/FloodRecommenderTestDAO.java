@@ -20,13 +20,21 @@ import com.raytheon.uf.common.hazards.hydro.HazardSettings;
 import com.raytheon.uf.common.hazards.hydro.IFloodDAO;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastGroup;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastPoint;
+import com.raytheon.uf.common.hazards.hydro.RiverPointZoneInfo;
 import com.raytheon.uf.common.util.Pair;
 
 /**
  * Description: Flood Recommender DAO for use with unit tests. This allows the
- * tests to define the test data as a part of their setup. SOFTWARE HISTORY Date
- * Ticket# Engineer Description ------------ ---------- -----------
- * -------------------------- Dec 7, 2012 bryon.lawrence Initial creation </pre>
+ * tests to define the test data as a part of their setup.
+ * 
+ * <pre>
+ * SOFTWARE HISTORY
+ * Date         Ticket#    Engineer    Description
+ * ----------- ---------- ----------- --------------------------
+ * Dec 7, 2012             bryon.lawrence Initial creation
+ * Feb 21, 2015 4959 Dan Schaffer Improvements to add/remove UGCs
+ * </pre>
+ * 
  * 
  * @author bryon.lawrence
  * @version 1.0
@@ -410,6 +418,18 @@ public class FloodRecommenderTestDAO implements IFloodDAO {
 
     @Override
     public String getPrimaryPE(String lid) {
+        throw new UnsupportedOperationException();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.common.hazards.hydro.IFloodDAO#getRiverPointZonePointInfo
+     * (com.raytheon.uf.common.hazards.hydro.HazardSettings)
+     */
+    @Override
+    public List<RiverPointZoneInfo> getRiverPointZonePointInfo() {
         throw new UnsupportedOperationException();
     }
 }

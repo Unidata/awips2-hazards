@@ -51,6 +51,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  *                                      indicating the constraints
  *                                      the type puts on start and
  *                                      end time editability.
+ * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
  * </pre>
  * 
  * @author bsteffen
@@ -76,7 +77,9 @@ public class HazardTypeEntry {
 
     private String[] hazardConflictList;
 
-    private boolean polygonBased;
+    private boolean warngenHatching;
+
+    private boolean pointBased;
 
     private String ugcType;
 
@@ -349,18 +352,33 @@ public class HazardTypeEntry {
     }
 
     /**
-     * @return the polygonBased
+     * @return the warngenHatching
      */
-    public boolean isPolygonBased() {
-        return polygonBased;
+    public boolean isWarngenHatching() {
+        return warngenHatching;
     }
 
     /**
-     * @param polygonBased
-     *            the polygonBased to set
+     * @param warngenHatching
+     *            the warngenHatching to set
      */
-    public void setPolygonBased(boolean polygonBased) {
-        this.polygonBased = polygonBased;
+    public void setWarngenHatching(boolean warngenHatching) {
+        this.warngenHatching = warngenHatching;
+    }
+
+    /**
+     * @return the pointBased
+     */
+    public boolean isPointBased() {
+        return pointBased;
+    }
+
+    /**
+     * @param pointBased
+     *            the pointBased to set
+     */
+    public void setPointBased(boolean pointBased) {
+        this.pointBased = pointBased;
     }
 
 }

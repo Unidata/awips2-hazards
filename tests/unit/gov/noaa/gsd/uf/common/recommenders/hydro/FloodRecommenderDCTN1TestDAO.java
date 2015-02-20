@@ -19,6 +19,7 @@ import com.raytheon.uf.common.hazards.hydro.HazardSettings;
 import com.raytheon.uf.common.hazards.hydro.IFloodDAO;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastGroup;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastPoint;
+import com.raytheon.uf.common.hazards.hydro.RiverPointZoneInfo;
 import com.raytheon.uf.common.util.Pair;
 
 /**
@@ -31,7 +32,7 @@ import com.raytheon.uf.common.util.Pair;
  * ------------ ---------- ----------- --------------------------
  * MMM DD, YYYY            bryon.lawrence      Initial creation
  * May 1, 2014  3581       bkowal      Updated for hazards hydro refactor
- * 
+ * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
  * </pre>
  * 
  * @author bryon.lawrence
@@ -518,6 +519,18 @@ public class FloodRecommenderDCTN1TestDAO implements IFloodDAO {
 
     @Override
     public String getPrimaryPE(String lid) {
+        throw new UnsupportedOperationException();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.common.hazards.hydro.IFloodDAO#getRiverPointZonePointInfo
+     * (com.raytheon.uf.common.hazards.hydro.HazardSettings)
+     */
+    @Override
+    public List<RiverPointZoneInfo> getRiverPointZonePointInfo() {
         throw new UnsupportedOperationException();
     }
 

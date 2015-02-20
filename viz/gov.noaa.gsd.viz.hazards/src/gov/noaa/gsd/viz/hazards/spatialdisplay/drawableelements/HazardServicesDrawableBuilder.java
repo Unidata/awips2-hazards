@@ -84,6 +84,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
  * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
+ * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
  * </pre>
  * 
  * @author bryon.lawrence
@@ -656,7 +657,7 @@ public class HazardServicesDrawableBuilder {
 
             String mapLabelParameter = hazardTypeEntry.getUgcLabel();
 
-            boolean isPolygonBased = hazardTypeEntry.isPolygonBased();
+            boolean isWarngenHatching = hazardTypeEntry.isWarngenHatching();
 
             String cwa = hazardEvent.getSiteID();
 
@@ -666,25 +667,31 @@ public class HazardServicesDrawableBuilder {
 
             for (IGeometryData geometryData : hazardArea) {
 
-                for (int i = 0; i < geometryData.getGeometry()
-                        .getNumGeometries(); ++i) {
+                /*
+                 * Sometimes geometryData are null. Simply skip over them.
+                 */
+                if (geometryData != null) {
 
-                    Geometry geometry = geometryData.getGeometry()
-                            .getGeometryN(i);
-                    /*
-                     * Skip point and line geometries. Hatching does not make
-                     * sense for points and lines (they have no area).
-                     */
-                    if (!(geometry instanceof Puntal)
-                            && !(geometry instanceof Lineal)) {
-                        drawableComponent = buildPolygon(hazardEvent, geometry,
-                                activeLayer);
-                        hatchedAreas.add(drawableComponent);
+                    for (int i = 0; i < geometryData.getGeometry()
+                            .getNumGeometries(); ++i) {
+
+                        Geometry geometry = geometryData.getGeometry()
+                                .getGeometryN(i);
+                        /*
+                         * Skip point and line geometries. Hatching does not
+                         * make sense for points and lines (they have no area).
+                         */
+                        if (!(geometry instanceof Puntal)
+                                && !(geometry instanceof Lineal)) {
+                            drawableComponent = buildPolygon(hazardEvent,
+                                    geometry, activeLayer);
+                            hatchedAreas.add(drawableComponent);
+                        }
                     }
                 }
             }
 
-            if (isPolygonBased) {
+            if (isWarngenHatching) {
                 for (IGeometryData geometryData : hazardArea) {
                     Geometry geometry = geometryData.getGeometry();
                     if (!geometry.isEmpty()) {

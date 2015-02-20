@@ -57,6 +57,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Point;
+import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.TopologyException;
 
 /**
@@ -84,6 +85,7 @@ import com.vividsolutions.jts.geom.TopologyException;
  * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
  * Feb  6, 2015 4375       Dan Schaffer Added error check for empty UGCs.
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
+ * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
  * </pre>
  * 
  * @author blawrenc
@@ -365,16 +367,13 @@ public class GeoMapUtilities {
     }
 
     /**
-     * Returns a set of geometries from the maps database clipped to fit in the
-     * geometry of the given {@link IHazardEvent}
+     * Clip the given geometry for the given {@link IHazardEvent} to the CWA
      * 
      * @param hazardEvent
-     *            The hazard event to build the hazard area for.
-     * @return {@link IGeometryData}s. The result will be empty if there are no
-     *         clipped geometries.
+     *            The hazard event
+     * @return The clipped {@link IHazardEvent}
      */
-    public Set<IGeometryData> getClippedMapGeometries(
-            final IHazardEvent hazardEvent) {
+    public Geometry gfeClipping(final IHazardEvent hazardEvent) {
 
         String hazardType = hazardEvent.getHazardType();
         String mapDBtableName = getMapDBtableName(hazardType);
@@ -384,39 +383,36 @@ public class GeoMapUtilities {
         String cwa = configManager.getSiteID();
         Geometry hazardGeometry = hazardEvent.getGeometry();
 
-        Set<IGeometryData> result = Sets.newHashSet();
-
         Set<IGeometryData> mapGeometries = getMapGeometries(mapDBtableName,
                 mapLabelParameter, cwa);
 
+        List<Geometry> intersectedGeometries = new ArrayList<>(
+                hazardGeometry.getNumGeometries());
         for (int i = 0; i < hazardGeometry.getNumGeometries(); ++i) {
+            Geometry g = hazardGeometry.getGeometryN(i);
             for (IGeometryData mapGeometry : mapGeometries) {
 
                 for (int k = 0; k < mapGeometry.getGeometry()
                         .getNumGeometries(); ++k) {
 
-                    Geometry clippedGeometry = geometryFactory.createPolygon(
-                            null, null);
-
-                    if (mapGeometry.getGeometry().getGeometryN(k)
-                            .intersects(hazardGeometry.getGeometryN(i))) {
+                    if (mapGeometry.getGeometry().getGeometryN(k).intersects(g)) {
                         Geometry intersectionGeometry = mapGeometry
-                                .getGeometry().getGeometryN(k)
-                                .intersection(hazardGeometry.getGeometryN(i));
+                                .getGeometry().getGeometryN(k).intersection(g);
 
-                        clippedGeometry = clippedGeometry
-                                .union(intersectionGeometry);
-
-                        for (int j = 0; j < clippedGeometry.getNumGeometries(); ++j) {
-                            DefaultGeometryData clippedGeoData = new DefaultGeometryData();
-                            clippedGeoData.setGeometry(clippedGeometry
-                                    .getGeometryN(j));
-                            result.add(clippedGeoData);
+                        if (intersectionGeometry instanceof Polygon) {
+                            intersectedGeometries.add(intersectionGeometry);
                         }
+
                     }
+
                 }
+
             }
 
+        }
+        Geometry result = intersectedGeometries.get(0);
+        for (int i = 1; i < intersectedGeometries.size(); i++) {
+            result = result.union(intersectedGeometries.get(i));
         }
 
         return result;
@@ -487,18 +483,35 @@ public class GeoMapUtilities {
     }
 
     /**
-     * Determine if this is a polygon-based hazard
+     * Determine if this is a warngen hatching hazard
      * 
      * @param hazardEvent
      * @return true if the hazardEvent is a polygon based hazard type
      */
-    public boolean isPolygonBased(IHazardEvent hazardEvent) {
+    public boolean isWarngenHatching(IHazardEvent hazardEvent) {
+        HazardTypeEntry hazardTypeEntry = getHazardTypeEntry(hazardEvent);
+
+        return hazardTypeEntry.isWarngenHatching();
+    }
+
+    /**
+     * Determine if this is a point-based hazard
+     * 
+     * @param hazardEvent
+     * @return true if the hazardEvent is a point based hazard type
+     */
+    public boolean isPointBasedHatching(IHazardEvent hazardEvent) {
+        HazardTypeEntry hazardTypeEntry = getHazardTypeEntry(hazardEvent);
+
+        return hazardTypeEntry.isPointBased();
+    }
+
+    private HazardTypeEntry getHazardTypeEntry(IHazardEvent hazardEvent) {
         String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
 
         HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes().get(
                 hazardType);
-
-        return hazardTypeEntry.isPolygonBased();
+        return hazardTypeEntry;
     }
 
     /**

@@ -35,7 +35,7 @@ import com.raytheon.uf.common.util.Pair;
  * May 1, 2014  3581       bkowal      Relocate to common hazards hydro
  * Sep 19, 2014   2394     mpduff for nash  interface changes
  * Dec 17, 2014 2394       Ramer/Manross    Updated Interface
- * 
+ * Feb 21, 2015 4959       Dan Schaffer     Improvements to add/remove UGCs
  * 
  * </pre>
  * 
@@ -55,6 +55,13 @@ public interface IFloodDAO {
      */
     public List<RiverForecastPoint> getForecastPointInfo(
             HazardSettings hazardSettings);
+
+    /**
+     * Retrieves a zone information for river points
+     * 
+     * @return {@link RiverPointZoneInfo}s
+     */
+    public List<RiverPointZoneInfo> getRiverPointZonePointInfo();
 
     /**
      * Retrieves a list of river forecast groups.

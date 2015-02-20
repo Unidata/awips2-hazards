@@ -40,7 +40,7 @@ import com.raytheon.uf.common.util.Pair;
  * May 1, 2014  3581       bkowal              Relocate to common hazards hydro
  * Sep 19, 2014   2394     mpduff for nash     Updated for interface changes
  * Dec 17, 2014 2394       Ramer               Updated Interface
- * 
+ * Feb 21, 2015 4959       Dan Schaffer        Improvements to add/remove UGCs
  * 
  * </pre>
  * 
@@ -257,6 +257,47 @@ public class FloodDAO implements IFloodDAO {
         }
 
         return forecastPointList;
+
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.common.hazards.hydro.IFloodDAO#getRiverPointZonePointInfo
+     * (com.raytheon.uf.common.hazards.hydro.HazardSettings)
+     */
+    @Override
+    public List<RiverPointZoneInfo> getRiverPointZonePointInfo() {
+
+        List<RiverPointZoneInfo> result = Lists.newArrayList();
+        String query;
+
+        query = "SELECT lid, state, zoneNum, descr FROM ZoneInfo ORDER BY lid ASC";
+
+        List<Object[]> zoneInfoResults = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY, query, IHFS,
+                        "zone info");
+
+        String lid;
+        String state;
+        String zoneNum;
+        String descr;
+        if (zoneInfoResults != null) {
+            for (Object[] infoRecord : zoneInfoResults) {
+                if (infoRecord != null) {
+                    lid = (String) infoRecord[0];
+                    state = (String) infoRecord[1];
+                    zoneNum = (String) infoRecord[2];
+                    descr = (String) infoRecord[3];
+                    RiverPointZoneInfo zoneInfo = new RiverPointZoneInfo(lid,
+                            state, zoneNum, descr, this);
+                    result.add(zoneInfo);
+                }
+            }
+        }
+
+        return result;
 
     }
 
