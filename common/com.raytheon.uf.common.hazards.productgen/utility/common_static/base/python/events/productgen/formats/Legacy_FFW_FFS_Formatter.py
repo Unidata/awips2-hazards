@@ -119,14 +119,13 @@ class Format(Legacy_Hydro_Formatter.Format):
     ######################################################
 
     ################# Product Level
-
-    def _easMessage(self, productDict):
-        vtecRecords = productDict.get('vtecRecords')
-        for vtecRecord in vtecRecords:
-            if 'sig' in vtecRecord:
-                if vtecRecord['sig'] is 'A':
-                    return 'Urgent - Immediate broadcast requested\n'
-        return 'Bulletin - EAS activation requested\n'
+    def _easMessage(self, productDict):        
+        vtecRecords = productDict.get('vtecRecords')        
+        for vtecRecord in vtecRecords:        
+            if 'sig' in vtecRecord:        
+                if vtecRecord['sig'] is 'A':        
+                    return 'Urgent - Immediate broadcast requested\n'        
+        return 'Bulletin - EAS activation requested\n'        
 
     ################# Segment Level
 

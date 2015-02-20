@@ -32,7 +32,6 @@ class Recommender(RecommenderTemplate.Recommender):
         damInfoList = mapsAccessor.getAllDamInfo()
         for damInfo in damInfoList:
             self.damPolygonDict[damInfo['name']] = damInfo['polygon']
-            
 
         
     def defineScriptMetadata(self):

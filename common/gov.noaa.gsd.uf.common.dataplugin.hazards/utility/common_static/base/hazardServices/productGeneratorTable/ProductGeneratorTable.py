@@ -42,12 +42,12 @@ ProductGeneratorTable = {
             "previewFormatters": ["Legacy_FFW_FFS_Formatter", "Twitter", "HTML"],
             "issueFormatters": ["Legacy_FFW_FFS_Formatter"],
             },
-        "ESF_ProductGenerator": {
+        "ESF_ProductGenerator_v3": {
             "allowedHazards": [
              ('HY.O',     "Flood"),
              ],
-            "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy"],
+            "previewFormatters": ["Legacy_ESF_Formatter"],
+            "issueFormatters": ["Legacy_ESF_Formatter"],
             },
         "RVS_ProductGenerator": {
             "allowedHazards": [
