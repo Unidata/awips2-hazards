@@ -12,6 +12,7 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     Feb 2015       4375    Tracy Hansen      Initial creation
+    Feb 2015       4937    Robert.Blum       Check if proximity is None
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
@@ -344,7 +345,11 @@ class AttributionFirstBulletText:
                 ugcPhrase += '\n' + self.cityString
             return ugcPhrase
         else:
-            return  '\n the ' + sectionDict.get('riverName_GroupName', '') + ' ' + sectionDict.get('proximity', '') + ' ' + sectionDict.get('riverPointName', '')  
+            proximity = sectionDict.get('proximity', '')
+            # TODO fix rfp to never return None or decide what the below default value should be
+            if not proximity:
+                proximity = 'near'
+            return  '\n the ' + sectionDict.get('riverName_GroupName', '') + ' ' + proximity + ' ' + sectionDict.get('riverPointName', '')  
 
 
     # The following tables are temporarily here until we determine the best central place to keep them.        

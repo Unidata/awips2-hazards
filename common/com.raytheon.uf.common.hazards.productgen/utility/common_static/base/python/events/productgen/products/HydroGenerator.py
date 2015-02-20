@@ -1,3 +1,4 @@
+
 '''
     Description: Hydro Product Generator that all Hydro Product
                  specific generators should inherit from.
@@ -8,6 +9,7 @@
     Jan 12, 2015    4937    Robert.Blum Initial creation
     Jan 26, 2015    4936    Chris.Cody  Implement scripts for Flash Flood Watch Products (FFA,FAA,FLA)
     Jan 31, 2015    4937    Robert.Blum General cleanup and bug fixes.
+    Feb 20, 2015    4937    Robert.Blum Added required data for groupSummary to section dicitonary
 '''
 from RiverForecastPoints import RiverForecastPoints
 from HydroProductParts import HydroProductParts
@@ -45,6 +47,8 @@ class Product(Legacy_Base_Generator.Product):
         segment['pointID'] = pointID
         segment['riverName_GroupName'] = self._rfp.getGroupName(pointID)
         segment['riverName_RiverName'] = self._rfp.getRiverName(pointID)
+        segment['groupForecastPointList'] = self._rfp.getGroupForecastPointList(pointID)
+        segment['groupMaxForecastFloodCatName'] = self._rfp.getGroupMaximumForecastFloodCategoryName(pointID)
 
         segment['proximity'] = self._rfp.getRiverPointProximity(pointID)
         segment['riverPointName'] = self._rfp.getRiverPointName(pointID)

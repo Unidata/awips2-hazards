@@ -7,6 +7,7 @@
     ------------ ---------- ----------- --------------------------
     Jan 12, 2015    4937    Robert.Blum Initial creation
     Jan 31, 2015    4937    Robert.Blum General cleanup
+    Feb 20, 2015    4937    Robert.Blum Added groupSummary productPart method
 '''
 import datetime
 import collections
@@ -60,6 +61,23 @@ class Format(Legacy_Base_Formatter.Format):
         # TODO Determine if product or segment level
         return '\n| floodPointTable Placeholder |\n'
 
+    def _groupSummary(self, productDict):
+        '''
+        For the North Branch Potomac River...including KITZMILLER...CUMBERLAND...Record 
+        flooding is forecast.
+        '''
+        summaryStmt = ''
+        for segment in productDict.get('segments', None):
+            sections = segment.get('sections', None)
+            if sections:
+                groupName = sections[0].get('riverName_GroupName', None)
+                groupList = sections[0].get('groupForecastPointList', None)
+                groupList = groupList.replace(',',', ')
+                maxCatName = sections[0].get('groupMaxForecastFloodCatName', None)
+                groupSummary = 'For the ' + groupName + '...including ' + groupList + '...' + maxCatName + ' flooding is forecast.'
+                summaryStmt += groupSummary + '\n'
+        return summaryStmt + '\n'
+    
     ################# Segment Level
 
     ###################### Section Level

@@ -8,6 +8,7 @@
     Jan 26, 2015 4936       chris.cody  Implement scripts for Flash Flood Watch Products (FFA,FAA,FLA)
     Jan 31, 2015 4937       Robert.Blum General cleanup along with implementing a dictionary mapping of 
                                         productParts to the associated methods.
+    Feb 20, 2015 4937       Robert.Blum Added groupSummary productPart method to mapping
 '''
 
 import datetime, collections
@@ -64,6 +65,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             'forecastStageBullet': self._forecastStageBullet,
             'floodPointTable': self._floodPointTable,
             'setUp_segment': self._setUp_segment,
+            'groupSummary': self._groupSummary,
                                 }
 
     def execute(self, productDict):
