@@ -24,8 +24,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
-
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
@@ -53,6 +51,7 @@ import com.vividsolutions.jts.io.WKTReader;
  *                                      set the type components atomically, or
  *                                      the start and end time atomically.
  * Jun 30, 2014 3512       Chris.Golden Added addHazardAttributes() method.
+ * Feb 22, 2015 6561       mpduff      Override getInsertTime and update toString
  * </pre>
  * 
  * @author mnash
@@ -431,6 +430,17 @@ public class BaseHazardEvent implements IHazardEvent {
 
     @Override
     public String toString() {
-        return ToStringBuilder.reflectionToString(this);
+        return eventId + " " + this.phenomenon + " " + this.significance;
+    }
+
+    @Override
+    public void setInsertTime(Date date) {
+        // TODO No-op
+    }
+
+    @Override
+    public Date getInsertTime() {
+        // TODO No-op
+        return null;
     }
 }

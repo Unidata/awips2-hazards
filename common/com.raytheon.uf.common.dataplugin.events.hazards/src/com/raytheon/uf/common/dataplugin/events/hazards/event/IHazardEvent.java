@@ -25,7 +25,6 @@ import java.util.Date;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.vividsolutions.jts.geom.Geometry;
@@ -46,6 +45,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      set the type components atomically, or
  *                                      the start and end time atomically.
  * Jun 30, 2014 3512       Chris.Golden Added addHazardAttributes() method.
+ * Feb 22, 2015 6561       mpduff      Added getter/setter for insert time, changed 
+ *                                     SORT_BY_PERSIST_TIME to use insert time
  * </pre>
  * 
  * @author mnash
@@ -56,24 +57,8 @@ public interface IHazardEvent extends IEvent {
     public Comparator<IHazardEvent> SORT_BY_PERSIST_TIME = new Comparator<IHazardEvent>() {
         @Override
         public int compare(IHazardEvent o1, IHazardEvent o2) {
-            Serializable o1Attr = o1
-                    .getHazardAttribute(HazardConstants.PERSIST_TIME);
-            Serializable o2Attr = o2
-                    .getHazardAttribute(HazardConstants.PERSIST_TIME);
-            Date o1Time = null;
-            if (o1Attr instanceof Date) {
-                o1Time = (Date) o1Attr;
-            } else {
-                o1Time = new Date((Long) o1Attr);
-            }
-
-            Date o2Time = null;
-
-            if (o2Attr instanceof Date) {
-                o2Time = (Date) o2Attr;
-            } else {
-                o2Time = new Date((Long) o2Attr);
-            }
+            Date o1Time = o1.getInsertTime();
+            Date o2Time = o2.getInsertTime();
 
             return o1Time.compareTo(o2Time);
         }
@@ -115,6 +100,10 @@ public interface IHazardEvent extends IEvent {
     public void setStartTime(Date date);
 
     public void setEndTime(Date date);
+
+    public void setInsertTime(Date date);
+
+    public Date getInsertTime();
 
     public void setTimeRange(Date startTime, Date endTime);
 

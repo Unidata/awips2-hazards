@@ -77,6 +77,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      set the type components atomically, or
  *                                      the start and end time atomically.
  * Jun 30, 2014 3512       Chris.Golden Added addHazardAttributes() method.
+ * Feb 22, 2015 6561       mpduff      Override getInsertTime
  * </pre>
  * 
  * @author mnash
@@ -731,4 +732,15 @@ public class HazardEvent implements IHazardEvent, IValidator {
         return true;
     }
 
+    @Override
+    public void setInsertTime(Date date) {
+        // TODO No-op for now. Need to see how this will work with the registry
+
+    }
+
+    @Override
+    public Date getInsertTime() {
+        // TODO No-op for now. Need to see how this will work with the registry
+        return null;
+    }
 }

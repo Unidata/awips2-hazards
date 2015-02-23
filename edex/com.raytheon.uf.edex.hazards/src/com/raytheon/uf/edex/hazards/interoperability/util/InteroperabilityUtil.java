@@ -21,7 +21,6 @@ package com.raytheon.uf.edex.hazards.interoperability.util;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -54,6 +53,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.IHazard
  * Apr 08, 2014           bkowal       Initial creation
  * Apr 22, 2014 3357      bkowal       Implemented ETN comparison to compare hazard events.
  * Dec 18, 2014 #2826     dgilling     Change fields used in interoperability.
+ * Feb 22, 2015   6561    mpduff       Use insertTime to find latest events.
  * 
  * </pre>
  * 
@@ -129,12 +129,10 @@ public final class InteroperabilityUtil {
                         .get(hazardEventID);
                 if (historyList != null && historyList.isEmpty() == false) {
                     IHazardEvent mostRecentEvent = historyList.get(0);
-                    Long latestTime = getLatestTime(mostRecentEvent
-                            .getHazardAttribute(HazardConstants.PERSIST_TIME));
+                    Long latestTime = mostRecentEvent.getInsertTime().getTime();
                     for (int count = 1; count < historyList.size(); count++) {
                         IHazardEvent hazardEvent = historyList.get(count);
-                        Long hazardTime = getLatestTime(hazardEvent
-                                .getHazardAttribute(HazardConstants.PERSIST_TIME));
+                        Long hazardTime = hazardEvent.getInsertTime().getTime();
                         if (hazardTime > latestTime) {
                             latestTime = hazardTime;
                             mostRecentEvent = hazardEvent;
@@ -150,14 +148,6 @@ public final class InteroperabilityUtil {
         }
 
         return retrievedHazardEvents;
-    }
-
-    private static Long getLatestTime(Serializable serializable) {
-        if (serializable instanceof Date) {
-            return ((Date) serializable).getTime();
-        } else {
-            return (Long) serializable;
-        }
     }
 
     public static void newOrUpdateInteroperabilityRecord(

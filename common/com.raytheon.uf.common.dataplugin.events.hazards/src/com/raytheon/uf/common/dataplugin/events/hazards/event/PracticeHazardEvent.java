@@ -45,7 +45,6 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.Type;
@@ -86,6 +85,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      the start and end time atomically.
  * Jun 30, 2014 3512       Chris.Golden Added addHazardAttributes() method.
  * Oct 21, 2014   5051     mpduff      Change to support Hibernate upgrade.
+ * Feb 22, 2015   6561     mpduff      Added insertTime, updated toString()
  * </pre>
  * 
  * @author mnash
@@ -170,6 +170,11 @@ public class PracticeHazardEvent extends PersistableDataObject<String>
     @DynamicSerializeElement
     @XmlElement
     private Geometry geometry;
+
+    @Column
+    @DynamicSerializeElement
+    @XmlElement
+    private Date insertTime;
 
     @DynamicSerializeElement
     @XmlElement
@@ -371,6 +376,23 @@ public class PracticeHazardEvent extends PersistableDataObject<String>
     @Override
     public void setEndTime(Date endTime) {
         this.endTime = endTime;
+    }
+
+    /**
+     * @return the insertTime
+     */
+    @Override
+    public Date getInsertTime() {
+        return insertTime;
+    }
+
+    /**
+     * @param insertTime
+     *            the insertTime to set
+     */
+    @Override
+    public void setInsertTime(Date insertTime) {
+        this.insertTime = insertTime;
     }
 
     @Override
@@ -575,7 +597,8 @@ public class PracticeHazardEvent extends PersistableDataObject<String>
 
     @Override
     public String toString() {
-        return ToStringBuilder.reflectionToString(this).toString();
+        return this.getEventID() + " " + this.phenomenon + " "
+                + this.significance + " - " + this.status.name();
     }
 
     /*

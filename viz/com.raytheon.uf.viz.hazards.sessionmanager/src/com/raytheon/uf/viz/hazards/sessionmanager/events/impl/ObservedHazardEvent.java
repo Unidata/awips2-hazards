@@ -98,7 +98,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      type, status, start and end time at
  *                                      last issuance, etc.
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
- * </pre>
+ * Feb 22, 2015   6561     mpduff       Override get and get/setInsertTime
  * 
  * @author bsteffen
  * @version 1.0
@@ -822,4 +822,15 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         return delegate.toString();
     }
 
+    @Override
+    public void setInsertTime(Date date) {
+        // No-op
+
+    }
+
+    @Override
+    public Date getInsertTime() {
+        // No-op
+        return null;
+    }
 }

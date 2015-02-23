@@ -68,6 +68,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Jan 29, 2015 5005      Dan Schaffer  Fixed bug in MB3 context menu for showing product geometry
  * Feb 12, 2015 4959      Dan Schaffer  Modify MB3 add/remove UGCs to match Warngen
  * Feb 15, 2015 2271      Dan Schaffer  Incur recommender/product generator init costs immediately
+ * Feb 22, 2015 6561      Mike Duff     Removed PERSIST_TIME
  * </pre>
  * 
  * @author mnash
@@ -407,11 +408,6 @@ public final class HazardConstants {
      * End time key in hazard
      */
     public static final String HAZARD_EVENT_END_TIME = "endTime";
-
-    /**
-     * The persistence time of the hazard
-     */
-    public static final String PERSIST_TIME = "persistTime";
 
     /**
      * interoperability flag. Used to indicate when a hazard has been created
