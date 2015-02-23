@@ -926,17 +926,27 @@ class Product(ProductTemplate.Product):
 
     def _setProductInformation(self, vtecRecord, hazardEvent):
         if self._issueFlag:
+            # Need to make sure we are updating ALL the hazard events for the segment.
+            # There could be more than one.
+            eventIDs = vtecRecord.get('eventID')
+            for eventID in eventIDs:
+                if eventID == hazardEvent.getEventID(): 
+                    updateEvent = hazardEvent
+                else:
+                    for updateEvent in self._generatedHazardEvents:
+                        if updateEvent.getEventID() == eventID:
+                            break                    
                 # Update hazardEvent
-                expTime = hazardEvent.get('expirationTime')
+                expTime = updateEvent.get('expirationTime')
                 # Take the earliest expiration time
                 if (expTime and expTime > self._productSegment.expireTime) or not expTime:
-                    hazardEvent.set('expirationTime', self._productSegment.expireTime)
-                hazardEvent.set('issueTime', self._issueTime)
-                hazardEvent.addToList('etns', vtecRecord['etn'])
-                hazardEvent.addToList('vtecCodes', vtecRecord['act'])
-                hazardEvent.addToList('pils', vtecRecord['pil'])
+                    updateEvent.set('expirationTime', self._productSegment.expireTime)
+                updateEvent.set('issueTime', self._issueTime)
+                updateEvent.addToList('etns', vtecRecord['etn'])
+                updateEvent.addToList('vtecCodes', vtecRecord['act'])
+                updateEvent.addToList('pils', vtecRecord['pil'])
                 try:
-                    hazardEvent.set('previousForecastCategory', self._maxFcstCategory)
+                    updateEvent.set('previousForecastCategory', self._maxFcstCategory)
                 except:
                     pass
 
