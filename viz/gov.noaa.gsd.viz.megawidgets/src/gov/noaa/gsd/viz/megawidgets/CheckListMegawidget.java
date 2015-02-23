@@ -74,6 +74,9 @@ import com.google.common.collect.Sets;
  *                                           changed.
  * Feb 17, 2015   4756     Chris.Golden      Added display settings saving and
  *                                           restoration.
+ * Feb 22, 2015   4756     Chris.Golden      Fixed bug causing null pointer
+ *                                           exception in setDisplaySettings()
+ *                                           under certain conditions.
  * </pre>
  * 
  * @author Chris.Golden
@@ -431,10 +434,10 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
                                     .get(topmostChoice);
                             if (index != null) {
                                 table.setTopIndex(index);
+                                CheckListMegawidget.this.displaySettings
+                                        .setTopmostVisibleChoice((String) table
+                                                .getItem(index).getData());
                             }
-                            CheckListMegawidget.this.displaySettings
-                                    .setTopmostVisibleChoice((String) table
-                                            .getItem(index).getData());
                         }
                     }
                 }
