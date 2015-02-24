@@ -111,8 +111,11 @@ class Product(HydroGenerator.Product):
             else:
                 section[attribute] = attributes.get(attribute, None)
 
+        impactedLocationsKey = KeyInfo('impactedLocations', self._productCategory, self._productID, eventIDs, ugcList,True,label='Impacted Locations')
+        impactedLocationsValue = self._prepareImpactedLocations(event.getGeometry())
+        section[impactedLocationsKey] = impactedLocationsValue
+
         section['impactedAreas'] = self._prepareImpactedAreas(attributes)
-        section['impactedLocations'] = self._prepareImpactedLocations(event.getGeometry(), [])
         section['geometry'] = event.getGeometry()
         section['subType'] = event.getSubType()
         section['timeZones'] = self._productSegment.timeZones
@@ -120,8 +123,7 @@ class Product(HydroGenerator.Product):
         section['startTime'] = event.getStartTime()
         section['endTime'] = event.getEndTime()
         section['metaData'] = metaData
-        section['creationTime'] = event.getCreationTime()        
-        self._cityList(section, event)
+        section['creationTime'] = event.getCreationTime()
 
         self._setProductInformation(vtecRecord, event)
         return section

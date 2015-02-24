@@ -215,6 +215,8 @@ class Format(FormatTemplate.Formatter):
     ################# Segment Level
     
     def _setUp_segment(self, segmentDict):
+        # Save off the segmentDict so that all section productParts have a reference to it
+        self._segmentDict = segmentDict
         # ToDo -- Post-Hydro there could be more than one section in a segment
         sectionDict = segmentDict.get('sections')[0]
         self.attributionFirstBullet = AttributionFirstBulletText()
@@ -446,6 +448,11 @@ class Format(FormatTemplate.Formatter):
                                     '|* Current hydrometeorological situation and expected impacts *| \n')
         return statement + '\n\n'
 
+    def _endSegment(self, segmentDict):
+        # Reset to empty dictionary
+        self._segmentDict = {}
+        return '\n$$\n\n' 
+
     ###################### Section Level
 
     def _vtecRecords(self, segmentDict):
@@ -493,11 +500,6 @@ class Format(FormatTemplate.Formatter):
             impacts = self._tpc.frame('(Optional) Potential impacts of flooding')
             
         bulletText += impacts + '\n'
-
-        # Add any additioinal comments here, listOfDrainages, floodMoving, etc.
-        additionalCommentsText = self.createAdditionalComments(segmentDict)
-        if additionalCommentsText:
-            bulletText += '\n' + additionalCommentsText
         return bulletText + '\n'
 
     def _basisAndImpactsStatement(self, segmentDict):
@@ -513,21 +515,21 @@ class Format(FormatTemplate.Formatter):
             bulletText += '\n' + additionalCommentsText
         return bulletText
 
-    def _locationsAffected(self, segmentDict):
+    def _locationsAffected(self, sectionDict):
         heading = '* '
         locationsAffected = ''
 
         if (self._runMode == 'Practice'):
             heading += "This is a test message.  "
 
-        immediateCause = segmentDict.get('immediateCause', None)
+        immediateCause = sectionDict.get('immediateCause', None)
         if immediateCause == 'DM' or immediateCause == 'DR':
-            damOrLeveeName = segmentDict.get('damOrLeveeName')
+            damOrLeveeName = sectionDict.get('damOrLeveeName')
             if damOrLeveeName:
                 damInfo = self._damInfo().get(damOrLeveeName)
                 if damInfo:
                     # Scenario
-                    scenario = segmentDict.get('scenario')
+                    scenario = sectionDict.get('scenario')
                     if scenario:
                         scenarios = damInfo.get('scenarios')
                         if scenarios:
@@ -540,16 +542,28 @@ class Format(FormatTemplate.Formatter):
                         locationsAffected += ruleOfThumb + '\n\n'
 
         # Need to check for List of cities here
-        if segmentDict.get('citiesListFlag', False) == True:
-            locationsAffected += 'Locations impacted include...' + self.formatCityList(segmentDict) + '\n\n'
-
-        if not locationsAffected:
-            locationsAffected = "Some locations that will experience flash flooding include..."
-            locationsAffected += self.createImpactedLocations(segmentDict) + '\n\n'
+        if sectionDict.get('citiesListFlag', False) == True:
+            locationsAffected += 'Locations impacted include...' + self._tpc.getTextListStr(self._segmentDict.get('cityList', [])) + '\n\n'
 
         # Add any other additional Info
-        locationsAffected += self.createAdditionalComments(segmentDict)
+        locationsAffected += self.createAdditionalComments(sectionDict)
 
+        if not locationsAffected:
+            vtecRecord = sectionDict.get('vtecRecord', None)
+            phen = vtecRecord.get("phen")
+            sig = vtecRecord.get("sig")
+            geoType = sectionDict.get('geoType')
+            if phen in ["FF", "FA", "TO", "SV", "SM", "EW" , "FL" ] and \
+               geoType == 'area' and sig != "A" :
+                if phen == "FF" :
+                    locationsAffected = "Some locations that will experience flash flooding include..."
+                elif phen == "FA" or phen == "FL" :
+                    locationsAffected = "Some locations that will experience flooding include..."
+                else :
+                    locationsAffected = "Locations impacted include..."
+                locationsAffected += self.createImpactedLocations(sectionDict) + '\n\n'
+            else :
+                locationsAffected = '|*Forecast path of flood and/or locations to be affected*|' + '\n\n'
         return heading + locationsAffected
 
     ###################### Utility methods
@@ -568,61 +582,17 @@ class Format(FormatTemplate.Formatter):
         self._backupWfoCityState = siteEntry.get('wfoCityState')
         self._backupFullStationID = siteEntry.get('fullStationID')
 
-    def createImpactedLocations(self, segmentDict):
+    def createImpactedLocations(self, sectionDict):
         nullReturn = "mainly rural areas of the aforementioned areas."
-        columns = ["name", "warngenlev"]
-        try :
-            cityGeoms = self._tpc.mapDataQuery("city", columns, segmentDict.get("geometry"))
-        except :
-            return nullReturn
-        if not isinstance(cityGeoms, list) :
-            return nullReturn
-        names12 = []
-        namesOther = []
-        for cityGeom in cityGeoms :
-            try:
-                name = cityGeom.getString(columns[0])
-                if not name:
-                    continue
-                levData = str(cityGeom.getString(columns[1]))
-                if levData == "1" or levData == "2" :
-                      names12.append(name)
-                else :
-                      namesOther.append(name)
-            except :
-                pass
-
-        if len(names12)>0 :
-            return self._tpc.formatDelimitedList(names12)
-        if len(namesOther)>0 :
-            return self._tpc.formatDelimitedList(namesOther)
-        return nullReturn
-
-    def formatCityList(self, segmentDict):
-        impactedLocationsDict = segmentDict.get('impactedLocations')
-        elements = KeyInfo.getElements('cityList', segmentDict.get('impactedLocations'))
+        elements = KeyInfo.getElements('impactedLocations', sectionDict)
         if len(elements) > 0:
-             locations = impactedLocationsDict.get(elements[0])
+             locations = sectionDict.get(elements[0], [])
         else:
-             locations = impactedLocationsDict.get('cityList')
-
-        text = ''
-        counter = 0
-        size = len(locations)
-        if size == 1:
-            text += locations[0] + '.'
-        else:        
-            for location in locations:
-                text += location.capitalize()
-                if counter == size - 1:
-                    text += '.'
-                    break
-                elif counter == size - 2:
-                    text += ' and '
-                else:
-                    text += '...'
-                counter += 1
-        return text
+             locations = sectionsDict.get('impactedLocations', [])
+             
+        if locations:
+            return self._tpc.formatDelimitedList(locations)
+        return nullReturn
 
     def getOverviewHeadlinePhrase(self, segments, lineLength=69):
         '''

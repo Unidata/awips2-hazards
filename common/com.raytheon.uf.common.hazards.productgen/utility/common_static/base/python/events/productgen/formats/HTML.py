@@ -152,13 +152,14 @@ class Format(FormatTemplate.Formatter):
         addToTable = False
         html = ''
         cityList = []
-        # Get all the cities from the sections
-        for segment in self.productDict.get('segments'):
-            for section in segment.get('sections'):
+        for segment in self.productDict.get('segments', []):
+            # Get all the cities from the segments
+            cityList.extend(segment.get('cityList', []))
+            for section in segment.get('sections', []):
                 if section.get('citiesListFlag', False):
+                    # Add to the table if flag is set
                     addToTable = True
-                    cityList.extend(section.get('cityList'))
-        
+
         if addToTable:
             html += "<tr>\n"
             html += "<td>\n"

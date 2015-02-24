@@ -120,8 +120,11 @@ class Product(HydroGenerator.Product):
                 if attribute == 'advisoryType':
                     section[attribute + '_productString'] = self._tpc.getProductStrings(event, metaData, attribute)
 
+        impactedLocationsKey = KeyInfo('impactedLocations', self._productCategory, self._productID, eventIDs, ugcList,True,label='Impacted Locations')
+        impactedLocationsValue = self._prepareImpactedLocations(event.getGeometry())
+        section[impactedLocationsKey] = impactedLocationsValue
+
         section['impactedAreas'] = self._prepareImpactedAreas(attributes)
-        section['impactedLocations'] = self._prepareImpactedLocations(event.getGeometry(), [])
         section['geometry'] = event.getGeometry()
         section['subType'] = event.getSubType()
         section['timeZones'] = self._productSegment.timeZones
@@ -138,7 +141,6 @@ class Product(HydroGenerator.Product):
         section['endTime'] = event.getEndTime()
         section['metaData'] = metaData
         section['creationTime'] = event.getCreationTime()
-        self._cityList(section, event)
 
         if event.get('pointID'):
             # Add RiverForecastPoint data to the dictionary

@@ -56,6 +56,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             'pointImpactsBullet': self._pointImpactsBullet,
             'floodPointTable': self._floodPointTable,
             'setUp_segment': self._setUp_segment,
+            'endSegment': self._endSegment,
                                }
 
     def execute(self, productDict):
@@ -92,8 +93,6 @@ class Format(Legacy_Hydro_Formatter.Format):
                 partText = self.productPartMethodMapping[name](productDict)
             elif name in ['setUp_product', 'setUp_section']:
                 pass
-            elif name == 'endSegment':
-                partText = '\n$$\n\n' 
             elif name == 'CR':
                 partText = '\n'
             elif name in ['segments', 'sections']:

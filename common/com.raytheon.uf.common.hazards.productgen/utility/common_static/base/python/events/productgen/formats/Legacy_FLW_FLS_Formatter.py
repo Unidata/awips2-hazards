@@ -39,6 +39,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             'polygonText': self._polygonText,
             'cityList': self._cityList,
             'summaryHeadlines': self._summaryHeadlines,
+            'locationsAffected': self._locationsAffected,
             'attribution': self._attribution,
             'attribution_point': self._attribution_point,
             'firstBullet': self._firstBullet,
@@ -61,6 +62,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             'floodPointTable': self._floodPointTable,
             'setUp_segment': self._setUp_segment,
             'groupSummary': self._groupSummary,
+            'endSegment': self._endSegment,
                                 }
 
     def execute(self, productDict):
@@ -98,8 +100,6 @@ class Format(Legacy_Hydro_Formatter.Format):
                 partText = self.productPartMethodMapping[name](productDict)
             elif name in ['setUp_product', 'setUp_section', 'wrapUp_product']:
                 pass
-            elif name == 'endSegment':
-                partText = '\n$$\n\n' 
             elif name == 'CR':
                 partText = '\n'
             elif name in ['segments', 'sections']:

@@ -538,6 +538,7 @@ class Product(ProductTemplate.Product):
             segmentDict['vtecRecords'] = self._productSegment.vtecRecords
             segmentDict['ugcs'] = self._productSegment.ugcs
             segmentDict['timeZones'] = self._productSegment.timeZones
+            segmentDict['cityList'] = self._productSegment.cityList
 
             segmentDicts.append(segmentDict)
 
@@ -825,6 +826,10 @@ class Product(ProductTemplate.Product):
         self._productSegment.ctas = []
         self._productSegment.pointID = hazardEvent.get('pointID')
         self._productSegment.cityInfo = self.getCityInfo(self._productSegment.ugcs, returnType='list')
+        cityList = []
+        for city, ugcCity in self._productSegment.cityInfo:
+            cityList.append(city)
+        self._productSegment.cityList = cityList
         self._productSegment.timeZones = self._tpc.hazardTimeZones(self._productSegment.ugcs)
         self._productSegment.expireTime = self._tpc.getExpireTime(self._issueTime, self._purgeHours, 
                                                                     self._productSegment.vtecRecords_ms)
@@ -867,13 +872,33 @@ class Product(ProductTemplate.Product):
             impactedAreas.append(area)
         return impactedAreas
 
-    def _prepareImpactedLocations(self, geometry, configurations):
-        impactedLocations = {} 
-        # TODO Implement the configuration to set different variable names, sources, contraints, etc.
-        locationsKey = KeyInfo('cityList', self._productCategory, self._productID,[], '',True,label='Impacted Locations')
-        locations = self._retrievePoints(geometry, 'city')
-        impactedLocations[locationsKey] = locations
-        return impactedLocations
+    def _prepareImpactedLocations(self, geometry):
+        columns = ["name", "warngenlev"]
+        try :
+            cityGeoms = self._tpc.mapDataQuery("city", columns, geometry)
+        except :
+            return []
+        if not isinstance(cityGeoms, list) :
+            return []
+        names12 = []
+        namesOther = []
+        for cityGeom in cityGeoms :
+            try:
+                name = cityGeom.getString(columns[0])
+                if not name:
+                    continue
+                levData = str(cityGeom.getString(columns[1]))
+                if levData == "1" or levData == "2" :
+                      names12.append(name)
+                else :
+                      namesOther.append(name)
+            except :
+                pass
+        if len(names12) > 0 :
+            return names12
+        if len(namesOther) > 0 :
+            return namesOther
+        return []
 
     def _prepareAdditionalInfo(self, attributeValue, event, metaData):
         additionalInfo = []
@@ -1028,14 +1053,6 @@ class Product(ProductTemplate.Product):
         if type(metaData) is not types.ListType:
             metaData = metaData.execute(hazardEvent, {})
         return metaData
-
-    def _cityList(self, segmentDict, event):
-        segment = self._productSegment.segment
-        ids, eventIDs = segment
-        cityList = []
-        for city, ugcCity in self._productSegment.cityInfo:
-            cityList.append(city)
-        segmentDict['cityList'] = cityList
 
     def getCityInfo(self, ugcs, returnType='string'):
         '''
