@@ -17,15 +17,6 @@ from GeneralConstants import *
 class Recommender(RecommenderTemplate.Recommender):
 
     def __init__(self):
-        """
-        Constructs the Dam Break Flood Recommender
-        Note that the focal point will have to provide a
-        damPolygonDict for the dams in his service area. Or, 
-        the focal point can override the 
-        getFloodPolygonForDam method.
-        @param executiveService: A reference to the Executive Service
-        @param errorCB Error callback.
-        """
         self.DEFAULT_FFW_DURATION_IN_MS = 10800000
 
         
@@ -56,11 +47,21 @@ class Recommender(RecommenderTemplate.Recommender):
         damFieldDict["fieldType"] = "ComboBox"
         damFieldDict["autocomplete"] = True
         
-        ############################################################
-        # Note, need a way to pop up dialog if cannot connect to db table
-        ############################################################
+        self.damPolygonDict = {}
         mapsAccessor = MapsDatabaseAccessor()
-        self.damPolygonDict = mapsAccessor.getPolygonDict(DAMINUNDATION_TABLE)
+        try:
+            self.damPolygonDict = mapsAccessor.getPolygonDict(DAMINUNDATION_TABLE)
+        except:
+            damFieldDict["label"] = '''No shapefiles found for DAM BREAK inundation.  
+Please click CANCEL and manually draw an inundation area. 
+(Please verify your maps database for mapdata. '''+ DAMINUNDATION_TABLE + ''')'''
+            damFieldDict["fieldType"] = "Label"
+            valueDict = {"damName": None}
+            dialogDict["fields"] = damFieldDict
+            dialogDict["valueDict"] = valueDict
+            return dialogDict
+            
+
             
         damList = sorted(self.damPolygonDict.keys())
         damFieldDict["choices"] = damList
@@ -77,7 +78,11 @@ class Recommender(RecommenderTemplate.Recommender):
         fieldDicts = [damFieldDict, urgencyFieldDict]
         dialogDict["fields"] = fieldDicts
         
-        valueDict = {"damName": damList[0], "urgencyLevel":urgencyList[0]}
+        if len(damList):
+            damName =  damList[0]
+        else:
+            damName = None
+        valueDict = {"damName": damName, "urgencyLevel":urgencyList[0]}
         dialogDict["valueDict"] = valueDict
         
         return dialogDict
@@ -123,7 +128,10 @@ class Recommender(RecommenderTemplate.Recommender):
         
         @return: A hazard event representing a dam break flash flood watch or warning 
         """
+        
         damName = dialogDict.get("damName")
+        if not damName:
+            return None
         
         hazardGeometry =  self.getFloodPolygonForDam(damName)
 

@@ -173,7 +173,7 @@ SEGMENT = 'seg'
 # 'Maps' database tables
 DAMINUNDATION_TABLE = "daminundation"
 BURNSCARAREA_TABLE = "burnscararea"
-RIVERINUNDATION_TABLE = "riverpointinundation"
+HIRES_RIVERINUNDATION_TABLE = "riverpointinundation"
 
 
 

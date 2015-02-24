@@ -12,6 +12,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 
 import com.google.common.collect.Lists;
@@ -432,4 +433,15 @@ public class FloodRecommenderTestDAO implements IFloodDAO {
     public List<RiverPointZoneInfo> getRiverPointZonePointInfo() {
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    public String getAreaInundationCoordinates(String lid) {
+        return null;
+    }
+
+    @Override
+    public Map<String, String> getAreaInundationCoordinates() {
+        return null;
+    }
+
 }

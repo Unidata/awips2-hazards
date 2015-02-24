@@ -12,6 +12,7 @@ package com.raytheon.uf.common.hazards.hydro;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import com.raytheon.uf.common.util.Pair;
 
@@ -36,6 +37,7 @@ import com.raytheon.uf.common.util.Pair;
  * Sep 19, 2014   2394     mpduff for nash  interface changes
  * Dec 17, 2014 2394       Ramer/Manross    Updated Interface
  * Feb 21, 2015 4959       Dan Schaffer     Improvements to add/remove UGCs
+ * Feb 24, 2015 5960       Manross             Grab flood inundation areas
  * 
  * </pre>
  * 
@@ -317,6 +319,21 @@ public interface IFloodDAO {
      */
     public List<Object[]> getForecastPointsInCountyStateHSA(String state,
             String county, String HSA);
+
+    /**
+     * 
+     * @return A Map with the gauge 'lid' as the key and a string of latitude
+     *         and longitude values as the key.
+     */
+    public Map<String, String> getAreaInundationCoordinates();
+
+    /**
+     * 
+     * @param lid
+     *            River forecast point identifier
+     * @return A string of latitude and longitude values.
+     */
+    public String getAreaInundationCoordinates(String lid);
 
     /**
      * 

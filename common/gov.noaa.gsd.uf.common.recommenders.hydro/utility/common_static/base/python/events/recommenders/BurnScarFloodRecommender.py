@@ -59,11 +59,19 @@ class Recommender(RecommenderTemplate.Recommender):
         burnScarFieldDict["fieldType"] = "ComboBox"
         burnScarFieldDict["autocomplete"] = True
         
-        ############################################################
-        # Note, need a way to pop up dialog if cannot connect to db table
-        ############################################################
         mapsAccessor = MapsDatabaseAccessor()
-        self.burnScarPolyDict = mapsAccessor.getPolygonDict(BURNSCARAREA_TABLE)
+        try:
+            self.burnScarPolyDict = mapsAccessor.getPolygonDict(BURNSCARAREA_TABLE)
+        except:
+            burnScarFieldDict["label"] = '''No shapefiles found for BURN SCAR areas.  
+Please click CANCEL and manually draw an inundation area. 
+(Please verify your maps database for mapdata. '''+ BURNSCARAREA_TABLE + ''')'''
+            burnScarFieldDict["fieldType"] = "Label"
+            valueDict = {"burnScarName": None}
+            dialogDict["fields"] = burnScarFieldDict
+            dialogDict["valueDict"] = valueDict
+            return dialogDict
+            
         
         burnScarList = sorted(self.burnScarPolyDict.keys())
         burnScarFieldDict["choices"] = burnScarList
@@ -71,7 +79,11 @@ class Recommender(RecommenderTemplate.Recommender):
         fieldDicts = [burnScarFieldDict]
         dialogDict["fields"] = fieldDicts
         
-        valueDict = {"burnScarName": burnScarList[0]}
+        if len(burnScarList):
+            burnScarName =  burnScarList[0]
+        else:
+            burnScarName = None
+        valueDict = {"burnScarName": burnScarName}
         dialogDict["valueDict"] = valueDict
         
         return dialogDict
@@ -111,7 +123,9 @@ class Recommender(RecommenderTemplate.Recommender):
         @param spatialDict: A dict of Hazard Services spatial input information
         
         """
-        burnScarName = dialogDict["burnScarName"]
+        burnScarName = dialogDict.get("burnScarName")
+        if not burnScarName:
+            return None
         
         hazardGeometry =  self.getFloodPolygonForBurnScar(burnScarName)
 

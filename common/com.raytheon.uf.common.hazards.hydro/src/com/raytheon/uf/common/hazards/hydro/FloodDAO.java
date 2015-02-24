@@ -11,8 +11,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang.time.DateUtils;
 
@@ -41,7 +44,7 @@ import com.raytheon.uf.common.util.Pair;
  * Sep 19, 2014   2394     mpduff for nash     Updated for interface changes
  * Dec 17, 2014 2394       Ramer               Updated Interface
  * Feb 21, 2015 4959       Dan Schaffer        Improvements to add/remove UGCs
- * 
+ * Feb 24, 2015 5960       Manross             Grab flood inundation areas
  * </pre>
  * 
  * @author bryon.lawrence
@@ -1159,7 +1162,58 @@ public class FloodDAO implements IFloodDAO {
                         "IHFS countynum");
 
         return countyForecastPointList;
+    }
 
+    /**
+     * 
+     * @return A Map with the gauge 'lid' as the key and a string of latitude
+     *         and longitude values as the key.
+     */
+    @Override
+    public Map<String, String> getAreaInundationCoordinates() {
+        String query = new String("SELECT lid, area FROM locarea order by lid");
+
+        List<Object[]> locationResults = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                        query.toString(), IHFS, "IHFS location");
+
+        Map<String, String> lidAreas = new HashMap<String, String>();
+        for (Object[] lidLatlon : locationResults) {
+            String lid = (String) lidLatlon[0];
+            String areaCandidates = (String) lidLatlon[1];
+            if (areaCandidates != null && areaCandidates.length() > 0) {
+                String[] areaAndCenter = areaCandidates.split(Pattern
+                        .quote("||"));
+                lidAreas.put(lid, areaAndCenter[0]);
+            }
+        }
+
+        return lidAreas;
+    }
+
+    /**
+     * 
+     * @param lid
+     *            River forecast point identifier
+     * @return A string of latitude and longitude values.
+     */
+    @Override
+    public String getAreaInundationCoordinates(String lid) {
+        /*
+         * Load the lat/lon coords of this forecast point.
+         */
+        StringBuffer query = new StringBuffer("SELECT area ");
+        query.append("FROM locarea WHERE lid = '").append(lid).append("'");
+
+        List<Object[]> locationResults = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                        query.toString(), IHFS, "IHFS location");
+
+        Object[] areaObj = locationResults.get(0);
+        String area = (String) areaObj[0];
+        String[] areaAndCenter = area.split(Pattern.quote("||"));
+
+        return areaAndCenter[0];
     }
 
     /**

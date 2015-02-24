@@ -107,7 +107,7 @@ class MetaData(CommonMetaData.MetaData):
             "fieldName": "damNameLabel",
             "fieldType":"Text",
             "values": damName,
-            "visibleChars": 40,
+            "visibleChars": 80,
             "editable": edit,
             "enable": enabled,
             "bold": True,

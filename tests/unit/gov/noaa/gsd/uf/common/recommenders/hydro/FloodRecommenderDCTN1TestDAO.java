@@ -12,6 +12,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.hazards.hydro.CountyForecastGroup;
@@ -532,6 +533,16 @@ public class FloodRecommenderDCTN1TestDAO implements IFloodDAO {
     @Override
     public List<RiverPointZoneInfo> getRiverPointZonePointInfo() {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public String getAreaInundationCoordinates(String lid) {
+        return null;
+    }
+
+    @Override
+    public Map<String, String> getAreaInundationCoordinates() {
+        return null;
     }
 
 }
