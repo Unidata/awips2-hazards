@@ -168,6 +168,15 @@ ACTION = 'act'
 OFFICE_ID = 'officeid'
 SEGMENT = 'seg'
 
+
+#################################
+# 'Maps' database tables
+DAMINUNDATION_TABLE = "daminundation"
+BURNSCARAREA_TABLE = "burnscararea"
+RIVERINUNDATION_TABLE = "riverpointinundation"
+
+
+
 #################################
 # Math constants
 PI = math.pi # 3.141592653589793238462643383279502884197169399375106

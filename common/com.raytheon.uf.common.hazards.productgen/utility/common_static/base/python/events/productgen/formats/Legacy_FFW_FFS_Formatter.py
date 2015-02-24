@@ -165,23 +165,8 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     def _damInfo(self):
         from MapsDatabaseAccessor import MapsDatabaseAccessor
-        damList = []
         mapsAccessor = MapsDatabaseAccessor()
-        damInfoList = mapsAccessor.getAllDamInfo()
-        
-        damInfoDict = {}
-        for damInfo in damInfoList:
-            scenarios = {}
-            scenarios['highFast'] = damInfo['scenario_high_fast']
-            scenarios['highNormal'] = damInfo['scenario_high_normal']
-            scenarios['mediumFast'] = damInfo['scenario_medium_fast']
-            scenarios['mediumNormal'] = damInfo['scenario_medium_normal']
-            basicInfo = {}
-            basicInfo['riverName'] = damInfo['river_name']
-            basicInfo['cityInfo'] = damInfo['city_info']
-            basicInfo['ruleOfThumb'] = damInfo['rule_of_thumb']
-            basicInfo['scenarios'] = scenarios
-            damInfoDict[damInfo['name']] = basicInfo
+        damInfoDict = mapsAccessor.getAllDamInundationMetadata()
             
         return damInfoDict
             

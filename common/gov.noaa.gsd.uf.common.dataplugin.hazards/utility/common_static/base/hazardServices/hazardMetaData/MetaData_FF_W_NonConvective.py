@@ -423,12 +423,12 @@ class MetaData(CommonMetaData.MetaData):
     def damOrLeveeChoices(self):
         damList = []
         mapsAccessor = MapsDatabaseAccessor()
-        damInfoList = mapsAccessor.getAllDamInfo()
-        for damInfo in damInfoList:
+        damNames = mapsAccessor.getPolygonNames(DAMINUNDATION_TABLE)
+        for damName in damNames:
             ids = {}
-            ids["identifier"] = damInfo["name"]
-            ids["displayString"] = damInfo["name"]
-            ids["productString"] = damInfo["name"]
+            ids["identifier"] = damName
+            ids["displayString"] = damName
+            ids["productString"] = damName
             damList.append(ids)
         
         return damList

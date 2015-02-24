@@ -11,6 +11,7 @@ import GeometryFactory
 
 from MapsDatabaseAccessor import MapsDatabaseAccessor
 
+from HazardConstants import *
 from GeneralConstants import *
  
 class Recommender(RecommenderTemplate.Recommender):
@@ -26,12 +27,6 @@ class Recommender(RecommenderTemplate.Recommender):
         @param errorCB Error callback.
         """
         self.DEFAULT_FFW_DURATION_IN_MS = 10800000
-
-        self.damPolygonDict = {}
-        mapsAccessor = MapsDatabaseAccessor()
-        damInfoList = mapsAccessor.getAllDamInfo()
-        for damInfo in damInfoList:
-            self.damPolygonDict[damInfo['name']] = damInfo['polygon']
 
         
     def defineScriptMetadata(self):
@@ -61,7 +56,12 @@ class Recommender(RecommenderTemplate.Recommender):
         damFieldDict["fieldType"] = "ComboBox"
         damFieldDict["autocomplete"] = True
         
-        #damList = ["Branched Oak Dam", "Council Bluffs Levee"]
+        ############################################################
+        # Note, need a way to pop up dialog if cannot connect to db table
+        ############################################################
+        mapsAccessor = MapsDatabaseAccessor()
+        self.damPolygonDict = mapsAccessor.getPolygonDict(DAMINUNDATION_TABLE)
+            
         damList = sorted(self.damPolygonDict.keys())
         damFieldDict["choices"] = damList
         
@@ -123,7 +123,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
         @return: A hazard event representing a dam break flash flood watch or warning 
         """
-        damName = dialogDict["damName"]
+        damName = dialogDict.get("damName")
         
         hazardGeometry =  self.getFloodPolygonForDam(damName)
 

@@ -20,6 +20,7 @@ like burn scar areas.
 
 from shapely.geometry import Polygon
 from ufpy.dataaccess import DataAccessLayer
+import DamMetaData
 
 class MapsDatabaseAccessor(object):
     def __init__(self):
@@ -43,38 +44,70 @@ class MapsDatabaseAccessor(object):
         return {'exterior_coords': exterior_coords,
                 'interior_coords': interior_coords}
         
-    def getAllDamInfo(self):
+    def getPolygonNames(self, tablename):
+        
+        table = "mapdata."+tablename
         req = DataAccessLayer.newDataRequest()
         req.setDatatype("maps")
-        req.addIdentifier("table", "mapdata.daminfo")
+        req.addIdentifier("table", table)
         req.addIdentifier("geomField", "the_geom")
         
         columns = [
                    "name",
-                   "dam_name",
-                   "river_name",
-                   "rule_of_thumb",
-                   "city_info",
-                   "scenario_high_fast",
-                   "scenario_high_normal",
-                   "scenario_medium_fast",
-                   "scenario_medium_normal"
                    ]
+
         ### Important to set addIdentifier("locationField", "name") !!!
         req.addIdentifier("locationField", columns[0])
         req.setParameters(*columns)
         
         retGeoms = DataAccessLayer.getGeometryData(req)
         
-        retList = []
+        nameList = []
         for retGeom in retGeoms :
-            retDict = {}
+            nameList.append(retGeom.getString('name'))
+            
+        return nameList
+
+        
+    
+    def getPolygonDict(self, tablename):
+        
+        table = "mapdata."+tablename
+        req = DataAccessLayer.newDataRequest()
+        req.setDatatype("maps")
+        req.addIdentifier("table", table)
+        req.addIdentifier("geomField", "the_geom")
+        
+        columns = [
+                   "name",
+                   ]
+
+        ### Important to set addIdentifier("locationField", "name") !!!
+        req.addIdentifier("locationField", columns[0])
+        req.setParameters(*columns)
+        
+        retGeoms = DataAccessLayer.getGeometryData(req)
+        
+        retDict = {}
+        for retGeom in retGeoms :
             poly = self._extract_poly_coords(retGeom.getGeometry())
             formattedPoly = [list(c) for c in poly['exterior_coords']]
-            retDict["polygon"] = formattedPoly
             
-            for col in columns:
-                retDict[col] = retGeom.getString(col)
-            retList.append(retDict)
+            try:
+                id = retGeom.getString('name')
+                if id:
+                   retDict[id] = formattedPoly
+                
+            except:
+                print "No 'name' column in table:", table
             
-        return retList
+        return retDict
+
+    
+    def getDamInundationMetadata(self, damName):
+        damInundationMetadata = DamMetaData.damInundationMetadata
+        return damInundationMetadata.get(damName)
+    
+    def getAllDamInundationMetadata(self):
+        return DamMetaData.damInundationMetadata
+    

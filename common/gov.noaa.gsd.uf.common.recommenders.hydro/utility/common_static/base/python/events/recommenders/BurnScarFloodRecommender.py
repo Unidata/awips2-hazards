@@ -12,6 +12,9 @@ import GeometryFactory
 import EventFactory
 import EventSetFactory
 
+from MapsDatabaseAccessor import MapsDatabaseAccessor
+
+from HazardConstants import *
 from GeneralConstants import *
  
 class Recommender(RecommenderTemplate.Recommender):
@@ -27,35 +30,6 @@ class Recommender(RecommenderTemplate.Recommender):
         @param errorCB Error callback.
         """
         self.DEFAULT_FFW_DURATION_IN_MS = 10800000
-        self.burnScarPolyDict = {"Fourmile":[
-                                                [-97.95962463128558,42.60445289481582],
-                                                [-98.02838956432441,42.570070428296404],
-                                                [-98.03985038649755,42.55860960612327],
-                                                [-98.04558079758412,42.51276631743072],
-                                                [-98.05704161975726,42.47265343982474],
-                                                [-98.05704161975726,42.415349328959046],
-                                                [-98.05704161975726,42.386697273526195],
-                                                [-98.04558079758412,42.380966862439635],
-                                                [-98.03985038649755,42.369506040266494],
-                                                [-97.70748654347655,42.47265343982474],
-                                                [-97.71321695456311,42.49557508417101],
-                                                [-97.74186900999597,42.529957550690426],
-                                                [-97.77052106542881,42.53568796177699],
-                                                [-97.79344270977509,42.52422713960386],
-                                                [-97.85074682064078,42.529957550690426],
-                                                [-97.85074682064078,42.547148783950135],
-                                                [-97.8450164095542,42.57580083938298],
-                                                [-97.85074682064078,42.650296183508374],
-                                                [-97.86793805390047,42.684678650027784],
-                                                [-97.89659010933332,42.684678650027784],
-                                                [-97.94243339802588,42.684678650027784],
-                                                [-97.9768158645453,42.67321782785465],
-                                                [-97.99973750889157,42.66748741676808],
-                                                [-98.0111983310647,42.66175700568151],
-                                                [-97.95962463128558,42.60445289481582]],
-                               "Waldo Canyon":[[-96.6,40.675], [-96.5,40.675], [-96.5,40.45], [-96.6,40.45], [-96.6,40.675]]
-
-                               }
 
         
     def defineScriptMetadata(self):
@@ -85,13 +59,19 @@ class Recommender(RecommenderTemplate.Recommender):
         burnScarFieldDict["fieldType"] = "ComboBox"
         burnScarFieldDict["autocomplete"] = True
         
-        burnScarList = ["Fourmile", "Waldo Canyon"]
+        ############################################################
+        # Note, need a way to pop up dialog if cannot connect to db table
+        ############################################################
+        mapsAccessor = MapsDatabaseAccessor()
+        self.burnScarPolyDict = mapsAccessor.getPolygonDict(BURNSCARAREA_TABLE)
+        
+        burnScarList = sorted(self.burnScarPolyDict.keys())
         burnScarFieldDict["choices"] = burnScarList
         
         fieldDicts = [burnScarFieldDict]
         dialogDict["fields"] = fieldDicts
         
-        valueDict = {"burnScarName": "Fourmile"}
+        valueDict = {"burnScarName": burnScarList[0]}
         dialogDict["valueDict"] = valueDict
         
         return dialogDict
