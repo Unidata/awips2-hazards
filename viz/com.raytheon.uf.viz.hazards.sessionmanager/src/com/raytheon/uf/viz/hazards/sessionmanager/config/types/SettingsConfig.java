@@ -34,7 +34,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 10, 2013 1257       bsteffen    Initial creation
- * 
+ * Feb 23, 2015 3618       Chris.Golden Added expandVertically and changed
+ *                                      expandHorizontally to boolean.
  * </pre>
  * 
  * @author bsteffen
@@ -56,7 +57,9 @@ public class SettingsConfig {
 
     private int spacing;
 
-    private int expandHorizontally;
+    private boolean expandHorizontally;
+
+    private boolean expandVertically;
 
     private List<Page> pages;
 
@@ -116,12 +119,20 @@ public class SettingsConfig {
         this.spacing = spacing;
     }
 
-    public int getExpandHorizontally() {
+    public boolean getExpandHorizontally() {
         return expandHorizontally;
     }
 
-    public void setExpandHorizontally(int expandHorizontally) {
+    public void setExpandHorizontally(boolean expandHorizontally) {
         this.expandHorizontally = expandHorizontally;
+    }
+
+    public boolean getExpandVertically() {
+        return expandVertically;
+    }
+
+    public void setExpandVerticallyl(boolean expandVertically) {
+        this.expandVertically = expandVertically;
     }
 
     public List<Page> getPages() {

@@ -27,6 +27,19 @@ WSW = {
         "zoom": 7
     }, 
     "defaultCategory": "Winter Weather", 
+    "possibleSites": [
+                      "BOU",
+                      "PUB",
+                      "GJT",
+                      "CYS",
+                      "OAX",
+                      "FSD",
+                      "DMX",
+                      "GID",
+                      "EAX",
+                      "TOP",
+                      "RAH"
+    ],
     "visibleSites": [
         "BOU", 
         "OAX"

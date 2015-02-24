@@ -19,8 +19,11 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_FIELD_TYPE_GROUP;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_CATEGORIES_AND_TYPES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_SITES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_STATES;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_VISIBLE_COLUMNS;
 import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
@@ -158,11 +161,20 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      implements, and to use ObservedSetttings.
  * Jan 21, 2014  3626      Chris.Golden Added method to retrieve hazard-type-first recommender
  *                                      based upon hazard type.
- * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
+ * Jan 29, 2015  4375      Dan Schaffer Console initiation of RVS product generation
  * Feb 01, 2015  2331      Chris.Golden Added methods to determine the value of flags
  *                                      indicating the constraints that a hazard event type
  *                                      puts on start and end time editability.
- * Feb 17, 2015 5071       Robert.Blum  Reverted some changes done under 3790.
+ * Feb 17, 2015  5071      Robert.Blum  Reverted some changes done under 3790.
+ * Feb 23, 2015  3618      Chris.Golden Changed settings filter megawidget definitions to
+ *                                      use possible sites as backing choices for visible
+ *                                      sites, which allows possible sites to be localized
+ *                                      (and specified per setting). Also changed possible
+ *                                      columns to be taken from the settings as well, thus
+ *                                      eliminating another non-localized list from default
+ *                                      config (which is important, since the possible
+ *                                      columns for a setting are defined within the setting
+ *                                      itself, and are not universal).
  * </pre>
  * 
  * @author bsteffen
@@ -811,9 +823,32 @@ public class SessionConfigurationManager implements
         SettingsConfig viewConfig = this.settingsConfig.getConfig()[0];
         for (Page page : viewConfig.getPages()) {
             for (Field field : page.getPageFields()) {
-                if (field.getFieldName().equals("hazardCategoriesAndTypes")) {
+                if (field.getFieldType().equals(SETTING_FIELD_TYPE_GROUP)) {
+                    field = field.getFields().get(0);
+                }
+                if (field.getFieldName().equals(
+                        SETTING_HAZARD_CATEGORIES_AND_TYPES)) {
                     field.setChoices(getHazardInfoConfig()
                             .getHazardCategories());
+                } else if (field.getFieldName().equals(SETTING_HAZARD_SITES)) {
+                    List<String> possibleSites = new ArrayList<>(
+                            settings.getPossibleSites());
+                    Collections.sort(possibleSites);
+                    List<Choice> choices = new ArrayList<>(possibleSites.size());
+                    for (String site : possibleSites) {
+                        choices.add(new Choice(site, site));
+                    }
+                    field.setChoices(choices);
+                } else if (field.getFieldName().equals(SETTING_VISIBLE_COLUMNS)) {
+                    List<String> possibleColumns = new ArrayList<>(settings
+                            .getColumns().keySet());
+                    Collections.sort(possibleColumns);
+                    List<Choice> choices = new ArrayList<>(
+                            possibleColumns.size());
+                    for (String column : possibleColumns) {
+                        choices.add(new Choice(column, column));
+                    }
+                    field.setChoices(choices);
                 }
             }
         }

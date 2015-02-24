@@ -37,6 +37,7 @@ import org.eclipse.core.runtime.Assert;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardCategoryAndTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Column;
@@ -70,6 +71,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                      functionality to that provided by
  *                                      ObservedHazardEvent.
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
+ * Feb 23, 2015 3618       Chris.Golden Added possible sites to settings,
+ *                                      and changed setting of identifier to
+ *                                      trigger a settings-loaded notification
+ *                                      instead of a settings-modified one.
  * </pre>
  * 
  * @author bsteffen
@@ -154,6 +159,13 @@ public class ObservedSettings implements ISettings {
         }
     }
 
+    private void settingsChangedIdentifier(boolean notify,
+            IOriginator originator) {
+        if (notify) {
+            settingsChanged(new SettingsLoaded(configManager, originator));
+        }
+    }
+
     private void settingsChanged(SettingsModified notification) {
 
         /*
@@ -198,6 +210,11 @@ public class ObservedSettings implements ISettings {
     @Override
     public String getDefaultCategory() {
         return delegate.getDefaultCategory();
+    }
+
+    @Override
+    public Set<String> getPossibleSites() {
+        return getSetCopy(delegate.getPossibleSites());
     }
 
     @Override
@@ -292,6 +309,11 @@ public class ObservedSettings implements ISettings {
     }
 
     @Override
+    public void setPossibleSites(Set<String> possibleSites) {
+        setPossibleSites(possibleSites, true, Originator.OTHER);
+    }
+
+    @Override
     public void setVisibleSites(Set<String> visibleSites) {
         setVisibleSites(visibleSites, true, Originator.OTHER);
     }
@@ -343,6 +365,7 @@ public class ObservedSettings implements ISettings {
      * @param originator
      */
     public void apply(ISettings other, IOriginator originator) {
+        boolean idChanged = changed(getSettingsID(), other.getSettingsID());
         setSettingsID(other.getSettingsID(), false, originator);
         setVisibleTypes(other.getVisibleTypes(), false, originator);
         setVisibleStatuses(other.getVisibleStatuses(), false, originator);
@@ -351,6 +374,7 @@ public class ObservedSettings implements ISettings {
                 false, originator);
         setMapCenter(other.getMapCenter(), false, originator);
         setDefaultCategory(other.getDefaultCategory(), false, originator);
+        setPossibleSites(other.getPossibleSites(), false, originator);
         setVisibleSites(other.getVisibleSites(), false, originator);
         setDisplayName(other.getDisplayName(), false, originator);
         setDefaultDuration(other.getDefaultDuration(), false, originator);
@@ -360,7 +384,11 @@ public class ObservedSettings implements ISettings {
         setAddToSelected(other.getAddToSelected(), false, originator);
         setAddGeometryToSelected(other.getAddGeometryToSelected(), false,
                 originator);
-        settingsChanged(true, originator);
+        if (idChanged) {
+            settingsChangedIdentifier(true, originator);
+        } else {
+            settingsChanged(true, originator);
+        }
     }
 
     /**
@@ -384,7 +412,9 @@ public class ObservedSettings implements ISettings {
      */
     public void applyPersistedChanges(ISettings persisted, ISettings update) {
         boolean notify = false;
+        boolean idChanged = false;
         if (!changed(getSettingsID(), persisted.getSettingsID())) {
+            idChanged = changed(update.getSettingsID(), getSettingsID());
             setSettingsID(update.getSettingsID(), false, null);
             notify = true;
         }
@@ -412,6 +442,10 @@ public class ObservedSettings implements ISettings {
         }
         if (!changed(getDefaultCategory(), persisted.getDefaultCategory())) {
             setDefaultCategory(update.getDefaultCategory(), false, null);
+            notify = true;
+        }
+        if (!changed(getPossibleSites(), persisted.getPossibleSites())) {
+            setPossibleSites(update.getPossibleSites(), false, null);
             notify = true;
         }
         if (!changed(getVisibleSites(), persisted.getVisibleSites())) {
@@ -443,7 +477,11 @@ public class ObservedSettings implements ISettings {
             notify = true;
         }
         if (notify) {
-            settingsChanged(true, Originator.OTHER);
+            if (idChanged) {
+                settingsChangedIdentifier(true, Originator.OTHER);
+            } else {
+                settingsChanged(true, Originator.OTHER);
+            }
         }
     }
 
@@ -477,6 +515,11 @@ public class ObservedSettings implements ISettings {
     public void setDefaultCategory(String defaultCategory,
             IOriginator originator) {
         setDefaultCategory(defaultCategory, true, originator);
+    }
+
+    public void setPossibleSites(Set<String> possibleSites,
+            IOriginator originator) {
+        setPossibleSites(possibleSites, true, originator);
     }
 
     public void setVisibleSites(Set<String> visibleSites, IOriginator originator) {
@@ -523,7 +566,7 @@ public class ObservedSettings implements ISettings {
             IOriginator originator) {
         if (changed(settingsID, getSettingsID())) {
             delegate.setSettingsID(settingsID);
-            settingsChanged(notify, originator);
+            settingsChangedIdentifier(notify, originator);
         }
     }
 
@@ -572,6 +615,14 @@ public class ObservedSettings implements ISettings {
             IOriginator originator) {
         if (changed(defaultCategory, getDefaultCategory())) {
             delegate.setDefaultCategory(defaultCategory);
+            settingsChanged(notify, originator);
+        }
+    }
+
+    protected void setPossibleSites(Set<String> possibleSites, boolean notify,
+            IOriginator originator) {
+        if (changed(possibleSites, getPossibleSites())) {
+            delegate.setPossibleSites(getSetCopy(possibleSites));
             settingsChanged(notify, originator);
         }
     }

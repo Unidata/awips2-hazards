@@ -15,10 +15,13 @@ import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 
 import java.util.EnumSet;
 
+import net.engio.mbassy.listener.Handler;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.drawables.IRenderableDisplay;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.MapCenter;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -45,6 +48,13 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                           protected as it is called by setView().
  * Dec 05, 2014 4124       Chris.Golden      Changed to work with newly parameterized
  *                                           config manager and with ObservedSettings.
+ * Feb 23, 2015 3618       Chris.Golden      Added code to close and reopen the
+ *                                           settings subview if a new setting is
+ *                                           loaded. This is required because a new
+ *                                           setting may have a different column list,
+ *                                           possible site IDs, etc., any of which
+ *                                           would necessitate the recreation of the
+ *                                           dialog.
  * </pre>
  * 
  * @author Chris.Golden
@@ -88,6 +98,20 @@ public class SettingsPresenter extends
         if (changed.contains(HazardConstants.Element.CURRENT_SETTINGS)) {
             getView().setCurrentSettings(
                     getModel().getConfigurationManager().getSettings());
+        }
+    }
+
+    /**
+     * Respond to a new settings object being loaded.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void settingsLoaded(SettingsLoaded change) {
+        if (getView().isSettingDetailExisting()) {
+            getView().deleteSettingDetail();
+            showSettingDetail();
         }
     }
 

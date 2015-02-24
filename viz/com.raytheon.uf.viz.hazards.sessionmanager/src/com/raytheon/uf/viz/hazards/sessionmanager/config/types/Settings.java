@@ -51,6 +51,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  *                                      use of ObservedSettings.
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * Feb 15, 2015 2271       Dan Schaffer Incur recommender/product generator init costs immediately
+ * Feb 23, 2015 3618       Chris.Golden Added possible sites to settings.
  * </pre>
  * 
  * @author bsteffen
@@ -96,7 +97,13 @@ public class Settings implements ISettings {
     private String defaultCategory;
 
     /**
-     * Which sites events should be loaded/displayed
+     * Which sites are possible for being loaded/displayed
+     */
+    private Set<String> possibleSites;
+
+    /**
+     * Which sites events should be loaded/displayed; must be a subset of
+     * {@link #possibleSites}.
      */
     private Set<String> visibleSites;
 
@@ -167,6 +174,7 @@ public class Settings implements ISettings {
         setDefaultTimeDisplayDuration(other.getDefaultTimeDisplayDuration());
         setMapCenter(other.getMapCenter());
         setDefaultCategory(other.getDefaultCategory());
+        setPossibleSites(other.getPossibleSites());
         setVisibleSites(other.getVisibleSites());
         setDisplayName(other.getDisplayName());
         setDefaultDuration(other.getDefaultDuration());
@@ -257,6 +265,16 @@ public class Settings implements ISettings {
     @Override
     public void setDefaultCategory(String defaultCategory) {
         this.defaultCategory = defaultCategory;
+    }
+
+    @Override
+    public Set<String> getPossibleSites() {
+        return possibleSites;
+    }
+
+    @Override
+    public void setPossibleSites(Set<String> possibleSites) {
+        this.possibleSites = possibleSites;
     }
 
     @Override

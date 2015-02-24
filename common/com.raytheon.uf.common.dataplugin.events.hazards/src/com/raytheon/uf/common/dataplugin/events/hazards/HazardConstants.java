@@ -70,6 +70,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Feb 15, 2015 2271      Dan Schaffer  Incur recommender/product generator init costs immediately
  * Feb 22, 2015 6561      Mike Duff     Removed PERSIST_TIME
  * Feb 19, 2015 5071      Robert.Blum   Added HAZARD_CATEGORIES_LOCALIZATION_DIR
+ * Feb 23, 2015 3618      Chris.Golden  Added possible sites to settings.
  * </pre>
  * 
  * @author mnash
@@ -700,6 +701,11 @@ public final class HazardConstants {
     public static final String HYDROLOGY_SETTING = "Hydrology";
 
     /**
+     * Group megawidget field type for settings.
+     */
+    public static final String SETTING_FIELD_TYPE_GROUP = "Group";
+
+    /**
      * String column type value in column definition dictionary in setting
      * dictionary.
      */
@@ -790,6 +796,8 @@ public final class HazardConstants {
     public static final String SETTING_HAZARD_TYPES = "visibleTypes";
 
     public static final String SETTING_HAZARD_STATES = "visibleStatuses";
+
+    public static final String SETTING_HAZARD_POSSIBLE_SITES = "possibleSites";
 
     public static final String SETTING_HAZARD_SITES = "visibleSites";
 

@@ -42,6 +42,19 @@ Flood = {
         "lon": -95.91, 
         "zoom": 7
     }, 
+    "possibleSites": [
+                      "BOU",
+                      "PUB",
+                      "GJT",
+                      "CYS",
+                      "OAX",
+                      "FSD",
+                      "DMX",
+                      "GID",
+                      "EAX",
+                      "TOP",
+                      "RAH"
+    ],
     "visibleSites": [
         "BOU", 
         "OAX"

@@ -20,6 +20,7 @@
 package gov.noaa.gsd.viz.hazards.utilities;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_CATEGORIES_AND_TYPES;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_POSSIBLE_SITES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_SITES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_STATES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_TYPES;
@@ -38,8 +39,6 @@ import java.util.Set;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.math.NumberUtils;
 
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardCategoryAndTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
@@ -66,6 +65,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Dec 05, 2014 4124       Chris.Golden Changed to work with newly parameterized
  *                                      config manager.
  * Feb 12, 2015 6456       Dan Schaffer Fixed bug where tools menu was empty after changing settings
+ * Feb 23, 2015 3618       Chris.Golden Added possible sites to settings, and fixed a couple of
+ *                                      problems with expandHorizontally and expandVertically.
+ *                                      Also fixed bugs caused by hazard category and types object
+ *                                      sometimes having a list of maps for its children instead of
+ *                                      a list of strings.
  * </pre>
  * 
  * @author bkowal
@@ -74,13 +78,33 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 @Deprecated
 public class MegawidgetSettingsConversionUtils {
-    private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(MegawidgetSettingsConversionUtils.class);
 
     /**
      * 
      */
     private MegawidgetSettingsConversionUtils() {
+    }
+
+    /**
+     * Given the specified list, which may be of child names (strings) or maps
+     * holding child names as identifiers, return a list of strings holding
+     * their names.
+     * 
+     * @param List
+     *            of child names, in one of the forms listed above.
+     * @return List of strings holding the names.
+     */
+    private static List<String> getChildrenNamesFromList(List<?> childList) {
+        List<String> result = new ArrayList<>(childList.size());
+        for (Object child : childList) {
+            if (child instanceof String) {
+                result.add((String) child);
+            } else {
+                Map<?, ?> childMap = (Map<?, ?>) child;
+                result.add((String) childMap.get("identifier"));
+            }
+        }
+        return result;
     }
 
     @SuppressWarnings("unchecked")
@@ -102,7 +126,8 @@ public class MegawidgetSettingsConversionUtils {
             if (hazardCategoryAndTypes.getChildren() != null
                     && hazardCategoryAndTypes.getChildren().isEmpty() == false) {
                 hazardCategoriesAndTypesMap.put("children",
-                        hazardCategoryAndTypes.getChildren());
+                        getChildrenNamesFromList(hazardCategoryAndTypes
+                                .getChildren()));
             }
 
             hazardCategoriesAndTypesMapList.add(hazardCategoriesAndTypesMap);
@@ -163,6 +188,10 @@ public class MegawidgetSettingsConversionUtils {
         currentSettingsMap.put("defaultTimeDisplayDuration",
                 settings.getDefaultTimeDisplayDuration());
 
+        // Add 'possibleSites' to the map
+        currentSettingsMap.put(SETTING_HAZARD_POSSIBLE_SITES,
+                settings.getPossibleSites());
+
         // Add 'visibleSites' to the map
         currentSettingsMap
                 .put(SETTING_HAZARD_SITES, settings.getVisibleSites());
@@ -204,6 +233,8 @@ public class MegawidgetSettingsConversionUtils {
         settingsConfigMap.put("spacing", settingsConfig.getSpacing());
         settingsConfigMap.put("expandHorizontally",
                 settingsConfig.getExpandHorizontally());
+        settingsConfigMap.put("expandVertically",
+                settingsConfig.getExpandVertically());
 
         return settingsConfigMap;
     }
@@ -230,6 +261,19 @@ public class MegawidgetSettingsConversionUtils {
         } else {
             updatedSettings.setVisibleStatuses((Set<String>) settingsMap
                     .get(SETTING_HAZARD_STATES));
+        }
+
+        // Update the possibleSites
+        if (settingsMap.get(SETTING_HAZARD_POSSIBLE_SITES) instanceof List<?>) {
+            Set<String> possibleSitesSet = new HashSet<String>();
+            for (Object site : (List<?>) settingsMap
+                    .get(SETTING_HAZARD_POSSIBLE_SITES)) {
+                possibleSitesSet.add(site.toString());
+            }
+            updatedSettings.setPossibleSites(possibleSitesSet);
+        } else {
+            updatedSettings.setPossibleSites((Set<String>) settingsMap
+                    .get(SETTING_HAZARD_POSSIBLE_SITES));
         }
 
         // Update the visibleSites
@@ -263,8 +307,9 @@ public class MegawidgetSettingsConversionUtils {
                         .toString());
             }
             if (hcatMap.containsKey("children")) {
-                hazardCategoryAndTypes.setChildren((List<String>) hcatMap
-                        .get("children"));
+                hazardCategoryAndTypes
+                        .setChildren(getChildrenNamesFromList((List<?>) hcatMap
+                                .get("children")));
             }
             hazardCategoriesAndTypesList.add(hazardCategoryAndTypes);
         }
@@ -391,6 +436,18 @@ public class MegawidgetSettingsConversionUtils {
                 fieldMap.remove("lines");
 
                 fieldMap.put("lines", field.getLines().intValue());
+            }
+            if (fieldMap.containsKey("expandHorizontally")) {
+                fieldMap.remove("expandHorizontally");
+
+                fieldMap.put("expandHorizontally", field
+                        .getExpandHorizontally().booleanValue());
+            }
+            if (fieldMap.containsKey("expandVertically")) {
+                fieldMap.remove("expandVertically");
+
+                fieldMap.put("expandVertically", field.getExpandVertically()
+                        .booleanValue());
             }
             if (fieldMap.containsKey("leftMargin")) {
                 fieldMap.remove("leftMargin");

@@ -36,8 +36,8 @@ import com.google.common.collect.Lists;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 10, 2013 1257       bsteffen    Initial creation
- * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
- * 
+ * Nov 15, 2013 2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
+ * Feb 23, 2015 3618       Chris.Golden Added expandVertically.
  * </pre>
  * 
  * @author bsteffen
@@ -63,6 +63,8 @@ public class Field {
     private Integer visibleChars;
 
     private Boolean expandHorizontally;
+
+    private Boolean expandVertically;
 
     private List<Field> fields = Lists.newArrayList();
 
@@ -222,4 +224,11 @@ public class Field {
         this.expandHorizontally = expandHorizontally;
     }
 
+    public Boolean getExpandVertically() {
+        return expandVertically;
+    }
+
+    public void setExpandVertically(Boolean expandVertically) {
+        this.expandVertically = expandVertically;
+    }
 }

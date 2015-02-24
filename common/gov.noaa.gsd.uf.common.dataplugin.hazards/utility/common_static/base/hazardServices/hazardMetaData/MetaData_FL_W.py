@@ -45,7 +45,7 @@ class MetaData(CommonMetaData.MetaData):
                     "rightMargin": 10,
                     "topMargin": 10,
                     "bottomMargin": 10,
-                    "expandHorizontally": False,
+                    "expandHorizontally": True,
                     "expandVertically": True,
                     "pages": [
                                   {

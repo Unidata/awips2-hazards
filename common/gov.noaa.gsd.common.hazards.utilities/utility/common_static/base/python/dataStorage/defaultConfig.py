@@ -1,39 +1,3 @@
-siteIDs = [ 
-                     {
-                      "displayString": "BOU",
-                     },
-                     {
-                      "displayString": "PUB",
-                     },
-                     {
-                      "displayString": "GJT",
-                     },
-                     {
-                      "displayString": "CYS",
-                     },
-                     {
-                      "displayString": "OAX",
-                     },
-                     {
-                      "displayString": "FSD",
-                     },
-                     {
-                      "displayString": "DMX",
-                     },
-                     {
-                      "displayString": "GID",
-                     },
-                     {
-                      "displayString": "EAX",
-                     },
-                     {
-                      "displayString": "TOP",
-                     },
-                     {
-                      "displayString": "RAH"
-                     }
-            ]
-
 statuses = [ 
                      {
                       "displayString": "potential",
@@ -59,62 +23,6 @@ statuses = [
                      },
 
             ]
-columns = [ 
-                     {
-                      "displayString": "Event ID",
-                     },
-                     {
-                      "displayString": "Hazard Type",
-                     },
-                     {
-                      "displayString": "Status",
-                     },
-                     {
-                      "displayString": "Start Time",
-                     },
-                     {
-                      "displayString": "End Time",
-                     },
-                     {
-                      "displayString": "Phen",
-                     },
-                     {
-                      "displayString": "Sig",
-                     },
-                     {
-                      "displayString": "Expiration Time",
-                     },
-                     {
-                      "displayString": "Creation Time",
-                     },
-                     {
-                      "displayString": "Issue Time",
-                     },
-                     {
-                      "displayString": "Site ID",
-                     },
-                     {
-                      "displayString": "VTEC Codes",
-                     },
-                     {
-                      "displayString": "ETNs"
-                     },
-                     {
-                      "displayString": "PILs"
-                     },
-                     {
-                      "displayString": "Time Remaining"
-                     },
-                     {
-                      "displayString": "Description"
-                     },
-                     {
-                      "displayString": "Point ID"
-                     },
-                     {
-                      "displayString": "Stream"
-                     }
-            ]
 
 # This lists the fields that are possible in a Setting
 # The Setting Dialog will use this information to display and allow manipulation
@@ -135,8 +43,8 @@ viewConfig = [
                "topMargin": 7,
                "bottomMargin": 7,
                "spacing": 10,
-               "expandHorizontally": 1,
-               "expandVertically": 1,
+               "expandHorizontally": True,
+               "expandVertically": True,
                "pages": [
                          {
                           "pageName": "Hazards Filter",
@@ -153,7 +61,7 @@ viewConfig = [
                                           "fieldName": "visibleSites",
                                           "label": "Site IDs:",
                                           "fieldType": "CheckList",
-                                          "choices": siteIDs,
+                                          "choices": [],
                                           "lines": 16,
                                           "columnName": "Site ID"
                                          },
@@ -177,13 +85,15 @@ viewConfig = [
                                           "leftMargin": 10,
                                           "rightMargin": 10,
                                           "bottomMargin": 10,
+                                          "expandHorizontally": True,
+                                          "expandVertically": True,
                                           "fields": [
                                                      {
                                                       "fieldName": "visibleColumns",
                                                       "label": "Available:",
                                                       "selectedLabel": "Selected:",
                                                       "fieldType": "BoundedListBuilder",
-                                                      "choices": columns,
+                                                      "choices": [],
                                                       "lines": 10
                                                      }
                                           ]

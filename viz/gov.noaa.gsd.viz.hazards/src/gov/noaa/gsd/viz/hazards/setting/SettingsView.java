@@ -83,8 +83,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  *                                           to load a valid setting on a delete.
  * Dec 05, 2014    4124    Chris.Golden      Changed to work with newly parameterized
  *                                           config manager and with ObservedSettings.
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Dec 13, 2014    4959    Dan Schaffer      Spatial Display cleanup and other bug fixes
  * Jan 09, 2015    5457    Daniel.S.Schaffer Fixed bug in settings deletion.
+ * Feb 23, 2015    3618    Chris.Golden      Added ability to close settings dialog
+ *                                           from public method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -544,6 +546,21 @@ public class SettingsView implements
                 settings);
         settingDialog.open();
         settingDialog.getShell().addDisposeListener(dialogDisposeListener);
+    }
+
+    @Override
+    public final void deleteSettingDetail() {
+        if (settingDialog != null) {
+            if (settingDialog.isDisposed() == false) {
+                settingDialog.close();
+            }
+            settingDialog = null;
+        }
+    }
+
+    @Override
+    public final boolean isSettingDetailExisting() {
+        return (settingDialog != null);
     }
 
     @Override

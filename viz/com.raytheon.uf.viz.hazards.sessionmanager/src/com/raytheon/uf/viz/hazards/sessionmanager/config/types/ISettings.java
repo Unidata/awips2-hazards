@@ -23,7 +23,8 @@ import java.util.Set;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Dec 05, 2014    4124    Chris.Golden Initial creation.
- * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
+ * Jan 29, 2015    4375    Dan Schaffer Console initiation of RVS product generation
+ * Feb 23, 2015    3618    Chris.Golden Added possible sites to settings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -67,6 +68,10 @@ public interface ISettings {
     public String getDefaultCategory();
 
     public void setDefaultCategory(String defaultCategory);
+
+    public Set<String> getPossibleSites();
+
+    public void setPossibleSites(Set<String> possibleSites);
 
     public Set<String> getVisibleSites();
 

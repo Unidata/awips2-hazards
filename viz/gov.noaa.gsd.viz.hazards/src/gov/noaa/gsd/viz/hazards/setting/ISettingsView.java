@@ -29,6 +29,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Dec 05, 2014    4124    Chris.Golden      Changed to work with ObservedSettings.
+ * Feb 23, 2015    3618    Chris.Golden      Added ability to close settings dialog
+ *                                           from public method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -59,6 +61,18 @@ public interface ISettingsView<C, E extends Enum<E>> extends IView<C, E> {
      */
     public void showSettingDetail(SettingsConfig settingsConfig,
             ObservedSettings settings);
+
+    /**
+     * Delete the settings detail subview.
+     */
+    public void deleteSettingDetail();
+
+    /**
+     * Determine whether or not the setting detail is currently in existence.
+     * 
+     * @return True if the setting detail currently exists, false otherwise.
+     */
+    public boolean isSettingDetailExisting();
 
     /**
      * Set the settings to those specified.
