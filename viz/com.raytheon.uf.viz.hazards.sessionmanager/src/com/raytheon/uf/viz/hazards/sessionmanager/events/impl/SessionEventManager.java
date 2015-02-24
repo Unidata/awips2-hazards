@@ -249,6 +249,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      appropriate.
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
+ * Feb 24, 2015 6499       Dan Schaffer Only allow add/remove UGCs for pending point hazards
  * </pre>
  * 
  * @author bsteffen
@@ -3339,6 +3340,15 @@ public class SessionEventManager implements
             if (hazardEvent.getStatus().equals(HazardStatus.ENDED)) {
                 messenger.getWarner().warnUser(GEOMETRY_MODIFICATION_ERROR,
                         "Cannot add or remove UGCs for an ended hazard");
+                return;
+            }
+
+            if (!hazardEvent.getStatus().equals(HazardStatus.PENDING)
+                    && geoMapUtilities.isPointBasedHatching(hazardEvent)) {
+                messenger
+                        .getWarner()
+                        .warnUser(GEOMETRY_MODIFICATION_ERROR,
+                                "Can only add or remove UGCs for pending point hazards");
                 return;
             }
 

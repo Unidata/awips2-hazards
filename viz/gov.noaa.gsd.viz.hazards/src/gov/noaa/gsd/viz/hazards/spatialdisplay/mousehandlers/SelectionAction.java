@@ -69,6 +69,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * 
  * Feb 09, 2015 6260       Dan Schaffer Fixed bugs in multi-polygon handling
  * Feb 17, 2015 4209       Dan Schaffer Fixed bug in lassoing hazards
+ * Feb 24, 2015 6499       Dan Schaffer Disable moving/drawing of point hazards
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -376,17 +377,16 @@ public class SelectionAction extends NonDrawingAction {
 
         private void handleShapeMove(IHazardServicesShape origShape,
                 Class<?> selectedDEclass) {
-            List<Coordinate> coords = null;
-            if (selectedDEclass.equals(HazardServicesPoint.class)) {
-                coords = Lists.newArrayList(((Symbol) ghostEl).getLocation());
-            } else if ((selectedDEclass.equals(HazardServicesPolygon.class) || selectedDEclass
+            if ((selectedDEclass.equals(HazardServicesPolygon.class) || selectedDEclass
                     .equals(HazardServicesMultiPolygon.class))
                     || (selectedDEclass.equals(HazardServicesLine.class))) {
-                coords = ((Line) ghostEl).getPoints();
+                List<Coordinate> coords = ((Line) ghostEl).getPoints();
+
+                Geometry modifiedGeometry = buildModifiedGeometry(origShape,
+                        coords);
+                getSpatialDisplay().notifyModifiedGeometry(origShape.getID(),
+                        modifiedGeometry);
             }
-            Geometry modifiedGeometry = buildModifiedGeometry(origShape, coords);
-            getSpatialDisplay().notifyModifiedGeometry(origShape.getID(),
-                    modifiedGeometry);
         }
 
         private Geometry buildModifiedGeometry(IHazardServicesShape origShape,

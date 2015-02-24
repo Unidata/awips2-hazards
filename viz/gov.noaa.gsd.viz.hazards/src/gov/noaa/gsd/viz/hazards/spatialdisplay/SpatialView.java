@@ -99,6 +99,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Dec 15, 2014    3846    Tracy Hansen      Added ability to draw points back in
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Feb 03, 2015    3865    Chris.Cody        Check for valid Active Editor class
+ * Feb 24, 2015 6499       Dan Schaffer      Disable drawing of point hazards
  * </pre>
  * 
  * @author Chris.Golden
@@ -776,7 +777,7 @@ public class SpatialView implements
                     new SeparatorAction(), addToSelectedToggleAction,
                     new SeparatorAction(), moveAndSelectChoiceAction,
                     drawVertexBasedPolygonChoiceAction,
-                    drawFreehandPolygonChoiceAction, drawPointChoiceAction,
+                    drawFreehandPolygonChoiceAction,
                     selectByAreaMapsPulldownAction, new SeparatorAction(),
                     addGeometryToSelectedAction);
         }

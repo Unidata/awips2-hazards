@@ -171,6 +171,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Feb 10, 2015  3961     Chris.Cody      Add Context Menu (R-Click) for River Point (GageData) objects
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Feb 15, 2015 2271       Dan Schaffer   Incur recommender/product generator init costs immediately
+ * Feb 24, 2015 6499       Dan Schaffer   Disable moving/drawing of point hazards
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1408,10 +1409,7 @@ public class SpatialDisplay extends
             PaintProperties paintProps, AbstractDrawableComponent el) {
         Layer layer = dataManager.getActiveLayer();
 
-        DisplayProperties dprops = new DisplayProperties();
-        dprops.setLayerMonoColor(layer.isMonoColor());
-        dprops.setLayerColor(layer.getColor());
-        dprops.setLayerFilled(layer.isFilled());
+        DisplayProperties dprops = buildDisplayProperties(layer);
 
         // Do this to force symbols to redraw themselves.
         // This ensures that they scale properly as
@@ -1568,8 +1566,20 @@ public class SpatialDisplay extends
         AbstractElementContainer dispEl = null;
 
         dispEl = new DefaultElementContainer(el, descriptor, target);
-        dispEl.draw(target, paintProps, null);
+
+        Layer layer = dataManager.getActiveLayer();
+
+        DisplayProperties dprops = buildDisplayProperties(layer);
+        dispEl.draw(target, paintProps, dprops);
         dispEl.dispose();
+    }
+
+    private DisplayProperties buildDisplayProperties(Layer layer) {
+        DisplayProperties dprops = new DisplayProperties();
+        dprops.setLayerMonoColor(layer.isMonoColor());
+        dprops.setLayerColor(layer.getColor());
+        dprops.setLayerFilled(layer.isFilled());
+        return dprops;
     }
 
     private List<AbstractDrawableComponent> getContainingComponents(int x, int y) {
