@@ -342,6 +342,10 @@ class Format(FormatTemplate.Formatter):
         
         @param segmentDict:  dictionary for the segment.
         '''
+        # TODO Need to verify that PGFv3 preserves the full
+        # full functionality of the 'getHeadlinesAndSections' in
+        # TextProductCommon. V3 has split that method into this 
+        # method and also '_createSections' in Legacy_Base_Generator.
         headlines = []
         vtecRecords = segmentDict.get('vtecRecords', None)
         hList = copy.deepcopy(vtecRecords)
@@ -410,8 +414,9 @@ class Format(FormatTemplate.Formatter):
                 if len(timeWords):
                     hazStr = hazStr + ' ' + timeWords
 
-            ugcPhrase = self._tpc.getAreaPhrase(segmentDict.get('ugcs'))
-            hazStr += ' for ' + ugcPhrase
+            if vtecRecord.get('phen') == 'FF' and vtecRecord.get('sig') != 'A':
+                ugcPhrase = self._tpc.getAreaPhrase(segmentDict.get('ugcs'))
+                hazStr += ' for ' + ugcPhrase
 
             if len(hazStr):
                 # Call user hook
@@ -433,13 +438,6 @@ class Format(FormatTemplate.Formatter):
 
             # always remove the main vtecRecord from the list
             hList.remove(vtecRecord)
-        
-        # NOTE: When called by the Legacy_FFA_Formatter for a cancellation, this incorrectly returns a long string e.g.
-        #   ...FLASH FLOOD WATCH is cancelled for portions of southwest Iowa and southeast Nebraska...including the following 
-        #   AREAS...In southwest Iowa...Fremont and Mills. In southeast Nebraska...Cass...
-        # instead of the correct headline:
-        #   ...FLASH FLOOD WATCH is cancelled...
-        # This works in V2 so that can be used to investigate.
         return headlineStr
 
     def _basisAndImpactsStatement_segmentLevel(self, segmentDict):
