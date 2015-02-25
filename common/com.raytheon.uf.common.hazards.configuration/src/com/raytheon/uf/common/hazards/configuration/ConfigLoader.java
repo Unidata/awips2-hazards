@@ -21,6 +21,8 @@ package com.raytheon.uf.common.hazards.configuration;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
 import javax.xml.bind.JAXB;
 
@@ -56,6 +58,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  *                                                        JAXB unmarshal method 
  *                                                        unmarshal method that uses a file
  * Apr 28, 2014 3556       bkowal       Relocate to a common plugin.
+ * Feb 24, 2015 6605       mpduff       Changed how loadJson reads files.
  * 
  * </pre>
  * 
@@ -134,7 +137,19 @@ public class ConfigLoader<T> implements Runnable {
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(
                 DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        return mapper.readValue(new String(lfile.read()), clazz);
+
+        StringBuilder sb = new StringBuilder();
+        char[] buffer = new char[1024];
+        try (InputStream is = lfile.openInputStream()) {
+            try (InputStreamReader isr = new InputStreamReader(is)) {
+                int read = isr.read(buffer);
+                while (read > -1) {
+                    sb.append(buffer, 0, read);
+                    read = isr.read(buffer);
+                }
+                return mapper.readValue(sb.toString(), clazz);
+            }
+        }
     }
 
     private T loadXml() throws LocalizationException {
