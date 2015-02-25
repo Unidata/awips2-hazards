@@ -86,6 +86,7 @@ import com.vividsolutions.jts.geom.TopologyException;
  * Feb  6, 2015 4375       Dan Schaffer Added error check for empty UGCs.
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
+ * Feb 25, 2015 6632       Dan Schaffer Fixed bug handling hazard outside CWA
  * </pre>
  * 
  * @author blawrenc
@@ -410,9 +411,17 @@ public class GeoMapUtilities {
             }
 
         }
-        Geometry result = intersectedGeometries.get(0);
-        for (int i = 1; i < intersectedGeometries.size(); i++) {
-            result = result.union(intersectedGeometries.get(i));
+        Geometry result;
+        if (intersectedGeometries.isEmpty()) {
+            /*
+             * Return an empty geometry
+             */
+            result = geometryFactory.createGeometryCollection(null);
+        } else {
+            result = intersectedGeometries.get(0);
+            for (int i = 1; i < intersectedGeometries.size(); i++) {
+                result = result.union(intersectedGeometries.get(i));
+            }
         }
 
         return result;
