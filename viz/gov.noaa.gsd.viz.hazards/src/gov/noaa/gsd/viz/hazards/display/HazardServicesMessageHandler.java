@@ -201,7 +201,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Feb 04, 2015  2331      Chris.Golden       Removed listener for time changes; these are
  *                                            now handled by individual presenters as
  *                                            necessary.
- * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
+ * Feb 12, 2015 4959       Dan Schaffer       Modify MB3 add/remove UGCs to match Warngen
+ * Feb 25, 2015 6600       Dan Schaffer       Fixed bug in spatial display centering
  * </pre>
  * 
  * @author bryon.lawrence
@@ -1288,7 +1289,6 @@ public final class HazardServicesMessageHandler {
                     .getSelectedEventIDs());
             sessionEventManager.setSelectedEventForIDs(selectedEventIDs,
                     UIOriginator.CONSOLE);
-            appBuilder.recenterRezoomDisplay();
 
             break;
 

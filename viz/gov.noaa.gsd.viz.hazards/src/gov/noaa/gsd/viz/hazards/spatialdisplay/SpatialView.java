@@ -100,6 +100,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Feb 03, 2015    3865    Chris.Cody        Check for valid Active Editor class
  * Feb 24, 2015 6499       Dan Schaffer      Disable drawing of point hazards
+ * Feb 25, 2015 6600       Dan Schaffer      Fixed bug in spatial display centering
  * </pre>
  * 
  * @author Chris.Golden
@@ -794,6 +795,7 @@ public class SpatialView implements
         spatialDisplay.drawEvents(events, eventOverlapSelectedTime,
                 forModifyingStormTrack, eventEditability,
                 toggleAutoHazardChecking, areHatchedAreasDisplayed);
+        recenterRezoomDisplay();
     }
 
     @Override
