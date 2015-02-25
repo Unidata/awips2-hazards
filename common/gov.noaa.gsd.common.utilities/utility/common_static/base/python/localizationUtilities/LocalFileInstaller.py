@@ -8,10 +8,13 @@ Date         Ticket#    Engineer          Description
 May 3, 2013             BLawrence         Created from AppFileInstaller, swapped out
                                           ThriftClient in favor of RequestRouter.
 Aug 22, 2013            JRamer            Fix delete operation, add some pydoc.
+Feb 24, 2015 4204       Robert.Blum       Updated User import
                                           
 """
 
 import jep
+
+    
 from com.raytheon.uf.common.localization.stream import LocalizationStreamPutRequest
 from com.raytheon.uf.common.localization.stream import LocalizationStreamGetRequest
 from com.raytheon.uf.common.localization.msgs import ListUtilityCommand
@@ -29,7 +32,7 @@ from com.raytheon.uf.common.localization import LocalizationContext_Localization
 from com.raytheon.uf.common.localization import LocalizationContext_LocalizationLevel as LocalizationLevel
 from com.raytheon.uf.common.auth.resp import UserNotAuthorized
 from com.raytheon.uf.common.auth.resp import SuccessfulExecution
-from com.raytheon.uf.common.plugin.nwsauth.user import User
+from com.raytheon.uf.common.auth.user import User
 from com.raytheon.uf.common.serialization.comm import RequestRouter
 from com.raytheon.uf.common.auth.req import AbstractPrivilegedRequest
 
