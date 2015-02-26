@@ -5,12 +5,13 @@
     SOFTWARE HISTORY
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
-    4/14         1633       thansen   Initial creation.
+    4/14         1633       thansen     Initial creation.
+    2/26/15      6599       Robert.Blum Changed to new style class
     
 '''
 import types, collections
 
-class ProductParts:
+class ProductParts(object):
     def __init__(self):
         pass
         

@@ -38,6 +38,7 @@ import com.raytheon.uf.common.localization.FileUpdatedMessage;
 import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
 import com.raytheon.uf.common.localization.ILocalizationFileObserver;
 import com.raytheon.uf.common.localization.IPathManager;
+import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
@@ -65,7 +66,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * 1/15/2015    5109       bphillip		Changes to accomodate running generators and formatters separately
  * 2/12/2015    5071       Robert.Blum  Changes for reloading python files without
  *                                      closing Cave.
- * 
+ * 2/25/2015    6599       Robert.Blum  Adding fileObserver to TextUtility dir to allowing overrides.
  * </pre>
  * 
  * @author jsanchez
@@ -111,6 +112,8 @@ public class ProductScript extends PythonScriptController {
 
     private static final String FORMATS_DIRECTORY = "productgen/formats";
 
+    private static final String TEXT_UTILITIES_DIRECTORY = "python/textUtilities";
+
     private static final String PYTHON_INTERFACE = "ProductInterface";
 
     private static final String PYTHON_FILE_EXTENSION = ".py";
@@ -121,9 +124,16 @@ public class ProductScript extends PythonScriptController {
     /* python/events/productgen/products directory */
     protected static LocalizationFile formatsDir;
 
+    /* python/textUtilities directory */
+    protected static LocalizationFile textUtilDir;
+
     private ILocalizationFileObserver formatsDirObserver;
 
+    private ILocalizationFileObserver textUtilDirObserver;
+
     private boolean pendingFormatterUpdates = false;
+
+    private boolean pendingTextUtilitiesUpdates = false;
 
     /**
      * Instantiates a ProductScript object.
@@ -150,7 +160,14 @@ public class ProductScript extends PythonScriptController {
         formatsDirObserver = new FormatsDirectoryUpdateObserver();
         formatsDir.addFileUpdatedObserver(formatsDirObserver);
 
-        
+        IPathManager manager = PathManagerFactory.getPathManager();
+        LocalizationContext baseContext = manager.getContext(
+                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
+        textUtilDir = manager.getLocalizationFile(baseContext,
+                TEXT_UTILITIES_DIRECTORY);
+        textUtilDirObserver = new TextUtilitiesDirectoryUpdateObserver();
+        textUtilDir.addFileUpdatedObserver(textUtilDirObserver);
+
         String scriptPath = PythonBuildPaths
                 .buildDirectoryPath(PRODUCTS_DIRECTORY);
         jep.eval(INTERFACE + " = " + PYTHON_INTERFACE + "('" + scriptPath
@@ -423,6 +440,17 @@ public class ProductScript extends PythonScriptController {
             }
         }
 
+        // If there are pending TextUtilities updates reload the modules
+        if (pendingTextUtilitiesUpdates) {
+            try {
+                reloadTextUtilities();
+                pendingTextUtilitiesUpdates = false;
+            } catch (JepException e) {
+                statusHandler.handle(Priority.WARN,
+                        "Text Utilities were unable to be imported", e);
+            }
+        }
+
         return this.initializeProductGenerator(productGeneratorName);
     }
 
@@ -488,6 +516,16 @@ public class ProductScript extends PythonScriptController {
     }
 
     /**
+     * Reloads the updated textUtilities modules in the interpreter's "cache".
+     * 
+     * @throws JepException
+     *             If an Error is thrown during python execution.
+     */
+    protected void reloadTextUtilities() throws JepException {
+        execute("importTextUtility", INTERFACE, null);
+    }
+
+    /**
      * Retrieves the metadata of the product generator and sets it in the
      * product info object.
      * 
@@ -533,7 +571,8 @@ public class ProductScript extends PythonScriptController {
             LocalizationFile lf = pm.getLocalizationFile(message.getContext(),
                     message.getFileName());
 
-            if (message.getChangeType() == FileChangeType.ADDED) {
+            if (message.getChangeType() == FileChangeType.ADDED
+                    || message.getChangeType() == FileChangeType.UPDATED) {
                 if (lf != null) {
                     lf.getFile();
                 }
@@ -543,12 +582,32 @@ public class ProductScript extends PythonScriptController {
                     toDelete.delete();
                 }
 
-            } else if (message.getChangeType() == FileChangeType.UPDATED) {
+            }
+            pendingFormatterUpdates = true;
+        }
+    }
+
+    private class TextUtilitiesDirectoryUpdateObserver implements
+            ILocalizationFileObserver {
+
+        @Override
+        public void fileUpdated(FileUpdatedMessage message) {
+            IPathManager pm = PathManagerFactory.getPathManager();
+            LocalizationFile lf = pm.getLocalizationFile(message.getContext(),
+                    message.getFileName());
+
+            if (message.getChangeType() == FileChangeType.ADDED
+                    || message.getChangeType() == FileChangeType.UPDATED) {
                 if (lf != null) {
                     lf.getFile();
                 }
+            } else if (message.getChangeType() == FileChangeType.DELETED) {
+                if (lf != null) {
+                    File toDelete = lf.getFile();
+                    toDelete.delete();
+                }
             }
-            pendingFormatterUpdates = true;
+            pendingTextUtilitiesUpdates = true;
         }
     }
 }

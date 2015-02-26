@@ -13,13 +13,14 @@
     ------------ ---------- ----------- --------------------------
     Feb 2015       4375    Tracy Hansen      Initial creation
     Feb 2015       4937    Robert.Blum       Check if proximity is None
+    Feb 2015       6599    Robert.Blum       Changed to new style class
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
 from com.raytheon.uf.common.time import SimulatedTime
 
 
-class AttributionFirstBulletText:    
+class AttributionFirstBulletText(object):
     def initialize(self, sectionDict, productID, issueTime, testMode, wfoCity, tpc, areaPhrase=None, endString='. '):
         # Variables to establish
         self.sectionDict = sectionDict

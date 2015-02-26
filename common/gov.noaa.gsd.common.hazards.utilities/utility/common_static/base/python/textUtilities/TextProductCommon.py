@@ -17,6 +17,7 @@
    Jan 12, 2015   4937      Robert.Blum         Changes for PGFv3.
    Jan 31, 2015   4937      Robert.Blum         Added missing break statement and removed space when
                                                 substituting hashtags.
+   Feb 26, 2015   6599      Robert.Blum         Changed to new style class
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -2829,7 +2830,7 @@ class TextProductCommon(object):
 #  This class is copied from the CallToActions GHG code.
 #  For PV2, it will be transitioned to the Hazard Services meta-information
 #  in localization.
-class CallToActions:
+class CallToActions(object):
     def __init__(self):
         pass
 

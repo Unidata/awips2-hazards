@@ -17,15 +17,15 @@ May 21, 2013              Bryon Lawrence   Refactored to use
 
 May 22, 2013              Bryon Lawrence   Refactored to use
                                            RequestRouter instead
-                                           of ThriftClient.                                           
-                                                                                
+                                           of ThriftClient.
+Feb 26, 2015       6599   Robert.Blum      Changed to new style class
 @author James.E.Ramer@noaa.gov
 @version 1.0
 """
 from com.raytheon.uf.common.serialization.comm import RequestRouter
 from com.raytheon.uf.common.dataplugin.text.request import GetPartialAfosIdRequest
 
-class QueryAfosToAwips() :
+class QueryAfosToAwips(object):
 
     def __init__(self, productID, siteID):
         """

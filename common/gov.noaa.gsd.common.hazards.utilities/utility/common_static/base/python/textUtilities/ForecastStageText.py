@@ -10,6 +10,7 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     Feb 2015       4375    Tracy Hansen      Initial creation
+    Feb 2015       6599    Robert.Blum       Changed to new style class
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types
@@ -19,7 +20,7 @@ class Empty:
 
 from TextProductCommon import  TextProductCommon
 
-class ForecastStageText:
+class ForecastStageText(object):
 
     def getTestForecastStageText(self, testCase):
         print '\n*********************************'

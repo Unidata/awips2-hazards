@@ -6,7 +6,7 @@
 14    Date         Ticket#    Engineer    Description
 15    ------------ ---------- ----------- --------------------------
 16    April 5, 2013            Tracy.L.Hansen      Initial creation
-17    
+17    Feb 26,  2015   6599     Robert.Blum         Changed to new style class
 18    @author Tracy.L.Hansen@noaa.gov
 19    @version 1.0
 20    """
@@ -15,7 +15,7 @@ import types, string, re
 
 from TextProductCommon import TextProductCommon
 
-class HazardServicesGenericHazards:  
+class HazardServicesGenericHazards(object):
     '''
     This class was cloned from AWIPS 2 GFE / GHG Generic Hazards.
     This was brought into Hazard Services as part of the complete Product Generator

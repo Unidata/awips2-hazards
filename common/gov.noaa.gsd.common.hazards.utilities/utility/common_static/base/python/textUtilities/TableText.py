@@ -12,6 +12,8 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     Feb 2015       4375    Tracy Hansen      Initial creation
+    Feb 2015       6599    Robert.Blum       Changed to new style class
+    
     @author Tracy.L.Hansen@noaa.gov
 '''
 
@@ -20,7 +22,7 @@ from TextProductCommon import TextProductCommon
 
 MISSING_VALUE = -9999
 
-class Column:
+class Column(object):
     def __init__(self, variable, variableTime=None, width=None, align='^', labelLine1='', labelAlign1='<', labelLine2='', labelAlign2='<'):
         self.variable = variable
         self.variableTime = variableTime
@@ -31,7 +33,7 @@ class Column:
         self.labelAlign1 = labelAlign1
         self.labelAlign2 = labelAlign2
 
-class FloodPointTable:
+class FloodPointTable(object):
     '''
     &&
                         Fld             Observed             Forecast (7 pm)  

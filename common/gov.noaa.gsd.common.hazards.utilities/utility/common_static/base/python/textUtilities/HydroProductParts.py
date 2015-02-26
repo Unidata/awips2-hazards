@@ -10,11 +10,12 @@
     1/12         4937       Robert.Blum    PGFv3 changes for FLW_FLS
     01/26/2015   4936       chris.cody     Implement scripts for Flash Flood Watch Products (FFA,FAA,FLA)
     01/31/2015   4937       Robert.Blum    Removed unneeded code.
+    02/26/2015   6599       Robert.Blum    Changed to new style class
 
 '''
 import types, collections
 
-class HydroProductParts():
+class HydroProductParts(object):
     def __init__(self):
         pass
 

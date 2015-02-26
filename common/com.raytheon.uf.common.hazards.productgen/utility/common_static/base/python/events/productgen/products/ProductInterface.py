@@ -39,6 +39,7 @@
 #    02/12/15        5071          Robert.Blum    Changed to inherit from the PythonOverriderInterface once
 #                                                 again along with other changes to allows the incremental 
 #                                                 overrides and also editing without closing Cave.
+#    02/26/15        6599          Robert.Blum    Picking up overrides of TextUtilities directory.
 #
 import PythonOverriderInterface
 import PythonOverrider
@@ -70,8 +71,11 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
     def __init__(self, scriptPath, localizationPath):
         super(ProductInterface, self).__init__(scriptPath, localizationPath)
         self.pathMgr = PathManager()
-        # Import all the generator python files using PythonOverrider.
+        # Import the textUtilities dir using PythonOverrider
+        self.importTextUtility()
+        # Import all the generator modules using PythonOverrider.
         self.importModules()
+        # Import all the formatter modules using PythonOverrider.
         self.importFormatters()
         self.logger = logging.getLogger("ProductInterface")
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
@@ -287,23 +291,33 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
 
     def importFormatters(self):
         locPath = 'python/events/productgen/formats/'
-        # Use the abstract base class to get the BASE file path
-        moduleName = 'FormatTemplate.py'
-        scriptName = locPath + moduleName
-        filePath = self.pathMgr.getLocalizationFile(scriptName, loctype='COMMON_STATIC', loclevel='BASE').getFile().name;
-        basePath = filePath.replace(moduleName, '')
+        lf = self.pathMgr.getLocalizationFile(locPath, loctype='COMMON_STATIC', loclevel='BASE');
+        basePath = lf.getPath()
+        # Import all the files in this directory
+        self.importFilesFromDir(basePath, locPath)
 
-        # Import all the modules in the formats BASE directory using PythonOverrider.
-        # Need to do this twice since subclasses could get imported before superclasses
-        # resulting in old references being used, resulting in the override not being
-        # picked up.
+    def importTextUtility(self):
+        locPath = 'python/textUtilities/'
+        lf = self.pathMgr.getLocalizationFile(locPath, loctype='COMMON_STATIC', loclevel='BASE');
+        basePath = lf.getPath()
+        # Import all the files in this directory
+        self.importFilesFromDir(basePath, locPath)
+        # Import all the generators/formatters so that the
+        # overridden TextUtility modules are picked up.
+        self.reloadModules()
+        self.importFormatters()
+
+    def importFilesFromDir(self, basePath, locPath):
+        # Import all the modules in the basePath directory using PythonOverrider.
+        # Need to do this twice since these modules import/subclass each other which could result in
+        # in old references being used. Which would cause the override not being picked up.
         for x in range(2):
             for s in basePath.split(os.path.pathsep):
                 if os.path.exists(s):
                     scriptfiles = os.listdir(s)
                     for filename in scriptfiles:
                         split = string.split(filename, ".")
-                        if len(split) == 2 and len(split[0]) > 0 and split[1] == "py":
+                        if len(split) == 2 and len(split[0]) > 0 and split[1] == "py" and not filename.endswith("Interface.py"):
                             if sys.modules.has_key(split[0]):
                                 self.clearModuleAttributes(split[0])
-                                tmpModule = PythonOverrider.importModule(locPath + filename)
+                            tmpModule = PythonOverrider.importModule(locPath + filename)

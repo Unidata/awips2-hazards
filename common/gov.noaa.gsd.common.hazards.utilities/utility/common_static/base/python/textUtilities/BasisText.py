@@ -12,12 +12,13 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     Nov 17, 2014       4763     Daniel.S.Schaffer      Initial creation
+    Feb 26, 2015       6599     Robert.Blum            Changed to new style class
     @author Daniel.S.Schaffer@noaa.gov
 '''
 ###############################################################################
 import os
 
-class BasisText:
+class BasisText(object):
     def buildSourceBulletTexts(self):
         sourceBulletTexts = {}
         sourceBulletTexts["dopplerSource"] = "Doppler radar indicated "
