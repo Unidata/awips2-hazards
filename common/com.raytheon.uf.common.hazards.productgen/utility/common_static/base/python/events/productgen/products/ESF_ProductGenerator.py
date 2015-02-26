@@ -9,29 +9,22 @@
     such as water supply forecasts and probabilistic analysis.  
     However, it could be used as a starting point for Focal Points in 
     developing these other types of ESF products.
-
-    
-    SOFTWARE HISTORY
-    Date         Ticket#    Engineer            Description
-    ------------ ---------- ----------- --------------------------
-    July 3, 2013  1290      Tracy.L.Hansen      Initial creation
-    Nov      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents, simplifying product
-    Jan  7, 2014   2367     jsanchez            Replaced ProductProduct with native python objects.
-    @author Tracy.L.Hansen@noaa.gov
-    @version 1.0
 """
-import os, types, copy, sys, json, collections
-import Legacy_ProductGenerator
+import os, types, sys, collections
 from HydroProductParts import HydroProductParts
+import HydroGenerator
+from KeyInfo import KeyInfo
 
-class Product(Legacy_ProductGenerator.Product):
+class Product(HydroGenerator.Product):
     
     def __init__(self):
-        super(Product, self).__init__()       
+        super(Product, self).__init__()  
+        # Used by the VTECEngineWrapper to access the productGeneratorTable
+        self._productGeneratorName = 'ESF_ProductGenerator'
                 
-    def getScriptMetadata(self):
+    def defineScriptMetadata(self):
         metadata = collections.OrderedDict()
-        metadata['author'] = "GSD"
+        metadata['author'] = "GSD/Raytheon"
         metadata['description'] = "Product generator for ESF."
         metadata['version'] = "1.0"
         return metadata
@@ -43,19 +36,17 @@ class Product(Legacy_ProductGenerator.Product):
         return {}
 
     def _initialize(self):
-        # TODO Fix problem in framework which does not re-call the constructor
-        self.initialize()
+        super(Product, self)._initialize()
+        # This is for the VTEC Engine
         self._productCategory = "ESF"
-        self._areaName = "" 
+        self._areaName = '' 
         # Number of hours past issuance time for expireTime
         # If -1, use the end time of the hazard
-        # TODO gather this as part of the Hazard Information Dialog
         self._purgeHours = 8
-        self._ESF_ProductName = "Hydrologic Outlook"
+        self._ESF_ProductName = 'Hydrologic Outlook'
         self._includeAreaNames = False
         self._includeCityNames = False
         self._vtecProduct = False
-        self._hydroProductParts = HydroProductParts()
                 
     def execute(self, eventSet, dialogInputMap):          
         '''
@@ -75,19 +66,11 @@ class Product(Legacy_ProductGenerator.Product):
         
         # Extract information for execution
         self._getVariables(eventSet)
-        if not self._inputHazardEvents:
-            return []
-        # Here is the format of the dictionary that is returned for
-        #  each product generated: 
-        #  [
-        #    {
-        #     "productID": "ESF",
-        #     "productDict": productDict,
-        #     }
-        #   ]
-        productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._inputHazardEvents) 
-        return productDicts, hazardEvents        
-    
+        eventSetAttributes = eventSet.getAttributes()
+        
+        productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._inputHazardEvents, eventSetAttributes)
+
+        return productDicts, hazardEvents
                 
     def _groupSegments(self, segments):
         '''
@@ -108,6 +91,31 @@ class Product(Legacy_ProductGenerator.Product):
         productSegments = productSegmentGroup.productSegments
         productSegmentGroup.setProductParts(self._hydroProductParts._productParts_ESF(productSegments))
     
+    def _prepareSection(self, event, vtecRecord, metaData):
+        self._setProductInformation(vtecRecord, event)
+        attributes = event.getHazardAttributes()
+
+        # Attributes that get skipped. They get added to the dictionary indirectly.
+        noOpAttributes = ('ugcs', 'ugcPortions', 'ugcPartsOfState')
+
+        section = {}
+        for attribute in attributes:
+            # Special case attributes that need additional work before adding to the dictionary
+            if attribute in noOpAttributes:
+                continue
+            else:
+                section[attribute] = attributes.get(attribute, None)
+
+        section['impactedAreas'] = self._prepareImpactedAreas(attributes)
+        section['impactedLocations'] = self._prepareImpactedLocations(event.getGeometry(), [])
+        section['geometry'] = event.getGeometry()
+        section['subType'] = event.getSubType()
+        section['vtecRecord'] = vtecRecord
+        
+        self._cityList(section, event)
+
+        return section
+
     def _narrativeForecastInformation(self, segmentDict, productSegmentGroup, productSegment):  
         default = '''
 |* 
@@ -129,10 +137,9 @@ class Product(Legacy_ProductGenerator.Product):
  A closing statement indicating when additional information will be provided.
 *|
          '''  
-        segmentDict['narrativeForecastInformation'] = self._section.hazardEvent.get('narrativeForecastInformation', default)
+        productDict['narrativeForecastInformation'] = self._section.hazardEvent.get('narrativeForecastInformation', default)
 
     def executeFrom(self, dataList, prevDataList=None):
         if prevDataList is not None:
             dataList = self.correctProduct(dataList, prevDataList, False)
         return dataList
-           
