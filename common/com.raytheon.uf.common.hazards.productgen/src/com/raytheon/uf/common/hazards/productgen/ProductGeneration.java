@@ -63,6 +63,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Oct 03, 2014 4042       Chris.Golden Added ability to get product script file path.
  * Jan 20, 2015 4476       rferrel      Implement shutdown of PythonJobCoordinator.
  * Feb 15, 2015 2271       Dan Schaffer Incur recommender/product generator init costs immediately
+ * Feb 26, 2015 6306       mduff        Pass site id in.
  * </pre>
  * 
  * @author jsanchez
@@ -80,13 +81,14 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
             .getHandler(ProductGeneration.class);
 
     /** Manages ProductScriptExecutor jobs */
-    private final PythonJobCoordinator<ProductScript> coordinator = PythonJobCoordinator
-            .newInstance(new ProductScriptFactory());
+    private PythonJobCoordinator<ProductScript> coordinator;
 
     private final IPathManager pathManager = PathManagerFactory
             .getPathManager();
 
-    public ProductGeneration() {
+    public ProductGeneration(String siteId) {
+        coordinator = PythonJobCoordinator
+                .newInstance(new ProductScriptFactory(siteId));
         if (statusHandler.isPriorityEnabled(Priority.DEBUG)) {
             String c = coordinator.toString();
             statusHandler
@@ -227,4 +229,9 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
         coordinator.shutdown();
     }
 
+    public void setSite(String site) {
+        coordinator.shutdown();
+        coordinator = PythonJobCoordinator
+                .newInstance(new ProductScriptFactory(site));
+    }
 }

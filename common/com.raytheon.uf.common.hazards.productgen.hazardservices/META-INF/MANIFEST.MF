@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Hazardservices
+Bundle-SymbolicName: com.raytheon.uf.common.hazards.productgen.hazardservices
+Bundle-Version: 1.15.0.qualifier
+Bundle-Vendor: RAYTHEON
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7

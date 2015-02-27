@@ -88,6 +88,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
  *                                      info.
  * Feb 16, 2015 5071       Robert.Blum  Changes to reload Recommenders without restarting Cave.
+ * Feb 26, 2015 6306       mduff        Pass site id in to build paths for provided site.
  * </pre>
  * 
  * @author mnash
@@ -105,7 +106,8 @@ public abstract class AbstractRecommenderScriptManager extends
     private static final String RECOMMENDERS_DIRECTORY = "recommenders";
 
     private static final String RECOMMENDERS_LOCALIZATION_DIR = "python"
-            + File.separator + "events" + File.separator + RECOMMENDERS_DIRECTORY;
+            + File.separator + "events" + File.separator
+            + RECOMMENDERS_DIRECTORY;
 
     private static final String RECOMMENDERS_CONFIG_LOCALIZATION_DIR = RECOMMENDERS_LOCALIZATION_DIR
             + File.separator + "config";
@@ -136,8 +138,8 @@ public abstract class AbstractRecommenderScriptManager extends
                 .buildLocalizationDirectory(RECOMMENDERS_DIRECTORY);
         recommenderDir.addFileUpdatedObserver(this);
 
-        String scriptPath = PythonBuildPaths
-                .buildDirectoryPath(RECOMMENDERS_DIRECTORY);
+        String scriptPath = PythonBuildPaths.buildDirectoryPath(
+                RECOMMENDERS_DIRECTORY, null);
 
         jep.eval(INTERFACE + " = RecommenderInterface('" + scriptPath + "', '"
                 + RECOMMENDERS_LOCALIZATION_DIR + "')");
@@ -158,26 +160,6 @@ public abstract class AbstractRecommenderScriptManager extends
         jep.eval("sys.argv = ['RecommenderInterface']");
     }
 
-    private static String constructBaseLocalizationRecommenderPath() {
-        return constructLocalizationPath(LocalizationType.COMMON_STATIC,
-                LocalizationLevel.BASE, RECOMMENDERS_LOCALIZATION_DIR);
-    }
-
-    private static String constructRegionLocalizationRecommenderPath() {
-        return constructLocalizationPath(LocalizationType.COMMON_STATIC,
-                LocalizationLevel.REGION, RECOMMENDERS_LOCALIZATION_DIR);
-    }
-
-    private static String constructSiteLocalizationRecommenderPath() {
-        return constructLocalizationPath(LocalizationType.COMMON_STATIC,
-                LocalizationLevel.SITE, RECOMMENDERS_LOCALIZATION_DIR);
-    }
-
-    private static String constructUserLocalizationRecommenderPath() {
-        return constructLocalizationPath(LocalizationType.COMMON_STATIC,
-                LocalizationLevel.USER, RECOMMENDERS_LOCALIZATION_DIR);
-    }
-
     private static LocalizationFile getLocalizationFile(
             LocalizationType localizationType,
             LocalizationLevel localizationLevel, String fileLocation) {
@@ -186,13 +168,6 @@ public abstract class AbstractRecommenderScriptManager extends
                 localizationType, localizationLevel);
 
         return pathMgr.getLocalizationFile(localizationContext, fileLocation);
-    }
-
-    private static String constructLocalizationPath(
-            LocalizationType localizationType,
-            LocalizationLevel localizationLevel, String fileLocation) {
-        return getLocalizationFile(localizationType, localizationLevel,
-                fileLocation).getFile().getPath();
     }
 
     /**
@@ -215,33 +190,72 @@ public abstract class AbstractRecommenderScriptManager extends
      */
     protected static String buildPythonPath() {
         IPathManager manager = PathManagerFactory.getPathManager();
+
+        List<String> includePathList = new ArrayList<>();
+
         String pythonPath = manager.getFile(recommenderDir.getContext(),
                 "python").getPath();
-        String dataAccessPath = FileUtil.join(pythonPath, "dataaccess");
-        String dataTimePath = FileUtil.join(pythonPath, "time");
+        if (pythonPath != null) {
+            includePathList.add(pythonPath);
+        }
+
         String recommenderConfigPath = recommenderDir.getFile().getPath();
-        String recommenderDirPath = constructBaseLocalizationRecommenderPath();
-        String recommenderSitePath = constructSiteLocalizationRecommenderPath();
-        String recommenderUserPath = constructUserLocalizationRecommenderPath();
+        if (recommenderConfigPath != null) {
+            includePathList.add(recommenderConfigPath);
+        }
+
+        LocalizationLevel[] levels = manager.getAvailableLevels();
+        for (int i = levels.length - 1; i >= 0; i--) {
+            LocalizationLevel level = levels[i];
+            LocalizationContext lc = manager.getContext(
+                    LocalizationType.COMMON_STATIC, level);
+            includePathList.add(manager
+                    .getLocalizationFile(lc, RECOMMENDERS_LOCALIZATION_DIR)
+                    .getFile().getPath());
+        }
+
+        String dataAccessPath = FileUtil.join(pythonPath, "dataaccess");
+        includePathList.add(dataAccessPath);
+
+        String dataTimePath = FileUtil.join(pythonPath, "time");
+        includePathList.add(dataTimePath);
+
         String eventsPath = FileUtil.join(pythonPath, "events");
+        includePathList.add(eventsPath);
+
         String utilitiesPath = FileUtil.join(eventsPath, "utilities");
+        includePathList.add(utilitiesPath);
+
         String gfePath = FileUtil.join(pythonPath, "gfe");
+        includePathList.add(gfePath);
+
         String bridgePath = FileUtil.join(pythonPath, "bridge");
+        includePathList.add(bridgePath);
+
         String trackUtilPath = FileUtil.join(pythonPath, "trackUtilities");
+        includePathList.add(trackUtilPath);
+
         String geoUtilPath = FileUtil.join(pythonPath, "geoUtilities");
+        includePathList.add(geoUtilPath);
+
         String genUtilPath = FileUtil.join(pythonPath, "generalUtilities");
+        includePathList.add(genUtilPath);
+
         String logUtilPath = FileUtil.join(pythonPath, "logUtilities");
+        includePathList.add(logUtilPath);
+
         String localizationUtilitiesPath = FileUtil.join(pythonPath,
                 "localizationUtilities");
-        String dataStoragePath = FileUtil.join(pythonPath, "dataStorage");
-        String textUtilitiesPath = FileUtil.join(pythonPath, "textUtilities");
+        includePathList.add(localizationUtilitiesPath);
 
-        String includePath = PyUtil.buildJepIncludePath(pythonPath,
-                recommenderConfigPath, recommenderUserPath,
-                recommenderSitePath, recommenderDirPath, dataAccessPath,
-                dataTimePath, eventsPath, utilitiesPath, gfePath, bridgePath,
-                trackUtilPath, geoUtilPath, genUtilPath, logUtilPath,
-                localizationUtilitiesPath, dataStoragePath, textUtilitiesPath);
+        String dataStoragePath = FileUtil.join(pythonPath, "dataStorage");
+        includePathList.add(dataStoragePath);
+
+        String textUtilitiesPath = FileUtil.join(pythonPath, "textUtilities");
+        includePathList.add(textUtilitiesPath);
+
+        String includePath = PyUtil.buildJepIncludePath(includePathList
+                .toArray(new String[includePathList.size()]));
         return includePath;
     }
 

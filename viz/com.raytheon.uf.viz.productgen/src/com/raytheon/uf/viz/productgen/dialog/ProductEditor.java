@@ -72,6 +72,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      ICommandInvoker.
  * 01/15/2015   5109       bphillip     Refactored Product Editor
  * Jan 20, 2015 4476       rferrel      Implement shutdown of ProductGeneration.
+ * Feb 26, 2015 6306       mduff        Pass site id to product generation.
  * </pre>
  * 
  * @author jsanchez
@@ -128,8 +129,7 @@ public class ProductEditor extends CaveSWTDialog {
      * Denotes that the products currently displayed in the Product Editor are
      * correctable
      */
-    private boolean isCorrectable;
-
+    private final boolean isCorrectable;
 
     /** The progress bar to display that the formatting is being done currently. */
     private ProgressBar progressBar;
@@ -141,7 +141,7 @@ public class ProductEditor extends CaveSWTDialog {
     private Button dismissButton;
 
     /** ProductGeneration instance used to regenerate products */
-    private ProductGeneration productGeneration = new ProductGeneration();
+    private final ProductGeneration productGeneration;
 
     /**
      * Dialog displayed when the user attempts to close the product editor with
@@ -156,7 +156,7 @@ public class ProductEditor extends CaveSWTDialog {
     private CTabFolder productFolder;
 
     /** Data structure used to manage the data editors */
-    private DataEditorManager editorManager = new DataEditorManager();
+    private final DataEditorManager editorManager = new DataEditorManager();
 
     /**
      * Creates a new ProductEditor on the given shell with the provided
@@ -168,9 +168,11 @@ public class ProductEditor extends CaveSWTDialog {
      *            The generated products to be displayed on this product editor
      */
     public ProductEditor(Shell parentShell,
-            List<GeneratedProductList> generatedProductListStorage) {
+            List<GeneratedProductList> generatedProductListStorage,
+            String siteId) {
         super(parentShell, SWT.RESIZE, CAVE.PERSPECTIVE_INDEPENDENT);
         this.generatedProductListStorage = generatedProductListStorage;
+        this.productGeneration = new ProductGeneration(siteId);
 
         /*
          * If these products are editable, save a copy for future use
@@ -196,6 +198,7 @@ public class ProductEditor extends CaveSWTDialog {
      * @param shell
      *            The shell on which to initialize the components
      */
+    @Override
     protected void initializeComponents(Shell shell) {
 
         initializeShell(shell);
@@ -376,6 +379,7 @@ public class ProductEditor extends CaveSWTDialog {
          * Adds the selection listener to this button
          */
         issueAllButton.addSelectionListener(new SelectionAdapter() {
+            @Override
             public void widgetSelected(SelectionEvent e) {
                 issueAll();
             }
@@ -460,6 +464,7 @@ public class ProductEditor extends CaveSWTDialog {
                                 DISMISS_DIALOG_TITLE, null,
                                 DISMISS_DIALOG_MESSAGE, MessageDialog.WARNING,
                                 buttonLabels, 0) {
+                            @Override
                             protected void buttonPressed(int buttonId) {
                                 setReturnCode(buttonId);
                                 close();
@@ -667,6 +672,7 @@ public class ProductEditor extends CaveSWTDialog {
             selectedEventsModifiedDialog = new MessageDialog(null,
                     REGENERATE_DIALOG_TITLE, null, REGENERATE_DIALOG_MESSAGE,
                     MessageDialog.WARNING, buttonLabels, 0) {
+                @Override
                 protected void buttonPressed(int buttonId) {
                     setReturnCode(buttonId);
                     close();
@@ -713,7 +719,7 @@ public class ProductEditor extends CaveSWTDialog {
         return dismissInvoker;
     }
 
-    private Listener shellCloseListener = new Listener() {
+    private final Listener shellCloseListener = new Listener() {
         @Override
         public void handleEvent(Event event) {
             if (dismissHandler != null) {
@@ -743,7 +749,6 @@ public class ProductEditor extends CaveSWTDialog {
         public void setEnabled(String identifier, boolean enable) {
             throw new UnsupportedOperationException();
         }
-
 
         @Override
         public void setCommandInvocationHandler(

@@ -33,6 +33,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  *                                           when they should be enabled.
  * May 08, 2014 2925       Chris.Golden      Changed to work with MVP framework changes.
  * Jul 28, 2014 3214       jsanchez     Added notifySessionEventsModified method.  
+ * Feb 26, 2015 6306       mduff        Pass site id to product editor.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -48,7 +49,7 @@ public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
     public void initialize();
 
     public boolean showProductEditorDetail(
-            List<GeneratedProductList> generatedProductsList);
+            List<GeneratedProductList> generatedProductsList, String siteId);
 
     /**
      * Close the product editor dialog.

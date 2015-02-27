@@ -45,6 +45,7 @@ import com.raytheon.viz.ui.VizWorkbenchManager;
  * May 08, 2014  2925      Chris.Golden Changed to work with MVP framework changes.
  * Jun 18, 2014  3519      jsanchez         Replaced ProductGenerationDialog with ProductEditor.
  * Jul 09, 2014  3214      jsanchez     Listens if the selected events have changed.
+ * Feb 26, 2015  6306      mduff        Pass site id to product editor.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -103,14 +104,15 @@ public final class ProductEditorView implements
 
     @Override
     public boolean showProductEditorDetail(
-            final List<GeneratedProductList> generatedProductsList) {
+            final List<GeneratedProductList> generatedProductsList,
+            final String siteId) {
         VizApp.runSync(new Runnable() {
             @Override
             public void run() {
 
                 productEditor = new ProductEditor(VizWorkbenchManager
                         .getInstance().getCurrentWindow().getShell(),
-                        generatedProductsList);
+                        generatedProductsList, siteId);
             }
         });
         return true;

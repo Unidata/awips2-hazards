@@ -49,6 +49,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * May 23, 2014 3790       jsanchez     Used DEFAULT_PRODUCT_GENERATION_JOB_COORDINATOR.
  * Nov 05, 2014 4042       Chris.Golden Added new directories to Python include path.
  * Feb 19, 2015 5071       Robert.Blum  Added new directories to include path
+ * Feb 26, 2015 6306       mduff        Pass site to product script.
  * </pre>
  * 
  * @author jsanchez
@@ -91,11 +92,15 @@ public class ProductScriptFactory extends
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductScriptFactory.class);
 
+    /** The site id */
+    private String site;
+
     /**
      * Default Constructor.
      */
-    public ProductScriptFactory() {
+    public ProductScriptFactory(String site) {
         this(ProductScript.DEFAULT_PRODUCT_GENERATION_JOB_COORDINATOR, 1);
+        this.site = site;
     }
 
     /**
@@ -138,7 +143,7 @@ public class ProductScriptFactory extends
             String includePath = PyUtil.buildJepIncludePath(utilityPathList
                     .toArray(new String[0]));
 
-            return new ProductScript(includePath);
+            return new ProductScript(includePath, site);
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
                     "Unable to create product script", e);

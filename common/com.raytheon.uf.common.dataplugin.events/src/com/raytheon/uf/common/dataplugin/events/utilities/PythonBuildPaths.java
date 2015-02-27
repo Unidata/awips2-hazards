@@ -20,6 +20,8 @@
 package com.raytheon.uf.common.dataplugin.events.utilities;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
@@ -49,6 +51,7 @@ import com.raytheon.uf.common.util.FileUtil;
  *                                     in the JEP include path if the directories path was
  *                                     a empty string.
  * Oct 24, 2014 4934      mpduff       Added metaDataPath to includePath.
+ * Feb 26, 2015 6306      mduff        Get available localization levels only.
  * 
  * </pre>
  * 
@@ -68,30 +71,20 @@ public class PythonBuildPaths {
      * 
      * @return the full path to the base, site, and user directories
      */
-    public static String buildDirectoryPath(String directory) {
+    public static String buildDirectoryPath(String directory, String site) {
         IPathManager pathMgr = PathManagerFactory.getPathManager();
-        LocalizationContext baseContext = pathMgr.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-        LocalizationContext regionContext = pathMgr.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.REGION);
-        LocalizationContext siteContext = pathMgr.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.SITE);
-        LocalizationContext userContext = pathMgr.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.USER);
-
+        List<String> pathList = new ArrayList<>();
         String fileLoc = PYTHON_EVENTS_DIRECTORY + directory;
 
-        String userPath = pathMgr.getLocalizationFile(userContext, fileLoc)
-                .getFile().getPath();
-        String sitePath = pathMgr.getLocalizationFile(siteContext, fileLoc)
-                .getFile().getPath();
-        String regionPath = pathMgr.getLocalizationFile(regionContext, fileLoc)
-                .getFile().getPath();
-        String basePath = pathMgr.getLocalizationFile(baseContext, fileLoc)
-                .getFile().getPath();
-
-        return PyUtil.buildJepIncludePath(userPath, sitePath, regionPath,
-                basePath);
+        LocalizationLevel[] levels = pathMgr.getAvailableLevels();
+        for (int i = levels.length - 1; i >= 0; i--) {
+            LocalizationLevel level = levels[i];
+            LocalizationContext lc = pathMgr.getContext(
+                    LocalizationType.COMMON_STATIC, level);
+            pathList.add(pathMgr.getLocalizationFile(lc, fileLoc).getFile()
+                    .getPath());
+        }
+        return PyUtil.buildJepIncludePath(pathList.toArray(new String[0]));
     }
 
     /**

@@ -120,7 +120,8 @@ public class ProductEditorViewForTesting implements IProductEditorView {
 
     @SuppressWarnings("unchecked")
     @Override
-    public boolean showProductEditorDetail(List generatedProductsList) {
+    public boolean showProductEditorDetail(List generatedProductsList,
+            String siteId) {
         this.generatedProductsList = generatedProductsList;
         this.generatedProducts = new GeneratedProductList();
         for (GeneratedProductList productList : this.generatedProductsList) {

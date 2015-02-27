@@ -66,6 +66,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           config manager.
  * Dec 13, 2014 4959       Dan Schaffer      Spatial Display cleanup and other bug fixes
  * Feb 15, 2015 2271       Dan Schaffer      Incur recommender/product generator init costs immediately
+ * Feb 26, 2015 6306       mduff             Pass site id to product editor.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -106,7 +107,7 @@ public class ProductEditorPresenter extends
     }
 
     public final void showProductEditorDetail(
-            List<GeneratedProductList> generatedProductsList) {
+            List<GeneratedProductList> generatedProductsList, String siteId) {
         boolean showProductEditor = true;
         if (generatedProductsList == null) {
             showProductEditor = false;
@@ -119,7 +120,8 @@ public class ProductEditorPresenter extends
             }
         }
         if (showProductEditor) {
-            this.getView().showProductEditorDetail(generatedProductsList);
+            this.getView().showProductEditorDetail(generatedProductsList,
+                    siteId);
             this.bind();
             this.getView().openDialog();
         } else {

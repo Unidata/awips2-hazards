@@ -188,6 +188,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Feb 15, 2015 2271       Dan Schaffer Incur recommender/product generator init costs immediately
+ * Feb 26, 2015 6306       mduff        Pass site id to product generation. *
  * </pre>
  * 
  * @author bsteffen
@@ -276,7 +277,7 @@ public class SessionProductManager implements ISessionProductManager {
         this.configManager = configManager;
         this.eventManager = eventManager;
         this.notificationSender = notificationSender;
-        this.productGen = new ProductGeneration();
+        this.productGen = new ProductGeneration(configManager.getSiteID());
         this.messenger = messenger;
         this.partsOfCounty = new PartsOfGeographicalAreas();
 

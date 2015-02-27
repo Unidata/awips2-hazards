@@ -53,6 +53,13 @@
          unpack="false"/>
 
    <plugin
+         id="com.raytheon.uf.common.hazards.productgen.hazardservices"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
          id="gov.noaa.gsd.common.utilities"
          download-size="0"
          install-size="0"
@@ -61,6 +68,13 @@
 
    <plugin
          id="gov.noaa.gsd.uf.common.dataplugin.hazards"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="gov.noaa.gsd.uf.common.dataplugin.hazards.hazardservices"
          download-size="0"
          install-size="0"
          version="0.0.0"
@@ -89,6 +103,13 @@
 
    <plugin
          id="gov.noaa.gsd.common.hazards.utilities"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="gov.noaa.gsd.common.hazards.utilities.hazardservices"
          download-size="0"
          install-size="0"
          version="0.0.0"

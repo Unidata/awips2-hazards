@@ -67,6 +67,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * 2/12/2015    5071       Robert.Blum  Changes for reloading python files without
  *                                      closing Cave.
  * 2/25/2015    6599       Robert.Blum  Adding fileObserver to TextUtility dir to allowing overrides.
+ * 02/25/2015   6306       mduff        Pass the selected site.
  * </pre>
  * 
  * @author jsanchez
@@ -127,9 +128,9 @@ public class ProductScript extends PythonScriptController {
     /* python/textUtilities directory */
     protected static LocalizationFile textUtilDir;
 
-    private ILocalizationFileObserver formatsDirObserver;
+    private final ILocalizationFileObserver formatsDirObserver;
 
-    private ILocalizationFileObserver textUtilDirObserver;
+    private final ILocalizationFileObserver textUtilDirObserver;
 
     private boolean pendingFormatterUpdates = false;
 
@@ -143,11 +144,12 @@ public class ProductScript extends PythonScriptController {
      *            Hazard Services.
      * @throws JepException
      */
-    protected ProductScript(final String jepIncludePath) throws JepException {
+    protected ProductScript(final String jepIncludePath, String site)
+            throws JepException {
         super(PythonBuildPaths.buildPythonInterfacePath(PRODUCTS_DIRECTORY,
                 PYTHON_INTERFACE), PyUtil.buildJepIncludePath(
-                PythonBuildPaths.buildDirectoryPath(FORMATS_DIRECTORY),
-                PythonBuildPaths.buildDirectoryPath(PRODUCTS_DIRECTORY),
+                PythonBuildPaths.buildDirectoryPath(FORMATS_DIRECTORY, site),
+                PythonBuildPaths.buildDirectoryPath(PRODUCTS_DIRECTORY, site),
                 PythonBuildPaths.buildIncludePath(), jepIncludePath),
                 ProductScript.class.getClassLoader(), PYTHON_CLASS);
 
@@ -168,8 +170,8 @@ public class ProductScript extends PythonScriptController {
         textUtilDirObserver = new TextUtilitiesDirectoryUpdateObserver();
         textUtilDir.addFileUpdatedObserver(textUtilDirObserver);
 
-        String scriptPath = PythonBuildPaths
-                .buildDirectoryPath(PRODUCTS_DIRECTORY);
+        String scriptPath = PythonBuildPaths.buildDirectoryPath(
+                PRODUCTS_DIRECTORY, site);
         jep.eval(INTERFACE + " = " + PYTHON_INTERFACE + "('" + scriptPath
                 + "', '" + PythonBuildPaths.PYTHON_EVENTS_DIRECTORY
                 + PRODUCTS_DIRECTORY + "')");
