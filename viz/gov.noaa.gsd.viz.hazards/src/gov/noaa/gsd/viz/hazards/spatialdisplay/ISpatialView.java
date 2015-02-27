@@ -18,6 +18,7 @@ import java.util.Map;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Interface describing the methods that must be implemented by a class that
@@ -37,7 +38,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Nov 27, 2013   1462     bryon.lawrence    Updated drawEvents to support display
  *                                           of hazard hatched areas.
  * Dec 05, 2014   4124     Chris.Golden      Changed to work with ObservedSettings.
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Dec 13, 2014 4959       Dan Schaffer      Spatial Display cleanup and other bug fixes
+ * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
  * </pre>
  * 
  * @author Chris.Golden
@@ -83,22 +85,13 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
     public void redoTimeMatching();
 
     /**
-     * Set the display's current zoom parameters.
+     * Recenter and rezoom the display to the given location if the display
+     * doesn't already contain the hull
      * 
-     * @param longitude
-     *            Longitude of the zoom center point.
-     * @param latitude
-     *            Latitude of the zoom center point
-     * @param multiplier
-     *            Zoom multiplier.
+     * @param hullCoordinates
+     * @param center
      */
-    public void setDisplayZoomParameters(double longitude, double latitude,
-            double multiplier);
-
-    /**
-     * Recenter and rezoom the display on the currently selected hazard.
-     */
-    public void recenterRezoomDisplay();
+    public void recenterRezoomDisplay(Coordinate[] hull, Coordinate center);
 
     /**
      * Refresh the spatial view.

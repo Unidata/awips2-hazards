@@ -26,6 +26,7 @@ import java.util.Map;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Description: Mock {@link ISpatialView} used for testing.
@@ -38,7 +39,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
  * Oct 22, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
  * Dec 05, 2014 4124       Chris.Golden      Changed to work with ObservedSettings.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
- * 
+ * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -67,15 +68,6 @@ public class SpatialViewForTesting implements ISpatialView {
 
     @Override
     public void redoTimeMatching() {
-    }
-
-    @Override
-    public void setDisplayZoomParameters(double longitude, double latitude,
-            double multiplier) {
-    }
-
-    @Override
-    public void recenterRezoomDisplay() {
     }
 
     @Override
@@ -143,6 +135,19 @@ public class SpatialViewForTesting implements ISpatialView {
     public void drawEvents(Collection events, Map eventOverlapSelectedTime,
             Map forModifyingStormTrack, Map eventEditability,
             boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed) {
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView#recenterRezoomDisplay
+     * (com.vividsolutions.jts.geom.Coordinate[],
+     * com.vividsolutions.jts.geom.Coordinate)
+     */
+    @Override
+    public void recenterRezoomDisplay(Coordinate[] hull, Coordinate center) {
+        throw new UnsupportedOperationException();
     }
 
 }

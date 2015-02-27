@@ -49,6 +49,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.viz.core.AbstractTimeMatcher;
 import com.raytheon.uf.viz.core.IDisplayPane;
+import com.raytheon.uf.viz.core.IExtent;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
@@ -72,6 +73,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
+import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Spatial display view, which manages the spatial display.
@@ -101,6 +103,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Feb 03, 2015    3865    Chris.Cody        Check for valid Active Editor class
  * Feb 24, 2015 6499       Dan Schaffer      Disable drawing of point hazards
  * Feb 25, 2015 6600       Dan Schaffer      Fixed bug in spatial display centering
+ * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
  * </pre>
  * 
  * @author Chris.Golden
@@ -681,41 +684,36 @@ public class SpatialView implements
         }
     }
 
-    /**
-     * TODO Rewrite entire method to be used in all perspectives.
-     */
-    @Override
-    public void setDisplayZoomParameters(double longitude, double latitude,
-            double multiplier) {
+    private void setDisplayZoomParameters(Coordinate[] hull, Coordinate center) {
         String perspectiveID = getCurrentPerspectiveDescriptor().getId();
+        double[] centerAsArray = new double[] { center.x, center.y };
+        AbstractEditor abstractEditor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
 
-        if (!perspectiveID.equals("GFE")) {
-            AbstractEditor abstractEditor = EditorUtil
-                    .getActiveEditorAs(AbstractEditor.class);
-            if (abstractEditor != null) {
-                IDisplayPane pane = abstractEditor.getActiveDisplayPane();
-                IRenderableDisplay display = pane.getRenderableDisplay();
-
-                double[] lonLat = { longitude, latitude };
+        if (abstractEditor != null && !perspectiveID.equals("GFE")) {
+            IDisplayPane pane = abstractEditor.getActiveDisplayPane();
+            IRenderableDisplay display = pane.getRenderableDisplay();
+            if (!hullWithinDisplay(hull, display)) {
+                double zoom = display.getZoom();
                 display.getExtent().reset();
-                display.recenter(lonLat);
-                display.zoom(1.0 / multiplier);
+                display.recenter(centerAsArray);
+                display.zoom(zoom);
             }
         }
+
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView#recenterRezoomDisplay
+     * (double[])
+     */
     @Override
-    public void recenterRezoomDisplay() {
-        // Tell the editor to recenter itself on the selected event.
-        // Retrieve the center lat lon of the selected event.
-        double centerLatLonArray[] = spatialDisplay
-                .getSelectedHazardCenterPoint();
-
-        double[] displayParms = getDisplayZoomParameters();
-
-        if (centerLatLonArray != null) {
-            setDisplayZoomParameters(centerLatLonArray[0],
-                    centerLatLonArray[1], displayParms[2]);
+    public void recenterRezoomDisplay(Coordinate[] hull, Coordinate center) {
+        if (center != null) {
+            setDisplayZoomParameters(hull, center);
         }
     }
 
@@ -795,7 +793,6 @@ public class SpatialView implements
         spatialDisplay.drawEvents(events, eventOverlapSelectedTime,
                 forModifyingStormTrack, eventEditability,
                 toggleAutoHazardChecking, areHatchedAreasDisplayed);
-        recenterRezoomDisplay();
     }
 
     @Override
@@ -1252,21 +1249,19 @@ public class SpatialView implements
 
     // Private Methods
 
-    private double[] getDisplayZoomParameters() {
-        double[] params = new double[3];
-        AbstractEditor abstractEditor = EditorUtil
-                .getActiveEditorAs(AbstractEditor.class);
-        if (abstractEditor != null) {
-            IDisplayPane pane = abstractEditor.getActiveDisplayPane();
-            IRenderableDisplay display = pane.getRenderableDisplay();
-            double[] center = pane.getDescriptor().pixelToWorld(
-                    display.getExtent().getCenter());
-            for (int j = 0; j < center.length; j++) {
-                params[j] = center[j];
+    private boolean hullWithinDisplay(Coordinate[] hull,
+            IRenderableDisplay display) {
+        IExtent extent = display.getExtent();
+        IDescriptor descriptor = display.getDescriptor();
+        for (Coordinate coordinate : hull) {
+            double[] asPixel = descriptor.worldToPixel(new double[] {
+                    coordinate.x, coordinate.y });
+            if (!extent.contains(asPixel)) {
+                return false;
             }
-            params[2] = 1.0 / display.getZoom();
         }
-        return params;
+        return true;
+
     }
 
     /**

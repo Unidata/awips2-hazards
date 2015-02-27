@@ -45,6 +45,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryCollection;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.Point;
 
 /**
  * Spatial presenter, used to mediate between the model and the spatial view.
@@ -72,9 +76,10 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Nov 18, 2014  4124      Chris.Golden      Adapted to new time manager.
  * Dec 05, 2014  4124      Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
- * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
- * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
+ * Dec 13, 2014 4959       Dan Schaffer      Spatial Display cleanup and other bug fixes
+ * Jan  7, 2015 4959       Dan Schaffer      Ability to right click to add/remove UGCs from hazards
+ * Feb 12, 2015 4959       Dan Schaffer      Modify MB3 add/remove UGCs to match Warngen
+ * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
  * </pre>
  * 
  * @author Chris.Golden
@@ -142,6 +147,8 @@ public class SpatialPresenter extends
     public void sessionSelectedEventsModified(
             SessionSelectedEventsModified notification) {
         updateSpatialDisplay();
+        recenterZoom();
+
     }
 
     @Handler
@@ -237,6 +244,28 @@ public class SpatialPresenter extends
                 getModel().isAutoHazardCheckingOn(),
                 getModel().areHatchedAreasDisplayed());
 
+    }
+
+    private void recenterZoom() {
+        ISessionEventManager<ObservedHazardEvent> eventManager = getModel()
+                .getEventManager();
+        List<ObservedHazardEvent> selectedEvents = eventManager
+                .getSelectedEvents();
+        if (!selectedEvents.isEmpty()) {
+            List<Geometry> geometriesOfSelected = new ArrayList<>();
+            GeometryFactory geometryFactory = new GeometryFactory();
+            for (ObservedHazardEvent selectedEvent : selectedEvents) {
+                geometriesOfSelected.add(selectedEvent.getGeometry());
+            }
+            Geometry[] asArray = new Geometry[geometriesOfSelected.size()];
+            GeometryCollection gc = geometryFactory
+                    .createGeometryCollection(geometriesOfSelected
+                            .toArray(asArray));
+            Point center = gc.getCentroid();
+            Coordinate[] hullCoordinates = gc.convexHull().getCoordinates();
+            getView().recenterRezoomDisplay(hullCoordinates,
+                    center.getCoordinate());
+        }
     }
 
     private void updateSelectedEvents(Collection<ObservedHazardEvent> events) {
