@@ -34,7 +34,7 @@ class ProductParts(object):
 
         # Product Dictionary
         #   Contains information for all formats e.g.
-        #   partner XML, CAP, and Legacy text 
+        #   partner HTML, Twitter, and Legacy text 
         '''
         if type(productParts) is types.DictType:
             arguments = productParts.get('arguments')

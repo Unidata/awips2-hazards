@@ -193,9 +193,6 @@ SITE_CFG_ROOT = "python/gfe/"
 
 #################################
 # Product Generation
-XML_FORMAT = "XML"
-LEGACY_FORMAT = "Legacy"
-CAP_FORMAT = "CAP"
 
 #################################
 # Shapely Geometry Constants

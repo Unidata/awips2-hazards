@@ -79,7 +79,7 @@ ProductGeneratorTable = {
             ('WC.A', 'WindChill'),    # WIND CHILL WATCH
             ],
             "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "issueFormatters": ["Legacy"],  
             "reservedNameNotYetImplemented": True,
             },
         "NPW_ProductGenerator" : {
@@ -108,7 +108,7 @@ ProductGeneratorTable = {
             ('AS.O', 'AirStagnation'), # AIR STAGNATION OUTLOOK
             ],
             "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "issueFormatters": ["Legacy"],  
             "reservedNameNotYetImplemented": True,
             },
         "HLS_ProductGenerator" : {
@@ -121,7 +121,7 @@ ProductGeneratorTable = {
             ('TR.W','Tropical'),
             ],
             "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "issueFormatters": ["Legacy"],  
             "reservedNameNotYetImplemented": True,
             },
         "MWS_ProductGenerator" : {
@@ -129,7 +129,7 @@ ProductGeneratorTable = {
             ('MA.S', 'MarineStatement'), # MARINE STATEMENT
             ],
             "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "issueFormatters": ["Legacy"],  
             "reservedNameNotYetImplemented": True,
             },
         "AQA_ProductGenerator" : {
@@ -137,7 +137,7 @@ ProductGeneratorTable = {
             ('AQ.Y', 'AirQual'),      # AIR QUALITY ALERT
             ],
             "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "issueFormatters": ["Legacy"],  
             "reservedNameNotYetImplemented": True,
             },
         "WCN_ProductGenerator" : {
@@ -146,7 +146,7 @@ ProductGeneratorTable = {
             ('SV.A', 'Convective')
             ],
             "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "issueFormatters": ["Legacy"],  
             "reservedNameNotYetImplemented": True,
             },
         "MWW_ProductGenerator" : {
@@ -173,7 +173,7 @@ ProductGeneratorTable = {
             ('UP.A', 'IceAccr'),  # HEAVY FREEZING SPRAY WATCH
             ],
             "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "issueFormatters": ["Legacy"],  
             "reservedNameNotYetImplemented": True,
             },
         "RFW_ProductGenerator" : {
@@ -182,7 +182,7 @@ ProductGeneratorTable = {
             ('FW.A', 'FireWx')
             ],
             "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "issueFormatters": ["Legacy"],  
             "reservedNameNotYetImplemented": True,
             },
         "CFW_ProductGenerator" : {
@@ -199,7 +199,7 @@ ProductGeneratorTable = {
             ('SU.Y', 'HighSurf'),         # HIGH SURF ADVISORY
             ],
             "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "issueFormatters": ["Legacy"],  
             "reservedNameNotYetImplemented": True,
             },
         "TOR_SVR_SVS_ProductGenerator" : {
@@ -208,7 +208,7 @@ ProductGeneratorTable = {
             ('SV.W', 'SvrThunderstorm'), # Svr Thunderstm Warning
             ],
             "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "issueFormatters": ["Legacy"],  
             "reservedNameNotYetImplemented": True,
             },
         "EWW_ProductGenerator" : {
@@ -216,7 +216,7 @@ ProductGeneratorTable = {
             ('EW.W', 'Extreme Wind'),     # Extreme Wind Warning
             ],
             "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "issueFormatters": ["Legacy"],  
             "reservedNameNotYetImplemented": True,
             },
         "SMW_MWS_ProductGenerator" : {
@@ -224,7 +224,7 @@ ProductGeneratorTable = {
             ('MA.W', 'MarineWarning'),     # Marine Warning
             ],
             "previewFormatters": ["Legacy"],
-            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "issueFormatters": ["Legacy"],  
             "reservedNameNotYetImplemented": True,
             }
         }
