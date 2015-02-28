@@ -11,6 +11,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getFloodSeverity(),
                     self.getFloodRecord(),
                     self.getRiseCrestFall(),
+                    self.getRiseCrestFallButton(),
                     self.getHiddenFallLastInterval(),
                     self.getRainAmt(),
                     self.getCTAs("doNotDriveCTA"),

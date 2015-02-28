@@ -29,6 +29,7 @@ import java.util.Set;
  * Aug 20, 2014    4243    Chris.Golden Initial creation.
  * Sep 04, 2014    4560    Chris.Golden Added the set of metadata keys that
  *                                      trigger a refresh of the metadata.
+ * Feb 17, 2015    3847    Chris.Golden Added edit-rise-crest-fall metadata trigger.
  * </pre>
  * 
  * @author Chris.Golden
@@ -45,9 +46,15 @@ public class HazardEventMetadata {
 
     /**
      * Set of metadata keys that are to trigger a metadata reload when any one
-     * of them is changed.
+     * of them is changed or invoked.
      */
     private final Set<String> refreshTriggeringMetadataKeys;
+
+    /**
+     * Set of metadata keys that are to trigger the edit of rise-crest-fall
+     * information when any one of them is changed or invoked.
+     */
+    private final Set<String> editRiseCrestFallTriggeringMetadataKeys;
 
     /**
      * Script file.
@@ -69,7 +76,10 @@ public class HazardEventMetadata {
      *            Megawidget specifier manager.
      * @param refreshTriggeringMetadataKeys
      *            Set of metadata keys that are to trigger a metadata reload
-     *            when any one of them is changed.
+     *            when any one of them is changed or invoked.
+     * @param editRiseCrestFallTriggeringMetadataKeys
+     *            Set of metadata keys that are to trigger the editing of
+     *            rise-crest-fall when any one of them is changed or invoked.
      * @param scriptFile
      *            File holding the script from which the metadata was produced.
      * @param eventModifyingFunctionNamesForIdentifiers
@@ -78,10 +88,13 @@ public class HazardEventMetadata {
      */
     public HazardEventMetadata(
             MegawidgetSpecifierManager megawidgetSpecifierManager,
-            Set<String> refreshTriggeringMetadataKeys, File scriptFile,
+            Set<String> refreshTriggeringMetadataKeys,
+            Set<String> editRiseCrestFallTriggeringMetadataKeys,
+            File scriptFile,
             Map<String, String> eventModifyingFunctionNamesForIdentifiers) {
         this.megawidgetSpecifierManager = megawidgetSpecifierManager;
         this.refreshTriggeringMetadataKeys = refreshTriggeringMetadataKeys;
+        this.editRiseCrestFallTriggeringMetadataKeys = editRiseCrestFallTriggeringMetadataKeys;
         this.scriptFile = scriptFile;
         this.eventModifyingFunctionNamesForIdentifiers = eventModifyingFunctionNamesForIdentifiers;
     }
@@ -98,13 +111,23 @@ public class HazardEventMetadata {
     }
 
     /**
-     * Get the set of metadata keys that, when changed, are to trigger a
-     * metadata reload.
+     * Get the set of metadata keys that, when changed or invoked, are to
+     * trigger a metadata reload.
      * 
      * @return Set of metadata keys.
      */
     public final Set<String> getRefreshTriggeringMetadataKeys() {
         return refreshTriggeringMetadataKeys;
+    }
+
+    /**
+     * Get the set of metadata keys that, when changed or invoked, are to
+     * trigger the editing of rise-crest-fall information.
+     * 
+     * @return Set of metadata keys.
+     */
+    public final Set<String> getEditRiseCrestFallTriggeringMetadataKeys() {
+        return editRiseCrestFallTriggeringMetadataKeys;
     }
 
     /**

@@ -69,6 +69,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Feb 12, 2015 4959      Dan Schaffer  Modify MB3 add/remove UGCs to match Warngen
  * Feb 15, 2015 2271      Dan Schaffer  Incur recommender/product generator init costs immediately
  * Feb 22, 2015 6561      Mike Duff     Removed PERSIST_TIME
+ * Feb 17, 2015 3847      Chris.Golden  Added edit-rise-crest-fall metadata trigger constant.
  * Feb 19, 2015 5071      Robert.Blum   Added HAZARD_CATEGORIES_LOCALIZATION_DIR
  * Feb 23, 2015 3618      Chris.Golden  Added possible sites to settings.
  * </pre>
@@ -605,6 +606,8 @@ public final class HazardConstants {
 
     public static final String METADATA_RELOAD_TRIGGER = "refreshMetadata";
 
+    public static final String METADATA_EDIT_RISE_CREST_FALL = "editRiseCrestFall";
+
     public static final String FILE_PATH_KEY = "filePath";
 
     public static final String EVENT_MODIFIERS_KEY = "eventModifiers";
@@ -1047,5 +1050,7 @@ public final class HazardConstants {
     public static final String PYTHON_LOCALIZATION_EVENTS_DIR = "events";
 
     public static final String PYTHON_UTILITIES_DIR = "utilities";
+
+    public static final int MISSING_VALUE = -9999;
 
 }

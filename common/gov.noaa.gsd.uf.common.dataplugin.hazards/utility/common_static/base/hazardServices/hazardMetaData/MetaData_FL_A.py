@@ -18,6 +18,8 @@ class MetaData(CommonMetaData.MetaData):
                      self.getImmediateCause(),
                      self.getFloodSeverity(),
                      self.getFloodRecord(),
+                     self.getRiseCrestFall(),
+                     self.getRiseCrestFallButton(),
                      self.getCTAs("stayTunedCTA"),    
                      # Preserving CAP defaults for future reference.                
 #                      self.getCAP_Fields([
@@ -37,4 +39,3 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaStayTuned(),
             self.ctaReportFlooding(),
             ]
-

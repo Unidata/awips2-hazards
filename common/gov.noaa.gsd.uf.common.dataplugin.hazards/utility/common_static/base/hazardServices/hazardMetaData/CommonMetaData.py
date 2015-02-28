@@ -206,6 +206,21 @@ class MetaData(object):
                }
            }
    
+    def getRiseCrestFallButton(self):
+        return {
+          "fieldName": "editRiseCrestFallButtonComp",
+          "fieldType": "Composite",
+          "expandHorizontally": False,
+          "fields": [
+                     {
+                      "fieldType": "Button",
+                      "fieldName": "riseCrestFallButton",
+                      "label": " Edit Flood Times... ",
+                      "editRiseCrestFall": True
+                      }
+                     ]
+         }
+
     # Get the hidden field megawidget used to store the last interval that existed
     # between the crest and fallBelow values, if fallBelow has been set to "Until
     # Further Notice". This megawidget is used only within the interdependency

@@ -120,6 +120,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsMo
 import com.raytheon.uf.viz.hazards.sessionmanager.geomaps.GeoMapUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
+import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IRiseCrestFallEditor;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
@@ -248,6 +249,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      or end times of events as time ticks forward when
  *                                      appropriate.
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
+ * Feb 17, 2015 3847       Chris.Golden Added edit-rise-crest-fall metadata trigger.
  * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
  * Feb 24, 2015 6499       Dan Schaffer Only allow add/remove UGCs for pending point hazards
  * Feb 24, 2015 2331       Chris.Golden Added check of any event that is added to the
@@ -400,6 +402,8 @@ public class SessionEventManager implements
     private final Map<String, MegawidgetSpecifierManager> megawidgetSpecifiersForEventIdentifiers = new HashMap<>();
 
     private final Map<String, Set<String>> metadataReloadTriggeringIdentifiersForEventIdentifiers = new HashMap<>();
+
+    private final Map<String, Set<String>> editRiseCrestFallTriggeringIdentifiersForEventIdentifiers = new HashMap<>();
 
     private final Map<String, File> scriptFilesForEventIdentifiers = new HashMap<>();
 
@@ -957,7 +961,8 @@ public class SessionEventManager implements
 
         /*
          * If the command that was invoked is a metadata refresh trigger,
-         * perform the refresh.
+         * perform the refresh; otherwise, if the command is meant to trigger
+         * the editing of rise-crest-fall information, start the edit.
          */
         if (metadataReloadTriggeringIdentifiersForEventIdentifiers
                 .containsKey(event.getEventID())
@@ -965,6 +970,11 @@ public class SessionEventManager implements
                         event.getEventID()).contains(identifier)) {
             updateEventMetadata(event);
             return;
+        } else if (editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
+                .containsKey(event.getEventID())
+                && editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
+                        .get(event.getEventID()).contains(identifier)) {
+            startRiseCrestFallEdit(event);
         }
 
         /*
@@ -1041,6 +1051,9 @@ public class SessionEventManager implements
         metadataReloadTriggeringIdentifiersForEventIdentifiers
                 .put(event.getEventID(),
                         metadata.getRefreshTriggeringMetadataKeys());
+        editRiseCrestFallTriggeringIdentifiersForEventIdentifiers.put(
+                event.getEventID(),
+                metadata.getEditRiseCrestFallTriggeringMetadataKeys());
         Map<String, String> eventModifiers = metadata
                 .getEventModifyingFunctionNamesForIdentifiers();
         if (eventModifiers != null) {
@@ -1096,6 +1109,23 @@ public class SessionEventManager implements
         }
         event.setHazardAttributes(attributes);
         event.setModified(eventModified);
+    }
+
+    /**
+     * Start the edit of rise-crest-fall information for the specified event.
+     * 
+     * @param event
+     *            Event for which to edit the rise-crest-fall information.
+     */
+    private void startRiseCrestFallEdit(ObservedHazardEvent event) {
+        IRiseCrestFallEditor editor = messenger.getRiseCrestFallEditor(event);
+        IHazardEvent evt = editor.getRiseCrestFallEditor(event);
+        
+        if (evt instanceof ObservedHazardEvent) {
+            event = (ObservedHazardEvent) evt;
+        }
+
+        updateEventMetadata(event);
     }
 
     /**
@@ -1232,14 +1262,21 @@ public class SessionEventManager implements
 
         /*
          * If any of the attributes changed are metadata-reload triggers, then
-         * reload the metadata.
+         * reload the metadata; otherwise, if any of them are to trigger the
+         * editing of rise-crest-fall information, reload that.
          */
         Set<String> metadataReloadTriggeringIdentifiers = metadataReloadTriggeringIdentifiersForEventIdentifiers
+                .get(change.getEvent().getEventID());
+        Set<String> editRiseCrestFallTriggeringIdentifiers = editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
                 .get(change.getEvent().getEventID());
         if ((metadataReloadTriggeringIdentifiers != null)
                 && (Sets.intersection(metadataReloadTriggeringIdentifiers,
                         change.getAttributeKeys()).isEmpty() == false)) {
             updateEventMetadata(change.getEvent());
+        } else if ((editRiseCrestFallTriggeringIdentifiers != null)
+                && (Sets.intersection(editRiseCrestFallTriggeringIdentifiers,
+                        change.getAttributeKeys()).isEmpty() == false)) {
+            startRiseCrestFallEdit(change.getEvent());
         }
     }
 
@@ -1755,6 +1792,8 @@ public class SessionEventManager implements
                         (ObservedHazardEvent) event, true);
                 megawidgetSpecifiersForEventIdentifiers.remove(eventIdentifier);
                 metadataReloadTriggeringIdentifiersForEventIdentifiers
+                        .remove(eventIdentifier);
+                editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
                         .remove(eventIdentifier);
                 scriptFilesForEventIdentifiers.remove(eventIdentifier);
                 eventModifyingScriptsForEventIdentifiers

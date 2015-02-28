@@ -13,7 +13,6 @@ class MetaData(CommonMetaData.MetaData):
     _basedOnLookupPE = '{:15s}'.format('YES')
     
     def execute(self, hazardEvent=None, metaDict=None):
-
         self.initialize(hazardEvent, metaDict)
 
         millis = SimulatedTime.getSystemTime().getMillis()
@@ -30,6 +29,7 @@ class MetaData(CommonMetaData.MetaData):
                             self.getFloodSeverity(),
                             self.getFloodRecord(),
                             self.getRiseCrestFall(),
+                            self.getRiseCrestFallButton(),
                             self.getHiddenFallLastInterval()
                             ]
          
@@ -596,8 +596,7 @@ class MetaData(CommonMetaData.MetaData):
             choices.append(entry)
             values.append(id)
         return choices, values
-        
-        
+                                
 # Interdependency script entry point.
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
 

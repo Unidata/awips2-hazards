@@ -9,6 +9,8 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.messenger;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+
 /**
  * Description: Provides access to tools for alerting the user and retrieving
  * yes/no responses from the user. This allows the Session Manager and other
@@ -22,7 +24,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.messenger;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 29, 2013            Bryon.Lawrence      Initial creation
- * 
+ * Feb 28, 2015   3847     mpduff      Add Rise Crest Fall editor
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -56,6 +58,14 @@ public interface IMessenger {
     }
 
     /**
+     * Interface allowing the user to edit rise-crest-fall information for the
+     * specified hazard event graphically.
+     */
+    public interface IRiseCrestFallEditor {
+        public IHazardEvent getRiseCrestFallEditor(IHazardEvent event);
+    }
+
+    /**
      * Returns a question/answer.
      * 
      * @param
@@ -84,4 +94,13 @@ public interface IMessenger {
      */
     public IContinueCanceller getContinueCanceller();
 
+    /**
+     * Returns a rise-crest-fall editor.
+     * 
+     * @return A rise-crest-fall editor. The implementation will allow a
+     *         graphical editor to be displayed for a specified event, and give
+     *         the forecaster the ability to manipulate the rise-crest-fall
+     *         values for that event.
+     */
+    public IRiseCrestFallEditor getRiseCrestFallEditor(IHazardEvent event);
 }

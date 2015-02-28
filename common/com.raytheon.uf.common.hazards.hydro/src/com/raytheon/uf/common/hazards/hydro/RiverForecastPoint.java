@@ -27,6 +27,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Feb 19, 2015  4375      Hansen           Removed getForecastTopRankedTypeSource
  * Feb 24, 2015  2331      Kevin.Manross    Add code to do nothing if insufficient
  *                                          info available.
+ * Feb 28, 2015  3847      mduff       Added moderate and major stage and flow.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -542,6 +543,14 @@ public class RiverForecastPoint {
      */
     private IFloodDAO floodDAO;
 
+    private double moderateFlow;
+
+    private double moderateStage;
+
+    private double majorFlow;
+
+    private double majorStage;
+
     /**
      * Default constructor
      */
@@ -690,6 +699,24 @@ public class RiverForecastPoint {
                     .ordinal()];
         } else {
             statusHandler.info("Missing action flow for " + this.id);
+        }
+
+        // TODO Workaround until this class is redone
+        if (forecastPointInfo[FpInfoFieldEnum.MODERATE_FLOW.ordinal()] != null) {
+            this.moderateFlow = (double) forecastPointInfo[FpInfoFieldEnum.MODERATE_FLOW
+                    .ordinal()];
+        }
+        if (forecastPointInfo[FpInfoFieldEnum.MODERATE_STAGE.ordinal()] != null) {
+            this.moderateStage = (double) forecastPointInfo[FpInfoFieldEnum.MODERATE_STAGE
+                    .ordinal()];
+        }
+        if (forecastPointInfo[FpInfoFieldEnum.MAJOR_FLOW.ordinal()] != null) {
+            this.majorFlow = (double) forecastPointInfo[FpInfoFieldEnum.MAJOR_FLOW
+                    .ordinal()];
+        }
+        if (forecastPointInfo[FpInfoFieldEnum.MAJOR_STAGE.ordinal()] != null) {
+            this.majorStage = (double) forecastPointInfo[FpInfoFieldEnum.MAJOR_STAGE
+                    .ordinal()];
         }
 
         /*
@@ -2992,6 +3019,66 @@ public class RiverForecastPoint {
      */
     public double getFloodFlow() {
         return floodFlow;
+    }
+
+    /**
+     * @return the moderateFlow
+     */
+    public double getModerateFlow() {
+        return moderateFlow;
+    }
+
+    /**
+     * @param moderateFlow
+     *            the moderateFlow to set
+     */
+    public void setModerateFlow(double moderateFlow) {
+        this.moderateFlow = moderateFlow;
+    }
+
+    /**
+     * @return the moderateStage
+     */
+    public double getModerateStage() {
+        return moderateStage;
+    }
+
+    /**
+     * @param moderateStage
+     *            the moderateStage to set
+     */
+    public void setModerateStage(double moderateStage) {
+        this.moderateStage = moderateStage;
+    }
+
+    /**
+     * @return the majorFlow
+     */
+    public double getMajorFlow() {
+        return majorFlow;
+    }
+
+    /**
+     * @param majorFlow
+     *            the majorFlow to set
+     */
+    public void setMajorFlow(double majorFlow) {
+        this.majorFlow = majorFlow;
+    }
+
+    /**
+     * @return the majorStage
+     */
+    public double getMajorStage() {
+        return majorStage;
+    }
+
+    /**
+     * @param majorStage
+     *            the majorStage to set
+     */
+    public void setMajorStage(double majorStage) {
+        this.majorStage = majorStage;
     }
 
 }

@@ -166,6 +166,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      indicating the constraints that a hazard event type
  *                                      puts on start and end time editability.
  * Feb 17, 2015  5071      Robert.Blum  Reverted some changes done under 3790.
+ * Feb 17, 2015  3847      Chris.Golden Added edit-rise-crest-fall metadata trigger.
  * Feb 23, 2015  3618      Chris.Golden Changed settings filter megawidget definitions to
  *                                      use possible sites as backing choices for visible
  *                                      sites, which allows possible sites to be localized
@@ -244,7 +245,8 @@ public class SessionConfigurationManager implements
 
     private static final HazardEventMetadata EMPTY_HAZARD_EVENT_METADATA = new HazardEventMetadata(
             EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
-            Collections.<String> emptySet(), null, null);
+            Collections.<String> emptySet(), Collections.<String> emptySet(),
+            null, null);
 
     private ISessionNotificationSender notificationSender;
 
@@ -629,6 +631,7 @@ public class SessionConfigurationManager implements
             return (eventModifyingFunctionNamesForIdentifiers == null ? EMPTY_HAZARD_EVENT_METADATA
                     : new HazardEventMetadata(
                             EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
+                            Collections.<String> emptySet(),
                             Collections.<String> emptySet(), scriptFile,
                             eventModifyingFunctionNamesForIdentifiers));
         }
@@ -638,11 +641,15 @@ public class SessionConfigurationManager implements
 
         Set<String> refreshTriggeringMetadataKeys = getMegawidgetIdentifiersWithParameter(
                 specifiersList, HazardConstants.METADATA_RELOAD_TRIGGER);
+        Set<String> editRiseCrestFallMetadataKeys = getMegawidgetIdentifiersWithParameter(
+                specifiersList, HazardConstants.METADATA_EDIT_RISE_CREST_FALL);
+
         try {
             return new HazardEventMetadata(new MegawidgetSpecifierManager(
                     specifiersList, IControlSpecifier.class,
                     timeManager.getCurrentTimeProvider(), sideEffectsApplier),
-                    refreshTriggeringMetadataKeys, scriptFile,
+                    refreshTriggeringMetadataKeys,
+                    editRiseCrestFallMetadataKeys, scriptFile,
                     eventModifyingFunctionNamesForIdentifiers);
         } catch (MegawidgetSpecificationException e) {
             statusHandler.error("Could not get hazard metadata for event ID = "
