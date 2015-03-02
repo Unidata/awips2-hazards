@@ -42,6 +42,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                           setting Phen/Sig which is now
  *                                           handled in python (RiverForecastPoints.py)
  * Feb 18, 2014 3961       Kevin.Manross     Modify for single point workflow
+ * Feb 24, 2015 2331       Kevin.Manross     Add code to do nothing if insufficient
+ *                                           info available.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -114,7 +116,6 @@ public class RiverProFloodRecommender {
      */
     private EventSet<IHazardEvent> createHazards(
             Map<String, Object> dialogInputMap) {
-        boolean isWarning = false;
 
         boolean includeNonFloodPoints = Boolean.TRUE.equals(dialogInputMap
                 .get(INCLUDE_NONFLOOD_POINTS));
@@ -318,24 +319,30 @@ public class RiverProFloodRecommender {
                     true);
 
             long latestTime = 0L;
-            for (SHEFObservation fcst : riverForecastPoint
-                    .getForecastHydrograph().getShefHydroDataList()) {
-                if (fcst.getValidTime() > latestTime) {
-                    latestTime = fcst.getValidTime();
+            if (riverForecastPoint.getForecastHydrograph() != null) {
+                if (riverForecastPoint.getForecastHydrograph()
+                        .getShefHydroDataList() != null) {
+                    for (SHEFObservation fcst : riverForecastPoint
+                            .getForecastHydrograph().getShefHydroDataList()) {
+                        if (fcst.getValidTime() > latestTime) {
+                            latestTime = fcst.getValidTime();
+                        }
+                    }
+
+                    long interval = latestTime
+                            - riverHazardEvent.getStartTime().getTime();
+
+                    hazardAttributes
+                            .put(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE,
+                                    interval);
+
+                    interval = latestTime
+                            - riverForecastPoint
+                                    .getMaximumObservedForecastTime().getTime();
+                    hazardAttributes.put("hiddenFallBelowLastInterval",
+                            interval);
                 }
             }
-
-            long interval = latestTime
-                    - riverHazardEvent.getStartTime().getTime();
-
-            hazardAttributes
-                    .put(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE,
-                            interval);
-
-            interval = latestTime
-                    - riverForecastPoint.getMaximumObservedForecastTime()
-                            .getTime();
-            hazardAttributes.put("hiddenFallBelowLastInterval", interval);
         }
 
         // Default to excessive rainfall.

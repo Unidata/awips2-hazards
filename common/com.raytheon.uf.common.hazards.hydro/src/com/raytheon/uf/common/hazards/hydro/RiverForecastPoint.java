@@ -25,6 +25,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Sep 19, 2014   2394     mpduff for nash  interface changes
  * Dec 17, 2014 2394       Ramer/Manross    Updated Interface
  * Feb 19, 2015  4375      Hansen           Removed getForecastTopRankedTypeSource
+ * Feb 24, 2015  2331      Kevin.Manross    Add code to do nothing if insufficient
+ *                                          info available.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -1824,9 +1826,10 @@ public class RiverForecastPoint {
         numobs = numfcst = 0;
 
         /* can't do anything if not enough data */
-
         if ((obs_or_fcst == HydroDataType.OBS_DATA && this.useObsH == 0)
-                || (obs_or_fcst == HydroDataType.FCST_DATA && this.numFcstH == 0)) {
+                || (obs_or_fcst == HydroDataType.FCST_DATA && this.numFcstH == 0)
+                || this.forecastHydrograph == null
+                || this.observedHydrograph == null) {
             return;
         }
 

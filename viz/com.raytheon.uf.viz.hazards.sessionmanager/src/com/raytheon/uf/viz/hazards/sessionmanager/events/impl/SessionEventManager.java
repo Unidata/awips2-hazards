@@ -250,6 +250,9 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
  * Feb 24, 2015 6499       Dan Schaffer Only allow add/remove UGCs for pending point hazards
+ * Feb 24, 2015 2331       Chris.Golden Added check of any event that is added to the
+ *                                      list of events to ensure that it does not have
+ *                                      until further notice set if such is not allowed.
  * </pre>
  * 
  * @author bsteffen
@@ -761,6 +764,7 @@ public class SessionEventManager implements
      */
     @Handler(priority = 1)
     public void hazardAdded(SessionEventAdded change) {
+        ensureEventEndTimeUntilFurtherNoticeAppropriate(change.getEvent(), true);
         if (Boolean.TRUE.equals(change.getEvent().getHazardAttribute(
                 HAZARD_EVENT_SELECTED))) {
             notificationSender
@@ -1389,7 +1393,7 @@ public class SessionEventManager implements
      *            Event to be checked.
      */
     private void ensureEventEndTimeUntilFurtherNoticeAppropriate(
-            IHazardEvent event) {
+            IHazardEvent event, boolean logErrors) {
 
         /*
          * If this event cannot have "until further notice", ensure it is not
@@ -1409,6 +1413,14 @@ public class SessionEventManager implements
                 event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
                 if (untilFurtherNotice.equals(Boolean.TRUE)) {
                     setEventEndTimeForUntilFurtherNotice(event, false);
+                    if (logErrors) {
+                        statusHandler
+                                .error("event "
+                                        + event.getEventID()
+                                        + " found to have \"until further notice\" set, "
+                                        + "which is illegal for events of type "
+                                        + event.getHazardType());
+                    }
                 }
             }
         }
@@ -1790,7 +1802,7 @@ public class SessionEventManager implements
          */
         updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
                 (ObservedHazardEvent) event, false);
-        ensureEventEndTimeUntilFurtherNoticeAppropriate(event);
+        ensureEventEndTimeUntilFurtherNoticeAppropriate(event, false);
         notificationSender.postNotificationAsync(notification);
     }
 
