@@ -31,10 +31,13 @@ ACCUMULATION_INTERVAL = 'accumulationInterval'
 
 #
 # Keys required to access FFMP datasets.
-SITE_KEY = 'koax'
-DATA_KEY = 'koax'
-CWA = 'OAX'
-WFO = 'OAX'
+#The following variables need to be overridden at the site level e.g. 'koax'
+SITE_KEY = ''
+DATA_KEY = ''
+
+#The following variables need to be overridden at the site level e.g. 'OAX'
+CWA = ''
+WFO = ''
 
 #
 #  Time and key constants
