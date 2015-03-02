@@ -340,6 +340,7 @@ class BasisText(object):
         if rainAmt == "rainKnown":
             rainSoFarLowerBound = identifier.get("rainSoFarLowerBound")
             rainSoFarUpperBound = identifier.get("rainSoFarUpperBound")
+            rainLower = "{:2.1f}".format(rainSoFarLowerBound)
             rainUpper = "{:2.1f}".format(rainSoFarUpperBound)
             rainText = " inches of rain have fallen. "
             if rainLower == 0.0 or rainLower == rainUpper:

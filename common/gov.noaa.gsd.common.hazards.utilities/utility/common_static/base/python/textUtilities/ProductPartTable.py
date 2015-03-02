@@ -21,6 +21,7 @@ class ProductPartTable(object):
                 'impactsBullet',
                 'cityList',
                 'emergencyStatement',
+                'callsToAction',
                 'locationsAffected'],
                             
                             'FFW': [
@@ -29,8 +30,8 @@ class ProductPartTable(object):
                 'timeBullet',
                 'basisBullet',
                 'impactsBullet',
-                'cityList',
                 'emergencyStatement',
+                'callsToAction',
                 'locationsAffected']
                 }
     
@@ -40,8 +41,8 @@ class ProductPartTable(object):
                 'timeBullet',
                 'basisBullet',
                 'impactsBullet',
-                'cityList',
                 'emergencyStatement',
+                'callsToAction',
                 'locationsAffected']
 
     

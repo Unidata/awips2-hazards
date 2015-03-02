@@ -60,12 +60,10 @@ class HydroProductParts(object):
         sectionParts = []
         for vtecRecord in vtecRecords:
             section = {
-                'arguments': ((segment, vtecRecords), vtecRecord, {'bulletFormat':'bulletFormat_CR'}),
                 'partsList': sectionPartsList,
                 }
             sectionParts.append(section)
         return {
-                'arguments': (segment, vtecRecords),
                 'partsList': [
                     'setUp_segment',
                     'ugcHeader',
@@ -114,7 +112,6 @@ class HydroProductParts(object):
         easActivationRequested = False
         for vtecRecord in vtecRecords:
             section = {
-                'arguments': ((segment, vtecRecords), vtecRecord, {'bulletFormat':'bulletFormat_CR'}),
                 'partsList': self._sectionPartsList_FFW(),
                 }
             sectionParts.append(section)
@@ -142,7 +139,6 @@ class HydroProductParts(object):
                     # 'pointSections'
                     ]
         return {
-                'arguments': (segment, vtecRecords),
                 'partsList': partsList,
                 }
 
@@ -192,7 +188,6 @@ class HydroProductParts(object):
             # There is only one action / vtec record per segment
             action = vtecRecord.get('act')
             section = {
-                'arguments': ((segment, vtecRecords), vtecRecord, {'bulletFormat':'bulletFormat_CR'}),
                 'partsList': ['setUp_section', 'locationsAffected'],
                 }
             sectionParts.append(section)
@@ -207,7 +202,6 @@ class HydroProductParts(object):
             pointSections = []
             for pointRecord in pointRecords:
                 pointSection = {
-                           'arguments': ((segment, vtecRecords), pointRecord, {'bulletFormat':'bulletFormat_noCR'}),
                            'partsList': self._pointSectionPartsList_FFS(pointRecord),
                            }
                 pointSections.append(pointSection)
@@ -220,7 +214,6 @@ class HydroProductParts(object):
                 ('pointSections', pointSections), # Sections are optional --only if points are included                   
                 ]
         return {
-                'arguments': (segment, vtecRecords),
                 'partsList': [
                     'setUp_segment',
                     'ugcHeader',
@@ -313,7 +306,6 @@ class HydroProductParts(object):
             #This product has a single vtecRecord
             productVtecRecord = vtecRecord
             section = {
-                'arguments': ((segment, vtecRecords), vtecRecord, {'bulletFormat':'bulletFormat_CR'}),
                 'partsList': self._sectionPartsList_FFA_FLW_FLS_area(vtecRecord),
                 }
             sectionParts.append(section)
@@ -366,7 +358,6 @@ class HydroProductParts(object):
         
         partsList.append('endSegment')    
         return {
-                'arguments': ((segment, vtecRecords)),
                 'partsList': partsList,
                 }
 
@@ -377,17 +368,10 @@ class HydroProductParts(object):
         sig = vtecRecord['sig']
         # CAN EXP
         if action in ['CAN', 'EXP']:
-            if pil == 'FLS':
+            if pil in ['FLS', 'FFA']:
                 partsList = [
                     'setUp_section',
                     'attribution',
-                    'endingSynopsis',
-                    ]
-            elif pil == 'FFA':
-                 partsList = [
-                    'setUp_section',
-                    'attribution',
-                    'firstBullet',
                     'endingSynopsis',
                     ]
         # FFA, FLW, or FLS FA.Y NEW OR EXT
@@ -459,12 +443,11 @@ class HydroProductParts(object):
                 ]        
         partsList += [
                 ('segments', segmentParts),
-                #'floodPointTable',         #(for entire product -- optional (Will require changes to generator)
+#                 'floodPointTable',         #(for entire product -- optional
                 'wrapUp_product',
                 ]
 
         return {
-            'arguments': productSegment_tuples,
             'partsList': partsList,
             }
         
@@ -478,13 +461,11 @@ class HydroProductParts(object):
         sectionParts = []
         for vtecRecord in vtecRecords:
             section = {
-                'arguments': ((segment, vtecRecords), vtecRecord, {'bulletFormat':'bulletFormat_noCR'}),
                 'partsList': self._sectionPartsList_FFA_FLW_FLS_point(vtecRecord),
                 }
             sectionParts.append(section)
             
         return {
-                'arguments': (segment, vtecRecords),
                 'partsList': [
                     'setUp_segment',
                     'ugcHeader',

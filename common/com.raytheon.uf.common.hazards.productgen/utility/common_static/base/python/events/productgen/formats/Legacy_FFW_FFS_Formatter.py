@@ -68,51 +68,6 @@ class Format(Legacy_Hydro_Formatter.Format):
         legacyText = self._createTextProduct()
         return [[ProductUtils.wrapLegacy(legacyText)],self._editableParts]
 
-    def _processProductParts(self, productDict, productParts, skipParts=[]):
-        text = ''
-        if type(productParts) is collections.OrderedDict:
-            arguments = productParts.get('arguments')
-            partsList = productParts.get('partsList')
-        else:
-            partsList = productParts
-
-        for part in partsList:
-            valtype = type(part)
-            if valtype is types.StringType:
-                name = part
-            elif valtype is types.TupleType or valtype is types.ListType:
-                name = part[0]
-                infoDicts = part[1]
-
-            if self._printDebugProductParts():
-                if name not in ['segments', 'sections']:
-                    print 'Legacy Part:', name, ': ', 
-
-            partText = ''
-            if name in self.productPartMethodMapping:
-                partText = self.productPartMethodMapping[name](productDict)
-            elif name in ['setUp_product', 'setUp_section']:
-                pass
-            elif name == 'CR':
-                partText = '\n'
-            elif name in ['segments', 'sections']:
-                partText = self.processSubParts(productDict.get(name), infoDicts)
-            else:
-                textStr = self._tpc.getVal(productDict, name)
-                if textStr:
-                    partText = textStr + '\n' 
-
-            if self._printDebugProductParts():
-                if name not in ['segments', 'sections']:
-                    print partText
-
-            if partText is not None:
-                text += partText
-                if part in self._editableProductParts:
-                    self._editableParts[part] = partText
-                    
-        return text
-
     ######################################################
     #  Product Part Methods 
     ######################################################
@@ -129,12 +84,7 @@ class Format(Legacy_Hydro_Formatter.Format):
     ################# Segment Level
 
     ################# Section Level
-    def _attribution(self, segmentDict):
-        return self.attributionFirstBullet.getAttributionText()
-    
-    def _firstBullet(self, segmentDict):
-        return '* '+self.attributionFirstBullet.getFirstBulletText()
-                
+
     def _timeBullet(self, segmentDict):
         bulletText = super(Format, self)._timeBullet(segmentDict)
         return bulletText + '\n'
@@ -158,7 +108,7 @@ class Format(Legacy_Hydro_Formatter.Format):
         # Create basis statement
         eventTime = vtecRecord.get('startTime')
         eventTime = self._tpc.getFormattedTime(eventTime, '%I%M %p %Z ', stripLeading=True, timeZones=self.timezones)
-        bulletText += 'At ' + eventTime
+        bulletText += 'At ' + eventTime.rstrip()
         bulletText += basis
         return bulletText + '\n\n'
 

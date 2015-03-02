@@ -443,8 +443,8 @@ class MetaData(object):
         return  {"identifier":"addtlRain",
                  "displayString": "Additional rainfall", 
                  "productString": 
-                    '''Additional rainfall amounts of#additionalRainLowerBound# to#additionalRainUpperBound# inches are possible in the
-                       warned area.''',
+                    '''Additional rainfall amounts of #additionalRainLowerBound# to #additionalRainUpperBound# inches are possible in the
+                    warned area.''',
                  "detailFields": [
                             {
                             "fieldType": "Label",

@@ -28,13 +28,6 @@ class Format(Legacy_Base_Formatter.Format):
         super(Format, self).initialize()
 
     @abstractmethod
-    def _processProductParts(self, eventSet):
-        '''
-        Must be overridden by the Product Fromatter
-        '''
-        pass
-
-    @abstractmethod
     def execute(self, eventSet, dialogInputMap):
         '''
         Must be overridden by the Product Formatter
@@ -173,7 +166,25 @@ class Format(Legacy_Base_Formatter.Format):
         return 'Flood point headline' + '\n'
 
     def _floodPointTable(self, dataDictionary):
-        
+        floodPointDataList = None
+        if dataDictionary.get('floodPointTable', None):
+            # Dictionary has floodPointTable so this is a RVS
+            floodPointDataList = dataDictionary.get('floodPointTable', None)
+        elif dataDictionary.get('segments', None):
+            # Non RVS Product Level Table
+            floodPointDataList = []
+            for segment in dataDictionary.get('segments'):
+                for section in segment.get('sections', []):
+                    floodPointDataList.append(section)
+        elif dataDictionary.get('sections', None):
+            # Non RVS Segment Level Table
+            floodPointDataList = []
+            for section in dataDictionary.get('sections'):
+                floodPointDataList.append(section)
+        else:
+            # Non RVS Section Level Table
+            floodPointDataList = [dataDictionary]
+
         millis = SimulatedTime.getSystemTime().getMillis() 
         currentTime = datetime.datetime.fromtimestamp(millis / 1000)
         rfp = RiverForecastPoints.RiverForecastPoints(currentTime)   
@@ -184,57 +195,13 @@ class Format(Legacy_Base_Formatter.Format):
         columns.append(Column('forecastStage_next3days', self._issueTime, width=20, labelLine1='Forecast', labelAlign1='^'))
 
         floodPointTableText = ''
-        
-        floodPointDataList = dataDictionary.get('floodPointTable', None)
-        if (floodPointDataList is None):
-            segments = dataDictionary.get('segments', None)
-            if (segments is not None):
-                floodPointDataList = segments.get('floodPointTable', None)
-        
         if (floodPointDataList is not None):
             floodPointTable = FloodPointTable(floodPointDataList, columns, millis, self.timezones, rfp)
             floodPointTableText = floodPointTable.makeTable()
-        
+
         return(floodPointTableText)
 
     ###################### Utility methods
-
-    def getAreaPhrase(self, segmentDict):
-        if segmentDict.get('geoType') == 'area':
-            immediateCause = segmentDict.get('immediateCause')
-            areaPhrase  = self.getAreaPhraseBullet(segmentDict)
-            ugcList = []
-            for area in segmentDict['impactedAreas']:
-                ugcList.append(area['ugc'])
-            ugcPhrase = self._tpc.getAreaPhrase(ugcList)
-
-            if immediateCause in ['DM', 'DR', 'GO', 'IJ','RS', 'SM']:
-                hydrologicCause = segmentDict.get('hydrologicCause')
-                riverName = None
-                if immediateCause == 'DM' and hydrologicCause in ['dam', 'siteImminent', 'siteFailed']:
-                    damOrLeveeName = segmentDict.get('damOrLeveeName', '')
-                    if damOrLeveeName:
-                        damInfo = self._damInfo().get(damOrLeveeName)
-                        if damInfo:
-                            riverName = damInfo.get('riverName')
-                    if not riverName or not damOrLeveeName:
-                        return areaPhrase
-                    else:
-                        return 'The '+riverName+' below '+damOrLeveeName+ ' in...\n' + areaPhrase
-                else:
-                    typeOfFlooding = self.typeOfFloodingMapping(immediateCause)
-                    return typeOfFlooding + ' in...\n' + areaPhrase
-            return areaPhrase
-        else:
-            #  <River> <Proximity> <IdName> 
-            riverName = segmentDict.get('riverName_GroupName')
-            proximity = segmentDict.get('proximity')
-            # TODO Occasionally proximity comes back as None.
-            # What should we make the default in that case?
-            if proximity is None:
-                proximity = 'near'
-            riverPointName = segmentDict.get('riverPointName')
-            return  'the '+riverName + ' '+ proximity + ' ' + riverPointName
 
     def typeOfFloodingMapping(self, immediateCuase):
         mapping = {
@@ -249,22 +216,3 @@ class Format(Legacy_Base_Formatter.Format):
             return mapping[immediateCuase]
         else:
             return ''
-
-    def immediateCauseMapping(self, immediateCauseCode):
-        immediateCauseDict = {"ER":"excessive rain",
-                              "SM":"snowmelt",
-                              "RS":"rain and snowmelt", 
-                              "DM":"a dam or levee failure",
-                              "DR":"a dam floodgate release",
-                              "GO":"a glacier-dammed lake outburst",
-                              "IJ":"an ice jam", 
-                              "IC":"rain and/or snow melt and/or ice jam",
-                              "FS":"upstream flooding plus storm surge", 
-                              "FT":"upstream flooding plus tidal effects",
-                              "ET":"elevated upstream flow plus tidal effects",
-                              "WT":"wind and/or tidal effects",
-                              "OT":"other effects",
-                              "MC":"multiple causes",
-                              "UU":"Unknown" }
-        immediateCauseText = immediateCauseDict[immediateCauseCode]
-        return immediateCauseText

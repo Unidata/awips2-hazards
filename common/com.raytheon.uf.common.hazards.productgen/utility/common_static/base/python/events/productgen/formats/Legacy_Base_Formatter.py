@@ -52,12 +52,50 @@ class Format(FormatTemplate.Formatter):
         # IF True will print the product parts and associated text during execution
         return False
 
-    @abstractmethod
     def _processProductParts(self, productDict, productParts, skipParts=[]):
-        '''
-        Must be overridden by the Product Formatter
-        '''
-        pass
+        text = ''
+        if type(productParts) is collections.OrderedDict:
+            partsList = productParts.get('partsList')
+        else:
+            partsList = productParts
+        
+        for part in partsList:
+            valtype = type(part)
+            if valtype is types.StringType:
+                name = part
+            elif valtype is types.TupleType or valtype is types.ListType:
+                name = part[0]
+                infoDicts = part[1]
+
+            if self._printDebugProductParts():
+                if name not in ['segments', 'sections']:
+                    print 'Legacy Part:', name, ': ', 
+
+            partText = ''
+            if name in self.productPartMethodMapping:
+                partText = self.productPartMethodMapping[name](productDict)
+            elif name in ['setUp_product', 'setUp_segment', 'setUp_section']:
+                pass
+            elif name == 'endSegment':
+                partText = '\n$$\n\n' 
+            elif name == 'CR':
+                partText = '\n'
+            elif name in ['segments', 'sections']:
+                partText = self.processSubParts(productDict.get(name), infoDicts)
+            else:
+                textStr = self._tpc.getVal(productDict, name)
+                if textStr:
+                    partText = textStr + '\n' 
+
+            if self._printDebugProductParts():
+                if name not in ['segments', 'sections']:
+                    print partText
+
+            if partText is not None:
+                text += partText
+                if part in self._editableProductParts:
+                    self._editableParts[part] = partText
+        return text
 
     @abstractmethod
     def execute(self, eventSet, dialogInputMap):
@@ -72,6 +110,10 @@ class Format(FormatTemplate.Formatter):
         if segments is not None:
             for segment in segments:
                 self.timezones += segment.get('timeZones')
+        # Remove duplicate timezones by converting to set
+        self.timezones = set(self.timezones)
+        # Return timezones back to a list
+        self.timezones = list(self.timezones)
 
         # Build the text product based on the productParts
         text = ''
@@ -442,8 +484,9 @@ class Format(FormatTemplate.Formatter):
 
     def _basisAndImpactsStatement_segmentLevel(self, segmentDict):
         sectionDict = segmentDict.get('sections', {})[0]
-        statement = sectionDict.get('basisAndImpactsStatement_segmentLevel', 
-                                    '|* Current hydrometeorological situation and expected impacts *| \n')
+        statement = sectionDict.get('basisAndImpactsStatement_segmentLevel', '')
+        if statement == '':
+            statement = '|* Current hydrometeorological situation and expected impacts *|'
         return statement + '\n\n'
 
     def _endSegment(self, segmentDict):
@@ -453,9 +496,9 @@ class Format(FormatTemplate.Formatter):
 
     ###################### Section Level
 
-    def _vtecRecords(self, segmentDict):
+    def _vtecRecords(self, sectionDict):
         vtecString = ''
-        vtecRecords = segmentDict.get('vtecRecords')
+        vtecRecords = sectionDict.get('vtecRecords')
         for vtecRecord in vtecRecords:
             vtecString += vtecRecord['vtecstr'] + '\n'
             if 'hvtecstr' in vtecRecord:
@@ -463,11 +506,27 @@ class Format(FormatTemplate.Formatter):
                     vtecString += vtecRecord['hvtecstr'] + '\n'
         return vtecString
 
-    def _timeBullet(self, segmentDict, roundMinutes=15):
-        endTime = segmentDict.get('endTime')
+    def _attribution(self, sectionDict):
+        return self.attributionFirstBullet.getAttributionText()
+
+    def _attribution_point(self, sectionDict):
+        return self.attributionFirstBullet.getAttributionText()
+
+    def _firstBullet(self, sectionDict):
+        return '* '+ self.attributionFirstBullet.getFirstBulletText()
+
+    def _firstBullet_point(self, sectionDict):
+        firstBullet = ''
+        if sectionDict.get('vtecRecord').get('act') == 'NEW':
+            firstBullet += '* '
+        firstBullet += self.attributionFirstBullet.getFirstBulletText()
+        return firstBullet
+
+    def _timeBullet(self, sectionDict, roundMinutes=15):
+        endTime = sectionDict.get('endTime')
         expireTime = self.round(endTime, roundMinutes)
         text = '* '
-        if (self._runMode == 'Practice' and segmentDict.get('geoType') != 'point'):
+        if (self._runMode == 'Practice' and sectionDict.get('geoType') != 'point'):
             text += "This is a test message.  "
 
         text += 'Until '
@@ -481,40 +540,45 @@ class Format(FormatTemplate.Formatter):
 
         return text + '\n'
 
-    def _emergencyStatement(self, segmentDict):
-        includeChoices = segmentDict.get('include')
+    def _emergencyStatement(self, sectionDict):
+        includeChoices = sectionDict.get('include')
         if includeChoices and 'ffwEmergency' in includeChoices:
-            return '  This is a Flash Flood Emergency for ' + segmentDict.get('includeEmergencyLocation') + '\n\n'
+            return '  This is a Flash Flood Emergency for ' + sectionDict.get('includeEmergencyLocation') + '.\n\n'
         else:
             return ''
 
-    def _impactsBullet(self, segmentDict):
+    def _impactsBullet(self, sectionDict):
         bulletText = '* '
         if (self._runMode == 'Practice'):
             bulletText += "This is a test message.  "
 
-        impacts = segmentDict.get('impacts')
+        impacts = sectionDict.get('impacts')
         if not impacts:
             impacts = self._tpc.frame('(Optional) Potential impacts of flooding')
             
         bulletText += impacts + '\n'
         return bulletText + '\n'
 
-    def _basisAndImpactsStatement(self, segmentDict):
+    def _basisAndImpactsStatement(self, sectionDict):
         #TODO Warngen seems to just have the basis here. Does impacts
         # still need to be added?
-        bulletText = segmentDict.get('basisAndImpactsStatement',
+        bulletText = sectionDict.get('basisAndImpactsStatement',
                             '|* Current hydrometeorological situation and expected impacts *|')
         bulletText += '\n'
 
         # Add any additional comments here, listOfDrainages, floodMoving, etc.
-        additionalCommentsText = self.createAdditionalComments(segmentDict)
+        additionalCommentsText = self.createAdditionalComments(sectionDict)
         if additionalCommentsText:
             bulletText += '\n' + additionalCommentsText
         return bulletText
 
     def _locationsAffected(self, sectionDict):
-        heading = '* '
+        vtecRecord = sectionDict.get('vtecRecord', {})
+        action = vtecRecord.get('act', None)
+        if action in ['NEW', 'EXT']:
+            heading = '* '
+        else:
+            heading = ''
         locationsAffected = ''
 
         if (self._runMode == 'Practice'):
@@ -547,7 +611,6 @@ class Format(FormatTemplate.Formatter):
         locationsAffected += self.createAdditionalComments(sectionDict)
 
         if not locationsAffected:
-            vtecRecord = sectionDict.get('vtecRecord', None)
             phen = vtecRecord.get("phen")
             sig = vtecRecord.get("sig")
             geoType = sectionDict.get('geoType')
@@ -669,43 +732,6 @@ class Format(FormatTemplate.Formatter):
               breakStrings=[' ', '-', '...'])
         return overview + locationPhrase + '\n\n'
 
-    def getAreaPhraseBullet(self, productDict, bulletFormat=True):
-        ugcList = []
-        ugcPortions = {}
-        ugcPartsOfState = {}
-
-        for area in productDict.get('impactedAreas'):
-            ugcList.append(area.get('ugc'))
-            if 'portions' in area:
-                ugcPortions[area.get('ugc')] = area.get('portions')
-            if 'partsOfState' in area:
-                ugcPartsOfState[area.get('ugc')] = area.get('partsOfState')
-
-        # These need to be ordered by area of state.
-        orderedUgcs = []
-        for ugc in ugcList :
-            orderedUgcs.append(ugc[:2]+ugcPartsOfState.get(ugc, "")+"|"+ugc)
-        orderedUgcs.sort()
-
-        areaPhrase = ''
-        for ougc in orderedUgcs :
-            ugc = ougc.split("|")[1]
-            part = ugcPortions.get(ugc, "")
-            if part == "" :
-                textLine = "  "
-            else :
-                textLine = "  " + part + " "
-            textLine += self._tpc.getInformationForUGC(ugc)+" "
-            textLine += self._tpc.getInformationForUGC(ugc, "typeSingular")+" in "
-            part = ugcPartsOfState.get(ugc, "")
-            if part == "" :
-                textLine += self._tpc.getInformationForUGC(ugc, "fullStateName")+"...\n"
-            else :
-                textLine += part+" "+self._tpc.getInformationForUGC(ugc, "fullStateName")+"...\n"
-            areaPhrase += textLine
-
-        return areaPhrase
-
     def createAdditionalComments(self, segmentDict):
         additionalComments = ''
         elements = KeyInfo.getElements('additionalComments', segmentDict)
@@ -734,21 +760,6 @@ class Format(FormatTemplate.Formatter):
             tm += datetime.timedelta(minutes=roundMinute)
         return tm
 
-    def createAreaPhrase(self, sectionDict):
-        vtecRecord = sectionDict.get('vtecRecord')
-        phen = vtecRecord.get('phen')
-        sig = vtecRecord.get('sig')
-        action = vtecRecord.get('act')
-        geoType = sectionDict.get('geoType')
-
-        if phen in ["FF", "FA", "FL" ] and \
-           action in [ "NEW", "EXA", "EXT", "EXB" ] and \
-           geoType == 'area' and sig != "A" :
-            areaPhrase = self.getAreaPhraseBullet(sectionDict)
-        else :
-            areaPhrase = self.getAreaPhrase(sectionDict)
-        return areaPhrase
-        
     def flush(self):
         ''' Flush the print buffer '''
         os.sys.__stdout__.flush()

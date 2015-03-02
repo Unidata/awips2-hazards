@@ -150,17 +150,17 @@ class AttributionFirstBulletText(object):
     
     def attribution_EXT(self):
         if self.geoType == 'area': # FFW_FFS, FLW_FLS area, FFA area:
-            attribution = nwsPhrase + 'extended the'
+            attribution = self.nwsPhrase + 'extended the'
         else: # point
             attribution = 'The ' + self.hazardName + ' is now in effect ' 
         return attribution
     
     def attribution_CON(self):
-        attribution = '...The ' + self.hazardName + ' remains in effect '        
+        attribution = '...The ' + self.hazardName + ' remains in effect '
         return attribution
        
     def attribution_ROU(self):
-        attribution = nwsPhrase + 'released '
+        attribution = self.nwsPhrase + 'released '
         return attribution
             
     # First Bullet        
@@ -184,11 +184,12 @@ class AttributionFirstBulletText(object):
         elif self.action == 'ROU':
             firstBullet = self.firstBullet_ROU()
         
-        if self.testMode:
+        if self.testMode and self.geoType == 'area':
             prefix = 'This is a test message.  '
+            firstBullet += '\n'
         else:
             prefix = ''
-        return prefix + firstBullet + '\n\n'
+        return prefix + firstBullet + '\n'
     
     def firstBullet_CAN(self):
         if self.geoType == 'area':
@@ -214,7 +215,7 @@ class AttributionFirstBulletText(object):
             firstBullet = self.hazardName + ' for\n'
         firstBullet += self.qualifiers()                                    
         firstBullet += self.areaPhrase
-        return firstBullet + '\n'
+        return firstBullet
 
     def firstBullet_EXB(self):
         firstBullet = self.hazardName + ' to include'
@@ -280,7 +281,7 @@ class AttributionFirstBulletText(object):
             elif self.subType == 'BurnScar' and self.burnScarName:
                     qualifiers += self.burnScarName + ' in ' 
             elif self.typeOfFlooding:
-                qualifiers +=  self.typeOfFlooding + ' in...'
+                qualifiers += '\n' + self.typeOfFlooding + ' in...'
                                 
         elif self.phenSig == 'FA.Y' and self.action not in ['CAN', 'EXP']:
             if self.immediateCause in ['ER', 'IC']:
@@ -324,12 +325,12 @@ class AttributionFirstBulletText(object):
             textLine += self.tpc.getInformationForUGC(ugc, "typeSingular") + " in "
             part = self.ugcPartsOfState.get(ugc, "")
             if part == "" :
-                textLine += self.tpc.getInformationForUGC(ugc, "fullStateName") + "\n"
+                textLine += self.tpc.getInformationForUGC(ugc, "fullStateName") + "...\n"
             else :
-                textLine += part + " " + self.tpc.getInformationForUGC(ugc, "fullStateName") + "\n"
+                textLine += part + " " + self.tpc.getInformationForUGC(ugc, "fullStateName") + "...\n"
             areaPhrase += textLine
 
-        return areaPhrase
+        return areaPhrase.rstrip()
            
     def getAreaPhrase(self, sectionDict):
         '''
@@ -350,7 +351,7 @@ class AttributionFirstBulletText(object):
             # TODO fix rfp to never return None or decide what the below default value should be
             if not proximity:
                 proximity = 'near'
-            return  '\n the ' + sectionDict.get('riverName_GroupName', '') + ' ' + proximity + ' ' + sectionDict.get('riverPointName', '')  
+            return  '  the ' + sectionDict.get('riverName_GroupName', '') + ' ' + proximity + ' ' + sectionDict.get('riverPointName', '') + '.'
 
 
     # The following tables are temporarily here until we determine the best central place to keep them.        
