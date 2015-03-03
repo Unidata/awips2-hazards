@@ -95,6 +95,9 @@ class Product(HydroGenerator.Product):
         self._setProductInformation(vtecRecord, event)
         attributes = event.getHazardAttributes()
 
+        # This creates a list of ints for the eventIDs and also formats the UGCs correctly.
+        eventIDs, ugcList = self.parameterSetupForKeyInfo(list(vtecRecord.get('eventID', None)), attributes.get('ugcs', None))
+
         # Attributes that get skipped. They get added to the dictionary indirectly.
         noOpAttributes = ('ugcs', 'ugcPortions', 'ugcPartsOfState')
 
@@ -107,12 +110,12 @@ class Product(HydroGenerator.Product):
                 section[attribute] = attributes.get(attribute, None)
 
         section['impactedAreas'] = self._prepareImpactedAreas(attributes)
-        section['impactedLocations'] = self._prepareImpactedLocations(event.getGeometry(), [])
+        impactedLocationsKey = KeyInfo('impactedLocations', self._productCategory, self._productID, eventIDs, ugcList,True,label='Impacted Locations')
+        impactedLocationsValue = self._prepareImpactedLocations(event.getGeometry())
+        section[impactedLocationsKey] = impactedLocationsValue
         section['geometry'] = event.getGeometry()
         section['subType'] = event.getSubType()
         section['vtecRecord'] = vtecRecord
-        
-        self._cityList(section, event)
 
         return section
 

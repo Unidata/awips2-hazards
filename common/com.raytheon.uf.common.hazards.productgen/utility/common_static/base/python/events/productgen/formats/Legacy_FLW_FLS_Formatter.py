@@ -85,6 +85,12 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     ################# Section Level
 
+    def _timeBullet(self, segmentDict):
+        timeBullet = super(Format, self)._timeBullet(segmentDict)
+        if segmentDict.get('geoType', '') == 'area':
+            timeBullet+= '\n'
+        return timeBullet
+
     def _basisBullet(self, sectionDict):
         vtecRecord = sectionDict.get('vtecRecord')
         act = vtecRecord.get('act')
