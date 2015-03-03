@@ -112,14 +112,16 @@ class Product(Legacy_Base_Generator.Product):
         return impacts
 
     def _parseImpactKey(self, key):
-       parts = key.rsplit('_')
-       if len(parts) > 1:
-           impactValue = parts[1]
-           height = impactValue.rsplit('-')[0]
-       else:
-           impactValue = ''
-           height = ''
-       return height, impactValue
+        parts = key.rsplit('_')
+        if len(parts) > 1:
+            impactValue = parts[1]
+            height = impactValue.rsplit('-')[0]
+            # Round height to 1 decimal point - result is a string
+            height = format(float(height), '.1f')
+        else:
+            impactValue = ''
+            height = ''
+        return height, impactValue
 
     def hydrologicCauseMapping(self, hydrologicCause):
         mapping = {

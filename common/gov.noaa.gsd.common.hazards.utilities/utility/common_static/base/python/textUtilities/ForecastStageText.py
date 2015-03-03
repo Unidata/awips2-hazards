@@ -14,6 +14,7 @@
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types
+import RiverForecastPoints
 
 class Empty:
     pass
@@ -152,7 +153,12 @@ class ForecastStageText(object):
         elif self.trend == 'rise' and section.forecastCrestStage and self._crestToMaximum == 'equal':
             self.finalStageFlow='.'
         elif self.trend == 'fall':
-            self.finalStageFlow=' to '+`section.specValue`+' '+section.stageFlowUnits+' at '+section.specTime+'.'
+            self.finalStageFlow = ''
+            if section.specValue != RiverForecastPoints.Missing_Value_Constant:
+                self.finalStageFlow = ' to '+`section.specValue`+' '+section.stageFlowUnits
+                if section.specTime != RiverForecastPoints.Missing_Value_Constant:
+                    self.finalStageFlow += ' at '+section.specTime
+            self.finalStageFlow += '.'
         else: # steady
             if section.maximumForecastStage >= section.floodStage:        
                 self.finalStageFlow=' above flood stage at '+`section.maximumForecastStage`+' '+section.stageFlowUnits+'.'
