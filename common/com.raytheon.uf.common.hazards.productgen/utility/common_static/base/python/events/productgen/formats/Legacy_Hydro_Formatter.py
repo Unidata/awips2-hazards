@@ -173,40 +173,42 @@ class Format(Legacy_Base_Formatter.Format):
         return 'Flood point headline' + '\n'
 
     def _floodPointTable(self, dataDictionary):
-        floodPointDataList = None
-        if dataDictionary.get('floodPointTable', None):
-            # Dictionary has floodPointTable so this is a RVS
-            floodPointDataList = dataDictionary.get('floodPointTable', None)
-        elif dataDictionary.get('segments', None):
-            # Non RVS Product Level Table
-            floodPointDataList = []
-            for segment in dataDictionary.get('segments'):
-                for section in segment.get('sections', []):
-                    floodPointDataList.append(section)
-        elif dataDictionary.get('sections', None):
-            # Non RVS Segment Level Table
-            floodPointDataList = []
-            for section in dataDictionary.get('sections'):
-                floodPointDataList.append(section)
-        else:
-            # Non RVS Section Level Table
-            floodPointDataList = [dataDictionary]
+#         floodPointDataList = None
+#         if dataDictionary.get('floodPointTable', None):
+#             # Dictionary has floodPointTable so this is a RVS
+#             floodPointDataList = dataDictionary.get('floodPointTable', None)
+#         elif dataDictionary.get('segments', None):
+#             # Non RVS Product Level Table
+#             floodPointDataList = []
+#             for segment in dataDictionary.get('segments'):
+#                 for section in segment.get('sections', []):
+#                     floodPointDataList.append(section)
+#         elif dataDictionary.get('sections', None):
+#             # Non RVS Segment Level Table
+#             floodPointDataList = []
+#             for section in dataDictionary.get('sections'):
+#                 floodPointDataList.append(section)
+#         else:
+#             # Non RVS Section Level Table
+#             floodPointDataList = [dataDictionary]
+# 
+#         millis = SimulatedTime.getSystemTime().getMillis() 
+#         currentTime = datetime.datetime.fromtimestamp(millis / 1000)
+#         rfp = RiverForecastPoints.RiverForecastPoints(currentTime)   
+# 
+#         columns = []
+#         columns.append(Column('floodStage', width=6, align='<', labelLine1='Fld', labelAlign1='<', labelLine2='Stg', labelAlign2='<'))
+#         columns.append(Column('observedStage', self._issueTime, width=20, align='<',labelLine1='Observed', labelAlign1='^', labelLine2='Stg    Day    Time', labelAlign2='<'))
+#         columns.append(Column('forecastStage_next3days', self._issueTime, width=20, labelLine1='Forecast', labelAlign1='^'))
+# 
+#         floodPointTableText = ''
+#         if (floodPointDataList is not None):
+#             floodPointTable = FloodPointTable(floodPointDataList, columns, millis, self.timezones, rfp)
+#             floodPointTableText = floodPointTable.makeTable()
+# 
+#         return(floodPointTableText)
 
-        millis = SimulatedTime.getSystemTime().getMillis() 
-        currentTime = datetime.datetime.fromtimestamp(millis / 1000)
-        rfp = RiverForecastPoints.RiverForecastPoints(currentTime)   
-
-        columns = []
-        columns.append(Column('floodStage', width=6, align='<', labelLine1='Fld', labelAlign1='<', labelLine2='Stg', labelAlign2='<'))
-        columns.append(Column('observedStage', self._issueTime, width=20, align='<',labelLine1='Observed', labelAlign1='^', labelLine2='Stg    Day    Time', labelAlign2='<'))
-        columns.append(Column('forecastStage_next3days', self._issueTime, width=20, labelLine1='Forecast', labelAlign1='^'))
-
-        floodPointTableText = ''
-        if (floodPointDataList is not None):
-            floodPointTable = FloodPointTable(floodPointDataList, columns, millis, self.timezones, rfp)
-            floodPointTableText = floodPointTable.makeTable()
-
-        return(floodPointTableText)
+        return( "|* floodPointTable *|")
 
     ###################### Utility methods
 
