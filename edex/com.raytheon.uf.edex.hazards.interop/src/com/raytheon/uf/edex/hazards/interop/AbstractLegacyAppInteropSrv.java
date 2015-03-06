@@ -42,7 +42,6 @@ import com.raytheon.uf.common.dataplugin.warning.PracticeWarningRecord;
 import com.raytheon.uf.common.site.SiteMap;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.edex.hazards.interoperability.util.InteroperabilityUtil;
 import com.raytheon.uf.edex.site.SiteAwareRegistry;
 
 /**

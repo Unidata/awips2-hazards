@@ -48,7 +48,7 @@ import com.raytheon.uf.common.dataplugin.warning.PracticeWarningRecord;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.TimeRange;
-import com.raytheon.uf.edex.hazards.interoperability.util.InteroperabilityUtil;
+import com.raytheon.uf.edex.hazards.interop.InteroperabilityUtil;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 

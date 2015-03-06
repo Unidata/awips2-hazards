@@ -47,7 +47,7 @@ import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.util.CollectionUtil;
-import com.raytheon.uf.edex.hazards.interoperability.util.InteroperabilityUtil;
+import com.raytheon.uf.edex.hazards.interop.InteroperabilityUtil;
 
 /**
  * Request handler for retrieving active records for Hazard Services. Takes

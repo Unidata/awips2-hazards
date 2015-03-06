@@ -60,12 +60,16 @@ public class CAVERecommenderScriptManager extends
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(CAVERecommenderScriptManager.class);
 
+    public CAVERecommenderScriptManager() throws JepException {
+        this(null);
+    }
+
     /**
      * @throws JepException
      * 
      */
-    public CAVERecommenderScriptManager() throws JepException {
-        super(buildScriptPath(), buildPythonPath(),
+    public CAVERecommenderScriptManager(String site) throws JepException {
+        super(buildScriptPath(), buildPythonPath(site),
                 CAVERecommenderScriptManager.class.getClassLoader(),
                 "Recommender");
     }

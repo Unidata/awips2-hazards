@@ -59,11 +59,15 @@ public class EDEXRecommenderScriptManager extends
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(EDEXRecommenderScriptManager.class);
 
+    public EDEXRecommenderScriptManager() throws JepException {
+        this(null);
+    }
+
     /**
      * 
      */
-    public EDEXRecommenderScriptManager() throws JepException {
-        super(buildScriptPath(), buildPythonPath(),
+    public EDEXRecommenderScriptManager(String site) throws JepException {
+        super(buildScriptPath(), buildPythonPath(site),
                 EDEXRecommenderScriptManager.class.getClassLoader(),
                 "Recommender");
     }

@@ -4,6 +4,9 @@ Bundle-Name: Productgen
 Bundle-SymbolicName: com.raytheon.uf.common.hazards.productgen
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: RAYTHEON
+Eclipse-BuddyPolicy: global
+Comment: Using global buddy policy so the python generators/formatters can
+ import any java classes without adding register buddies
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Require-Bundle: com.raytheon.uf.common.dataplugin.events.hazards;bundle-version="1.0.0",
  org.apache.commons.lang;bundle-version="2.3.0",
@@ -25,7 +28,6 @@ Require-Bundle: com.raytheon.uf.common.dataplugin.events.hazards;bundle-version=
  com.raytheon.uf.common.dataplugin.text;bundle-version="1.12.1174",
  com.raytheon.uf.common.serialization;bundle-version="1.12.1174",
  com.raytheon.uf.common.activetable;bundle-version="1.12.1174",
- com.raytheon.uf.common.hazards.hydro;bundle-version="1.0.0",
  gov.noaa.gsd.common.utilities;bundle-version="1.0.0",
  com.raytheon.uf.common.message;bundle-version="1.14.1"
 Export-Package: com.raytheon.uf.common.hazards.productgen,

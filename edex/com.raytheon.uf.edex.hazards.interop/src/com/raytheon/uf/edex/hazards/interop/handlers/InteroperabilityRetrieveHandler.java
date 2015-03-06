@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.hazards.interoperability.handlers;
+package com.raytheon.uf.edex.hazards.interop.handlers;
 
 import java.io.Serializable;
 import java.util.ArrayList;

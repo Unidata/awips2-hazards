@@ -188,7 +188,7 @@ public abstract class AbstractRecommenderScriptManager extends
      * 
      * @return
      */
-    protected static String buildPythonPath() {
+    protected static String buildPythonPath(String site) {
         IPathManager manager = PathManagerFactory.getPathManager();
 
         List<String> includePathList = new ArrayList<>();
@@ -209,6 +209,10 @@ public abstract class AbstractRecommenderScriptManager extends
             LocalizationLevel level = levels[i];
             LocalizationContext lc = manager.getContext(
                     LocalizationType.COMMON_STATIC, level);
+            if (site != null
+                    && (level == LocalizationLevel.SITE || level == LocalizationLevel.CONFIGURED)) {
+                lc.setContextName(site);
+            }
             includePathList.add(manager
                     .getLocalizationFile(lc, RECOMMENDERS_LOCALIZATION_DIR)
                     .getFile().getPath());

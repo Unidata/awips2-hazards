@@ -81,6 +81,10 @@ public class PythonBuildPaths {
             LocalizationLevel level = levels[i];
             LocalizationContext lc = pathMgr.getContext(
                     LocalizationType.COMMON_STATIC, level);
+            if (site != null
+                    && (level == LocalizationLevel.SITE || level == LocalizationLevel.CONFIGURED)) {
+                lc.setContextName(site);
+            }
             pathList.add(pathMgr.getLocalizationFile(lc, fileLoc).getFile()
                     .getPath());
         }
