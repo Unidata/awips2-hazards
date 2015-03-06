@@ -73,6 +73,9 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * 01/15/2015   5109       bphillip     Refactored Product Editor
  * Jan 20, 2015 4476       rferrel      Implement shutdown of ProductGeneration.
  * Feb 26, 2015 6306       mduff        Pass site id to product generation.
+ * Mar 06, 2015 6788       mduff        Temporary fix:  Comment out the code that 
+ *                                      displays the regenerate dialog since it pops
+ *                                      up every minute
  * </pre>
  * 
  * @author jsanchez
@@ -667,21 +670,22 @@ public class ProductEditor extends CaveSWTDialog {
      * or just close the product editor dialog.
      */
     public void showSelectedEventsModifiedDialog() {
-        if (selectedEventsModifiedDialog == null) {
-            String[] buttonLabels = new String[] { "Regenerate", "Close Dialog" };
-            selectedEventsModifiedDialog = new MessageDialog(null,
-                    REGENERATE_DIALOG_TITLE, null, REGENERATE_DIALOG_MESSAGE,
-                    MessageDialog.WARNING, buttonLabels, 0) {
-                @Override
-                protected void buttonPressed(int buttonId) {
-                    setReturnCode(buttonId);
-                    close();
-                }
-            };
-
-            boolean regenerate = selectedEventsModifiedDialog.open() == 0;
-            invokeDismiss(regenerate);
-        }
+        // if (selectedEventsModifiedDialog == null) {
+        // String[] buttonLabels = new String[] { "Regenerate", "Close Dialog"
+        // };
+        // selectedEventsModifiedDialog = new MessageDialog(null,
+        // REGENERATE_DIALOG_TITLE, null, REGENERATE_DIALOG_MESSAGE,
+        // MessageDialog.WARNING, buttonLabels, 0) {
+        // @Override
+        // protected void buttonPressed(int buttonId) {
+        // setReturnCode(buttonId);
+        // close();
+        // }
+        // };
+        //
+        // boolean regenerate = selectedEventsModifiedDialog.open() == 0;
+        // invokeDismiss(regenerate);
+        // }
     }
 
     private void invokeIssue(boolean isCorrectable) {
