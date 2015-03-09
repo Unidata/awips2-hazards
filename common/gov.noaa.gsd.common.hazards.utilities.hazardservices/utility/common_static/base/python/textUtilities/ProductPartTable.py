@@ -12,38 +12,9 @@ class ProductPartTable(object):
     
     # FIXME: This dictionary needs to be updated with actual values
     # The ones present now are simply place holders and best guesses
-    EditableProductParts = {
-                            'FFA': [
-                'attribution',
-                'firstBullet',
-                'timeBullet',
-                'basisBullet',
-                'impactsBullet',
-                'cityList',
-                'emergencyStatement',
-                'callsToAction',
-                'locationsAffected'],
-                            
-                            'FFW': [
-                'attribution',
-                'firstBullet',
-                'timeBullet',
-                'basisBullet',
-                'impactsBullet',
-                'emergencyStatement',
-                'callsToAction',
-                'locationsAffected']
-                }
+    EditableProductParts = {}
     
-    DefaultEditableProductParts = [
-                'attribution',
-                'firstBullet',
-                'timeBullet',
-                'basisBullet',
-                'impactsBullet',
-                'emergencyStatement',
-                'callsToAction',
-                'locationsAffected']
+    DefaultEditableProductParts = []
 
     
     def __init__(self):
