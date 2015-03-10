@@ -98,6 +98,8 @@ class Format(Legacy_Hydro_Formatter.Format):
         vtecRecord = sectionDict.get('vtecRecord')
         startTime = sectionDict.get('startTime')
         act = vtecRecord.get('act')
+        if act == 'COR':
+            act == vtecRecord.get('prevAct')
         bulletText = ''
 
         if act in ['NEW', 'CON','ROU', 'EXT']:

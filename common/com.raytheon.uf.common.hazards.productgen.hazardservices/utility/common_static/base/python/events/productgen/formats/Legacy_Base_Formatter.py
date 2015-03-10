@@ -196,6 +196,8 @@ class Format(FormatTemplate.Formatter):
             vtecRecords = segment.get('vtecRecords')
             for vtecRecord in vtecRecords:
                 action = vtecRecord.get('act')
+                if action == 'COR':
+                    action = vtecRecord.get('prevAct')
                 if action in ('NEW','EXT'):
                     new_ext_productSegments.append(segment)
                 elif action == 'CON':
@@ -695,6 +697,8 @@ class Format(FormatTemplate.Formatter):
 
             if len(hazName):
                 action = vtecRecord.get('act')
+                if action == 'COR':
+                    action = vtecRecord.get('prevAct')
 
             if action == 'NEW':
                 overview = nwsPhrase + ' has issued a ' + hazName + ' for '+ riverPhrase

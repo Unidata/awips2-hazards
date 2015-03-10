@@ -62,6 +62,8 @@ class Format(FormatTemplate.Formatter):
         vtecRecord = sectionDict.get('vtecRecord')
         hazName = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
         action = vtecRecord.get('act')
+        if action == 'COR':
+            action = vtecRecord.get('prevAct')
         endTime = sectionDict.get('endTime')
         endTimePhrase = ' until ' + endTime.strftime('%l%M %p %Z').strip() + '.'
         areaPhrase = self.createAreaPhrase(sectionDict)

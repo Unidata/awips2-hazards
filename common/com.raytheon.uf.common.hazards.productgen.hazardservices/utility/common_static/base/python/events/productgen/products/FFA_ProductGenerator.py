@@ -170,11 +170,6 @@ class Product(HydroGenerator.Product):
             productSegmentGroup.setProductParts(self._hydroProductParts._productParts_FFA_FLW_FLS_area(productSegments))
         elif geoType == 'point':
             productSegmentGroup.setProductParts(self._hydroProductParts._productParts_FFA_FLW_FLS_point(productSegments))
-           
-    def executeFrom(self, dataList, prevDataList=None):
-        if prevDataList is not None:
-            dataList = self.correctProduct(dataList, prevDataList, False)
-        return dataList
 
 # Allow interdependencies for the dialog's megawidgets to work.     
 def applyInterdependencies(triggerIdentifiers, mutableProperties):

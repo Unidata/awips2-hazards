@@ -583,8 +583,6 @@ class Product(ProductTemplate.Product):
             else:
                 hList.sort(self._tpc.regularSortHazardAlg)
 
-        hazardEvents = [hazardEvent for metaData, hazardEvent in metaDataList]
-
         while len(hList) > 0:
             vtecRecord = hList[0]
 
@@ -1079,33 +1077,100 @@ class Product(ProductTemplate.Product):
         currentTime = dt.strftime('%d%H%m')
         for i in range(0, len(dataList)):
             data = dataList[i]
-            data['startTime'] = currentTime
-            segments = data.get('segments')
-            for j in range(0, len(segments)):
-                segment = segments[j]
-                if correctAllSegments:
-                    segment = self.correctSegment(segment)
-                else:
-                    prevData = prevDataList[i]
-                    pSegments = prevData.get('segments')
+            prevData = prevDataList[i]
+            if self.correctionsCheck(data, prevData):
+                data['startTime'] = currentTime
+                segments = data.get('segments')
+                pSegments = prevData.get('segments')
+                for j in range(0, len(segments)):
+                    segment = segments[j]
                     pSegment = pSegments[j]
-                    if segment != pSegment:
+                    if correctAllSegments:
                         segment = self.correctSegment(segment)
+                    else:
+                        if self.correctionsCheck(segment, pSegment):
+                            segment = self.correctSegment(segment)
 
-            productName = str(data.get('productName'))
-            if '...CORRECTED' not in productName:
-                if productName.endswith('...TEST'):
-                    data['productName'] = productName[:-7] + '...CORRECTED...TEST'
-                else:
-                    data['productName'] = productName + '...CORRECTED'
+                productName = str(data.get('productName'))
+                if '...CORRECTED' not in productName:
+                    if productName.endswith('...TEST'):
+                        data['productName'] = productName[:-7] + '...CORRECTED...TEST'
+                    else:
+                        data['productName'] = productName + '...CORRECTED'
         return dataList
 
     def correctSegment(self, segment):
         if 'vtecRecords' in segment:
             vtecRecords = segment.get('vtecRecords')
             for vtecRecord in vtecRecords:
+                action = vtecRecord['act']
                 vtecRecord['act'] = 'COR'
+                vtecRecord['prevAct'] = action
+                vtecString = vtecRecord['vtecstr']
+                updatedVtecString = vtecString.replace(action, 'COR')
+                vtecRecord['vtecstr'] = updatedVtecString
         return segment
+
+    def correctionsCheck(self, dict1, dict2):
+        '''
+            Returns True if the two dictionaries are not equal and the correction
+            should be applied to the product/segment. The GEOMETRYCOLLECTION object
+            that is in the sections dictionary must be compared using .equals(). 
+            Doing == on the two dictionaries themselves does not result in the correct
+            outcome.
+        '''
+        # Compare the two dictionaries
+        added, removed, changed = self.compareDictionaries(dict1, dict2)
+        # A key was added/removed from the dictionary
+        if added or removed:
+            return True
+        # A key was changed
+        elif changed:
+            # Check to see if it was segments that changed
+            if changed == set(['segments']):
+                if len(dict1.get('segments')) == len(dict2.get('segments')):
+                    index = 0
+                    while index < len(dict1.get('segments')):
+                        if (self.correctionsCheck(dict1.get('segments')[index], dict2.get('segments')[index])):
+                            return True
+                        index = index + 1
+                else:
+                    return True
+            elif changed == set(['sections']):
+                # Check to see if it was section that changed
+                if len(dict1.get('sections')) == len(dict2.get('sections')):
+                    index = 0
+                    while index < len(dict1.get('sections')):
+                        if (self.correctionsCheck(dict1.get('sections')[index], dict2.get('sections')[index])):
+                            return True
+                        index = index + 1
+                else:
+                    return True
+            elif changed == set(['geometry']):
+                # Only the geometry changed, compare using .equals()
+                geometry1 = dict1.get('geometry')
+                geometry2 = dict2.get('geometry')
+                if not geometry1.equals(geometry2):
+                    return True
+            else:
+                # Something other than the geometry changed
+                return True
+        # The dictionaries are the same, so no correction is needed
+        return False
+
+    def compareDictionaries(self, dict1, dict2):
+        '''
+        Calculate the difference between two dictionaries as:
+        1 items added
+        2 items removed
+        3 keys same in both but changed values
+        '''
+        set_current, set_past = set(dict1.keys()), set(dict2.keys())
+        intersect = set_current.intersection(set_past)
+        addedEntries = set_current - intersect
+        removedEntries = set_past - intersect
+        changedEntries = set(o for o in intersect if dict2[o] != dict1[o])
+        return addedEntries, removedEntries, changedEntries
 
     def getCTAsPhrase(self, vtecRecord, hazardEvent, metaData, lineLength=69):
         ctas = self._tpc.getProductStrings(hazardEvent, metaData, 'cta')
@@ -1146,4 +1211,4 @@ class Product(ProductTemplate.Product):
     def flush(self):
         ''' Flush the print buffer '''
         os.sys.__stdout__.flush()
-        
+

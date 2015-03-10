@@ -1273,8 +1273,20 @@ class TextProductCommon(object):
         if not vtecRecord.has_key('act'):
             self.logger.error('Error!  No field act in vtec record.')
             return '<noaction>'
-            
+
         actionCode = vtecRecord['act']
+
+        # Need to account for COR since this is now called
+        # in the formatters to create the summaryHeadline. 
+        # Grab the previous action from the vtecRecord.
+        if actionCode == 'COR':
+            prevActionCode = vtecRecord.get('prevAct', None)
+            if prevActionCode:
+                actionCode = prevActionCode
+            else:
+                self.logger.error('Error!  No field prevAct in vtec record.')
+                return '<noaction>'
+
         if actionCode in ['NEW', 'EXA', 'EXB']:
             return 'in effect'
         elif actionCode == 'CON':
@@ -1494,7 +1506,7 @@ class TextProductCommon(object):
         # Get the local headlines customizable timing
         locStart, locEnd = self.getLocalHeadlinesTiming(
             vtecRecord['key'], vtecRecord['startTime'], vtecRecord['endTime'],
-            vtecRecord['id'], issueTime)
+            issueTime, vtecRecord['id'])
                 
         # time from issuanceTime
         deltaTstart = vtecRecord['startTime'] - issueTime  # ms past now
