@@ -42,6 +42,9 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * 01/15/2015   5109       bphillip     Initial creation
+ * 03/11/2015   6889       bphillip     Modifications to allow more than one undo action in the Product Editor
+ *                                      Slightly increased button width to allow the number of undo actions 
+ *                                      available in the Product editor to be displayed
  * 
  * </pre>
  * 
@@ -51,7 +54,7 @@ import com.raytheon.uf.common.time.SimulatedTime;
 public class ProductEditorUtil {
 
     /** The standard button width */
-    private static final int BUTTON_WIDTH = 50;
+    private static final int BUTTON_WIDTH = 65;
 
     /**
      * The entry tab label format used when more than one format tab is

@@ -29,6 +29,7 @@ import gov.noaa.gsd.viz.megawidgets.ParametersEditorFactory;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -43,6 +44,7 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.hazards.productgen.editable.ProductTextUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.util.Pair;
 
 /**
  * If there are any editable keys in the data dictionary returned by the product
@@ -60,6 +62,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Jun 30, 2014 3512       Chris.Golden Changed to work with more
  *                                      parameters editor changes.
  * 01/15/2015   5109       bphillip     Refactored/Renamed
+ * 03/11/2015   6889       bphillip     Modifications to allow more than one undo action in the Product Editor
  * </pre>
  * 
  * @author jsanchez
@@ -81,6 +84,23 @@ public class ProductDataEditor extends AbstractDataEditor {
      */
     private MegawidgetManager manager;
 
+    /**
+     * The history of modifications made to editable data.
+     */
+    private LinkedList<Pair<KeyInfo, EditableKeyInfo>> modificationHistory = new LinkedList<Pair<KeyInfo, EditableKeyInfo>>();
+
+    /**
+     * Creates a new ProductDataEditor
+     * 
+     * @param productEditor
+     *            The parent product editor creating this
+     * @param product
+     *            The generated product associated with this editor
+     * @param parent
+     *            The CTabFolder parent object
+     * @param style
+     *            SWT style flags
+     */
     protected ProductDataEditor(ProductEditor productEditor,
             IGeneratedProduct product, CTabFolder parent, int style) {
         super(productEditor, product, parent, style);
@@ -141,6 +161,9 @@ public class ProductDataEditor extends AbstractDataEditor {
                                 Object value) {
                             EditableKeyInfo editableKeyInfo = editableKeys
                                     .getEditableKeyInfo(keyInfo);
+                            // Add a new entry in the undo queue
+                            modificationHistory.add(new Pair<KeyInfo, EditableKeyInfo>(
+                                    keyInfo, editableKeyInfo));
 
                             Serializable newValue = (Serializable) value;
 
@@ -150,13 +173,11 @@ public class ProductDataEditor extends AbstractDataEditor {
                             // Regenerate with the updated data
                             productEditor.regenerate();
 
-                            // mark editableKeyInfo as modified
-                            editableKeyInfo.setPreviousValue(editableKeyInfo.getValue());
-                            editableKeyInfo.setValue(newValue);
-                            editableKeyInfo.setModified(true);
+                            // Update the editable key value
+                            editableKeyInfo.updateValue(newValue);
 
-                            // Enable the save and revert buttons
-                            enableButtons();
+                            // Update the enabled state of the save and undo buttons
+                            updateButtonState();
                         }
 
                         @Override
@@ -281,16 +302,10 @@ public class ProductDataEditor extends AbstractDataEditor {
             EditableKeyInfo editableKeyInfo = editableKeys
                     .getEditableKeyInfo(key);
             if (editableKeyInfo.isModified()) {
-                editableKeyInfo.setValue(editableKeyInfo.getPreviousValue());
-                editableKeyInfo.setPreviousValue(null);
-
-                if (editableKeyInfo.getValue() == editableKeyInfo.getOriginalValue()) {
-                    editableKeyInfo.setModified(false);
-                }
-
-                updateKeyInfoValue(editableKeyInfo, key, editableKeyInfo.getValue());
+                editableKeyInfo.revertToOriginalValue();
+                updateKeyInfoValue(editableKeyInfo, key,editableKeyInfo.getOriginalValue());
                 // updates the values displayed in the GUI
-                state.put(key.toString(), editableKeyInfo.getValue());
+                state.put(key.toString(), editableKeyInfo.getOriginalValue());
             }
 
         }
@@ -302,6 +317,53 @@ public class ProductDataEditor extends AbstractDataEditor {
             handler.error("Error trying to reset megawidget state: "
                     + exception, exception);
         }
+    }
+
+    @Override
+    public void undoModification() {
+        if (modificationHistory.isEmpty()) {
+            handler.info("Cannot undo.  No modifications have been made.");
+        } else {
+            Map<String, Object> state = manager.getState();
+            
+            // Gets the previous state information
+            Pair<KeyInfo, EditableKeyInfo> keyInfoPair = modificationHistory.removeLast();
+            
+            // Retrieve the key info object
+            KeyInfo keyInfo = keyInfoPair.getFirst();
+            
+            // Retrieve the editable key info object
+            EditableKeyInfo editableKeyInfo = keyInfoPair.getSecond();
+
+            // Update the current value with the previous value
+            updateKeyInfoValue(editableKeyInfo, keyInfo,
+                    editableKeyInfo.getLastValue());
+            
+            // Revert the editable key info object to the previous state
+            editableKeyInfo.revertToLastValue();
+            
+            // updates the values displayed in the GUI
+            state.put(keyInfo.toString(), editableKeyInfo.getValue());
+            
+            // Regenerate with the updated data
+            productEditor.regenerate();
+            try {
+                manager.setState(state);
+            } catch (MegawidgetStateException exception) {
+                handler.error("Error trying to reset megawidget state: "
+                        + exception, exception);
+            }
+        }
+    }
+
+    @Override
+    protected boolean undosRemaining() {
+        return !modificationHistory.isEmpty();
+    }
+
+    @Override
+    protected int getUndosRemaining() {
+        return modificationHistory.size();
     }
 
     @Override

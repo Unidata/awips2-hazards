@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.productgen.dialog;
 
 import java.io.Serializable;
+import java.util.LinkedList;
 import java.util.List;
 
 import com.raytheon.uf.common.hazards.productgen.KeyInfo;
@@ -36,6 +37,8 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * 01/15/2015   5109       bphillip     Initial creation
+ * 03/11/2015   6889       bphillip     Changed previous value to be a list to allow multiple undo actions
+ *                                      on the Product Editor
  * 
  * </pre>
  * 
@@ -62,8 +65,38 @@ class EditableKeyInfo {
     /** The original value of this key */
     private Serializable originalValue;
 
-    /** The previous value of this key prior to modifications */
-    private Serializable previousValue;
+    /** The previous values of this key prior to modifications */
+    private LinkedList<Serializable> previousValue = new LinkedList<Serializable>();
+
+    /**
+     * Reverts the value of this EditableKeyInfo to the original value
+     */
+    public void revertToOriginalValue() {
+        this.value = originalValue;
+        this.previousValue.clear();
+    }
+
+    /**
+     * Changes to the current value of this EditableKeyInfo object to the
+     * previous value
+     */
+    public void revertToLastValue() {
+        this.value = this.previousValue.removeLast();
+        this.modified = !this.value.equals(this.originalValue);
+
+    }
+
+    /**
+     * Updates the current value of this editable key info object
+     * 
+     * @param value
+     *            The value to update.
+     */
+    public void updateValue(Serializable value) {
+        previousValue.add(this.value);
+        this.value = value;
+        this.modified = true;
+    }
 
     /**
      * @return the path
@@ -73,7 +106,8 @@ class EditableKeyInfo {
     }
 
     /**
-     * @param path the path to set
+     * @param path
+     *            the path to set
      */
     public void setPath(List<KeyInfo> path) {
         this.path = path;
@@ -87,7 +121,8 @@ class EditableKeyInfo {
     }
 
     /**
-     * @param modified the modified to set
+     * @param modified
+     *            the modified to set
      */
     public void setModified(boolean modified) {
         this.modified = modified;
@@ -101,7 +136,8 @@ class EditableKeyInfo {
     }
 
     /**
-     * @param displayable the displayable to set
+     * @param displayable
+     *            the displayable to set
      */
     public void setDisplayable(boolean displayable) {
         this.displayable = displayable;
@@ -115,7 +151,8 @@ class EditableKeyInfo {
     }
 
     /**
-     * @param value the value to set
+     * @param value
+     *            the value to set
      */
     public void setValue(Serializable value) {
         this.value = value;
@@ -129,7 +166,8 @@ class EditableKeyInfo {
     }
 
     /**
-     * @param originalValue the originalValue to set
+     * @param originalValue
+     *            the originalValue to set
      */
     public void setOriginalValue(Serializable originalValue) {
         this.originalValue = originalValue;
@@ -138,18 +176,29 @@ class EditableKeyInfo {
     /**
      * @return the previousValue
      */
-    public Serializable getPreviousValue() {
+    public LinkedList<Serializable> getPreviousValue() {
         return previousValue;
     }
 
+    public Serializable getLastValue() {
+        return previousValue.getLast();
+    }
+
     /**
-     * @param previousValue the previousValue to set
+     * @param previousValue
+     *            the previousValue to set
      */
-    public void setPreviousValue(Serializable previousValue) {
+    public void setPreviousValue(LinkedList<Serializable> previousValue) {
         this.previousValue = previousValue;
     }
-    
-    
-    
-    
+
+    /**
+     * Adds a value to the previous value list
+     * 
+     * @param value
+     *            The value to add
+     */
+    public void addPreviousValue(Serializable value) {
+        this.previousValue.add(value);
+    }
 }

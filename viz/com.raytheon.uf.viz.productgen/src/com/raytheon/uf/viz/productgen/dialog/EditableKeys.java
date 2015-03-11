@@ -30,6 +30,7 @@ import java.util.Set;
 
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.KeyInfo;
+import com.raytheon.uf.common.util.Pair;
 
 /**
  * Container holding the editable key information associated with a generated
@@ -42,6 +43,7 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * 01/15/2015   5109       bphillip     Initial creation
+ * 03/11/2015   6889       bphillip     Modifications to allow more than one undo action in the Product Editor
  * 
  * </pre>
  * 
@@ -182,7 +184,8 @@ class EditableKeys {
      *            The editable key to get the modified value for
      * @param saving
      *            True if this method is being called during a save operation
-     * @return The modified value of the editable key, or null if the key has not been modified
+     * @return The modified value of the editable key, or null if the key has
+     *         not been modified
      */
     public Serializable getModifiedValue(KeyInfo editableKey, boolean saving) {
         EditableKeyInfo editableKeyInfo = editableKeyInfoMap.get(editableKey);
@@ -252,6 +255,17 @@ class EditableKeys {
      */
     public EditableKeyInfo getEditableKeyInfo(KeyInfo key) {
         return editableKeyInfoMap.get(key);
+    }
+
+    /**
+     * Returns the map entry for the provided KeyInfo
+     * 
+     * @param key The KeyInfo to retrieve the entry for
+     * @return The KeyInfo, EditableKeyInfo map entry have the provided KeyInfo object as its key
+     */
+    public Pair<KeyInfo, EditableKeyInfo> getEntry(KeyInfo key) {
+        return new Pair<KeyInfo, EditableKeyInfo>(key,
+                editableKeyInfoMap.get(key));
     }
 
     /**

@@ -48,6 +48,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * 01/15/2015   5109       bphillip     Initial creation
+ * 03/11/2015   6889       bphillip     Changed revertButton to undoButton.  More than one undo is now allowed.
  * 
  * </pre>
  * 
@@ -74,8 +75,8 @@ public abstract class AbstractDataEditor extends CTabItem {
     /** The save button widget */
     protected Button saveButton;
 
-    /** The revert button widget */
-    protected Button revertButton;
+    /** The undo button widget */
+    protected Button undoButton;
 
     /** The parent product editor instance to which this data editor belongs */
     protected ProductEditor productEditor;
@@ -148,11 +149,30 @@ public abstract class AbstractDataEditor extends CTabItem {
     public abstract void revertValues();
 
     /**
+     * Undoes the last modification to a value
+     */
+    public abstract void undoModification();
+
+    /**
      * Called by initialize. This method allows subclasses of AbstractDataEditor
      * to make GUI contributes prior to adding the buttons on the bottom of the
      * editor panel
      */
     protected abstract void initializeSubclass();
+
+    /**
+     * Gets whether there are modifications which can be undone
+     * 
+     * @return True if modifications are available to be undone
+     */
+    protected abstract boolean undosRemaining();
+
+    /**
+     * Returns the number of actions that can be undone
+     * 
+     * @return The number of actions that can be undone
+     */
+    protected abstract int getUndosRemaining();
 
     /**
      * Initializes the GUI components for this data editor. Delegates to the
@@ -189,7 +209,7 @@ public abstract class AbstractDataEditor extends CTabItem {
          */
 
         saveButton = new Button(editorButtonPane, SWT.PUSH);
-        revertButton = new Button(editorButtonPane, SWT.PUSH);
+        undoButton = new Button(editorButtonPane, SWT.PUSH);
 
         /*
          * Configure Save button
@@ -200,8 +220,7 @@ public abstract class AbstractDataEditor extends CTabItem {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 saveModifiedValues();
-                disableSaveButton();
-                disableRevertButton();
+                updateButtonState();
             }
         });
 
@@ -211,23 +230,39 @@ public abstract class AbstractDataEditor extends CTabItem {
         /*
          * Configure Undo button
          */
-        revertButton.setText(UNDO_BUTTON_LABEL);
-        ProductEditorUtil.setButtonGridData(revertButton);
-        revertButton.addSelectionListener(new SelectionAdapter() {
+        undoButton.setText(UNDO_BUTTON_LABEL);
+        ProductEditorUtil.setButtonGridData(undoButton);
+        undoButton.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                revertValues();
-                if (hasUnsavedChanges()) {
-                    enableSaveButton();
-                } else {
-                    disableSaveButton();
-                }
-                disableRevertButton();
+                undoModification();
+                updateButtonState();
+
             }
         });
 
         // Editor Undo button is initially disabled
-        revertButton.setEnabled(false);
+        undoButton.setEnabled(false);
+    }
+
+    /**
+     * Enables/Disables the save and undo buttons based on whether there are
+     * unsaved changes and undos remaining respectively
+     */
+    protected void updateButtonState() {
+        // Undo button enabled if undo actions are still remaining
+        setButtonEnabled(undoButton, undosRemaining());
+        
+        // Update the undo button with how many undo actions are available
+        if (undosRemaining()) {
+            undoButton.setText(UNDO_BUTTON_LABEL + "(" + getUndosRemaining()
+                    + ")");
+        } else {
+            undoButton.setText(UNDO_BUTTON_LABEL);
+        }
+        
+        // Save button enabled if unsaved changes are present
+        setButtonEnabled(saveButton, hasUnsavedChanges());
     }
 
     /**
@@ -235,7 +270,7 @@ public abstract class AbstractDataEditor extends CTabItem {
      */
     protected void enableButtons() {
         enableSaveButton();
-        enableRevertButton();
+        enableUndoButton();
     }
 
     /**
@@ -243,21 +278,21 @@ public abstract class AbstractDataEditor extends CTabItem {
      */
     protected void disableButtons() {
         disableSaveButton();
-        disableRevertButton();
+        disableUndoButton();
     }
 
     /**
      * Enables the save button
      */
     protected void enableSaveButton() {
-        setButtonEnabled(this.saveButton,true);
+        setButtonEnabled(this.saveButton, true);
     }
 
     /**
      * Enables the revert button
      */
-    protected void enableRevertButton() {
-        setButtonEnabled(this.revertButton, true);
+    protected void enableUndoButton() {
+        setButtonEnabled(this.undoButton, true);
     }
 
     /**
@@ -270,17 +305,20 @@ public abstract class AbstractDataEditor extends CTabItem {
     /**
      * Disables the revert button
      */
-    protected void disableRevertButton() {
-        setButtonEnabled(this.revertButton,false);
+    protected void disableUndoButton() {
+        setButtonEnabled(this.undoButton, false);
     }
 
     /**
      * Enables/Disables a button
-     * @param button The button to enable/disabled
-     * @param enabled True if the button is to be enabled, false for disabled
+     * 
+     * @param button
+     *            The button to enable/disabled
+     * @param enabled
+     *            True if the button is to be enabled, false for disabled
      */
-    protected void setButtonEnabled(Button button, boolean enabled){
-        if(button != null && !button.isDisposed()){
+    protected void setButtonEnabled(Button button, boolean enabled) {
+        if (button != null && !button.isDisposed()) {
             button.setEnabled(enabled);
         }
     }

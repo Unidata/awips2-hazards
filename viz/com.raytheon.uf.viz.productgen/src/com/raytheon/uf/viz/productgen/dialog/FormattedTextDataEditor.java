@@ -62,6 +62,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * 01/15/2015   5109       bphillip     Initial creation
  * 02/05/2015   6322       Robert.Blum  Changed return value if editableRanges is empty.
  * 02/18/2015   5109       Chris.Cody   Do not display Format specific "Issue" button; keep existing code
+ * 03/11/2015   6889       bphillip     Modifications to allow more than one undo action in the Product Editor
  * 
  * </pre>
  * 
@@ -356,6 +357,23 @@ public class FormattedTextDataEditor extends AbstractDataEditor {
                 .getData(ORIGINAL_TEXT_KEY);
         this.styledText.setText(originalText);
         refresh();
+    }
+
+    @Override
+    public void undoModification() {
+        // TODO
+    }
+
+    @Override
+    protected boolean undosRemaining() {
+     // TODO
+        return false;
+    }
+
+    @Override
+    protected int getUndosRemaining() {
+     // TODO
+        return 0;
     }
 
     /**
