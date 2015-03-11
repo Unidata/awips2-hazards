@@ -40,6 +40,7 @@
 #                                                 again along with other changes to allows the incremental 
 #                                                 overrides and also editing without closing Cave.
 #    02/26/15        6599          Robert.Blum    Picking up overrides of TextUtilities directory.
+#    03/11/15        6885          bphillip       Made product entries an ordered dict to ensure consistent ordering
 #
 import PythonOverriderInterface
 import PythonOverrider
@@ -160,7 +161,7 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
         
         if isinstance(data, OrderedDict): 
             # Dictionary containing the formatted products
-            productDict = {}
+            productDict = OrderedDict()
             editables = {}
             for format in formats:
                 try:
