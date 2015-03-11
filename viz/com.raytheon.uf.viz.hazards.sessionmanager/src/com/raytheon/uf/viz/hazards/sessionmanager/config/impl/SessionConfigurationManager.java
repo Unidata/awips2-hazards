@@ -176,6 +176,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      config (which is important, since the possible
  *                                      columns for a setting are defined within the setting
  *                                      itself, and are not universal).
+ * Mar 06, 2015  3850      Chris.Golden Added ability to determine if a hazard type
+ *                                      requires a point identifier, and which hazard types
+ *                                      can be used to replace a particular hazard event.
  * </pre>
  * 
  * @author bsteffen
@@ -286,6 +289,8 @@ public class SessionConfigurationManager implements
 
     private Map<String, ImmutableList<String>> durationChoicesForHazardTypes;
 
+    private Map<String, ImmutableList<String>> replaceByTypesForHazardTypes;
+
     private Map<String, String> typeFirstRecommendersForHazardTypes;
 
     private Map<String, Boolean> startTimeIsCurrentTimeForHazardTypes;
@@ -293,6 +298,8 @@ public class SessionConfigurationManager implements
     private Map<String, Boolean> allowTimeExpandForHazardTypes;
 
     private Map<String, Boolean> allowTimeShrinkForHazardTypes;
+
+    private Set<String> typesRequiringPointIds;
 
     SessionConfigurationManager() {
 
@@ -1062,6 +1069,44 @@ public class SessionConfigurationManager implements
         String toolName = typeFirstRecommendersForHazardTypes.get(hazardType);
 
         return settings.getTool(toolName);
+    }
+
+    @Override
+    public boolean isPointIdentifierRequired(String hazardType) {
+
+        /*
+         * If the require-point-identifiers set has not yet been initialized, do
+         * so now.
+         */
+        if (typesRequiringPointIds == null) {
+            typesRequiringPointIds = new HashSet<>();
+            for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
+                    .getConfig().entrySet()) {
+                if (entry.getValue().isRequirePointId()) {
+                    typesRequiringPointIds.add(entry.getKey());
+                }
+            }
+        }
+        return typesRequiringPointIds.contains(hazardType);
+    }
+
+    @Override
+    public List<String> getReplaceByTypes(String hazardType) {
+
+        /*
+         * If the replace-by types for hazard types map has not yet been
+         * initialized, do so now.
+         */
+        if (replaceByTypesForHazardTypes == null) {
+            replaceByTypesForHazardTypes = new HashMap<>();
+            for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
+                    .getConfig().entrySet()) {
+                replaceByTypesForHazardTypes.put(entry.getKey(),
+                        ImmutableList.copyOf(entry.getValue().getReplacedBy()));
+            }
+        }
+
+        return replaceByTypesForHazardTypes.get(hazardType);
     }
 
     @Override

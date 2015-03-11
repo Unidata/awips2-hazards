@@ -19,7 +19,6 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
 import java.util.Map;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.time.TimeRange;
 
@@ -49,6 +48,11 @@ import com.raytheon.uf.common.time.TimeRange;
  * Feb 03, 2015    2331    Chris.Golden Added support for limiting the values
  *                                      that an event's start or end time can
  *                                      take on.
+ * Mar 06, 2015    3850    Chris.Golden Added code to make the category and type
+ *                                      lists change according to whether the
+ *                                      event being shown has a point ID (if not
+ *                                      yet issued), or what it can be replaced
+ *                                      by (if issued).
  * </pre>
  * 
  * @author Chris.Golden
@@ -70,8 +74,6 @@ public interface IHazardDetailView {
     /**
      * Initialize the view.
      * 
-     * @param hazardCategories
-     *            List of hazard categories.
      * @param minVisibleTime
      *            Minimum visible time to be shown in the time widgets.
      * @param maxVisibleTime
@@ -84,7 +86,6 @@ public interface IHazardDetailView {
      *            to persist between different views.
      */
     public void initialize(
-            ImmutableList<String> hazardCategories,
             long minVisibleTime,
             long maxVisibleTime,
             ICurrentTimeProvider currentTimeProvider,

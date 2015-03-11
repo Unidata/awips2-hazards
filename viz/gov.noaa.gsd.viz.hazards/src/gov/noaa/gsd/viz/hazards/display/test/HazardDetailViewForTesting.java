@@ -34,7 +34,6 @@ import java.util.Map;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.eclipse.jface.action.Action;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.time.TimeRange;
 
@@ -58,6 +57,10 @@ import com.raytheon.uf.common.time.TimeRange;
  *                                        properties.
  * Feb 03, 2015  2331      Chris.Golden   Added support for limiting the values that an
  *                                        event's start or end time can take on.
+ * Mar 06, 2015  3850      Chris.Golden   Added code to make the category and type lists
+ *                                        change according to whether the event being
+ *                                        shown has a point ID (if not yet issued), or
+ *                                        what it can be replaced by (if issued).
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -318,7 +321,6 @@ public class HazardDetailViewForTesting implements
 
     @Override
     public void initialize(
-            ImmutableList<String> hazardCategories,
             long minVisibleTime,
             long maxVisibleTime,
             ICurrentTimeProvider currentTimeProvider,

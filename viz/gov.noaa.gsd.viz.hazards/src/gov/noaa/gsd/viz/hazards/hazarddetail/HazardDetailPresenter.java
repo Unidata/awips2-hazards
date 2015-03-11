@@ -39,6 +39,7 @@ import net.engio.mbassy.subscription.MessageEnvelope;
 import com.google.common.base.Predicates;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -148,6 +149,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           hazard event, so that the elements of each
  *                                           hazard event shown in the tab text may be
  *                                           localized.
+ * Mar 06, 2015    3850    Chris.Golden      Added code to make the category and type
+ *                                           lists change according to whether the
+ *                                           event being shown has a point ID (if not
+ *                                           yet issued), or what it can be replaced
+ *                                           by (if issued).
  * </pre>
  * 
  * @author Chris.Golden
@@ -269,6 +275,12 @@ public class HazardDetailPresenter extends
     private final ImmutableList<String> categories;
 
     /**
+     * List of hazard category identifiers containing at least one type that
+     * does not require a point identifier.
+     */
+    private final ImmutableList<String> categoriesNoPointIdRequired;
+
+    /**
      * Selected category.
      */
     private String selectedCategory;
@@ -282,6 +294,23 @@ public class HazardDetailPresenter extends
      * Map pairing categories with lists of hazard type descriptions.
      */
     private final ImmutableMap<String, ImmutableList<String>> typeDescriptionListsForCategories;
+
+    /**
+     * Map pairing categories with lists of hazard type identifiers that do not
+     * require a point identifier.
+     */
+    private final ImmutableMap<String, ImmutableList<String>> typeListsForCategoriesNoPointIdRequired;
+
+    /**
+     * Map pairing categories with lists of hazard type descriptions that do not
+     * require a point identifier.
+     */
+    private final ImmutableMap<String, ImmutableList<String>> typeDescriptionListsForCategoriesNoPointIdRequired;
+
+    /**
+     * Map pairing hazard type identifiers with their descriptions.
+     */
+    private final ImmutableMap<String, String> descriptionsForTypes;
 
     /**
      * Map of event identifiers to their megawidget specifier managers.
@@ -598,36 +627,75 @@ public class HazardDetailPresenter extends
         /*
          * Get the hazard categories list, and a map of those categories to
          * their type lists, as well as a a similar map to their type
-         * displayable lists. The latter two each start with an empty string,
-         * used to indicate that no type has been chosen.
+         * displayable lists. The lists in the maps each start with an empty
+         * string, used to indicate that no type has been chosen. And do all the
+         * same work, but this time generating a category list and the two maps
+         * only for those categories and types not requiring point identifiers.
          */
         List<String> categories = new ArrayList<>();
+        List<String> categoriesNoPointIdRequired = new ArrayList<>();
         Map<String, ImmutableList<String>> typesForCategories = new HashMap<>();
         Map<String, ImmutableList<String>> typeDescriptionsForCategories = new HashMap<>();
+        Map<String, ImmutableList<String>> typesForCategoriesNoPointIdRequired = new HashMap<>();
+        Map<String, ImmutableList<String>> typeDescriptionsForCategoriesNoPointIdRequired = new HashMap<>();
+        Map<String, String> descriptionsForTypes = new HashMap<>();
         HazardInfoConfig categoriesAndTypes = getModel()
                 .getConfigurationManager().getHazardInfoConfig();
         for (Choice categoryAndTypes : categoriesAndTypes.getHazardCategories()) {
-            categories.add(categoryAndTypes.getDisplayString());
             List<Choice> typeChoices = categoryAndTypes.getChildren();
-            List<String> types = new ArrayList<String>(typeChoices.size());
+            List<String> types = new ArrayList<String>(typeChoices.size() + 1);
             List<String> typeDescriptions = new ArrayList<String>(
-                    typeChoices.size());
-            types.add(BLANK_TYPE_CHOICE);
-            typeDescriptions.add(BLANK_TYPE_CHOICE);
+                    typeChoices.size() + 1);
+            List<String> typesNoPointIdRequired = new ArrayList<String>(
+                    typeChoices.size() + 1);
+            List<String> typeDescriptionsNoPointIdRequired = new ArrayList<String>(
+                    typeChoices.size() + 1);
             for (Choice hazardType : categoryAndTypes.getChildren()) {
                 types.add(hazardType.getIdentifier());
                 typeDescriptions.add(hazardType.getDisplayString());
+                descriptionsForTypes.put(hazardType.getIdentifier(),
+                        hazardType.getDisplayString());
+                if (getModel().getConfigurationManager()
+                        .isPointIdentifierRequired(hazardType.getIdentifier()) == false) {
+                    typesNoPointIdRequired.add(hazardType.getIdentifier());
+                    typeDescriptionsNoPointIdRequired.add(hazardType
+                            .getDisplayString());
+                }
             }
-            typesForCategories.put(categoryAndTypes.getDisplayString(),
-                    ImmutableList.copyOf(types));
-            typeDescriptionsForCategories.put(
-                    categoryAndTypes.getDisplayString(),
-                    ImmutableList.copyOf(typeDescriptions));
+            if (types.isEmpty() == false) {
+                types.add(0, BLANK_TYPE_CHOICE);
+                typeDescriptions.add(0, BLANK_TYPE_CHOICE);
+                typesForCategories.put(categoryAndTypes.getDisplayString(),
+                        ImmutableList.copyOf(types));
+                typeDescriptionsForCategories.put(
+                        categoryAndTypes.getDisplayString(),
+                        ImmutableList.copyOf(typeDescriptions));
+                categories.add(categoryAndTypes.getDisplayString());
+            }
+            if (typesNoPointIdRequired.isEmpty() == false) {
+                typesNoPointIdRequired.add(0, BLANK_TYPE_CHOICE);
+                typeDescriptionsNoPointIdRequired.add(0, BLANK_TYPE_CHOICE);
+                typesForCategoriesNoPointIdRequired.put(
+                        categoryAndTypes.getDisplayString(),
+                        ImmutableList.copyOf(typesNoPointIdRequired));
+                typeDescriptionsForCategoriesNoPointIdRequired
+                        .put(categoryAndTypes.getDisplayString(), ImmutableList
+                                .copyOf(typeDescriptionsNoPointIdRequired));
+                categoriesNoPointIdRequired.add(categoryAndTypes
+                        .getDisplayString());
+            }
         }
         this.categories = ImmutableList.copyOf(categories);
         this.typeListsForCategories = ImmutableMap.copyOf(typesForCategories);
         this.typeDescriptionListsForCategories = ImmutableMap
                 .copyOf(typeDescriptionsForCategories);
+        this.categoriesNoPointIdRequired = ImmutableList
+                .copyOf(categoriesNoPointIdRequired);
+        this.typeListsForCategoriesNoPointIdRequired = ImmutableMap
+                .copyOf(typesForCategoriesNoPointIdRequired);
+        this.typeDescriptionListsForCategoriesNoPointIdRequired = ImmutableMap
+                .copyOf(typeDescriptionsForCategoriesNoPointIdRequired);
+        this.descriptionsForTypes = ImmutableMap.copyOf(descriptionsForTypes);
     }
 
     // Public Methods
@@ -769,7 +837,6 @@ public class HazardDetailPresenter extends
             return;
         }
         String newVisibleEventIdentifier = getVisibleEventIdentifier();
-
         if (selectedEventIdentifiers.contains(newVisibleEventIdentifier) == false) {
             return;
         }
@@ -965,7 +1032,10 @@ public class HazardDetailPresenter extends
             final SessionEventStatusModified change) {
         if (detailViewShowing) {
             if (isVisibleEventModified(change)) {
-                updateViewCategoryEditability(getVisibleEvent());
+                ObservedHazardEvent event = getVisibleEvent();
+                updateViewCategoryEditability(event);
+                updateViewTypeList(event);
+                updateViewTypeEditability(event);
             }
             updateSelectedEventDisplayablesIfChanged();
             updateViewButtonsEnabledStates();
@@ -1020,7 +1090,7 @@ public class HazardDetailPresenter extends
          * Initialize the view.
          */
         TimeRange timeRange = getModel().getTimeManager().getVisibleTimeRange();
-        getView().initialize(categories, timeRange.getStart().getTime(),
+        getView().initialize(timeRange.getStart().getTime(),
                 timeRange.getEnd().getTime(),
                 getModel().getTimeManager().getCurrentTimeProvider(),
                 extraDataForEvents);
@@ -1272,6 +1342,24 @@ public class HazardDetailPresenter extends
     }
 
     /**
+     * Update the view to use the category list and category that goes with the
+     * specified event.
+     * 
+     * @param event
+     *            Event for which the update should occur.
+     */
+    private void updateViewCategoryList(ObservedHazardEvent event) {
+        selectedCategory = getModel().getConfigurationManager()
+                .getHazardCategory(event);
+        boolean hasPointId = (event.getHazardAttribute(HazardConstants.POINTID) != null);
+        getView().getCategoryChanger().setChoices(event.getEventID(),
+                (hasPointId ? categories : categoriesNoPointIdRequired),
+                (hasPointId ? categories : categoriesNoPointIdRequired),
+                selectedCategory);
+        updateViewDurations(event);
+    }
+
+    /**
      * Update the view to use the current category for the selected event.
      * 
      * @param event
@@ -1285,7 +1373,7 @@ public class HazardDetailPresenter extends
     }
 
     /**
-     * Update the view to have the specified editability for the category.
+     * Update the view to have the appropriate editability for the category.
      * 
      * @param event
      *            Event for which the update should occur.
@@ -1304,12 +1392,72 @@ public class HazardDetailPresenter extends
      *            Event for which the update should occur.
      */
     private void updateViewTypeList(ObservedHazardEvent event) {
+
+        /*
+         * If the hazard event is not yet issued, it can have a wide variety of
+         * types (though less are available as possibilities if it has no point
+         * identifier); otherwise, if it is issued, it can only have the types
+         * that can serve as replacements for it; otherwise, since it is ending
+         * or ended, it cannot have its type changed.
+         */
         String selectedType = event.getHazardType();
-        getView().getTypeChanger().setChoices(event.getEventID(),
-                typeListsForCategories.get(selectedCategory),
-                typeDescriptionListsForCategories.get(selectedCategory),
-                (selectedType == null ? BLANK_TYPE_CHOICE : selectedType));
+        switch (event.getStatus()) {
+        case POTENTIAL:
+        case PENDING:
+        case PROPOSED:
+            boolean hasPointId = (event
+                    .getHazardAttribute(HazardConstants.POINTID) != null);
+            getView()
+                    .getTypeChanger()
+                    .setChoices(
+                            event.getEventID(),
+                            (hasPointId ? typeListsForCategories
+                                    : typeListsForCategoriesNoPointIdRequired)
+                                    .get(selectedCategory),
+                            (hasPointId ? typeDescriptionListsForCategories
+                                    : typeDescriptionListsForCategoriesNoPointIdRequired)
+                                    .get(selectedCategory),
+                            (selectedType == null ? BLANK_TYPE_CHOICE
+                                    : selectedType));
+            break;
+        case ISSUED:
+            List<String> possibleReplacementTypes = getModel()
+                    .getConfigurationManager().getReplaceByTypes(selectedType);
+            List<String> types = new ArrayList<>(
+                    possibleReplacementTypes.size() + 1);
+            List<String> descriptions = new ArrayList<>(
+                    possibleReplacementTypes.size() + 1);
+            types.add(selectedType);
+            descriptions.add(descriptionsForTypes.get(selectedType));
+            for (String type : possibleReplacementTypes) {
+                types.add(type);
+                descriptions.add(descriptionsForTypes.get(type));
+            }
+            getView().getTypeChanger().setChoices(event.getEventID(), types,
+                    descriptions, selectedType);
+            break;
+        case ENDING:
+        case ENDED:
+            getView().getTypeChanger().setChoices(event.getEventID(),
+                    Lists.newArrayList(selectedType),
+                    Lists.newArrayList(descriptionsForTypes.get(selectedType)),
+                    selectedType);
+        }
         updateViewDurations(event);
+    }
+
+    /**
+     * Update the view to have the appropriate editability for the type.
+     * 
+     * @param event
+     *            Event for which the update should occur.
+     */
+    private void updateViewTypeEditability(ObservedHazardEvent event) {
+        HazardStatus status = event.getStatus();
+        getView().getTypeChanger().setEditable(
+                event.getEventID(),
+                (status != HazardStatus.ENDING)
+                        && (status != HazardStatus.ENDED));
     }
 
     /**
@@ -1448,9 +1596,10 @@ public class HazardDetailPresenter extends
         if (event != null) {
             cacheMetadataSpecifiers(event);
             updateViewVisibleTimeRange();
-            updateViewCategory(event);
+            updateViewCategoryList(event);
             updateViewCategoryEditability(event);
             updateViewTypeList(event);
+            updateViewTypeEditability(event);
             updateViewTimeRangeBoundaries(event);
             updateViewTimeRange(event);
             updateViewMetadataSpecifiers(event);
