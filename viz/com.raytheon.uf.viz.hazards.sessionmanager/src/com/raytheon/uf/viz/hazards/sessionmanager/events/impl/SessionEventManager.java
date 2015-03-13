@@ -254,6 +254,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      list of events to ensure that it does not have
  *                                      until further notice set if such is not allowed.
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
+ * Mar 13, 2015 6922       Chris.Cody   Changes to skip re-query on GraphicalEditor cancel
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -1119,12 +1121,13 @@ public class SessionEventManager implements
     private void startRiseCrestFallEdit(ObservedHazardEvent event) {
         IRiseCrestFallEditor editor = messenger.getRiseCrestFallEditor(event);
         IHazardEvent evt = editor.getRiseCrestFallEditor(event);
-
-        if (evt instanceof ObservedHazardEvent) {
-            event = (ObservedHazardEvent) evt;
+        if (evt != null) {
+            if (evt instanceof ObservedHazardEvent) {
+                event = (ObservedHazardEvent) evt;
+            }
+            updateEventMetadata(event);
         }
 
-        updateEventMetadata(event);
     }
 
     /**

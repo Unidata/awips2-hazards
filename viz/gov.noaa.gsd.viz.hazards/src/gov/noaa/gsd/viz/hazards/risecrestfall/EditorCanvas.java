@@ -23,6 +23,7 @@ import gov.noaa.gsd.viz.hazards.risecrestfall.EventRegion.EventType;
 
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -38,6 +39,8 @@ import org.eclipse.swt.events.MouseListener;
 import org.eclipse.swt.events.MouseMoveListener;
 import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.graphics.Font;
@@ -48,9 +51,12 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.Menu;
+import org.eclipse.swt.widgets.MenuItem;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastPoint;
@@ -68,6 +74,7 @@ import com.raytheon.uf.viz.core.RGBColors;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 17, 2015    3847    mpduff     Initial creation
+ * Mar 13, 2015    6922    Chris.Cody Changes for dragging vertical graph lines
  * 
  * </pre>
  * 
@@ -146,6 +153,51 @@ public class EditorCanvas extends Canvas {
     private ScaleManager scaleMgr;
 
     private final IDataUpdate dataUpdate;
+
+    /** Graph Popup Context menu. */
+    private Menu graphPopupMenu;
+
+    /**
+     * Show or hide Graph Point Data flag.
+     */
+    private Boolean showGraphPointData = Boolean.FALSE;
+
+    /**
+     * Graph Point Data Text: Date Time, Stage.
+     */
+    private String graphPointDataText = "";
+
+    /**
+     * Current graph canvas pointer data X coordinate.
+     */
+    private int graphPointDataX = -1;
+
+    /**
+     * Current graph canvas pointer data Y coordinate.
+     */
+    private int graphPointDataY = -1;
+
+    private NumberFormat formatter = new DecimalFormat("0");
+
+    /**
+     * Date Formatter used for display fields and graph pointer data.
+     */
+    private SimpleDateFormat dateFormat = null;
+
+    /**
+     * Last X coordinate of Canvas Region drag action.
+     */
+    private int lastX = Integer.MIN_VALUE;
+
+    /**
+     * Last Y coordinate of Canvas Region drag action. Here for completeness.
+     */
+    private int lastY = Integer.MIN_VALUE;
+
+    /**
+     * Event Region for existing mouse drag.
+     */
+    private EventRegion dragEventRegion = null;
 
     public EditorCanvas(Composite parent, GraphData graphData,
             IDataUpdate dataUpdate, int style) {
@@ -242,38 +294,130 @@ public class EditorCanvas extends Canvas {
         });
 
         this.setBackground(Display.getCurrent().getSystemColor(SWT.COLOR_BLACK));
+
+        dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
     }
 
     protected void handleMouseUpEvent(MouseEvent e) {
-        this.mouseDown = false;
+
+        int buttonReleased = e.button;
+
+        if (buttonReleased == 1) {
+            mouseDown = false;
+            dragEventRegion = null;
+            setCursor(null);
+        }
     }
 
     protected void handleMouseDownEvent(MouseEvent e) {
-        this.mouseDown = true;
+        if (e.button == 1) {
+            mouseDown = true;
+            dragEventRegion = null;
+        } else if (e.button == 3) {
+            createGraphPopupMenu(this);
+        }
     }
 
     protected void handleMouseMoveEvent(MouseEvent e) {
-        for (Entry<EventType, EventRegion> entry : graphData.getEventRegions()
-                .entrySet()) {
-            EventRegion er = entry.getValue();
-            if (er.getRegion() != null && er.getRegion().contains(e.x, e.y)) {
-                setCursor(eastWestCursor);
-                if (mouseDown) {
-                    // Move the line
-                    Date date = pixel2x(e.x - GRAPHBORDER_LEFT);
-                    er.setDate(date);
-                    Region r = new Region();
-                    r.add(e.x - (regionWidth / 2), GRAPHBORDER_TOP,
-                            regionWidth, graphAreaHeight);
-                    er.setRegion(r);
-                    redraw();
-                    this.dataUpdate.setDate(er.getEventType(), date);
+
+        int curX = e.x;
+        int curY = e.y;
+        displayGraphPointData(curX, curY);
+
+        if (mouseDown == true) {
+            if (dragEventRegion == null) {
+                lastX = Integer.MIN_VALUE;
+                lastY = Integer.MIN_VALUE;
+                dragEventRegion = grabEventRegion(curX, curY);
+                if (dragEventRegion != null) {
+                    setCursor(eastWestCursor);
+                    lastX = curX;
+                    lastY = curY;
+                } else {
+                    setCursor(null);
                 }
-                break;
+            }
+
+            if (this.dragEventRegion != null) {
+                // Did we move in the X axis
+                if (lastX != curX) {
+                    Region r = new Region();
+                    r.add(curX - (regionWidth / 2), GRAPHBORDER_TOP,
+                            regionWidth, graphAreaHeight);
+                    dragEventRegion.setRegion(r);
+
+                    lastX = curX;
+                    lastY = curY;
+                    Date date = pixel2x(curX - GRAPHBORDER_LEFT);
+                    dragEventRegion.setDate(date);
+                    dataUpdate.setDate(dragEventRegion.getEventType(), date);
+                    redraw();
+                }
+            }
+        } else {
+            // Mouse is up
+            EventRegion er = grabEventRegion(curX, curY);
+            if (er != null) {
+                setCursor(eastWestCursor);
             } else {
                 setCursor(null);
             }
         }
+    }
+
+    /**
+     * Grab the Event Region in the Graph Data for the given coordinate.
+     * 
+     * @param x
+     *            Horizontal axis screen coordinate
+     * @param y
+     *            Vertical axis screen coordinate
+     * @return Event Region that X and Y are inside of or Null
+     */
+    private EventRegion grabEventRegion(int x, int y) {
+        EventRegion grabbedEr = null;
+
+        for (Entry<EventType, EventRegion> entry : graphData.getEventRegions()
+                .entrySet()) {
+            EventRegion er = entry.getValue();
+            if (er.getRegion() != null && er.getRegion().contains(x, y)) {
+                grabbedEr = er;
+                break;
+            }
+        }
+
+        return (grabbedEr);
+    }
+
+    /**
+     * Create the table popup menu.
+     * 
+     * @param parent
+     *            Parent control.
+     */
+    private void createGraphPopupMenu(Control parent) {
+        if (graphPopupMenu != null) {
+            graphPopupMenu.dispose();
+        }
+
+        graphPopupMenu = new Menu(parent);
+        MenuItem displayGraphDataMenuItemCB = new MenuItem(graphPopupMenu,
+                SWT.CHECK);
+        displayGraphDataMenuItemCB.setText("Display Graph Data");
+        displayGraphDataMenuItemCB.setSelection(this.showGraphPointData);
+        displayGraphDataMenuItemCB.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleDisplayGraphDataCheckbox();
+            }
+        });
+        parent.setMenu(graphPopupMenu);
+        graphPopupMenu.setVisible(true);
+    }
+
+    private void handleDisplayGraphDataCheckbox() {
+        this.showGraphPointData = !this.showGraphPointData;
     }
 
     /**
@@ -390,6 +534,17 @@ public class EditorCanvas extends Canvas {
 
         gc.setBackground(parentComp.getDisplay()
                 .getSystemColor(SWT.COLOR_BLACK));
+
+        if (this.showGraphPointData == true) {
+            if ((this.graphPointDataX > 0) && (this.graphPointDataY > 0)) {
+                Font f = new Font(this.getDisplay(), "Monospace", 14, SWT.BOLD);
+                gc.setForeground(this.getDisplay().getSystemColor(
+                        SWT.COLOR_WHITE));
+                gc.drawText(this.graphPointDataText, this.graphPointDataX,
+                        this.graphPointDataY, false);
+                f.dispose();
+            }
+        }
     }
 
     private void drawYAxis(GC gc) {
@@ -397,11 +552,10 @@ public class EditorCanvas extends Canvas {
         int dx = 8;
         double yDiff = yMax - yMin;
         int xoffset = 40;
-        NumberFormat formatter = new DecimalFormat("0");
         if (yDiff < 1.0) {
-            formatter = new DecimalFormat("0.00");
+            this.formatter = new DecimalFormat("0.00");
         } else {
-            formatter = new DecimalFormat("0.0");
+            this.formatter = new DecimalFormat("0.0");
         }
 
         int numberTicks = scaleMgr.getMajorTickCount();
@@ -676,6 +830,13 @@ public class EditorCanvas extends Canvas {
         return (int) (graphAreaHeight - Math.round(yValue));
     }
 
+    /**
+     * Convert Canvas Graph Point X value to Graph Stage value.
+     * 
+     * @param ypix
+     *            Current Graph Canvas Mouse Pointer X coordinate
+     * @return Flood Stage value at Pixel X
+     */
     protected Date pixel2x(int xpix) {
         long xDiff = xMax - xMin;
         double millisPerPixel = xDiff / graphAreaWidth;
@@ -685,6 +846,64 @@ public class EditorCanvas extends Canvas {
         cal.setTimeInMillis(millisTime);
 
         return cal.getTime();
+    }
+
+    /**
+     * Convert Canvas Graph Point Y value to Graph Stage value.
+     * 
+     * @param ypix
+     *            Current Graph Canvas Mouse Pointer Y coordinate
+     * @return Flood Stage value at Pixel Y
+     */
+    protected double pixel2y(int ypix) {
+        double yDiff = yMax - yMin;
+        double pixelPerUnit = graphAreaHeight / yDiff;
+        double stageValue = (yMax - ((ypix - GRAPHBORDER_TOP) / pixelPerUnit));
+
+        return (stageValue);
+    }
+
+    /**
+     * Set Current Graph Point Data and call redraw.
+     * 
+     * @param xpix
+     *            Current Graph Canvas Mouse Pointer X coordinate
+     * @param ypix
+     *            Current Graph Canvas Mouse Pointer Y coordinate
+     */
+    private void displayGraphPointData(int xpix, int ypix) {
+
+        if (this.showGraphPointData == false) {
+            return;
+        }
+
+        int graphXLeft = 0 + GRAPHBORDER_LEFT;
+        int graphXRight = canvasWidth - GRAPHBORDER_RIGHT;
+        int graphYTop = 0 + GRAPHBORDER_TOP;
+        int graphYBottom = canvasHeight - GRAPHBORDER_BOTTOM;
+
+        String xVal = "";
+        String yVal = "";
+        if ((xpix >= graphXLeft) && (xpix <= graphXRight) && (ypix > graphYTop)
+                && (ypix < graphYBottom)) {
+            Date xValDate = this.pixel2x(xpix - GRAPHBORDER_LEFT);
+            xVal = this.dateFormat.format(xValDate);
+            double yValDbl = this.pixel2y(ypix);
+            yVal = formatter.format(yValDbl);
+
+            String labelText = "Time: " + xVal + "\nStage: " + yVal;
+            this.graphPointDataText = labelText;
+            this.graphPointDataX = xpix + 12;
+            this.graphPointDataY = ypix + 12;
+            this.redraw();
+        } else {
+            if ((this.graphPointDataX != -1) && (this.graphPointDataY != -1)) {
+                this.graphPointDataText = "";
+                this.graphPointDataX = -1;
+                this.graphPointDataY = -1;
+                this.redraw();
+            }
+        }
     }
 
     public void setGraphData(GraphData graphData) {

@@ -22,6 +22,7 @@ package gov.noaa.gsd.viz.hazards.risecrestfall;
 import gov.noaa.gsd.viz.hazards.risecrestfall.EventRegion.EventType;
 
 import java.io.Serializable;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -40,6 +41,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
+import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
@@ -70,8 +72,10 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 17, 2015    3847    mpduff      Initial creation
+ * Mar 13, 2015    6922    Chris.Cody  Changes to constrain Begin, Rise, Crest, Fall and End date time values.
  * 
  * </pre>
+ * 
  * 
  * @author mpduff
  * @version 1.0
@@ -148,6 +152,18 @@ public class GraphicalEditor extends CaveSWTDialog implements
 
     private AwipsCalendar calendarDlg;
 
+    private final String crestValLblTxt = "Crest Value: ";
+
+    private final String beginTimeLblTxt = "Start Time: ";
+
+    private final String endTimeLblTxt = "End Time: ";
+
+    private final String riseLblTxt = "Rise Above Time: ";
+
+    private final String crestLblTxt = "Crest Time: ";
+
+    private final String fallLblTxt = "Fall Below Time: ";
+
     public GraphicalEditor(Shell parentShell, IHazardEvent event) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL
                 | SWT.RESIZE);
@@ -198,6 +214,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
         riverProDataManager = new RiverProDataManager();
         dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
         dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+        dateFormat.setLenient(false);
         createGraphData();
         createCanvas(shell);
         createDataEntryComposite(shell);
@@ -358,7 +375,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
         leftComp.setLayoutData(gd);
 
         Label crestValLbl = new Label(leftComp, SWT.NONE);
-        crestValLbl.setText("Crest Value: ");
+        crestValLbl.setText(crestValLblTxt);
         crestValLbl.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false,
                 false));
 
@@ -370,7 +387,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
         crestValTxt.setLayoutData(gd);
 
         Label beginTimeLbl = new Label(leftComp, SWT.NONE);
-        beginTimeLbl.setText("Start Time: ");
+        beginTimeLbl.setText(beginTimeLblTxt);
         beginTimeLbl.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true,
                 false));
 
@@ -418,6 +435,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
         beginSetRdo = new Button(beginChkComp, SWT.RADIO);
         beginSetRdo.setText(SET_DATE_TIME);
         beginSetRdo.setSelection(true);
+        beginSetRdo.setToolTipText("Click to select a date and time");
         beginSetRdo.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -428,7 +446,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
         });
 
         Label endTimeLbl = new Label(leftComp, SWT.NONE);
-        endTimeLbl.setText("End Time: ");
+        endTimeLbl.setText(endTimeLblTxt);
         endTimeLbl
                 .setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
 
@@ -478,6 +496,8 @@ public class GraphicalEditor extends CaveSWTDialog implements
         endSetRdo = new Button(endBtnComp, SWT.RADIO);
         endSetRdo.setText(SET_DATE_TIME);
         endSetRdo.setSelection(true);
+        endSetRdo.setToolTipText("Click to select a date and time");
+
         endSetRdo.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -496,7 +516,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
 
         Label riseLbl = new Label(rightComp, SWT.NONE);
         riseLbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, true, false));
-        riseLbl.setText("Rise Above Time: ");
+        riseLbl.setText(riseLblTxt);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         gd.widthHint = 125;
@@ -526,7 +546,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
 
         Label crestLbl = new Label(rightComp, SWT.NONE);
         crestLbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, true, false));
-        crestLbl.setText("Crest Time: ");
+        crestLbl.setText(crestLblTxt);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         gd.widthHint = 125;
@@ -556,7 +576,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
 
         Label fallLbl = new Label(rightComp, SWT.NONE);
         fallLbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, true, false));
-        fallLbl.setText("Fall Below Time: ");
+        fallLbl.setText(fallLblTxt);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         gd.widthHint = 125;
@@ -610,12 +630,17 @@ public class GraphicalEditor extends CaveSWTDialog implements
         cancelBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
+                setReturnValue(null);
                 close();
             }
         });
     }
 
     private void handleOk() {
+
+        if (verifyDialogInput() != true) {
+            return;
+        }
         Map<String, Serializable> attributes = this.event.getHazardAttributes();
         Map<String, Serializable> newAttributes = new HashMap<>(
                 attributes.size(), 1);
@@ -726,4 +751,101 @@ public class GraphicalEditor extends CaveSWTDialog implements
             this.endDate = date;
         }
     }
+
+    private boolean verifyDialogInput() {
+        boolean isValid = true;
+
+        StringBuffer errMsgSB = new StringBuffer();
+        verifyDialogInputDateField(beginTimeLblTxt, beginTimeTxt, errMsgSB);
+        verifyDialogInputDateField(endTimeLblTxt, endTimeTxt, errMsgSB);
+        verifyDialogInputDateField(riseLblTxt, riseTxt, errMsgSB);
+        verifyDialogInputDateField(crestLblTxt, crestTxt, errMsgSB);
+        verifyDialogInputDateField(fallLblTxt, fallTxt, errMsgSB);
+
+        String msgString = null;
+        if (errMsgSB.length() > 0) {
+            msgString = "Invalid date time or date time format:\n"
+                    + errMsgSB.toString() + "Correct Format is "
+                    + dateFormat.toLocalizedPattern();
+        } else {
+            try {
+                String beginDateTimeString = beginTimeTxt.getText();
+                Date beginDateTime = dateFormat.parse(beginDateTimeString);
+                String endDateTimeString = endTimeTxt.getText();
+                Date endDateTime = dateFormat.parse(endTimeTxt.getText());
+                if (endDateTime.before(beginDateTime) == true) {
+                    msgString = "Invalid date time:\n" + beginTimeLblTxt
+                            + beginDateTimeString + " cannot precede\n"
+                            + endTimeLblTxt + endDateTimeString;
+                }
+                /*
+                 * TODO Currently there are no date time constraints other than
+                 * Start and must precede End. Rules have not been established
+                 * to otherwise constrain Rise, Crest, Fall, Start and End.
+                 */
+            } catch (ParseException pe) {
+                // Do nothing.
+                // This error would be caught in verifyDialogInputDateField.
+            }
+        }
+
+        if (msgString != null) {
+            MessageBox mb = new MessageBox(shell, SWT.ICON_WARNING | SWT.BORDER
+                    | SWT.ON_TOP | SWT.APPLICATION_MODAL | SWT.RESIZE | SWT.OK);
+            mb.setText("Invalid Input");
+            mb.setMessage(msgString);
+            mb.open();
+            isValid = false;
+        }
+        return (isValid);
+    }
+
+    /**
+     * Validate dialog date time input field.
+     * 
+     * This function only checks for the validity of the field's date string.
+     * 
+     * @param labelText
+     *            Label of Date Time Field
+     * @param dateTextField
+     *            Date Time Field
+     * @param errMsgSB
+     *            Error Message String Buffer
+     */
+    private void verifyDialogInputDateField(String labelText,
+            Text dateTextField, StringBuffer errMsgSB) {
+
+        String dateString = dateTextField.getText();
+        if (dateString != null) {
+            dateString = dateString.trim();
+            if (dateString.isEmpty() == false) {
+                if (dateString.equals(MISSING_VAL) == false) {
+                    try {
+                        Object obj = dateFormat.parseObject(dateString);
+                        System.out.println("dateFormat obj "
+                                + obj.getClass().getName() + "  "
+                                + obj.toString());
+                    } catch (ParseException ex) {
+                        System.out.println(labelText + dateString + "  "
+                                + ex.getClass().toString() + "  "
+                                + ex.getMessage());
+                        errMsgSB.append(labelText);
+                        errMsgSB.append(dateString);
+                        errMsgSB.append("\n");
+                    }
+                }
+            } else {
+                errMsgSB.append(labelText);
+                errMsgSB.append("is empty");
+                errMsgSB.append("\n");
+            }
+        } else {
+            errMsgSB.append(labelText);
+            errMsgSB.append("is NULL");
+            errMsgSB.append("\n");
+        }
+
+        return;
+    }
+
 }
