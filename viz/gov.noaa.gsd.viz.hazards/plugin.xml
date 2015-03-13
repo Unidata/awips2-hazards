@@ -197,15 +197,6 @@
             extensionFilter=".py"
             localizationType="COMMON_STATIC"
             localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
-            name="Python Bridge"
-            recursive="true"
-            value="python/bridge">
-      </path>
-      <path
-            application="Hazard Services"
-            extensionFilter=".py"
-            localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Text Utilities"
             recursive="true"
             value="python/textUtilities">
