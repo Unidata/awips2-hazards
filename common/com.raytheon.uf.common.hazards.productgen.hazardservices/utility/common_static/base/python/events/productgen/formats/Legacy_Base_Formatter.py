@@ -7,6 +7,7 @@
     Jan 12, 2015    4937    Robert.Blum Initial creation
     Jan 31, 2015    4937    Robert.Blum General cleanup and added business
                             logic for nextIssuanceStatement from V2.
+    Mar 16, 2015    6955    Improved logic for timeBullet to add date/day when needed.
 '''
 
 import FormatTemplate
@@ -526,22 +527,40 @@ class Format(FormatTemplate.Formatter):
         return firstBullet
 
     def _timeBullet(self, sectionDict, roundMinutes=15):
+        '''
+        Displays the expiration time/date of the hazard, based on the following logic. 
+        When hazard extends:
+        - Into the next day . . . should include day
+        - More than 1 week . . . should include date
+        '''
+        bulletText = '* '
+        if (self._runMode == 'Practice' and sectionDict.get('geoType') != 'point'):
+            bulletText += "This is a test message.  "
+        bulletText += 'Until '
+
         endTime = sectionDict.get('endTime')
         expireTime = self.round(endTime, roundMinutes)
-        text = '* '
-        if (self._runMode == 'Practice' and sectionDict.get('geoType') != 'point'):
-            text += "This is a test message.  "
 
-        text += 'Until '
+        # Determine how far into the future the expire time is.
+        issueTime = datetime.datetime.fromtimestamp(float(self._issueTime)/1000)
+        tdelta = endTime - issueTime
+
+        if (tdelta.days == 6 and endTime.date().weekday() == issueTime.date().weekday()) or \
+            tdelta.days > 6:
+            format = '%l%M %p %Z %a %b %d'
+        elif issueTime.day != endTime.day:
+            format = '%l%M %p %Z %a'
+        else:
+            format = '%l%M %p %Z'
+
         timeStr = ''
         for tz in self.timezones:
             if len(timeStr) > 0:
                 timeStr += '/'
-            timeStr += self._tpc.formatDatetime(expireTime, '%l%M %p %Z', tz).strip()
+            timeStr += self._tpc.formatDatetime(expireTime, format, tz).strip()
+        bulletText += timeStr
 
-        text += timeStr
-
-        return text + '\n'
+        return bulletText + '.\n'
 
     def _emergencyStatement(self, sectionDict):
         includeChoices = sectionDict.get('include')
