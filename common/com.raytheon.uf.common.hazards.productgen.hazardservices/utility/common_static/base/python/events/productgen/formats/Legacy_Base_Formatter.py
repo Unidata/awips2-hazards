@@ -484,9 +484,12 @@ class Format(FormatTemplate.Formatter):
 
     def _basisAndImpactsStatement_segmentLevel(self, segmentDict):
         sectionDict = segmentDict.get('sections', {})[0]
-        statement = sectionDict.get('basisAndImpactsStatement_segmentLevel', '')
-        if statement == '':
+        statement = sectionDict.get('basisAndImpactsStatement_segmentLevel', None)
+
+        # Check for a empty string from the HID
+        if statement == '' or statement == None:
             statement = '|* Current hydrometeorological situation and expected impacts *|'
+
         return statement + '\n\n'
 
     def _endSegment(self, segmentDict):
@@ -559,18 +562,19 @@ class Format(FormatTemplate.Formatter):
         bulletText += impacts + '\n'
         return bulletText + '\n'
 
-    def _basisAndImpactsStatement(self, sectionDict):
-        #TODO Warngen seems to just have the basis here. Does impacts
-        # still need to be added?
-        bulletText = sectionDict.get('basisAndImpactsStatement',
-                            '|* Current hydrometeorological situation and expected impacts *|')
-        bulletText += '\n'
+    def _basisAndImpactsStatement(self, segmentDict):
+        bulletText = '* '
+        if (self._runMode == 'Practice'):
+            bulletText += "This is a test message.  "
+            
+        statement = segmentDict.get('basisAndImpactsStatement', None)
 
-        # Add any additional comments here, listOfDrainages, floodMoving, etc.
-        additionalCommentsText = self.createAdditionalComments(sectionDict)
-        if additionalCommentsText:
-            bulletText += '\n' + additionalCommentsText
-        return bulletText
+        # Check for a empty string from the HID
+        if statement == '' or statement == None:
+            bulletText += '|* Current hydrometeorological situation and expected impacts *|'
+        else:
+            bulletText += statement
+        return bulletText + '\n\n'
 
     def _locationsAffected(self, sectionDict):
         vtecRecord = sectionDict.get('vtecRecord', {})

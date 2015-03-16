@@ -33,12 +33,9 @@ class Product(HydroGenerator.Product):
 
     def _initialize(self) :
         super(Product, self)._initialize()
-        self._FAA_ProductName = 'Flood Watch'
-        self._FFA_ProductName = 'Flash Flood Watch'
-        self._FLA_ProductName = 'Flood Watch'
         self._productID = 'FFA'
         self._productCategory = "FFA" #This is necessary to generate the PIL value
-        self._productName = self._FFA_ProductName
+        self._productName = 'Flood Watch'
         self._purgeHours = 8
         self._includeAreaNames = True
         self._includeCityNames = True
