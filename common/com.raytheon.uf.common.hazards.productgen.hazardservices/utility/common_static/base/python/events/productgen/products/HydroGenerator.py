@@ -10,6 +10,7 @@
     Jan 26, 2015    4936    Chris.Cody  Implement scripts for Flash Flood Watch Products (FFA,FAA,FLA)
     Jan 31, 2015    4937    Robert.Blum General cleanup and bug fixes.
     Feb 20, 2015    4937    Robert.Blum Added required data for groupSummary to section dicitonary
+    Mar 17, 2015    6963    Robert.Blum Rounded impact height to a precision of 2.
 '''
 from RiverForecastPoints import RiverForecastPoints
 from HydroProductParts import HydroProductParts
@@ -116,8 +117,8 @@ class Product(Legacy_Base_Generator.Product):
         if len(parts) > 1:
             impactValue = parts[1]
             height = impactValue.rsplit('-')[0]
-            # Round height to 1 decimal point - result is a string
-            height = format(float(height), '.1f')
+            # Round height to 2 decimal point - result is a string
+            height = format(float(height), '.2f')
         else:
             impactValue = ''
             height = ''

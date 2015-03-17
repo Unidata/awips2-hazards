@@ -8,6 +8,7 @@
     Jan 12, 2015    4937    Robert.Blum Initial creation
     Jan 31, 2015    4937    Robert.Blum General cleanup
     Feb 20, 2015    4937    Robert.Blum Added groupSummary productPart method
+    Mar 17, 2015    6963    Robert.Blum Rounded rfp stage values to a precision of 2.
 '''
 import datetime
 import collections
@@ -72,8 +73,8 @@ class Format(Legacy_Base_Formatter.Format):
         else:
             stageFlowName = segmentDict.get('stageFlowName')
             observedStage = segmentDict.get('observedStage')
-            # Round to 1 decimal point - result is a string
-            observedStage = format(observedStage, '.1f')
+            # Round to 2 decimal point - result is a string
+            observedStage = format(observedStage, '.2f')
             stageFlowUnits = segmentDict.get('stageFlowUnits')
             observedTime = self._getFormattedTime(segmentDict.get('observedTime_ms'), timeZones=self.timezones)
 
@@ -83,8 +84,8 @@ class Format(Legacy_Base_Formatter.Format):
     def _floodStageBullet(self, segmentDict):
         floodStage = segmentDict.get('floodStage')
         if floodStage != self.MISSING_VALUE:
-            # Round to 1 decimal point - result is a string
-            floodStage = format(floodStage, '.1f')
+            # Round to 2 decimal point - result is a string
+            floodStage = format(floodStage, '.2f')
             bulletContent = 'Flood stage is '+ floodStage +' '+segmentDict.get('stageFlowUnits')+'.'
         else:
             bulletContent = ''
@@ -116,8 +117,8 @@ class Format(Legacy_Base_Formatter.Format):
         bulletContent = '* '
         if segmentDict.get('observedCategory') > 0:
             maxStage = segmentDict.get('max24HourObservedStage')
-            # Round to 1 decimal point - result is a string
-            maxStage = format(maxStage, '.1f')
+            # Round to 2 decimal point - result is a string
+            maxStage = format(maxStage, '.2f')
             observedTime = self._getFormattedTime(segmentDict.get('observedTime_ms'), timeZones=self.timezones).rstrip()
             bulletContent = '* Recent Activity...The maximum river stage in the 24 hours ending at '+observedTime+' was '+ maxStage +' feet. '
         else:
@@ -157,8 +158,8 @@ class Format(Legacy_Base_Formatter.Format):
         units = segmentDict.get('impactCompUnits', '')
         if crestContents is not None:
             crest,crestDate = crestContents.split(' ')
-            # Round to 1 decimal point - result is a string
-            crest = format(float(crest), '.1f')
+            # Round to 2 decimal point - result is a string
+            crest = format(float(crest), '.2f')
             crestString = "* Flood History...This crest compares to a previous crest of " + crest + " " + units + " on " + crestDate +"."
         else:
             crestString = '* Flood History...No available flood history available.'

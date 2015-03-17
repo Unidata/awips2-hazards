@@ -11,6 +11,8 @@
     ------------ ---------- ----------- --------------------------
     Feb 2015       4375    Tracy Hansen      Initial creation
     Feb 2015       6599    Robert.Blum       Changed to new style class
+    Mar 2015       6963    Robert.Blum       Stage values have precision of 2 and 
+                                             times have minutes formatted to '00'.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types
@@ -90,7 +92,15 @@ class ForecastStageText(object):
         timeStr = ''     
         fuzzFactor = 0.5
 
-        '''        
+        # String variables for the rounded stage values
+        if section.forecastCrestStage:
+            forecastCrestStage = format(section.forecastCrestStage, '.2f')
+        if section.maximumForecastStage:
+            maximumForecastStage = format(section.maximumForecastStage, '.2f')
+        if section.specValue:
+            specValue = format(section.specValue, '.2f')
+
+        '''
         # Determine where we are starting in the cycle and describe what follows
         #   states are : 
         #     below flood stage  -- compareStage < flood stage 
@@ -142,28 +152,30 @@ class ForecastStageText(object):
 
         # is crest above/below/at Flood stage
         if section.forecastCrestStage:
-            self.crestStatement=' to a crest of ' + `section.forecastCrestStage` + ' '+section.stageFlowUnits+' at '+section.forecastCrestTime_str
+            self.crestStatement=' to a crest of ' + forecastCrestStage + ' '+section.stageFlowUnits+' at '+section.forecastCrestTime_str
         else:
             self.crestStatement=''  
         # determine final stage/flow
         if self.trend == 'rise' and section.forecastCrestStage and self._crestToMaximum != 'equal':
-            self.finalStageFlow='. It will then rise to '+`section.maximumForecastStage`+' '+section.stageFlowUnits+' at '+section.maximumForecastTime_str+'. Additional rises are possible thereafter.'
+            self.finalStageFlow='. It will then rise to '+maximumForecastStage+' '+section.stageFlowUnits+' at '+section.maximumForecastTime_str+'. Additional rises are possible thereafter.'
         elif self.trend == 'rise' and section.forecastCrestStage is None and self._crestToMaximum != 'equal':
-            self.finalStageFlow=' to '+`section.maximumForecastStage`+' '+section.stageFlowUnits+' at '+section.maximumForecastTime_str+'. Additional rises are possible thereafter.'
+            self.finalStageFlow=' to '+maximumForecastStage+' '+section.stageFlowUnits+' at '+section.maximumForecastTime_str+'. Additional rises are possible thereafter.'
         elif self.trend == 'rise' and section.forecastCrestStage and self._crestToMaximum == 'equal':
             self.finalStageFlow='.'
         elif self.trend == 'fall':
             self.finalStageFlow = ''
             if section.specValue != RiverForecastPoints.Missing_Value_Constant:
-                self.finalStageFlow = ' to '+`section.specValue`+' '+section.stageFlowUnits
+                self.finalStageFlow = ' to '+specValue+' '+section.stageFlowUnits
                 if section.specTime != RiverForecastPoints.Missing_Value_Constant:
                     self.finalStageFlow += ' at '+section.specTime
             self.finalStageFlow += '.'
         else: # steady
             if section.maximumForecastStage >= section.floodStage:        
-                self.finalStageFlow=' above flood stage at '+`section.maximumForecastStage`+' '+section.stageFlowUnits+'.'
+                self.finalStageFlow=' above flood stage at '+maximumForecastStage+' '+section.stageFlowUnits+'.'
+            elif section.maximumForecastStage != RiverForecastPoints.Missing_Value_Constant:
+                self.finalStageFlow=' below flood stage at '+maximumForecastStage+' '+section.stageFlowUnits+'.'
             else:
-                self.finalStageFlow=' below flood stage at '+`section.maximumForecastStage`+' '+section.stageFlowUnits+'.'
+                self.finalStageFlow='.'
         phrase = 'is expected to ' + self.risingFalling + self.firstRiseFallTime + self.crestStatement + self.secondRiseFallTime + self.finalStageFlow 
         return phrase
     
@@ -184,24 +196,28 @@ class ForecastStageText(object):
          
         if section.forecastRiseAboveFloodStageTime_ms:
             section.forecastRiseAboveFloodStageTime_str = sectionDict.get('forecastRiseAboveFloodStageTime_str',
-                  self.tpc.getFormattedTime(section.forecastRiseAboveFloodStageTime_ms, timeZones=self.timeZones))
+                  self.tpc.getFormattedTime(section.forecastRiseAboveFloodStageTime_ms, format='%I00 %p %Z %a %b %d %Y',
+                                            timeZones=self.timeZones))
         else:
             section.forecastRiseAboveFloodStageTime_str = None
         if section.forecastFallBelowFloodStageTime_ms:
             section.forecastFallBelowFloodStageTime_str = sectionDict.get('forecastFallBelowFloodStageTime_str',
-                  self.tpc.getFormattedTime(section.forecastFallBelowFloodStageTime_ms, timeZones=self.timeZones)) 
+                  self.tpc.getFormattedTime(section.forecastFallBelowFloodStageTime_ms, format='%I00 %p %Z %a %b %d %Y',
+                                            timeZones=self.timeZones)) 
         else:
             section.forecastFallBelowFloodStageTime_str = None
         if section.forecastCrestTime_ms:
             section.forecastCrestTime_str = sectionDict.get('forecastCrestTime_str',
-                  self.tpc.getFormattedTime(section.forecastCrestTime_ms, timeZones=self.timeZones))
+                  self.tpc.getFormattedTime(section.forecastCrestTime_ms,format='%I00 %p %Z %a %b %d %Y',
+                                            timeZones=self.timeZones))
         else:
             section.forecastCrestTime_str = None
 
         section.maximumForecastTime_str = sectionDict.get('maximumForecastTime_str')
         if section.maximumForecastTime_str is None:
             maximumForecastTime_ms = sectionDict.get('maximumForecastTime_ms')
-            section.maximumForecastTime_str = self.tpc.getFormattedTime(maximumForecastTime_ms, timeZones=self.timeZones) 
+            section.maximumForecastTime_str = self.tpc.getFormattedTime(maximumForecastTime_ms,format='%I00 %p %Z %a %b %d %Y',
+                                                                        timeZones=self.timeZones) 
         section.stageFlowUnits = sectionDict.get('stageFlowUnits') 
         section.specValue =  sectionDict.get('specValue') 
         section.specTime = sectionDict.get('specTime') 
