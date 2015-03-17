@@ -13,6 +13,8 @@
     ------------ ---------- ----------- --------------------------
     Nov 17, 2014       4763     Daniel.S.Schaffer      Initial creation
     Feb 26, 2015       6599     Robert.Blum            Changed to new style class
+    Mar 17, 2015       6958     Robert.Blum            Minor formatting change for FA.Y hazards since
+                                                       the basisBullet does not include start time.
     @author Daniel.S.Schaffer@noaa.gov
 '''
 ###############################################################################
@@ -374,7 +376,8 @@ class BasisText(object):
         else:
             result = "Unexpected hazardType " + hazardType
         result += self.rainSoFar(identifier)
-        result = "..." + result
+        if hazardType != 'FA.Y':
+            result = "..." + result
         return result
     
     def flush(self):

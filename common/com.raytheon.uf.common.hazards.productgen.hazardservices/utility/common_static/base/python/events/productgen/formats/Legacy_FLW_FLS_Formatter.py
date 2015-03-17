@@ -7,7 +7,8 @@
     Jan 12, 2015    4937    Robert.Blum Initial creation
     Jan 31, 2015 4937       Robert.Blum General cleanup along with implementing a dictionary
                                         mapping of productParts to the associated methods.
-    Feb 20, 2015 4937       Robert.Blum Added groupSummary productPart method to mapping
+    Feb 20, 2015 4937       Robert.Blum Added groupSummary productPart method to mapping.
+    Mar 17, 2015 6958       Robert.Blum BasisBullet only has start time if it is Warning.
 '''
 
 import datetime,collections
@@ -106,9 +107,11 @@ class Format(Legacy_Hydro_Formatter.Format):
         if (self._runMode == 'Practice'):
             bulletText += "This is a test message.  "
 
-        if self.timezones:
-            # use first time zone in the list
-            bulletText += 'At ' + self._tpc.formatDatetime(self._issueTime, '%l%M %p %Z', self.timezones[0]).strip()
+        # Add startTime only for warnings
+        if sig == 'W':
+            if self.timezones:
+                # use first time zone in the list
+                bulletText += 'At ' + self._tpc.formatDatetime(self._issueTime, '%l%M %p %Z', self.timezones[0]).strip()
 
         # Use basisFromHazardEvent for WarnGen only hazards
         if phen == 'FA' and sig in ['W', 'Y']:

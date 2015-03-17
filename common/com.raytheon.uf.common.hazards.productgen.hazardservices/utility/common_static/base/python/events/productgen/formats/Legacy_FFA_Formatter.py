@@ -9,6 +9,7 @@
     Jan 31, 2015 4937       Robert.Blum General cleanup along with implementing a dictionary mapping of 
                                         productParts to the associated methods.
     Feb 20, 2015 4937       Robert.Blum Added groupSummary productPart method to mapping
+    Mar 17, 2015 6958       Robert.Blum Removed the start time from basisBullet.
 '''
 
 import datetime, collections
@@ -108,16 +109,11 @@ class Format(Legacy_Hydro_Formatter.Format):
         if (self._runMode == 'Practice'):
             bulletText += "This is a test message.  "
 
-        if self.timezones:
-            # use first time zone in the list
-            bulletText += 'At ' + self._tpc.formatDatetime(startTime, '%l%M %p %Z', self.timezones[0]).strip()
-
         basisStatement = sectionDict.get('basisStatement')
         if basisStatement:
-            bulletText += ' ' + basisStatement + ' '
+            bulletText += basisStatement
         else:
             bulletText += ' |* current hydrometeorological basis *| '
 
         bulletText += '\n\n'
         return bulletText
-
