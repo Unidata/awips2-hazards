@@ -35,6 +35,7 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  * Dec 13, 2013 2182       daniel.s.schaffer@noaa.gov      Initial creation
  * Dec 05, 2014 4124       Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
+ * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -51,10 +52,12 @@ public class HazardEventBuilder {
         this.sessionManager = sessionManager;
     }
 
-    public IHazardEvent buildPolygonHazardEvent(Geometry geometry)
-            throws InvalidGeometryException {
+    public IHazardEvent buildPolygonHazardEvent(Geometry geometry,
+            boolean checkGeometryValidity) throws InvalidGeometryException {
 
-        checkValidity(geometry);
+        if (checkGeometryValidity) {
+            checkValidity(geometry);
+        }
 
         IHazardEvent event = new BaseHazardEvent();
         finishBuild(event, geometry);

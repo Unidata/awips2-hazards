@@ -78,6 +78,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      events' start and end times, so that the user will not move
  *                                      them beyond the allowed ranges.
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
+ * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
  * </pre>
  * 
  * @author bsteffen
@@ -552,11 +553,12 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     /**
      * @param geometry
      * @param hazardEvent
+     * @param checkGeometryValidity
      * @return true if the geometry of the given hazardEvent can be modified to
      *         the given geometry
      */
     public boolean isValidGeometryChange(Geometry geometry,
-            ObservedHazardEvent hazardEvent);
+            ObservedHazardEvent hazardEvent, boolean checkGeometryValidity);
 
     /**
      * Find a UGC enclosing the given location. If that UGC is included in the

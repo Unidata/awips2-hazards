@@ -68,6 +68,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Feb 03, 2015 2331       Chris.Golden Changed to support allowable boundaries for event start
  *                                      and end times.
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
+ * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
  * </pre>
  * 
  * @author bsteffen
@@ -311,7 +312,7 @@ public class SimpleSessionEventManager implements
 
     @Override
     public boolean isValidGeometryChange(Geometry geometry,
-            ObservedHazardEvent hazardEvent) {
+            ObservedHazardEvent hazardEvent, boolean checkGeometryValidity) {
         throw new UnsupportedOperationException();
     }
 

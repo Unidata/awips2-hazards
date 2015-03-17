@@ -12,7 +12,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesMultiPolygon;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPolygon;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
@@ -24,7 +23,6 @@ import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -43,7 +41,6 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
 
@@ -70,6 +67,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * Feb 09, 2015 6260       Dan Schaffer Fixed bugs in multi-polygon handling
  * Feb 17, 2015 4209       Dan Schaffer Fixed bug in lassoing hazards
  * Feb 24, 2015 6499       Dan Schaffer Disable moving/drawing of point hazards
+ * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -377,15 +375,14 @@ public class SelectionAction extends NonDrawingAction {
 
         private void handleShapeMove(IHazardServicesShape origShape,
                 Class<?> selectedDEclass) {
-            if ((selectedDEclass.equals(HazardServicesPolygon.class) || selectedDEclass
-                    .equals(HazardServicesMultiPolygon.class))
+            if ((selectedDEclass.equals(HazardServicesPolygon.class))
                     || (selectedDEclass.equals(HazardServicesLine.class))) {
                 List<Coordinate> coords = ((Line) ghostEl).getPoints();
 
                 Geometry modifiedGeometry = buildModifiedGeometry(origShape,
                         coords);
                 getSpatialDisplay().notifyModifiedGeometry(origShape.getID(),
-                        modifiedGeometry);
+                        modifiedGeometry, true);
             }
         }
 
@@ -428,49 +425,10 @@ public class SelectionAction extends NonDrawingAction {
                 result = geometryFactory.createPolygon(
                         geometryFactory.createLinearRing(coordinatesAsArray),
                         null);
-            } else if (origShape.getClass() == HazardServicesMultiPolygon.class) {
-                result = buildNewMultiPolygon(
-                        (MultiPolygon) origShape.getGeometry(),
-                        coordinatesAsArray);
             } else {
                 throw new IllegalArgumentException("Unexpected geometry "
                         + origShape.getClass());
             }
-            return result;
-        }
-
-        private Geometry buildNewMultiPolygon(MultiPolygon origGeometry,
-                Coordinate[] coordinates) {
-            List<Polygon> polygons = new ArrayList<>();
-            int coordinateNum = -1;
-            for (int polygonNum = 0; polygonNum < origGeometry
-                    .getNumGeometries(); polygonNum++) {
-                int polygonSize = origGeometry.getGeometryN(polygonNum)
-                        .getNumPoints();
-                List<Coordinate> coordinatesForThisPolygon = new ArrayList<>(
-                        polygonSize);
-
-                /*
-                 * Skip the duplicate last point
-                 */
-                for (int i = 0; i < polygonSize - 1; i++) {
-                    coordinateNum += 1;
-                    coordinatesForThisPolygon.add(coordinates[coordinateNum]);
-                }
-                Utilities
-                        .closeCoordinatesIfNecessary(coordinatesForThisPolygon);
-                coordinateNum += 1;
-                Coordinate[] coordinatesAsArray = coordinatesForThisPolygon
-                        .toArray(new Coordinate[coordinatesForThisPolygon
-                                .size()]);
-                polygons.add(geometryFactory.createPolygon(
-                        geometryFactory.createLinearRing(coordinatesAsArray),
-                        null));
-            }
-            Polygon[] polygonsAsArray = polygons.toArray(new Polygon[polygons
-                    .size()]);
-            Geometry result = geometryFactory
-                    .createMultiPolygon(polygonsAsArray);
             return result;
         }
 
@@ -499,9 +457,7 @@ public class SelectionAction extends NonDrawingAction {
                 String hazardID = ((IHazardServicesShape) hazard).getID();
 
                 if (hazardID.equals(eventID)) {
-                    if (hazardClass.equals(HazardServicesPolygon.class)
-                            || hazardClass
-                                    .equals(HazardServicesMultiPolygon.class)) {
+                    if (hazardClass.equals(HazardServicesPolygon.class)) {
                         Geometry geometry = ((IHazardServicesShape) hazard)
                                 .getGeometry();
                         result.add(geometry);
@@ -565,7 +521,7 @@ public class SelectionAction extends NonDrawingAction {
             Geometry modifiedGeometry = buildModifiedGeometry(eventShape,
                     selectedElement.getPoints());
             getSpatialDisplay().notifyModifiedGeometry(eventShape.getID(),
-                    modifiedGeometry);
+                    modifiedGeometry, true);
         }
 
         private void handleVertexAdditionOrDeletion() {
@@ -972,7 +928,7 @@ public class SelectionAction extends NonDrawingAction {
                     Geometry modifiedGeometry = buildModifiedGeometry(
                             eventShape, coordsAsList);
                     getSpatialDisplay().notifyModifiedGeometry(
-                            eventShape.getID(), modifiedGeometry);
+                            eventShape.getID(), modifiedGeometry, true);
 
                     movePointIndex = -1;
                     moveType = null;
@@ -1009,7 +965,7 @@ public class SelectionAction extends NonDrawingAction {
                     Geometry modifiedGeometry = buildModifiedGeometry(
                             eventShape, coords);
                     getSpatialDisplay().notifyModifiedGeometry(
-                            eventShape.getID(), modifiedGeometry);
+                            eventShape.getID(), modifiedGeometry, true);
 
                     movePointIndex = -1;
                     moveType = null;

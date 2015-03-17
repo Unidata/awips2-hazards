@@ -99,7 +99,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      last issuance, etc.
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Feb 22, 2015   6561     mpduff       Override get and get/setInsertTime
- * 
+ * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
  * @author bsteffen
  * @version 1.0
  */
@@ -570,7 +570,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         /*
          * Make sure that geometries are GeometryCollections throughout
          */
-        if (!(geom.getClass().isAssignableFrom(GeometryCollection.class))) {
+        if (!(geom instanceof GeometryCollection)) {
             geom = geometryFactory
                     .createGeometryCollection(new Geometry[] { geom });
         }

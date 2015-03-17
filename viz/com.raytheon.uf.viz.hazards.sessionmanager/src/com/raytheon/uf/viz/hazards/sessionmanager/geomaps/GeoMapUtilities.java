@@ -46,6 +46,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IugcToMapGeometryDataBuilder;
 import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.CountyUGCBuilder;
 import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.FireWXZoneUGCBuilder;
@@ -56,9 +57,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.ZoneUGCBuilder
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.geom.PrecisionModel;
 import com.vividsolutions.jts.geom.TopologyException;
+import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
 
 /**
  * Misc functionality for building the UGC information associated with a hazard
@@ -87,6 +91,7 @@ import com.vividsolutions.jts.geom.TopologyException;
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
  * Feb 25, 2015 6632       Dan Schaffer Fixed bug handling hazard outside CWA
+ * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
  * </pre>
  * 
  * @author blawrenc
@@ -169,6 +174,16 @@ public class GeoMapUtilities {
     private final ISessionConfigurationManager<ObservedSettings> configManager;
 
     private final GeometryFactory geometryFactory = new GeometryFactory();
+
+    /*
+     * Used to ensure that no topology exceptions occur when intersections are
+     * done.
+     * 
+     * TODO Not sure if this is the right model. Should it be based on a scale?
+     * How do I know what the scale is?
+     */
+    private final PrecisionModel precisionModel = new PrecisionModel(
+            PrecisionModel.FLOATING_SINGLE);
 
     public GeoMapUtilities(
             ISessionConfigurationManager<ObservedSettings> configManager) {
@@ -346,15 +361,22 @@ public class GeoMapUtilities {
                     result.add(mappingData);
                 } else if (hazardArea.get(ugc).equals(HAZARD_AREA_INTERSECTION)) {
                     Geometry mappingGeometry = mappingData.getGeometry();
-                    DefaultGeometryData intersectionGeometryData = new DefaultGeometryData();
                     GeometryCollection asCollection = (GeometryCollection) hazardEvent
                             .getGeometry();
                     for (int geometryIndex = 0; geometryIndex < asCollection
                             .getNumGeometries(); geometryIndex++) {
-                        intersectionGeometryData.setGeometry(mappingGeometry
+                        mappingGeometry = GeometryPrecisionReducer.reduce(
+                                mappingGeometry, precisionModel);
+                        Geometry intersectionGeometry = mappingGeometry
                                 .intersection(asCollection
-                                        .getGeometryN(geometryIndex)));
-                        result.add(intersectionGeometryData);
+                                        .getGeometryN(geometryIndex));
+                        if (!intersectionGeometry.isEmpty()) {
+                            DefaultGeometryData intersectionGeometryData = new DefaultGeometryData();
+                            intersectionGeometryData
+                                    .setGeometry(mappingGeometry.intersection(asCollection
+                                            .getGeometryN(geometryIndex)));
+                            result.add(intersectionGeometryData);
+                        }
                     }
 
                 }
@@ -397,8 +419,12 @@ public class GeoMapUtilities {
                         .getNumGeometries(); ++k) {
 
                     if (mapGeometry.getGeometry().getGeometryN(k).intersects(g)) {
-                        Geometry intersectionGeometry = mapGeometry
-                                .getGeometry().getGeometryN(k).intersection(g);
+
+                        Geometry mappingGeometry = mapGeometry.getGeometry();
+                        mappingGeometry = GeometryPrecisionReducer.reduce(
+                                mappingGeometry, precisionModel);
+                        Geometry intersectionGeometry = mappingGeometry
+                                .getGeometryN(k).intersection(g);
 
                         if (intersectionGeometry instanceof Polygon) {
                             intersectedGeometries.add(intersectionGeometry);
@@ -424,6 +450,30 @@ public class GeoMapUtilities {
             }
         }
 
+        return result;
+    }
+
+    public Geometry warngenClipping(ObservedHazardEvent selectedEvent,
+            HazardTypeEntry hazardType) {
+        Geometry polygonUnion;
+        List<IGeometryData> geoDataSet = buildHazardAreaForEvent(selectedEvent);
+
+        List<Geometry> goosenecks = new ArrayList<>();
+        polygonUnion = geometryFactory.createMultiPolygon(null);
+        for (IGeometryData geoData : geoDataSet) {
+            Geometry geometry = geoData.getGeometry();
+            if (geometry instanceof LineString) {
+                goosenecks.add(geometry);
+            } else {
+                polygonUnion = polygonUnion.union(geometry);
+            }
+
+        }
+        Geometry[] geometries = goosenecks.toArray(new Geometry[goosenecks
+                .size() + 1]);
+        geometries[goosenecks.size()] = polygonUnion;
+        GeometryCollection result = geometryFactory
+                .createGeometryCollection(geometries);
         return result;
     }
 
@@ -515,14 +565,6 @@ public class GeoMapUtilities {
         return hazardTypeEntry.isPointBased();
     }
 
-    private HazardTypeEntry getHazardTypeEntry(IHazardEvent hazardEvent) {
-        String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
-
-        HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes().get(
-                hazardType);
-        return hazardTypeEntry;
-    }
-
     /**
      * Find the mapDBtableName for the given {@link IHazardEvent}
      * 
@@ -545,6 +587,14 @@ public class GeoMapUtilities {
         String mapDBtableName = configManager.getHazardTypes()
                 .get(hazardEvent.getHazardType()).getUgcType();
         return mapDBtableName;
+    }
+
+    private HazardTypeEntry getHazardTypeEntry(IHazardEvent hazardEvent) {
+        String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
+
+        HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes().get(
+                hazardType);
+        return hazardTypeEntry;
     }
 
     /**
@@ -610,7 +660,7 @@ public class GeoMapUtilities {
 
             Geometry mapGeometry = geoData.getGeometry();
 
-            outer: for (int j = 0; j < mapGeometry.getNumGeometries(); ++j) {
+            for (int j = 0; j < mapGeometry.getNumGeometries(); ++j) {
 
                 for (int i = 0; i < geometry.getNumGeometries(); ++i) {
 
@@ -645,11 +695,9 @@ public class GeoMapUtilities {
                                     || mapdbGeometry.contains(hazardGeometry)
                                     || hazardGeometry.contains(mapdbGeometry)) {
                                 result.add(geoData);
-                                continue outer;
                             }
                         } else if (defaultIncludeGeometry) {
                             result.add(geoData);
-                            continue outer;
                         }
                     }
                 }
@@ -749,6 +797,8 @@ public class GeoMapUtilities {
                 inclusionFraction = 0.0001;
             }
 
+            mapGeometry = GeometryPrecisionReducer.reduce(mapGeometry,
+                    precisionModel);
             Geometry intersection = hazardGeometry.intersection(mapGeometry);
             double intersectionAreaInSquareDegrees = intersection.getArea();
             double intersectionFraction = intersectionAreaInSquareDegrees

@@ -172,6 +172,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Feb 15, 2015 2271       Dan Schaffer   Incur recommender/product generator init costs immediately
  * Feb 24, 2015 6499       Dan Schaffer   Disable moving/drawing of point hazards
+ * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1209,14 +1210,16 @@ public class SpatialDisplay extends
     /**
      * TODO This needs to me moved elsewhere - nothing to do with drawing.
      */
-    public void notifyModifiedGeometry(String eventID, Geometry geometry) {
+    public void notifyModifiedGeometry(String eventID, Geometry geometry,
+            boolean checkGeometryValidity) {
         ISessionEventManager<ObservedHazardEvent> sessionEventManager = appBuilder
                 .getSessionManager().getEventManager();
 
         ObservedHazardEvent hazardEvent = sessionEventManager
                 .getEventById(eventID);
 
-        if (sessionEventManager.isValidGeometryChange(geometry, hazardEvent)) {
+        if (sessionEventManager.isValidGeometryChange(geometry, hazardEvent,
+                checkGeometryValidity)) {
             hazardEvent.setGeometry(geometry);
             sessionEventManager.updateHazardAreas(hazardEvent);
         }

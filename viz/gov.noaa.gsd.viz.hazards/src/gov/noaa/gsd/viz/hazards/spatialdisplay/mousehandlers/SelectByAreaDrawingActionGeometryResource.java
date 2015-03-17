@@ -34,7 +34,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -71,6 +70,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                            config manager.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
+ * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -317,7 +317,8 @@ public class SelectByAreaDrawingActionGeometryResource extends
                                     HazardEventBuilder hazardEventBuilder = new HazardEventBuilder(
                                             sessionManager);
                                     IHazardEvent hazardEvent = hazardEventBuilder
-                                            .buildPolygonHazardEvent(selectedGeometry);
+                                            .buildPolygonHazardEvent(
+                                                    selectedGeometry, false);
                                     ObservedHazardEvent observedHazardEvent = hazardEventBuilder
                                             .addEvent(hazardEvent);
                                     eventID = observedHazardEvent.getEventID();
@@ -375,15 +376,8 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
                                 hazardGeometryList.put(eventID,
                                         selectedGeometryCopy);
-                                ObservedHazardEvent modifiedEvent = sessionManager
-                                        .getEventManager()
-                                        .getEventById(eventID);
-                                modifiedEvent.setGeometry(selectedGeometry);
-                                SessionEventGeometryModified modifyAction = new SessionEventGeometryModified(
-                                        sessionManager.getEventManager(),
-                                        modifiedEvent, getSpatialPresenter());
-                                getSpatialPresenter().publish(modifyAction);
-
+                                getSpatialDisplay().notifyModifiedGeometry(
+                                        eventID, selectedGeometry, false);
                             }
 
                             // Let the IHIS layer know that this drawing

@@ -132,8 +132,6 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.TopologyException;
 import com.vividsolutions.jts.operation.valid.IsValidOp;
 import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
@@ -255,6 +253,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Feb 24, 2015 2331       Chris.Golden Added check of any event that is added to the
  *                                      list of events to ensure that it does not have
  *                                      until further notice set if such is not allowed.
+ * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
  * </pre>
  * 
  * @author bsteffen
@@ -1120,7 +1119,7 @@ public class SessionEventManager implements
     private void startRiseCrestFallEdit(ObservedHazardEvent event) {
         IRiseCrestFallEditor editor = messenger.getRiseCrestFallEditor(event);
         IHazardEvent evt = editor.getRiseCrestFallEditor(event);
-        
+
         if (evt instanceof ObservedHazardEvent) {
             event = (ObservedHazardEvent) evt;
         }
@@ -3111,7 +3110,8 @@ public class SessionEventManager implements
             if (canBeClipped(selectedEvent, hazardType)) {
                 Geometry productGeometry;
                 if (geoMapUtilities.isWarngenHatching(selectedEvent)) {
-                    productGeometry = warngenClipping(selectedEvent, hazardType);
+                    productGeometry = geoMapUtilities.warngenClipping(
+                            selectedEvent, hazardType);
                     productGeometry = reduceGeometry(productGeometry,
                             hazardType);
 
@@ -3144,43 +3144,6 @@ public class SessionEventManager implements
         return success;
     }
 
-    private Geometry warngenClipping(ObservedHazardEvent selectedEvent,
-            HazardTypeEntry hazardType) {
-        Geometry productGeometry;
-        List<IGeometryData> geoDataSet = geoMapUtilities
-                .buildHazardAreaForEvent(selectedEvent);
-
-        productGeometry = geometryFactory.createMultiPolygon(null);
-        for (IGeometryData geoData : geoDataSet) {
-            Geometry geometry = geoData.getGeometry();
-            productGeometry = recursiveUnion(productGeometry, geometry);
-
-        }
-        return productGeometry;
-    }
-
-    /*
-     * In edge case situations, it's possible to end up with nested polygons.
-     * Handle the nested polygons using recurstion. It is also possible to end
-     * up with points or lines, etc. For example, if you use select by area to
-     * create a an FF.W that encompasses the entire county and then MB3 to
-     * remove the county. Handle gracefully as possible by just skipping over
-     * them.
-     */
-    private Geometry recursiveUnion(Geometry result, Geometry geometry) {
-        if (geometry.getClass().isAssignableFrom(GeometryCollection.class)) {
-            GeometryCollection gc = (GeometryCollection) geometry;
-            for (int i = 0; i < gc.getNumGeometries(); i++) {
-                result = recursiveUnion(result, gc.getGeometryN(i));
-            }
-        } else {
-            if (!(geometry instanceof Point || (geometry instanceof LineString))) {
-                result = result.union(geometry);
-            }
-        }
-        return result;
-    }
-
     /*
      * (non-Javadoc)
      * 
@@ -3196,47 +3159,6 @@ public class SessionEventManager implements
             event.addHazardAttribute(HAZARD_AREA,
                     (Serializable) ugcHatchingAlgorithms);
         }
-    }
-
-    private boolean canBeClipped(ObservedHazardEvent selectedEvent,
-            HazardTypeEntry hazardType) {
-        return hazardType != null
-                && (!HazardStatus.hasEverBeenIssued(selectedEvent.getStatus()) || (HazardStatus
-                        .issuedButNotEnded(selectedEvent.getStatus()) && selectedEvent
-                        .isModified()));
-    }
-
-    private Geometry reduceGeometry(Geometry geometry,
-            HazardTypeEntry hazardTypeEntry) {
-
-        /*
-         * Test if point reduction is necessary...
-         */
-        int pointLimit = hazardTypeEntry.getHazardPointLimit();
-
-        if (pointLimit > 0) {
-
-            /**
-             * TODO: Eventually we want to share the same logic WarnGen uses to
-             * reduce points. This is not accessible right not, at least without
-             * creating a dependency between Hazard Services and WarnGen.
-             */
-            if (geometry.getNumPoints() > pointLimit) {
-
-                double distanceTolerance = DEFAULT_DISTANCE_TOLERANCE;
-
-                DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(
-                        geometry);
-
-                do {
-                    simplifier.setDistanceTolerance(distanceTolerance);
-                    geometry = simplifier.getResultGeometry();
-                    distanceTolerance += DEFAULT_DISTANCE_TOLERANCE_INCREMENT;
-                } while (geometry.getNumPoints() > pointLimit);
-            }
-        }
-        return geometry;
-
     }
 
     @Override
@@ -3269,17 +3191,6 @@ public class SessionEventManager implements
         return currentEvent != null;
     }
 
-    /**
-     * Clears the undo/redo stack for the hazard event.
-     * 
-     * @param event
-     *            Event for which to clear the undo/redo stack
-     * @return
-     */
-    private void clearUndoRedo(IUndoRedoable event) {
-        event.clearUndoRedo();
-    }
-
     @Override
     public void updateSelectedHazardUGCs() {
 
@@ -3299,11 +3210,20 @@ public class SessionEventManager implements
 
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
+     * #isValidGeometryChange(com.vividsolutions.jts.geom.Geometry,
+     * com.raytheon.
+     * uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent, boolean)
+     */
     @Override
     public boolean isValidGeometryChange(Geometry geometry,
-            ObservedHazardEvent hazardEvent) {
+            ObservedHazardEvent hazardEvent, boolean checkGeometryValidity) {
         boolean result = true;
-        if (!geometry.isValid()) {
+        if (checkGeometryValidity && !geometry.isValid()) {
             IsValidOp op = new IsValidOp(geometry);
             statusHandler.warn("Invalid Geometry: "
                     + op.getValidationError().getMessage()
@@ -3478,6 +3398,58 @@ public class SessionEventManager implements
              */
             statusHandler.error("Encountered topology exception", e);
         }
+    }
+
+    /**
+     * Clears the undo/redo stack for the hazard event.
+     * 
+     * @param event
+     *            Event for which to clear the undo/redo stack
+     * @return
+     */
+    private void clearUndoRedo(IUndoRedoable event) {
+        event.clearUndoRedo();
+    }
+
+    private boolean canBeClipped(ObservedHazardEvent selectedEvent,
+            HazardTypeEntry hazardType) {
+        return hazardType != null
+                && (!HazardStatus.hasEverBeenIssued(selectedEvent.getStatus()) || (HazardStatus
+                        .issuedButNotEnded(selectedEvent.getStatus()) && selectedEvent
+                        .isModified()));
+    }
+
+    private Geometry reduceGeometry(Geometry geometry,
+            HazardTypeEntry hazardTypeEntry) {
+
+        /*
+         * Test if point reduction is necessary...
+         */
+        int pointLimit = hazardTypeEntry.getHazardPointLimit();
+
+        if (pointLimit > 0) {
+
+            /**
+             * TODO: Eventually we want to share the same logic WarnGen uses to
+             * reduce points. This is not accessible right not, at least without
+             * creating a dependency between Hazard Services and WarnGen.
+             */
+            if (geometry.getNumPoints() > pointLimit) {
+
+                double distanceTolerance = DEFAULT_DISTANCE_TOLERANCE;
+
+                DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(
+                        geometry);
+
+                do {
+                    simplifier.setDistanceTolerance(distanceTolerance);
+                    geometry = simplifier.getResultGeometry();
+                    distanceTolerance += DEFAULT_DISTANCE_TOLERANCE_INCREMENT;
+                } while (geometry.getNumPoints() > pointLimit);
+            }
+        }
+        return geometry;
+
     }
 
     private List<String> buildUGCs(IHazardEvent hazardEvent) {
