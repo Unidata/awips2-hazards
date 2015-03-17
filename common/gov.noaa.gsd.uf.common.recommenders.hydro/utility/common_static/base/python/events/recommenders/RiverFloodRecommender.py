@@ -105,6 +105,13 @@ class Recommender(RecommenderTemplate.Recommender):
         fieldDicts = [choiceFieldDict, includeNonFloodPointDict, warningThreshCutOff]
         dialogDict["fields"] = fieldDicts
 
+        valueDict = {"forecastType":"Warning","includePointsBelowAdvisory":True,
+                     "warningThreshold": warningThreshCutOff["values"] }
+        dialogDict["valueDict"] = valueDict
+        
+        return dialogDict
+
+    def _setHazardPolygonDict(self):
         hiresInundationAreas = {}
         mapsAccessor = MapsDatabaseAccessor()
         try:
@@ -123,11 +130,6 @@ class Recommender(RecommenderTemplate.Recommender):
                 else:
                     self.hazardPolygonDict[k] = self._parseLowresAreas(v)
 
-        valueDict = {"forecastType":"Warning","includePointsBelowAdvisory":True,
-                     "warningThreshold": warningThreshCutOff["values"] }
-        dialogDict["valueDict"] = valueDict
-        
-        return dialogDict
 
     def _parseLowresAreas(self, area):
         """
@@ -167,6 +169,8 @@ class Recommender(RecommenderTemplate.Recommender):
         
         @return: A list of potential events. 
         """
+        
+        self._setHazardPolygonDict()
         
         millis = SimulatedTime.getSystemTime().getMillis()
         currentTime = datetime.datetime.fromtimestamp(millis / 1000)
