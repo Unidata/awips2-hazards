@@ -9,6 +9,7 @@
     Jan 12, 2015    4937    Robert.Blum Refactored to support PGFv3.
     Jan 31, 2015    4937    Robert.Blum General cleanup along with add floodTimeStr
                                         business logic from v2.
+    Mar 16, 2015    6951    Robert.Blum Formated floodTimeStr as a 12 hour clock.
 '''
 
 import ProductTemplate
@@ -924,19 +925,16 @@ class Product(ProductTemplate.Product):
         return additionalInfo, citiesListFlag
 
     def floodTimeStr(self, creationTime, hashTag, flood_time_ms):
-        creationTimeInSeconds = int(creationTime.strftime("%s"))
-        floodTimeInSeconds = flood_time_ms/1000
-        floodTime = datetime.datetime.fromtimestamp(floodTimeInSeconds)
-        creationWeekDay = creationTime.strftime("%A")
-        floodWeekDay = floodTime.strftime("%A")
-        SECONDS_PER_WEEK = 86400*7
-        if floodTimeInSeconds > (creationTimeInSeconds + SECONDS_PER_WEEK) :
-            result= floodTime.strftime("%b %d %Y at %H:%M %p")
-        elif creationWeekDay != floodWeekDay:
-            result= floodTime.strftime("%A at %H:%M %p")
+        floodTime = datetime.datetime.fromtimestamp(flood_time_ms/1000)
+        tdelta = floodTime - creationTime
+        if (tdelta.days == 6 and floodTime.date().weekday() == creationTime.date().weekday()) or \
+            tdelta.days > 6:
+            format = '%l%M %p %a %b %d'
+        elif creationTime.day != floodTime.day:
+            format = '%l%M %p %a'
         else:
-            result= floodTime.strftime("%H:%M %p")
-        return result
+            format = '%l%M %p'
+        return floodTime.strftime(format).lstrip()
 
     def _retrievePoints(self, geometryCollection, tablename, constraints=None, sortBy=None):
         req = DataAccessLayer.newDataRequest()
