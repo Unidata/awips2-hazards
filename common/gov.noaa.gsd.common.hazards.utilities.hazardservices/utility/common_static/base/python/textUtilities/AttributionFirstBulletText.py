@@ -125,11 +125,11 @@ class AttributionFirstBulletText(object):
     def attribution_EXP(self):
         expireTimeCurrent = self.issueTime
         if self.vtecRecord.get('endTime') <= expireTimeCurrent:
-            attribution = 'the ' + self.hazardName + ' for ' + self.areaPhrase + ' has expired.'
+            attribution = 'The ' + self.hazardName + ' for ' + self.areaPhrase + ' has expired.'
         else:
-            timeWords = self.tpc.getTimingPhrase(self.vtecRecord, [], expireTimeCurrent)
-            attribution = 'the ' + self.hazardName + \
-                      ' for ' + areaPhrase + ' will expire ' + timeWords + '.'
+            timeWords = self.tpc.getTimingPhrase(self.vtecRecord, [self.sectionDict], expireTimeCurrent)
+            attribution = 'The ' + self.hazardName + \
+                      ' for ' + self.areaPhrase + ' will expire ' + timeWords + '.'
         return attribution
 
     def attribution_UPG(self):

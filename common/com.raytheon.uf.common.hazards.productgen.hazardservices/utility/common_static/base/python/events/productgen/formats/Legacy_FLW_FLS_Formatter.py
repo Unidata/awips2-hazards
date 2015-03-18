@@ -94,6 +94,8 @@ class Format(Legacy_Hydro_Formatter.Format):
     def _basisBullet(self, sectionDict):
         vtecRecord = sectionDict.get('vtecRecord')
         act = vtecRecord.get('act')
+        if act == 'COR':
+            act = vtecRecord.get('prevAct')
         phen = vtecRecord.get("phen")
         sig = vtecRecord.get('sig')
         bulletText = ''

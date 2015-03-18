@@ -52,6 +52,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  *                                      the type puts on start and
  *                                      end time editability.
  * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
+ * Mar 06, 2015 3850       Chris.Golden Added replacedBy and
+ *                                      requirePointId fields.
  * </pre>
  * 
  * @author bsteffen
@@ -72,6 +74,8 @@ public class HazardTypeEntry {
     private boolean allowTimeExpand = true;
 
     private boolean allowTimeShrink = true;
+
+    private boolean requirePointId;
 
     private int[] expirationTime;
 
@@ -100,6 +104,8 @@ public class HazardTypeEntry {
     private int hazardPointLimit;
 
     private String[] durationChoiceList;
+
+    private String[] replacedBy;
 
     private long defaultDuration;
 
@@ -159,6 +165,14 @@ public class HazardTypeEntry {
 
     public void setAllowTimeShrink(boolean allowTimeShrink) {
         this.allowTimeShrink = allowTimeShrink;
+    }
+
+    public boolean isRequirePointId() {
+        return requirePointId;
+    }
+
+    public void setRequirePointId(boolean requirePointId) {
+        this.requirePointId = requirePointId;
     }
 
     public int[] getExpirationTime() {
@@ -273,6 +287,16 @@ public class HazardTypeEntry {
         this.durationChoiceList = (durationChoiceList == null ? new String[0]
                 : durationChoiceList.toArray(new String[durationChoiceList
                         .size()]));
+    }
+
+    public List<String> getReplacedBy() {
+        return (replacedBy == null ? Collections.<String> emptyList() : Arrays
+                .asList(replacedBy));
+    }
+
+    public void setReplacedBy(List<String> replacedBy) {
+        this.replacedBy = (replacedBy == null ? new String[0] : replacedBy
+                .toArray(new String[replacedBy.size()]));
     }
 
     public long getDefaultDuration() {

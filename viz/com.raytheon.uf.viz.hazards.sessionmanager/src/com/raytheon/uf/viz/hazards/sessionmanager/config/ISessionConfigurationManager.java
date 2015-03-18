@@ -68,6 +68,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Feb 01, 2015 2331       Chris.Golden Added methods to determine the value of flags
  *                                      indicating the constraints that a hazard event
  *                                      type puts on start and end time editability.
+ * Mar 06, 2015 3850       Chris.Golden Added ability to determine if a hazard type
+ *                                      requires a point identifier, and which hazard
+ *                                      types can be used to replace a particular
+ *                                      hazard event.
  * </pre>
  * 
  * @author bsteffen
@@ -308,6 +312,28 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      *         none.
      */
     public Tool getTypeFirstRecommender(String hazardType);
+
+    /**
+     * Determine whether or not the specified hazard type requires that the
+     * hazard event have a point identifier.
+     * 
+     * @param hazardType
+     *            Hazard event type to be checked.
+     * @return True if the hazard event must have a point identifier to use this
+     *         type, false otherwise.
+     */
+    public boolean isPointIdentifierRequired(String hazardType);
+
+    /**
+     * Get the list of hazard types that can be used to replace hazards of the
+     * specified type.
+     * 
+     * @param hazardType
+     *            Type of the hazard for which to fetch the replace-by types.
+     * @return List of hazard types by which the specified type can be replaced;
+     *         this may be an empty list.
+     */
+    public List<String> getReplaceByTypes(String hazardType);
 
     /**
      * Get the hazard category from the hazardCategories configuration file for

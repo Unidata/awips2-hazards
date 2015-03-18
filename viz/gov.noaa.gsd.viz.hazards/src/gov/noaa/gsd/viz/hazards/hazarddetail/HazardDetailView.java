@@ -45,7 +45,6 @@ import org.eclipse.ui.IPartListener2;
 import org.eclipse.ui.IWorkbenchPartReference;
 import org.eclipse.ui.internal.WorkbenchPage;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.time.TimeRange;
@@ -122,6 +121,11 @@ import com.raytheon.uf.viz.core.VizApp;
  * Feb 03, 2015   2331     Chris.Golden      Added support for limiting the values
  *                                           that an event's start or end time can
  *                                           take on.
+ * Mar 06, 2015   3850     Chris.Golden      Added code to make the category and type
+ *                                           lists change according to whether the
+ *                                           event being shown has a point ID (if not
+ *                                           yet issued), or what it can be replaced
+ *                                           by (if issued).
  * </pre>
  * 
  * @author Chris.Golden
@@ -181,11 +185,6 @@ public class HazardDetailView extends
      * Hazard detail toggle action.
      */
     private Action hazardDetailToggleAction = null;
-
-    /**
-     * List of hazard categories.
-     */
-    private ImmutableList<String> hazardCategories;
 
     /**
      * Minimum visible time to be shown in the time megawidgets.
@@ -613,12 +612,10 @@ public class HazardDetailView extends
 
     @Override
     public final void initialize(
-            ImmutableList<String> hazardCategories,
             long minVisibleTime,
             long maxVisibleTime,
             ICurrentTimeProvider currentTimeProvider,
             Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers) {
-        this.hazardCategories = hazardCategories;
         this.minVisibleTime = minVisibleTime;
         this.maxVisibleTime = maxVisibleTime;
         if (minVisibleTime == maxVisibleTime) {
@@ -763,9 +760,8 @@ public class HazardDetailView extends
         /*
          * Do the basic initialization.
          */
-        getViewPart().initialize(hazardCategories, minVisibleTime,
-                maxVisibleTime, currentTimeProvider,
-                extraDataForEventIdentifiers);
+        getViewPart().initialize(minVisibleTime, maxVisibleTime,
+                currentTimeProvider, extraDataForEventIdentifiers);
 
         /*
          * Register the megawidget display settings change handler with the view

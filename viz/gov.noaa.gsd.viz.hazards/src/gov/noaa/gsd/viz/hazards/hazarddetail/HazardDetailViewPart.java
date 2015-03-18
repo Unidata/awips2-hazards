@@ -221,6 +221,11 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           event's start or end time can take on.
  * Feb 11, 2015   6393     Chris.Golden      Added checks to ensure that no errors occur
  *                                           if the tab displayables outnumber the tabs.
+ * Mar 06, 2015   3850     Chris.Golden      Added code to make the category and type
+ *                                           lists change according to whether the
+ *                                           event being shown has a point ID (if not
+ *                                           yet issued), or what it can be replaced
+ *                                           by (if issued).
  * </pre>
  * 
  * @author Chris.Golden
@@ -641,11 +646,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * is destroyed.
      */
     private final Map<String, Map<String, IDisplaySettings>> megawidgetDisplaySettingsForEventIds = new HashMap<>();
-
-    /**
-     * List of hazard category identifiers.
-     */
-    private ImmutableList<String> categories;
 
     /**
      * Minimum visible time in the time range.
@@ -1382,7 +1382,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
     @Override
     public void initialize(
-            ImmutableList<String> hazardCategories,
             long minVisibleTime,
             long maxVisibleTime,
             ICurrentTimeProvider currentTimeProvider,
@@ -1391,7 +1390,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         /*
          * Remember the passed-in parameters.
          */
-        this.categories = hazardCategories;
         this.minimumVisibleTime = minVisibleTime;
         this.maximumVisibleTime = maxVisibleTime;
         this.currentTimeProvider = currentTimeProvider;
@@ -1401,11 +1399,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          * Synchronize any time-based widgets with the visible time range.
          */
         visibleTimeRangeChanged();
-
-        /*
-         * If the categories combo box is not yet populated, do it now.
-         */
-        setCategories(categories);
     }
 
     @Override
@@ -1538,7 +1531,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             categoryMegawidget = new ComboBoxSpecifier(
                     CATEGORY_SPECIFIER_PARAMETERS).createMegawidget(typeGroup,
                     ComboBoxMegawidget.class, megawidgetCreationParams);
-            setCategories(categories);
             megawidgetsToAlign.add(categoryMegawidget);
             typeMegawidget = new ComboBoxSpecifier(TYPE_SPECIFIER_PARAMETERS)
                     .createMegawidget(typeGroup, ComboBoxMegawidget.class,
