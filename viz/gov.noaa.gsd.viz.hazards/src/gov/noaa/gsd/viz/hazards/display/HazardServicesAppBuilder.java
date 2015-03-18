@@ -375,6 +375,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     private IRiseCrestFallEditor graphicalEditor;
 
+    private GraphicalEditor editor;
+
     public boolean getUserAnswerToQuestion(String question) {
         return questionAnswerer.getUserAnswerToQuestion(question);
     }
@@ -606,7 +608,11 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             public IHazardEvent getRiseCrestFallEditor(IHazardEvent event) {
                 Shell shell = PlatformUI.getWorkbench()
                         .getActiveWorkbenchWindow().getShell();
-                GraphicalEditor editor = new GraphicalEditor(shell, event);
+                if (editor == null || editor.isDisposed()) {
+                    editor = new GraphicalEditor(shell, event);
+                } else {
+                    editor.bringToTop();
+                }
                 IHazardEvent evt = (IHazardEvent) editor.open();
                 return evt;
             }

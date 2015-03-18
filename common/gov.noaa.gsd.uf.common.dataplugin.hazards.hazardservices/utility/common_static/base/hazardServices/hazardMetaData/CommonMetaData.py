@@ -215,7 +215,7 @@ class MetaData(object):
                      {
                       "fieldType": "Button",
                       "fieldName": "riseCrestFallButton",
-                      "label": " Edit Flood Times... ",
+                      "label": " Graphical Time Editor... ",
                       "editRiseCrestFall": True
                       }
                      ]

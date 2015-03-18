@@ -75,7 +75,7 @@ import com.raytheon.uf.viz.core.RGBColors;
  * ------------ ---------- ----------- --------------------------
  * Feb 17, 2015    3847    mpduff     Initial creation
  * Mar 13, 2015    6922    Chris.Cody Changes for dragging vertical graph lines
- * 
+ * Mar 17, 2015    6974    mpduff      FAT fixes.
  * </pre>
  * 
  * @author mpduff
@@ -141,6 +141,16 @@ public class EditorCanvas extends Canvas {
     private Color red;
 
     private Color purple;
+
+    private Color begin;
+
+    private Color rise;
+
+    private Color crest;
+
+    private Color fall;
+
+    private Color end;
 
     private long xMin;
 
@@ -214,6 +224,12 @@ public class EditorCanvas extends Canvas {
         orange = new Color(this.getDisplay(), RGBColors.getRGBColor("Orange"));
         red = new Color(this.getDisplay(), RGBColors.getRGBColor("Red"));
         purple = new Color(this.getDisplay(), RGBColors.getRGBColor("Purple"));
+
+        begin = parentComp.getDisplay().getSystemColor(SWT.COLOR_BLUE);
+        rise = parentComp.getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW);
+        crest = parentComp.getDisplay().getSystemColor(SWT.COLOR_RED);
+        fall = parentComp.getDisplay().getSystemColor(SWT.COLOR_DARK_MAGENTA);
+        end = parentComp.getDisplay().getSystemColor(SWT.COLOR_DARK_GREEN);
 
         xMin = SimulatedTime.getSystemTime().getMillis()
                 - TimeUtil.MILLIS_PER_DAY;
@@ -482,10 +498,13 @@ public class EditorCanvas extends Canvas {
         int curTimeLoc = GRAPHBORDER_LEFT + x2pixel(cal.getTimeInMillis());
         int[] curTimeLine = { curTimeLoc, GRAPHBORDER_TOP, curTimeLoc,
                 GRAPHBORDER_TOP + graphAreaHeight };
+        gc.setForeground(parentComp.getDisplay()
+                .getSystemColor(SWT.COLOR_WHITE));
         gc.setLineWidth(3);
         gc.drawPolyline(curTimeLine);
         gc.setLineStyle(SWT.LINE_SOLID);
 
+        createEventLines();
         drawEventLines(gc);
 
         gc.setLineWidth(2);
@@ -587,6 +606,14 @@ public class EditorCanvas extends Canvas {
                     GRAPHBORDER_LEFT - dx, GRAPHBORDER_TOP + y };
             gc.drawPolyline(tick);
             gc.drawText("" + formatter.format(tickVal), labelX, labelY);
+
+            // TODO add the discharge to the right y-axis
+            // int[] tick2 = { GRAPHBORDER_LEFT + graphAreaWidth,
+            // GRAPHBORDER_TOP + y,
+            // GRAPHBORDER_LEFT + graphAreaWidth + dx, GRAPHBORDER_TOP + y };
+            // gc.drawPolyline(tick2);
+            // double discharge = stage2discharge(tickVal);
+
             tickVal += inc;
         }
     }
@@ -689,34 +716,25 @@ public class EditorCanvas extends Canvas {
         /* Major stage/flow */
         if (graphData.getMajorStage() != GraphData.MISSING) {
             y = y2pixel(graphData.getMajorStage());
-            if (y > GRAPHBORDER_TOP) {
-                gc.setForeground(purple);
-                int[] gridLine = { GRAPHBORDER_LEFT, GRAPHBORDER_TOP + y,
-                        GRAPHBORDER_RIGHT + graphAreaWidth, GRAPHBORDER_TOP + y };
-                gc.drawPolyline(gridLine);
-            }
+            gc.setForeground(purple);
+            int[] gridLine = { GRAPHBORDER_LEFT, GRAPHBORDER_TOP + y,
+                    GRAPHBORDER_RIGHT + graphAreaWidth, GRAPHBORDER_TOP + y };
+            gc.drawPolyline(gridLine);
         }
     }
 
     private void createEventLines() {
         int top = GRAPHBORDER_TOP;
-
-        Color begin = parentComp.getDisplay().getSystemColor(SWT.COLOR_BLUE);
-        Color rise = parentComp.getDisplay().getSystemColor(
-                SWT.COLOR_DARK_YELLOW);
-        Color crest = parentComp.getDisplay().getSystemColor(SWT.COLOR_RED);
-        Color fall = parentComp.getDisplay().getSystemColor(
-                SWT.COLOR_DARK_MAGENTA);
-        Color end = parentComp.getDisplay()
-                .getSystemColor(SWT.COLOR_DARK_GREEN);
-
         Map<EventType, EventRegion> regionMap = graphData.getEventRegions();
 
         Date beginDate = graphData.getBeginDate();
         Date endDate = graphData.getEndDate();
 
         EventRegion er = regionMap.get(EventType.BEGIN);
-        Region r = new Region();
+        Region r = er.getRegion();
+        if (r == null) {
+            r = new Region();
+        }
         int x = x2pixel(beginDate.getTime());
         x += GRAPHBORDER_LEFT;
         r.add(x + GRAPHBORDER_LEFT - (regionWidth / 2), top, regionWidth,
@@ -727,7 +745,10 @@ public class EditorCanvas extends Canvas {
 
         er = regionMap.get(EventType.RISE);
         er.setEventColor(rise);
-        r = new Region();
+        r = er.getRegion();
+        if (r == null) {
+            r = new Region();
+        }
         Date riseDate = graphData.getRiseDate();
         if (riseDate != null && riseDate.after(beginDate)
                 && riseDate.after(endDate)) {
@@ -737,12 +758,14 @@ public class EditorCanvas extends Canvas {
                     graphAreaHeight);
             er.setRegion(r);
             er.setDate(riseDate);
-            er.setVisible(true);
         }
 
         er = regionMap.get(EventType.CREST);
         er.setEventColor(crest);
-        r = new Region();
+        r = er.getRegion();
+        if (r == null) {
+            r = new Region();
+        }
         Date crestDate = graphData.getCrestDate();
         if (crestDate != null) {
             x = x2pixel(crestDate.getTime());
@@ -750,12 +773,14 @@ public class EditorCanvas extends Canvas {
                     graphAreaHeight);
             er.setRegion(r);
             er.setDate(crestDate);
-            er.setVisible(true);
         }
 
         er = regionMap.get(EventType.FALL);
         er.setEventColor(fall);
-        r = new Region();
+        r = er.getRegion();
+        if (r == null) {
+            r = new Region();
+        }
         Date fallDate = graphData.getFallDate();
         if (fallDate != null) {
             x = x2pixel(fallDate.getTime());
@@ -763,12 +788,14 @@ public class EditorCanvas extends Canvas {
                     graphAreaHeight);
             er.setRegion(r);
             er.setDate(fallDate);
-            er.setVisible(true);
         }
 
         er = regionMap.get(EventType.END);
         er.setEventColor(end);
-        r = new Region();
+        r = er.getRegion();
+        if (r == null) {
+            r = new Region();
+        }
         if (endDate != null
                 && endDate.getTime() != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
             x = x2pixel(endDate.getTime());
@@ -776,7 +803,6 @@ public class EditorCanvas extends Canvas {
                     graphAreaHeight);
             er.setRegion(r);
             er.setDate(endDate);
-            er.setVisible(true);
         }
     }
 
@@ -789,16 +815,19 @@ public class EditorCanvas extends Canvas {
         for (Entry<EventType, EventRegion> entry : graphData.getEventRegions()
                 .entrySet()) {
             EventRegion er = entry.getValue();
-            long regionTime = er.getDate().getTime();
-            if (er.isVisible() && regionTime > xMin && regionTime < xMax) {
-                int x = x2pixel(regionTime);
-                x += GRAPHBORDER_LEFT;
-                gc.setForeground(er.getEventColor());
-                gc.drawLine(x, top, x, bottom);
-                gc.drawText(er.getAbbreviation(), x, top - offset);
-                Region r = new Region();
-                r.add(x - (regionWidth / 2), top, regionWidth, graphAreaHeight);
-                er.setRegion(r);
+            if (er.getDate() != null) {
+                long regionTime = er.getDate().getTime();
+                if (er.isVisible() && regionTime > xMin && regionTime < xMax) {
+                    int x = x2pixel(regionTime);
+                    x += GRAPHBORDER_LEFT;
+                    gc.setForeground(er.getEventColor());
+                    gc.drawLine(x, top, x, bottom);
+                    gc.drawText(er.getAbbreviation(), x, top - offset);
+                    Region r = new Region();
+                    r.add(x - (regionWidth / 2), top, regionWidth,
+                            graphAreaHeight);
+                    er.setRegion(r);
+                }
             }
         }
         gc.setLineWidth(1);

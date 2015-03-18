@@ -40,6 +40,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 17, 2015   3847     mpduff      Initial creation
+ * Mar 17, 2015   6974     mpduff      Scale to larger of max obs/fcst or flood cat lines.
  * 
  * </pre>
  * 
@@ -116,26 +117,31 @@ public class GraphData {
     private void initEventRegions() {
         EventRegion region = new EventRegion();
         region.setEventType(EventType.BEGIN);
+        region.setVisible(true);
 
         eventRegionList.put(EventType.BEGIN, region);
 
         region = new EventRegion();
         region.setEventType(EventType.RISE);
+        region.setVisible(true);
 
         eventRegionList.put(EventType.RISE, region);
 
         region = new EventRegion();
         region.setEventType(EventType.CREST);
+        region.setVisible(true);
 
         eventRegionList.put(EventType.CREST, region);
 
         region = new EventRegion();
         region.setEventType(EventType.FALL);
+        region.setVisible(true);
 
         eventRegionList.put(EventType.FALL, region);
 
         region = new EventRegion();
         region.setEventType(EventType.END);
+        region.setVisible(true);
 
         eventRegionList.put(EventType.END, region);
     }
@@ -211,6 +217,12 @@ public class GraphData {
                 if (p.getY() > (yMax)) {
                     yMax = p.getY();
                 }
+            }
+        }
+
+        if (pe.startsWith("H") || pe.startsWith("h")) {
+            if (yMax < majorStage) {
+                yMax = majorStage;
             }
         }
 
