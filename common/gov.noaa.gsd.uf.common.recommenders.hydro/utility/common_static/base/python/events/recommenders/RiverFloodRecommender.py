@@ -33,6 +33,7 @@ import RecommenderTemplate
 import numpy
 import JUtil
 import time
+import re
 from EventSet import EventSet
 
 from MapsDatabaseAccessor import MapsDatabaseAccessor
@@ -141,7 +142,9 @@ class Recommender(RecommenderTemplate.Recommender):
         
         Eg. [[40.08 95.75] [40.05 95.75] [40.01 95.57] [40.00 95.39] [40.03 95.38]]
         """
-        if area:
+        
+        validPt = re.search('^\d+ \d+', area)
+        if area and validPt:
             pointsStringList = [int(k)/100.0 for k in area.split(' ') if len(k)]
             lats = pointsStringList[0::2]
             lons = [-1.0*k for k in pointsStringList[1::2]]
