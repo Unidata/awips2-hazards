@@ -10,6 +10,7 @@
     Jan 31, 2015    4937    Robert.Blum General cleanup along with add floodTimeStr
                                         business logic from v2.
     Mar 16, 2015    6951    Robert.Blum Formated floodTimeStr as a 12 hour clock.
+    Mar 19, 2015    7094    Robert.Blum Updated CTA KeyInfo to contain eventIDs/UGCs.
 '''
 
 import ProductTemplate
@@ -527,7 +528,8 @@ class Product(ProductTemplate.Product):
                         keyInfo = True
                         break
                 if keyInfo:
-                    callsToActionKey = KeyInfo('callsToAction', self._productCategory, self._productID, [], '', True, label='Calls To Action')
+                    eventIDs, ugcs = self.parameterSetupForKeyInfo(self._productSegment.segment[1], list(self._productSegment.segment[0]))
+                    callsToActionKey = KeyInfo('callsToAction', self._productCategory, self._productID, eventIDs, ugcs, True, label='Calls To Action')
                     segmentDict[callsToActionKey] = self._productSegment.ctas
                 else:
                     segmentDict['callsToAction'] = self._productSegment.ctas
