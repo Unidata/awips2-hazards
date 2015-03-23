@@ -6,8 +6,10 @@
     ------------ ---------- ----------- --------------------------
     Jan 12, 2015    4937    Robert.Blum Initial creation
     Jan 31, 2015    4937    Robert.Blum General cleanup and added business
-                            logic for nextIssuanceStatement from V2.
-    Mar 16, 2015    6955    Improved logic for timeBullet to add date/day when needed.
+                                        logic for nextIssuanceStatement from V2.
+    Mar 16, 2015    6955    Robert.Blum Improved logic for timeBullet to add date/day when needed.
+    Mar 20, 2015    7149    Robert.Blum Adjusted _callsToAction() to handle a string
+                                        instead of a list.
 '''
 
 import FormatTemplate
@@ -291,19 +293,12 @@ class Format(FormatTemplate.Formatter):
 
     def _callsToAction(self, segmentDict):
         text = ''
-        elements = KeyInfo.getElements('callsToAction', segmentDict)
-        if len(elements) > 0:
-            callsToAction = segmentDict.get(elements[0])
-        else:
-            callsToAction = segmentDict.get('callsToAction', None)
+        callsToAction =  self._tpc.getVal(segmentDict, 'callsToAction', None)
 
-        if callsToAction:
+        if callsToAction and callsToAction != '':
             text = 'Precautionary/Preparedness actions...\n\n'
-            for cta in callsToAction:
-                cta = cta.strip('\n\t\r')
-                cta = re.sub('\s+',' ',cta)
-                text += cta + '\n\n'
-            text += '&&\n\n'
+            text += callsToAction.rstrip()
+            text += '\n\n&&\n\n'
 
         return text
 

@@ -11,6 +11,8 @@
                                         business logic from v2.
     Mar 16, 2015    6951    Robert.Blum Formated floodTimeStr as a 12 hour clock.
     Mar 19, 2015    7094    Robert.Blum Updated CTA KeyInfo to contain eventIDs/UGCs.
+    Mar 20, 2015    7149    Robert.Blum Made CTAs a String so it is a textBox megaWidget
+                                        on the Product Editor.
 '''
 
 import ProductTemplate
@@ -518,23 +520,9 @@ class Product(ProductTemplate.Product):
             self._addSectionsToSegment(segmentDict)
 
             # Add CTAs to segment as keyinfo
-            if self._productSegment.ctas:
-                # If the list of CTAs is a list of empty strings
-                # do not make it a KeyInfo....this avoids the megawidget
-                # error.
-                keyInfo = False
-                for cta in self._productSegment.ctas:
-                    if cta:
-                        keyInfo = True
-                        break
-                if keyInfo:
-                    eventIDs, ugcs = self.parameterSetupForKeyInfo(self._productSegment.segment[1], list(self._productSegment.segment[0]))
-                    callsToActionKey = KeyInfo('callsToAction', self._productCategory, self._productID, eventIDs, ugcs, True, label='Calls To Action')
-                    segmentDict[callsToActionKey] = self._productSegment.ctas
-                else:
-                    segmentDict['callsToAction'] = self._productSegment.ctas
-            else:
-                segmentDict['callsToAction'] = self._productSegment.ctas
+            eventIDs, ugcs = self.parameterSetupForKeyInfo(self._productSegment.segment[1], list(self._productSegment.segment[0]))
+            callsToActionKey = KeyInfo('callsToAction', self._productCategory, self._productID, eventIDs, ugcs, True, label='Calls To Action')
+            segmentDict[callsToActionKey] = self._productSegment.ctas
 
             # Add any remaining segment level data here
             segmentDict['expireTime'] = self._productSegment.expireTime
@@ -560,7 +548,8 @@ class Product(ProductTemplate.Product):
 
             ctas = self.getCTAsPhrase(sectionVtecRecord, sectionHazardEvent, sectionMetaData)
             if ctas:
-                self._productSegment.ctas += ctas
+                for cta in ctas:
+                    self._productSegment.ctas += cta + '\n\n'
 
             sectionDict = self._prepareSection(sectionHazardEvent, sectionVtecRecord, sectionMetaData)
             sectionDicts.append(sectionDict)
@@ -824,7 +813,7 @@ class Product(ProductTemplate.Product):
             self._productSegment.ugcs = hazardEvent.get('ugcs', [])
         
         self._productSegment.ugcs.sort()
-        self._productSegment.ctas = []
+        self._productSegment.ctas = ''
         self._productSegment.pointID = hazardEvent.get('pointID')
         self._productSegment.cityInfo = self.getCityInfo(self._productSegment.ugcs, returnType='list')
         cityList = []

@@ -5,6 +5,8 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     Feb 04, 2015    6322    Robert.Blum Initial creation 
+    Mar 20, 2015    7149    Robert.Blum Adjusted addCTAs() to handle a string
+                                        instead of a list.
 '''
 
 import FormatTemplate
@@ -108,24 +110,11 @@ class Format(FormatTemplate.Formatter):
         return areaPhrase
 
     def addCTAs(self, segmentDict):
-        elements = KeyInfo.getElements('callsToAction', segmentDict)
-        if len(elements) > 0:
-            callsToAction = segmentDict.get(elements[0])
-        else:
-            callsToAction = segmentDict.get('callsToAction', None)
+        callsToAction =  self._tpc.getVal(segmentDict, 'callsToAction', None)
 
-        if callsToAction:
+        if callsToAction and callsToAction != '':
             ctaText = '\n\n'
-            index = 0
-            size = len(callsToAction)
-            for cta in callsToAction:
-                cta = cta.strip('\n\t\r')
-                cta = re.sub('\s+',' ',cta)
-                ctaText += cta
-                #Add break between CTAs
-                if (index + 1 < size):
-                    ctaText += '\n\n'
-                index += 1
+            ctaText += callsToAction.rstrip()
             return ctaText
         return ''
 
