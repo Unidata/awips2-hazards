@@ -71,7 +71,7 @@ class MetaData(CommonMetaData.MetaData):
              "fieldType": "Text",
              "fieldName": "basisStatement",
              "expandHorizontally": True,
-             "visibleChars": 12,
+             "visibleChars": 60,
+             "lines": 6,
              "values": "Enter basis text",
             } 
-                   
