@@ -330,7 +330,7 @@ public class ProductEditor extends CaveSWTDialog {
                     }
                 }
 
-                // Make the Raw Data tab selected by default
+                // Make the Hazard Data Editor tab selected by default
                 editorAndFormatsTabFolder.setSelection(0);
             }
         }
