@@ -54,6 +54,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
  * Mar 06, 2015 3850       Chris.Golden Added replacedBy and
  *                                      requirePointId fields.
+ * Mar 26, 2015 7110       hansen       Automatically include all allowedHazards if "includeAll"
  * </pre>
  * 
  * @author bsteffen
@@ -64,6 +65,8 @@ public class HazardTypeEntry {
     private String headline;
 
     private boolean combinableSegments;
+
+    private boolean includeAll;
 
     private boolean allowAreaChange;
 
@@ -117,6 +120,14 @@ public class HazardTypeEntry {
 
     public void setHeadline(String headline) {
         this.headline = headline;
+    }
+
+    public boolean isIncludeAll() {
+        return includeAll;
+    }
+
+    public void setIncludeAll(boolean includeAll) {
+        this.includeAll = includeAll;
     }
 
     public boolean isCombinableSegments() {
