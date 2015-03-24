@@ -50,6 +50,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Lineal;
 import com.vividsolutions.jts.geom.LinearRing;
+import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.Puntal;
@@ -84,6 +85,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
+ * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen
  * </pre>
  * 
  * @author bryon.lawrence
@@ -230,8 +232,10 @@ public class HazardServicesDrawableBuilder {
 
             drawingAttributes.setAttributes(shapeNum, hazardEvent);
 
-            Coordinate[] coordinates = ((Polygon) hazardEvent.getGeometry()
-                    .getGeometryN(shapeNum)).getExteriorRing().getCoordinates();
+            Geometry geometry = hazardEvent.getGeometry()
+                    .getGeometryN(shapeNum);
+            Coordinate[] coordinates = ((Polygon) geometry).getExteriorRing()
+                    .getCoordinates();
             LinearRing linearRing = geometryFactory
                     .createLinearRing(coordinates);
             Polygon polygon = geometryFactory.createPolygon(linearRing, null);
@@ -687,7 +691,8 @@ public class HazardServicesDrawableBuilder {
             if (isWarngenHatching) {
                 for (IGeometryData geometryData : hazardArea) {
                     Geometry geometry = geometryData.getGeometry();
-                    if (!geometry.isEmpty() && (geometry instanceof Polygon)) {
+                    if (!geometry.isEmpty()
+                            && (geometry instanceof Polygon || geometry instanceof MultiPolygon)) {
                         Point centroid = geometryData.getGeometry()
                                 .getCentroid();
 
@@ -713,13 +718,9 @@ public class HazardServicesDrawableBuilder {
             result = buildPoint(hazardEvent, shapeNum, activeLayer, DOT);
         } else if (geometryClass.equals(LineString.class)) {
             result = buildLine(hazardEvent, shapeNum, activeLayer);
-        } else if (geometryClass.equals(Polygon.class)) {
-            result = buildPolygon(hazardEvent, shapeNum, false, activeLayer);
-        }
 
-        else {
-            throw new IllegalArgumentException("Not yet supporting geometry "
-                    + geometryClass);
+        } else {
+            result = buildPolygon(hazardEvent, shapeNum, false, activeLayer);
         }
         return result;
     }

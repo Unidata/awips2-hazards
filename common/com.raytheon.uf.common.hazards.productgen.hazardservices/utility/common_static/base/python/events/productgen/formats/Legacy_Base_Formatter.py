@@ -338,7 +338,11 @@ class Format(FormatTemplate.Formatter):
         polygonPointLists = []
         for section in segmentDict.get('sections'):
             for geometry in section.get('geometry'):
-                polygonPointLists.append(list(geometry.exterior.coords))
+                subGeoType = geometry.type
+                if subGeoType is not None and subGeoType is not 'LineString':
+                    polygonPointLists.append(list(geometry.exterior.coords))
+                else:
+                    polygonPointLists.append(list(geometry.coords))
 
         for polygon in polygonPointLists:
             # 4 points per line

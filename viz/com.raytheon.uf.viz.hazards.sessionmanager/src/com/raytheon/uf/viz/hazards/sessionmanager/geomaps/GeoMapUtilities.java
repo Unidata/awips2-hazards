@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.geomaps;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_ALL;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_INTERSECTION;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.MAPDATA_COUNTY;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -92,6 +93,7 @@ import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
  * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
  * Feb 25, 2015 6632       Dan Schaffer Fixed bug handling hazard outside CWA
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
+ * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen
  * </pre>
  * 
  * @author blawrenc
@@ -184,6 +186,8 @@ public class GeoMapUtilities {
      */
     private final PrecisionModel precisionModel = new PrecisionModel(
             PrecisionModel.FLOATING_SINGLE);
+
+    private Geometry cwaGeometry;
 
     public GeoMapUtilities(
             ISessionConfigurationManager<ObservedSettings> configManager) {
@@ -367,15 +371,21 @@ public class GeoMapUtilities {
                             .getNumGeometries(); geometryIndex++) {
                         mappingGeometry = GeometryPrecisionReducer.reduce(
                                 mappingGeometry, precisionModel);
-                        Geometry intersectionGeometry = mappingGeometry
-                                .intersection(asCollection
-                                        .getGeometryN(geometryIndex));
-                        if (!intersectionGeometry.isEmpty()) {
-                            DefaultGeometryData intersectionGeometryData = new DefaultGeometryData();
-                            intersectionGeometryData
-                                    .setGeometry(mappingGeometry.intersection(asCollection
-                                            .getGeometryN(geometryIndex)));
-                            result.add(intersectionGeometryData);
+                        Geometry geometry = asCollection
+                                .getGeometryN(geometryIndex);
+                        if (geometry instanceof Polygon) {
+                            geometry = GeometryPrecisionReducer.reduce(
+                                    geometry, precisionModel);
+                            Geometry intersectionGeometry = mappingGeometry
+                                    .intersection(geometry);
+
+                            if (!intersectionGeometry.isEmpty()) {
+                                DefaultGeometryData intersectionGeometryData = new DefaultGeometryData();
+                                intersectionGeometryData
+                                        .setGeometry(mappingGeometry.intersection(asCollection
+                                                .getGeometryN(geometryIndex)));
+                                result.add(intersectionGeometryData);
+                            }
                         }
                     }
 
@@ -398,44 +408,34 @@ public class GeoMapUtilities {
      */
     public Geometry gfeClipping(final IHazardEvent hazardEvent) {
 
-        String hazardType = hazardEvent.getHazardType();
-        String mapDBtableName = getMapDBtableName(hazardType);
+        /*
+         * Lazy evaluation is required because the {@link
+         * SessionConfigurationManager} is not fully initialized when this class
+         * is constructed
+         */
+        if (cwaGeometry == null) {
+            cwaGeometry = buildCWAGeometry();
+        }
 
-        String mapLabelParameter = configManager.getHazardTypes()
-                .get(hazardType).getUgcLabel();
-        String cwa = configManager.getSiteID();
         Geometry hazardGeometry = hazardEvent.getGeometry();
-
-        Set<IGeometryData> mapGeometries = getMapGeometries(mapDBtableName,
-                mapLabelParameter, cwa);
 
         List<Geometry> intersectedGeometries = new ArrayList<>(
                 hazardGeometry.getNumGeometries());
         for (int i = 0; i < hazardGeometry.getNumGeometries(); ++i) {
             Geometry g = hazardGeometry.getGeometryN(i);
-            for (IGeometryData mapGeometry : mapGeometries) {
 
-                for (int k = 0; k < mapGeometry.getGeometry()
-                        .getNumGeometries(); ++k) {
+            if (cwaGeometry.intersects(g)) {
+                /*
+                 * A documented means of avoiding some intersection problems
+                 * that can occur. See
+                 * http://tsusiatsoftware.net/jts/jts-faq/jts-faq.html#D9
+                 */
+                g = GeometryPrecisionReducer.reduce(g, precisionModel);
+                Geometry intersectionGeometry = cwaGeometry.intersection(g);
 
-                    if (mapGeometry.getGeometry().getGeometryN(k).intersects(g)) {
-
-                        Geometry mappingGeometry = mapGeometry.getGeometry();
-                        mappingGeometry = GeometryPrecisionReducer.reduce(
-                                mappingGeometry, precisionModel);
-                        Geometry intersectionGeometry = mappingGeometry
-                                .getGeometryN(k).intersection(g);
-
-                        if (intersectionGeometry instanceof Polygon) {
-                            intersectedGeometries.add(intersectionGeometry);
-                        }
-
-                    }
-
-                }
+                intersectedGeometries.add(intersectionGeometry);
 
             }
-
         }
         Geometry result;
         if (intersectedGeometries.isEmpty()) {
@@ -458,22 +458,34 @@ public class GeoMapUtilities {
         Geometry polygonUnion;
         List<IGeometryData> geoDataSet = buildHazardAreaForEvent(selectedEvent);
 
-        List<Geometry> goosenecks = new ArrayList<>();
+        List<Geometry> geometries = new ArrayList<>();
+        /*
+         * Do a union so that the we don't have any interior lines.
+         */
         polygonUnion = geometryFactory.createMultiPolygon(null);
         for (IGeometryData geoData : geoDataSet) {
             Geometry geometry = geoData.getGeometry();
             if (geometry instanceof LineString) {
-                goosenecks.add(geometry);
+                geometries.add(geometry);
             } else {
                 polygonUnion = polygonUnion.union(geometry);
             }
 
         }
-        Geometry[] geometries = goosenecks.toArray(new Geometry[goosenecks
-                .size() + 1]);
-        geometries[goosenecks.size()] = polygonUnion;
+        /*
+         * We return a GeometryCollection because we may have goosenecks
+         * (LineStrings) (from a previous conversion to product geometry).
+         * 
+         * The union can be a multi-polygon. So split it out into separate
+         * polygons since we're creating a collection anyway.
+         */
+        for (int i = 0; i < polygonUnion.getNumGeometries(); i++) {
+            geometries.add(polygonUnion.getGeometryN(i));
+        }
+        Geometry[] geometriesAsArray = geometries
+                .toArray(new Geometry[geometries.size()]);
         GeometryCollection result = geometryFactory
-                .createGeometryCollection(geometries);
+                .createGeometryCollection(geometriesAsArray);
         return result;
     }
 
@@ -648,6 +660,36 @@ public class GeoMapUtilities {
         return result;
     }
 
+    private Geometry buildCWAGeometry() {
+        String mapDBtableName = MAPDATA_COUNTY;
+
+        String mapLabelParameter = "";
+        String cwa = configManager.getSiteID();
+
+        Set<IGeometryData> mapGeometries = getMapGeometries(mapDBtableName,
+                mapLabelParameter, cwa);
+
+        Geometry result = null;
+        for (IGeometryData mapGeometryData : mapGeometries) {
+            Geometry mappingGeometry = mapGeometryData.getGeometry();
+
+            for (int k = 0; k < mapGeometryData.getGeometry()
+                    .getNumGeometries(); ++k) {
+
+                Geometry geometry = mappingGeometry.getGeometryN(k);
+                if (result == null) {
+                    result = geometry;
+                } else {
+                    result = result.union(geometry);
+                }
+
+            }
+
+        }
+        result = GeometryPrecisionReducer.reduce(result, precisionModel);
+        return result;
+    }
+
     private Set<IGeometryData> getIntersectingMapGeometries(
             boolean applyIntersectionThreshold, final IHazardEvent hazardEvent,
             Set<IGeometryData> geometryData, boolean inclusionFractionTest,
@@ -798,6 +840,8 @@ public class GeoMapUtilities {
             }
 
             mapGeometry = GeometryPrecisionReducer.reduce(mapGeometry,
+                    precisionModel);
+            hazardGeometry = GeometryPrecisionReducer.reduce(hazardGeometry,
                     precisionModel);
             Geometry intersection = hazardGeometry.intersection(mapGeometry);
             double intersectionAreaInSquareDegrees = intersection.getArea();
