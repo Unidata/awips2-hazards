@@ -90,34 +90,6 @@ class Product(HydroGenerator.Product):
     def _addProductParts(self, productSegmentGroup):
         productSegments = productSegmentGroup.productSegments
         productSegmentGroup.setProductParts(self._hydroProductParts._productParts_ESF(productSegments))
-    
-    def _prepareSection(self, event, vtecRecord, metaData):
-        self._setProductInformation(vtecRecord, event)
-        attributes = event.getHazardAttributes()
-
-        # This creates a list of ints for the eventIDs and also formats the UGCs correctly.
-        eventIDs, ugcList = self.parameterSetupForKeyInfo(list(vtecRecord.get('eventID', None)), attributes.get('ugcs', None))
-
-        # Attributes that get skipped. They get added to the dictionary indirectly.
-        noOpAttributes = ('ugcs', 'ugcPortions', 'ugcPartsOfState')
-
-        section = {}
-        for attribute in attributes:
-            # Special case attributes that need additional work before adding to the dictionary
-            if attribute in noOpAttributes:
-                continue
-            else:
-                section[attribute] = attributes.get(attribute, None)
-
-        section['impactedAreas'] = self._prepareImpactedAreas(attributes)
-        impactedLocationsKey = KeyInfo('impactedLocations', self._productCategory, self._productID, eventIDs, ugcList,True,label='Impacted Locations')
-        impactedLocationsValue = self._prepareImpactedLocations(event.getGeometry())
-        section[impactedLocationsKey] = impactedLocationsValue
-        section['geometry'] = event.getGeometry()
-        section['subType'] = event.getSubType()
-        section['vtecRecord'] = vtecRecord
-
-        return section
 
     def _narrativeForecastInformation(self, segmentDict, productSegmentGroup, productSegment):  
         default = '''

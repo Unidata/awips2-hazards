@@ -77,6 +77,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      displays the regenerate dialog since it pops
  *                                      up every minute
  * Mar 10, 2015 6274       Robert.Blum  Changes for Product Corrections
+ * Mar 23, 2015 7165       Robert.Blum  Modifications to allow for adding "*" to product tabs.
  * </pre>
  * 
  * @author jsanchez
@@ -294,7 +295,7 @@ public class ProductEditor extends CaveSWTDialog {
                  * product
                  */
                 editorManager.addProductDataEditor(product.getProductID(),
-                        new ProductDataEditor(this, product,
+                        new ProductDataEditor(this, productTab, product,
                                 editorAndFormatsTabFolder, SWT.VERTICAL));
                 /*
                  * Iterate over the formatted entries in the product and create
@@ -316,7 +317,8 @@ public class ProductEditor extends CaveSWTDialog {
                             // Add the text editor to the editor manager
                             editorManager.addFormattedTextEditor(product
                                     .getProductID(),
-                                    new FormattedTextDataEditor(this, product,
+                                    new FormattedTextDataEditor(this,
+                                            productTab, product,
                                             editorAndFormatsTabFolder,
                                             SWT.VERTICAL, entry.getKey(),
                                             formattedTextIndex));

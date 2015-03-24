@@ -13,6 +13,9 @@
     Mar 19, 2015    7094    Robert.Blum Updated CTA KeyInfo to contain eventIDs/UGCs.
     Mar 20, 2015    7149    Robert.Blum Made CTAs a String so it is a textBox megaWidget
                                         on the Product Editor.
+    Mar 23, 2015    7165    Robert.Blum Added _createSectionDictionary() and retrieving
+                                        previously edited raw data values from the productText
+                                        table using setVal() in TextProductCommon.
 '''
 
 import ProductTemplate
@@ -521,8 +524,8 @@ class Product(ProductTemplate.Product):
 
             # Add CTAs to segment as keyinfo
             eventIDs, ugcs = self.parameterSetupForKeyInfo(self._productSegment.segment[1], list(self._productSegment.segment[0]))
-            callsToActionKey = KeyInfo('callsToAction', self._productCategory, self._productID, eventIDs, ugcs, True, label='Calls To Action')
-            segmentDict[callsToActionKey] = self._productSegment.ctas
+            self._setVal(segmentDict, 'callsToAction', self._productSegment.ctas, eventIDs, ugcs, label='Calls To Action')
+
 
             # Add any remaining segment level data here
             segmentDict['expireTime'] = self._productSegment.expireTime
@@ -551,7 +554,7 @@ class Product(ProductTemplate.Product):
                 for cta in ctas:
                     self._productSegment.ctas += cta + '\n\n'
 
-            sectionDict = self._prepareSection(sectionHazardEvent, sectionVtecRecord, sectionMetaData)
+            sectionDict = self._createSectionDictionary(sectionHazardEvent, sectionVtecRecord, sectionMetaData)
             sectionDicts.append(sectionDict)
 
         # Add the list of section dictionaries to the segment dictionary
@@ -598,6 +601,84 @@ class Product(ProductTemplate.Product):
             # always remove the main vtecRecord from the list
             hList.remove(vtecRecord)
         return sections
+
+    def _createSectionDictionary(self, hazardEvent, vtecRecord, metaData):
+        '''
+        Returns a dictionary that contains all the raw data associated with
+        this section.
+
+        @param hazardEvent: hazardEvent associated with the section
+        @param vtecRecord:  vtecRecords for the section
+        @param metaData: metaData for the section
+        '''
+        # Dictionary for this section
+        section = collections.OrderedDict()
+
+        attributes = hazardEvent.getHazardAttributes()
+        # This creates a list of ints for the eventIDs and also formats the UGCs correctly.
+        eventIDs, ugcList = self.parameterSetupForKeyInfo(list(vtecRecord.get('eventID', None)), attributes.get('ugcs', None))
+
+        for attribute in attributes:
+            # Special case attributes that need additional work before adding to the dictionary
+            if attribute == 'additionalInfo':
+                additionalInfo, citiesListFlag = self._prepareAdditionalInfo(attributes[attribute] , hazardEvent, metaData)
+                self._setVal(section, 'additionalComments', additionalInfo, eventIDs, ugcList, label='Additional Comments')
+                section['citiesListFlag'] = citiesListFlag
+            elif attribute == 'cta':
+                # CTAs are gathered and displayed at the segment level, pass here
+                pass
+            elif attribute == 'floodSeverity':
+                section['floodSeverity'] = self._tpc.getProductStrings(hazardEvent, metaData, 'floodSeverity')
+            elif attribute == 'floodRecord':
+                section['floodRecord'] = self._tpc.getProductStrings(hazardEvent, metaData, 'floodRecord')
+            else:
+                section[attribute] = attributes.get(attribute, None)
+                # Add both the identifier and the productString for this attributes.
+                # The identifiers are needed for the BasisText module.
+                if attribute == 'advisoryType':
+                    section[attribute + '_productString'] = self._tpc.getProductStrings(hazardEvent, metaData, attribute)
+
+        # Add impacted locations to the dictionary
+        self._setVal(section, 'impactedLocations', self._prepareImpactedLocations(hazardEvent.getGeometry()), eventIDs,
+                            ugcList, label='Impacted Locations')
+
+        # Add impacts to the dictionary
+        if vtecRecord.get("phen") != "HY" and vtecRecord.get('sig') != 'S':
+            # TODO this does not seem to work, causing the placeholder to be in final product.
+            section['impacts'] = self._tpc.getProductStrings(hazardEvent, metaData, 'impacts')
+        else:
+            section['impacts'] = ''
+
+        section['endingSynopsis'] = hazardEvent.get('endingSynopsis')
+        section['startTime'] = hazardEvent.getStartTime()
+        section['endTime'] = hazardEvent.getEndTime()
+        section['creationTime'] = hazardEvent.getCreationTime()
+        section['impactsStringForStageFlowTextArea'] = hazardEvent.get('impactsStringForStageFlowTextArea', None)
+        section['impactedAreas'] = self._prepareImpactedAreas(attributes)
+        section['geometry'] = hazardEvent.getGeometry()
+        section['subType'] = hazardEvent.getSubType()
+        section['timeZones'] = self._productSegment.timeZones
+        section['vtecRecord'] = vtecRecord
+        section['replacedBy'] = hazardEvent.get('replacedBy', None)
+        section['replaces'] = hazardEvent.get('replaces', None)
+        section['metaData'] = metaData
+
+        if hazardEvent.get('pointID'):
+            # Add RiverForecastPoint data to the dictionary
+            self._prepareRiverForecastPointData(hazardEvent.get('pointID'), section, hazardEvent)
+
+        self._setProductInformation(vtecRecord, hazardEvent)
+        return section
+
+    def _setVal(self, dictionary, key, value, eventIDs, ugcList, label=None):
+        '''
+        Helper method to call _setVal() in TextProductCommon. This method automatically
+        sets the productCategory=self._productCategory, productID='', editable=True,
+        and displayable=False parameters for you.
+        '''
+        self._tpc.setVal(dictionary, key, value, editable=True, eventIDs=eventIDs,
+                         segment=ugcList, label=label, productCategory=self._productCategory,
+                         productID='', displayable=False)
 
     def _showProductParts(self):
         # IF True will label the editable pieces in the Product Editor with product parts

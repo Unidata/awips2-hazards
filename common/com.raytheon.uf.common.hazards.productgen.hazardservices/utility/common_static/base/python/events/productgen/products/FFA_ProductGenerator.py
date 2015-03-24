@@ -7,6 +7,7 @@
 
     Jan 26, 2015   4936      Chris.Cody  Implement scripts for Flash Flood Watch Products (FFA,FAA,FLA)
     Jan 31, 2015   4937      Robert.Blum General cleanup along with moving some stuff to the formatter.
+    Mar 23, 2015   7165      Robert.Blum Code consolidation - removed _prepareSection().
     
     @author Chris.Cody
     @version 1.0
@@ -77,59 +78,6 @@ class Product(HydroGenerator.Product):
         productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._inputHazardEvents, eventSetAttributes)
 
         return productDicts, hazardEvents
-
-    # TODO Check on attributes for this product
-    def _prepareSection(self, event, vtecRecord, metaData):
-        attributes = event.getHazardAttributes()
-
-        # This creates a list of ints for the eventIDs and also formats the UGCs correctly.
-        eventIDs, ugcList = self.parameterSetupForKeyInfo(list(vtecRecord.get('eventID', None)), attributes.get('ugcs', None))
-
-        # Attributes that get skipped. They get added to the dictionary indirectly.
-        noOpAttributes = () # Needed for attribution / firstBullet ('ugcs', 'ugcPortions', 'ugcPartsOfState')
-
-        section = collections.OrderedDict()
-        for attribute in attributes:
-            # Special case attributes that need additional work before adding to the dictionary
-            if attribute == 'additionalInfo':
-                additionalInfo, citiesListFlag = self._prepareAdditionalInfo(attributes[attribute] , event, metaData)
-                additionalCommentsKey = KeyInfo('additionalComments', self._productCategory, self._productID, eventIDs, ugcList, editable=True, label='Additional Comments')
-                section[additionalCommentsKey] = additionalInfo
-                section['citiesListFlag'] = citiesListFlag
-            elif attribute == 'cta':
-                # These are now added at the segment level. Do we want to add here as well?
-                callsToActionValue = self._tpc.getProductStrings(event, metaData, 'cta')
-                section['callsToAction'] = callsToActionValue
-            elif attribute == 'floodSeverity':
-                section['floodSeverity'] = self._tpc.getProductStrings(event, metaData, 'floodSeverity')
-            elif attribute == 'floodRecord':
-                section['floodRecord'] = self._tpc.getProductStrings(event, metaData, 'floodRecord')
-            elif attribute in noOpAttributes:
-                continue
-            else:
-                section[attribute] = attributes.get(attribute, None)
-
-        impactedLocationsKey = KeyInfo('impactedLocations', self._productCategory, self._productID, eventIDs, ugcList,True,label='Impacted Locations')
-        impactedLocationsValue = self._prepareImpactedLocations(event.getGeometry())
-        section[impactedLocationsKey] = impactedLocationsValue
-
-        section['impactedAreas'] = self._prepareImpactedAreas(attributes)
-        section['geometry'] = event.getGeometry()
-        section['timeZones'] = self._productSegment.timeZones
-        section['vtecRecord'] = vtecRecord
-        section['impacts'] = self._tpc.getProductStrings(event, metaData, 'impacts')
-        section['impactsStringForStageFlowTextArea'] = event.get('impactsStringForStageFlowTextArea', None)
-        section['startTime'] = event.getStartTime()
-        section['endTime'] = event.getEndTime()
-        section['metaData'] = metaData
-        section['creationTime'] = event.getCreationTime()
-
-        if event.get('pointID'):
-            # Add RiverForecastPoint data to the dictionary
-            self._prepareRiverForecastPointData(event.get('pointID'), section, event)
-
-        self._setProductInformation(vtecRecord, event)
-        return section
 
     def getMetadata(self):
         return self._metadata
