@@ -15,6 +15,8 @@
 #                                        removing unicode.
 #  Dec 15, 2014   3846,4375 Tracy.L.Hansen added ability to handle sets in as_str
 #  Dec 15, 2014  #2826     dgilling     Fix EDEX-based implementation.
+#  Mar 24, 2015  #6110     Robert.Blum  Fix so the hazardServices sub-directory is auto
+#                                       created if it doesnt already exist.
 
 
 import abc
@@ -130,7 +132,11 @@ class _JsonVTECTableIO(VTECTableIO):
         pathMgr = PathManager.PathManager()
         lf = pathMgr.getLocalizationFile("hazardServices", 'CAVE_STATIC', 'USER')
         basepath = lf.getPath()
-        
+
+        # Verify the basepath exists, if it doesnt create it.
+        if os.path.isdir(basepath) == False:
+            os.makedirs(basepath)
+
         self.__vtecRecordsLocPath = os.path.join("hazardServices", recordsFileName)
         self.__vtecRecordsFilename = os.path.join(basepath, recordsFileName)
         self.__vtecRecordsLockname = os.path.join(basepath, lockFileName)
