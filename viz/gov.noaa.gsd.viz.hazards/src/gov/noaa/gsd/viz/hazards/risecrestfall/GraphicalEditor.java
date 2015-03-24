@@ -76,6 +76,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Feb 17, 2015    3847    mpduff      Initial creation
  * Mar 13, 2015    6922    Chris.Cody  Changes to constrain Begin, Rise, Crest, Fall and End date time values.
  * Mar 17, 2015    6974    mpduff      FAT fixes.
+ * Mar 24, 2015    7205    mpduff      Fixes for missing values and until further notice.
  * 
  * </pre>
  * 
@@ -86,6 +87,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 public class GraphicalEditor extends CaveSWTDialog implements
         IRiseCrestFallEditor, IDataUpdate {
+
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(GraphicalEditor.class);
 
@@ -95,7 +97,9 @@ public class GraphicalEditor extends CaveSWTDialog implements
 
     private final String SET_DATE_TIME = "Set Date/Time";
 
-    private final String MISSING_VAL = "MSG";
+    private final String MISSING_VAL = "Missing";
+
+    private final String UNTIL_FURTHER_NOTICE = "Until Further Notice";
 
     private Composite canvasComp;
 
@@ -123,13 +127,11 @@ public class GraphicalEditor extends CaveSWTDialog implements
 
     private Date fallDate;
 
-    private Button beginMsgRdo;
-
     private Button beginCurrentRdo;
 
     private Button beginSetRdo;
 
-    private Button endMsgRdo;
+    private Button endUntilFurtherNoticeRdo;
 
     private Button endCurrentRdo;
 
@@ -232,11 +234,9 @@ public class GraphicalEditor extends CaveSWTDialog implements
         if (graphData.getBeginDate() != null) {
             beginTimeTxt.setText(dateFormat.format(graphData.getBeginDate()));
             beginDate = graphData.getBeginDate();
-            beginMsgRdo.setSelection(false);
             beginCurrentRdo.setSelection(false);
             beginSetRdo.setSelection(true);
         } else {
-            beginMsgRdo.setSelection(true);
             beginCurrentRdo.setSelection(false);
             beginSetRdo.setSelection(false);
         }
@@ -244,12 +244,12 @@ public class GraphicalEditor extends CaveSWTDialog implements
         if (graphData.getEndDate() != null) {
             if (graphData.getEndDate().getTime() == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
                 endTimeTxt.setText(MISSING_VAL);
-                endMsgRdo.setSelection(true);
+                endUntilFurtherNoticeRdo.setSelection(true);
                 endSetRdo.setSelection(false);
                 endCurrentRdo.setSelection(false);
             } else {
                 endTimeTxt.setText(dateFormat.format(graphData.getEndDate()));
-                endMsgRdo.setSelection(false);
+                endUntilFurtherNoticeRdo.setSelection(false);
                 endSetRdo.setSelection(true);
                 endCurrentRdo.setSelection(false);
             }
@@ -434,7 +434,6 @@ public class GraphicalEditor extends CaveSWTDialog implements
                     displayCanvas.setDate(EventType.BEGIN, date);
                     beginDate = date;
                     beginSetRdo.setSelection(true);
-                    beginMsgRdo.setSelection(false);
                     beginCurrentRdo.setSelection(false);
                 }
             }
@@ -456,18 +455,6 @@ public class GraphicalEditor extends CaveSWTDialog implements
         Composite beginChkComp = new Composite(leftComp, SWT.NONE);
         beginChkComp.setLayout(gl);
         beginChkComp.setLayoutData(gd);
-
-        beginMsgRdo = new Button(beginChkComp, SWT.RADIO);
-        beginMsgRdo.setText(MISSING);
-        beginMsgRdo.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                beginTimeTxt.setText(MISSING_VAL);
-                displayCanvas.setVisible(EventType.BEGIN, false);
-                displayCanvas.redraw();
-                beginDate = null;
-            }
-        });
 
         beginCurrentRdo = new Button(beginChkComp, SWT.RADIO);
         beginCurrentRdo.setText(CURRENT);
@@ -526,7 +513,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
                     displayCanvas.setDate(EventType.END, date);
                     endDate = date;
                     endSetRdo.setSelection(true);
-                    endMsgRdo.setSelection(false);
+                    endUntilFurtherNoticeRdo.setSelection(false);
                     endCurrentRdo.setSelection(false);
                 }
             }
@@ -548,18 +535,6 @@ public class GraphicalEditor extends CaveSWTDialog implements
         Composite endBtnComp = new Composite(leftComp, SWT.NONE);
         endBtnComp.setLayout(gl);
         endBtnComp.setLayoutData(gd);
-
-        endMsgRdo = new Button(endBtnComp, SWT.RADIO);
-        endMsgRdo.setText(MISSING);
-        endMsgRdo.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                endTimeTxt.setText(MISSING_VAL);
-                displayCanvas.setVisible(EventType.END, false);
-                displayCanvas.redraw();
-                endDate = null;
-            }
-        });
 
         endCurrentRdo = new Button(endBtnComp, SWT.RADIO);
         endCurrentRdo.setText(CURRENT);
@@ -595,6 +570,18 @@ public class GraphicalEditor extends CaveSWTDialog implements
             }
         });
 
+        endUntilFurtherNoticeRdo = new Button(endBtnComp, SWT.RADIO);
+        endUntilFurtherNoticeRdo.setText(UNTIL_FURTHER_NOTICE);
+        endUntilFurtherNoticeRdo.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                endTimeTxt.setText(UNTIL_FURTHER_NOTICE);
+                displayCanvas.setVisible(EventType.END, false);
+                displayCanvas.redraw();
+                endDate = null;
+            }
+        });
+
         // Right Comp
         gl = new GridLayout(3, false);
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
@@ -624,6 +611,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
                     riseTxt.setText(dateFormat.format(date));
                     displayCanvas.setDate(EventType.RISE, date);
                     riseDate = date;
+                    riseMsgChk.setSelection(false);
                 }
             }
 
@@ -643,7 +631,9 @@ public class GraphicalEditor extends CaveSWTDialog implements
                     riseDate = null;
                 } else {
                     riseDate = graphData.getRiseDate();
-                    riseTxt.setText(dateFormat.format(riseDate));
+                    if (riseDate != null) {
+                        riseTxt.setText(dateFormat.format(riseDate));
+                    }
                 }
                 displayCanvas.setVisible(EventType.RISE,
                         !riseMsgChk.getSelection());
@@ -672,6 +662,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
                     crestTxt.setText(dateFormat.format(date));
                     displayCanvas.setDate(EventType.CREST, date);
                     crestDate = date;
+                    crestMsgChk.setSelection(false);
                 }
             }
 
@@ -690,8 +681,10 @@ public class GraphicalEditor extends CaveSWTDialog implements
                     crestTxt.setText(MISSING_VAL);
                     crestDate = null;
                 } else {
-                    crestDate = graphData.getRiseDate();
-                    crestTxt.setText(dateFormat.format(riseDate));
+                    crestDate = graphData.getCrestDate();
+                    if (crestDate != null) {
+                        crestTxt.setText(dateFormat.format(crestDate));
+                    }
                 }
                 displayCanvas.setVisible(EventType.CREST,
                         !crestMsgChk.getSelection());
@@ -720,6 +713,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
                     fallTxt.setText(dateFormat.format(date));
                     displayCanvas.setDate(EventType.FALL, date);
                     fallDate = date;
+                    fallMsgChk.setSelection(false);
                 }
             }
 
@@ -738,8 +732,10 @@ public class GraphicalEditor extends CaveSWTDialog implements
                     fallTxt.setText(MISSING_VAL);
                     fallDate = null;
                 } else {
-                    fallDate = graphData.getRiseDate();
-                    fallTxt.setText(dateFormat.format(riseDate));
+                    fallDate = graphData.getFallDate();
+                    if (fallDate != null) {
+                        fallTxt.setText(dateFormat.format(fallDate));
+                    }
                 }
                 displayCanvas.setVisible(EventType.FALL,
                         !fallMsgChk.getSelection());
@@ -885,21 +881,23 @@ public class GraphicalEditor extends CaveSWTDialog implements
 
     @Override
     public void setDate(EventType eventType, Date date) {
-        if (eventType == EventType.BEGIN) {
-            this.beginTimeTxt.setText(dateFormat.format(date));
-            this.beginDate = date;
-        } else if (eventType == EventType.RISE) {
-            this.riseTxt.setText(dateFormat.format(date));
-            this.riseDate = date;
-        } else if (eventType == EventType.CREST) {
-            this.crestTxt.setText(dateFormat.format(date));
-            this.crestDate = date;
-        } else if (eventType == EventType.FALL) {
-            this.fallTxt.setText(dateFormat.format(date));
-            this.fallDate = date;
-        } else if (eventType == EventType.END) {
-            this.endTimeTxt.setText(dateFormat.format(date));
-            this.endDate = date;
+        if (date != null) {
+            if (eventType == EventType.BEGIN) {
+                this.beginTimeTxt.setText(dateFormat.format(date));
+                this.beginDate = date;
+            } else if (eventType == EventType.RISE) {
+                this.riseTxt.setText(dateFormat.format(date));
+                this.riseDate = date;
+            } else if (eventType == EventType.CREST) {
+                this.crestTxt.setText(dateFormat.format(date));
+                this.crestDate = date;
+            } else if (eventType == EventType.FALL) {
+                this.fallTxt.setText(dateFormat.format(date));
+                this.fallDate = date;
+            } else if (eventType == EventType.END) {
+                this.endTimeTxt.setText(dateFormat.format(date));
+                this.endDate = date;
+            }
         }
     }
 
