@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.raytheon.uf.common.hazards.hydro.HydroConstants;
 import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
@@ -41,7 +42,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * ------------ ---------- ----------- --------------------------
  * Feb 17, 2015   3847     mpduff      Initial creation
  * Mar 17, 2015   6974     mpduff      Scale to larger of max obs/fcst or flood cat lines.
- * 
+ * Mar 26, 2015   7205     Robert.Blum Using new HydroConstants class.
  * </pre>
  * 
  * @author mpduff
@@ -49,8 +50,6 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  */
 
 public class GraphData {
-    /** Missing value */
-    public static final int MISSING = -9999;
 
     private final String SPLIT = " - ";
 
@@ -80,21 +79,21 @@ public class GraphData {
 
     private String forecastTs;
 
-    private double actionStage = MISSING;
+    private double actionStage = HydroConstants.MISSING_VALUE;
 
-    private double floodStage = MISSING;
+    private double floodStage = HydroConstants.MISSING_VALUE;
 
-    private double moderateStage = MISSING;
+    private double moderateStage = HydroConstants.MISSING_VALUE;
 
-    private double majorStage = MISSING;
+    private double majorStage = HydroConstants.MISSING_VALUE;
 
-    private double actionFlow = MISSING;
+    private double actionFlow = HydroConstants.MISSING_VALUE;
 
-    private double floodFlow = MISSING;
+    private double floodFlow = HydroConstants.MISSING_VALUE;
 
-    private double moderateFlow = MISSING;
+    private double moderateFlow = HydroConstants.MISSING_VALUE;
 
-    private double majorFlow = MISSING;
+    private double majorFlow = HydroConstants.MISSING_VALUE;
 
     private double riseAboveValue;
 

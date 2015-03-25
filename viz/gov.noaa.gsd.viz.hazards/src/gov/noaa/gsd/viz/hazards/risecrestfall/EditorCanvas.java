@@ -59,6 +59,7 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.hazards.hydro.HydroConstants;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastPoint;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -76,6 +77,7 @@ import com.raytheon.uf.viz.core.RGBColors;
  * Feb 17, 2015    3847    mpduff     Initial creation
  * Mar 13, 2015    6922    Chris.Cody Changes for dragging vertical graph lines
  * Mar 17, 2015    6974    mpduff      FAT fixes.
+ * Mar 26, 2015    7205    Robert.Blum Added discharge to graph.
  * </pre>
  * 
  * @author mpduff
@@ -208,6 +210,9 @@ public class EditorCanvas extends Canvas {
      * Event Region for existing mouse drag.
      */
     private EventRegion dragEventRegion = null;
+
+    /** Flag for existence of rating curve */
+    private boolean ratingCurveExist = false;
 
     public EditorCanvas(Composite parent, GraphData graphData,
             IDataUpdate dataUpdate, int style) {
@@ -434,6 +439,7 @@ public class EditorCanvas extends Canvas {
 
     private void handleDisplayGraphDataCheckbox() {
         this.showGraphPointData = !this.showGraphPointData;
+        this.redraw();
     }
 
     /**
@@ -585,6 +591,23 @@ public class EditorCanvas extends Canvas {
         int y = 0;
         double tickVal = minScaleVal;
 
+        ratingCurveExist = false;
+
+        /* Maximum discharge value */
+        double maxDischarge = -999.9;
+
+        String pe = graphData.getPe().toUpperCase();
+        boolean isStageValue = (pe.startsWith("Q") == false);
+
+        /* Does a rating table exist for this site? */
+        String lid = graphData.getLid();
+        if (!ratingCurveExist && (pe.startsWith("H") || pe.startsWith("Q"))) {
+            ratingCurveExist = StageDischargeUtils.checkRatingTable(lid);
+        }
+
+        int labelX = GRAPHBORDER_LEFT - xoffset;
+        int labelX2 = GRAPHBORDER_LEFT + graphAreaWidth + 15;
+
         for (int i = 0; i < numberTicks; i++) {
             y = y2pixel(tickVal);
             if (i > 0 && i < numberTicks - 1) {
@@ -599,23 +622,102 @@ public class EditorCanvas extends Canvas {
                         SWT.COLOR_WHITE));
             }
 
-            /* Draw the tick marks and values */
-            int labelX = GRAPHBORDER_LEFT - xoffset;
+            double dischargeValue = 0.0;
+            double stageValue = 0.0;
+
+            // Determine the stage and discharge values
+            if (isStageValue) {
+                stageValue = tickVal;
+                if (ratingCurveExist) {
+                    maxDischarge = StageDischargeUtils.stage2discharge(lid,
+                            scaleMgr.getMaxScaleValue());
+                    dischargeValue = StageDischargeUtils.stage2discharge(lid,
+                            tickVal);
+                    if ((dischargeValue < 0.0)) {
+                        dischargeValue = 0.0;
+                    } else if (maxDischarge >= 10000.0) {
+                        dischargeValue /= 1000.0;
+                    }
+                }
+            } else if (pe.startsWith("Q")) {
+                dischargeValue = tickVal;
+                maxDischarge = scaleMgr.getMaxScaleValue();
+                if (ratingCurveExist) {
+                    double value = StageDischargeUtils.discharge2stage(
+                            graphData.getLid(), tickVal);
+                    if (value != HydroConstants.MISSING_VALUE) {
+                        stageValue = value;
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            /* Draw the tick marks and left axis values */
             int labelY = GRAPHBORDER_TOP + y - 8;
             int[] tick = { GRAPHBORDER_LEFT, GRAPHBORDER_TOP + y,
                     GRAPHBORDER_LEFT - dx, GRAPHBORDER_TOP + y };
             gc.drawPolyline(tick);
-            gc.drawText("" + formatter.format(tickVal), labelX, labelY);
+            if (isStageValue == false && ratingCurveExist == false) {
+                // Only have the discharge value, so it goes on left Y axis
+                gc.drawText("" + formatter.format(dischargeValue), labelX,
+                        labelY);
+            } else {
+                gc.drawText("" + formatter.format(stageValue), labelX, labelY);
+            }
 
-            // TODO add the discharge to the right y-axis
-            // int[] tick2 = { GRAPHBORDER_LEFT + graphAreaWidth,
-            // GRAPHBORDER_TOP + y,
-            // GRAPHBORDER_LEFT + graphAreaWidth + dx, GRAPHBORDER_TOP + y };
-            // gc.drawPolyline(tick2);
-            // double discharge = stage2discharge(tickVal);
-
+            /* Draw the tick marks and right axis values if rating curve exists */
+            if (ratingCurveExist) {
+                int[] tick2 = { GRAPHBORDER_LEFT + graphAreaWidth,
+                    GRAPHBORDER_TOP + y,
+                    GRAPHBORDER_LEFT + graphAreaWidth + dx, GRAPHBORDER_TOP + y };
+                gc.drawPolyline(tick2);
+                gc.drawText("" + formatter.format(dischargeValue), labelX2,
+                        labelY);
+            }
             tickVal += inc;
         }
+
+        // Label the left axis
+        labelLeftYAxis(gc, maxDischarge);
+        if (ratingCurveExist) {
+            // Label the right axis
+            labelRightYAxis(gc, maxDischarge);
+        }
+    }
+
+    /**
+     * Label the left y axis.
+     */
+    private void labelLeftYAxis(GC gc, double maxDischarge) {
+        String label = "";
+        if (graphData.getPe().toUpperCase().startsWith("Q")
+                && ratingCurveExist == false) {
+            if (maxDischarge >= 10000.0) {
+                label = "KCFS";
+            } else {
+                label = "CFS";
+            }
+        } else {
+            label = "Feet";
+        }
+        // Draw the label on the graph
+        gc.drawText(label, GRAPHBORDER_LEFT - 40, GRAPHBORDER_TOP - 25, true);
+    }
+
+    /**
+     * Label the right y axis.
+     */
+    private void labelRightYAxis(GC gc, double maxDischarge) {
+        String label = "";
+        if (maxDischarge >= 10000.0) {
+            label = "KCFS";
+        } else {
+            label = "CFS";
+        }
+        // Draw the label on the graph
+        gc.drawText(label, GRAPHBORDER_LEFT + graphAreaWidth + 15,
+                GRAPHBORDER_TOP - 25, true);
     }
 
     private void drawXAxis(GC gc) {
@@ -681,7 +783,7 @@ public class EditorCanvas extends Canvas {
         gc.setLineStyle(SWT.LINE_SOLID);
 
         /* Action stage/flow */
-        if (graphData.getActionStage() != GraphData.MISSING) {
+        if (graphData.getActionStage() != HydroConstants.MISSING_VALUE) {
             y = y2pixel(graphData.getActionStage());
             if (y > GRAPHBORDER_TOP) {
                 gc.setForeground(yellow);
@@ -692,7 +794,7 @@ public class EditorCanvas extends Canvas {
         }
 
         /* Flood stage/flow */
-        if (graphData.getFloodStage() != GraphData.MISSING) {
+        if (graphData.getFloodStage() != HydroConstants.MISSING_VALUE) {
             y = y2pixel(graphData.getFloodStage());
             if (y > GRAPHBORDER_TOP) {
                 gc.setForeground(orange);
@@ -703,7 +805,7 @@ public class EditorCanvas extends Canvas {
         }
 
         /* Moderate stage/flow */
-        if (graphData.getModerateStage() != GraphData.MISSING) {
+        if (graphData.getModerateStage() != HydroConstants.MISSING_VALUE) {
             y = y2pixel(graphData.getModerateStage());
             if (y > GRAPHBORDER_TOP) {
                 gc.setForeground(red);
@@ -714,7 +816,7 @@ public class EditorCanvas extends Canvas {
         }
 
         /* Major stage/flow */
-        if (graphData.getMajorStage() != GraphData.MISSING) {
+        if (graphData.getMajorStage() != HydroConstants.MISSING_VALUE) {
             y = y2pixel(graphData.getMajorStage());
             gc.setForeground(purple);
             int[] gridLine = { GRAPHBORDER_LEFT, GRAPHBORDER_TOP + y,
@@ -919,8 +1021,36 @@ public class EditorCanvas extends Canvas {
             xVal = this.dateFormat.format(xValDate);
             double yValDbl = this.pixel2y(ypix);
             yVal = formatter.format(yValDbl);
+            String labelText = "Time: " + xVal;
 
-            String labelText = "Time: " + xVal + "\nStage: " + yVal;
+            if (graphData.getPe().toUpperCase().startsWith("Q")) {
+                if (ratingCurveExist == false) {
+                    // Only discharge data available
+                    labelText += "\nDischarge: " + yVal;
+                } else {
+                    double stageVal = StageDischargeUtils.discharge2stage(
+                            graphData.getLid(), yValDbl);
+                    labelText += "\nStage: " + formatter.format(stageVal);
+                    labelText += "\nDischarge: " + yVal;
+                }
+            } else {
+                if (ratingCurveExist == false) {
+                    // Only Stage data available
+                    labelText += "\nStage: " + yVal;
+                } else {
+                    double dischargeVal = StageDischargeUtils.stage2discharge(
+                            graphData.getLid(), yValDbl);
+                    if ((dischargeVal < 0.0)) {
+                        dischargeVal = 0.0;
+                    } else if (dischargeVal >= 10000.0) {
+                        dischargeVal /= 1000.0;
+                    }
+                    labelText += "\nStage: " + yVal;
+                    labelText += "\nDischarge: "
+                            + formatter.format(dischargeVal);
+                }
+            }
+
             this.graphPointDataText = labelText;
             this.graphPointDataX = xpix + 12;
             this.graphPointDataY = ypix + 12;
