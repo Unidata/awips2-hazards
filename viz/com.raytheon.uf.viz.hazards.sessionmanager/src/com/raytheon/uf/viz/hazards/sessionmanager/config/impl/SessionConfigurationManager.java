@@ -179,6 +179,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * Mar 06, 2015  3850      Chris.Golden Added ability to determine if a hazard type
  *                                      requires a point identifier, and which hazard types
  *                                      can be used to replace a particular hazard event.
+ * Mar 25, 2015  7102      Chris.Golden Fixed bug that caused null pointer exceptions when
+ *                                      attempting to compile the duration choices lists.
  * </pre>
  * 
  * @author bsteffen
@@ -966,8 +968,11 @@ public class SessionConfigurationManager implements
             durationChoicesForHazardTypes = new HashMap<>();
             for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
                     .getConfig().entrySet()) {
-                durationChoicesForHazardTypes.put(entry.getKey(), ImmutableList
-                        .copyOf(entry.getValue().getDurationChoiceList()));
+                List<String> list = entry.getValue().getDurationChoiceList();
+                if (list != null) {
+                    durationChoicesForHazardTypes.put(entry.getKey(),
+                            ImmutableList.copyOf(list));
+                }
             }
             durationChoicesForHazardTypes.put(null,
                     ImmutableList.copyOf(Collections.<String> emptyList()));

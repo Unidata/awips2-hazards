@@ -255,6 +255,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           30 seconds or more into a minute. Also
  *                                           changed to use time range boundaries for
  *                                           the events.
+ * Mar 26, 2015   7102     Chris.Golden      Fixed bug that caused exception when an
+ *                                           event time range boundary changed but the
+ *                                           event is not found within the rows of the
+ *                                           table.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1948,6 +1952,9 @@ class TemporalDisplay {
                     .containsKey(identifier) == false ? Ranges.closed(
                     HazardConstants.MIN_TIME, HazardConstants.MAX_TIME)
                     : startTimeBoundariesForEventIds.get(identifier));
+            if (tableEditorsForIdentifiers.containsKey(identifier) == false) {
+                continue;
+            }
             MultiValueScale scale = (MultiValueScale) tableEditorsForIdentifiers
                     .get(identifier).getEditor();
             scale.setAllowableConstrainedValueRange(0,

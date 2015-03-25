@@ -258,6 +258,23 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
  * Mar 13, 2015 6922       Chris.Cody   Changes to skip re-query on GraphicalEditor cancel
  * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen
+ * Mar 25, 2015 7102       Chris.Golden Changed behavior of start time limiting to make
+ *                                      start times of some hazard events (those that do not
+ *                                      have to have start time be current time) be no
+ *                                      longer limited after the event is issued (until it
+ *                                      is ending). Also, hazard events that are reissued
+ *                                      do not have their start times jumped forward to the
+ *                                      current time; the start time they had when first
+ *                                      issued is the start time they keep by default. Also
+ *                                      put code in to catch the cases where no start time
+ *                                      is saved for a previously-issued event; this is a
+ *                                      bug that is probably no longer occurring, but since
+ *                                      I wasn't able to reproduce it I added this code to
+ *                                      ensure that H.S. will not be left in a bad state.
+ *                                      Finally, fixed bug that caused events that went
+ *                                      directly to ENDED status (no intermediate ENDING)
+ *                                      to still allow their start and end times to be
+ *                                      changed.
  * </pre>
  * 
  * @author bsteffen
@@ -778,7 +795,6 @@ public class SessionEventManager implements
                     .postNotificationAsync(new SessionSelectedEventsModified(
                             this, change.getOriginator()));
         }
-        updateSavedTimesForEventIfIssued(change.getEvent(), false);
         updateTimeBoundariesForEvents(change.getEvent(), false);
         updateDurationChoicesForEvent(change.getEvent(), false);
         updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
@@ -839,8 +855,13 @@ public class SessionEventManager implements
     @Handler(priority = 1)
     public void hazardStatusChanged(SessionEventStatusModified change) {
         ObservedHazardEvent event = change.getEvent();
-        if (event.getStatus() == HazardStatus.ENDING) {
-            eventIdentifiersWithEndingStatus.add(event.getEventID());
+        if ((event.getStatus() == HazardStatus.ENDING)
+                || (event.getStatus() == HazardStatus.ENDED)) {
+            if (event.getStatus() == HazardStatus.ENDING) {
+                eventIdentifiersWithEndingStatus.add(event.getEventID());
+            } else {
+                eventIdentifiersWithEndingStatus.remove(event.getEventID());
+            }
             updateTimeBoundariesForEvents(event, false);
             updateDurationChoicesForEvent(event, false);
         } else if ((event.getStatus() == HazardStatus.ISSUED)
@@ -884,22 +905,25 @@ public class SessionEventManager implements
                      * this.
                      */
                     HazardStatus hazardStatus = oEvent.getStatus();
+                    boolean wasPreIssued = false;
                     if (hazardStatus.equals(HazardStatus.PENDING)
                             || hazardStatus.equals(HazardStatus.PROPOSED)) {
                         oEvent.setStatus(HazardStatus.ISSUED);
                         oEvent.clearUndoRedo();
                         oEvent.setModified(false);
+                        wasPreIssued = true;
                     } else if (isChangeToEndedStatusNeeded(hazardEvent)) {
                         oEvent.setStatus(HazardStatus.ENDED);
                     }
 
                     /*
-                     * If the hazard now has issued status (i.e. it has not just
-                     * been changed to ended), adjust its start and end times
-                     * and their boundaries. Then update its duration choices
-                     * list, if applicable.
+                     * If the hazard now has just changed to issued status (i.e.
+                     * it has not just been changed to ended, or been reissued),
+                     * adjust its start and end times and their boundaries. Then
+                     * update its duration choices list, if applicable.
                      */
-                    if (oEvent.getStatus().equals(HazardStatus.ISSUED)) {
+                    if (oEvent.getStatus().equals(HazardStatus.ISSUED)
+                            && wasPreIssued) {
                         updateTimeRangeBoundariesOfJustIssuedEvent(
                                 oEvent,
                                 (Long) hazardEvent
@@ -1129,7 +1153,6 @@ public class SessionEventManager implements
             }
             updateEventMetadata(event);
         }
-
     }
 
     /**
@@ -1741,6 +1764,7 @@ public class SessionEventManager implements
         }
         oevent.addHazardAttribute(HAZARD_EVENT_CHECKED, true);
         updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(oevent, false);
+        updateSavedTimesForEventIfIssued(oevent, false);
         notificationSender.postNotificationAsync(new SessionEventAdded(this,
                 oevent, originator));
         return oevent;
@@ -2114,7 +2138,8 @@ public class SessionEventManager implements
          * or expanded after issuance.
          */
         return Ranges
-                .closed((configManager.isAllowTimeShrink(event) ? 0L : endTime),
+                .closed((configManager.isAllowTimeShrink(event) ? HazardConstants.MIN_TIME
+                        : endTime),
                         (configManager.isAllowTimeExpand(event) ? HazardConstants.MAX_TIME
                                 : endTime));
     }
@@ -2298,13 +2323,43 @@ public class SessionEventManager implements
             endTimeRange = getEndTimeRangeForPreIssuedEvent(endTime);
             break;
         case ISSUED:
-            long startTimeWhenLastIssued = startTimesForIssuedEventIdentifiers
-                    .get(event.getEventID());
-            startTimeRange = Ranges
-                    .closed((startTimeWhenLastIssued < currentTime ? startTimeWhenLastIssued
-                            : currentTime),
-                            (configManager.isStartTimeIsCurrentTime(event) ? startTimeWhenLastIssued
-                                    : HazardConstants.MAX_TIME));
+
+            /*
+             * TODO: Sometimes startTimesForIssuedEventIdentifiers does not
+             * include an entry for an issued event. Chris Golden is attempting
+             * to track down the reason why this might occur; it may no longer
+             * be a problem as of the code review being submitted 3/25/2015, as
+             * one possible cause has been fixed, but since Chris was unable to
+             * reproduce the error in any case, it may still be present. In case
+             * of the latter, fallback code has been placed here to use the
+             * current event start time for the "issued" start time so that this
+             * will not leave Hazard Services in a completely broken state. An
+             * error is logged as well so that testers may report when this
+             * occurs.
+             */
+            long startTimeWhenLastIssued;
+            if (startTimesForIssuedEventIdentifiers.containsKey(event
+                    .getEventID())) {
+                startTimeWhenLastIssued = startTimesForIssuedEventIdentifiers
+                        .get(event.getEventID());
+            } else {
+                startTimeWhenLastIssued = event.getStartTime().getTime();
+                statusHandler.error("Issued hazard event " + event.getEventID()
+                        + " with type " + event.getHazardType()
+                        + " has no saved start time from first issuance. "
+                        + "This should not occur; falling back to using "
+                        + "event's current start time as potential time "
+                        + "range boundary instead. If reporting this "
+                        + "error, please include any relevant context to "
+                        + "aid in debugging the problem.");
+            }
+            boolean startTimeIsCurrentTime = configManager
+                    .isStartTimeIsCurrentTime(event);
+            startTimeRange = Ranges.closed(
+                    (startTimeIsCurrentTime ? startTimeWhenLastIssued
+                            : HazardConstants.MIN_TIME),
+                    (startTimeIsCurrentTime ? startTimeWhenLastIssued
+                            : HazardConstants.MAX_TIME));
             endTimeRange = getEndTimeRangeForIssuedEvent(event, startTime,
                     endTime);
             break;
@@ -2363,13 +2418,15 @@ public class SessionEventManager implements
 
         /*
          * Determine the allowable range for the start time. The minimum must be
-         * the issue time from the issuance that occurred. The maximum is either
-         * the same value (if the start time is always the same as the current
-         * time) or else practically unlimited.
+         * the issue time from the issuance that occurred (if start time is
+         * always current time) or else practically unlimited. The maximum is
+         * similar: either the issue time, or unlimited.
          */
-        Range<Long> startTimeRange = Ranges.closed(issueTime, (configManager
-                .isStartTimeIsCurrentTime(event) ? issueTime
-                : HazardConstants.MAX_TIME));
+        boolean startTimeIsIssueTime = configManager
+                .isStartTimeIsCurrentTime(event);
+        Range<Long> startTimeRange = Ranges.closed(
+                (startTimeIsIssueTime ? issueTime : HazardConstants.MIN_TIME),
+                (startTimeIsIssueTime ? issueTime : HazardConstants.MAX_TIME));
 
         /*
          * Get the end time as it was previously, and if the event has an
