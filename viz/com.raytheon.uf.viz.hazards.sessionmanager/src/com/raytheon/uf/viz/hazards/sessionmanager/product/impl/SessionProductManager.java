@@ -189,6 +189,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Feb 15, 2015 2271       Dan Schaffer Incur recommender/product generator init costs immediately
  * Feb 26, 2015 6306       mduff        Pass site id to product generation. *
+ * Mar 23, 2015 7110       hansen       Automatically include all allowedHazards if "includeAll"
  * </pre>
  * 
  * @author bsteffen
@@ -347,7 +348,7 @@ public class SessionProductManager implements ISessionProductManager {
                             productEvents.add(e);
                         } else if (e.getStatus() != HazardStatus.POTENTIAL
                                 && e.getStatus() != HazardStatus.ENDED
-                                && isCombinable(e)) {
+                                && isIncludeAll(e)) {
                             possibleProductEvents.add(e);
                         }
                     }
@@ -1080,10 +1081,23 @@ public class SessionProductManager implements ISessionProductManager {
          * events associated with it for possible inclusion, return the value
          * indicating that this is the case.
          */
+        /*
+         * See ticket 7110. Instead of returning flag for calling Product
+         * Staging dialog, add the possible product events to the product events
+         * and set them all to selected.
+         */
         for (ProductGeneratorInformation info : allProductGeneratorInfo) {
             if ((info.getPossibleProductEvents() != null)
                     && (info.getPossibleProductEvents().isEmpty() == false)) {
-                return StagingRequired.POSSIBLE_EVENTS;
+                info.getProductEvents().addAll(info.getPossibleProductEvents());
+                List<ObservedHazardEvent> selectedEvents = eventManager
+                        .getSelectedEvents();
+                for (IHazardEvent hevent : info.getProductEvents()) {
+                    selectedEvents.add((ObservedHazardEvent) hevent);
+                }
+                eventManager
+                        .setSelectedEvents(selectedEvents, Originator.OTHER);
+                // return StagingRequired.POSSIBLE_EVENTS;
             }
         }
 
@@ -1251,11 +1265,11 @@ public class SessionProductManager implements ISessionProductManager {
         return ToStringBuilder.reflectionToString(this);
     }
 
-    private boolean isCombinable(IHazardEvent e) {
+    private boolean isIncludeAll(IHazardEvent e) {
         String type = HazardEventUtilities.getHazardType(e);
         HazardTypes hazardTypes = configManager.getHazardTypes();
         HazardTypeEntry hazardTypeEntry = hazardTypes.get(type);
-        boolean result = hazardTypeEntry.isCombinableSegments();
+        boolean result = hazardTypeEntry.isIncludeAll();
         return result;
     }
 

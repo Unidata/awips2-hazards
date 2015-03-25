@@ -30,12 +30,14 @@
 #    04/07/14                      jsanchez        Initial Creation.
 #    04/21/14        2336          Chris.Golden    Added capitalization of labels.
 #    04/23/14        3519          jsanchez        Added required fields.
+#    03/19/15        7094          Robert.Blum     Added eventIDs to label by default.
 import JUtil
 from com.raytheon.uf.common.hazards.productgen import KeyInfo as JavaKeyInfo
 
 class KeyInfo(JUtil.JavaWrapperClass):
     
-    def __init__(self, name, productCategory=None, productID=None, eventIDs=[], segment=None, editable=False, displayable=False, label=None, required=False, index=0):
+    def __init__(self, name, productCategory=None, productID=None, eventIDs=[], segment=None, editable=False, displayable=False,
+                 label=None, required=False, index=0, eventIDInLabel=True):
         self.name = name
         self.productCategory = productCategory
         self.productID = productID
@@ -50,7 +52,19 @@ class KeyInfo(JUtil.JavaWrapperClass):
             self.label = self.name.title()
         else:
             self.label = label
-            
+
+        # Add EventIDs to label
+        if eventIDInLabel:
+            if eventIDs:
+                firstEvent = True
+                for eventID in eventIDs:
+                    if firstEvent:
+                        # 1st eventID added to label
+                        self.label += ' - ' + str(eventID)
+                        firstEvent = False
+                    else:
+                        self.label += '/' + str(eventID)
+
         self.required = required
         # This should be refactored after the ParametersEditorFactory
         # can receive a KeyInfo class.

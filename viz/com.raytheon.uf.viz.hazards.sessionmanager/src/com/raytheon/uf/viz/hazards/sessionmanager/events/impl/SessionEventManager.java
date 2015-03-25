@@ -132,6 +132,8 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.MultiPolygon;
+import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.TopologyException;
 import com.vividsolutions.jts.operation.valid.IsValidOp;
 import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
@@ -255,7 +257,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      until further notice set if such is not allowed.
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
  * Mar 13, 2015 6922       Chris.Cody   Changes to skip re-query on GraphicalEditor cancel
- * 
+ * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen
  * </pre>
  * 
  * @author bsteffen
@@ -3117,6 +3119,7 @@ public class SessionEventManager implements
                             selectedEvent, hazardType);
                     productGeometry = reduceGeometry(productGeometry,
                             hazardType);
+                    productGeometry = addGoosenecksAsNecessary(productGeometry);
 
                 } else if (geoMapUtilities.isPointBasedHatching(selectedEvent)) {
                     productGeometry = selectedEvent.getGeometry();
@@ -3592,11 +3595,61 @@ public class SessionEventManager implements
     }
 
     private Geometry asUnion(List<Geometry> geometries) {
-        Geometry result = geometries.get(0);
-        for (int i = 1; i < geometries.size(); i++) {
-            result = result.union(geometries.get(i));
+
+        Geometry result = null;
+        for (int i = 0; i < geometries.size(); i++) {
+            Geometry g = geometries.get(i);
+            if (g instanceof Polygon || g instanceof MultiPolygon) {
+                if (result == null) {
+                    result = g;
+                } else {
+                    result = result.union(g);
+                }
+            }
         }
         return result;
+    }
+
+    private Geometry addGoosenecksAsNecessary(Geometry productGeometry) {
+        if (!(productGeometry instanceof GeometryCollection)) {
+            return productGeometry;
+        }
+        GeometryCollection asMultiPolygon = (GeometryCollection) productGeometry;
+        Geometry[] geometries = new Geometry[2 * asMultiPolygon
+                .getNumGeometries() - 1];
+
+        int n = 0;
+        for (int i = 0; i < asMultiPolygon.getNumGeometries(); i++) {
+            geometries[n] = asMultiPolygon.getGeometryN(i);
+            n += 1;
+            if (i < asMultiPolygon.getNumGeometries() - 1) {
+                geometries[n] = buildGooseNeck(asMultiPolygon.getGeometryN(i),
+                        asMultiPolygon.getGeometryN(i + 1));
+                n += 1;
+            }
+        }
+        GeometryCollection result = geometryFactory
+                .createGeometryCollection(geometries);
+        return result;
+    }
+
+    private Geometry buildGooseNeck(Geometry geometry0, Geometry geometry1) {
+
+        double minDistance = Double.MAX_VALUE;
+        Coordinate[] closestCoordinates = new Coordinate[2];
+        for (int i = 0; i < geometry0.getCoordinates().length; i++) {
+            Coordinate coordinate0 = geometry0.getCoordinates()[i];
+            for (int j = 0; j < geometry1.getCoordinates().length; j++) {
+                Coordinate coordinate1 = geometry1.getCoordinates()[j];
+                double distance = coordinate0.distance(coordinate1);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestCoordinates[0] = coordinate0;
+                    closestCoordinates[1] = coordinate1;
+                }
+            }
+        }
+        return geometryFactory.createLineString(closestCoordinates);
     }
 
 }

@@ -63,6 +63,7 @@ import com.raytheon.uf.common.util.Pair;
  *                                      parameters editor changes.
  * 01/15/2015   5109       bphillip     Refactored/Renamed
  * 03/11/2015   6889       bphillip     Modifications to allow more than one undo action in the Product Editor
+ * 03/19/2015   7108       Robert.Blum  Rename Raw Data to Hazard Data Editor.
  * </pre>
  * 
  * @author jsanchez
@@ -76,7 +77,7 @@ public class ProductDataEditor extends AbstractDataEditor {
             .getHandler(ProductDataEditor.class);
 
     /** Label used for the tab */
-    private static final String TAB_LABEL = "Raw Data";
+    private static final String TAB_LABEL = "Hazard Data Editor";
 
     /**
      * The MegawidgetManager responsible for generating the GUI components for

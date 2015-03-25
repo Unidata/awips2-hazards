@@ -112,7 +112,7 @@ class MetaData(CommonMetaData.MetaData):
             "values": self.defaultValue(choices),
             "choices": choices,                
                 }  
-        
+
     def getEventType(self):
         return {
                 "fieldType": "Composite",
@@ -120,9 +120,10 @@ class MetaData(CommonMetaData.MetaData):
                 "fieldName": "eventTypeWrapper",
                 "fields": [
                     {
-                     "fieldType":"RadioButtons",
+                     "fieldType":"DetailedComboBox",
                      "fieldName": "eventType",
                      "label": "Event type:",
+                     "expandVertically": False,
                      "values": "thunderEvent",
                      "choices": [
                             self.eventTypeThunder(),
@@ -131,7 +132,7 @@ class MetaData(CommonMetaData.MetaData):
                             ]
                         }
                     ]
-            }  
+            }
 
     def getDebrisFlowOptions(self):
         choices = [

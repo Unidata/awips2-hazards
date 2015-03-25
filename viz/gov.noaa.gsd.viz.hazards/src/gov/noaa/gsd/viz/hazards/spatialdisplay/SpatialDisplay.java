@@ -173,6 +173,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Feb 15, 2015 2271       Dan Schaffer   Incur recommender/product generator init costs immediately
  * Feb 24, 2015 6499       Dan Schaffer   Disable moving/drawing of point hazards
  * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
+ * Mar 19, 2015 6938       mduff        Increased size of handlebars to 1.5 mag.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -197,7 +198,7 @@ public class SpatialDisplay extends
     /**
      * Controls the relative size of the handlebars drawn on selected hazards.
      */
-    private static final float HANDLEBAR_MAGNIFICATION = 1.0f;
+    private static final float HANDLEBAR_MAGNIFICATION = 1.5f;
 
     /**
      * A reference to an instance of app builder.
