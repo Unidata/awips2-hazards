@@ -203,6 +203,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            necessary.
  * Feb 12, 2015 4959       Dan Schaffer       Modify MB3 add/remove UGCs to match Warngen
  * Feb 25, 2015 6600       Dan Schaffer       Fixed bug in spatial display centering
+ * Mar 26, 2015 6940       Robert.Blum        Changed Conflicts dialog to say Forecast Zones
+ *                                            instead of Areas.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -1596,8 +1598,14 @@ public final class HazardServicesMessageHandler {
                     Collection<String> conflictingAreas = conflictingHazards
                             .get(conflictingHazard);
 
+                    /*
+                     * TODO - Future work to be done under RM 7306. The below
+                     * label needs to be updated based on the ugcType of the
+                     * hazard. It could be a county, forecast zone, or fire wx
+                     * zone.
+                     */
                     if (!conflictingAreas.isEmpty()) {
-                        message.append("\n\tAreas:");
+                        message.append("\n\tForecast Zones:");
 
                         for (String area : conflictingAreas) {
                             message.append(" " + area);
