@@ -521,6 +521,21 @@ public final class HazardConstants {
      */
     public static final String HAZARD_EVENT_STATUS = "status";
 
+    /**
+     * The issued attribute will be available as a Boolean for all hazards in
+     * the session to mark whether the event has been previously issued, it will
+     * not be persisted.
+     */
+    public static final String ATTR_ISSUED = "issued";
+
+    /**
+     * The hazard category attribute will be available as a String for any new
+     * hazards without a phenSig. After a phenSig has been assigned hazard
+     * category should be looked up from the configuration manager. This
+     * attribute will not be persisted.
+     */
+    public static final String ATTR_HAZARD_CATEGORY = "hazardCategory";
+
     /*
      * The following are used to identify elements in the session state.
      */

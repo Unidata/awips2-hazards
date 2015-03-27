@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
@@ -34,6 +35,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -79,6 +81,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      them beyond the allowed ranges.
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
+ * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * </pre>
  * 
  * @author bsteffen
@@ -86,21 +89,6 @@ import com.vividsolutions.jts.geom.Geometry;
  */
 
 public interface ISessionEventManager<E extends IHazardEvent> {
-
-    /**
-     * The issued attribute will be available as a Boolean for all hazards in
-     * the session to mark whether the event has been previously issued, it will
-     * not be persisted.
-     */
-    public static final String ATTR_ISSUED = "issued";
-
-    /**
-     * The hazard category attribute will be available as a String for any new
-     * hazards without a phenSig. After a phenSig has been assigned hazard
-     * category should be looked up from the configuration manager. This
-     * attribute will not be persisted.
-     */
-    public static final String ATTR_HAZARD_CATEGORY = "hazardCategory";
 
     /**
      * Add a new event to the Session, for example the event might come from a
@@ -305,25 +293,6 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public Collection<E> getCheckedEvents();
 
     public Collection<E> getEventsForCurrentSettings();
-
-    /**
-     * Tests whether it is valid to change a hazard type(includes phen, sig, and
-     * subtype).
-     * 
-     * @param event
-     * @return
-     */
-    public boolean canChangeType(E event);
-
-    /**
-     * Tests if an event's area can be changed.
-     * 
-     * @param event
-     *            The event to test
-     * @return True - the event's area can be changed. False - the event's area
-     *         cannot be changed.
-     */
-    public boolean canEventAreaBeChanged(E event);
 
     /**
      * Sort the events using a comparator. This can be useful with
@@ -551,16 +520,6 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public boolean isSelected(E event);
 
     /**
-     * @param geometry
-     * @param hazardEvent
-     * @param checkGeometryValidity
-     * @return true if the geometry of the given hazardEvent can be modified to
-     *         the given geometry
-     */
-    public boolean isValidGeometryChange(Geometry geometry,
-            ObservedHazardEvent hazardEvent, boolean checkGeometryValidity);
-
-    /**
      * Find a UGC enclosing the given location. If that UGC is included in the
      * selected event then remove it. If it is not included, add it.
      * 
@@ -576,6 +535,21 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      */
     public Map<String, String> buildInitialHazardAreas(IHazardEvent hazardEvent);
 
+    public void setEventAttributesModified(IHazardEvent hazardEvent,
+            String identifier, Serializable value, IOriginator originator);
+
+    public void setEventAttributesModified(IHazardEvent hazardEvent,
+            Map<String, Serializable> attributeMap, IOriginator originator);
+
+    public void setEventStatus(IHazardEvent event, HazardStatus status,
+            boolean persist, IOriginator originator);
+
+    public void setModifiedEventGeometry(String eventID, Geometry geometry,
+            boolean checkGeometryValidity);
+
+    public void setModifiedEventGeometry(ObservedHazardEvent event,
+            Geometry geometry, boolean checkGeometryValidity);
+
     /**
      * Update the hazard areas.
      * 
@@ -583,4 +557,19 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      */
     public void updateHazardAreas(IHazardEvent hazardEvent);
 
+    public void reloadEventsForSettings();
+
+    public void processHazardAttributesChanged(IHazardEvent event,
+            Map<String, Serializable> attributeMap, IOriginator originator);
+
+    public void processHazardGeometryChanged(IHazardEvent event);
+
+    public void processHazardStatusChanged(IHazardEvent event);
+
+    public void processHazardTimeRangeChanged(IHazardEvent event);
+
+    public void processProductGenerationComplete(
+            IProductGenerationComplete productGenerationComplete);
+
+    public void processCurrentTimeChanged();
 }

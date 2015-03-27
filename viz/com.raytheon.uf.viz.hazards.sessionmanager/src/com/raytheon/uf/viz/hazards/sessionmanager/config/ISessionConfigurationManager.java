@@ -72,6 +72,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      requires a point identifier, and which hazard
  *                                      types can be used to replace a particular
  *                                      hazard event.
+ * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * </pre>
  * 
  * @author bsteffen
@@ -113,13 +114,32 @@ public interface ISessionConfigurationManager<S extends ISettings> {
     /**
      * Save the current settings.
      * 
-     * @return
      */
-    public void saveSettings();
+    public void saveSettings(IOriginator originator);
+
+    /**
+     * Save the current settings under a different Settings ID.
+     * 
+     * @param saveAsSettingsId
+     *            New Settings ID
+     * @param originator
+     *            The UI component creating the new settings
+     */
+    public void saveAsSettings(String saveAsSettingsId, IOriginator originator);
+
+    /**
+     * Overwrite the settings with new values. Note: This should not persist the
+     * changes. Dispatch update messages as necessary.
+     * 
+     * @param updateSettings
+     * @param originator
+     */
+    public void updateCurrentSettings(ISettings updateSettings,
+            IOriginator originator);
 
     /**
      * Delete the current settings from user level, or write an empty file if
-     * only at base
+     * only at base Dispatch update message.
      */
     public void deleteSettings();
 

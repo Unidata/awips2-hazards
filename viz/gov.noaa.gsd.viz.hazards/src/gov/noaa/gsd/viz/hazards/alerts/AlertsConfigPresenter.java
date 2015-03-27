@@ -12,9 +12,6 @@ package gov.noaa.gsd.viz.hazards.alerts;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 
-import java.util.EnumSet;
-
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -40,6 +37,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           protected as it is called by setView().
  * Dec 05, 2014 4124       Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
+ * Apr 10, 2015 6898       Chris.Cody        Removed modelChanged legacy messaging method
  * </pre>
  * 
  * @author Chris.Golden
@@ -65,12 +63,6 @@ public class AlertsConfigPresenter extends
     }
 
     // Public Methods
-
-    @Override
-    public final void modelChanged(EnumSet<HazardConstants.Element> changed) {
-
-        // No action.
-    }
 
     /**
      * Show a subview providing setting detail for the current alert.

@@ -33,7 +33,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.P
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_UTILITIES_DIR;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.alerts.AlertVizPresenter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigPresenter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigView;
@@ -72,7 +71,6 @@ import gov.noaa.gsd.viz.mvp.IView;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Date;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
@@ -124,7 +122,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
-import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager.StagingRequired;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -214,6 +211,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Feb 25, 2015 6600       Dan Schaffer        Fixed bug in spatial display centering
  * Feb 26, 2015 6306       mduff               Pass site id to product editor.
  * Feb 28, 2015 3847       mduff               Added rise/crest/fall editor
+ * Apr 10, 2015  6898      Chris.Cody          Refactored async messaging
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -735,9 +733,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         spatialPresenter.getView().setMouseHandler(
                 HazardServicesMouseHandlers.SINGLE_SELECTION, new String[] {});
 
-        // Set the time line duration.
-        messageHandler.updateConsoleVisibleTimeDelta();
-
         // Add the HazardServicesAppBuilder as a listener for frame changes.
         VizGlobalsManager.addListener(VizConstants.FRAMES_ID, this);
         VizGlobalsManager.addListener(VizConstants.LOOPING_ID, this);
@@ -1002,48 +997,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     public void setCurrentSettings(ISettings settings, IOriginator originator) {
         messageHandler.changeCurrentSettings(settings, originator);
-    }
-
-    /**
-     * Notify all presenters of one or more model changes that occurred.
-     * 
-     * @param changed
-     *            Set of model elements that have changed.
-     */
-    public void notifyModelChanged(EnumSet<HazardConstants.Element> changed,
-            IOriginator originator) {
-        if (disposing) {
-            return;
-        }
-        for (HazardServicesPresenter<?> presenter : presenters) {
-            if (shouldCall(originator, presenter)) {
-                presenter.modelChanged(changed);
-            }
-        }
-    }
-
-    public void notifyModelChanged(EnumSet<HazardConstants.Element> changed) {
-        notifyModelChanged(changed, Originator.OTHER);
-    }
-
-    /**
-     * This is a temporary kludge that is needed until the event propagation is
-     * switched over to going directly from the model to presenters, instead of
-     * having this class act as an intermediary. At that time, presenters will
-     * be free to either respond to or ignore notifications that are a result of
-     * their own actions. For the moment, assume that any actions taken by the
-     * console are ignored by the console, and the same for the HID.
-     */
-    @Deprecated
-    private boolean shouldCall(IOriginator originator,
-            HazardServicesPresenter<?> presenter) {
-        if (((originator == UIOriginator.HAZARD_INFORMATION_DIALOG) && presenter
-                .getClass().equals(HazardDetailPresenter.class))
-                || ((originator == UIOriginator.CONSOLE) && presenter
-                        .getClass().equals(ConsolePresenter.class))) {
-            return false;
-        }
-        return true;
     }
 
     /**

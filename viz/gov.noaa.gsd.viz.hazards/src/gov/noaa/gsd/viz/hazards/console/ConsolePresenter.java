@@ -20,7 +20,6 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -97,6 +96,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
  *                                           notifications now come from the session
  *                                           time manager. Also changed to use time
  *                                           range boundaries for the events.
+ * Apr 10, 2015 6898       Chris.Cody        Removed modelChanged legacy messaging method
+ *                                           Removed extraneous @Handler methods
  * </pre>
  * 
  * @author Chris.Golden
@@ -165,7 +166,9 @@ public class ConsolePresenter extends
      */
     @Handler
     public void currentTimeChanged(CurrentTimeChanged change) {
-        getView().updateCurrentTime(change.getTimeManager().getCurrentTime());
+
+        Date currentTime = getModel().getTimeManager().getCurrentTime();
+        getView().updateCurrentTime(currentTime);
     }
 
     /**
@@ -186,18 +189,6 @@ public class ConsolePresenter extends
     }
 
     /**
-     * Respond to the events' time range boundaries changing.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventsTimeRangeBoundariesChanged(
-            SessionEventsTimeRangeBoundariesModified change) {
-        getView().updateEventTimeRangeBoundaries(change.getChangedEvents());
-    }
-
-    /**
      * Respond to the current settings changing.
      * 
      * @param change
@@ -207,40 +198,6 @@ public class ConsolePresenter extends
     public void currentSettingsChanged(SettingsModified change) {
         if (change.getOriginator() != UIOriginator.CONSOLE) {
             updateHazardEventsForSettingChange();
-        }
-    }
-
-    @Override
-    @Deprecated
-    public final void modelChanged(EnumSet<HazardConstants.Element> changed) {
-        ISessionTimeManager timeManager = getModel().getTimeManager();
-        if (changed.contains(HazardConstants.Element.VISIBLE_TIME_DELTA)) {
-            String timeDelta = Long.toString(getModel()
-                    .getConfigurationManager().getSettings()
-                    .getDefaultTimeDisplayDuration());
-            getView().updateVisibleTimeDelta(timeDelta);
-        }
-        if (changed.contains(HazardConstants.Element.VISIBLE_TIME_RANGE)) {
-            String earliestTime = jsonConverter.fromDate(timeManager
-                    .getVisibleTimeRange().getStart());
-            String latestTime = jsonConverter.fromDate(timeManager
-                    .getVisibleTimeRange().getEnd());
-            getView().updateVisibleTimeRange(earliestTime, latestTime);
-        }
-        if (changed.contains(HazardConstants.Element.SETTINGS)) {
-            getView()
-                    .setSettings(
-                            getModel().getConfigurationManager().getSettings()
-                                    .getSettingsID(),
-                            getModel().getConfigurationManager()
-                                    .getAvailableSettings());
-        }
-        if (changed.contains(HazardConstants.Element.EVENTS)) {
-            updateHazardEventsForEventChange();
-        }
-        if (changed.contains(HazardConstants.Element.SITE)) {
-            getView().updateTitle(
-                    getModel().getConfigurationManager().getSiteID());
         }
     }
 
@@ -406,12 +363,6 @@ public class ConsolePresenter extends
         }
     }
 
-    /*
-     * TODO It's not at all clear that all of these handlers are needed. Some
-     * optimization is needed here. This requires completely understanding the
-     * eventing in Hazard Services; a fairly time consuming process that will be
-     * done when Red-Mine 3975 is completed.
-     */
     @Handler
     public void alertsModified(HazardAlertsModified notification) {
         getView().setActiveAlerts(notification.getActiveAlerts());
@@ -445,10 +396,6 @@ public class ConsolePresenter extends
         updateHazardEventsForEventChange();
     }
 
-    /*
-     * TODO In particular, it did not seem to Dan that these are needed but Dan
-     * could be wrong.
-     */
     @Handler
     public void sessionEventAdded(SessionEventAdded notification) {
         updateHazardEventsForEventChange();
@@ -460,4 +407,27 @@ public class ConsolePresenter extends
         updateHazardEventsForEventChange();
     }
 
+    /**
+     * Respond to the events' time range boundaries changing.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void sessionEventsTimeRangeBoundariesChanged(
+            SessionEventsTimeRangeBoundariesModified change) {
+        getView().updateEventTimeRangeBoundaries(change.getChangedEventIdSet());
+    }
+
+    /**
+     * Respond to the events' time range boundaries changing.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void sessionEventModified(
+            SessionEventsTimeRangeBoundariesModified change) {
+        getView().updateEventTimeRangeBoundaries(change.getChangedEventIdSet());
+    }
 }

@@ -32,21 +32,16 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import org.codehaus.jackson.annotate.JsonProperty;
-import org.eclipse.core.runtime.Assert;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardCategoryAndTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Column;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.MapCenter;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
-import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
-import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 
 /**
  * Settings object that notified the SessionConfigurationManager whenever a
@@ -75,6 +70,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                      and changed setting of identifier to
  *                                      trigger a settings-loaded notification
  *                                      instead of a settings-modified one.
+ * Apr 10, 2015 6898       Chris.Cody   Removed all messaging from data object.
  * </pre>
  * 
  * @author bsteffen
@@ -84,8 +80,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 @XmlRootElement(name = "HazardServicesSettings")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class ObservedSettings implements ISettings {
-
-    private SessionConfigurationManager configManager;
 
     private Settings delegate;
 
@@ -97,12 +91,14 @@ public class ObservedSettings implements ISettings {
 
     }
 
-    public ObservedSettings(SessionConfigurationManager configManager,
-            ISettings other) {
+    public ObservedSettings(ISettings other) {
         delegate = new Settings(other);
-        Assert.isNotNull(configManager);
         setStaticSettingsID(getSettingsID());
-        this.configManager = configManager;
+    }
+
+    public boolean isValueChanged(Object newObj, Object oldObj) {
+
+        return (changed(newObj, oldObj));
     }
 
     private final boolean changed(Object newObj, Object oldObj) {
@@ -151,30 +147,6 @@ public class ObservedSettings implements ISettings {
             copy.put(entry.getKey(), new Column(entry.getValue()));
         }
         return copy;
-    }
-
-    private void settingsChanged(boolean notify, IOriginator originator) {
-        if (notify) {
-            settingsChanged(new SettingsModified(configManager, originator));
-        }
-    }
-
-    private void settingsChangedIdentifier(boolean notify,
-            IOriginator originator) {
-        if (notify) {
-            settingsChanged(new SettingsLoaded(configManager, originator));
-        }
-    }
-
-    private void settingsChanged(SettingsModified notification) {
-
-        /*
-         * The configManager is only null during construction, we don't want any
-         * notifications during construction anyway.
-         */
-        if (configManager != null) {
-            configManager.settingsChanged(notification);
-        }
     }
 
     @Override
@@ -267,128 +239,94 @@ public class ObservedSettings implements ISettings {
         return delegate.getTool(toolName);
     }
 
-    @Override
-    public void apply(ISettings other) {
-        apply(other, Originator.OTHER);
-    }
-
-    @Override
-    public void setSettingsID(String settingsID) {
-        setSettingsID(settingsID, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setVisibleTypes(Set<String> visibleTypes) {
-        setVisibleTypes(visibleTypes, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setVisibleStatuses(Set<String> visibleStatuses) {
-        setVisibleStatuses(visibleStatuses, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setToolbarTools(List<Tool> toolbarTools) {
-        setToolbarTools(toolbarTools, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setDefaultTimeDisplayDuration(Long defaultTimeDisplayDuration) {
-        setDefaultTimeDisplayDuration(defaultTimeDisplayDuration, true,
-                Originator.OTHER);
-    }
-
-    @Override
-    public void setMapCenter(MapCenter mapCenter) {
-        setMapCenter(mapCenter, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setDefaultCategory(String defaultCategory) {
-        setDefaultCategory(defaultCategory, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setPossibleSites(Set<String> possibleSites) {
-        setPossibleSites(possibleSites, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setVisibleSites(Set<String> visibleSites) {
-        setVisibleSites(visibleSites, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-        setDisplayName(displayName, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setDefaultDuration(Long defaultDuration) {
-        setDefaultDuration(defaultDuration, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setVisibleColumns(List<String> visibleColumns) {
-        setVisibleColumns(visibleColumns, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setColumns(Map<String, Column> columns) {
-        setColumns(columns, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setStaticSettingsID(String staticSettingsID) {
-        setStaticSettingsID(staticSettingsID, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setAddToSelected(Boolean addToSelected) {
-        setAddToSelected(addToSelected, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setAddGeometryToSelected(Boolean addGeometryToSelected) {
-        setAddGeometryToSelected(addGeometryToSelected, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setPerspectiveIDs(Set<String> perspectiveIDs) {
-        setPerspectiveIDs(perspectiveIDs, true, Originator.OTHER);
-    }
-
     /**
      * Copy all settings from another Settings object into this one.
      * 
      * @param other
-     * @param originator
+     * @return True if the Settings ID has changed an a SettingsLoaded message
+     *         should be dispatched. False otherwise and a SettingsModified
+     *         message should be dispatched.
      */
-    public void apply(ISettings other, IOriginator originator) {
+    @Override
+    public SettingsChangeType apply(ISettings other) {
+
+        SettingsChangeType changeType = SettingsChangeType.NO_CHANGE;
+        boolean fieldChanged = false;
+        boolean curChanged = false;
         boolean idChanged = changed(getSettingsID(), other.getSettingsID());
-        setSettingsID(other.getSettingsID(), false, originator);
-        setVisibleTypes(other.getVisibleTypes(), false, originator);
-        setVisibleStatuses(other.getVisibleStatuses(), false, originator);
-        setToolbarTools(other.getToolbarTools(), false, originator);
-        setDefaultTimeDisplayDuration(other.getDefaultTimeDisplayDuration(),
-                false, originator);
-        setMapCenter(other.getMapCenter(), false, originator);
-        setDefaultCategory(other.getDefaultCategory(), false, originator);
-        setPossibleSites(other.getPossibleSites(), false, originator);
-        setVisibleSites(other.getVisibleSites(), false, originator);
-        setDisplayName(other.getDisplayName(), false, originator);
-        setDefaultDuration(other.getDefaultDuration(), false, originator);
-        setVisibleColumns(other.getVisibleColumns(), false, originator);
-        setColumns(other.getColumns(), false, originator);
-        setStaticSettingsID(other.getStaticSettingsID(), false, originator);
-        setAddToSelected(other.getAddToSelected(), false, originator);
-        setAddGeometryToSelected(other.getAddGeometryToSelected(), false,
-                originator);
-        if (idChanged) {
-            settingsChangedIdentifier(true, originator);
-        } else {
-            settingsChanged(true, originator);
+        curChanged = setInternalSettingsID(other.getSettingsID());
+        if (curChanged == true) {
+            fieldChanged = true;
         }
+        curChanged = setInternalVisibleTypes(other.getVisibleTypes());
+        if (curChanged == true) {
+            fieldChanged = true;
+        }
+        curChanged = setInternalVisibleStatuses(other.getVisibleStatuses());
+        curChanged = setInternalToolbarTools(other.getToolbarTools());
+        if (curChanged == true) {
+            fieldChanged = true;
+        }
+        curChanged = setInternalDefaultTimeDisplayDuration(other
+                .getDefaultTimeDisplayDuration());
+        if (curChanged == true) {
+            fieldChanged = true;
+        }
+        curChanged = setInternalMapCenter(other.getMapCenter());
+        if (curChanged == true) {
+            fieldChanged = true;
+        }
+        curChanged = setInternalDefaultCategory(other.getDefaultCategory());
+        if (curChanged == true) {
+            fieldChanged = true;
+        }
+        curChanged = setInternalPossibleSites(other.getPossibleSites());
+        if (curChanged == true) {
+            fieldChanged = true;
+        }
+        curChanged = setInternalVisibleSites(other.getVisibleSites());
+        if (curChanged == true) {
+            fieldChanged = true;
+        }
+        curChanged = setInternalDisplayName(other.getDisplayName());
+        if (curChanged == true) {
+            fieldChanged = true;
+        }
+        curChanged = setInternalDefaultDuration(other.getDefaultDuration());
+        if (curChanged == true) {
+            fieldChanged = true;
+        }
+        curChanged = setInternalVisibleColumns(other.getVisibleColumns());
+        if (curChanged == true) {
+            fieldChanged = true;
+        }
+        curChanged = setInternalColumns(other.getColumns());
+        if (curChanged == true) {
+            fieldChanged = true;
+        }
+        curChanged = setInternalStaticSettingsID(other.getStaticSettingsID());
+        if (curChanged == true) {
+            fieldChanged = true;
+        }
+        curChanged = setInternalAddToSelected(other.getAddToSelected());
+        if (curChanged == true) {
+            fieldChanged = true;
+        }
+        curChanged = setInternalAddGeometryToSelected(other
+                .getAddGeometryToSelected());
+        if (curChanged == true) {
+            fieldChanged = true;
+        }
+
+        if (idChanged) {
+            changeType = SettingsChangeType.LOAD_CHANGE;
+        } else {
+            if (fieldChanged == true) {
+                changeType = SettingsChangeType.MODIFY_CHANGE;
+            }
+        }
+
+        return (changeType);
     }
 
     /**
@@ -409,294 +347,329 @@ public class ObservedSettings implements ISettings {
      *            object is based.
      * @param update
      *            the new persisted settings that have changed in localization.
+     * @return SettingsChangeType
      */
-    public void applyPersistedChanges(ISettings persisted, ISettings update) {
+    public SettingsChangeType applyPersistedChanges(ISettings persisted,
+            ISettings update) {
+
+        SettingsChangeType changeType = SettingsChangeType.NO_CHANGE;
         boolean notify = false;
         boolean idChanged = false;
         if (!changed(getSettingsID(), persisted.getSettingsID())) {
             idChanged = changed(update.getSettingsID(), getSettingsID());
-            setSettingsID(update.getSettingsID(), false, null);
+            setSettingsID(update.getSettingsID());
             notify = true;
         }
         if (!changed(getVisibleTypes(), persisted.getVisibleTypes())) {
-            setVisibleTypes(update.getVisibleTypes(), false, null);
+            setVisibleTypes(update.getVisibleTypes());
             notify = true;
         }
         if (!changed(getVisibleStatuses(), persisted.getVisibleStatuses())) {
-            setVisibleStatuses(update.getVisibleStatuses(), false, null);
+            setVisibleStatuses(update.getVisibleStatuses());
             notify = true;
         }
         if (!changed(getToolbarTools(), persisted.getToolbarTools())) {
-            setToolbarTools(update.getToolbarTools(), false, null);
+            setToolbarTools(update.getToolbarTools());
             notify = true;
         }
         if (!changed(getDefaultTimeDisplayDuration(),
                 persisted.getDefaultTimeDisplayDuration())) {
-            setDefaultTimeDisplayDuration(
-                    update.getDefaultTimeDisplayDuration(), false, null);
+            setDefaultTimeDisplayDuration(update
+                    .getDefaultTimeDisplayDuration());
             notify = true;
         }
         if (!changed(getMapCenter(), persisted.getMapCenter())) {
-            setMapCenter(update.getMapCenter(), false, null);
+            setMapCenter(update.getMapCenter());
             notify = true;
         }
         if (!changed(getDefaultCategory(), persisted.getDefaultCategory())) {
-            setDefaultCategory(update.getDefaultCategory(), false, null);
+            setDefaultCategory(update.getDefaultCategory());
             notify = true;
         }
         if (!changed(getPossibleSites(), persisted.getPossibleSites())) {
-            setPossibleSites(update.getPossibleSites(), false, null);
+            setPossibleSites(update.getPossibleSites());
             notify = true;
         }
         if (!changed(getVisibleSites(), persisted.getVisibleSites())) {
-            setVisibleSites(update.getVisibleSites(), false, null);
+            setVisibleSites(update.getVisibleSites());
             notify = true;
         }
         if (!changed(getDisplayName(), persisted.getDisplayName())) {
-            setDisplayName(update.getDisplayName(), false, null);
+            setDisplayName(update.getDisplayName());
             notify = true;
         }
         if (!changed(getDefaultDuration(), persisted.getDefaultDuration())) {
-            setDefaultDuration(update.getDefaultDuration(), false, null);
+            setDefaultDuration(update.getDefaultDuration());
             notify = true;
         }
         if (!changed(getVisibleColumns(), persisted.getVisibleColumns())) {
-            setVisibleColumns(update.getVisibleColumns(), false, null);
+            setVisibleColumns(update.getVisibleColumns());
             notify = true;
         }
         if (!changed(getColumns(), persisted.getColumns())) {
-            setColumns(update.getColumns(), false, null);
+            setColumns(update.getColumns());
             notify = true;
         }
         if (!changed(getStaticSettingsID(), persisted.getStaticSettingsID())) {
-            setStaticSettingsID(update.getStaticSettingsID(), false, null);
+            setStaticSettingsID(update.getStaticSettingsID());
             notify = true;
         }
         if (!changed(getAddToSelected(), persisted.getAddToSelected())) {
-            setAddToSelected(update.getAddToSelected(), false, null);
+            setAddToSelected(update.getAddToSelected());
             notify = true;
         }
         if (notify) {
             if (idChanged) {
-                settingsChangedIdentifier(true, Originator.OTHER);
+                changeType = SettingsChangeType.LOAD_CHANGE;
             } else {
-                settingsChanged(true, Originator.OTHER);
+                changeType = SettingsChangeType.LOAD_CHANGE;
             }
         }
+
+        return (changeType);
     }
 
-    public void setSettingsID(String settingsID, IOriginator originator) {
-        setSettingsID(settingsID, true, originator);
+    @Override
+    public void setSettingsID(String settingsID) {
+        setInternalSettingsID(settingsID);
     }
 
-    public void setVisibleTypes(Set<String> visibleTypes, IOriginator originator) {
-        setVisibleTypes(visibleTypes, true, originator);
+    @Override
+    public void setVisibleTypes(Set<String> visibleTypes) {
+        setInternalVisibleTypes(visibleTypes);
     }
 
-    public void setVisibleStatuses(Set<String> visibleStatuses,
-            IOriginator originator) {
-        setVisibleStatuses(visibleStatuses, true, originator);
+    @Override
+    public void setVisibleStatuses(Set<String> visibleStatuses) {
+        setInternalVisibleStatuses(visibleStatuses);
     }
 
-    public void setToolbarTools(List<Tool> toolbarTools, IOriginator originator) {
-        setToolbarTools(toolbarTools, true, originator);
+    @Override
+    public void setToolbarTools(List<Tool> toolbarTools) {
+        setInternalToolbarTools(toolbarTools);
     }
 
-    public void setDefaultTimeDisplayDuration(Long defaultTimeDisplayDuration,
-            IOriginator originator) {
-        setDefaultTimeDisplayDuration(defaultTimeDisplayDuration, true,
-                originator);
+    @Override
+    public void setDefaultTimeDisplayDuration(Long defaultTimeDisplayDuration) {
+        setInternalDefaultTimeDisplayDuration(defaultTimeDisplayDuration);
     }
 
-    public void setMapCenter(MapCenter mapCenter, IOriginator originator) {
-        setMapCenter(mapCenter, true, originator);
+    @Override
+    public void setMapCenter(MapCenter mapCenter) {
+        setInternalMapCenter(mapCenter);
     }
 
-    public void setDefaultCategory(String defaultCategory,
-            IOriginator originator) {
-        setDefaultCategory(defaultCategory, true, originator);
+    @Override
+    public void setDefaultCategory(String defaultCategory) {
+        setInternalDefaultCategory(defaultCategory);
     }
 
-    public void setPossibleSites(Set<String> possibleSites,
-            IOriginator originator) {
-        setPossibleSites(possibleSites, true, originator);
+    @Override
+    public void setPossibleSites(Set<String> possibleSites) {
+        setInternalPossibleSites(possibleSites);
     }
 
-    public void setVisibleSites(Set<String> visibleSites, IOriginator originator) {
-        setVisibleSites(visibleSites, true, originator);
+    @Override
+    public void setVisibleSites(Set<String> visibleSites) {
+        setInternalVisibleSites(visibleSites);
     }
 
-    public void setDisplayName(String displayName, IOriginator originator) {
-        setDisplayName(displayName, true, originator);
+    @Override
+    public void setDisplayName(String displayName) {
+        setInternalDisplayName(displayName);
     }
 
-    public void setDefaultDuration(Long defaultDuration, IOriginator originator) {
-        setDefaultDuration(defaultDuration, true, originator);
+    @Override
+    public void setDefaultDuration(Long defaultDuration) {
+        setInternalDefaultDuration(defaultDuration);
     }
 
-    public void setVisibleColumns(List<String> visibleColumns,
-            IOriginator originator) {
-        setVisibleColumns(visibleColumns, true, originator);
+    @Override
+    public void setVisibleColumns(List<String> visibleColumns) {
+        setInternalVisibleColumns(visibleColumns);
     }
 
-    public void setColumns(Map<String, Column> columns, IOriginator originator) {
-        setColumns(columns, true, originator);
+    @Override
+    public void setColumns(Map<String, Column> columns) {
+        setInternalColumns(columns);
     }
 
-    public void setStaticSettingsID(String staticSettingsID,
-            IOriginator originator) {
-        setStaticSettingsID(staticSettingsID, true, originator);
+    @Override
+    public void setStaticSettingsID(String staticSettingsID) {
+        setInternalStaticSettingsID(staticSettingsID);
     }
 
-    public void setAddToSelected(Boolean addToSelected, IOriginator originator) {
-        setAddToSelected(addToSelected, true, originator);
+    @Override
+    public void setAddToSelected(Boolean addToSelected) {
+        setInternalAddToSelected(addToSelected);
     }
 
-    public void setAddGeometryToSelected(Boolean addGeometryToSelected,
-            IOriginator originator) {
-        setAddGeometryToSelected(addGeometryToSelected, true, originator);
+    @Override
+    public void setAddGeometryToSelected(Boolean addGeometryToSelected) {
+        setInternalAddGeometryToSelected(addGeometryToSelected);
     }
 
-    public void setPerspectiveIDs(Set<String> perspectiveIDs,
-            IOriginator originator) {
-        setPerspectiveIDs(perspectiveIDs, true, originator);
+    @Override
+    public void setPerspectiveIDs(Set<String> perspectiveIDs) {
+        setInternalPerspectiveIDs(perspectiveIDs);
     }
 
-    protected void setSettingsID(String settingsID, boolean notify,
-            IOriginator originator) {
-        if (changed(settingsID, getSettingsID())) {
+    // Internal Set Methods. Set methods that return a isChanged boolean flag
+    public boolean setInternalSettingsID(String settingsID) {
+        boolean isChanged = changed(settingsID, getSettingsID());
+        if (isChanged == true) {
             delegate.setSettingsID(settingsID);
-            settingsChangedIdentifier(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setVisibleTypes(Set<String> visibleTypes, boolean notify,
-            IOriginator originator) {
-        if (changed(visibleTypes, getVisibleTypes())) {
+    public boolean setInternalVisibleTypes(Set<String> visibleTypes) {
+        boolean isChanged = changed(visibleTypes, getVisibleTypes());
+        if (isChanged == true) {
             delegate.setVisibleTypes(getSetCopy(visibleTypes));
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setVisibleStatuses(Set<String> visibleStatuses,
-            boolean notify, IOriginator originator) {
-        if (changed(visibleStatuses, getVisibleStatuses())) {
+    public boolean setInternalVisibleStatuses(Set<String> visibleStatuses) {
+        boolean isChanged = changed(visibleStatuses, getVisibleStatuses());
+        if (isChanged == true) {
             delegate.setVisibleStatuses(getSetCopy(visibleStatuses));
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setToolbarTools(List<Tool> toolbarTools, boolean notify,
-            IOriginator originator) {
-        if (changed(toolbarTools, getToolbarTools())) {
+    public boolean setInternalToolbarTools(List<Tool> toolbarTools) {
+        boolean isChanged = changed(toolbarTools, getToolbarTools());
+        if (isChanged == true) {
             delegate.setToolbarTools(getToolbarToolsCopy(toolbarTools));
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setDefaultTimeDisplayDuration(
-            Long defaultTimeDisplayDuration, boolean notify,
-            IOriginator originator) {
-        if (changed(defaultTimeDisplayDuration, getDefaultTimeDisplayDuration())) {
+    public boolean setInternalDefaultTimeDisplayDuration(
+            Long defaultTimeDisplayDuration) {
+        boolean isChanged = changed(defaultTimeDisplayDuration,
+                getDefaultTimeDisplayDuration());
+        if (isChanged == true) {
             delegate.setDefaultTimeDisplayDuration(defaultTimeDisplayDuration);
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setMapCenter(MapCenter mapCenter, boolean notify,
-            IOriginator originator) {
-        if (changed(mapCenter, getMapCenter())) {
+    public boolean setInternalMapCenter(MapCenter mapCenter) {
+        boolean isChanged = changed(mapCenter, getMapCenter());
+        if (isChanged == true) {
             delegate.setMapCenter(getMapCenterCopy(mapCenter));
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setDefaultCategory(String defaultCategory, boolean notify,
-            IOriginator originator) {
-        if (changed(defaultCategory, getDefaultCategory())) {
+    public boolean setInternalDefaultCategory(String defaultCategory) {
+        boolean isChanged = changed(defaultCategory, getDefaultCategory());
+        if (isChanged == true) {
             delegate.setDefaultCategory(defaultCategory);
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setPossibleSites(Set<String> possibleSites, boolean notify,
-            IOriginator originator) {
-        if (changed(possibleSites, getPossibleSites())) {
+    public boolean setInternalPossibleSites(Set<String> possibleSites) {
+        boolean isChanged = changed(possibleSites, getPossibleSites());
+        if (isChanged == true) {
             delegate.setPossibleSites(getSetCopy(possibleSites));
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setVisibleSites(Set<String> visibleSites, boolean notify,
-            IOriginator originator) {
-        if (changed(visibleSites, getVisibleSites())) {
+    public boolean setInternalVisibleSites(Set<String> visibleSites) {
+        boolean isChanged = changed(visibleSites, getVisibleSites());
+        if (isChanged == true) {
             delegate.setVisibleSites(getSetCopy(visibleSites));
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setDisplayName(String displayName, boolean notify,
-            IOriginator originator) {
-        if (changed(displayName, getDisplayName())) {
+    public boolean setInternalDisplayName(String displayName) {
+        boolean isChanged = changed(displayName, getDisplayName());
+        if (isChanged == true) {
             delegate.setDisplayName(displayName);
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setDefaultDuration(Long defaultDuration, boolean notify,
-            IOriginator originator) {
-        if (changed(defaultDuration, getDefaultDuration())) {
+    public boolean setInternalDefaultDuration(Long defaultDuration) {
+        boolean isChanged = changed(defaultDuration, getDefaultDuration());
+        if (isChanged == true) {
             delegate.setDefaultDuration(defaultDuration);
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setVisibleColumns(List<String> visibleColumns,
-            boolean notify, IOriginator originator) {
-        if (changed(visibleColumns, getVisibleColumns())) {
+    public boolean setInternalVisibleColumns(List<String> visibleColumns) {
+        boolean isChanged = changed(visibleColumns, getVisibleColumns());
+        if (isChanged == true) {
             delegate.setVisibleColumns(getListCopy(visibleColumns));
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setColumns(Map<String, Column> columns, boolean notify,
-            IOriginator originator) {
-        if (changed(columns, getColumns())) {
+    public boolean setInternalColumns(Map<String, Column> columns) {
+        boolean isChanged = changed(columns, getColumns());
+        if (isChanged == true) {
             delegate.setColumns(getColumnsCopy(columns));
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setStaticSettingsID(String staticSettingsID, boolean notify,
-            IOriginator originator) {
-        if (changed(staticSettingsID, getStaticSettingsID())) {
+    public boolean setInternalStaticSettingsID(String staticSettingsID) {
+        boolean isChanged = changed(staticSettingsID, getStaticSettingsID());
+        if (isChanged == true) {
             delegate.setStaticSettingsID(staticSettingsID);
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setAddToSelected(Boolean addToSelected, boolean notify,
-            IOriginator originator) {
-        if (changed(addToSelected, getAddToSelected())) {
+    public boolean setInternalAddToSelected(Boolean addToSelected) {
+        boolean isChanged = changed(addToSelected, getAddToSelected());
+        if (isChanged == true) {
             delegate.setAddToSelected(addToSelected);
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setAddGeometryToSelected(Boolean addGeometryToSelected,
-            boolean notify, IOriginator originator) {
-        if (changed(addGeometryToSelected, getAddGeometryToSelected())) {
+    public boolean setInternalAddGeometryToSelected(
+            Boolean addGeometryToSelected) {
+        boolean isChanged = changed(addGeometryToSelected,
+                getAddGeometryToSelected());
+        if (isChanged == true) {
             delegate.setAddGeometryToSelected(addGeometryToSelected);
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
-    protected void setPerspectiveIDs(Set<String> perspectiveIDs,
-            boolean notify, IOriginator originator) {
-        if (changed(perspectiveIDs, getPerspectiveIDs())) {
+    public boolean setInternalPerspectiveIDs(Set<String> perspectiveIDs) {
+        boolean isChanged = changed(perspectiveIDs, getPerspectiveIDs());
+        if (isChanged == true) {
             delegate.setPerspectiveIDs(getSetCopy(perspectiveIDs));
-            settingsChanged(notify, originator);
         }
+
+        return (isChanged);
     }
 
     /**
@@ -707,11 +680,14 @@ public class ObservedSettings implements ISettings {
      */
     @JsonProperty
     public List<HazardCategoryAndTypes> getHazardCategoriesAndTypes() {
+
+        ObservedSettingsHelper observedSettingsHelper = ObservedSettingsHelper
+                .getInstance();
         Map<String, HazardCategoryAndTypes> typeMap = new HashMap<String, HazardCategoryAndTypes>();
         for (String type : getVisibleTypes()) {
             IHazardEvent event = new BaseHazardEvent();
             HazardEventUtilities.populateEventForHazardType(event, type);
-            String cat = configManager.getHazardCategory(event);
+            String cat = observedSettingsHelper.getHazardCategory(event);
             HazardCategoryAndTypes hcat = typeMap.get(cat);
             if (hcat == null) {
                 hcat = new HazardCategoryAndTypes();
@@ -731,16 +707,13 @@ public class ObservedSettings implements ISettings {
      * 
      * @param hazardCategoriesAndTypes
      *            some hazardTypes that are organized by category.
-     * @param originator
      */
     public void setHazardCategoriesAndTypes(
-            HazardCategoryAndTypes[] hazardCategoriesAndTypes,
-            IOriginator originator) {
+            HazardCategoryAndTypes[] hazardCategoriesAndTypes) {
         Set<String> types = new HashSet<String>();
         for (HazardCategoryAndTypes hcat : hazardCategoriesAndTypes) {
             types.addAll(hcat.getChildren());
         }
-        setVisibleTypes(types, originator);
+        setVisibleTypes(types);
     }
-
 }

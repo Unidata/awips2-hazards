@@ -19,10 +19,6 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
-import java.util.List;
-
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
@@ -37,6 +33,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * May 12, 2014            mnash     Initial creation
  * Dec 05, 2014 4124       Chris.Golden Changed to work with parameterized config manager,
  *                                      and to include originator.
+ * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * </pre>
  * 
  * @author mnash
@@ -45,14 +42,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 public class SettingsToolsModified extends SettingsModified {
 
-    public SettingsToolsModified(
-            ISessionConfigurationManager<ObservedSettings> manager,
-            IOriginator originator) {
-        super(manager, originator);
+    public SettingsToolsModified(IOriginator originator) {
+        super(originator);
     }
-
-    public List<Tool> getSettingsTools() {
-        return getSettings().getToolbarTools();
-    }
-
 }

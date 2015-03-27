@@ -508,7 +508,7 @@ public class RiverProDataManager {
                         riverForecastPoint.getId(), riverGroup.getId(),
                         hydroEvent.getRecommendedAction(),
                         hydroEvent.getRecommendationReason());
-                statusHandler.info(output);
+                // TODO HERE REINSTATE statusHandler.info(output);
 
                 /* log previous info */
                 if (hydroEvent.getPreviousFLW().isEventFound()) {
@@ -520,7 +520,7 @@ public class RiverProDataManager {
                                     .getBegintime(), hydroEvent
                                     .getPreviousFLW().getVtecInfo()
                                     .getEndtime());
-                    statusHandler.info(output);
+                    // TODO HERE REINSTATE statusHandler.info(output);
                 }
 
                 /* log current info */
@@ -530,7 +530,7 @@ public class RiverProDataManager {
                                 riverForecastPoint.getRiseOrFall(),
                                 riverForecastPoint.getRiseAboveTime(),
                                 riverForecastPoint.getFallBelowTime());
-                statusHandler.info(output);
+                // TODO HERE REINSTATE statusHandler.info(output);
             }
         }
     }

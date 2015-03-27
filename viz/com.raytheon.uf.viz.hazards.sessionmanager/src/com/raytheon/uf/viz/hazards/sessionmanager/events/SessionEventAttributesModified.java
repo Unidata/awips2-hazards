@@ -25,8 +25,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.Maps;
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
@@ -45,32 +44,29 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      set of attributes that actually changed
  *                                      so that the changes can be pinpointed by
  *                                      receivers of this notification.
+ * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 
-public class SessionEventAttributesModified extends SessionEventModified
-        implements ISessionNotification {
+public class SessionEventAttributesModified extends SessionEventModified {
 
     private final Map<String, Serializable> attributes;
 
-    public SessionEventAttributesModified(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            ObservedHazardEvent event, String attributeKey,
-            Serializable attributeValue, IOriginator originator) {
-        super(eventManager, event, originator);
+    public SessionEventAttributesModified(IHazardEvent event,
+            String attributeKey, Serializable attributeValue,
+            IOriginator originator) {
+        super(event, originator);
         Map<String, Serializable> attributes = Maps.newHashMap();
         attributes.put(attributeKey, attributeValue);
         this.attributes = Collections.unmodifiableMap(attributes);
     }
 
-    public SessionEventAttributesModified(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            ObservedHazardEvent event, Map<String, Serializable> attributes,
-            IOriginator originator) {
-        super(eventManager, event, originator);
+    public SessionEventAttributesModified(IHazardEvent event,
+            Map<String, Serializable> attributes, IOriginator originator) {
+        super(event, originator);
         this.attributes = Collections.unmodifiableMap(attributes);
     }
 
@@ -84,6 +80,10 @@ public class SessionEventAttributesModified extends SessionEventModified
 
     public Serializable getAttribute(String key) {
         return attributes.get(key);
+    }
+
+    public Map<String, Serializable> getAttributeMap() {
+        return this.attributes;
     }
 
 }

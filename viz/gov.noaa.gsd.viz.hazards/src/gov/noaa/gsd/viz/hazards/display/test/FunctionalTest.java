@@ -45,6 +45,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 
 /**
  * Description: Base class for automated testing. The approach is to create mock
@@ -142,7 +143,7 @@ public abstract class FunctionalTest<E extends Enum<E>> {
 
     protected AutoTestUtilities autoTestUtilities;
 
-    protected final ISessionEventManager<ObservedHazardEvent> eventManager;
+    protected final SessionEventManager eventManager;
 
     protected E step;
 
@@ -157,7 +158,8 @@ public abstract class FunctionalTest<E extends Enum<E>> {
     public FunctionalTest(HazardServicesAppBuilder appBuilder) {
         this.appBuilder = appBuilder;
         this.sessionManager = appBuilder.getSessionManager();
-        this.eventManager = sessionManager.getEventManager();
+        this.eventManager = (SessionEventManager) sessionManager
+                .getEventManager();
         this.configManager = sessionManager.getConfigurationManager();
         this.settings = configManager.getSettings();
         this.eventBus = appBuilder.getEventBus();

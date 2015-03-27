@@ -67,6 +67,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * Feb  7, 2015 4375       Dan Schaffer Fixed duplicate context menu entries bug
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
+ * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * </pre>
  * 
  * @author mnash
@@ -291,7 +292,7 @@ public class ContextMenuHelper {
                     if (contextMenuEntry
                             .equals(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES)) {
 
-                        if (eventManager.canEventAreaBeChanged(event) == false) {
+                        if (event.canEventAreaBeChanged() == false) {
                             continue;
                         }
 
@@ -492,10 +493,12 @@ public class ContextMenuHelper {
     }
 
     private void initiateEndingProcess(ObservedHazardEvent event) {
-        event.setStatus(HazardStatus.ENDING);
+        eventManager.setEventStatus(event, HazardStatus.ENDING, true,
+                Originator.OTHER);
     }
 
     private void revertEndingProcess(ObservedHazardEvent event) {
-        event.setStatus(HazardStatus.ISSUED);
+        eventManager.setEventStatus(event, HazardStatus.ISSUED, true,
+                Originator.OTHER);
     }
 }

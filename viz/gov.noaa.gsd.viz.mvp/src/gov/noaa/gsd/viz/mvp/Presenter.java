@@ -11,7 +11,6 @@ package gov.noaa.gsd.viz.mvp;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -47,6 +46,7 @@ import java.util.Set;
  *                                        model directly, and should be notified of
  *                                        changes to the model via @Handler methods.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Apr 10, 2015 6898       Chris.Cody     Removed modelChanged legacy messaging method
  * </pre>
  * 
  * @author Chris.Golden
@@ -141,19 +141,6 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
     public final void publish(A action) {
         eventBus.publish(action);
     }
-
-    /**
-     * Receive notification of a model change.
-     * <p>
-     * <strong>Note</strong>: This method has been deprecated. Presenters should
-     * receive notifications of model changes via <code>@Handler</code> methods,
-     * since they subscribe to the event bus.
-     * 
-     * @param changed
-     *            Set of elements within the model that have changed.
-     */
-    @Deprecated
-    public abstract void modelChanged(EnumSet<E> changed);
 
     /**
      * Dispose of the presenter. This may be implemented, for example, to

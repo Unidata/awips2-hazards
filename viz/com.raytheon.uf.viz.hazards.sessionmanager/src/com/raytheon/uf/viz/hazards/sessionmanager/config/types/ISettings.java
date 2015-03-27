@@ -32,12 +32,16 @@ import java.util.Set;
  */
 public interface ISettings {
 
+    public enum SettingsChangeType {
+        NO_CHANGE, MODIFY_CHANGE, LOAD_CHANGE
+    };
+
     /**
      * Copy all settings from another Settings object into this one.
      * 
      * @param other
      */
-    public void apply(ISettings other);
+    public SettingsChangeType apply(ISettings other);
 
     public String getSettingsID();
 

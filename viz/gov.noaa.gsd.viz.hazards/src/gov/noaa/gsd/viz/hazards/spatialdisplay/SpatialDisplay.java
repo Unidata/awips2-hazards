@@ -14,7 +14,6 @@ import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction.RecommenderActionEnum;
@@ -1205,33 +1204,6 @@ public class SpatialDisplay extends
             elSelected.add(comp);
         }
 
-    }
-
-    /**
-     * TODO This needs to me moved elsewhere - nothing to do with drawing.
-     */
-    public void notifyModifiedGeometry(String eventID, Geometry geometry,
-            boolean checkGeometryValidity) {
-        ISessionEventManager<ObservedHazardEvent> sessionEventManager = appBuilder
-                .getSessionManager().getEventManager();
-
-        ObservedHazardEvent hazardEvent = sessionEventManager
-                .getEventById(eventID);
-
-        if (sessionEventManager.isValidGeometryChange(geometry, hazardEvent,
-                checkGeometryValidity)) {
-            hazardEvent.setGeometry(geometry);
-            sessionEventManager.updateHazardAreas(hazardEvent);
-        }
-    }
-
-    /**
-     * TODO This needs to me moved elsewhere - nothing to do with drawing.
-     */
-    public void notifyModifiedStormTrack(Map<String, Serializable> parameters) {
-        ModifyStormTrackAction action = new ModifyStormTrackAction();
-        action.setParameters(parameters);
-        eventBus.publish(action);
     }
 
     /**

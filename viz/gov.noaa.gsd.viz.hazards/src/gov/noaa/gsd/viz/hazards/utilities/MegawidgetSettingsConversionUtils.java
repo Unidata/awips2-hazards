@@ -39,6 +39,7 @@ import java.util.Set;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.math.NumberUtils;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardCategoryAndTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
@@ -242,6 +243,7 @@ public class MegawidgetSettingsConversionUtils {
     @SuppressWarnings("unchecked")
     public static ObservedSettings updateSettingsUsingMap(
             ObservedSettings settings, Map<String, Object> settingsMap,
+            ISessionConfigurationManager<ObservedSettings> configManager,
             IOriginator originator) {
 
         ObservedSettings updatedSettings = settings;
@@ -313,9 +315,9 @@ public class MegawidgetSettingsConversionUtils {
             }
             hazardCategoriesAndTypesList.add(hazardCategoryAndTypes);
         }
-        updatedSettings.setHazardCategoriesAndTypes(
-                hazardCategoriesAndTypesList
-                        .toArray(new HazardCategoryAndTypes[0]), originator);
+        updatedSettings
+                .setHazardCategoriesAndTypes(hazardCategoriesAndTypesList
+                        .toArray(new HazardCategoryAndTypes[0]));
 
         // Update the Columns
         Map<String, Column> updatedColumnsMap = new HashMap<String, Column>();
@@ -419,7 +421,7 @@ public class MegawidgetSettingsConversionUtils {
                     "staticSettingsID").toString());
         }
 
-        settings.apply(updatedSettings, originator);
+        configManager.updateCurrentSettings(settings, originator);
         return settings;
     }
 

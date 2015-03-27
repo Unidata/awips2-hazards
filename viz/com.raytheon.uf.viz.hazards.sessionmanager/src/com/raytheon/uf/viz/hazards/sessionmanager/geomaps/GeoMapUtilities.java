@@ -173,7 +173,7 @@ public class GeoMapUtilities {
     private static Map<String, Map<String, Set<IGeometryData>>> mapGeometryCache = Maps
             .newHashMap();
 
-    private final ISessionConfigurationManager<ObservedSettings> configManager;
+    private final ISessionConfigurationManager<ObservedSettings> sessionConfigurationManager;
 
     private final GeometryFactory geometryFactory = new GeometryFactory();
 
@@ -190,8 +190,8 @@ public class GeoMapUtilities {
     private Geometry cwaGeometry;
 
     public GeoMapUtilities(
-            ISessionConfigurationManager<ObservedSettings> configManager) {
-        this.configManager = configManager;
+            ISessionConfigurationManager<ObservedSettings> sessionConfigurationManager) {
+        this.sessionConfigurationManager = sessionConfigurationManager;
     }
 
     /**
@@ -320,10 +320,10 @@ public class GeoMapUtilities {
         String hazardType = hazardEvent.getHazardType();
         String mapDBtableName = getMapDBtableName(hazardType);
 
-        String mapLabelParameter = configManager.getHazardTypes()
+        String mapLabelParameter = sessionConfigurationManager.getHazardTypes()
                 .get(hazardType).getUgcLabel();
 
-        String cwa = configManager.getSiteID();
+        String cwa = sessionConfigurationManager.getSiteID();
         return buildHazardAreaForEvent(mapDBtableName, mapLabelParameter, cwa,
                 hazardEvent);
 
@@ -584,7 +584,7 @@ public class GeoMapUtilities {
      * @return The name of the field in the maps db table to use for labeling.
      */
     public String getMapLabelParameter(IHazardEvent hazardEvent) {
-        String mapLabelParameter = configManager.getHazardTypes()
+        String mapLabelParameter = sessionConfigurationManager.getHazardTypes()
                 .get(hazardEvent.getHazardType()).getUgcLabel();
         return mapLabelParameter;
     }
@@ -596,7 +596,7 @@ public class GeoMapUtilities {
      * @return The name of the maps table to retrieve map geometries from.
      */
     public String getMapDBtableName(IHazardEvent hazardEvent) {
-        String mapDBtableName = configManager.getHazardTypes()
+        String mapDBtableName = sessionConfigurationManager.getHazardTypes()
                 .get(hazardEvent.getHazardType()).getUgcType();
         return mapDBtableName;
     }
@@ -604,8 +604,8 @@ public class GeoMapUtilities {
     private HazardTypeEntry getHazardTypeEntry(IHazardEvent hazardEvent) {
         String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
 
-        HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes().get(
-                hazardType);
+        HazardTypeEntry hazardTypeEntry = sessionConfigurationManager
+                .getHazardTypes().get(hazardType);
         return hazardTypeEntry;
     }
 
@@ -620,24 +620,24 @@ public class GeoMapUtilities {
         String hazardType = hazardEvent.getHazardType();
         String mapDBtableName = getMapDBtableName(hazardType);
 
-        String mapLabelParameter = configManager.getHazardTypes()
+        String mapLabelParameter = sessionConfigurationManager.getHazardTypes()
                 .get(hazardType).getUgcLabel();
 
-        String cwa = configManager.getSiteID();
+        String cwa = sessionConfigurationManager.getSiteID();
         return getMapGeometries(mapDBtableName, mapLabelParameter, cwa);
     }
 
     private String getMapDBtableName(String hazardType) {
-        String mapDBtableName = configManager.getHazardTypes().get(hazardType)
-                .getUgcType();
+        String mapDBtableName = sessionConfigurationManager.getHazardTypes()
+                .get(hazardType).getUgcType();
         return mapDBtableName;
     }
 
     private Set<IGeometryData> getIntersectingMapGeometries(
             boolean applyIntersectionThreshold, final IHazardEvent hazardEvent,
             Set<IGeometryData> geometryData) {
-        HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes().get(
-                hazardEvent.getHazardType());
+        HazardTypeEntry hazardTypeEntry = sessionConfigurationManager
+                .getHazardTypes().get(hazardEvent.getHazardType());
         boolean inclusionFractionTest = hazardTypeEntry
                 .isInclusionFractionTest();
         double inclusionFraction = hazardTypeEntry.getInclusionFraction();
@@ -664,7 +664,7 @@ public class GeoMapUtilities {
         String mapDBtableName = MAPDATA_COUNTY;
 
         String mapLabelParameter = "";
-        String cwa = configManager.getSiteID();
+        String cwa = sessionConfigurationManager.getSiteID();
 
         Set<IGeometryData> mapGeometries = getMapGeometries(mapDBtableName,
                 mapLabelParameter, cwa);

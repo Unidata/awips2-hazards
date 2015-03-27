@@ -33,13 +33,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNo
  */
 public class CurrentTimeChanged extends OriginatedSessionNotification {
 
-    // Private Variables
-
-    /**
-     * Time manager.
-     */
-    private final ISessionTimeManager timeManager;
-
     // Public Constructors
 
     /**
@@ -47,23 +40,9 @@ public class CurrentTimeChanged extends OriginatedSessionNotification {
      * 
      * @param originator
      *            Originator of the notification.
-     * @param timeManager
-     *            Time manager.
      */
-    public CurrentTimeChanged(IOriginator originator,
-            ISessionTimeManager timeManager) {
+    public CurrentTimeChanged(IOriginator originator) {
         super(originator);
-        this.timeManager = timeManager;
     }
 
-    // Public Methods
-
-    /**
-     * Get the time manager.
-     * 
-     * @return Time manager.
-     */
-    public ISessionTimeManager getTimeManager() {
-        return timeManager;
-    }
 }

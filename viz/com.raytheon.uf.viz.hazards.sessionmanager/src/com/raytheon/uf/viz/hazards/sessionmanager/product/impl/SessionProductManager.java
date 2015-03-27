@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.product.impl;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ATTR_HAZARD_CATEGORY;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ATTR_ISSUED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
@@ -93,7 +95,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGener
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager;
@@ -191,6 +192,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Feb 26, 2015 6306       mduff        Pass site id to product generation. *
  * Mar 23, 2015 7110       hansen       Automatically include all allowedHazards if "includeAll"
  * Mar 26, 2015 7205       Robert.Blum  Fixed writing to the productData Table.
+ * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * </pre>
  * 
  * @author bsteffen
@@ -674,7 +676,7 @@ public class SessionProductManager implements ISessionProductManager {
                 if (sessionEvent.getEventID().equals(updatedEvent.getEventID())) {
 
                     ObservedHazardEvent newEvent = new ObservedHazardEvent(
-                            updatedEvent, (SessionEventManager) eventManager);
+                            updatedEvent);
 
                     SessionEventUtilities.mergeHazardEvents(newEvent,
                             sessionEvent);
@@ -1423,10 +1425,10 @@ public class SessionProductManager implements ISessionProductManager {
                 event.removeHazardAttribute(HazardConstants.ETNS);
                 event.removeHazardAttribute(HazardConstants.PILS);
             }
-            event.removeHazardAttribute(ISessionEventManager.ATTR_ISSUED);
+            event.removeHazardAttribute(ATTR_ISSUED);
             event.removeHazardAttribute(HAZARD_EVENT_CHECKED);
             event.removeHazardAttribute(HAZARD_EVENT_SELECTED);
-            event.removeHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY);
+            event.removeHazardAttribute(ATTR_HAZARD_CATEGORY);
 
             events.add(event);
         }/* end loop over information.getProductEvents */
@@ -1474,7 +1476,8 @@ public class SessionProductManager implements ISessionProductManager {
                     IHazardEvent hazardEvent = (IHazardEvent) event;
                     String eventID = hazardEvent.getEventID();
                     eventIDs.add(new Integer(eventID));
-                    Map<String, Serializable> attributes = hazardEvent.getHazardAttributes();
+                    Map<String, Serializable> attributes = hazardEvent
+                            .getHazardAttributes();
                     // Issue time should be the same for all the events
                     issueTime = new Date((Long) attributes.get("issueTime"));
                 }

@@ -59,7 +59,11 @@ public class SessionManagerFactory {
             IMessenger messenger, BoundedReceptionEventBus<Object> eventBus) {
         Mode mode = CAVEMode.getMode() == CAVEMode.PRACTICE ? Mode.PRACTICE
                 : Mode.OPERATIONAL;
-        return new SessionManager(PathManagerFactory.getPathManager(),
-                new HazardEventManager(mode), messenger, eventBus);
+        ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = new SessionManager(
+                PathManagerFactory.getPathManager(), new HazardEventManager(
+                        mode), messenger, eventBus);
+
+        return (sessionManager);
     }
+
 }

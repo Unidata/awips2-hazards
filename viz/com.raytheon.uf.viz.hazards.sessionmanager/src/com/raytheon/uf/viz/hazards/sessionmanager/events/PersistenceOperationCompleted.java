@@ -19,13 +19,14 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
-import com.vividsolutions.jts.geom.Geometry;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
 
 /**
  * A Notification that will be sent out through the SessionManager to notify all
- * components that the geometry of an event in the session has changed.
+ * components that a persistence (database) operation has completed.
  * 
  * <pre>
  * 
@@ -33,23 +34,40 @@ import com.vividsolutions.jts.geom.Geometry;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 11, 2013 1257       bsteffen    Initial creation
- * Apr 10, 2015 6898       Chris.Cody  Refactored async messaging
+ * Apr 10, 2015 6898      Chris.Cody  Initial creation
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author Chris.Cody
  * @version 1.0
  */
 
-public class SessionEventGeometryModified extends SessionEventModified {
+public class PersistenceOperationCompleted extends
+        OriginatedSessionNotification {
 
-    public SessionEventGeometryModified(ObservedHazardEvent event,
-            IOriginator originator) {
-        super(event, originator);
+    private final NotificationType notificationType;
+
+    private final IHazardEvent event;
+
+    public PersistenceOperationCompleted(NotificationType notificationType,
+            IHazardEvent event, IOriginator originator) {
+        super(originator);
+        this.notificationType = notificationType;
+        this.event = event;
     }
 
-    public Geometry getGeometry() {
-        return getEvent().getGeometry();
+    public PersistenceOperationCompleted(NotificationType notificationType,
+            IOriginator originator) {
+        super(originator);
+        this.notificationType = notificationType;
+        this.event = null;
+    }
+
+    public NotificationType getNotificationType() {
+        return (this.notificationType);
+    }
+
+    public IHazardEvent getEvent() {
+        return (this.event);
     }
 }

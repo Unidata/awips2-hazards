@@ -14,7 +14,6 @@ import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 
@@ -67,6 +66,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Dec 13, 2014 4959       Dan Schaffer      Spatial Display cleanup and other bug fixes
  * Feb 15, 2015 2271       Dan Schaffer      Incur recommender/product generator init costs immediately
  * Feb 26, 2015 6306       mduff             Pass site id to product editor.
+ * Apr 10, 2015 6898       Chris.Cody        Removed modelChanged legacy messaging method
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -92,19 +92,6 @@ public class ProductEditorPresenter extends
     }
 
     // Public Methods
-
-    /**
-     * Receive notification of a model change. For the moment, the product
-     * editor dialog doesn't care about model events.
-     * 
-     * @param changes
-     *            Set of elements within the model that have changed.
-     */
-    @Override
-    public void modelChanged(EnumSet<HazardConstants.Element> changed) {
-
-        // No action.
-    }
 
     public final void showProductEditorDetail(
             List<GeneratedProductList> generatedProductsList, String siteId) {
@@ -218,12 +205,14 @@ public class ProductEditorPresenter extends
                     currentEvents.add(hazardEvent.getEventID());
                 }
             }
-            List<String> modifiedEvents = new ArrayList<String>();
-            for (ObservedHazardEvent observedHazardEvent : notification
-                    .getEvents()) {
-                modifiedEvents.add(observedHazardEvent.getEventID());
+            List<ObservedHazardEvent> selectedEventList = getModel()
+                    .getEventManager().getSelectedEvents();
+            List<String> modifiedEventIDList = new ArrayList<String>(
+                    selectedEventList.size());
+            for (ObservedHazardEvent observedHazardEvent : selectedEventList) {
+                modifiedEventIDList.add(observedHazardEvent.getEventID());
             }
-            currentEvents.retainAll(modifiedEvents);
+            currentEvents.retainAll(modifiedEventIDList);
             if (!currentEvents.isEmpty()) {
                 getView().notifySessionEventsModified();
             }

@@ -22,8 +22,6 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 import java.util.Collections;
 import java.util.Set;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
@@ -38,24 +36,24 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Feb 02, 2015    2331    Chris.Golden Initial creation.
+ * Apr 10, 2015    6898    Chris.Cody   Refactored async messaging
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class SessionEventsTimeRangeBoundariesModified extends
-        SessionEventsModified implements ISessionNotification {
+        SessionEventsModified {
 
-    private final Set<String> events;
+    private final Set<String> changedEventIDSet;
 
-    public SessionEventsTimeRangeBoundariesModified(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            Set<String> events, IOriginator originator) {
-        super(eventManager, originator);
-        this.events = Collections.unmodifiableSet(events);
+    public SessionEventsTimeRangeBoundariesModified(Set<String> eventIdSet,
+            IOriginator originator) {
+        super(false, false, originator);
+        this.changedEventIDSet = Collections.unmodifiableSet(eventIdSet);
     }
 
-    public final Set<String> getChangedEvents() {
-        return events;
+    public final Set<String> getChangedEventIdSet() {
+        return changedEventIDSet;
     }
 }

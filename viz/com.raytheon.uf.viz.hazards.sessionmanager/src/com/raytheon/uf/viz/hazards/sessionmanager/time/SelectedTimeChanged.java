@@ -43,15 +43,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNo
 
 public class SelectedTimeChanged extends OriginatedSessionNotification {
 
-    private final ISessionTimeManager timeManager;
-
-    public SelectedTimeChanged(ISessionTimeManager timeManager,
-            IOriginator originator) {
+    public SelectedTimeChanged(IOriginator originator) {
         super(originator);
-        this.timeManager = timeManager;
-    }
-
-    public SelectedTime getSelectedTime() {
-        return timeManager.getSelectedTime();
     }
 }

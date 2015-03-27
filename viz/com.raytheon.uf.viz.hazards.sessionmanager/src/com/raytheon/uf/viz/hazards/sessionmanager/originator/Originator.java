@@ -29,6 +29,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.originator;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 1, 2014            mnash     Initial creation
+ * Apr 10, 2015 6898       Chris.Cody  Refactored async messaging
  * 
  * </pre>
  * 
@@ -36,5 +37,5 @@ package com.raytheon.uf.viz.hazards.sessionmanager.originator;
  * @version 1.0
  */
 public enum Originator implements IOriginator {
-    OTHER
+    OTHER, DATABASE
 }

@@ -12,17 +12,15 @@ package gov.noaa.gsd.viz.hazards.setting;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-
-import java.util.EnumSet;
-
 import net.engio.mbassy.listener.Handler;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.drawables.IRenderableDisplay;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.MapCenter;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -55,6 +53,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                           possible site IDs, etc., any of which
  *                                           would necessitate the recreation of the
  *                                           dialog.
+ * Apr 10, 2015 6898       Chris.Cody        Removed modelChanged legacy messaging method
  * </pre>
  * 
  * @author Chris.Golden
@@ -82,26 +81,6 @@ public class SettingsPresenter extends
     // Public Methods
 
     /**
-     * Receive notification of a model change.
-     * 
-     * @param changes
-     *            Set of elements within the model that have changed.
-     */
-    @Override
-    public void modelChanged(EnumSet<HazardConstants.Element> changed) {
-        if (changed.contains(HazardConstants.Element.SETTINGS)) {
-            getView()
-                    .setSettings(
-                            getModel().getConfigurationManager()
-                                    .getAvailableSettings());
-        }
-        if (changed.contains(HazardConstants.Element.CURRENT_SETTINGS)) {
-            getView().setCurrentSettings(
-                    getModel().getConfigurationManager().getSettings());
-        }
-    }
-
-    /**
      * Respond to a new settings object being loaded.
      * 
      * @param change
@@ -120,34 +99,38 @@ public class SettingsPresenter extends
      */
     public final void showSettingDetail() {
 
-        ObservedSettings settings = getModel().getConfigurationManager()
-                .getSettings();
-
         /*
          * Update the setting's zoom parameters with the current values.
          */
         double[] zoomParams = getDisplayZoomParameters();
         MapCenter mapCenter = new MapCenter(zoomParams[0], zoomParams[1],
                 zoomParams[2]);
-        settings.setMapCenter(mapCenter, UIOriginator.SETTINGS_DIALOG);
-
+        ISessionConfigurationManager<ObservedSettings> configManager = getModel()
+                .getConfigurationManager();
+        ISettings modSettings = configManager.getSettings();
+        MapCenter modSettingsMapCenter = modSettings.getMapCenter();
+        if ((modSettingsMapCenter == null)
+                || ((mapCenter.getLat() == modSettingsMapCenter.getLat()) && (mapCenter
+                        .getLon() == modSettingsMapCenter.getLon()))) {
+            modSettings.setMapCenter(mapCenter);
+            configManager.updateCurrentSettings(modSettings,
+                    UIOriginator.SETTINGS_DIALOG);
+        }
+        ObservedSettings settings = configManager.getSettings();
         /*
          * Have the view open the setting detail subview.
          */
-        getView().showSettingDetail(
-                getModel().getConfigurationManager().getSettingsConfig(),
-                settings);
+        getView()
+                .showSettingDetail(configManager.getSettingsConfig(), settings);
     }
 
     // Protected Methods
 
     @Override
     protected void initialize(ISettingsView<?, ?> view) {
-        ObservedSettings settings = getModel().getConfigurationManager()
-                .getSettings();
-        view.initialize(this, getModel().getConfigurationManager()
-                .getAvailableSettings(), getModel().getConfigurationManager()
-                .getFilterConfig(), settings);
+        ISessionConfigurationManager<ObservedSettings> configManager = getModel()
+                .getConfigurationManager();
+        view.initialize(this, configManager);
     }
 
     @Override

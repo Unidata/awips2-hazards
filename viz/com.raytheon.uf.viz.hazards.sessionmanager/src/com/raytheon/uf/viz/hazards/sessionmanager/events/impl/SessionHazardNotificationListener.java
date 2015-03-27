@@ -31,9 +31,9 @@ import com.raytheon.uf.viz.core.notification.INotificationObserver;
 import com.raytheon.uf.viz.core.notification.NotificationException;
 import com.raytheon.uf.viz.core.notification.NotificationMessage;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.PersistenceOperationCompleted;
+import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
-import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
  * An INotificationObserver that keeps the session event manager in sync with
@@ -48,6 +48,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Jun 27, 2013 1257       bsteffen    Initial creation
  * Aug 16, 2013 1325       daniel.s.schaffer@noaa.gov    Alerts integration
  * Oct 23, 2013 2277       jsanchez    Removed HazardEventConverter from viz.
+ * Apr 10, 2015 6898       Chris.Cody  Refactored async messaging
  * 
  * </pre>
  * 
@@ -59,17 +60,17 @@ public class SessionHazardNotificationListener implements INotificationObserver 
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionHazardNotificationListener.class);
 
-    private final Reference<ISessionEventManager<ObservedHazardEvent>> manager;
+    private final Reference<ISessionNotificationSender> sendManager;
 
     public SessionHazardNotificationListener(
-            ISessionEventManager<ObservedHazardEvent> manager) {
-        this(manager, true);
+            ISessionNotificationSender notificationSender) {
+        this(notificationSender, true);
     }
 
     public SessionHazardNotificationListener(
-            ISessionEventManager<ObservedHazardEvent> manager, boolean observe) {
-        this.manager = new WeakReference<ISessionEventManager<ObservedHazardEvent>>(
-                manager);
+            ISessionNotificationSender notificationSender, boolean observe) {
+        this.sendManager = new WeakReference<ISessionNotificationSender>(
+                notificationSender);
         if (observe) {
             NotificationManagerJob.addObserver(HazardNotification.HAZARD_TOPIC,
                     this);
@@ -78,12 +79,6 @@ public class SessionHazardNotificationListener implements INotificationObserver 
 
     @Override
     public void notificationArrived(NotificationMessage[] messages) {
-        ISessionEventManager<ObservedHazardEvent> manager = this.manager.get();
-        if (manager == null) {
-            NotificationManagerJob.removeObserver(
-                    HazardNotification.HAZARD_TOPIC, this);
-            return;
-        }
         for (NotificationMessage message : messages) {
             try {
                 Object payload = message.getMessagePayload();
@@ -98,28 +93,16 @@ public class SessionHazardNotificationListener implements INotificationObserver 
     }
 
     public void handleNotification(HazardNotification notification) {
-        ISessionEventManager<ObservedHazardEvent> manager = this.manager.get();
-        IHazardEvent newEvent = notification.getEvent();
-        ObservedHazardEvent oldEvent = manager.getEventById(newEvent
-                .getEventID());
-        if (CAVEMode.getMode() == CAVEMode.PRACTICE
-                && notification.isPracticeMode() == false) {
-            return;
-        }
-        switch (notification.getType()) {
-        case DELETE:
-            if (oldEvent != null) {
-                manager.removeEvent(oldEvent, Originator.OTHER);
-            }
-            break;
-        case UPDATE:
-        case STORE:
-            if (oldEvent != null) {
-                SessionEventUtilities.mergeHazardEvents(newEvent, oldEvent);
-                return;
-            }
-            manager.addEvent(newEvent, Originator.OTHER);
-            break;
+        IHazardEvent event = notification.getEvent();
+        /*
+         * TODO This should be moved into DatabaseEventManager and the
+         * NotificationObserver components should be removed.
+         */
+        ISessionNotificationSender notificationSender = this.sendManager.get();
+        if (notificationSender != null) {
+            PersistenceOperationCompleted dbOpCompleted = new PersistenceOperationCompleted(
+                    notification.getType(), event, Originator.DATABASE);
+            notificationSender.postNotificationAsync(dbOpCompleted);
         }
     }
 

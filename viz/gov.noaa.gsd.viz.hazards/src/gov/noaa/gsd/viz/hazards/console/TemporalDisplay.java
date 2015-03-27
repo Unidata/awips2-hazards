@@ -132,8 +132,10 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.icon.IconUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Column;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -1681,6 +1683,8 @@ class TemporalDisplay {
 
     private ISessionEventManager<ObservedHazardEvent> eventManager;
 
+    private ISessionConfigurationManager<ObservedSettings> sessionConfigurationManager;
+
     // Public Constructors
 
     /**
@@ -1755,6 +1759,8 @@ class TemporalDisplay {
         // allowing "until further notice".
         this.presenter = presenter;
         this.eventManager = presenter.getSessionManager().getEventManager();
+        this.sessionConfigurationManager = presenter.getSessionManager()
+                .getConfigurationManager();
         this.eventIdentifiersAllowingUntilFurtherNotice = eventIdentifiersAllowingUntilFurtherNotice;
         this.filterMegawidgets = filterMegawidgets;
         this.startTimeBoundariesForEventIds = startTimeBoundariesForEventIds;
@@ -2521,8 +2527,9 @@ class TemporalDisplay {
                                                      * per se so that it does
                                                      * react.
                                                      */
-                                                    TemporalDisplay.this.currentSettings
-                                                            .apply(updatedSettings,
+                                                    TemporalDisplay.this.sessionConfigurationManager
+                                                            .updateCurrentSettings(
+                                                                    updatedSettings,
                                                                     UIOriginator.CONSOLE_HEADER_FILTER);
                                                 }
                                             }));
@@ -4984,13 +4991,15 @@ class TemporalDisplay {
      * widths, column orders, etc.).
      */
     private void notifyListenersOfSettingDefinitionChange(SettingsChange change) {
-        if (change == SettingsChange.COLUMNS) {
-            currentSettings.setColumns(columnsForNames, UIOriginator.CONSOLE);
-        } else {
-            currentSettings.setVisibleColumns(visibleColumnNames,
-                    UIOriginator.CONSOLE);
-        }
 
+        ISettings modSettings = sessionConfigurationManager.getSettings();
+        if (change == SettingsChange.COLUMNS) {
+            modSettings.setColumns(columnsForNames);
+        } else {
+            modSettings.setVisibleColumns(visibleColumnNames);
+        }
+        sessionConfigurationManager.updateCurrentSettings(modSettings,
+                UIOriginator.CONSOLE);
     }
 
     /**

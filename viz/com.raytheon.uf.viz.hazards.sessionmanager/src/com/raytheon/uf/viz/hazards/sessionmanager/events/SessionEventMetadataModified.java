@@ -9,8 +9,7 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
@@ -26,17 +25,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 23, 2014  2925      Chris.Golden      Initial creation.
+ * Apr 10, 2015  6898      Chris.Cody  Refactored async messaging
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class SessionEventMetadataModified extends SessionEventModified
-        implements ISessionNotification {
+public class SessionEventMetadataModified extends SessionEventModified {
 
-    public SessionEventMetadataModified(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            ObservedHazardEvent event, IOriginator originator) {
-        super(eventManager, event, originator);
+    public SessionEventMetadataModified(IHazardEvent event,
+            IOriginator originator) {
+        super(event, originator);
     }
 }

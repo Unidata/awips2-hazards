@@ -729,8 +729,9 @@ class MixedHazardStoryFunctionalTest extends
 
         ObservedHazardEvent oEvent = getEvent(eventID);
         for (String key : metadata.keySet()) {
-            oEvent.addHazardAttribute(key, metadata.get(key),
-                    UIOriginator.HAZARD_INFORMATION_DIALOG);
+            oEvent.addHazardAttribute(key, metadata.get(key));
+            eventManager.setEventAttributesModified(oEvent, key,
+                    metadata.get(key), UIOriginator.HAZARD_INFORMATION_DIALOG);
         }
     }
 
@@ -780,8 +781,9 @@ class MixedHazardStoryFunctionalTest extends
                 long duration = endTime - startTime;
                 startTime = appBuilder.getSessionManager().getTimeManager()
                         .getCurrentTime().getTime();
-                event.setTimeRange(new Date(startTime), new Date(startTime
-                        + duration), UIOriginator.HAZARD_INFORMATION_DIALOG);
+                eventManager.setEventTimeRange(event, new Date(startTime),
+                        new Date(startTime + duration),
+                        UIOriginator.HAZARD_INFORMATION_DIALOG);
                 break;
             }
         }

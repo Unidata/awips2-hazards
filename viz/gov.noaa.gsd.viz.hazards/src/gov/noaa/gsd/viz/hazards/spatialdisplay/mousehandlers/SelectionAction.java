@@ -8,6 +8,7 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
@@ -33,6 +34,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -73,6 +76,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * Apr 03, 2015 5591       Dan Schaffer Fixed bug in spatial display handling storm track
  *                                      If the user moused over the circle in the middle
  *                                      then the storm polygon became un-editable.
+ * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -86,6 +90,8 @@ public class SelectionAction extends NonDrawingAction {
 
     private final SpatialPresenter spatialPresenter;
 
+    private final ISessionEventManager<ObservedHazardEvent> eventManager;
+
     /**
      * Defines the type of move operation. SINGLE_POINT -- the user is moving a
      * vertex ALL_POINTS -- the user is moving the entire polygon.
@@ -96,6 +102,8 @@ public class SelectionAction extends NonDrawingAction {
 
     public SelectionAction(SpatialPresenter spatialPresenter) {
         this.spatialPresenter = spatialPresenter;
+        this.eventManager = spatialPresenter.getSessionManager()
+                .getEventManager();
     }
 
     @Override
@@ -386,7 +394,8 @@ public class SelectionAction extends NonDrawingAction {
 
                 Geometry modifiedGeometry = buildModifiedGeometry(origShape,
                         coords);
-                getSpatialDisplay().notifyModifiedGeometry(origShape.getID(),
+
+                eventManager.setModifiedEventGeometry(origShape.getID(),
                         modifiedGeometry, true);
             }
         }
@@ -511,7 +520,9 @@ public class SelectionAction extends NonDrawingAction {
             newLonLat[1] = newCoord.y;
             modifiedAreaObject.put(HazardConstants.SYMBOL_NEW_LAT_LON,
                     newLonLat);
-            getSpatialDisplay().notifyModifiedStormTrack(modifiedAreaObject);
+            ModifyStormTrackAction action = new ModifyStormTrackAction();
+            action.setParameters(modifiedAreaObject);
+            spatialPresenter.publish(action);
         }
 
         private void handleVertexMove() {
@@ -525,7 +536,7 @@ public class SelectionAction extends NonDrawingAction {
             IHazardServicesShape eventShape = (IHazardServicesShape) selectedElement;
             Geometry modifiedGeometry = buildModifiedGeometry(eventShape,
                     selectedElement.getPoints());
-            getSpatialDisplay().notifyModifiedGeometry(eventShape.getID(),
+            eventManager.setModifiedEventGeometry(eventShape.getID(),
                     modifiedGeometry, true);
         }
 
@@ -559,10 +570,10 @@ public class SelectionAction extends NonDrawingAction {
                     .getInstance().getActiveEditor());
 
             Coordinate loc = editor.translateClick(anX, aY);
-            
+
             /*
-             * Check for a null coordinate. If it is null use the previous coordinate.
-             * If not save it off as the prevoius.
+             * Check for a null coordinate. If it is null use the previous
+             * coordinate. If not save it off as the prevoius.
              */
             if (loc == null) {
                 if (prevLoc != null) {
@@ -943,8 +954,9 @@ public class SelectionAction extends NonDrawingAction {
                     }
                     Geometry modifiedGeometry = buildModifiedGeometry(
                             eventShape, coordsAsList);
-                    getSpatialDisplay().notifyModifiedGeometry(
-                            eventShape.getID(), modifiedGeometry, true);
+
+                    eventManager.setModifiedEventGeometry(eventShape.getID(),
+                            modifiedGeometry, true);
 
                     movePointIndex = -1;
                     moveType = null;
@@ -980,8 +992,9 @@ public class SelectionAction extends NonDrawingAction {
                     IHazardServicesShape eventShape = (IHazardServicesShape) selectedElement;
                     Geometry modifiedGeometry = buildModifiedGeometry(
                             eventShape, coords);
-                    getSpatialDisplay().notifyModifiedGeometry(
-                            eventShape.getID(), modifiedGeometry, true);
+
+                    eventManager.setModifiedEventGeometry(eventShape.getID(),
+                            modifiedGeometry, true);
 
                     movePointIndex = -1;
                     moveType = null;

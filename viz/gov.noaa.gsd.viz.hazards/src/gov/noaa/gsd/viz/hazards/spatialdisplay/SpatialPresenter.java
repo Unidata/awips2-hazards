@@ -16,7 +16,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -31,12 +30,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionHatchingToggled;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
@@ -44,6 +37,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
@@ -80,6 +74,7 @@ import com.vividsolutions.jts.geom.Point;
  * Jan  7, 2015 4959       Dan Schaffer      Ability to right click to add/remove UGCs from hazards
  * Feb 12, 2015 4959       Dan Schaffer      Modify MB3 add/remove UGCs to match Warngen
  * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
+ * Apr 10, 2015 6898       Chris.Cody        Removed modelChanged legacy messaging method
  * </pre>
  * 
  * @author Chris.Golden
@@ -117,74 +112,21 @@ public class SpatialPresenter extends
 
     // Public Methods
 
-    /**
-     * Receive notification of a model change.
-     * 
-     * @param changes
-     *            Set of elements within the model that have changed.
-     */
-    @Override
-    public void modelChanged(EnumSet<HazardConstants.Element> changed) {
-        if (changed.contains(HazardConstants.Element.CURRENT_SETTINGS)) {
-
-            ObservedSettings settings = getModel().getConfigurationManager()
-                    .getSettings();
-            getView().setSettings(settings);
-        } else if (changed.contains(HazardConstants.Element.CAVE_TIME)) {
-            updateCaveSelectedTime();
-        }
-
-        updateSpatialDisplay();
-    }
-
-    @Handler
-    public void sessionEventAttributesModified(
-            SessionEventAttributesModified notification) {
-        updateSpatialDisplay();
-    }
-
-    @Handler
-    public void sessionSelectedEventsModified(
-            SessionSelectedEventsModified notification) {
-        updateSpatialDisplay();
-        recenterZoom();
-
-    }
-
-    @Handler
-    public void sessionEventTimeRangeModified(
-            SessionEventTimeRangeModified notification) {
-        updateSpatialDisplay();
-    }
-
-    @Handler
-    public void sessionEventTypeModified(SessionEventTypeModified notification) {
-        updateSpatialDisplay();
-    }
-
-    @Handler
-    public void sessionEventGeometryModified(
-            SessionEventGeometryModified notification) {
-        updateSpatialDisplay();
-    }
-
-    @Handler
-    public void sessionEventRemoved(SessionEventRemoved notification) {
-        updateSpatialDisplay();
-    }
-
     @Handler
     public void sessionHatchingToggled(SessionHatchingToggled notification) {
         updateSpatialDisplay();
     }
 
     @Handler
-    public void sessionEventAdded(SessionEventAdded notification) {
+    public void sessionEventsModified(SessionEventsModified notification) {
         updateSpatialDisplay();
+        if (notification instanceof SessionSelectedEventsModified) {
+            recenterZoom();
+        }
     }
 
     @Handler
-    public void sessionEventsModified(SessionEventsModified notification) {
+    public void selectedTimeChanged(SelectedTimeChanged notification) {
         updateSpatialDisplay();
     }
 
@@ -231,7 +173,7 @@ public class SpatialPresenter extends
                     .put(event.getEventID(),
                             event.getHazardAttribute(HazardConstants.TRACK_POINTS) != null);
             eventEditability.put(event.getEventID(),
-                    eventManager.canEventAreaBeChanged(event));
+                    event.canEventAreaBeChanged());
         }
 
         updateSelectedEvents(events);

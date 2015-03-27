@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.hazards.interop.gfe;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -68,6 +69,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                   GridParmInfo.
  * Apr 08, 2014  3357      bkowal    Updated to use the new interoperability tables.
  * Dec 04, 2014  2826      dgilling  Remove unneeded methods.
+ * Apr 10, 2015  6898      Chris.Cody  Refactored async messaging
  * 
  * </pre>
  * 
@@ -429,6 +431,9 @@ public class GFEHazardsCreator {
         event.addHazardAttribute(HazardConstants.ISSUE_TIME, rec.getIssueTime()
                 .getTime().getTime());
         event.setCreationTime(rec.getIssueTime().getTime());
+
+        Map<String, Serializable> changedAttributes = event
+                .getHazardAttributes();
 
         return true;
     }

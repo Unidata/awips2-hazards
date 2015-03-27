@@ -618,8 +618,9 @@ public class RiverForecastPoint {
             this.changeThreshold = (Double) forecastPointInfo[FpInfoFieldEnum.CHG_THRESHOLD
                     .ordinal()];
         } else {
-            statusHandler
-                    .info("Missing the change of threshold for " + this.id);
+            // TODO HERE REINSTATE
+            // statusHandler.info("Missing the change of threshold for " +
+            // this.id);
             this.changeThreshold = MISSINGVAL;
         }
 
@@ -670,35 +671,40 @@ public class RiverForecastPoint {
             this.floodStage = (Double) forecastPointInfo[FpInfoFieldEnum.FS
                     .ordinal()];
         } else {
-            statusHandler.info("Missing flood stage for " + this.id);
+            // TODO HERE REINSTATE statusHandler.info("Missing flood stage for "
+            // + this.id);
         }
 
         if (forecastPointInfo[FpInfoFieldEnum.FQ.ordinal()] != null) {
             this.floodFlow = (Double) forecastPointInfo[FpInfoFieldEnum.FQ
                     .ordinal()];
         } else {
-            statusHandler.info("Missing flood flow for " + this.id);
+            // TODO HERE REINSTATE statusHandler.info("Missing flood flow for "
+            // + this.id);
         }
 
         if (forecastPointInfo[FpInfoFieldEnum.BF.ordinal()] != null) {
             this.bankFull = (Double) forecastPointInfo[FpInfoFieldEnum.BF
                     .ordinal()];
         } else {
-            statusHandler.info("Missing bankfull stage for " + this.id);
+            // TODO HERE REINSTATE
+            // statusHandler.info("Missing bankfull stage for " + this.id);
         }
 
         if (forecastPointInfo[FpInfoFieldEnum.WSTG.ordinal()] != null) {
             this.actionStage = (Double) forecastPointInfo[FpInfoFieldEnum.WSTG
                     .ordinal()];
         } else {
-            statusHandler.info("Missing warning stage for " + this.id);
+            // TODO HERE REINSTATE
+            // statusHandler.info("Missing warning stage for " + this.id);
         }
 
         if (forecastPointInfo[FpInfoFieldEnum.ACTION_FLOW.ordinal()] != null) {
             this.actionFlow = (Double) forecastPointInfo[FpInfoFieldEnum.ACTION_FLOW
                     .ordinal()];
         } else {
-            statusHandler.info("Missing action flow for " + this.id);
+            // TODO HERE REINSTATE statusHandler.info("Missing action flow for "
+            // + this.id);
         }
 
         // TODO Workaround until this class is redone
@@ -818,8 +824,9 @@ public class RiverForecastPoint {
                 || this.floodCategory[2] == MISSINGVAL
                 || this.floodCategory[3] == MISSINGVAL
                 || this.floodCategory[4] == MISSINGVAL) {
-            statusHandler
-                    .info("Missing the change of threshold for " + this.id);
+            // TODO HERE REINSTATE
+            // statusHandler.info("Missing the change of threshold for " +
+            // this.id);
         }
         /*
          * Check the validity of the minor, moderate and major stage data.
@@ -831,8 +838,9 @@ public class RiverForecastPoint {
                 && this.floodCategory[HydroFloodCategories.MINOR_FLOOD_CATEGORY
                         .getRank()] > this.floodCategory[HydroFloodCategories.MODERATE_FLOOD_CATEGORY
                         .getRank()]) {
-            statusHandler.info("Non-increasing order of categories for "
-                    + this.id);
+            // TODO HERE REINSTATE
+            // statusHandler.info("Non-increasing order of categories for " +
+            // this.id);
         }
 
         if (this.floodCategory[HydroFloodCategories.MODERATE_FLOOD_CATEGORY
@@ -842,8 +850,9 @@ public class RiverForecastPoint {
                 && this.floodCategory[HydroFloodCategories.MODERATE_FLOOD_CATEGORY
                         .getRank()] > this.floodCategory[HydroFloodCategories.MAJOR_FLOOD_CATEGORY
                         .getRank()]) {
-            statusHandler.info("Non-increasing order of categories for "
-                    + this.id);
+            // TODO HERE REINSTATE
+            // statusHandler.info("Non-increasing order of categories for " +
+            // this.id);
         }
 
         /*

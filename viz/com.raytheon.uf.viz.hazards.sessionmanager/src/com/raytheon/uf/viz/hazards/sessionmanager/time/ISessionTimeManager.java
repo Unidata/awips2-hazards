@@ -22,8 +22,10 @@ package com.raytheon.uf.viz.hazards.sessionmanager.time;
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 
 import java.util.Date;
+import java.util.List;
 
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
@@ -149,5 +151,11 @@ public interface ISessionTimeManager {
      * Execute any shutdown needed.
      */
     public void shutdown();
+
+    public void processSelectedEventsModified(
+            List<ObservedHazardEvent> selectedEventList);
+
+    public void processEventTimeRangeModified(ObservedHazardEvent event,
+            List<ObservedHazardEvent> selectedEventList);
 
 }

@@ -153,7 +153,7 @@ public class RecommenderInventoryComposite extends Composite {
                             manager.getSettings().getToolbarTools()
                                     .remove(tool);
                         }
-                        presenter.publish(new SettingsToolsModified(manager,
+                        presenter.publish(new SettingsToolsModified(
                                 UIOriginator.SETTINGS_DIALOG));
                     }
                 } else {
