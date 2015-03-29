@@ -66,6 +66,9 @@ import org.eclipse.swt.widgets.Text;
  *                                           buttons to look enabled when the
  *                                           component had editable as true but
  *                                           enabled as false.
+ * Mar 29, 2015    6874    Chris.Golden      Fixed bugs that caused some valid values
+ *                                           entered by users in the date/time fields
+ *                                           to be rejected.
  * Mar 31, 2015   6873     Chris.Golden      Added code to ensure that mouse wheel
  *                                           events are not processed by the
  *                                           megawidget, but are instead passed up
@@ -736,16 +739,17 @@ public class DateTimeComponent implements ITimeComponent {
         long oldState = state;
 
         /*
-         * If the new value is a midnight value, then add the delta between the
-         * previous date and the value of the time widget to get the new state.
-         * Otherwise, use the new value for the new state, and recalculate the
-         * delta between it and the closest previous midnight.
+         * If the new value is a midnight value and the date was changed, then
+         * add the delta between the previous date and the value of the time
+         * widget to get the new state. Otherwise, use the new value for the new
+         * state, and recalculate the delta between it and the closest previous
+         * midnight.
          */
         boolean synchTimeWidget = false, synchDateWidget = false;
         long rawState = (changed == date ? date : time).getSelection()
                 .getTime();
         long deltaSinceMidnight = getDeltaFromClosestPreviousMidnight(rawState);
-        if (deltaSinceMidnight == 0L) {
+        if ((changed == date) && (deltaSinceMidnight == 0L)) {
             dateTimestamp.setTime(rawState);
             state = rawState + stateDeltaSinceMidnight;
             timeTimestamp.setTime(state);
