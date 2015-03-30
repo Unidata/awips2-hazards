@@ -16,6 +16,7 @@
     Mar 23, 2015    7165    Robert.Blum Added _createSectionDictionary() and retrieving
                                         previously edited raw data values from the productText
                                         table using setVal() in TextProductCommon.
+    Mar 27, 2015    6959    Robert.Blum Changes for Partial cancellations.
 '''
 
 import ProductTemplate
@@ -34,6 +35,7 @@ from shapely import geometry
 import HazardDataAccess
 from KeyInfo import KeyInfo
 import os, collections
+import GeometryFactory
 
 from abc import *
 
@@ -512,6 +514,9 @@ class Product(ProductTemplate.Product):
             # Setup critical info for the segment
             self._setupSegment()
 
+            # Check whether this segment is the CAN of a partial cancellation
+            self.checkForPartialCan(productSegmentGroup)
+
             # Create and order the sections for the segment:     
             self._productSegment.sections = self._createSections(self._productSegment.vtecRecords_ms, self._productSegment.metaDataList, 
                                                            self._productID, self._issueTime_secs)
@@ -554,7 +559,11 @@ class Product(ProductTemplate.Product):
                 for cta in ctas:
                     self._productSegment.ctas += cta + '\n\n'
 
-            sectionDict = self._createSectionDictionary(sectionHazardEvent, sectionVtecRecord, sectionMetaData)
+            if self._partialCAN:
+                sectionDict = self._createSectionDictionary_forPartialCancellation(sectionHazardEvent, sectionVtecRecord, sectionMetaData)
+            else:
+                sectionDict = self._createSectionDictionary(sectionHazardEvent, sectionVtecRecord, sectionMetaData)
+
             sectionDicts.append(sectionDict)
 
         # Add the list of section dictionaries to the segment dictionary
@@ -654,7 +663,6 @@ class Product(ProductTemplate.Product):
         section['endTime'] = hazardEvent.getEndTime()
         section['creationTime'] = hazardEvent.getCreationTime()
         section['impactsStringForStageFlowTextArea'] = hazardEvent.get('impactsStringForStageFlowTextArea', None)
-        section['impactedAreas'] = self._prepareImpactedAreas(attributes)
         section['geometry'] = hazardEvent.getGeometry()
         section['subType'] = hazardEvent.getSubType()
         section['timeZones'] = self._productSegment.timeZones
@@ -915,33 +923,6 @@ class Product(ProductTemplate.Product):
                 canVtecRecord = vtecRecord
                 break  # take the first one
         self._productSegment.canVtecRecord = canVtecRecord
-
-    def _prepareImpactedAreas(self, attributes):
-        impactedAreas = []
-        ugcs = attributes.get('ugcs') 
-        if 'ugcPortions' in attributes:
-            portions = attributes.get('ugcPortions') 
-        else:
-            portions = None
-        if 'ugcPartsOfState' in attributes:
-            partsOfState = attributes.get('ugcPartsOfState')
-        else:
-            partsOfState = None
-        for ugc in ugcs:
-            area = {}
-            # query countytable           
-            area['ugc'] = ugc
-            area['name'] = self._areaDictionary.get(ugc).get('ugcName')
-            if portions:
-                area['portions'] = portions.get(ugc)
-            area['type'] = ugc[2]
-            # query state table
-            area['state'] = self._areaDictionary.get(ugc).get('fullStateName')
-            area['timeZone'] = self._areaDictionary.get(ugc).get('ugcTimeZone')
-            if partsOfState:
-                area['partsOfState'] = partsOfState.get(ugc)
-            impactedAreas.append(area)
-        return impactedAreas
 
     def _prepareImpactedLocations(self, geometry):
         columns = ["name", "warngenlev"]
@@ -1227,6 +1208,81 @@ class Product(ProductTemplate.Product):
                 return True
         # The dictionaries are the same, so no correction is needed
         return False
+
+    def checkForPartialCan(self, productSegmentGroup):
+        '''
+            Determines if the current productSegment is the "CAN" segment
+            of a partial cancellation.
+        '''
+        # Always reset flag to false
+        self._partialCAN = False
+
+        vtecRecords = self._productSegment.vtecRecords
+
+        # If more than one record not a CAN of partial cancellation
+        if len(vtecRecords) == 1:
+            act = vtecRecords[0].get('act')
+            eventIDs = vtecRecords[0].get('eventID')
+            if act == 'CAN' and len(eventIDs) == 1:
+                # This segment is a CAN - Now check the
+                # other segments for same eventID
+                # indicating a partial cancellation.
+                for productSegment in productSegmentGroup.productSegments:
+                    # Dont check the current segment
+                    if productSegment == self._productSegment:
+                        continue
+                    else:
+                        otherVtecRecords = productSegment.vtecRecords
+                        for vtecRecord in otherVtecRecords:
+                            if eventIDs.issubset(vtecRecord.get('eventID')):
+                                self._partialCAN =  True
+                                return
+
+    def _createSectionDictionary_forPartialCancellation(self, hazardEvent, vtecRecord, metaData):
+        '''
+            This method grabs the previously issued hazard event from the database and compares it with
+            the current hazardEvent. This is needed to determine the geometry that was removed,
+            UGCs that were removed, etc. It then updates the attributes of the prevHazardEvent with 
+            the new values and calls _createSectionDictionary() to get the dictionary for the section.
+        '''
+        mode = self._sessionDict.get('hazardMode', 'PRACTICE').upper()
+        eventID = hazardEvent.getEventID()
+
+        # Get the previous state of this hazard event
+        prevHazardEvent = HazardDataAccess.getHazardEvent(eventID, mode)
+
+        # Get the attributes of both hazardEvents
+        prevAttributes = prevHazardEvent.getHazardAttributes()
+        attributes = hazardEvent.getHazardAttributes()
+
+        # Geometry/UGCs for the CAN hazard
+        geometry = prevHazardEvent.getGeometry().difference(hazardEvent.getGeometry())
+        prevUGCs = set(prevAttributes.get('ugcs'))
+        currentUGCs = set(attributes.get('ugcs'))
+        ugcs = list(prevUGCs.difference(currentUGCs))
+
+        # Determine the portions and partsOfState for the CAN hazard
+        ugcPortions = {}
+        ugcPartsOfState = {}
+        for ugc in ugcs:
+            if prevAttributes.get('ugcPortions', None):
+                ugcPortions[ugc] = prevAttributes.get('ugcPortions').get(ugc)
+            if prevAttributes.get('ugcPartsOfState', None):
+                ugcPartsOfState[ugc] = prevAttributes.get('ugcPartsOfState').get(ugc)
+
+        # Update the prevAttributes to reflect the current CAN section
+        prevAttributes['ugcs'] = ugcs
+        prevAttributes['ugcPortions'] = ugcPortions
+        prevAttributes['ugcPartsOfState'] = ugcPartsOfState
+
+        # Store the updated attributes back in the hazard object
+        prevHazardEvent.setHazardAttributes(prevAttributes)
+
+        # Update the geometry as well
+        prevHazardEvent.setGeometry(GeometryFactory.createCollection([geometry]))
+
+        # Call the original method with the updated prevHazardEvent to get the section dictionary.
+        return self._createSectionDictionary(prevHazardEvent, vtecRecord, metaData)
 
     def compareDictionaries(self, dict1, dict2):
         '''

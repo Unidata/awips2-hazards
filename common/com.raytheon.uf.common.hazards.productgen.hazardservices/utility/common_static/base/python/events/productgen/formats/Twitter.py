@@ -7,6 +7,8 @@
     Feb 04, 2015    6322    Robert.Blum Initial creation 
     Mar 20, 2015    7149    Robert.Blum Adjusted addCTAs() to handle a string
                                         instead of a list.
+    Mar 30, 2015    6959    Robert.Blum Updated createAreaPhrase() to use functions
+                                        in TextProductCommon.
 '''
 
 import FormatTemplate
@@ -93,9 +95,9 @@ class Format(FormatTemplate.Formatter):
     def createAreaPhrase(self, sectionDict):
         areaPhrase = ''
         counter = 0
-        size = len(sectionDict.get('impactedAreas'))
-        for area in sectionDict.get('impactedAreas'):
-            areaPhrase += area['name']
+        size = len(sectionDict.get('ugcs'))
+        for ugc in sectionDict.get('ugcs', []):
+            areaPhrase += self._tpc.getInformationForUGC(ugc, 'entityName')
             if size > 1:
                 if counter < size - 2:
                     areaPhrase += ', '
