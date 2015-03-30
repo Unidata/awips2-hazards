@@ -41,6 +41,7 @@
 #                                                 overrides and also editing without closing Cave.
 #    02/26/15        6599          Robert.Blum    Picking up overrides of TextUtilities directory.
 #    03/11/15        6885          bphillip       Made product entries an ordered dict to ensure consistent ordering
+#    03/30/15        6929          Robert.Blum    Added a eventSet to each GeneratedProduct.
 #
 import PythonOverriderInterface
 import PythonOverrider
@@ -95,8 +96,7 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
 
         kwargs['dataList'] = dataList
         kwargs['formats'] = formats
-        # eventSet and dialogInputMap no longer needed for executeFrom method
-        kwargs.pop('eventSet')
+        # dialogInputMap no longer needed for executeFrom method
         kwargs.pop('dialogInputMap')
 
         genProdList = self.executeGeneratorFrom(moduleName, className, **kwargs)
@@ -133,11 +133,19 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
         # executeFrom does not need formats
         formats = kwargs.pop('formats')
 
+        eventSet = None
+        if 'eventSet' in kwargs:
+            eventSet = kwargs.pop('eventSet')
+
         # call executeFrom from product generator
         dataList = self.runMethod(moduleName, className, 'executeFrom', **kwargs)  
           
         genProdList.setProductInfo(moduleName)
-        genProdList.addAll(self.createProductsFromDictionary(dataList))
+
+        if eventSet:
+            genProdList.addAll(self.createProductsFromDictionary(dataList, eventSet))
+        else:
+            genProdList.addAll(self.createProductsFromDictionary(dataList))
         return genProdList
     
     def executeFormatter(self, moduleName, className, **kwargs):
@@ -185,7 +193,7 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
             generatedProduct.setEntries(JUtil.pyDictToJavaMap(productDict))
             generatedProduct.setEditableEntries(JUtil.pyDictToJavaMap(editables))
 
-    def createProductsFromDictionary(self, dataList):
+    def createProductsFromDictionary(self, dataList, eventSet=[]):
         generatedProductList = ArrayList()
         
         if dataList is not None:
@@ -200,12 +208,39 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
                   
                     generatedProduct = GeneratedProduct(productID)
                     generatedProduct.setData(JUtil.pyValToJavaObj(self.pyDictToKeyInfoDict(data)));
+
+                    javaEventSet = self.getEventSetForProduct(data, eventSet)
+                    generatedProduct.setEventSet(javaEventSet)
                 else:
                     generatedProduct = GeneratedProduct(None)
                 generatedProductList.add(generatedProduct)
 
         return generatedProductList
-    
+
+    def getEventSetForProduct(self, data, eventSet):
+        """
+        @return: Returns a sub set of the eventSet passed to the generator that pertains
+        to this one product. This sub set will be used as a PK to save the product to the 
+        productData table during  dissemination.
+        """
+        # Get all the eventIDs from the product
+        eventIDs = set()
+        for segment in data.get('segments', []):
+            for vtecRecord in segment.get('vtecRecords', []):
+                for eventID in vtecRecord.get('eventID', []):
+                    eventIDs.add(eventID)
+
+        # Create a sub set of the eventSet based on the product eventIDs
+        productEventSet = set()
+        for eventID in eventIDs:
+            for event in eventSet:
+                if event.getEventID() == str(eventID):
+                    productEventSet.add(event)
+                    break
+        javaEventSet = EventSet()
+        javaEventSet.addAll(JUtil.pyValToJavaObj(productEventSet))
+        return javaEventSet
+
     def getDialogInfo(self, moduleName, className, **kwargs):
         """
         @return: Returns a map of string to string of the dialog info.

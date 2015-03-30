@@ -190,6 +190,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Feb 15, 2015 2271       Dan Schaffer Incur recommender/product generator init costs immediately
  * Feb 26, 2015 6306       mduff        Pass site id to product generation. *
  * Mar 23, 2015 7110       hansen       Automatically include all allowedHazards if "includeAll"
+ * Mar 26, 2015 7205       Robert.Blum  Fixed writing to the productData Table.
  * </pre>
  * 
  * @author bsteffen
@@ -570,8 +571,9 @@ public class SessionProductManager implements ISessionProductManager {
 
                     for (Integer eventID : productData.getEventIDs()) {
                         IHazardEvent hazardEvent = new HazardEvent();
-                        hazardEvent.setStartTime(productData.getStartTime());
                         hazardEvent.setEventID(String.valueOf(eventID));
+                        hazardEvent.addHazardAttribute("issueTime",
+                                productData.getIssueTime());
                         eventSet.add(hazardEvent);
                     }
 
@@ -1452,36 +1454,34 @@ public class SessionProductManager implements ISessionProductManager {
         if (operationalMode) {
             sendProducts(productGeneratorInformation);
         }
-        Date startTime = null;
-        boolean ended = false;
-        ArrayList<Integer> eventIDs = new ArrayList<>();
-        Iterator<IEvent> iterator = productGeneratorInformation
-                .getGeneratedProducts().getEventSet().iterator();
-        while (iterator.hasNext()) {
-            IEvent event = iterator.next();
-            if (event instanceof IHazardEvent) {
-                IHazardEvent hazardEvent = (IHazardEvent) event;
-                String eventID = hazardEvent.getEventID();
-                startTime = hazardEvent.getStartTime();
-                HazardStatus status = hazardEvent.getStatus();
-                if (status == HazardStatus.ENDED) {
-                    ended = true;
-                }
-                eventIDs.add(new Integer(eventID));
-            }
-        }
 
+        // Setup the primary keys for the productData Table
+        ArrayList<Integer> eventIDs = null;
         String productInfo = productGeneratorInformation.getGeneratedProducts()
                 .getProductInfo();
+        Date issueTime = null;
+
+        /*
+         * For each product store an entry in the productData table.
+         */
         for (IGeneratedProduct product : productGeneratorInformation
                 .getGeneratedProducts()) {
-            if (ended) {
-                ProductDataUtil.deleteProductData(caveModeStr, productInfo,
-                        eventIDs);
-            } else {
-                ProductDataUtil.createOrUpdateProductData(caveModeStr,
-                        productInfo, eventIDs, startTime, product.getData());
+            eventIDs = new ArrayList<>();
+            Iterator<IEvent> iterator = product.getEventSet().iterator();
+            while (iterator.hasNext()) {
+                IEvent event = iterator.next();
+                if (event instanceof IHazardEvent) {
+                    IHazardEvent hazardEvent = (IHazardEvent) event;
+                    String eventID = hazardEvent.getEventID();
+                    eventIDs.add(new Integer(eventID));
+                    Map<String, Serializable> attributes = hazardEvent.getHazardAttributes();
+                    // Issue time should be the same for all the events
+                    issueTime = new Date((Long) attributes.get("issueTime"));
+                }
             }
+
+            ProductDataUtil.createOrUpdateProductData(caveModeStr, productInfo,
+                    eventIDs, issueTime, product.getData());
         }
 
         /*

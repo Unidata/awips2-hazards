@@ -24,6 +24,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
+
 /**
  * 
  * Generated product interface for the client.
@@ -39,6 +42,8 @@ import java.util.Map;
  * Nov  5, 2013 2266       jsanchez     Removed getter/setter for event set.
  * Feb 18, 2014 2702       jsanchez     Used Serializable.
  * 1/15/2015    5109       bphillip     Changed type on editableEntries field
+ * Mar 30, 2015 6929       Robert.Blum  Added eventSet that is used to write/retrieve
+ *                                      from the productData table.
  * </pre>
  * 
  * @author jsanchez
@@ -61,6 +66,10 @@ public interface IGeneratedProduct {
     public LinkedHashMap<KeyInfo, Serializable> getData();
 
     public void setData(LinkedHashMap<KeyInfo, Serializable> data);
+
+    public EventSet<IEvent> getEventSet();
+
+    public void setEventSet(EventSet<IEvent> eventSet);
 
     /**
      * @param format

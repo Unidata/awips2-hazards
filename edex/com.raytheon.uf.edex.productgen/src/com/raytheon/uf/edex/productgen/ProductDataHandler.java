@@ -50,6 +50,7 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * ------------ ---------- ----------- --------------------------
  * Apr 15, 2014            jsanchez     Initial creation
  * Jan 15, 2014 4193       rferrel      Log request
+ * Mar 30, 2015 6929       Robert.Blum  Changed startTime to issueTime.
  * 
  * </pre>
  * 
@@ -62,7 +63,7 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
     private static final IUFStatusHandler handler = UFStatus
             .getHandler(ProductDataHandler.class);
 
-    private static final String START_TIME_COLUMN = "startTime";
+    private static final String ISSUE_TIME_COLUMN = "issueTime";
 
     private static final int VALID_CORRECTION_DELTA = 10;
 
@@ -154,9 +155,9 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
 
             /*
              * This only queries for rows that has the current time within 10
-             * minutes after the start time.
+             * minutes after the issue time.
              */
-            criteria.add(Restrictions.gt(START_TIME_COLUMN, calendar.getTime()));
+            criteria.add(Restrictions.gt(ISSUE_TIME_COLUMN, calendar.getTime()));
             data = criteria.list();
 
             response = new ProductDataResponse();

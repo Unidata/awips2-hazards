@@ -45,6 +45,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 11, 2014            jsanchez     Initial creation
+ * Mar 30, 2015    6929    Robert.Blum  Changed startTime to issueTime.
  * 
  * </pre>
  * 
@@ -66,7 +67,7 @@ public class ProductData extends PersistableDataObject<String> implements
 
     @Column
     @DynamicSerializeElement
-    private Date startTime;
+    private Date issueTime;
 
     @Column
     @DynamicSerializeElement
@@ -77,10 +78,10 @@ public class ProductData extends PersistableDataObject<String> implements
     }
 
     public ProductData(String mode, String productGeneratorName,
-            ArrayList<Integer> eventIDs, Date startTime,
+            ArrayList<Integer> eventIDs, Date issueTime,
             LinkedHashMap<KeyInfo, Serializable> data) {
         id = new CustomDataId(mode, productGeneratorName, eventIDs);
-        this.startTime = startTime;
+        this.issueTime = issueTime;
         this.data = data;
     }
 
@@ -92,12 +93,12 @@ public class ProductData extends PersistableDataObject<String> implements
         this.id = id;
     }
 
-    public Date getStartTime() {
-        return startTime;
+    public Date getIssueTime() {
+        return issueTime;
     }
 
-    public void setStartTime(Date startTime) {
-        this.startTime = startTime;
+    public void setissueTime(Date issueTime) {
+        this.issueTime = issueTime;
     }
 
     public ArrayList<Integer> getEventIDs() {

@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
+
 /**
  * 
  * Generated product created by the ProductGenerator.
@@ -42,6 +45,8 @@ import java.util.Map.Entry;
  * Nov  5, 2013 2266       jsanchez     Created getter/setters for eventSet. Added editableEntries.
  * Feb 18, 2013 2702       jsanchez     Used Serializable.
  * 1/15/2015    5109       bphillip     Changed type on editableEntries field
+ * Mar 30, 2015 6929       Robert.Blum  Added eventSet that is used to write/retrieve
+ *                                      from the productData table.
  * 
  * </pre>
  * 
@@ -62,6 +67,8 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
 
     /** Errors thrown executing python product classes */
     private String errors;
+
+    private EventSet<IEvent> eventSet;
 
     public GeneratedProduct(String productID) {
         this.productID = productID;
@@ -178,5 +185,15 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
             builder.append(entry.toString());
         }
         return builder.toString();
+    }
+
+    @Override
+    public EventSet<IEvent> getEventSet() {
+        return eventSet;
+    }
+
+    @Override
+    public void setEventSet(EventSet<IEvent> eventSet) {
+        this.eventSet = eventSet;
     }
 }

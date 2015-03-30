@@ -41,6 +41,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 11, 2014            jsanchez     Initial creation
+ * Mar 30, 2015    6929    Robert.Blum  Changed startTime to issueTime.
  * 
  * </pre>
  * 
@@ -59,15 +60,15 @@ public class ProductDataUtil {
      * @param mode
      * @param productGeneratorName
      * @param eventIDs
-     * @param startTime
+     * @param issueTime
      * @param data
      * @return
      */
     public static ProductDataResponse createProductData(String mode,
             String productGeneratorName, ArrayList<Integer> eventIDs,
-            Date startTime, LinkedHashMap<KeyInfo, Serializable> data) {
+            Date issueTime, LinkedHashMap<KeyInfo, Serializable> data) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
-                eventIDs, startTime, data, ProductRequestType.CREATE, null);
+                eventIDs, issueTime, data, ProductRequestType.CREATE, null);
         if (response.getExceptions() != null) {
             handler.error(
                     "Unable to store product data, most likely the database already contains an entry",
@@ -82,15 +83,15 @@ public class ProductDataUtil {
      * @param mode
      * @param productGeneratorName
      * @param eventIDs
-     * @param startTime
+     * @param issueTime
      * @param data
      * @return
      */
     public static ProductDataResponse updateProductData(String mode,
             String productGeneratorName, ArrayList<Integer> eventIDs,
-            Date startTime, LinkedHashMap<KeyInfo, Serializable> data) {
+            Date issueTime, LinkedHashMap<KeyInfo, Serializable> data) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
-                eventIDs, startTime, data, ProductRequestType.UPDATE, null);
+                eventIDs, issueTime, data, ProductRequestType.UPDATE, null);
         if (response.getExceptions() != null) {
             handler.error(
                     "Unable to update product data, most likely the database does not contain a matching entry",
@@ -160,15 +161,15 @@ public class ProductDataUtil {
      * @param mode
      * @param productGeneratorName
      * @param eventIDs
-     * @param startTime
+     * @param issueTime
      * @param data
      * @return
      */
     public static ProductDataResponse createOrUpdateProductData(String mode,
             String productGeneratorName, ArrayList<Integer> eventIDs,
-            Date startTime, LinkedHashMap<KeyInfo, Serializable> data) {
+            Date issueTime, LinkedHashMap<KeyInfo, Serializable> data) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
-                eventIDs, startTime, data, ProductRequestType.SAVE_OR_UPDATE,
+                eventIDs, issueTime, data, ProductRequestType.SAVE_OR_UPDATE,
                 null);
         if (response.getExceptions() != null) {
             handler.error("Unable to store product data",
@@ -183,7 +184,7 @@ public class ProductDataUtil {
      * @param mode
      * @param productGeneratorName
      * @param eventIDs
-     * @param startTime
+     * @param issueTime
      * @param data
      * @param type
      * @param currentTime
@@ -192,10 +193,10 @@ public class ProductDataUtil {
      */
     private static ProductDataResponse sendRequest(String mode,
             String productGeneratorName, ArrayList<Integer> eventIDs,
-            Date startTime, LinkedHashMap<KeyInfo, Serializable> data,
+            Date issueTime, LinkedHashMap<KeyInfo, Serializable> data,
             ProductRequestType type, Date currentTime) {
         ProductData productData = new ProductData(mode, productGeneratorName,
-                eventIDs, startTime, data);
+                eventIDs, issueTime, data);
         ProductDataRequest request = new ProductDataRequest(productData, type,
                 currentTime);
         ProductDataResponse response = null;
