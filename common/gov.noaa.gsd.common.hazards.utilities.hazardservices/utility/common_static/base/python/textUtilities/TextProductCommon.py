@@ -18,6 +18,7 @@
    Jan 31, 2015   4937      Robert.Blum         Added missing break statement and removed space when
                                                 substituting hashtags.
    Feb 26, 2015   6599      Robert.Blum         Changed to new style class
+   Mar 23, 2015   7165      Robert.Blum         Modified setVal() to work with new framework.
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -271,25 +272,11 @@ class TextProductCommon(object):
         '''  
         
         if editable:
-            # Converts a list of string integers into a list of integers
-            tmp = []
-            for eventID in eventIDs:
-                tmp.append(int(eventID))
-            eventIDs = tmp
-                
             if None in [key, productCategory, productID, eventIDs, segment]:
                 userEditedKey = key
                 value = default
             else:
                 # create KeyInfo object
-                segmentList = list(segment[0])
-                segmentList.sort()
-                segment = ''
-                for seg in segmentList:
-                    if len(segment) > 0:
-                        segment += ', '
-                    segment += seg
-                segment = str(segment)
                 userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, True, label=label)
                         
                 # Try and retrieve previously edited text

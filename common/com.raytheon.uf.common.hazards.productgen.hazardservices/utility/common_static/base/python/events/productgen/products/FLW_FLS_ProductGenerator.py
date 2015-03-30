@@ -6,6 +6,7 @@
     ------------ ---------- ----------- --------------------------
     Nov 24, 2014    4937    Robert.Blum Initial creation
     Jan 31, 2015    4937    Robert.Blum General cleanup and bug fixes.
+    Mar 23, 2015    7165    Robert.Blum Code consolidation - removed _prepareSection().
     
     @author Robert.Blum@noaa.gov
     @version 1.0
@@ -88,66 +89,6 @@ class Product(HydroGenerator.Product):
         productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._inputHazardEvents, eventSetAttributes)
 
         return productDicts, hazardEvents
-
-    def _prepareSection(self, event, vtecRecord, metaData):
-        attributes = event.getHazardAttributes()
-
-        # This creates a list of ints for the eventIDs and also formats the UGCs correctly.
-        eventIDs, ugcList = self.parameterSetupForKeyInfo(list(vtecRecord.get('eventID', None)), attributes.get('ugcs', None))
-
-        # Attributes that get skipped. They get added to the dictionary indirectly.
-        noOpAttributes = () # Needed for attribution / firstBullet ('ugcs', 'ugcPortions', 'ugcPartsOfState')
-
-        section = {}
-        for attribute in attributes:
-            # Special case attributes that need additional work before adding to the dictionary
-            if attribute == 'additionalInfo':
-                additionalInfo, citiesListFlag = self._prepareAdditionalInfo(attributes[attribute] , event, metaData)
-                additionalCommentsKey = KeyInfo('additionalComments', self._productCategory, self._productID, eventIDs, ugcList, True, label='Additional Comments')
-                section[additionalCommentsKey] = additionalInfo
-                section['citiesListFlag'] = citiesListFlag
-            elif attribute == 'cta':
-                if vtecRecord.get("phen") != "HY":
-                    # These are now added at the segment level. Do we want to add here as well?
-                    callsToActionValue = self._tpc.getProductStrings(event, metaData, 'cta')
-                    section['callsToAction'] = callsToActionValue
-            elif attribute in noOpAttributes:
-                continue
-            else:
-                section[attribute] = attributes.get(attribute, None)
-                # Add both the identifier and the productString for this attributes.
-                # The identifiers are needed for the BasisText module.
-                if attribute == 'advisoryType':
-                    section[attribute + '_productString'] = self._tpc.getProductStrings(event, metaData, attribute)
-
-        impactedLocationsKey = KeyInfo('impactedLocations', self._productCategory, self._productID, eventIDs, ugcList,True,label='Impacted Locations')
-        impactedLocationsValue = self._prepareImpactedLocations(event.getGeometry())
-        section[impactedLocationsKey] = impactedLocationsValue
-
-        section['impactedAreas'] = self._prepareImpactedAreas(attributes)
-        section['geometry'] = event.getGeometry()
-        section['subType'] = event.getSubType()
-        section['timeZones'] = self._productSegment.timeZones
-        section['vtecRecord'] = vtecRecord
-        if vtecRecord.get("phen") != "HY":
-            # TODO this does not seem to work, causing the placeholder to be in final product.
-            section['impacts'] = self._tpc.getProductStrings(event, metaData, 'impacts')
-        else:
-            section['impacts'] = ''
-        section['endingSynopsis'] = event.get('endingSynopsis')
-        section['replacedBy'] = event.get('replacedBy', None)
-        section['replaces'] = event.get('replaces', None)
-        section['startTime'] = event.getStartTime()
-        section['endTime'] = event.getEndTime()
-        section['metaData'] = metaData
-        section['creationTime'] = event.getCreationTime()
-
-        if event.get('pointID'):
-            # Add RiverForecastPoint data to the dictionary
-            self._prepareRiverForecastPointData(event.get('pointID'), section, event)
-
-        self._setProductInformation(vtecRecord, event)
-        return section
 
     def _getSegments(self, hazardEvents):
         return self._getSegments_ForPointsAndAreas(hazardEvents)

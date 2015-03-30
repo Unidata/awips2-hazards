@@ -31,6 +31,7 @@ import java.util.regex.Pattern;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
+import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.ExtendedModifyEvent;
 import org.eclipse.swt.custom.ExtendedModifyListener;
 import org.eclipse.swt.custom.StyleRange;
@@ -63,6 +64,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * 02/05/2015   6322       Robert.Blum  Changed return value if editableRanges is empty.
  * 02/18/2015   5109       Chris.Cody   Do not display Format specific "Issue" button; keep existing code
  * 03/11/2015   6889       bphillip     Modifications to allow more than one undo action in the Product Editor
+ * 03/23/2015   7165       Robert.Blum  Modifications to allow adding * to editor tab and product tab
+ *                                      labels when there are unsaved changes.
  * 
  * </pre>
  * 
@@ -133,9 +136,9 @@ public class FormattedTextDataEditor extends AbstractDataEditor {
      *            text
      */
     protected FormattedTextDataEditor(ProductEditor productEditor,
-            IGeneratedProduct product, CTabFolder parent, int style,
-            String format, int formatIndex) {
-        super(productEditor, product, parent, style);
+            CTabItem productTab, IGeneratedProduct product, CTabFolder parent,
+            int style, String format, int formatIndex) {
+        super(productEditor, productTab, product, parent, style);
         this.format = format;
         this.formatIndex = formatIndex;
         this.editableKeys = new EditableKeys(product);

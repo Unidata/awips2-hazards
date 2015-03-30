@@ -49,6 +49,8 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * ------------ ---------- ------------ --------------------------
  * 01/15/2015   5109       bphillip     Initial creation
  * 03/11/2015   6889       bphillip     Changed revertButton to undoButton.  More than one undo is now allowed.
+ * 03/23/2015   7165       Robert.Blum  Adding * to editor tab and product tab
+ *                                      labels when there are unsaved changes.
  * 
  * </pre>
  * 
@@ -87,6 +89,9 @@ public abstract class AbstractDataEditor extends CTabItem {
     /** Container holding the editable keys for this product */
     protected EditableKeys editableKeys;
 
+    /** The product CTabItem to which this data editor belongs */
+    protected CTabItem productTab;
+
     /**
      * Creates a new Data Editor
      * 
@@ -100,9 +105,11 @@ public abstract class AbstractDataEditor extends CTabItem {
      *            Style hints
      */
     protected AbstractDataEditor(ProductEditor productEditor,
+            CTabItem productTab,
             IGeneratedProduct product, CTabFolder parent, int style) {
         super(parent, style);
         this.productEditor = productEditor;
+        this.productTab = productTab;
         this.product = product;
 
         // Initialize the composite which will hold the data editor
@@ -221,6 +228,7 @@ public abstract class AbstractDataEditor extends CTabItem {
             public void widgetSelected(SelectionEvent e) {
                 saveModifiedValues();
                 updateButtonState();
+                updateTabLabel();
             }
         });
 
@@ -237,7 +245,7 @@ public abstract class AbstractDataEditor extends CTabItem {
             public void widgetSelected(SelectionEvent e) {
                 undoModification();
                 updateButtonState();
-
+                updateTabLabel();
             }
         });
 
@@ -263,6 +271,36 @@ public abstract class AbstractDataEditor extends CTabItem {
         
         // Save button enabled if unsaved changes are present
         setButtonEnabled(saveButton, hasUnsavedChanges());
+    }
+
+    /**
+     * Allow for updating the tab label with an "*" to visually show that the
+     * tab has unsaved changes.
+     */
+    protected void updateTabLabel() {
+        String prevLabel = this.getText();
+        String prevProductLabel = this.productTab.getText();
+        if (hasUnsavedChanges()) {
+            // Add the asterisk to the tab label
+            if (prevLabel.startsWith("*") == false) {
+                setText("*" + prevLabel);
+            }
+            // Add the asterisk to the product tab label
+            if (prevProductLabel.startsWith("*") == false) {
+                productTab.setText("*" + prevProductLabel);
+            }
+        } else {
+            prevLabel = prevLabel.replace("*", "");
+            setText(prevLabel);
+            /*
+             * TODO - When/if formatted tabs become editable again the below
+             * logic will also have to check all the other data editors before
+             * updating the productTab text. Due to the fact that more than one
+             * sub tab within the productTab could have unsaved changes.
+             */
+            prevProductLabel = prevProductLabel.replace("*", "");
+            productTab.setText(prevProductLabel);
+        }
     }
 
     /**

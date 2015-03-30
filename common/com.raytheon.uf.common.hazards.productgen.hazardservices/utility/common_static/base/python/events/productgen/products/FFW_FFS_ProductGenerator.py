@@ -16,6 +16,7 @@ Dec 18, 2014   4933      Robert.Blum         Fixing issue with rebase conflict t
 Jan 12, 2015   4937      Robert.Blum         Refactor to use new generator class hierarchy 
                                              introduced with ticket 4937.
 Jan 31, 2015   4937      Robert.Blum         General cleanup and minor bug fixes.
+Mar 23, 2015   7165      Robert.Blum         Code consolidation - removed _prepareSection().
 
 @author Tracy.L.Hansen@noaa.gov
 @version 1.0
@@ -84,49 +85,6 @@ class Product(HydroGenerator.Product):
             if hazardEvent.getHazardType() == 'FF.W.NonConvective':
                 immediateCause = self.hydrologicCauseMapping(hazardEvent.get('hydrologicCause'))
                 hazardEvent.set('immediateCause', immediateCause)
-
-    def _prepareSection(self, event, vtecRecord, metaData):
-        attributes = event.getHazardAttributes()
-
-        # This creates a list of ints for the eventIDs and also formats the UGCs correctly.
-        eventIDs, ugcList = self.parameterSetupForKeyInfo(list(vtecRecord.get('eventID', None)), attributes.get('ugcs', None))
-
-        # Attributes that get skipped. They get added to the dictionary indirectly.
-        noOpAttributes = [] # Needed for attribution / firstBullet ['ugcs', 'ugcPortions', 'ugcPartsOfState']
-
-        section = collections.OrderedDict()
-        for attribute in attributes:
-            # Special case attributes that need additional work before adding to the dictionary
-            if attribute == 'additionalInfo':
-                additionalInfo, citiesListFlag = self._prepareAdditionalInfo(attributes[attribute] , event, metaData)
-                additionalCommentsKey = KeyInfo('additionalComments', self._productCategory, self._productID, eventIDs, ugcList, editable=True, label='Additional Comments')
-                section[additionalCommentsKey] = additionalInfo
-                section['citiesListFlag'] = citiesListFlag
-            elif attribute == 'cta':
-                # These are now added at the segment level. Do we want to add here as well?
-                callsToActionValue = self._tpc.getProductStrings(event, metaData, 'cta')
-                section['callsToAction'] = callsToActionValue
-            elif attribute in noOpAttributes:
-                continue
-            else:
-                section[attribute] = attributes.get(attribute, None)
-
-        impactedLocationsKey = KeyInfo('impactedLocations', self._productCategory, self._productID, eventIDs, ugcList,True,label='Impacted Locations')
-        impactedLocationsValue = self._prepareImpactedLocations(event.getGeometry())
-        section[impactedLocationsKey] = impactedLocationsValue
-
-        section['impactedAreas'] = self._prepareImpactedAreas(attributes)
-        section['geometry'] = event.getGeometry()
-        section['subType'] = event.getSubType()
-        section['timeZones'] = self._productSegment.timeZones
-        section['vtecRecord'] = vtecRecord
-        section['startTime'] = event.getStartTime()
-        section['endTime'] = event.getEndTime()
-        section['metaData'] = metaData
-        section['creationTime'] = event.getCreationTime()
-
-        self._setProductInformation(vtecRecord, event)
-        return section
 
     def _groupSegments(self, segments):
         '''

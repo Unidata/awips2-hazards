@@ -36,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
+import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.widgets.Composite;
 
@@ -64,6 +65,8 @@ import com.raytheon.uf.common.util.Pair;
  * 01/15/2015   5109       bphillip     Refactored/Renamed
  * 03/11/2015   6889       bphillip     Modifications to allow more than one undo action in the Product Editor
  * 03/19/2015   7108       Robert.Blum  Rename Raw Data to Hazard Data Editor.
+ * 03/23/2015   7165       Robert.Blum  Modifications to allow adding * to editor tab and product tab
+ *                                      labels when there are unsaved changes.
  * </pre>
  * 
  * @author jsanchez
@@ -103,8 +106,9 @@ public class ProductDataEditor extends AbstractDataEditor {
      *            SWT style flags
      */
     protected ProductDataEditor(ProductEditor productEditor,
+            CTabItem productTab,
             IGeneratedProduct product, CTabFolder parent, int style) {
-        super(productEditor, product, parent, style);
+        super(productEditor, productTab, product, parent, style);
     }
 
     /**
@@ -179,6 +183,9 @@ public class ProductDataEditor extends AbstractDataEditor {
 
                             // Update the enabled state of the save and undo buttons
                             updateButtonState();
+
+                            // Update the tab label
+                            updateTabLabel();
                         }
 
                         @Override
