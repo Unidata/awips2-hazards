@@ -125,7 +125,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Range;
-import com.google.common.collect.Ranges;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -255,6 +254,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           30 seconds or more into a minute. Also
  *                                           changed to use time range boundaries for
  *                                           the events.
+ * Mar 30, 2015 7272       mduff             Changes to support Guava upgrade.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1945,7 +1945,7 @@ class TemporalDisplay {
     public void updateEventTimeRangeBoundaries(Set<String> eventIds) {
         for (String identifier : eventIds) {
             Range<Long> startTimeRange = (startTimeBoundariesForEventIds
-                    .containsKey(identifier) == false ? Ranges.closed(
+                    .containsKey(identifier) == false ? Range.closed(
                     HazardConstants.MIN_TIME, HazardConstants.MAX_TIME)
                     : startTimeBoundariesForEventIds.get(identifier));
             MultiValueScale scale = (MultiValueScale) tableEditorsForIdentifiers
@@ -1959,7 +1959,7 @@ class TemporalDisplay {
                             startTimeRange.upperEndpoint()) == false));
             Range<Long> endTimeRange = (scale
                     .isConstrainedThumbIntervalLocked()
-                    || (endTimeBoundariesForEventIds.containsKey(identifier) == false) ? Ranges
+                    || (endTimeBoundariesForEventIds.containsKey(identifier) == false) ? Range
                     .closed(HazardConstants.MIN_TIME, HazardConstants.MAX_TIME)
                     : endTimeBoundariesForEventIds.get(identifier));
             scale.setAllowableConstrainedValueRange(1,
@@ -3098,7 +3098,7 @@ class TemporalDisplay {
         scale.setConstrainedThumbValues(startTime, endTime);
         scale.setConstrainedThumbRangeColor(1, color);
         Range<Long> startTimeRange = (startTimeBoundariesForEventIds
-                .containsKey(eventId) == false ? Ranges.closed(
+                .containsKey(eventId) == false ? Range.closed(
                 HazardConstants.MIN_TIME, HazardConstants.MAX_TIME)
                 : startTimeBoundariesForEventIds.get(eventId));
         scale.setAllowableConstrainedValueRange(0,
@@ -4263,7 +4263,7 @@ class TemporalDisplay {
                 .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)));
         scale.setConstrainedThumbIntervalLocked(lock);
         Range<Long> endTimeRange = (lock
-                || (endTimeBoundariesForEventIds.containsKey(eventId) == false) ? Ranges
+                || (endTimeBoundariesForEventIds.containsKey(eventId) == false) ? Range
                 .closed(HazardConstants.MIN_TIME, HazardConstants.MAX_TIME)
                 : endTimeBoundariesForEventIds.get(eventId));
         scale.setAllowableConstrainedValueRange(1,
@@ -5239,12 +5239,12 @@ class TemporalDisplay {
                             startOfRange = j;
                         }
                     } else if (startOfRange != -1) {
-                        ranges.add(Ranges.closed(startOfRange, j));
+                        ranges.add(Range.closed(startOfRange, j));
                         startOfRange = -1;
                     }
                 }
                 if (startOfRange != -1) {
-                    ranges.add(Ranges.closed(startOfRange,
+                    ranges.add(Range.closed(startOfRange,
                             eventIdentifiers.size() - 1));
                 }
                 if (ranges.isEmpty() == false) {

@@ -42,7 +42,6 @@ import org.eclipse.swt.widgets.Label;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Range;
-import com.google.common.collect.Ranges;
 import com.raytheon.uf.viz.spellchecker.text.SpellCheckTextViewer;
 
 /**
@@ -83,6 +82,7 @@ import com.raytheon.uf.viz.spellchecker.text.SpellCheckTextViewer;
  * Feb 17, 2015   4756     Chris.Golden      Added display settings saving and
  *                                           restoration.
  * Feb 19, 2015   4959     Dan Schaffer      Fixed bug where wasn't ensuring non-null
+ * Mar 30, 2015   7272     mduff             Changes to support Guava upgrade.
  * </pre>
  * 
  * @author Chris.Golden
@@ -284,8 +284,8 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
                             public void run() {
                                 Point selection = textViewer.getTextWidget()
                                         .getSelection();
-                                displaySettings.setSelectionRange(Ranges
-                                        .closed(selection.x, selection.y));
+                                displaySettings.setSelectionRange(Range.closed(
+                                        selection.x, selection.y));
                             }
                         });
                     }

@@ -10,7 +10,6 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.time;
 
 import com.google.common.collect.Range;
-import com.google.common.collect.Ranges;
 import com.raytheon.uf.common.time.TimeRange;
 
 /**
@@ -28,6 +27,7 @@ import com.raytheon.uf.common.time.TimeRange;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Nov 18, 2014    4124    Chris.Golden Initial creation.
+ * Mar 30, 2015    7272    mduff        Changes to support Guava upgrade.
  * </pre>
  * 
  * @author Chris.Golden
@@ -51,7 +51,7 @@ public class SelectedTime {
      *            Instant in time, as epoch time in milliseconds.
      */
     public SelectedTime(long time) {
-        range = Ranges.closed(time, time);
+        range = Range.closed(time, time);
     }
 
     /**
@@ -63,7 +63,7 @@ public class SelectedTime {
      *            Upper bound of the time range, as epoch time in milliseconds.
      */
     public SelectedTime(long lowerTime, long upperTime) {
-        range = Ranges.closed(lowerTime, upperTime);
+        range = Range.closed(lowerTime, upperTime);
     }
 
     // Public Methods

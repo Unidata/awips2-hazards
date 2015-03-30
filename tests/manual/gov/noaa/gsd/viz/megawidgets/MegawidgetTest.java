@@ -35,7 +35,6 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 
 import com.google.common.collect.Range;
-import com.google.common.collect.Ranges;
 
 /**
  * Description: Megawidget tester.
@@ -369,7 +368,7 @@ public class MegawidgetTest extends Dialog {
             }
             if (specifier instanceof IParentSpecifier) {
                 Range<Long> bounds = getTimeBoundaries(
-                        (minTime == Long.MAX_VALUE ? null : Ranges.closed(
+                        (minTime == Long.MAX_VALUE ? null : Range.closed(
                                 minTime, maxTime)),
                         ((IParentSpecifier<ISpecifier>) specifier)
                                 .getChildMegawidgetSpecifiers());
@@ -379,7 +378,7 @@ public class MegawidgetTest extends Dialog {
                 }
             }
         }
-        return (minTime == Long.MAX_VALUE ? null : Ranges.closed(minTime,
+        return (minTime == Long.MAX_VALUE ? null : Range.closed(minTime,
                 maxTime));
     }
 }

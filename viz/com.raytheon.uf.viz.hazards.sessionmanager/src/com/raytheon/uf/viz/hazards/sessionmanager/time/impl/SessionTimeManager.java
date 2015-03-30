@@ -36,7 +36,6 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.time.DateUtils;
 
 import com.google.common.collect.Range;
-import com.google.common.collect.Ranges;
 import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
@@ -80,6 +79,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                     or end time of an event changes.
  * Jan 30, 2015 2331       C. Golden   Added timer that at regular intervals
  *                                     fires off time tick notifications.
+ * Mar 30, 2015 7272       mduff       Changes to support Guava upgrade.
  * </pre>
  * 
  * @author bsteffen
@@ -413,10 +413,10 @@ public class SessionTimeManager implements ISessionTimeManager {
          * reduced to nothing, begin building up a range indicating the minimum
          * range required to intersect all the events.
          */
-        Range<Long> intersection = Ranges.all();
+        Range<Long> intersection = Range.all();
         Range<Long> span = null;
         for (ObservedHazardEvent event : events) {
-            Range<Long> eventRange = Ranges.closed(event.getStartTime()
+            Range<Long> eventRange = Range.closed(event.getStartTime()
                     .getTime(), event.getEndTime().getTime());
             if (intersection != null) {
                 if (intersection.isConnected(eventRange)) {
@@ -424,7 +424,7 @@ public class SessionTimeManager implements ISessionTimeManager {
                 } else {
                     boolean eventRangeHigher = (intersection.upperEndpoint() < eventRange
                             .lowerEndpoint());
-                    span = Ranges.closed(
+                    span = Range.closed(
                             (eventRangeHigher ? intersection.upperEndpoint()
                                     : eventRange.upperEndpoint()),
                             (eventRangeHigher ? eventRange.lowerEndpoint()
@@ -434,7 +434,7 @@ public class SessionTimeManager implements ISessionTimeManager {
             } else if (span.isConnected(eventRange) == false) {
                 boolean eventRangeHigher = (span.upperEndpoint() < eventRange
                         .lowerEndpoint());
-                span = Ranges.closed(
+                span = Range.closed(
                         (eventRangeHigher ? span.lowerEndpoint() : eventRange
                                 .upperEndpoint()),
                         (eventRangeHigher ? eventRange.lowerEndpoint() : span

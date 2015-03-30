@@ -66,7 +66,6 @@ import net.engio.mbassy.listener.Handler;
 import org.apache.commons.lang.time.DateUtils;
 
 import com.google.common.collect.Range;
-import com.google.common.collect.Ranges;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
@@ -258,6 +257,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
  * Mar 13, 2015 6922       Chris.Cody   Changes to skip re-query on GraphicalEditor cancel
  * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen
+ * Mar 30, 2015 7272       mduff        Changes to support Guava upgrade.
  * </pre>
  * 
  * @author bsteffen
@@ -2084,7 +2084,7 @@ public class SessionEventManager implements
      */
     private Range<Long> getEndTimeRangeForPreIssuedEvent(long endTime) {
         boolean untilFurtherNotice = (endTime == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
-        return Ranges.closed((untilFurtherNotice ? endTime : 0L),
+        return Range.closed((untilFurtherNotice ? endTime : 0L),
                 (untilFurtherNotice ? endTime : HazardConstants.MAX_TIME));
     }
 
@@ -2105,7 +2105,7 @@ public class SessionEventManager implements
          * just that value.
          */
         if (endTime == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
-            return Ranges.closed(endTime, endTime);
+            return Range.closed(endTime, endTime);
         }
 
         /*
@@ -2113,7 +2113,7 @@ public class SessionEventManager implements
          * times, as appropriate given the event's type's ability to be shrunk
          * or expanded after issuance.
          */
-        return Ranges
+        return Range
                 .closed((configManager.isAllowTimeShrink(event) ? 0L : endTime),
                         (configManager.isAllowTimeExpand(event) ? HazardConstants.MAX_TIME
                                 : endTime));
@@ -2186,7 +2186,7 @@ public class SessionEventManager implements
      * @return Allowable range for the event's end times.
      */
     private Range<Long> getEndTimeRangeForEndingEvent(long endTime) {
-        return Ranges.closed(endTime, endTime);
+        return Range.closed(endTime, endTime);
     }
 
     /**
@@ -2292,7 +2292,7 @@ public class SessionEventManager implements
         case POTENTIAL:
         case PENDING:
         case PROPOSED:
-            startTimeRange = Ranges.closed(currentTime, (configManager
+            startTimeRange = Range.closed(currentTime, (configManager
                     .isStartTimeIsCurrentTime(event) ? currentTime
                     : HazardConstants.MAX_TIME));
             endTimeRange = getEndTimeRangeForPreIssuedEvent(endTime);
@@ -2300,7 +2300,7 @@ public class SessionEventManager implements
         case ISSUED:
             long startTimeWhenLastIssued = startTimesForIssuedEventIdentifiers
                     .get(event.getEventID());
-            startTimeRange = Ranges
+            startTimeRange = Range
                     .closed((startTimeWhenLastIssued < currentTime ? startTimeWhenLastIssued
                             : currentTime),
                             (configManager.isStartTimeIsCurrentTime(event) ? startTimeWhenLastIssued
@@ -2310,7 +2310,7 @@ public class SessionEventManager implements
             break;
         case ENDING:
         case ENDED:
-            startTimeRange = Ranges.closed(startTime, startTime);
+            startTimeRange = Range.closed(startTime, startTime);
             endTimeRange = getEndTimeRangeForEndingEvent(endTime);
         }
 
@@ -2367,7 +2367,7 @@ public class SessionEventManager implements
          * the same value (if the start time is always the same as the current
          * time) or else practically unlimited.
          */
-        Range<Long> startTimeRange = Ranges.closed(issueTime, (configManager
+        Range<Long> startTimeRange = Range.closed(issueTime, (configManager
                 .isStartTimeIsCurrentTime(event) ? issueTime
                 : HazardConstants.MAX_TIME));
 
