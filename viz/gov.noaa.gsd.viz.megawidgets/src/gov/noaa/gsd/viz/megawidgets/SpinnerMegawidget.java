@@ -77,6 +77,11 @@ import com.google.common.collect.ImmutableSet;
  * Oct 22, 2014   5050     Chris.Golden      Minor change: Used "or" instead of
  *                                           addition for SWT flags.
  * Feb 04, 2015   5919     Benjamin.Phillippe Added getRoundedValue function
+ * Mar 31, 2015   6873     Chris.Golden      Added code to ensure that mouse
+ *                                           wheel events are not processed by
+ *                                           the megawidget, but are instead
+ *                                           passed up to any ancestor that is a
+ *                                           scrolled composite.
  * </pre>
  * 
  * @author Chris.Golden
@@ -201,6 +206,7 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
         spinner.setPageIncrement(convertValueToSpinner(incrementDelta));
         spinner.setDigits(getSpinnerPrecision());
         spinner.setEnabled(specifier.isEnabled());
+        UiBuilder.ensureMouseWheelEventsPassedUpToAncestor(spinner);
 
         /*
          * Place the spinner in the parent's grid.
@@ -227,6 +233,7 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
             scale.setPageIncrement(convertValueToSpinner(incrementDelta));
             scale.setIncrement(convertValueToSpinner(incrementDelta));
             scale.setEnabled(specifier.isEnabled());
+            UiBuilder.ensureMouseWheelEventsPassedUpToAncestor(scale);
 
             /*
              * Place the spinner in the parent's grid.
@@ -635,13 +642,13 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
                 : scale.getMinimum());
         scale.setSelection(state);
     }
-    
+
     /**
      * Gets the value of the scale rounded to the nearest increment
      * 
      * @return The rounded value
      */
-    private int getRoundedScaleValue(){
+    private int getRoundedScaleValue() {
         double currentState = SpinnerMegawidget.this.scale.getSelection()
                 - scaleOffset;
         double increment = scale.getIncrement();
@@ -652,7 +659,7 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
         double lower = (currentState - currentState % increment);
         double upper = (lower + increment);
         double mid = (upper - lower) / 2 + lower;
-        return (int)(currentState >= mid ? upper : lower);
+        return (int) (currentState >= mid ? upper : lower);
     }
 
     /**

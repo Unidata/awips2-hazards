@@ -73,6 +73,11 @@ import com.google.common.collect.ImmutableSet;
  *                                           to the displayable time units.
  * Oct 22, 2014   5050     Chris.Golden      Minor change: Used "or" instead of
  *                                           addition for SWT flags.
+ * Mar 31, 2015   6873     Chris.Golden      Added code to ensure that mouse
+ *                                           wheel events are not processed by
+ *                                           the megawidget, but are instead
+ *                                           passed up to any ancestor that is a
+ *                                           scrolled composite.
  * </pre>
  * 
  * @author Chris.Golden
@@ -180,6 +185,7 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
         spinner.setTextLimit(numChars);
         setSpinnerParameters(specifier.getCurrentUnit());
         spinner.setEnabled(specifier.isEnabled());
+        UiBuilder.ensureMouseWheelEventsPassedUpToAncestor(spinner);
 
         /*
          * Place the spinner in the panel's grid, ensuring it is wide enough to
@@ -219,6 +225,7 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
             combo.setItems(unitIdentifiers);
             combo.select(selectedIndex);
             combo.setEnabled(specifier.isEnabled());
+            UiBuilder.ensureMouseWheelEventsPassedUpToAncestor(combo);
 
             /*
              * Place the combo box in the panel's grid.

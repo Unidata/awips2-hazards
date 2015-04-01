@@ -31,8 +31,10 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
+import org.eclipse.swt.widgets.Text;
 
 /**
  * Description: Date-time component, providing an encapsulation of a single pair
@@ -64,6 +66,11 @@ import org.eclipse.swt.widgets.Spinner;
  *                                           buttons to look enabled when the
  *                                           component had editable as true but
  *                                           enabled as false.
+ * Mar 31, 2015   6873     Chris.Golden      Added code to ensure that mouse wheel
+ *                                           events are not processed by the
+ *                                           megawidget, but are instead passed up
+ *                                           to any ancestor that is a scrolled
+ *                                           composite.
  * </pre>
  * 
  * @author Chris.Golden
@@ -233,6 +240,29 @@ public class DateTimeComponent implements ITimeComponent {
         protected void postClose(Shell popup) {
             super.postClose(popup);
             notifyListenersOfEndingStateChange();
+        }
+
+        @Override
+        protected void addTextListener() {
+
+            /*
+             * Ensure that the text listener does not process mouse wheel
+             * events.
+             */
+            super.addTextListener();
+            Text control = text.getControl();
+            for (Listener listener : control.getListeners(SWT.MouseWheel)) {
+                control.removeListener(SWT.MouseWheel, listener);
+            }
+
+            /*
+             * Ensure that the spinner, if one is being used, does not process
+             * mouse wheel events either.
+             */
+            Control spinner = getSpinner();
+            if (spinner != null) {
+                UiBuilder.ensureMouseWheelEventsPassedUpToAncestor(spinner);
+            }
         }
 
         // Private Methods

@@ -83,6 +83,11 @@ import com.raytheon.uf.viz.spellchecker.text.SpellCheckTextViewer;
  * Feb 17, 2015   4756     Chris.Golden      Added display settings saving and
  *                                           restoration.
  * Feb 19, 2015   4959     Dan Schaffer      Fixed bug where wasn't ensuring non-null
+ * Mar 31, 2015   6873     Chris.Golden      Added code to ensure that mouse
+ *                                           wheel events are not processed by
+ *                                           the megawidget, but are instead
+ *                                           passed up to any ancestor that is a
+ *                                           scrolled composite.
  * </pre>
  * 
  * @author Chris.Golden
@@ -231,6 +236,8 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
                 DISABLED_FOREGROUND_COLOR.dispose();
             }
         });
+        UiBuilder.ensureMouseWheelEventsPassedUpToAncestor(textViewer
+                .getTextWidget());
 
         /*
          * Place the text component in the grid.

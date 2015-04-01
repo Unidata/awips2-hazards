@@ -77,6 +77,11 @@ import com.google.common.collect.Sets;
  * Feb 22, 2015   4756     Chris.Golden      Fixed bug causing null pointer
  *                                           exception in setDisplaySettings()
  *                                           under certain conditions.
+ * Mar 31, 2015   6873     Chris.Golden      Added code to ensure that mouse
+ *                                           wheel events are not processed by
+ *                                           the megawidget, but are instead
+ *                                           passed up to any ancestor that is a
+ *                                           scrolled composite.
  * </pre>
  * 
  * @author Chris.Golden
@@ -186,6 +191,7 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
         GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
         table.setLayoutData(gridData);
         new TableColumn(table, SWT.NONE);
+        UiBuilder.ensureMouseWheelEventsPassedUpToAncestor(table);
 
         /*
          * Add all the choices to the table.

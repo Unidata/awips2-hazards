@@ -55,6 +55,11 @@ import com.google.common.collect.Sets;
  *                                      read-only when the interval between the
  *                                      thumbs was locked and the first thumb
  *                                      was movable.
+ * Mar 31, 2015   6873     Chris.Golden Added code to ensure that mouse wheel
+ *                                      events are not processed by the
+ *                                      megawidget, but are instead passed up
+ *                                      to any ancestor that is a scrolled
+ *                                      composite.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1540,6 +1545,7 @@ public abstract class MultiTimeMegawidget extends
                     .getSystemColor(SWT.COLOR_LIST_SELECTION));
         }
         scale.setEnabled(specifier.isEnabled());
+        UiBuilder.ensureMouseWheelEventsPassedUpToAncestor(scale);
         GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
         gridData.horizontalSpan = 2;
         gridData.verticalIndent = specifier.getSpacing();

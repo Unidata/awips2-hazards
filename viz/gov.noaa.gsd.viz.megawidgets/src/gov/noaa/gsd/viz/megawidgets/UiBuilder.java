@@ -23,6 +23,8 @@ import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.events.KeyEvent;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.MouseWheelListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
@@ -35,7 +37,9 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Listener;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -81,7 +85,19 @@ import com.google.common.collect.Lists;
  * Oct 20, 2014    4818    Chris.Golden      Added methods for building scrolled
  *                                           composites for both single- and
  *                                           multi-page megawidgets.
- * Dec 1, 2014    4373     Dan Schaffer      HID Template migration for warngen
+ * Dec 01, 2014    4373    Dan Schaffer      HID Template migration for warngen
+ * Mar 31, 2015    6873    Chris.Golden      Added code to ensure that scrolling
+ *                                           within a scrolled composite that
+ *                                           occurs as a result of mouse wheel
+ *                                           events is handled by a handler,
+ *                                           instead of via native behavior
+ *                                           provided by the widget. This is
+ *                                           done so that artificially generated
+ *                                           mouse wheel events, sent by any
+ *                                           descendant widgets that do not wish
+ *                                           to consume mouse wheel events, will
+ *                                           result in the same scrolling
+ *                                           behavior as real ones.
  * </pre>
  * 
  * @author Chris.Golden
@@ -113,6 +129,11 @@ public class UiBuilder {
      * Key of the area-changing flag for a scrolled composite.
      */
     private static final String AREA_CHANGING_KEY = "__areaChanging__";
+
+    /**
+     * Number of pixels by which to scroll with each mouse wheel rotation.
+     */
+    private static final int MOUSE_WHEEL_SCROLL_INCREMENT = 20;
 
     // Public Enumerated Types
 
@@ -726,6 +747,71 @@ public class UiBuilder {
     }
 
     /**
+     * Ensure that the specified control passes any mouse wheel events it
+     * receives up to a scrollable ancestor, if the latter is found.
+     * 
+     * @param control
+     *            Control that is to be configured so as to pass mouse wheel
+     *            events to a scrollable ancestor.
+     */
+    public static void ensureMouseWheelEventsPassedUpToAncestor(
+            final Control control) {
+        control.addListener(SWT.MouseWheel, new Listener() {
+            @Override
+            public void handleEvent(Event event) {
+
+                /*
+                 * Prevent the scroll wheel event from causing anything to
+                 * happen with this control.
+                 */
+                event.doit = false;
+
+                /*
+                 * Trigger the listeners of the closest scrollable composite
+                 * ancestor of this control, if any, with a synthesized mouse
+                 * wheel event.
+                 */
+                Display display = control.getDisplay();
+                if (display.isDisposed() == false) {
+
+                    /*
+                     * Find the closest scrollable composite ancestor.
+                     */
+                    ScrolledComposite scrollableComposite = null;
+                    for (Control theControl = control; theControl != null; theControl = theControl
+                            .getParent()) {
+                        if (theControl instanceof ScrolledComposite) {
+                            scrollableComposite = (ScrolledComposite) theControl;
+                            break;
+                        }
+                    }
+
+                    /*
+                     * If one is found, synthesize a mouse wheel event and pass
+                     * it to the former.
+                     */
+                    if (scrollableComposite != null) {
+                        Point point = control.toDisplay(new Point(event.x,
+                                event.y));
+                        point = scrollableComposite.toControl(point);
+                        final Event newEvent = new Event();
+                        newEvent.type = event.type;
+                        newEvent.detail = event.detail;
+                        newEvent.time = event.time;
+                        newEvent.x = point.x;
+                        newEvent.y = point.y;
+                        newEvent.widget = scrollableComposite;
+                        newEvent.button = event.button;
+                        newEvent.count = event.count;
+                        scrollableComposite.notifyListeners(
+                                SWT.MouseVerticalWheel, newEvent);
+                    }
+                }
+            }
+        });
+    }
+
+    /**
      * Determine whether or not the specified key event is used by a spinner
      * widget to increment or decrement its value.
      * 
@@ -818,6 +904,7 @@ public class UiBuilder {
      */
     private static ScrolledComposite buildScrolledComposite(
             IResizer megawidget, Composite parent, Map<String, Object> paramMap) {
+
         /*
          * Create the scrolled composite and its child. Note that the scrolled
          * composite's computeSize() method is overridden to ensure that the
@@ -880,6 +967,41 @@ public class UiBuilder {
                 .get(IResizer.RESIZE_LISTENER);
         paramMap.put(IResizer.RESIZE_LISTENER, new ScrolledResizeListener(
                 megawidget, scrolledComposite, resizeListener));
+
+        /*
+         * Ensure that the native widget's response to a mouse wheel event is
+         * suppressed, and that instead, scrolling as a result of a mouse wheel
+         * is performed synthetically. This is done so that synthetic mouse
+         * wheel events may be sent to the scrolled composite by descendant
+         * widgets that want to pass their mouse wheel events onto the
+         * scrollable container in which they reside.
+         * 
+         * TODO: MouseHorizontalWheel events do not appear to be generated on
+         * the target platform, but if they are, it would be desirable to do the
+         * same for them.
+         */
+        scrolledComposite.addListener(SWT.MouseVerticalWheel, new Listener() {
+            @Override
+            public void handleEvent(Event event) {
+                event.doit = false;
+            }
+        });
+        scrolledComposite.addMouseWheelListener(new MouseWheelListener() {
+            @Override
+            public void mouseScrolled(MouseEvent e) {
+                Point origin = scrolledComposite.getOrigin();
+                origin.y += MOUSE_WHEEL_SCROLL_INCREMENT
+                        * (e.count < 0 ? 1 : -1);
+                int maxOrigin = scrolledComposite.getContent().getBounds().height
+                        - scrolledComposite.getClientArea().height;
+                if (origin.y < 0) {
+                    origin.y = 0;
+                } else if (origin.y > maxOrigin) {
+                    origin.y = maxOrigin;
+                }
+                scrolledComposite.setOrigin(origin);
+            }
+        });
 
         /*
          * Return the result.
