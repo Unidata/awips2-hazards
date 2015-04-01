@@ -77,6 +77,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Mar 13, 2015    6922    Chris.Cody  Changes to constrain Begin, Rise, Crest, Fall and End date time values.
  * Mar 17, 2015    6974    mpduff      FAT fixes.
  * Mar 24, 2015    7205    mpduff      Fixes for missing values and until further notice.
+ * Apr 01, 2015    7277    Chris.Cody  Changes to Handle Missing Time values.
  * 
  * </pre>
  * 
@@ -224,62 +225,72 @@ public class GraphicalEditor extends CaveSWTDialog implements
     }
 
     private void populate() {
-        if (graphData.getCrestValue() != RiverForecastPoint.MISSINGVAL) {
-            crestValTxt.setText(String.valueOf(graphData.getCrestValue()));
-            crestMsgChk.setSelection(false);
+
+        double crestValue = graphData.getCrestValue();
+        if (crestValue != RiverForecastPoint.MISSINGVAL) {
+            crestValTxt.setText(String.valueOf(crestValue));
         } else {
-            crestMsgChk.setSelection(true);
+            crestValTxt.setText(MISSING_VAL);
         }
 
-        if (graphData.getBeginDate() != null) {
-            beginTimeTxt.setText(dateFormat.format(graphData.getBeginDate()));
-            beginDate = graphData.getBeginDate();
+        beginDate = graphData.getBeginDate();
+        if ((beginDate != null) && (beginDate.getTime() != 0L)) {
+            beginTimeTxt.setText(dateFormat.format(beginDate));
             beginCurrentRdo.setSelection(false);
             beginSetRdo.setSelection(true);
         } else {
+            beginTimeTxt.setText(MISSING_VAL);
             beginCurrentRdo.setSelection(false);
             beginSetRdo.setSelection(false);
         }
 
-        if (graphData.getEndDate() != null) {
-            if (graphData.getEndDate().getTime() == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
-                endTimeTxt.setText(MISSING_VAL);
+        endDate = graphData.getEndDate();
+        if ((endDate != null) && (endDate.getTime() != 0L)) {
+            if (endDate.getTime() == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
+                endTimeTxt.setText(UNTIL_FURTHER_NOTICE);
                 endUntilFurtherNoticeRdo.setSelection(true);
                 endSetRdo.setSelection(false);
                 endCurrentRdo.setSelection(false);
             } else {
-                endTimeTxt.setText(dateFormat.format(graphData.getEndDate()));
+                endTimeTxt.setText(dateFormat.format(endDate));
                 endUntilFurtherNoticeRdo.setSelection(false);
                 endSetRdo.setSelection(true);
                 endCurrentRdo.setSelection(false);
             }
-            endDate = graphData.getEndDate();
+        } else {
+            endTimeTxt.setText(MISSING_VAL);
+            endUntilFurtherNoticeRdo.setSelection(false);
+            endSetRdo.setSelection(false);
+            endCurrentRdo.setSelection(false);
         }
 
-        if (graphData.getRiseDate() != null) {
-            riseTxt.setText(dateFormat.format(graphData.getRiseDate()));
-            riseDate = graphData.getRiseDate();
+        riseDate = graphData.getRiseDate();
+        if ((riseDate != null) && (riseDate.getTime() != 0L)) {
+            riseTxt.setText(dateFormat.format(riseDate));
             riseMsgChk.setSelection(false);
         } else {
+            riseTxt.setText(MISSING_VAL);
             riseMsgChk.setSelection(true);
         }
 
-        if (graphData.getCrestDate() != null) {
-            crestTxt.setText(dateFormat.format(graphData.getCrestDate()));
-            crestDate = graphData.getCrestDate();
+        crestDate = graphData.getCrestDate();
+        if ((crestDate != null) && (crestDate.getTime() != 0L)) {
+            crestTxt.setText(dateFormat.format(crestDate));
             crestMsgChk.setSelection(false);
         } else {
+            crestTxt.setText(MISSING_VAL);
             crestMsgChk.setSelection(true);
         }
 
-        if (graphData.getFallDate() != null) {
-            fallTxt.setText(dateFormat.format(graphData.getFallDate()));
-            fallDate = graphData.getFallDate();
+        fallDate = graphData.getFallDate();
+        if ((fallDate != null) && (fallDate.getTime() != 0L)) {
+            fallTxt.setText(dateFormat.format(fallDate));
             fallMsgChk.setSelection(false);
         } else {
-            fallMsgChk.setSelection(true);
             fallTxt.setText(MISSING_VAL);
+            fallMsgChk.setSelection(true);
         }
+
     }
 
     private void createGraphData() {
@@ -757,8 +768,9 @@ public class GraphicalEditor extends CaveSWTDialog implements
         okBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                handleOk();
-                close();
+                if (handleOk() == true) {
+                    close();
+                }
             }
         });
 
@@ -800,10 +812,10 @@ public class GraphicalEditor extends CaveSWTDialog implements
         });
     }
 
-    private void handleOk() {
+    private boolean handleOk() {
 
         if (verifyDialogInput() != true) {
-            return;
+            return (false);
         }
         Map<String, Serializable> attributes = this.event.getHazardAttributes();
         Map<String, Serializable> newAttributes = new HashMap<>(
@@ -836,8 +848,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
         }
 
         if (this.beginDate == null) {
-            this.event.setStartTime(new Date(
-                    HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS));
+            this.event.setStartTime(new Date(HazardConstants.MISSING_VALUE));
         } else {
             this.event.setStartTime(beginDate);
         }
@@ -849,12 +860,19 @@ public class GraphicalEditor extends CaveSWTDialog implements
             this.event.setEndTime(endDate);
         }
 
-        this.event.setHazardAttributes(newAttributes);
-        String crest = this.crestValTxt.getText();
+        String crestValue = this.crestValTxt.getText();
+        if (crestValue == null) {
+            newAttributes.put(HazardConstants.CREST_STAGE,
+                    HazardConstants.MISSING_VALUE);
+        } else {
+            newAttributes.put(HazardConstants.CREST_STAGE, crestValue);
+        }
 
-        newAttributes.put(HazardConstants.CREST_STAGE, crest);
+        this.event.setHazardAttributes(newAttributes);
 
         setReturnValue(event);
+
+        return (true);
     }
 
     private Date setTime(Date date) {
@@ -905,40 +923,40 @@ public class GraphicalEditor extends CaveSWTDialog implements
         boolean isValid = true;
 
         StringBuffer errMsgSB = new StringBuffer();
-        verifyDialogInputDateField(beginTimeLblTxt, beginTimeTxt, errMsgSB);
-        verifyDialogInputDateField(endTimeLblTxt, endTimeTxt, errMsgSB);
-        verifyDialogInputDateField(riseLblTxt, riseTxt, errMsgSB);
-        verifyDialogInputDateField(crestLblTxt, crestTxt, errMsgSB);
-        verifyDialogInputDateField(fallLblTxt, fallTxt, errMsgSB);
 
-        String msgString = null;
+        Date beginDateTime = parseInputFieldToDate(beginTimeLblTxt,
+                beginTimeTxt.getText(), errMsgSB);
+        Date endDateTime = parseInputFieldToDate(endTimeLblTxt,
+                endTimeTxt.getText(), errMsgSB);
+        Date riseDateTime = parseInputFieldToDate(riseLblTxt,
+                riseTxt.getText(), errMsgSB);
+        Date crestDateTime = parseInputFieldToDate(crestLblTxt,
+                crestTxt.getText(), errMsgSB);
+        Date fallDateTime = parseInputFieldToDate(fallLblTxt,
+                fallTxt.getText(), errMsgSB);
+
+        if (endDateTime.before(beginDateTime) == true) {
+            errMsgSB.append("Invalid date time:\n");
+            errMsgSB.append(beginTimeLblTxt);
+            errMsgSB.append(": ");
+            errMsgSB.append(beginTimeTxt.getText());
+            errMsgSB.append(" cannot precede\n");
+            errMsgSB.append(endTimeLblTxt);
+            errMsgSB.append(": ");
+            errMsgSB.append(endTimeTxt.getText());
+            errMsgSB.append("\n");
+            isValid = false;
+        }
+        /*
+         * TODO Currently there are no date time constraints other than Start
+         * and must precede End. Rules have not been established to otherwise
+         * constrain Rise, Crest, Fall, Start and End.
+         */
         if (errMsgSB.length() > 0) {
-            msgString = "Invalid date time or date time format:\n"
+            String msgString = "Invalid date time or date time format:\n"
                     + errMsgSB.toString() + "Correct Format is "
                     + dateFormat.toLocalizedPattern();
-        } else {
-            try {
-                String beginDateTimeString = beginTimeTxt.getText();
-                Date beginDateTime = dateFormat.parse(beginDateTimeString);
-                String endDateTimeString = endTimeTxt.getText();
-                Date endDateTime = dateFormat.parse(endTimeTxt.getText());
-                if (endDateTime.before(beginDateTime) == true) {
-                    msgString = "Invalid date time:\n" + beginTimeLblTxt
-                            + beginDateTimeString + " cannot precede\n"
-                            + endTimeLblTxt + endDateTimeString;
-                }
-                /*
-                 * TODO Currently there are no date time constraints other than
-                 * Start and must precede End. Rules have not been established
-                 * to otherwise constrain Rise, Crest, Fall, Start and End.
-                 */
-            } catch (ParseException pe) {
-                // Do nothing.
-                // This error would be caught in verifyDialogInputDateField.
-            }
-        }
 
-        if (msgString != null) {
             MessageBox mb = new MessageBox(shell, SWT.ICON_WARNING | SWT.BORDER
                     | SWT.ON_TOP | SWT.APPLICATION_MODAL | SWT.RESIZE | SWT.OK);
             mb.setText("Invalid Input");
@@ -946,6 +964,15 @@ public class GraphicalEditor extends CaveSWTDialog implements
             mb.open();
             isValid = false;
         }
+
+        if (isValid) {
+            this.beginDate = beginDateTime;
+            this.endDate = endDateTime;
+            this.riseDate = riseDateTime;
+            this.crestDate = crestDateTime;
+            this.fallDate = fallDateTime;
+        }
+
         return (isValid);
     }
 
@@ -961,26 +988,34 @@ public class GraphicalEditor extends CaveSWTDialog implements
      * @param errMsgSB
      *            Error Message String Buffer
      */
-    private void verifyDialogInputDateField(String labelText,
-            Text dateTextField, StringBuffer errMsgSB) {
 
-        String dateString = dateTextField.getText();
+    private Date parseInputFieldToDate(String labelText, String dateString,
+            StringBuffer errMsgSB) {
+        Date parsedDate = new Date(0);
+
         if (dateString != null) {
             dateString = dateString.trim();
             if (dateString.isEmpty() == false) {
-                if (dateString.equals(MISSING_VAL) == false) {
-                    try {
-                        Object obj = dateFormat.parseObject(dateString);
-                        System.out.println("dateFormat obj "
-                                + obj.getClass().getName() + "  "
-                                + obj.toString());
-                    } catch (ParseException ex) {
-                        System.out.println(labelText + dateString + "  "
-                                + ex.getClass().toString() + "  "
-                                + ex.getMessage());
+                if (dateString.equals(UNTIL_FURTHER_NOTICE) == true) {
+                    if (labelText.equals(this.endTimeLblTxt) == true) {
+                        parsedDate = new Date(
+                                HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+                    } else {
+                        // This should not be possible with the date formatters,
+                        // but full coverage is better.
                         errMsgSB.append(labelText);
+                        errMsgSB.append(" value: ");
                         errMsgSB.append(dateString);
-                        errMsgSB.append("\n");
+                        errMsgSB.append(" is invalid for this Date field.");
+                    }
+                } else if (dateString.equals(MISSING_VAL) == false) {
+                    try {
+                        parsedDate = (Date) dateFormat.parseObject(dateString);
+                    } catch (ParseException ex) {
+                        errMsgSB.append("Unable to parse ");
+                        errMsgSB.append(labelText);
+                        errMsgSB.append("from ");
+                        errMsgSB.append(dateString);
                     }
                 }
             } else {
@@ -994,7 +1029,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
             errMsgSB.append("\n");
         }
 
-        return;
+        return (parsedDate);
     }
 
 }
