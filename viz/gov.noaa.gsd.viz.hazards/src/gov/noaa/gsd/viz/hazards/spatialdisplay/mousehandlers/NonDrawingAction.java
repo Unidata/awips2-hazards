@@ -43,6 +43,7 @@ import com.vividsolutions.jts.geom.Point;
  * Jul 15, 2013      585   Chris.Golden       Changed to no longer be a singleton.
  * Jul 18, 2013     1264     Chris.Golden     Added support for drawing lines and
  *                                            points.
+ * Apr 02, 2015     6542   Robert.Blum        Changed to set to prevLoc if null.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -125,6 +126,11 @@ public class NonDrawingAction extends AbstractMouseHandler {
 
         Coordinate ptSelected = null;
 
+        /**
+         * Coordinate of the previous cursor location.
+         */
+        protected Coordinate prevLoc = null;
+
         /*
          * (non-Javadoc)
          * 
@@ -182,8 +188,19 @@ public class NonDrawingAction extends AbstractMouseHandler {
             AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
                     .getInstance().getActiveEditor());
             Coordinate loc = editor.translateClick(anX, aY);
+
+            /*
+             * Check for a null coordinate. If it is null use the previous
+             * coordinate. If not save it off as the prevoius.
+             */
             if (loc == null) {
-                return false;
+                if (prevLoc != null) {
+                    loc = prevLoc;
+                } else {
+                    return false;
+                }
+            } else {
+                prevLoc = loc;
             }
 
             AbstractDrawableComponent elSelected = getSpatialDisplay()

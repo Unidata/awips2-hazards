@@ -68,6 +68,8 @@ import com.vividsolutions.jts.geom.Polygon;
  * Feb 17, 2015 4209       Dan Schaffer Fixed bug in lassoing hazards
  * Feb 24, 2015 6499       Dan Schaffer Disable moving/drawing of point hazards
  * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
+ * Apr 02, 2015 6542       Robert.Blum  Checking for a null cursor location when dragging
+ *                                      a point of a polygon.
  * Apr 03, 2015 5591       Dan Schaffer Fixed bug in spatial display handling storm track
  *                                      If the user moused over the circle in the middle
  *                                      then the storm polygon became un-editable.
@@ -557,7 +559,20 @@ public class SelectionAction extends NonDrawingAction {
                     .getInstance().getActiveEditor());
 
             Coordinate loc = editor.translateClick(anX, aY);
-
+            
+            /*
+             * Check for a null coordinate. If it is null use the previous coordinate.
+             * If not save it off as the prevoius.
+             */
+            if (loc == null) {
+                if (prevLoc != null) {
+                    loc = prevLoc;
+                } else {
+                    return false;
+                }
+            } else {
+                prevLoc = loc;
+            }
             /*
              * Check to see if the user is moving a point in a hazard polygon...
              */
@@ -577,7 +592,6 @@ public class SelectionAction extends NonDrawingAction {
                      * being moved for poly- gons.)
                      */
                     List<Coordinate> coords = selectedElement.getPoints();
-                    loc = editor.translateClick(anX, aY);
                     coords.set(movePointIndex, loc);
                     if (selectedElement.getClass().equals(
                             HazardServicesPolygon.class)
