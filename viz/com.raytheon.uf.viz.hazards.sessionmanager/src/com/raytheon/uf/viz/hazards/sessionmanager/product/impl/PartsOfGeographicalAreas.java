@@ -53,6 +53,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Apr 24, 2014            daniel.s.schaffer@noaa.gov      Initial creation
  * Jul 24, 2014 4272       jsanchez    Set the CountyUserData.
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
+ * Apr 02, 2015 6544       Robert.Blum  Added tolerance check to determine if portions
+ *                         should be calculated.
  * 
  * </pre>
  * 
@@ -72,6 +74,12 @@ public class PartsOfGeographicalAreas {
     private static final String EXTREME = "Extreme";
 
     private static final String CENTRAL = "Central";
+
+    /**
+     * If an area greater than this percentage of the area is covered, no
+     * direction/portion is included
+     */
+    private static final double DEFAULT_PORTION_TOLERANCE = 0.60;
 
     static final String FE_AREA = "FE_AREA";
 
@@ -372,9 +380,22 @@ public class PartsOfGeographicalAreas {
             }
             EnumSet<Direction> directionSet = null;
             try {
-                directionSet = directionsRetriever.retrieveDirections(
-                        polygonHazardGeometry, portionsUtil, ugc,
-                        countyGeometry);
+                /*
+                 * Check if the area covered is more than the default tolerance.
+                 * If it is, dont get the directionSet. Logic taken from WarnGen.
+                 */
+                double areaIntersection = polygonHazardGeometry.intersection(
+                        countyGeometry).getArea();
+
+                double tolerCheck = countyGeometry.getArea()
+                        * DEFAULT_PORTION_TOLERANCE;
+                if (areaIntersection < tolerCheck) {
+                    directionSet = directionsRetriever.retrieveDirections(
+                            polygonHazardGeometry, portionsUtil, ugc,
+                            countyGeometry);
+                } else {
+                    continue;
+                }
             } catch (Exception e) {
                 statusHandler.handle(Priority.SIGNIFICANT,
                         "Call to portionsUtil.getPortions() failed for " + ugc,
