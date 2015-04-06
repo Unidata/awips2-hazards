@@ -14,6 +14,8 @@
     Feb 2015       4375    Tracy Hansen      Initial creation
     Feb 2015       4937    Robert.Blum       Check if proximity is None
     Feb 2015       6599    Robert.Blum       Changed to new style class
+    Apr 2015       7375    Robert.Blum       Fixed first bullet to include hazard type
+                                             for FFA area-EXT hazards.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
@@ -76,6 +78,7 @@ class AttributionFirstBulletText(object):
                 self.areaPhrase = self.getAreaPhraseBullet()
             else :
                 self.areaPhrase = self.getAreaPhrase(sectionDict)
+            self.areaPhrase.rstrip()
         
     def initialize_withHazardEvent(self, hazardEvent, vtecRecord, metaData, productID, issueTime, testMode, wfoCity, tpc, rfp, areaPhrase=None, endString='. '):
         hazardEvent.set('creationTime', hazardEvent.getCreationTime())
@@ -228,9 +231,7 @@ class AttributionFirstBulletText(object):
         return firstBullet
     
     def firstBullet_EXT(self):
-        if self.productID in ['FFA'] and self.geoType == 'area':
-            firstBullet = ' ' 
-        elif self.geoType == 'area':
+        if self.geoType == 'area':
             firstBullet = self.hazardName + ' for...'
         else:
             firstBullet = 'The ' + self.hazardName + ' continues for\n'
@@ -330,7 +331,7 @@ class AttributionFirstBulletText(object):
                 textLine += part + " " + self.tpc.getInformationForUGC(ugc, "fullStateName") + "...\n"
             areaPhrase += textLine
 
-        return areaPhrase.rstrip()
+        return areaPhrase
            
     def getAreaPhrase(self, sectionDict):
         '''
