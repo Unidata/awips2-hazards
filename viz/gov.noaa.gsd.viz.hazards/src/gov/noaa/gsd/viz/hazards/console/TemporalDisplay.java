@@ -258,10 +258,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           event time range boundary changed but the
  *                                           event is not found within the rows of the
  *                                           table.
- * Mar 30, 2015   7272     mduff             Changes to support Guava upgrade.
+ * Mar 30, 2015 7272       mduff             Changes to support Guava upgrade.
  * Apr 06, 2015   6604     Chris.Golden      Fixed bug causing occasional exception due
  *                                           to assumption about selected time being
  *                                           made that was incorrect.
+ * Apr 06, 2015 6602       mduff             If a date is missing return an empty string
+ *                                           rather than 0 formatted as Jan 1, 1970.
  * </pre>
  * 
  * @author Chris.Golden
@@ -4966,7 +4968,8 @@ class TemporalDisplay {
                 }
                 return getDateTimeString(number.longValue());
             } else {
-                return getDateTimeString(0L);
+                // no time defined, return empty String, not 0 milliseconds
+                return EMPTY_STRING;
             }
         } else if (value != null) {
             return value.toString();
