@@ -230,27 +230,21 @@ class MetaData(CommonMetaData.MetaData):
                       "label": riverGrp,
                       "bold": True
                   }
-        
-        headerLabel = {
-                       "fieldType": "Label",
-                       "fieldName": parm + "ForecastPointsHeaderLabel",
-                       "label": ('{:15s}'*len(values.keys())).format(*values.keys()),
-                  }
-        
-        valuesLabel = {
-                       "fieldType": "Label",
+                
+        valuesTable = {
+                       "fieldType": "Table",
                        "fieldName": parm + "ForecastPointsValuesLabel",
-                       "label": ''.join(values.values()),
+                       "lines": 1,
+                       "columnHeaders": values.keys(),
+                       "values": [ values.values() ]
                        }
-
-        
-
+    
         group = {
                  "fieldType": "Group",
                  "fieldName": parm + "ForecastPointsGoup",
                  "expandHorizontally": False,
                  "expandVertically": True,
-                 "fields" : [riverLabel,headerLabel,valuesLabel]
+                 "fields" : [riverLabel,valuesTable]
                  
                  }
 
