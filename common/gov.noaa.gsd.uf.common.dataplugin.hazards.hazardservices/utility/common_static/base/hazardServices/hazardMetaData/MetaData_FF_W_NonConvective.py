@@ -463,16 +463,6 @@ class MetaData(CommonMetaData.MetaData):
         return {"identifier":"mediumNormal", 
                 "displayString": "Medium Normal",
                 "productString": "Medium Normal"}
-               
-    def getVolcano(self):
-        return {
-             "fieldType": "Text",
-             "fieldName": "volcanoName",
-             "expandHorizontally": True,
-             "maxChars": 40,
-             "visibleChars": 12,
-             "values": "|* Enter volcano name *|",
-            } 
 
     def countyDispatchSource(self):
         return {"identifier":"countySource", 

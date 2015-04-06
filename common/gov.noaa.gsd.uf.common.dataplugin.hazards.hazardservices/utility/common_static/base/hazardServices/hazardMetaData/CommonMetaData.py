@@ -555,7 +555,7 @@ class MetaData(object):
              "fieldType": "Text",
              "fieldName": "volcanoName",
              "expandHorizontally": True,
-             "label" : "Volcano location:",
+             "label" : "Volcano name:",
              "maxChars": 40,
              "visibleChars": 12,
             }         
