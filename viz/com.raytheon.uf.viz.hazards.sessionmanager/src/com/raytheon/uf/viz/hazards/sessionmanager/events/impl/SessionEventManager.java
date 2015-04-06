@@ -274,6 +274,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      directly to ENDED status (no intermediate ENDING)
  *                                      to still allow their start and end times to be
  *                                      changed.
+ * Apr 06, 2015   7272     mduff        Adding changes for Guava upgrade.  Last changes lost in merge.
  * </pre>
  * 
  * @author bsteffen
@@ -2354,7 +2355,7 @@ public class SessionEventManager implements
             }
             boolean startTimeIsCurrentTime = configManager
                     .isStartTimeIsCurrentTime(event);
-            startTimeRange = Ranges.closed(
+            startTimeRange = Range.closed(
                     (startTimeIsCurrentTime ? startTimeWhenLastIssued
                             : HazardConstants.MIN_TIME),
                     (startTimeIsCurrentTime ? startTimeWhenLastIssued
@@ -2423,7 +2424,7 @@ public class SessionEventManager implements
          */
         boolean startTimeIsIssueTime = configManager
                 .isStartTimeIsCurrentTime(event);
-        Range<Long> startTimeRange = Ranges.closed(
+        Range<Long> startTimeRange = Range.closed(
                 (startTimeIsIssueTime ? issueTime : HazardConstants.MIN_TIME),
                 (startTimeIsIssueTime ? issueTime : HazardConstants.MAX_TIME));
 
