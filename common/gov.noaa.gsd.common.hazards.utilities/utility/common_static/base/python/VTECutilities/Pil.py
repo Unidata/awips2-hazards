@@ -63,8 +63,12 @@ class Pil:
                     prevCategory = 1
                     if pointID:
                         try:
+                            from com.raytheon.uf.common.time import SimulatedTime
                             from RiverForecastPoints import RiverForecastPoints
-                            self._rfp = RiverForecastPoints()
+                            import datetime
+                            millis = SimulatedTime.getSystemTime().getMillis()
+                            currentTime = datetime.datetime.fromtimestamp(millis / 1000)
+                            self._rfp = RiverForecastPoints(currentTime)
                             fcstCategory = self._rfp.getMaximumForecastCategory(pointID)
                             prevCategory = self._hazardEvent.get('previousForecastCategory')
                         except Exception, e:

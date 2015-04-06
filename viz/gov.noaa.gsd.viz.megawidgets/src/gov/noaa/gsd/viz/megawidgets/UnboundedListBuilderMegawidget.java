@@ -88,6 +88,11 @@ import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
  *                                           of NotifierMegawidget.
  * Feb 17, 2015   4756     Chris.Golden      Added display settings saving and
  *                                           restoration.
+ * Mar 31, 2015   6873     Chris.Golden      Added code to ensure that mouse
+ *                                           wheel events are not processed by
+ *                                           the megawidget, but are instead
+ *                                           passed up to any ancestor that is a
+ *                                           scrolled composite.
  * </pre>
  * 
  * @author Chris.Golden
@@ -298,6 +303,7 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
             item.setText(0, choice);
         }
         column.pack();
+        UiBuilder.ensureMouseWheelEventsPassedUpToAncestor(table);
 
         /*
          * Bind table scrollbar movements to record the topmost item in the

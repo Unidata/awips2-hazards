@@ -33,6 +33,11 @@ import org.eclipse.swt.widgets.Label;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jun 27, 2014    3512    Chris.Golden Initial creation.
+ * Mar 31, 2015    6873    Chris.Golden Added code to ensure that mouse wheel
+ *                                      events are not processed by the
+ *                                      megawidget, but are instead passed up
+ *                                      to any ancestor that is a scrolled
+ *                                      composite.
  * </pre>
  * 
  * @author Chris.Golden
@@ -154,6 +159,7 @@ public class TimeDeltaComboComponent implements ITimeComponent {
          * Create the time delta selector.
          */
         combo = new Combo(panel, SWT.READ_ONLY);
+        UiBuilder.ensureMouseWheelEventsPassedUpToAncestor(combo);
         synchronizeWidgetsToState();
 
         /*

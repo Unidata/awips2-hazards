@@ -68,6 +68,9 @@ import com.vividsolutions.jts.geom.Polygon;
  * Feb 17, 2015 4209       Dan Schaffer Fixed bug in lassoing hazards
  * Feb 24, 2015 6499       Dan Schaffer Disable moving/drawing of point hazards
  * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
+ * Apr 03, 2015 5591       Dan Schaffer Fixed bug in spatial display handling storm track
+ *                                      If the user moused over the circle in the middle
+ *                                      then the storm polygon became un-editable.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -667,7 +670,6 @@ public class SelectionAction extends NonDrawingAction {
                                 .isComponentEditable(selectedElement);
 
                         if (isEditable) {
-
                             String selectedElementEventID = getSpatialDisplay()
                                     .eventIDForElement(selectedElement);
 
@@ -690,7 +692,8 @@ public class SelectionAction extends NonDrawingAction {
                                      * that the selectedElement in the tool
                                      * layer reflects the correct geometry.
                                      */
-                                    if (!comp.equals(selectedElement)) {
+                                    if (!comp.equals(selectedElement)
+                                            && (comp instanceof HazardServicesPolygon)) {
                                         getSpatialDisplay()
                                                 .setSelectedHazardLayer(comp);
                                     }
@@ -713,7 +716,6 @@ public class SelectionAction extends NonDrawingAction {
                                         .getNearestComponent(loc);
 
                                 if (comp != null) {
-
                                     String containingComponentEventID = getSpatialDisplay()
                                             .eventIDForElement(comp);
 
