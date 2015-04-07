@@ -174,6 +174,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Feb 24, 2015 6499       Dan Schaffer   Disable moving/drawing of point hazards
  * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
  * Mar 19, 2015 6938       mduff        Increased size of handlebars to 1.5 mag.
+ * Apr 03, 2015 6815       mduff        Fix memory leak.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -834,13 +835,11 @@ public class SpatialDisplay extends
     public void removeElement(AbstractDrawableComponent de) {
         dataManager.removeElement(de);
 
-        AbstractElementContainer elementContainer = displayMap.get(de);
+        AbstractElementContainer elementContainer = displayMap.remove(de);
 
         if (elementContainer != null) {
             elementContainer.dispose();
         }
-
-        displayMap.remove(de);
     }
 
     /**
@@ -1423,10 +1422,13 @@ public class SpatialDisplay extends
             if ((paintProps.isZooming())
                     || (previousZoomLevel != paintProps.getZoomLevel())) {
                 previousZoomLevel = paintProps.getZoomLevel();
-                displayMap.remove(el);
 
                 if (el instanceof HazardServicesText) {
                     ((HazardServicesText) el).updatePosition();
+                }
+                AbstractElementContainer aec = displayMap.remove(el);
+                if (aec != null) {
+                    aec.dispose();
                 }
             }
         }
