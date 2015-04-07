@@ -190,6 +190,7 @@ class MetaData(object):
         return {
             "fieldName":"riseAbove:crest:fallBelow",
             "fieldType":"TimeScale",
+            "editable": False,
             "valueLabels": {"riseAbove": "Rise Above Time:","crest": "Crest Time:","fallBelow": "Fall Below Time:"},
             "minimumTimeInterval": 60000,
             "spacing": 5,
@@ -201,7 +202,8 @@ class MetaData(object):
                         {
                          "fieldName": "fallBelowUntilFurtherNotice",
                          "fieldType": "CheckBox",
-                         "label": "Until further notice"
+                         "label": "Until further notice",
+                         "editable": False
                         }]
                }
            }
