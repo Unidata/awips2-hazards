@@ -258,7 +258,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           event time range boundary changed but the
  *                                           event is not found within the rows of the
  *                                           table.
- * Mar 30, 2015 7272       mduff             Changes to support Guava upgrade.
+ * Mar 30, 2015   7272     mduff             Changes to support Guava upgrade.
+ * Apr 06, 2015   6604     Chris.Golden      Fixed bug causing occasional exception due
+ *                                           to assumption about selected time being
+ *                                           made that was incorrect.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1873,7 +1876,9 @@ class TemporalDisplay {
 
         // Get the new visible time range boundaries.
         long range = Long.parseLong(newVisibleTimeDelta);
-        long lower = ruler.getFreeThumbValue(0) - (range / 4L);
+        long lower = (ruler.getFreeThumbValueCount() != 0 ? ruler
+                .getFreeThumbValue(0) : ruler.getConstrainedThumbValue(0))
+                - (range / 4L);
         long upper = lower + range - 1L;
 
         // Use the new visible time range boundaries.

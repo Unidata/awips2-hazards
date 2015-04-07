@@ -590,7 +590,7 @@ HazardTypes = {
               'defaultDuration': 8 * HOURS,
               'durationIncrement': 60,
               },
-    'FL.A' : {'headline': 'FLOOD WATCH',
+    'FL.A' : {'headline': 'RIVER FLOOD WATCH',
               '_override_lock_': OVERRIDE_LOCK,
               'combinableSegments': False,
               'allowAreaChange': False,
@@ -611,7 +611,7 @@ HazardTypes = {
               'durationIncrement': 60,
               'requirePointId': True
               },
-    'FL.W' : {'headline': 'FLOOD WARNING',
+    'FL.W' : {'headline': 'RIVER FLOOD WARNING',
               '_override_lock_': OVERRIDE_LOCK,
               'combinableSegments': False,
               'allowAreaChange': False,
@@ -633,7 +633,7 @@ HazardTypes = {
               'allowUntilFurtherNotice': True,
               'requirePointId': True
               },
-    'FL.Y' : {'headline': 'FLOOD ADVISORY',
+    'FL.Y' : {'headline': 'RIVER FLOOD ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
               'combinableSegments': False,
               'allowAreaChange': False,
