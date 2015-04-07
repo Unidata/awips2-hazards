@@ -440,7 +440,7 @@ class MetaData(object):
     def listOfDrainages(self):
         return {"identifier":"listOfDrainages", 
                 "displayString": "Automated list of drainages", 
-                "productString": "Affected drainages include..." }
+                "productString": "This includes the following streams and drainages..." }
     def additionalRain(self):
         return  {"identifier":"addtlRain",
                  "displayString": "Additional rainfall", 

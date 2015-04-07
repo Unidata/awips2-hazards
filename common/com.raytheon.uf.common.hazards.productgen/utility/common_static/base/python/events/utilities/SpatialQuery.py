@@ -5,12 +5,14 @@ from ufpy.dataaccess import DataAccessLayer
     SOFTWARE HISTORY
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
-    Oct 22, 2014    3572    jsanchez    Initial creation   
+    Oct 22, 2014    3572    jsanchez    Initial creation
+    Apr 07, 2015    6690    Robert.Blum Fixed bug and added parameter to allow 
+                                        the query to be more flexible.
     
     @version 1.0
 '''
 
-def retrievePoints(geometryCollection, tablename, constraints=None, sortBy=None):
+def retrievePoints(geometryCollection, tablename, constraints=None, sortBy=None, locationField='name'):
     """
     Returns the list of location names.
     @param geometryCollection: the geometry that will be used to intersect the points
@@ -29,7 +31,7 @@ def retrievePoints(geometryCollection, tablename, constraints=None, sortBy=None)
     req = DataAccessLayer.newDataRequest('maps', parameters=list(params))
     req.addIdentifier('table','mapdata.' + tablename)
     req.addIdentifier('geomField','the_geom')
-    req.addIdentifier('locationField', 'name')    
+    req.addIdentifier('locationField', locationField)
     
     locations = []
     potentialGeometryData = []
@@ -49,7 +51,7 @@ def retrievePoints(geometryCollection, tablename, constraints=None, sortBy=None)
                 value = constraints[constraint]
                 if type(value) is list and potential.getString(constraint) in value:
                     validGeometryData.append(potential)
-                elif potential.getString(constraint) != value:
+                elif potential.getString(constraint) == value:
                     validGeometryData.append(potential)
     
     results = []

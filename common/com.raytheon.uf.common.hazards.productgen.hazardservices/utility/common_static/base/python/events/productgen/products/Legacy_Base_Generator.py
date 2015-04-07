@@ -17,6 +17,7 @@
                                         previously edited raw data values from the productText
                                         table using setVal() in TextProductCommon.
     Mar 27, 2015    6959    Robert.Blum Changes for Partial cancellations.
+    Apr 07, 2015    6690    Robert.Blum List of drainages contents now matches WarnGen.
 '''
 
 import ProductTemplate
@@ -36,6 +37,7 @@ import HazardDataAccess
 from KeyInfo import KeyInfo
 import os, collections
 import GeometryFactory
+import SpatialQuery
 
 from abc import *
 
@@ -958,14 +960,14 @@ class Product(ProductTemplate.Product):
         if len(attributeValue) > 0:
             for identifier in attributeValue:
                 if identifier == 'listOfDrainages':
-                    # Not sure if this query is correct
-                    drainages = self._retrievePoints(event['geometry'], 'basins')
-                    paraText = self._tpc.formatDelimitedList(drainages)
-                    if len(paraText)==0 :
+                    drainages = SpatialQuery.retrievePoints(event['geometry'], 'ffmp_basins', constraints={'cwa' : self._siteID},
+                                                            sortBy=['streamname'], locationField='streamname')
+                    drainageText = self._tpc.formatDelimitedList(set(drainages))
+                    if len(drainageText)==0 :
                         continue
                     productString = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier)
-                    paraText = productString + paraText + "."
-                    additionalInfo.append(paraText)
+                    drainageText = productString + drainageText + "."
+                    additionalInfo.append(drainageText)
                 elif identifier == 'listOfCities':
                     citiesListFlag = True
                 elif identifier == 'floodMoving':
@@ -988,21 +990,6 @@ class Product(ProductTemplate.Product):
         else:
             format = '%l%M %p'
         return floodTime.strftime(format).lstrip()
-
-    def _retrievePoints(self, geometryCollection, tablename, constraints=None, sortBy=None):
-        req = DataAccessLayer.newDataRequest()
-        req.setDatatype('maps')
-        req.addIdentifier('table','mapdata.' + tablename)
-        req.addIdentifier('geomField','the_geom')
-        req.setParameters('name')
-        locations = []
-        for geom in geometryCollection:
-            req.setEnvelope(geom.envelope)
-            geometryData = DataAccessLayer.getGeometryData(req)
-            for data in geometryData:
-                name = data.getLocationName()
-                locations.append(name)
-        return locations
 
     def _setProductInformation(self, vtecRecord, hazardEvent):
         if self._issueFlag:
