@@ -49,6 +49,8 @@ import java.util.Set;
 import net.engio.mbassy.listener.Handler;
 
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -205,6 +207,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Feb 25, 2015 6600       Dan Schaffer       Fixed bug in spatial display centering
  * Mar 26, 2015 6940       Robert.Blum        Changed Conflicts dialog to say Forecast Zones
  *                                            instead of Areas.
+ * Apr 08, 2015 7369       Robert.Blum        Added message box to notify users that a recommender
+ *                                            has completed and return no hazard events.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -462,11 +466,25 @@ public final class HazardServicesMessageHandler {
      * result are now available. This method processes these results, updating
      * the model state and notifying presenters of new events.
      * 
-     * @param eventList
-     *            A list of recommended events
+     * @param toolAction
+     *            The action received.
      * @return
      */
-    private void handleRecommenderResults(final EventSet<IEvent> eventList) {
+    private void handleRecommenderResults(ToolAction toolAction) {
+        final EventSet<IEvent> eventList = toolAction.getRecommendedEventList();
+
+        /*
+         * If no events recommended then display message box declaring that the
+         * recommender has completed.
+         */
+        if (eventList.isEmpty()
+                && toolAction.getToolName() != "NullRecommender") {
+            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                    .getShell();
+            RecommenderCompletedMessageBox msgBox = new RecommenderCompletedMessageBox(
+                    shell, toolAction.getToolName());
+            msgBox.open();
+        }
 
         sessionManager.handleRecommenderResult(eventList);
 
@@ -1469,9 +1487,7 @@ public final class HazardServicesMessageHandler {
                 break;
 
             case RECOMMENDATIONS:
-                EventSet<IEvent> eventList = toolAction
-                        .getRecommendedEventList();
-                handleRecommenderResults(eventList);
+                handleRecommenderResults(toolAction);
                 break;
 
             default:
