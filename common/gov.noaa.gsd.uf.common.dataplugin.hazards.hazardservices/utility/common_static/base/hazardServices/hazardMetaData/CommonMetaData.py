@@ -58,6 +58,7 @@ class MetaData(object):
              "fieldType": "Text",
              "label": "Forecast Point:",
              "maxChars": 5,
+             "editable": False,
             }
     
     def getBasisAndImpacts(self, fieldName='basisAndImpactsStatement'):
