@@ -1006,6 +1006,7 @@ class RiverForecastPoints(object):
         # Index values need to be compared to None rather than submitted to a
         # pure boolean test, otherwise index value of 0 (first value in list)
         # will fail to get picked up.
+        stageDate = RiverForecastPoints.MISSING_VALUE, datetime.datetime.fromtimestamp(0)
         searchType = filters['Search Type']
         if searchType.find("Highest") >= 0 :
             if maxIndex != None :
@@ -1015,8 +1016,6 @@ class RiverForecastPoints(object):
                 stageDate = listTuple[diffIndex]
         elif recentIndex != None : # most recent
             stageDate = listTuple[recentIndex]
-        else :
-            stageDate = RiverForecastPoints.MISSING_VALUE, datetime.datetime.fromtimestamp(0)
 
         # Sort by descending crest value
         n = len(listTuple)-1

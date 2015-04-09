@@ -76,10 +76,10 @@
 #
 #         allowTimeChange: Ignored by the GUI; used in VTEC processing
 #         allowAreaChange: Ignored by the GUI; used in VTEC processing
-#         combinableSegments: Has been turned off and may eventually be eliminated.  
+#         combinableSegments:  
 #                          If False, hazard events are treated as separate ETN's i.e. they
-#                          are not combined into a single segment.  
-#                          A hazard event can have multiple polygons if needed. 
+#                          are not combined into a single segment.  A hazard event can have multiple polygons if needed.
+#                          If True, Hazard Events can be combined into one segment.   
 #         includeAll:   If True, all events in the allowedHazard group need to be included when generating 
 #                       products e.g. ALL FF.A hazard events need to be included when creating an FFA product.
 
@@ -89,7 +89,7 @@ OVERRIDE_LOCK =  ['headline', 'combinableSegments', 'includeAll', 'allowAreaChan
 HazardTypes = {
     'AF.Y' : {'headline': 'ASHFALL ADVISORY',
               '_override_lock_': OVERRIDE_LOCK, 
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -105,7 +105,7 @@ HazardTypes = {
               },
     'AF.W' : {'headline': 'ASHFALL WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -120,7 +120,7 @@ HazardTypes = {
               },
     'AQ.Y' : {'headline': 'AIR QUALITY ALERT',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
               'expirationTime': (-30, 30),
@@ -135,7 +135,7 @@ HazardTypes = {
               },
     'AS.O' : {'headline': 'AIR STAGNATION OUTLOOK',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -151,7 +151,7 @@ HazardTypes = {
               },
     'AS.Y' : {'headline': 'AIR STAGNATION ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -167,7 +167,7 @@ HazardTypes = {
               },
     'BH.S' : {'headline': 'BEACH HAZARD STATEMENT',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -183,7 +183,7 @@ HazardTypes = {
               },
     'BW.Y' : {'headline': 'BRISK WIND ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -199,7 +199,7 @@ HazardTypes = {
               },
     'BZ.A' : {'headline' : 'BLIZZARD WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -215,7 +215,7 @@ HazardTypes = {
               },
     'BZ.W' : {'headline' : 'BLIZZARD WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -231,7 +231,7 @@ HazardTypes = {
               },
     'CF.A' : {'headline': 'COASTAL FLOOD WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -247,7 +247,7 @@ HazardTypes = {
               },
     'CF.W' : {'headline': 'COASTAL FLOOD WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True, 
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -263,7 +263,7 @@ HazardTypes = {
               },
     'CF.Y' : {'headline': 'COASTAL FLOOD ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True, 
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -279,7 +279,7 @@ HazardTypes = {
               },
     'CF.S' : {'headline': '',  # No headline for this VTEC
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -295,7 +295,7 @@ HazardTypes = {
               },
     'DS.W' : {'headline': 'DUST STORM WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -311,7 +311,7 @@ HazardTypes = {
               },
     'DU.Y' : {'headline': 'BLOWING DUST ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -327,7 +327,7 @@ HazardTypes = {
               },
     'EC.A' : {'headline': 'EXTREME COLD WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -343,7 +343,7 @@ HazardTypes = {
               },
     'EC.W' : {'headline': 'EXTREME COLD WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -359,7 +359,7 @@ HazardTypes = {
               },
     'EH.A' : {'headline': 'EXCESSIVE HEAT WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -375,7 +375,7 @@ HazardTypes = {
               },
     'EH.W' : {'headline': 'EXCESSIVE HEAT WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -409,7 +409,7 @@ HazardTypes = {
               },
     'FA.A' : {'headline': 'AREAL FLOOD WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, # True,
+              'combinableSegments': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
               'expirationTime': (-30, 30),
@@ -480,7 +480,7 @@ HazardTypes = {
               },
     'FF.A' : {'headline': 'FLASH FLOOD WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True, 
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -576,7 +576,7 @@ HazardTypes = {
               },
     'FG.Y' : {'headline': 'DENSE FOG ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -608,6 +608,7 @@ HazardTypes = {
               'inclusionAreaInSqKm' : 1.0,
               'replacedBy': ['FL.W', 'FL.Y'],
               'defaultDuration': 8 * HOURS,
+              'allowUntilFurtherNotice': True,
               'durationIncrement': 60,
               'requirePointId': True
               },
@@ -657,7 +658,7 @@ HazardTypes = {
               },
     'FR.Y' : {'headline': 'FROST ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -673,7 +674,7 @@ HazardTypes = {
               },
     'FW.A' : {'headline': 'FIRE WEATHER WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -689,7 +690,7 @@ HazardTypes = {
               },
     'FW.W' : {'headline': 'RED FLAG WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -705,7 +706,7 @@ HazardTypes = {
               },
     'FZ.A' : {'headline': 'FREEZE WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -721,7 +722,7 @@ HazardTypes = {
               },
     'FZ.W' : {'headline': 'FREEZE WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -737,7 +738,7 @@ HazardTypes = {
               },
     'GL.A' : {'headline': 'GALE WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -753,7 +754,7 @@ HazardTypes = {
               },
     'GL.W' : {'headline': 'GALE WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -769,7 +770,7 @@ HazardTypes = {
               },
     'HF.A' : {'headline': 'HURRICANE FORCE WIND WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -785,7 +786,7 @@ HazardTypes = {
               },
     'HF.W' : {'headline': 'HURRICANE FORCE WIND WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -801,7 +802,7 @@ HazardTypes = {
               },
     'HT.Y' : {'headline': 'HEAT ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -817,7 +818,7 @@ HazardTypes = {
               },
     'HU.A' : {'headline': 'HURRICANE WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': False,
@@ -833,7 +834,7 @@ HazardTypes = {
               },
     'HU.W' : {'headline': 'HURRICANE WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': False,
@@ -851,7 +852,7 @@ HazardTypes = {
               },
     'HW.A' : {'headline': 'HIGH WIND WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -867,7 +868,7 @@ HazardTypes = {
               },
     'HW.W' : {'headline': 'HIGH WIND WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -919,7 +920,7 @@ HazardTypes = {
               },
     'HZ.A' : {'headline': 'HARD FREEZE WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -935,7 +936,7 @@ HazardTypes = {
               },
     'HZ.W' : {'headline': 'HARD FREEZE WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -951,7 +952,7 @@ HazardTypes = {
               },
     'IS.W' : {'headline': 'ICE STORM WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -967,7 +968,7 @@ HazardTypes = {
               },
     'LE.A' : {'headline': 'LAKE EFFECT SNOW WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -983,7 +984,7 @@ HazardTypes = {
               },
     'LE.W' : {'headline': 'LAKE EFFECT SNOW WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -999,7 +1000,7 @@ HazardTypes = {
               },
     'LE.Y' : {'headline': 'LAKE EFFECT SNOW ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1015,7 +1016,7 @@ HazardTypes = {
               },
     'LO.Y' : {'headline': 'LOW WATER ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1031,7 +1032,7 @@ HazardTypes = {
               },
     'LS.A' : {'headline': 'LAKESHORE FLOOD WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1047,7 +1048,7 @@ HazardTypes = {
               },
     'LS.W' : {'headline': 'LAKESHORE FLOOD WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1063,7 +1064,7 @@ HazardTypes = {
               },
     'LS.Y' : {'headline': 'LAKESHORE FLOOD ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1079,7 +1080,7 @@ HazardTypes = {
               },
     'LW.Y' : {'headline': 'LAKE WIND ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1095,7 +1096,7 @@ HazardTypes = {
               },
     'MA.S' : {'headline': '',  # No headline for this VTEC
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1129,7 +1130,7 @@ HazardTypes = {
               },
     'MF.Y' : {'headline': 'DENSE FOG ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1145,7 +1146,7 @@ HazardTypes = {
               },  # Marine Fog
     'MH.Y' : {'headline': 'ASHFALL ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1161,7 +1162,7 @@ HazardTypes = {
               },  # Marine Ashfall
     'MS.Y' : {'headline': 'DENSE SMOKE ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1177,7 +1178,7 @@ HazardTypes = {
               },  # Marine Smoke
     'RB.Y' : {'headline': 'SMALL CRAFT ADVISORY FOR ROUGH BAR',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1193,7 +1194,7 @@ HazardTypes = {
               },
     'SC.Y' : {'headline': 'SMALL CRAFT ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1209,7 +1210,7 @@ HazardTypes = {
               },
     'SE.A' : {'headline': 'HAZARDOUS SEAS WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1225,7 +1226,7 @@ HazardTypes = {
               },
     'SE.W' : {'headline': 'HAZARDOUS SEAS WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1241,7 +1242,7 @@ HazardTypes = {
               },
     'SI.Y' : {'headline': 'SMALL CRAFT ADVISORY FOR WINDS',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1257,7 +1258,7 @@ HazardTypes = {
               },
     'SM.Y' : {'headline': 'DENSE SMOKE ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1273,7 +1274,7 @@ HazardTypes = {
               },
     'SR.A' : {'headline': 'STORM WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1289,7 +1290,7 @@ HazardTypes = {
               },
     'SR.W' : {'headline': 'STORM WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1305,7 +1306,7 @@ HazardTypes = {
               },
     'SU.W' : {'headline': 'HIGH SURF WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1321,7 +1322,7 @@ HazardTypes = {
               },
     'SU.Y' : {'headline': 'HIGH SURF ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1337,7 +1338,7 @@ HazardTypes = {
               },
     'SV.A' : {'headline': 'SEVERE THUNDERSTORM WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1369,7 +1370,7 @@ HazardTypes = {
               },
     'SW.Y' : {'headline': 'SMALL CRAFT ADVISORY FOR HAZARDOUS SEAS',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1385,7 +1386,7 @@ HazardTypes = {
               },
     'TO.A' : {'headline': 'TORNADO WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1417,7 +1418,7 @@ HazardTypes = {
               },
     'TR.A' : {'headline': 'TROPICAL STORM WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': False,
@@ -1435,7 +1436,7 @@ HazardTypes = {
               },
     'TR.W' : {'headline': 'TROPICAL STORM WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': False,
@@ -1453,7 +1454,7 @@ HazardTypes = {
               },
     'TS.A' : {'headline': 'TSUNAMI WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1469,7 +1470,7 @@ HazardTypes = {
               },
     'TS.W' : {'headline': 'TSUNAMI WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1485,7 +1486,7 @@ HazardTypes = {
               },
     'TY.A' : {'headline': 'TYPHOON WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': False,
@@ -1503,7 +1504,7 @@ HazardTypes = {
               },
     'TY.W' : {'headline': 'TYPHOON WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': False,
@@ -1521,7 +1522,7 @@ HazardTypes = {
               },
     'UP.A' : {'headline': 'HEAVY FREEZING SPRAY WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1537,7 +1538,7 @@ HazardTypes = {
               },
     'UP.W' : {'headline': 'HEAVY FREEZING SPRAY WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1553,7 +1554,7 @@ HazardTypes = {
               },
     'UP.Y' : {'headline': 'FREEZING SPRAY ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1569,7 +1570,7 @@ HazardTypes = {
               },
     'WC.A' : {'headline': 'WIND CHILL WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1585,7 +1586,7 @@ HazardTypes = {
               },
     'WC.W' : {'headline': 'WIND CHILL WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1601,7 +1602,7 @@ HazardTypes = {
               },
     'WC.Y' : {'headline': 'WIND CHILL ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1617,7 +1618,7 @@ HazardTypes = {
               },
     'WI.Y' : {'headline': 'WIND ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1633,7 +1634,7 @@ HazardTypes = {
              },
     'WS.A' : {'headline': 'WINTER STORM WATCH',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1649,7 +1650,7 @@ HazardTypes = {
               },
     'WS.W' : {'headline': 'WINTER STORM WARNING',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1665,7 +1666,7 @@ HazardTypes = {
               },
     'WW.Y' : {'headline': 'WINTER WEATHER ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1681,7 +1682,7 @@ HazardTypes = {
               },
     'ZF.Y' : {'headline': 'FREEZING FOG ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
@@ -1697,7 +1698,7 @@ HazardTypes = {
               },
     'ZR.Y' : {'headline': 'FREEZING RAIN ADVISORY',
               '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False, #True
+              'combinableSegments': True,
               'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,

@@ -33,11 +33,13 @@ import RecommenderTemplate
 import numpy
 import JUtil
 import time
+import re
 from EventSet import EventSet
 
 from MapsDatabaseAccessor import MapsDatabaseAccessor
 
 from HazardConstants import *
+import HazardDataAccess
 
 from com.raytheon.uf.common.hazards.hydro import RiverProDataManager
 from gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender import RiverProFloodRecommender
@@ -57,6 +59,7 @@ POINT_ID = "pointID"
 SELECTED_POINT_ID = "selectedPointID"
 POINT = "point"
 FORECAST_POINT = "forecastPoint"
+MISSING_VALUE = -9999
      
 class Recommender(RecommenderTemplate.Recommender):
 
@@ -111,50 +114,6 @@ class Recommender(RecommenderTemplate.Recommender):
         
         return dialogDict
 
-    def _setHazardPolygonDict(self):
-        hiresInundationAreas = {}
-        mapsAccessor = MapsDatabaseAccessor()
-        try:
-            hiresInundationAreas = mapsAccessor.getPolygonDict(HIRES_RIVERINUNDATION_TABLE)
-        except:
-            print "Could not connect to HIRES inundation table:", HIRES_RIVERINUNDATION_TABLE
-
-        floodDAO = FloodDAO.getInstance()
-        lowresInundationAreas = JUtil.javaMapToPyDict(floodDAO.getAreaInundationCoordinates())
-
-        self.hazardPolygonDict = {}
-        for k,v in lowresInundationAreas.iteritems():
-            if lowresInundationAreas[k]:
-                if k in hiresInundationAreas:
-                    self.hazardPolygonDict[k] = hiresInundationAreas[k]
-                else:
-                    self.hazardPolygonDict[k] = self._parseLowresAreas(v)
-
-
-    def _parseLowresAreas(self, area):
-        """
-        @param area: A string of lat lons as whole integers
-        
-        Eg. '4008 9575 4005 9575 4001 9557 4000 9539 4003 9538'
-        
-        @return Nested lists of lat lon pairs
-        
-        Eg. [[40.08 95.75] [40.05 95.75] [40.01 95.57] [40.00 95.39] [40.03 95.38]]
-        """
-        if area:
-            pointsStringList = [int(k)/100.0 for k in area.split(' ') if len(k)]
-            lats = pointsStringList[0::2]
-            lons = [-1.0*k for k in pointsStringList[1::2]]
-            pointPairs = [list(y) for y in zip(lons, lats)]
-            pointPairs.append(pointPairs[0])
-            return pointPairs
-        else:
-            return None
-            
-
-    def _getWarningThreshold(self):
-        return 24 
-    
     def execute(self, eventSet, dialogInputMap, spatialInputMap):
         """
         Runs the River Flood Recommender tool
@@ -194,94 +153,131 @@ class Recommender(RecommenderTemplate.Recommender):
                     
         spatialMap = JUtil.pyDictToJavaMap(spatialInputMap)
         
-        javaEventList = self._riverProFloodRecommender.getRecommendation(sessionMap,
-                                                                   inputMap,
-                                                                   spatialMap)
+        javaEventList = self._riverProFloodRecommender.getRecommendation(
+                        sessionMap, inputMap, spatialMap)
 
-        pythonEventSet = EventSet(javaEventList)
-        
-        self.assignHazardType(pythonEventSet)
-        filteredPythonEventSet = self.filterHazards(pythonEventSet, dialogInputMap)
-        self.addFloodPolygons(filteredPythonEventSet)
-        
-        
-        return filteredPythonEventSet
-
+        recommendedEventSet = EventSet(javaEventList)  
+        currentEvents = self.getCurrentEvents(eventSet, sessionAttributes)        
+        mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventSet)
+        filteredEventSet = self.filterHazards(mergedEventSet, dialogInputMap)
+        self.addFloodPolygons(filteredEventSet)
+                  
+        return filteredEventSet
+    
     def toString(self):
         return "RiverFloodRecommender"
-    
-    def getFloodPolygonForRiverPointHazard(self, hazardEvent):
-        """
-        Returns a user-defined flood hazard polygon for 
-        a river forecast point flood hazard. The base version
-        of this tool does nothing. It is up to the implementer
-        to override this method.
-        
-        @param  hazardEvent: A hazard event corresponding to 
-                           a river forecast point flood 
-                           hazard
-        """
-        attributesDict = hazardEvent.getHazardAttributes()
-        id = attributesDict.get(POINT_ID)
-        
-        # Always create the point representing the 
-        # The river forecast point location.
-        # Then check to determine if there 
-        # is an additional inundation map available.
-        forecastPointDict = attributesDict.get(FORECAST_POINT)
-        point = forecastPointDict.get(POINT)
-        coords = [float(point[0]), float(point[1])]
-        pointGeometry = GeometryFactory.createPoint(coords)
-        geometryList = [pointGeometry]
-                
-        if id in self.hazardPolygonDict:
-            hazardPolygon = self.hazardPolygonDict[id]
-            geometry = GeometryFactory.createPolygon(hazardPolygon)
-            geometryList.append(geometry)      
-            
-        geometryCollection = GeometryFactory.createCollection(geometryList)
-        hazardEvent.setGeometry(geometryCollection)
 
+    def _setHazardPolygonDict(self):
+        hiresInundationAreas = {}
+        mapsAccessor = MapsDatabaseAccessor()
+        try:
+            hiresInundationAreas = mapsAccessor.getPolygonDict(HIRES_RIVERINUNDATION_TABLE)
+        except:
+            print "Could not connect to HIRES inundation table:", HIRES_RIVERINUNDATION_TABLE
+
+        floodDAO = FloodDAO.getInstance()
+        lowresInundationAreas = JUtil.javaMapToPyDict(floodDAO.getAreaInundationCoordinates())
+
+        self.hazardPolygonDict = {}
+        for k,v in lowresInundationAreas.iteritems():
+            if lowresInundationAreas[k]:
+                if k in hiresInundationAreas:
+                    self.hazardPolygonDict[k] = hiresInundationAreas[k]
+                else:
+                    self.hazardPolygonDict[k] = self._parseLowresAreas(k, v)
+
+    def _parseLowresAreas(self, lid, area):
+        """
+        @param area: A string of lat lons as whole integers
+        
+        Eg. '4008 9575 4005 9575 4001 9557 4000 9539 4003 9538'
+        
+        @return Nested lists of lat lon pairs
+        
+        Eg. [[40.08 95.75] [40.05 95.75] [40.01 95.57] [40.00 95.39] [40.03 95.38]]
+        """
+        
+        area = area.replace('||','')
+        area = re.sub(' +', ' ',area)
+        validPt = re.search('^\d+ \d+', area)
+        if area and validPt:
+            pointsStringList = [int(k)/100.0 for k in area.split(' ') if len(k)]
+            lats = pointsStringList[0::2]
+            lons = [-1.0*k for k in pointsStringList[1::2]]
+            pointPairs = [list(y) for y in zip(lons, lats)]
+            pointPairs.append(pointPairs[0])
+            return pointPairs
+        else:
+            return None
+                
     def getWarningTimeThreshold(self, startEpoch):
         hrs = self._warningThreshold
         if not hrs:
             hrs = self._getWarningThreshold()
         return startEpoch + datetime.timedelta(hours=hrs).total_seconds()
     
-            
-    def isWatch(self, pointID, warningThreshEpoch):
-        maxFcstStage = self._rfp.getMaximumForecastStage(pointID)
-        floodStage = self._rfp.getFloodStage(pointID)
-        fcstRiseAboveFloodStageTime = self._rfp.getForecastRiseAboveFloodStageTime(pointID)
-        if fcstRiseAboveFloodStageTime:
-            fcstRiseAboveFloodStageTime = fcstRiseAboveFloodStageTime / 1000
+    def getCurrentEvents(self, eventSet, sessionAttributes):
+        siteID = eventSet.getAttributes().get('siteID')        
+        mode = sessionAttributes.get('hazardMode', 'PRACTICE').upper()
+        # Get current events from Session Manager (could include pending / potential)
+        currentEvents = []
+        for event in eventSet:
+            currentEvents.append(event)
+        # Add in those from the Database
+        databaseEvents = HazardDataAccess.getHazardEventsBySite(siteID, mode) 
+        eventIDs = [event.getEventID() for event in currentEvents]
+        for event in databaseEvents:
+            if event.getEventID() not in eventIDs:
+                currentEvents.append(event)
+                eventIDs.append(event.getEventID())
+        return currentEvents
+    
+    def mergeHazardEvents(self, currentEvents, recommendedEventSet):        
+        mergedEvents = EventSet(None)
+        for recommendedEvent in recommendedEventSet:
+            self.setHazardType(recommendedEvent)
+            # Look for an event that already exists
+            found = False
+            for currentEvent in currentEvents:
+                if currentEvent.get(POINT_ID) == recommendedEvent.get(POINT_ID):
+                    # If ended, then simply add the new recommended one
+                    if currentEvent.getStatus() == 'ENDED':
+                        continue 
+                    elif currentEvent.getHazardType() != recommendedEvent.getHazardType():
+                        # Handle transitions to new hazard type
+                        currentEvent.setStatus('ending')
+                        mergedEvents.add(currentEvent)
+                        recommendedEvent.setStatus('pending')
+                        mergedEvents.add(recommendedEvent)
+                    else:
+                        #  Update current event with recommended rise / crest /fall                        
+                        for attribute in ['riseAbove', 'crest', 'fallBelow']:
+                            currentEvent.set('attribute', recommendedEvent.get(attribute, MISSING_VALUE))
+                        mergedEvents.add(currentEvent)
+                    found = True
+            if not found:
+                mergedEvents.add(recommendedEvent) 
+        return mergedEvents
+                            
+    def setHazardType(self, hazardEvent):        
+        pointID = hazardEvent.get(POINT_ID)
         
-        if (maxFcstStage >= floodStage) and (fcstRiseAboveFloodStageTime > warningThreshEpoch):
-            return True
+        riverMile = self._rfp.getRiverMile(pointID)
+        hazardEvent.set("riverMile", riverMile)
+        
+        hazEvtStart = hazardEvent.get("currentStageTime")/1000
+        warningTimeThresh = self.getWarningTimeThreshold(hazEvtStart)
+        hazardEvent.setPhenomenon("FL")
+        
+        if self.isWarning(pointID, warningTimeThresh):
+            hazardEvent.setSignificance("W")
+        elif self.isWatch(pointID, warningTimeThresh):
+            hazardEvent.setSignificance("A")
+        elif self.isAdvisory(pointID):
+            hazardEvent.setSignificance("Y")
         else:
-            return False
-        
-    def isWarning(self, pointID, warningThreshEpoch):
-        maxFcstStage = self._rfp.getMaximumForecastStage(pointID)
-        floodStage = self._rfp.getFloodStage(pointID)
-        fcstRiseAboveFloodStageTime = self._rfp.getForecastRiseAboveFloodStageTime(pointID)
-        if fcstRiseAboveFloodStageTime:
-            fcstRiseAboveFloodStageTime = fcstRiseAboveFloodStageTime / 1000
-        
-        if (maxFcstStage >= floodStage) and (fcstRiseAboveFloodStageTime <= warningThreshEpoch):
-            return True
-        else:
-            return False
-            
-    def isAdvisory(self, pointID):
-        actionStage = self._rfp.getRiverForecastPoint(pointID).getActionStage()
-        maxFcstStage = self._rfp.getMaximumForecastStage(pointID)
-        obsStage = self._rfp.getObservedStage(pointID)[0]
-        
-        if (obsStage >= actionStage) or (maxFcstStage >= actionStage):
-            return True
-        else:
-            return False    
+            hazardEvent.setPhenomenon("HY")
+            hazardEvent.setSignificance("S")                        
 
     def filterHazards(self,hazardEvents, dMap):
         filterType = dMap.get('forecastType')
@@ -324,31 +320,6 @@ class Recommender(RecommenderTemplate.Recommender):
         
         return returnEventSet
 
-
-    def assignHazardType(self, hazardEvents):
-
-        for hazardEvent in hazardEvents:
-        
-            attributesDict = hazardEvent.getHazardAttributes()
-            pointID = attributesDict.get(POINT_ID)
-
-            riverMile = self._rfp.getRiverMile(pointID)
-            hazardEvent.addHazardAttribute("riverMile", riverMile)
-            
-            hazEvtStart = attributesDict.get("currentStageTime")/1000
-            warningTimeThresh = self.getWarningTimeThreshold(hazEvtStart)
-            hazardEvent.setPhenomenon("FL")
-            
-            if self.isWarning(pointID, warningTimeThresh):
-                hazardEvent.setSignificance("W")
-            elif self.isWatch(pointID, warningTimeThresh):
-                hazardEvent.setSignificance("A")
-            elif self.isAdvisory(pointID):
-                hazardEvent.setSignificance("Y")
-            else:
-                hazardEvent.setPhenomenon("HY")
-                hazardEvent.setSignificance("S")
-                
     def addFloodPolygons(self, hazardEvents):
         """
         Inserts flood polygons for each river forecast point
@@ -356,5 +327,83 @@ class Recommender(RecommenderTemplate.Recommender):
         """
         if hazardEvents is not None:
             for hazardEvent in hazardEvents:
-                self.getFloodPolygonForRiverPointHazard(hazardEvent)
+                self.getFloodPolygonForRiverPointHazard(hazardEvent)                
+
+    def getFloodPolygonForRiverPointHazard(self, hazardEvent):
+        """
+        Returns a user-defined flood hazard polygon for 
+        a river forecast point flood hazard. The base version
+        of this tool does nothing. It is up to the implementer
+        to override this method.
+        
+        @param  hazardEvent: A hazard event corresponding to 
+                           a river forecast point flood 
+                           hazard
+        """
+        id = hazardEvent.get(POINT_ID)
+        
+        # Always create the point representing the 
+        # The river forecast point location.
+        # Then check to determine if there 
+        # is an additional inundation map available.
+        forecastPointDict = hazardEvent.get(FORECAST_POINT)
+        point = forecastPointDict.get(POINT)
+        coords = [float(point[0]), float(point[1])]
+        pointGeometry = GeometryFactory.createPoint(coords)
+        geometryList = [pointGeometry]
+                
+        if id in self.hazardPolygonDict:
+            hazardPolygon = self.hazardPolygonDict[id]
+            geometry = GeometryFactory.createPolygon(hazardPolygon)
+            geometryList.append(geometry)      
+            
+        geometryCollection = GeometryFactory.createCollection(geometryList)
+        hazardEvent.setGeometry(geometryCollection)
+                
+    def flush(self):
+        import os
+        os.sys.__stdout__.flush()
+        
+        
+    #####################
+    #  OVERRIDES
+    #####################
+         
+    def _getWarningThreshold(self):
+        return 24 
+
+    def isWatch(self, pointID, warningThreshEpoch):
+        maxFcstStage = self._rfp.getMaximumForecastStage(pointID)
+        floodStage = self._rfp.getFloodStage(pointID)
+        fcstRiseAboveFloodStageTime = self._rfp.getForecastRiseAboveFloodStageTime(pointID)
+        if fcstRiseAboveFloodStageTime:
+            fcstRiseAboveFloodStageTime = fcstRiseAboveFloodStageTime / 1000
+        
+        if (maxFcstStage >= floodStage) and (fcstRiseAboveFloodStageTime > warningThreshEpoch):
+            return True
+        else:
+            return False
+        
+    def isWarning(self, pointID, warningThreshEpoch):
+        maxFcstStage = self._rfp.getMaximumForecastStage(pointID)
+        floodStage = self._rfp.getFloodStage(pointID)
+        fcstRiseAboveFloodStageTime = self._rfp.getForecastRiseAboveFloodStageTime(pointID)
+        if fcstRiseAboveFloodStageTime:
+            fcstRiseAboveFloodStageTime = fcstRiseAboveFloodStageTime / 1000
+        
+        if (maxFcstStage >= floodStage) and (fcstRiseAboveFloodStageTime <= warningThreshEpoch):
+            return True
+        else:
+            return False
+            
+    def isAdvisory(self, pointID):
+        actionStage = self._rfp.getRiverForecastPoint(pointID).getActionStage()
+        maxFcstStage = self._rfp.getMaximumForecastStage(pointID)
+        obsStage = self._rfp.getObservedStage(pointID)[0]
+        
+        if (obsStage >= actionStage) or (maxFcstStage >= actionStage):
+            return True
+        else:
+            return False    
+
 
