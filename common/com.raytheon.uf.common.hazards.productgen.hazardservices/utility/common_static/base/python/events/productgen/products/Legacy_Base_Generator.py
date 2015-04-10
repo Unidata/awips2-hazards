@@ -13,6 +13,8 @@
     Mar 19, 2015    7094    Robert.Blum Updated CTA KeyInfo to contain eventIDs/UGCs.
     Mar 20, 2015    7149    Robert.Blum Made CTAs a String so it is a textBox megaWidget
                                         on the Product Editor.
+    Apr 10, 2015    7399    Robert.Blum Checking for empty strings in the additional info
+                                        to prevent the megawidget error.
 '''
 
 import ProductTemplate
@@ -895,24 +897,26 @@ class Product(ProductTemplate.Product):
         citiesListFlag = False
         if len(attributeValue) > 0:
             for identifier in attributeValue:
+                additionalInfoText = ''
                 if identifier == 'listOfDrainages':
                     # Not sure if this query is correct
                     drainages = self._retrievePoints(event['geometry'], 'basins')
-                    paraText = self._tpc.formatDelimitedList(drainages)
-                    if len(paraText)==0 :
-                        continue
+                    drainages = self._tpc.formatDelimitedList(drainages)
                     productString = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier)
-                    paraText = productString + paraText + "."
-                    additionalInfo.append(paraText)
+                    if len(drainages)== 0 or len(productString) == 0:
+                        continue
+                    additionalInfoText = productString + drainages + "."
                 elif identifier == 'listOfCities':
                     citiesListFlag = True
                 elif identifier == 'floodMoving':
-                    productString = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier,
+                    additionalInfoText = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier,
                                     formatMethod=self.floodTimeStr, formatHashTags=['additionalInfoFloodMovingTime'])
-                    additionalInfo.append(productString)
                 else:
-                    productString = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier)
-                    additionalInfo.append(productString)
+                    additionalInfoText = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier)
+
+                # Add the additional info to the list if not None or empty.
+                if additionalInfoText:
+                    additionalInfo.append(additionalInfoText)
         return additionalInfo, citiesListFlag
 
     def floodTimeStr(self, creationTime, hashTag, flood_time_ms):
