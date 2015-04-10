@@ -1249,7 +1249,7 @@ class MetaData(object):
                        "Closest in Stage/Flow Window", 
                        "Highest in Stage/Flow Window"  
                        ]
-            values = "All Below Upper Stage/Flow"
+            values = "Closest in Stage/Flow Window"
         return {
                "fieldType": "ComboBox",
                "fieldName": parm + "SearchType",
