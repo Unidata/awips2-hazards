@@ -74,6 +74,9 @@ import org.eclipse.swt.widgets.Text;
  *                                           megawidget, but are instead passed up
  *                                           to any ancestor that is a scrolled
  *                                           composite.
+ * Apr 10, 2015   7394     Robert.Blum       Simplified the code to use one Date object
+ *                                           to back both widgets and also made the 
+ *                                           values roll correctly.
  * </pre>
  * 
  * @author Chris.Golden
@@ -126,6 +129,12 @@ public class DateTimeComponent implements ITimeComponent {
      * Longest time text that could be displayed.
      */
     private static final String LONGEST_TIME_TEXT = "00:00";
+
+    private static final long MILLISECONDS_IN_MINUTE = 60000;
+
+    private static final long MILLISECONDS_IN_HOUR = MILLISECONDS_IN_MINUTE * 60;
+
+    private static final long MILLISECONDS_IN_DAY = MILLISECONDS_IN_HOUR * 24;
 
     // Private Classes
 
@@ -308,10 +317,9 @@ public class DateTimeComponent implements ITimeComponent {
     private long state;
 
     /**
-     * Current delta between {@link #state} and the value equivalent to midnight
-     * on the same day as {@link #state}, in milliseconds.
+     * Previous value in milliseconds since the epoch.
      */
-    private long stateDeltaSinceMidnight;
+    private long oldState;
 
     /**
      * Flag indicating whether state changes that occur as a result of a rapidly
@@ -341,16 +349,10 @@ public class DateTimeComponent implements ITimeComponent {
     private final DateTime time;
 
     /**
-     * Date object for the date widget that is reused to avoid constant
-     * reallocation.
+     * Date object for the both the Date and Time widgets that is reused to
+     * avoid constant reallocation.
      */
-    private final Date dateTimestamp = new Date();
-
-    /**
-     * Date object for the time widget that is reused to avoid constant
-     * reallocation.
-     */
-    private final Date timeTimestamp = new Date();
+    private final Date timestamp = new Date();
 
     /**
      * Calendar object that is reused to avoid constant reallocation.
@@ -447,7 +449,7 @@ public class DateTimeComponent implements ITimeComponent {
          * Set up the timestamp trackers and determine whether or not only
          * ending state changes are to be sent along to listeners.
          */
-        synchronizeTimestampTrackersToState();
+        timestamp.setTime(state);
         this.onlySendEndStateChanges = onlySendEndStateChanges;
 
         /*
@@ -463,7 +465,7 @@ public class DateTimeComponent implements ITimeComponent {
         date.setNullText(NULL_DATE_TEXT);
         date.setPattern(DATE_FORMAT);
         date.setTimeZone(TIME_ZONE);
-        date.setSelection(dateTimestamp);
+        date.setSelection(timestamp);
         date.setEnabled(specifier.isEnabled());
 
         /*
@@ -489,7 +491,7 @@ public class DateTimeComponent implements ITimeComponent {
         time.setNullText(NULL_TIME_TEXT);
         time.setPattern(TIME_FORMAT);
         time.setTimeZone(TIME_ZONE);
-        time.setSelection(timeTimestamp);
+        time.setSelection(timestamp);
         time.setEnabled(specifier.isEnabled());
 
         /*
@@ -552,7 +554,12 @@ public class DateTimeComponent implements ITimeComponent {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 DateTime widget = (DateTime) e.widget;
-                long oldState = state;
+
+                /*
+                 * Remember the previous state in case the new state is
+                 * rejected.
+                 */
+                oldState = state;
                 synchronizeStateToWidgets(widget);
                 if (((DateTimeComponent.this.onlySendEndStateChanges == false) || isWidgetUndergoingRapidStateChange(widget))
                         && (oldState != state)) {
@@ -671,8 +678,8 @@ public class DateTimeComponent implements ITimeComponent {
      *            displayed.
      */
     public void setShowNullText(boolean show) {
-        date.setSelection(show ? null : dateTimestamp);
-        time.setSelection(show ? null : timeTimestamp);
+        date.setSelection(show ? null : timestamp);
+        time.setSelection(show ? null : timestamp);
     }
 
     /**
@@ -690,27 +697,18 @@ public class DateTimeComponent implements ITimeComponent {
         recordLastNotifiedState();
 
         /*
-         * Synchronize the timestamp trackers to the new state.
+         * Synchronize the timestamp to the new state.
          */
-        synchronizeTimestampTrackersToState();
+        timestamp.setTime(state);
 
         /*
          * Set the date and time widgets to match the new state.
          */
-        date.setSelection(dateTimestamp);
-        time.setSelection(timeTimestamp);
+        date.setSelection(timestamp);
+        time.setSelection(timestamp);
     }
 
     // Private Methods
-
-    /**
-     * Synchronize the timestamp trackers to the current state.
-     */
-    private void synchronizeTimestampTrackersToState() {
-        stateDeltaSinceMidnight = getDeltaFromClosestPreviousMidnight(state);
-        dateTimestamp.setTime(state - stateDeltaSinceMidnight);
-        timeTimestamp.setTime(state);
-    }
 
     /**
      * Synchronize the state to the current values of the widgets.
@@ -725,86 +723,43 @@ public class DateTimeComponent implements ITimeComponent {
          * selection.
          */
         if (changed.getSelection() == null) {
-            if (changed == date) {
-                date.setSelection(dateTimestamp);
-            } else {
-                time.setSelection(timeTimestamp);
-            }
+            date.setSelection(timestamp);
+            time.setSelection(timestamp);
             return;
         }
 
-        /*
-         * Remember the previous state in case the new state is rejected.
-         */
-        long oldState = state;
-
-        /*
-         * If the new value is a midnight value and the date was changed, then
-         * add the delta between the previous date and the value of the time
-         * widget to get the new state. Otherwise, use the new value for the new
-         * state, and recalculate the delta between it and the closest previous
-         * midnight.
-         */
-        boolean synchTimeWidget = false, synchDateWidget = false;
         long rawState = (changed == date ? date : time).getSelection()
                 .getTime();
-        long deltaSinceMidnight = getDeltaFromClosestPreviousMidnight(rawState);
-        if ((changed == date) && (deltaSinceMidnight == 0L)) {
-            dateTimestamp.setTime(rawState);
-            state = rawState + stateDeltaSinceMidnight;
-            timeTimestamp.setTime(state);
-            synchTimeWidget = true;
-        } else {
-            timeTimestamp.setTime(rawState);
-            state = rawState;
-            stateDeltaSinceMidnight = deltaSinceMidnight;
-            dateTimestamp.setTime(state - stateDeltaSinceMidnight);
+
+        // Check if it was the time that changed
+        if (changed.getSelection() == time.getSelection()) {
+            // Check for minute/hour roll overs
+            if (oldState - rawState == MILLISECONDS_IN_HOUR * 23) {
+                rawState = rawState + MILLISECONDS_IN_DAY;
+            } else if (rawState - oldState == MILLISECONDS_IN_HOUR * 23) {
+                rawState = rawState - MILLISECONDS_IN_DAY;
+            } else if (oldState - rawState == MILLISECONDS_IN_MINUTE * 59) {
+                rawState = rawState + MILLISECONDS_IN_HOUR;
+            } else if (rawState - oldState == MILLISECONDS_IN_MINUTE * 59) {
+                rawState = rawState - MILLISECONDS_IN_HOUR;
+            }
         }
 
         /*
-         * If the holder does not like the new state, restore the old state; if
-         * it modified the new state, update the components to reflect this.
+         * If the holder does not like the new state, restore the old state;
          */
-        rawState = state;
         state = holder.renderValueChangeAcceptable(identifier, rawState);
         if (state == -1L) {
             state = oldState;
-            synchronizeTimestampTrackersToState();
-            synchDateWidget = (changed == date);
-            synchTimeWidget = (changed == time);
-        } else if (state != rawState) {
-            synchronizeTimestampTrackersToState();
-            synchDateWidget = synchTimeWidget = true;
         }
+        timestamp.setTime(state);
 
         /*
-         * Set the date widget and/or time widget to match the now-current state
-         * as necessary.
+         * Set both the date widget and time widget to match the now-current
+         * state.
          */
-        if (synchDateWidget) {
-            date.setSelection(dateTimestamp);
-        }
-        if (synchTimeWidget) {
-            time.setSelection(timeTimestamp);
-        }
-    }
-
-    /**
-     * Get the delta in milliseconds between the specified value and the closest
-     * previous midnight.
-     * 
-     * @param value
-     *            Value for which the delta is to be found, as epoch time in
-     *            milliseconds.
-     * @return Delta in milliseconds.
-     */
-    private long getDeltaFromClosestPreviousMidnight(long value) {
-        calendar.setTimeInMillis(value);
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        return value - calendar.getTimeInMillis();
+        date.setSelection(timestamp);
+        time.setSelection(timestamp);
     }
 
     /**
