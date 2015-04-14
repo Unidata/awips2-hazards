@@ -478,7 +478,7 @@ public final class HazardServicesMessageHandler {
          * recommender has completed.
          */
         if (eventList.isEmpty()
-                && toolAction.getToolName() != "NullRecommender") {
+                && toolAction.getToolName().equals("NullRecommender") == false) {
             Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                     .getShell();
             RecommenderCompletedMessageBox msgBox = new RecommenderCompletedMessageBox(
