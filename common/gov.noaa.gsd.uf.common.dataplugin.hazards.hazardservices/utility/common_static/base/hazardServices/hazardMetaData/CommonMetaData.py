@@ -1148,26 +1148,20 @@ class MetaData(object):
                       "bold": True
                   }
         
-        headerLabel = {
-                       "fieldType": "Label",
-                       "fieldName": parm + "ForecastPointsHeaderLabel",
-                       "label": ('{:15s}'*len(values.keys())).format(*values.keys()),
+        valuesTable = {
+                       "fieldType": "Table",
+                       "fieldName": parm + "ForecastPointsValuesTable",
+                       "lines": 1,
+                       "columnHeaders": values.keys(),
+                       "values": [ values.values() ]
                   }
-        
-        valuesLabel = {
-                       "fieldType": "Label",
-                       "fieldName": parm + "ForecastPointsValuesLabel",
-                       "label": ''.join(values.values()),
-                       }
-
-        
 
         group = {
                  "fieldType": "Group",
-                 "fieldName": parm + "ForecastPointsGoup",
+                 "fieldName": parm + "ForecastPointsGroup",
                  "expandHorizontally": False,
                  "expandVertically": True,
-                 "fields" : [riverLabel,headerLabel,valuesLabel]
+                 "fields" : [riverLabel,valuesTable]
                  
                  }
 

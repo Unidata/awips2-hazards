@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import jep.Jep;
+
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
@@ -71,6 +73,8 @@ import com.google.common.collect.Range;
  *                                      starting values (so that users can see
  *                                      the thumbs when they bring up the
  *                                      test dialog).
+ * Apr 02, 2015    4162    Chris.Golden Added Python initialize required to
+ *                                      employ Jep-using objects.
  * </pre>
  * 
  * @author Chris.Golden
@@ -104,6 +108,7 @@ public class MegawidgetTest extends Dialog {
             System.exit(1);
         }
         if (args.length > 1) {
+            Jep.pyInitialize();
             PythonSideEffectsApplier.initialize();
         }
         MegawidgetTest dialog = new MegawidgetTest(args[0],
