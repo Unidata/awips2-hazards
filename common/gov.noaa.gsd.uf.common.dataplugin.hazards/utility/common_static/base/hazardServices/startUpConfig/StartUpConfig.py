@@ -30,6 +30,10 @@ StartUpConfig = {
     # Flag indicating whether or not the scale bar with two sliders on it
     # should be shown below the start-end time UI element in the HID.
     "showHazardDetailStartEndTimeScale": False,
+
+    # Flag indicating whether or not the HID's layout should be optimized
+    # for a wider window.
+    "hazardDetailWide": False,  
     
     # PIL order in which Product Generation should take place.
     "disseminationOrder" : [ 'FFW', 'FLW', 'FFS', 'FLS', 'FFA'],

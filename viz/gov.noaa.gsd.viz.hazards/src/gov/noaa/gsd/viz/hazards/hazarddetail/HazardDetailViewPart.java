@@ -17,6 +17,8 @@ import gov.noaa.gsd.viz.hazards.ui.DockTrackingViewPart;
 import gov.noaa.gsd.viz.megawidgets.CheckBoxMegawidget;
 import gov.noaa.gsd.viz.megawidgets.ComboBoxMegawidget;
 import gov.noaa.gsd.viz.megawidgets.ComboBoxSpecifier;
+import gov.noaa.gsd.viz.megawidgets.CompositeMegawidget;
+import gov.noaa.gsd.viz.megawidgets.CompositeSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ControlComponentHelper;
 import gov.noaa.gsd.viz.megawidgets.IControl;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
@@ -228,6 +230,7 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           yet issued), or what it can be replaced
  *                                           by (if issued).
  * Apr 09, 2015   7382     Chris.Golden      Added "show start-end time sliders" flag.
+ * Apr 15, 2015   3508     Chris.Golden      Added "hazard detail to be wide" flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -260,6 +263,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * End time state identifier.
      */
     private static final String END_TIME_STATE = "__endTime__";
+
+    /**
+     * Type of the composite megawidget.
+     */
+    private static final String COMPOSITE_MEGAWIDGET_TYPE = "Composite";
 
     /**
      * Type of the combo box megawidget.
@@ -296,6 +304,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      */
     private static final String TIME_RANGE_IDENTIFIER = START_TIME_STATE + ":"
             + END_TIME_STATE;
+
+    /**
+     * Until-further-notice composite wrapper megawidget identifier.
+     */
+    private static final String UNTIL_FURTHER_NOTICE_WRAPPER_IDENTIFIER = "untilFurtherNoticeWrapper";
 
     /**
      * Hazard type section text.
@@ -415,6 +428,41 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
+     * Specifier for the until-further-notice checkbox megawidget.
+     */
+    private static final ImmutableList<ImmutableMap<String, Object>> UNTIL_FURTHER_NOTICE_DETAIL_FIELD_PARAMETERS;
+    static {
+        Map<String, Object> map = new HashMap<>();
+        map.put(MegawidgetSpecifier.MEGAWIDGET_TYPE, CHECKBOX_MEGAWIDGET_TYPE);
+        map.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
+                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
+        map.put(MegawidgetSpecifier.MEGAWIDGET_LABEL, UNTIL_FURTHER_NOTICE_TEXT);
+        List<ImmutableMap<String, Object>> list = new ArrayList<>();
+        list.add(ImmutableMap.copyOf(map));
+        UNTIL_FURTHER_NOTICE_DETAIL_FIELD_PARAMETERS = ImmutableList
+                .copyOf(list);
+    }
+
+    /**
+     * Specifier for the until-further-notice checkbox megawidget that has its
+     * own row as a detail field.
+     */
+    private static final ImmutableList<ImmutableMap<String, Object>> UNTIL_FURTHER_NOTICE_DETAIL_FIELD_WRAPPED_PARAMETERS;
+    static {
+        Map<String, Object> map = new HashMap<>();
+        map.put(MegawidgetSpecifier.MEGAWIDGET_TYPE, COMPOSITE_MEGAWIDGET_TYPE);
+        map.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
+                UNTIL_FURTHER_NOTICE_WRAPPER_IDENTIFIER);
+        map.put(CompositeSpecifier.CHILD_MEGAWIDGETS, ImmutableList
+                .copyOf(UNTIL_FURTHER_NOTICE_DETAIL_FIELD_PARAMETERS));
+        map.put(CompositeSpecifier.LEFT_MARGIN, 10);
+        List<ImmutableMap<String, Object>> list = new ArrayList<>();
+        list.add(ImmutableMap.copyOf(map));
+        UNTIL_FURTHER_NOTICE_DETAIL_FIELD_WRAPPED_PARAMETERS = ImmutableList
+                .copyOf(list);
+    }
+
+    /**
      * Specifier parameters for the time range megawidget.
      */
     private static final ImmutableMap<String, Object> TIME_SCALE_SPECIFIER_PARAMETERS;
@@ -434,24 +482,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 HazardConstants.TIME_RANGE_MINIMUM_INTERVAL);
         map.put(IParentSpecifier.MEGAWIDGET_SPECIFIER_FACTORY,
                 new MegawidgetSpecifierFactory());
-
-        /*
-         * Specify the "Until further notice" checkbox to be shown next to the
-         * end time date-time fields.
-         */
-        subMap = new HashMap<>();
-        subMap.put(MegawidgetSpecifier.MEGAWIDGET_TYPE,
-                CHECKBOX_MEGAWIDGET_TYPE);
-        subMap.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
-                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
-        subMap.put(MegawidgetSpecifier.MEGAWIDGET_LABEL,
-                UNTIL_FURTHER_NOTICE_TEXT);
-        List<Map<String, Object>> childList = new ArrayList<>();
-        childList.add(ImmutableMap.copyOf(subMap));
-        subMap = new HashMap<>();
-        subMap.put(END_TIME_STATE, ImmutableList.copyOf(childList));
-        map.put(TimeScaleSpecifier.MEGAWIDGET_DETAIL_FIELDS,
-                ImmutableMap.copyOf(subMap));
 
         /*
          * Ensure that the time range megawidget shows special text if the
@@ -674,6 +704,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * include a sliders-equipped scale bar.
      */
     private boolean showStartEndTimeScale;
+
+    /**
+     * Flag indicating whether or not the view part is to be built in a way that
+     * is optimized for wide viewing.
+     */
+    private boolean buildForWideViewing;
 
     /**
      * <p>
@@ -1399,6 +1435,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             long maxVisibleTime,
             ICurrentTimeProvider currentTimeProvider,
             boolean showStartEndTimeScale,
+            boolean buildForWideViewing,
             Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers) {
         initialized = true;
 
@@ -1409,6 +1446,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         this.maximumVisibleTime = maxVisibleTime;
         this.currentTimeProvider = currentTimeProvider;
         this.showStartEndTimeScale = showStartEndTimeScale;
+        this.buildForWideViewing = buildForWideViewing;
         this.extraDataForEventIds = extraDataForEventIdentifiers;
 
         /*
@@ -1786,6 +1824,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         timeMegawidgetParameters.put(
                 MultiTimeMegawidgetSpecifier.MEGAWIDGET_SHOW_SCALE,
                 showStartEndTimeScale);
+        Map<String, Object> map = new HashMap<>();
+        map.put(END_TIME_STATE,
+                (buildForWideViewing ? UNTIL_FURTHER_NOTICE_DETAIL_FIELD_PARAMETERS
+                        : UNTIL_FURTHER_NOTICE_DETAIL_FIELD_WRAPPED_PARAMETERS));
+        timeMegawidgetParameters.put(
+                TimeScaleSpecifier.MEGAWIDGET_DETAIL_FIELDS, map);
         if (timeScalePanel == null) {
             timeScalePanel = timeSubPanel;
             try {
@@ -1793,8 +1837,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         timeMegawidgetParameters).createMegawidget(
                         timeScalePanel, TimeScaleMegawidget.class,
                         megawidgetCreationParams);
-                checkBoxMegawidget = (CheckBoxMegawidget) timeMegawidget
-                        .getChildren().get(0);
             } catch (Exception e) {
                 statusHandler.error(
                         "unexpected problem creating time scale and checkbox "
@@ -1807,8 +1849,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         timeMegawidgetParameters).createMegawidget(
                         timeRangePanel, TimeRangeMegawidget.class,
                         megawidgetCreationParams);
-                checkBoxMegawidget = (CheckBoxMegawidget) timeRangeMegawidget
-                        .getChildren().get(0);
             } catch (Exception e) {
                 statusHandler.error(
                         "unexpected problem creating time range and checkbox "
@@ -1818,6 +1858,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             throw new IllegalStateException(
                     "method already called twice, no more to create");
         }
+        checkBoxMegawidget = (CheckBoxMegawidget) (buildForWideViewing ? timeMegawidget
+                .getChildren().get(0) : ((CompositeMegawidget) timeMegawidget
+                .getChildren().get(0)).getChildren().get(0));
         megawidgetsToAlign.add(timeMegawidget);
         timeMegawidgets.add(timeMegawidget);
         untilFurtherNoticeToggleMegawidgets.add(checkBoxMegawidget);

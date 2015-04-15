@@ -62,6 +62,7 @@ import com.raytheon.uf.common.time.TimeRange;
  *                                        shown has a point ID (if not yet issued), or
  *                                        what it can be replaced by (if issued).
  * Apr 09, 2015  7382      Chris.Golden   Added "show start-end time sliders" flag.
+ * Apr 15, 2015  3508      Chris.Golden   Added "hazard detail to be wide" flag.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -326,6 +327,7 @@ public class HazardDetailViewForTesting implements
             long maxVisibleTime,
             ICurrentTimeProvider currentTimeProvider,
             boolean showStartEndTimeScale,
+            boolean buildForWideViewing,
             Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers) {
     }
 

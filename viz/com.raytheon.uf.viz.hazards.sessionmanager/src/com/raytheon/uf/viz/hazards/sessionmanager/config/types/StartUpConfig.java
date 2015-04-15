@@ -36,6 +36,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * Feb 10, 2015 3961       chris.cody   Add gagePointFirstRecommender startup property
  * Feb 10, 2015 6393       Chris.Golden Added hazard detail tab text.
  * Apr 09, 2015 7382       Chris.Golden Added hazard detail "show sliders" flag.
+ * Apr 15, 2015 3508       Chris.Golden Added hazard detail "assume wide" flag.
  * </pre>
  * 
  * @author bsteffen
@@ -57,6 +58,9 @@ public class StartUpConfig {
 
     @JsonProperty("showHazardDetailStartEndTimeScale")
     private boolean showHazardDetailStartEndTimeScale;
+
+    @JsonProperty("hazardDetailWide")
+    private boolean hazardDetailWide;
 
     public Console getConsole() {
         return console;
@@ -97,6 +101,14 @@ public class StartUpConfig {
     public void setShowingHazardDetailStartEndTimeScale(
             boolean showHazardDetailStartEndTimeScale) {
         this.showHazardDetailStartEndTimeScale = showHazardDetailStartEndTimeScale;
+    }
+
+    public boolean isHazardDetailToBeWide() {
+        return hazardDetailWide;
+    }
+
+    public void setHazardDetailToBeWide(boolean hazardDetailWide) {
+        this.hazardDetailWide = hazardDetailWide;
     }
 
     @Override

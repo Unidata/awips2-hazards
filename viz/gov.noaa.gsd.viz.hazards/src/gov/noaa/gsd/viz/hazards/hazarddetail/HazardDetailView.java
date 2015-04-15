@@ -127,6 +127,7 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                           yet issued), or what it can be replaced
  *                                           by (if issued).
  * Apr 09, 2015   7382     Chris.Golden      Added "show start-end time sliders" flag.
+ * Apr 15, 2015   3508     Chris.Golden      Added "hazard detail to be wide" flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -207,6 +208,11 @@ public class HazardDetailView extends
      * include a sliders-equipped scale bar.
      */
     private boolean showStartEndTimeScale;
+
+    /**
+     * Flag indicating whether or not the view is to built for wide viewing.
+     */
+    private boolean buildForWideViewing;
 
     /**
      * Map pairing event identifiers with any extra data they may have used in
@@ -623,6 +629,7 @@ public class HazardDetailView extends
             long maxVisibleTime,
             ICurrentTimeProvider currentTimeProvider,
             boolean showStartEndTimeScale,
+            boolean buildForWideViewing,
             Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers) {
         this.minVisibleTime = minVisibleTime;
         this.maxVisibleTime = maxVisibleTime;
@@ -632,6 +639,7 @@ public class HazardDetailView extends
         }
         this.currentTimeProvider = currentTimeProvider;
         this.showStartEndTimeScale = showStartEndTimeScale;
+        this.buildForWideViewing = buildForWideViewing;
         this.extraDataForEventIdentifiers = extraDataForEventIdentifiers;
 
         /*
@@ -770,7 +778,7 @@ public class HazardDetailView extends
          * Do the basic initialization.
          */
         getViewPart().initialize(minVisibleTime, maxVisibleTime,
-                currentTimeProvider, showStartEndTimeScale,
+                currentTimeProvider, showStartEndTimeScale, buildForWideViewing,
                 extraDataForEventIdentifiers);
 
         /*

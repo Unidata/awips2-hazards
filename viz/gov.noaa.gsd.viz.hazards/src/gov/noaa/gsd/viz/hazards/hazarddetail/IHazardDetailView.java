@@ -54,6 +54,7 @@ import com.raytheon.uf.common.time.TimeRange;
  *                                      yet issued), or what it can be replaced
  *                                      by (if issued).
  * Apr 09, 2015    7382    Chris.Golden Added "show start-end time sliders" flag.
+ * Apr 15, 2015    3508    Chris.Golden Added "hazard detail to be wide" flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -85,6 +86,9 @@ public interface IHazardDetailView {
      *            Flag indicating whether or not to show a scale widget as part
      *            of the UI elements allowing manipulation of the start-end
      *            time.
+     * @param buildForWideViewing
+     *            Flag indicating whether or not the view should be laid out so
+     *            as to be optimized for wide viewing.
      * @param extraDataForEventIdentifiers
      *            Map pairing event identifiers with any extra data they may
      *            have used in previous view instantiations, allowing such data
@@ -95,6 +99,7 @@ public interface IHazardDetailView {
             long maxVisibleTime,
             ICurrentTimeProvider currentTimeProvider,
             boolean showStartEndTimeScale,
+            boolean buildForWideViewing,
             Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers);
 
     /**
