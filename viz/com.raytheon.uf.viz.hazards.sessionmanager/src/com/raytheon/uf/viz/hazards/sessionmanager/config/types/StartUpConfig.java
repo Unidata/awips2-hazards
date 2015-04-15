@@ -35,6 +35,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * Jan 19, 2015 4193       rferrel      Added disseminationOrder.
  * Feb 10, 2015 3961       chris.cody   Add gagePointFirstRecommender startup property
  * Feb 10, 2015 6393       Chris.Golden Added hazard detail tab text.
+ * Apr 09, 2015 7382       Chris.Golden Added hazard detail "show sliders" flag.
  * </pre>
  * 
  * @author bsteffen
@@ -53,6 +54,9 @@ public class StartUpConfig {
 
     @JsonProperty("hazardDetailTabText")
     private String[] hazardDetailTabText;
+
+    @JsonProperty("showHazardDetailStartEndTimeScale")
+    private boolean showHazardDetailStartEndTimeScale;
 
     public Console getConsole() {
         return console;
@@ -84,6 +88,15 @@ public class StartUpConfig {
 
     public void setHazardDetailTabText(String[] hazardDetailTabText) {
         this.hazardDetailTabText = hazardDetailTabText;
+    }
+
+    public boolean isShowingHazardDetailStartEndTimeScale() {
+        return showHazardDetailStartEndTimeScale;
+    }
+
+    public void setShowingHazardDetailStartEndTimeScale(
+            boolean showHazardDetailStartEndTimeScale) {
+        this.showHazardDetailStartEndTimeScale = showHazardDetailStartEndTimeScale;
     }
 
     @Override

@@ -60,6 +60,7 @@ import com.google.common.collect.Sets;
  *                                      megawidget, but are instead passed up
  *                                      to any ancestor that is a scrolled
  *                                      composite.
+ * Apr 09, 2015   7382     Chris.Golden Changed to make the scale bar optional.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1549,6 +1550,7 @@ public abstract class MultiTimeMegawidget extends
         GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
         gridData.horizontalSpan = 2;
         gridData.verticalIndent = specifier.getSpacing();
+        gridData.exclude = (specifier.isShowScale() == false);
         scale.setLayoutData(gridData);
     }
 

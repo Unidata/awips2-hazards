@@ -42,6 +42,8 @@ import java.util.Map;
  * Oct 20, 2014   4818     Chris.Golden      Changed to only stretch across the
  *                                           full width of a details panel if
  *                                           configured to show a scale widget.
+ * Apr 09, 2015   7382     Chris.Golden      Changed to implement new scale
+ *                                           capable interface.
  * </pre>
  * 
  * @author Chris.Golden
@@ -50,7 +52,8 @@ import java.util.Map;
  */
 public abstract class SpinnerSpecifier<T extends Number & Comparable<T>>
         extends BoundedValueMegawidgetSpecifier<T> implements
-        ISingleLineSpecifier, IRapidlyChangingStatefulSpecifier {
+        ISingleLineSpecifier, IRapidlyChangingStatefulSpecifier,
+        IScaleCapableSpecifier {
 
     // Public Static Constants
 
@@ -62,15 +65,6 @@ public abstract class SpinnerSpecifier<T extends Number & Comparable<T>>
      * would cause a change in value.
      */
     public static final String MEGAWIDGET_INCREMENT_DELTA = "incrementDelta";
-
-    /**
-     * Scale usage parameter name; a megawidget may include a boolean as the
-     * value associated with this name. The value determines whether or not a
-     * scale widget will be shown below the label and spinner to allow the user
-     * an alternate method of manipulating the state. If not specified, it is
-     * assumed to be false.
-     */
-    public static final String MEGAWIDGET_SHOW_SCALE = "showScale";
 
     // Private Variables
 
@@ -198,12 +192,7 @@ public abstract class SpinnerSpecifier<T extends Number & Comparable<T>>
         return horizontalExpander;
     }
 
-    /**
-     * Determine whether or not a scale widget is to be shown below the label
-     * and spinner widgets.
-     * 
-     * @return True if a scale widget is to be shown, false otherwise.
-     */
+    @Override
     public final boolean isShowScale() {
         return showScale;
     }

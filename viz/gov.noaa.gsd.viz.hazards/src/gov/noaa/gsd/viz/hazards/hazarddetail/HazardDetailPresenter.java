@@ -154,6 +154,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           event being shown has a point ID (if not
  *                                           yet issued), or what it can be replaced
  *                                           by (if issued).
+ * Apr 09, 2015    7382    Chris.Golden      Added "show start-end time sliders" flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1077,7 +1078,8 @@ public class HazardDetailPresenter extends
 
         /*
          * Get the list of hazard event parameter describers that will be used
-         * to generate tab title text.
+         * to generate tab title text, and determine whether or not the start-
+         * end time UI elements should show a scale bar.
          */
         StartUpConfig startUpConfig = getModel().getConfigurationManager()
                 .getStartUpConfig();
@@ -1085,6 +1087,8 @@ public class HazardDetailPresenter extends
                 .getHazardDetailTabText() : null);
         tabTextDescribers = HazardEventUtilities
                 .getHazardParameterDescribers(tabText);
+        boolean showStartEndTimeScale = startUpConfig
+                .isShowingHazardDetailStartEndTimeScale();
 
         /*
          * Initialize the view.
@@ -1093,7 +1097,7 @@ public class HazardDetailPresenter extends
         getView().initialize(timeRange.getStart().getTime(),
                 timeRange.getEnd().getTime(),
                 getModel().getTimeManager().getCurrentTimeProvider(),
-                extraDataForEvents);
+                showStartEndTimeScale, extraDataForEvents);
 
         /*
          * Show the detail view if appropriate.

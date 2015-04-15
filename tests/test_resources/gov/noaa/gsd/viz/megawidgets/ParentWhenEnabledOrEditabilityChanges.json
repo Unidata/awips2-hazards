@@ -62,6 +62,7 @@
 	     {
 	      "fieldName": "riseAbove:crest:fallBelow",
 	      "fieldType": "TimeScale",
+          "showScale": true,
 	      "valueLabels": {
 	       "riseAbove": "Rise Above Time:",
 	       "crest": "Crest Time:",
@@ -127,6 +128,7 @@
  {
   "fieldName": "parent1:parent2:parent3",
   "fieldType": "TimeScale",
+  "showScale": true,
   "valueLabels": {
    "parent1": "Rise Above Time:",
    "parent2": "Crest Time:",

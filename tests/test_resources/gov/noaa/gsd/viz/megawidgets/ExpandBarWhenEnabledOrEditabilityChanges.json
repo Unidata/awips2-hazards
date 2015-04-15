@@ -21,6 +21,7 @@
      {
       "fieldName": "riseAbove:crest:fallBelow",
       "fieldType": "TimeScale",
+      "showScale": true,
       "valueLabels": {
        "riseAbove": "Rise Above Time:",
        "crest": "Crest Time:",

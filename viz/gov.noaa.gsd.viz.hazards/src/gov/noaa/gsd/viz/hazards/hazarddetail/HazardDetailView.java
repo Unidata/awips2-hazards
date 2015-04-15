@@ -126,6 +126,7 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                           event being shown has a point ID (if not
  *                                           yet issued), or what it can be replaced
  *                                           by (if issued).
+ * Apr 09, 2015   7382     Chris.Golden      Added "show start-end time sliders" flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -200,6 +201,12 @@ public class HazardDetailView extends
      * Current time provider.
      */
     private ICurrentTimeProvider currentTimeProvider;
+
+    /**
+     * Flag indicating whether or not the start-end time UI elements should
+     * include a sliders-equipped scale bar.
+     */
+    private boolean showStartEndTimeScale;
 
     /**
      * Map pairing event identifiers with any extra data they may have used in
@@ -615,6 +622,7 @@ public class HazardDetailView extends
             long minVisibleTime,
             long maxVisibleTime,
             ICurrentTimeProvider currentTimeProvider,
+            boolean showStartEndTimeScale,
             Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers) {
         this.minVisibleTime = minVisibleTime;
         this.maxVisibleTime = maxVisibleTime;
@@ -623,6 +631,7 @@ public class HazardDetailView extends
                     + TimeUnit.DAYS.toMillis(1);
         }
         this.currentTimeProvider = currentTimeProvider;
+        this.showStartEndTimeScale = showStartEndTimeScale;
         this.extraDataForEventIdentifiers = extraDataForEventIdentifiers;
 
         /*
@@ -761,7 +770,8 @@ public class HazardDetailView extends
          * Do the basic initialization.
          */
         getViewPart().initialize(minVisibleTime, maxVisibleTime,
-                currentTimeProvider, extraDataForEventIdentifiers);
+                currentTimeProvider, showStartEndTimeScale,
+                extraDataForEventIdentifiers);
 
         /*
          * Register the megawidget display settings change handler with the view

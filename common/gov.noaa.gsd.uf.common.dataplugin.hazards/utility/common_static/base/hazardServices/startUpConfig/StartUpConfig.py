@@ -27,6 +27,10 @@ StartUpConfig = {
     # shown in that event's title text in the HID tab.
     "hazardDetailTabText" : [ "eventID", "hazardType", "pointID" ],
     
+    # Flag indicating whether or not the scale bar with two sliders on it
+    # should be shown below the start-end time UI element in the HID.
+    "showHazardDetailStartEndTimeScale": False,
+    
     # PIL order in which Product Generation should take place.
     "disseminationOrder" : [ 'FFW', 'FLW', 'FFS', 'FLS', 'FFA'],
     "Console": {

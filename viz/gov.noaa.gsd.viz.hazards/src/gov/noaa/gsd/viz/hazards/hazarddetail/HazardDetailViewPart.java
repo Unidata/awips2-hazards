@@ -32,6 +32,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierFactory;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.megawidgets.MultiTimeMegawidget;
+import gov.noaa.gsd.viz.megawidgets.MultiTimeMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.TimeMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.TimeRangeMegawidget;
 import gov.noaa.gsd.viz.megawidgets.TimeRangeSpecifier;
@@ -226,6 +227,7 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           event being shown has a point ID (if not
  *                                           yet issued), or what it can be replaced
  *                                           by (if issued).
+ * Apr 09, 2015   7382     Chris.Golden      Added "show start-end time sliders" flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -535,6 +537,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     // Private Variables
 
     /**
+     * Flag indicating whether or not the view part has been initialized.
+     */
+    private boolean initialized;
+
+    /**
      * Set of basic resources created for use in this window, to be disposed of
      * when this window is disposed of.
      */
@@ -661,6 +668,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Current time provider.
      */
     private ICurrentTimeProvider currentTimeProvider;
+
+    /**
+     * Flag indicating whether or not the start-end time UI elements should
+     * include a sliders-equipped scale bar.
+     */
+    private boolean showStartEndTimeScale;
 
     /**
      * <p>
@@ -1385,7 +1398,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             long minVisibleTime,
             long maxVisibleTime,
             ICurrentTimeProvider currentTimeProvider,
+            boolean showStartEndTimeScale,
             Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers) {
+        initialized = true;
 
         /*
          * Remember the passed-in parameters.
@@ -1393,7 +1408,16 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         this.minimumVisibleTime = minVisibleTime;
         this.maximumVisibleTime = maxVisibleTime;
         this.currentTimeProvider = currentTimeProvider;
+        this.showStartEndTimeScale = showStartEndTimeScale;
         this.extraDataForEventIds = extraDataForEventIdentifiers;
+
+        /*
+         * If the view part UI elements have been built, create the time option
+         * panels; otherwise, wait for the UI building before doing so.
+         */
+        if (timeGroup != null) {
+            createTimeOptionPanels();
+        }
 
         /*
          * Synchronize any time-based widgets with the visible time range.
@@ -1501,16 +1525,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          * Put together the creation-time parameters needed for building the
          * non-metadata megawidgets.
          */
-        Map<String, Object> megawidgetCreationParams = new HashMap<>();
+        Map<String, Object> megawidgetCreationParams = new HashMap<>(1, 1.0f);
         megawidgetCreationParams.put(IStateful.STATE_CHANGE_LISTENER,
                 basicStateChangeListener);
-        megawidgetCreationParams.put(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
-                minimumVisibleTime);
-        megawidgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
-                maximumVisibleTime);
-        megawidgetCreationParams.put(
-                TimeMegawidgetSpecifier.CURRENT_TIME_PROVIDER,
-                currentTimeProvider);
 
         /*
          * Create the group holding the category and type combo box megawidgets.
@@ -1562,24 +1579,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         timeGroup.setLayout(timeContentLayout);
 
         /*
-         * Create the time scale and time range panels, holding their respective
-         * megawidgets.
+         * If initialization has occurred, create the time option panels;
+         * otherwise, wait for initialization before doing so, since these
+         * panels are built based upon initialization-specified options.
          */
-        for (int j = 0; j < 2; j++) {
-            createTimeOptionPanel(timeGroup, megawidgetCreationParams,
-                    megawidgetsToAlign);
+        if (initialized) {
+            createTimeOptionPanels();
         }
-
-        /*
-         * Align the time megawidgets labels to have the same horizontal space
-         * as one another, put the time scale panel at the top of the stack, and
-         * lay out the time group.
-         */
-        ControlComponentHelper.alignMegawidgetsElements(megawidgetsToAlign);
-        timeScalePanel.layout();
-        timeRangePanel.layout();
-        timeContentLayout.topControl = timeScalePanel;
-        timeGroup.layout();
 
         /*
          * Create the panel holding the metadata, and hide it to begin with. It
@@ -1698,6 +1704,48 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     // Private Methods
 
     /**
+     * Create the time option panels.
+     */
+    private void createTimeOptionPanels() {
+
+        /*
+         * Put together the creation-time parameters needed for building the
+         * non-metadata megawidgets.
+         */
+        Map<String, Object> megawidgetCreationParams = new HashMap<>(4, 1.0f);
+        megawidgetCreationParams.put(IStateful.STATE_CHANGE_LISTENER,
+                basicStateChangeListener);
+        megawidgetCreationParams.put(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
+                minimumVisibleTime);
+        megawidgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
+                maximumVisibleTime);
+        megawidgetCreationParams.put(
+                TimeMegawidgetSpecifier.CURRENT_TIME_PROVIDER,
+                currentTimeProvider);
+
+        /*
+         * Create the time scale and time range panels, holding their respective
+         * megawidgets.
+         */
+        List<IControl> megawidgetsToAlign = new ArrayList<>();
+        for (int j = 0; j < 2; j++) {
+            createTimeOptionPanel(timeGroup, megawidgetCreationParams,
+                    megawidgetsToAlign);
+        }
+
+        /*
+         * Align the time megawidgets labels to have the same horizontal space
+         * as one another, put the time scale panel at the top of the stack, and
+         * lay out the time group.
+         */
+        ControlComponentHelper.alignMegawidgetsElements(megawidgetsToAlign);
+        timeScalePanel.layout();
+        timeRangePanel.layout();
+        timeContentLayout.topControl = timeScalePanel;
+        timeGroup.layout();
+    }
+
+    /**
      * Create a time option panel. The first time this is called, it creates the
      * panel holding the time scale megawidget, for events that need to allow
      * the user to manipulate the start time and the end time both as absolute
@@ -1723,7 +1771,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         Composite timeSubPanel = new Composite(parent, SWT.NONE);
         GridLayout gridLayout = new GridLayout();
         gridLayout.marginHeight = 0;
-        gridLayout.marginBottom = 5;
+        gridLayout.marginBottom = (showStartEndTimeScale ? 5 : 10);
         timeSubPanel.setLayout(gridLayout);
 
         /*
@@ -1732,11 +1780,17 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          */
         MultiTimeMegawidget timeMegawidget = null;
         CheckBoxMegawidget checkBoxMegawidget = null;
+        Map<String, Object> timeMegawidgetParameters = new HashMap<>(
+                timeScalePanel == null ? TIME_SCALE_SPECIFIER_PARAMETERS
+                        : TIME_RANGE_SPECIFIER_PARAMETERS);
+        timeMegawidgetParameters.put(
+                MultiTimeMegawidgetSpecifier.MEGAWIDGET_SHOW_SCALE,
+                showStartEndTimeScale);
         if (timeScalePanel == null) {
             timeScalePanel = timeSubPanel;
             try {
                 timeMegawidget = new TimeScaleSpecifier(
-                        TIME_SCALE_SPECIFIER_PARAMETERS).createMegawidget(
+                        timeMegawidgetParameters).createMegawidget(
                         timeScalePanel, TimeScaleMegawidget.class,
                         megawidgetCreationParams);
                 checkBoxMegawidget = (CheckBoxMegawidget) timeMegawidget
@@ -1750,7 +1804,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             timeRangePanel = timeSubPanel;
             try {
                 timeMegawidget = timeRangeMegawidget = new TimeRangeSpecifier(
-                        TIME_RANGE_SPECIFIER_PARAMETERS).createMegawidget(
+                        timeMegawidgetParameters).createMegawidget(
                         timeRangePanel, TimeRangeMegawidget.class,
                         megawidgetCreationParams);
                 checkBoxMegawidget = (CheckBoxMegawidget) timeRangeMegawidget

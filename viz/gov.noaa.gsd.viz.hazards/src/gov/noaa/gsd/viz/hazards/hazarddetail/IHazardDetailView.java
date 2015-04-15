@@ -53,6 +53,7 @@ import com.raytheon.uf.common.time.TimeRange;
  *                                      event being shown has a point ID (if not
  *                                      yet issued), or what it can be replaced
  *                                      by (if issued).
+ * Apr 09, 2015    7382    Chris.Golden Added "show start-end time sliders" flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -80,6 +81,10 @@ public interface IHazardDetailView {
      *            Maximum visible time to be shown in the time widgets.
      * @param currentTimeProvider
      *            Current time provider, used for the time range widgets.
+     * @param showStartEndTimeScale
+     *            Flag indicating whether or not to show a scale widget as part
+     *            of the UI elements allowing manipulation of the start-end
+     *            time.
      * @param extraDataForEventIdentifiers
      *            Map pairing event identifiers with any extra data they may
      *            have used in previous view instantiations, allowing such data
@@ -89,6 +94,7 @@ public interface IHazardDetailView {
             long minVisibleTime,
             long maxVisibleTime,
             ICurrentTimeProvider currentTimeProvider,
+            boolean showStartEndTimeScale,
             Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers);
 
     /**

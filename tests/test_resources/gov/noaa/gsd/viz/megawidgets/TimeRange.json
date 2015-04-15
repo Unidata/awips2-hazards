@@ -7,6 +7,7 @@
  {
   "fieldName": "start:end",
   "fieldType": "TimeRange",
+  "showScale": true,
   "valueLabels": {
    "start": "Start:",
    "end": "Duration:"

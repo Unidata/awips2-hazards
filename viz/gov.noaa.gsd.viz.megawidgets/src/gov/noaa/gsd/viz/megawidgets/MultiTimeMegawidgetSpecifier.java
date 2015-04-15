@@ -41,6 +41,8 @@ import com.google.common.collect.ImmutableMap;
  *                                      defining of valid boundaries for the
  *                                      values, with potentially a different
  *                                      boundary for each state identifier.
+ * Apr 09, 2015   7382     Chris.Golden Changed to make the display of the
+ *                                      scale bar optional.
  * </pre>
  * 
  * @author Chris.Golden
@@ -49,7 +51,7 @@ import com.google.common.collect.ImmutableMap;
  */
 public class MultiTimeMegawidgetSpecifier extends TimeMegawidgetSpecifier
         implements IParentSpecifier<IControlSpecifier>, IControlSpecifier,
-        IRapidlyChangingStatefulSpecifier {
+        IRapidlyChangingStatefulSpecifier, IScaleCapableSpecifier {
 
     // Public Static Constants
 
@@ -167,6 +169,11 @@ public class MultiTimeMegawidgetSpecifier extends TimeMegawidgetSpecifier
      */
     private final Map<String, Integer> indicesForIds;
 
+    /**
+     * Flag indicating whether or not a scale widget should be shown as well.
+     */
+    private final boolean showScale;
+
     // Public Constructors
 
     /**
@@ -210,6 +217,14 @@ public class MultiTimeMegawidgetSpecifier extends TimeMegawidgetSpecifier
             indicesForIds.put(stateIdentifiers.get(j), j);
         }
         this.indicesForIds = ImmutableMap.copyOf(indicesForIds);
+
+        /*
+         * If the show-scale flag is present, ensure that it is a boolean value.
+         */
+        showScale = ConversionUtilities.getSpecifierBooleanValueFromObject(
+                getIdentifier(), getType(),
+                parameters.get(MEGAWIDGET_SHOW_SCALE), MEGAWIDGET_SHOW_SCALE,
+                false);
 
         /*
          * Ensure that the factory is present and acceptable.
@@ -346,6 +361,11 @@ public class MultiTimeMegawidgetSpecifier extends TimeMegawidgetSpecifier
     public final long getMaximumValue(String identifier) {
         return ((BoundedMultiLongValidator) getStateValidator())
                 .getMaximumValue(identifier);
+    }
+
+    @Override
+    public final boolean isShowScale() {
+        return showScale;
     }
 
     /**
