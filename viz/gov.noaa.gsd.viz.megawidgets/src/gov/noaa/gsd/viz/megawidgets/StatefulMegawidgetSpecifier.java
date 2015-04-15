@@ -61,6 +61,8 @@ import com.google.common.collect.ImmutableList;
  *                                           specifier, which has been removed.
  * Jun 27, 2014   3512     Chris.Golden      Added check against minimum state
  *                                           identifier count.
+ * Apr 07, 2015   7271     Chris.Golden      Added interdependency-only stateful
+ *                                           megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -136,6 +138,12 @@ public abstract class StatefulMegawidgetSpecifier extends MegawidgetSpecifier
     private final Map<String, ?> valuesForStateIdentifiers;
 
     /**
+     * Flag indicating whether or not the megawidget is to be used for
+     * interdependency scripts only.
+     */
+    private final boolean usedForInterdependencyOnly;
+
+    /**
      * State validator.
      */
     private final StateValidator stateValidator;
@@ -204,6 +212,16 @@ public abstract class StatefulMegawidgetSpecifier extends MegawidgetSpecifier
         labelsForStateIdentifiers = getStateMappedParametersFromObject(
                 parameters, MEGAWIDGET_STATE_LABELS, "string", classes, "",
                 null, null, true);
+
+        /**
+         * Ensure that the only-for-interdependency flag, if present, is
+         * acceptable.
+         */
+        usedForInterdependencyOnly = ConversionUtilities
+                .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
+                        parameters
+                                .get(MEGAWIDGET_USED_FOR_INTERDEPENDENCY_ONLY),
+                        MEGAWIDGET_USED_FOR_INTERDEPENDENCY_ONLY, false);
 
         /*
          * Initialize the state validator.
@@ -292,6 +310,11 @@ public abstract class StatefulMegawidgetSpecifier extends MegawidgetSpecifier
             map.putAll(correctedMap != null ? correctedMap
                     : valuesForStateIdentifiers);
         }
+    }
+
+    @Override
+    public boolean isUsedForInterdependencyOnly() {
+        return usedForInterdependencyOnly;
     }
 
     // Protected Methods

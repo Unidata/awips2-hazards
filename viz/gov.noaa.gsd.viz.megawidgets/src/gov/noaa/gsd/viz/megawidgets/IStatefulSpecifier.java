@@ -32,6 +32,8 @@ import java.util.Map;
  * Jun 17, 2014   3982     Chris.Golden      Removed obsolete properties.
  * Jun 23, 2014   4010     Chris.Golden      Changed to no longer extend notifier
  *                                           specifier, which has been removed.
+ * Apr 07, 2015   7271     Chris.Golden      Added interdependency-only stateful
+ *                                           megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -72,6 +74,17 @@ public interface IStatefulSpecifier extends ISpecifier {
      */
     public static final String MEGAWIDGET_STATE_VALUES = "values";
 
+    /**
+     * Interdependency-only parameter name; a megawidget may include a boolean
+     * value associated with this name. If true, the megawidget is to be used by
+     * side effects appliers only; its state changes do not result in
+     * notifications, nor can it have its state changed programmatically. Such a
+     * megawidget is generally used to display information in a dialog based
+     * upon the values of other megawidgets, and is generally read-only. If not
+     * specified, it defaults to false.
+     */
+    public static final String MEGAWIDGET_USED_FOR_INTERDEPENDENCY_ONLY = "interdependencyOnly";
+
     // Public Methods
 
     /**
@@ -111,4 +124,15 @@ public interface IStatefulSpecifier extends ISpecifier {
      *            are invalid or missing.
      */
     public void validateAndCorrectStates(Map<String, Object> map);
+
+    /**
+     * Determine whether or not the megawidget is for interdependency script
+     * usage only. This means it only has its state set by side effects
+     * appliers; it may not be set programmatically, nor do any changes to its
+     * state result in notifications.
+     * 
+     * @return True if the megawidget is used for interdependency scripts only,
+     *         false otherwise.
+     */
+    public boolean isUsedForInterdependencyOnly();
 }

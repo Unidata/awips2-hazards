@@ -13,6 +13,7 @@
     ------------ ---------- ----------- --------------------------
     Feb 2015       4375    Tracy Hansen      Initial creation
     Feb 2015       6599    Robert.Blum       Changed to new style class
+    Apr 2015       7271    Chris.Golden      Added reference to new missing time value constant.
     
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -20,7 +21,7 @@
 import os
 from TextProductCommon import TextProductCommon
 
-MISSING_VALUE = -9999
+from HazardConstants import MISSING_VALUE
 
 class Column(object):
     def __init__(self, variable, variableTime=None, width=None, align='^', labelLine1='', labelAlign1='<', labelLine2='', labelAlign2='<'):

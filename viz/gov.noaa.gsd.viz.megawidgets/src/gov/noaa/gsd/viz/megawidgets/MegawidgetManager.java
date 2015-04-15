@@ -25,7 +25,9 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Widget;
 
+import com.google.common.base.Predicates;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 /**
  * <p>
@@ -141,6 +143,8 @@ import com.google.common.collect.Lists;
  *                                           megawidgets' display settings, allowing the
  *                                           saving and restoring of display state
  *                                           (scroll position, etc.).
+ * Apr 07, 2015    7271     Chris.Golden     Added interdependency-only stateful
+ *                                           megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -188,6 +192,13 @@ public class MegawidgetManager {
      * megawidgets.
      */
     private final Map<String, IStateful> statefulMegawidgetsForIdentifiers = new HashMap<>();
+
+    /**
+     * Set of all state identifiers that are to have their state set by
+     * interdependency scripts only, and that when experiencing state changes,
+     * should not result in notifications.
+     */
+    private final Set<String> interdependencyOnlyStateIdentifiers = new HashSet<>();
 
     /**
      * Map pairing state identifiers with their corresponding megawidget
@@ -280,10 +291,7 @@ public class MegawidgetManager {
             /*
              * Send out notification of the state change.
              */
-            if (managerListener != null) {
-                managerListener.stateElementChanged(MegawidgetManager.this,
-                        identifier, state);
-            }
+            notifyListenerOfStateChange(identifier, state);
 
             /*
              * If a side effects applier is available, apply side effects.
@@ -319,10 +327,7 @@ public class MegawidgetManager {
             /*
              * Send out notification of the state changes.
              */
-            if (managerListener != null) {
-                managerListener.stateElementsChanged(MegawidgetManager.this,
-                        statesForIdentifiers);
-            }
+            notifyListenerOfStateChanges(statesForIdentifiers);
 
             /*
              * If a side effects applier is available, apply side effects before
@@ -849,7 +854,9 @@ public class MegawidgetManager {
      */
     public final void setState(Map<String, Object> newState)
             throws MegawidgetStateException {
-        state = newState;
+        state = (interdependencyOnlyStateIdentifiers.isEmpty() ? newState
+                : Maps.filterKeys(newState, Predicates.not(Predicates
+                        .in(interdependencyOnlyStateIdentifiers))));
         for (IStateful megawidget : statefulMegawidgetsForIdentifiers.values()) {
             setState(megawidget, false);
         }
@@ -884,6 +891,12 @@ public class MegawidgetManager {
      */
     public final void modifyState(Map<String, ?> changedState)
             throws MegawidgetStateException {
+        changedState = (interdependencyOnlyStateIdentifiers.isEmpty() ? changedState
+                : Maps.filterKeys(changedState, Predicates.not(Predicates
+                        .in(interdependencyOnlyStateIdentifiers))));
+        if (changedState.isEmpty()) {
+            return;
+        }
         state.putAll(changedState);
         Set<IStateful> megawidgetsWithStateChange = new HashSet<>();
         for (String identifier : changedState.keySet()) {
@@ -1389,6 +1402,7 @@ public class MegawidgetManager {
          * assign it that state.
          */
         if (megawidget instanceof IStateful) {
+            IStatefulSpecifier statefulSpecifier = (IStatefulSpecifier) specifier;
 
             /*
              * For each state identifier associated with this megawidget, assign
@@ -1397,8 +1411,7 @@ public class MegawidgetManager {
              * in an uncommitted fashion and then commit them all at once.
              */
             boolean toBeCommitted = false;
-            List<String> identifiers = ((IStatefulSpecifier) specifier)
-                    .getStateIdentifiers();
+            List<String> identifiers = statefulSpecifier.getStateIdentifiers();
             for (String identifier : identifiers) {
 
                 /*
@@ -1413,6 +1426,9 @@ public class MegawidgetManager {
                 if (isStart) {
                     statefulMegawidgetsForIdentifiers.put(identifier,
                             (IStateful) megawidget);
+                    if (statefulSpecifier.isUsedForInterdependencyOnly()) {
+                        interdependencyOnlyStateIdentifiers.add(identifier);
+                    }
                     for (String stateIdentifier : ((IStatefulSpecifier) ((IStateful) megawidget)
                             .getSpecifier()).getStateIdentifiers()) {
                         megawidgetIdentifiersForStateIdentifiers.put(
@@ -1517,10 +1533,57 @@ public class MegawidgetManager {
                 }
             }
             if ((valuesForChangedStates != null) && (managerListener != null)) {
-                managerListener.stateElementsChanged(this,
-                        valuesForChangedStates);
+                notifyListenerOfStateChanges(valuesForChangedStates);
             }
         }
         propertyProgrammaticallyChanged = false;
+    }
+
+    /**
+     * Notify the listener, if any, of the specified state change, filtering out
+     * any that are to be ignored.
+     * 
+     * @param identifier
+     *            State identifier that experienced a change.
+     * @param value
+     *            New value for this state.
+     */
+    private void notifyListenerOfStateChange(String identifier, Object value) {
+        if (managerListener != null) {
+            if (interdependencyOnlyStateIdentifiers.contains(identifier)) {
+                return;
+            }
+            managerListener.stateElementChanged(this, identifier, value);
+        }
+    }
+
+    /**
+     * Notify the listener, if any, of the specified state changes, filtering
+     * out any that are to be ignored.
+     * 
+     * @param statesForIdentifiers
+     *            Map of state identifiers that have changed to their new
+     *            values.
+     */
+    private void notifyListenerOfStateChanges(
+            Map<String, Object> statesForIdentifiers) {
+        if (managerListener != null) {
+            statesForIdentifiers = (interdependencyOnlyStateIdentifiers
+                    .isEmpty() ? statesForIdentifiers : Maps.filterKeys(
+                    statesForIdentifiers, Predicates.not(Predicates
+                            .in(interdependencyOnlyStateIdentifiers))));
+            if (statesForIdentifiers.isEmpty()) {
+                return;
+            }
+            if (statesForIdentifiers.size() == 1) {
+                Map.Entry<String, Object> singleEntry = statesForIdentifiers
+                        .entrySet().iterator().next();
+                managerListener.stateElementChanged(this, singleEntry.getKey(),
+                        singleEntry.getValue());
+            } else {
+                managerListener
+                        .stateElementsChanged(this, statesForIdentifiers);
+            }
+        }
     }
 }

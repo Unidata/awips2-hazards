@@ -206,55 +206,63 @@ class MetaData(object):
                       {"displayString": "OO (Flood record status is not applicable)","identifier": "OO"},
                      ],
             }
-         
-    def getRiseCrestFall(self):
-        return {
-            "fieldName":"riseAbove:crest:fallBelow",
-            "fieldType":"TimeScale",
-            "editable": False,
-            "valueLabels": {"riseAbove": "Rise Above Time:","crest": "Crest Time:","fallBelow": "Fall Below Time:"},
-            "minimumTimeInterval": 60000,
-            "spacing": 5,
-            "timeDescriptors": {
-                str(int(VTECConstants.UFN_TIME_VALUE_SECS) * 1000): "N/A"
-               },
-            "detailFields": {
-                "fallBelow": [
-                        {
-                         "fieldName": "fallBelowUntilFurtherNotice",
-                         "fieldType": "CheckBox",
-                         "label": "Until further notice",
-                         "editable": False
-                        }]
-               }
-           }
-   
-    def getRiseCrestFallButton(self):
-        return {
-          "fieldName": "editRiseCrestFallButtonComp",
-          "fieldType": "Composite",
-          "expandHorizontally": False,
-          "fields": [
-                     {
-                      "fieldType": "Button",
-                      "fieldName": "riseCrestFallButton",
-                      "label": " Graphical Time Editor... ",
-                      "editRiseCrestFall": True
-                      }
-                     ]
-         }
-
-    # Get the hidden field megawidget used to store the last interval that existed
-    # between the crest and fallBelow values, if fallBelow has been set to "Until
-    # Further Notice". This megawidget is used only within the interdependency
-    # script below.
-    def getHiddenFallLastInterval(self):
-        return {
-            "fieldName": "hiddenFallBelowLastInterval",
-            "fieldType": "HiddenField",
-            "values": 0
-           }
     
+    def getRiseCrestFall(self):
+        return [
+                {
+                 "fieldName": "riseAbove",
+                 "fieldType": "HiddenField"
+                 },
+                {
+                 "fieldName": "crest",
+                 "fieldType": "HiddenField"
+                 },
+                {
+                 "fieldName": "fallBelow",
+                 "fieldType": "HiddenField"
+                 },
+                {
+                 "fieldName": "riseAboveDescription",
+                 "fieldType": "Text",
+                 "label": "Rise Above Time:",
+                 "visibleChars": 18,
+                 "spacing": 5,
+                 "editable": False,
+                 "interdependencyOnly": True
+                 },
+                {
+                 "fieldName": "crestDescription",
+                 "fieldType": "Text",
+                 "label": "Crest Time:",
+                 "visibleChars": 18,
+                 "spacing": 2,
+                 "editable": False,
+                 "interdependencyOnly": True
+                 },
+                {
+                 "fieldName": "fallBelowDescription",
+                 "fieldType": "Text",
+                 "label": "Fall Below Time:",
+                 "visibleChars": 18,
+                 "spacing": 2,
+                 "editable": False,
+                 "interdependencyOnly": True
+                 },
+                {
+                 "fieldName": "editRiseCrestFallButtonComp",
+                 "fieldType": "Composite",
+                 "expandHorizontally": False,
+                 "fields": [
+                            {
+                             "fieldType": "Button",
+                             "fieldName": "riseCrestFallButton",
+                             "label": " Graphical Time Editor... ",
+                             "editRiseCrestFall": True
+                             }
+                            ]
+                 }
+                ]
+                 
     def getInclude(self):
         return {
              "fieldType":"CheckBoxes",
@@ -1520,8 +1528,8 @@ def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
     
     returnDict = {}
 
-    # Get any changes required for fall-below until-further-notice interaction.
-    ufnChanges = applyRiseCrestFallUntilFurtherNoticeInterdependencies(triggerIdentifiers, mutableProperties)
+    # Get any changes required for the rise-crest-fall read-only text fields.
+    ufnChanges = applyRiseCrestFallInterdependencies(triggerIdentifiers, mutableProperties)
 
     ### originalList is used in multiple cases.  Assign it only once
     oListTemp = mutableProperties.get("impactCheckBoxes")
@@ -1575,79 +1583,39 @@ def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
 
 
 # Helper function to be called by metadata megawidget interdependency implementations
-# that include Rise Above/Crest/Fall Below and need to allow Until Further Notice to
-# be applied to Fall Below. It ensures that if the associated Until Further Notice
-# checkbox is checked, the Fall Below thumb in the time scale megawidget is disabled.
-def applyRiseCrestFallUntilFurtherNoticeInterdependencies(triggerIdentifiers, mutableProperties):
+# that include Rise Above/Crest/Fall Below. It ensures that if these values change,
+# the corresponding read-only text fields are changed to reflect the new values.
+def applyRiseCrestFallInterdependencies(triggerIdentifiers, mutableProperties):
     
-    # Do nothing unless the "until further notice" checkbox has changed state, or
-    # initialization is occurring.
-    if triggerIdentifiers == None or "fallBelowUntilFurtherNotice" in triggerIdentifiers:
-        
-        # Determine whether the "fall below" state should be editable or read-only.
-        # If "until further notice" is turned on, it should be read-only.
-        editable = True
-        if "fallBelowUntilFurtherNotice" in mutableProperties \
-                and "values" in mutableProperties["fallBelowUntilFurtherNotice"]:
-            editable = not mutableProperties["fallBelowUntilFurtherNotice"]["values"]
-
-        # If "until further notice" has just been turned on, remember the interval
-        # as it is now between the "crest" and "fall below" times in case "until
-        # further notice" is toggled off in the future, and set the "fall below"
-        # time to the special "until further notice" value. Otherwise, if "until
-        # further notice" has just been turned off, set the "fall below" time to
-        # be an interval offset from the "crest" time. If a saved interval is
-        # found, use that as the interval; otherwise, make the interval equal to
-        # the one between the "riseAbove" and "crest" times. Finally, if it has
-        # not just been turned on or off, ensure that the "fallBelow" state is
-        # still read-only or editable as appropriate. This last case will occur,
-        # for example, when the script is called as part of the megawidgets'
-        # initialization. Note that the aforementioned last interval is stored
-        # in a HiddenField megawidget named "hiddenFallBelowLastInterval".
-        from VTECConstants import UFN_TIME_VALUE_SECS
-        ufnTime = UFN_TIME_VALUE_SECS * 1000L
-        if "riseAbove:crest:fallBelow" in mutableProperties:
-            if editable == False and \
-                    mutableProperties["riseAbove:crest:fallBelow"]["values"]["fallBelow"] != ufnTime:
-                
-                interval = long(mutableProperties["riseAbove:crest:fallBelow"]["values"]["fallBelow"] - \
-                        mutableProperties["riseAbove:crest:fallBelow"]["values"]["crest"])
-                fallBelow = ufnTime
-                
-                return { "riseAbove:crest:fallBelow": {
-                                                       "valueEditables": { "fallBelow": False },
-                                                       "values": { "fallBelow": fallBelow }
-                                                       },
-                         "hiddenFallBelowLastInterval": {
-                                                       "values": interval
-                                                       }
-                        }
-            elif editable == True and \
-                    mutableProperties["riseAbove:crest:fallBelow"]["values"]["fallBelow"] == ufnTime:
-                
-                if "hiddenFallBelowLastInterval" in mutableProperties \
-                        and "values" in mutableProperties["hiddenFallBelowLastInterval"] \
-                        and mutableProperties["hiddenFallBelowLastInterval"]["values"] > 0:
-                    interval = mutableProperties["hiddenFallBelowLastInterval"]["values"]
-                else:
-                    interval = long(mutableProperties["riseAbove:crest:fallBelow"]["values"]["crest"] - \
-                            mutableProperties["riseAbove:crest:fallBelow"]["values"]["riseAbove"])
-                fallBelow = mutableProperties["riseAbove:crest:fallBelow"]["values"]["crest"] + interval
-                
-                return { "riseAbove:crest:fallBelow": {
-                                                       "valueEditables": { "fallBelow": True },
-                                                       "values": { "fallBelow": fallBelow }
-                                                       },
-                         "hiddenFallBelowLastInterval": {
-                                                       "values": 0
-                                                       }
-                        }
-            else:
-                return { "riseAbove:crest:fallBelow": { "valueEditables": { "fallBelow": editable } } }
-        else:
-            return None
+    # Determine which of the three possible description text fields (one for rise, one
+    # for crest, and one for fall) are to be updated. If this is initialization time,
+    # all should be updated. Otherwise, any that have had their corresponding attribute
+    # changed, or that have themselves been changed, are to be updated. (It is possible
+    # for the descriptions themselves to have been changed as a result of setting the
+    # hazard event's attributes, which would zero them out since these descriptions are
+    # unknown to the hazard event's attribute table. 
+    IDENTIFIERS = ["riseAbove", "crest", "fallBelow" ]
+    if triggerIdentifiers == None:
+        toBeUpdated = IDENTIFIERS
     else:
-        return None
+        toBeUpdated = [identifier for identifier in IDENTIFIERS if identifier in triggerIdentifiers]
+    
+    # If any are to be updated, iterate through them, setting their descriptive text
+    # appropriately, and return the resulting changed values.
+    if len(toBeUpdated) > 0:
+        from HazardConstants import MISSING_VALUE
+        newMutableProperties = {}
+        from pytz import utc
+        from datetime import datetime
+        for identifier in toBeUpdated:
+            if mutableProperties[identifier]["values"] == MISSING_VALUE:
+                newMutableProperties[identifier + "Description"] = { "values": "missing" }
+            else:
+                timestamp = datetime.fromtimestamp(mutableProperties[identifier]["values"] / 1000, utc)
+                newMutableProperties[identifier + "Description"] = { "values": timestamp.strftime("%d-%b-%Y %H:%M") }
+        return newMutableProperties
+    
+    return None
 
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
 

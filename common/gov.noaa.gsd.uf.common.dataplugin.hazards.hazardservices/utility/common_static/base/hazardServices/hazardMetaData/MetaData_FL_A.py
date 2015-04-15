@@ -26,11 +26,9 @@ class MetaData(CommonMetaData.MetaData):
             pointDetails = [self.getPointID(),
                             self.getImmediateCause(),
                             self.getFloodSeverity(),
-                            self.getFloodRecord(),
-                            self.getRiseCrestFall(),
-                            self.getRiseCrestFallButton(),
-                            self.getHiddenFallLastInterval()
+                            self.getFloodRecord()
                             ]
+            pointDetails.extend(self.getRiseCrestFall())
          
             crests = [self.getCrestsOrImpacts("crests")]
              

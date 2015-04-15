@@ -15,6 +15,8 @@
     August 15, 2014  4243   Chris.Golden         Changed metadata-
                                                  fetching constants.
     Oct 29, 2014     5070   mpduff               Added SITE_CFG_ROOT for move of SiteCFG.py
+    Apr 07, 2015     7271   Chris.Golden         Added reference to new missing value
+                                                 constant.
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 """
@@ -66,6 +68,9 @@ FALL_BELOW = "fallBelow"
 INTERMEDIATE_CAUSE = "intermediateCause"
 FLOOD_RECORD = "floodRecord"
 FLOOD_SEVERITY = "floodSeverity"
+
+# Missing value magic number.
+MISSING_VALUE = -9999
 
 FORECAST_POINT = "forecastPoint"
 ID = "id"

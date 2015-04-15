@@ -22,11 +22,9 @@ class MetaData(CommonMetaData.MetaData):
             pointDetails = [self.getPointID(),
                             self.getImmediateCause(),
                             self.getFloodSeverity(),
-                            self.getFloodRecord(),
-                            self.getRiseCrestFall(),
-                            self.getRiseCrestFallButton(),
-                            self.getHiddenFallLastInterval()
+                            self.getFloodRecord()
                             ]
+            pointDetails.extend(self.getRiseCrestFall())
          
             crests = [self.getCrestsOrImpacts("crests")]
              
@@ -96,11 +94,5 @@ class MetaData(CommonMetaData.MetaData):
     
 # # Interdependency script entry point.
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
+    return CommonMetaData.applyFLInterdependencies(triggerIdentifiers, mutableProperties)
 
-    # Get any changes required for fall-below until-further-notice interaction.
-    flChanges = CommonMetaData.applyFLInterdependencies(triggerIdentifiers, mutableProperties)
-    
-    return flChanges
-    
-    
-    

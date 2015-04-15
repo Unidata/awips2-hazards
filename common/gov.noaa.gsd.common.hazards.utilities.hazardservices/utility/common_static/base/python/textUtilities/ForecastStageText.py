@@ -13,10 +13,12 @@
     Feb 2015       6599    Robert.Blum       Changed to new style class
     Mar 2015       6963    Robert.Blum       Stage values have precision of 2 and 
                                              times have minutes formatted to '00'.
+    Apr 2015       7271    Chris.Golden      Changed to use MISSING_VALUE
+                                             constant.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types
-import RiverForecastPoints
+from HazardConstants import MISSING_VALUE
 
 class Empty:
     pass
@@ -164,15 +166,15 @@ class ForecastStageText(object):
             self.finalStageFlow='.'
         elif self.trend == 'fall':
             self.finalStageFlow = ''
-            if section.specValue != RiverForecastPoints.Missing_Value_Constant:
+            if section.specValue != MISSING_VALUE:
                 self.finalStageFlow = ' to '+specValue+' '+section.stageFlowUnits
-                if section.specTime != RiverForecastPoints.Missing_Value_Constant:
+                if section.specTime != MISSING_VALUE:
                     self.finalStageFlow += ' at '+section.specTime
             self.finalStageFlow += '.'
         else: # steady
             if section.maximumForecastStage >= section.floodStage:        
                 self.finalStageFlow=' above flood stage at '+maximumForecastStage+' '+section.stageFlowUnits+'.'
-            elif section.maximumForecastStage != RiverForecastPoints.Missing_Value_Constant:
+            elif section.maximumForecastStage != MISSING_VALUE:
                 self.finalStageFlow=' below flood stage at '+maximumForecastStage+' '+section.stageFlowUnits+'.'
             else:
                 self.finalStageFlow='.'

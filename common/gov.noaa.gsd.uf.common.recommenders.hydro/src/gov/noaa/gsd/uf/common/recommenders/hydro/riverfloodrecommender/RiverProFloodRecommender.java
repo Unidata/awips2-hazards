@@ -44,6 +44,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Feb 18, 2014 3961       Kevin.Manross     Modify for single point workflow
  * Feb 24, 2015 2331       Kevin.Manross     Add code to do nothing if insufficient
  *                                           info available.
+ * Apr 09, 2015 7271       Kevin.Manross     Ensured generated FL.Y hazard events
+ *                                           have riseAbove/crest/fallBelow values.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -170,13 +172,14 @@ public class RiverProFloodRecommender {
             hazardAttributes.put(HazardConstants.CURRENT_STAGE_TIME,
                     currentStageTime);
 
+            buildRiseCrestFallAttributes(riverForecastPoint, hazardAttributes,
+                    riverHazard);
+
             if (riverForecastPoint.isIncludedInRecommendation()) {
-                buildFloodAttributes(riverForecastPoint, hazardAttributes,
-                        riverHazard);
+                buildFloodAttributes(riverForecastPoint, hazardAttributes);
 
             } else {
-                buildNonFloodAttributes(riverForecastPoint, hazardAttributes,
-                        riverHazard);
+                buildNonFloodAttributes(riverForecastPoint, hazardAttributes);
             }
 
             riverHazard.setCreationTime(TimeUtil.newCalendar().getTime());
@@ -262,8 +265,42 @@ public class RiverProFloodRecommender {
      * @return
      */
     private void buildFloodAttributes(RiverForecastPoint riverForecastPoint,
+            Map<String, Serializable> hazardAttributes) {
+
+        // Default to excessive rainfall.
+        hazardAttributes.put(HazardConstants.IMMEDIATE_CAUSE,
+                FloodRecommenderConstants.ImmediateCause.EXCESSIVE_RAINFALL
+                        .getValue());
+
+        // Define flood record
+        int floodCategory = Math.min(riverForecastPoint
+                .getMaximumObservedForecastCategory(),
+                RiverForecastPoint.HydroFloodCategories.MAJOR_FLOOD_CATEGORY
+                        .getRank());
+
+        String recordStatus = retrieveFloodRecord(
+                this.riverProDataManager.getHazardSettings(),
+                riverForecastPoint);
+        hazardAttributes.put(HazardConstants.FLOOD_RECORD, recordStatus);
+
+        /*
+         * Need to translate the flood category to a string value.
+         */
+        if (floodCategory == RiverForecastPoint.HydroFloodCategories.NULL_CATEGORY
+                .getRank()) {
+            hazardAttributes.put(HazardConstants.FLOOD_SEVERITY_CATEGORY,
+                    FloodRecommenderConstants.FloodSeverity.NONE.getValue());
+        } else {
+            hazardAttributes.put(HazardConstants.FLOOD_SEVERITY_CATEGORY,
+                    Integer.toString(floodCategory));
+        }
+    }
+
+    private void buildRiseCrestFallAttributes(
+            RiverForecastPoint riverForecastPoint,
             Map<String, Serializable> hazardAttributes,
             IHazardEvent riverHazardEvent) {
+
         /*
          * Retrieve the reach information for this forecast point
          */
@@ -336,42 +373,19 @@ public class RiverProFloodRecommender {
                             .put(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE,
                                     interval);
 
-                    interval = latestTime
-                            - riverForecastPoint
-                                    .getMaximumObservedForecastTime().getTime();
+                    if (riverForecastPoint.getMaximumObservedForecastTime() != null) {
+                        interval = latestTime
+                                - riverForecastPoint
+                                        .getMaximumObservedForecastTime()
+                                        .getTime();
+                    }
+
                     hazardAttributes.put("hiddenFallBelowLastInterval",
                             interval);
                 }
             }
         }
 
-        // Default to excessive rainfall.
-        hazardAttributes.put(HazardConstants.IMMEDIATE_CAUSE,
-                FloodRecommenderConstants.ImmediateCause.EXCESSIVE_RAINFALL
-                        .getValue());
-
-        // Define flood record
-        int floodCategory = Math.min(riverForecastPoint
-                .getMaximumObservedForecastCategory(),
-                RiverForecastPoint.HydroFloodCategories.MAJOR_FLOOD_CATEGORY
-                        .getRank());
-
-        String recordStatus = retrieveFloodRecord(
-                this.riverProDataManager.getHazardSettings(),
-                riverForecastPoint);
-        hazardAttributes.put(HazardConstants.FLOOD_RECORD, recordStatus);
-
-        /*
-         * Need to translate the flood category to a string value.
-         */
-        if (floodCategory == RiverForecastPoint.HydroFloodCategories.NULL_CATEGORY
-                .getRank()) {
-            hazardAttributes.put(HazardConstants.FLOOD_SEVERITY_CATEGORY,
-                    FloodRecommenderConstants.FloodSeverity.NONE.getValue());
-        } else {
-            hazardAttributes.put(HazardConstants.FLOOD_SEVERITY_CATEGORY,
-                    Integer.toString(floodCategory));
-        }
     }
 
     /**
@@ -386,37 +400,7 @@ public class RiverProFloodRecommender {
      * @return
      */
     private void buildNonFloodAttributes(RiverForecastPoint riverForecastPoint,
-            Map<String, Serializable> hazardAttributes,
-            IHazardEvent pointHazardEvent) {
-        /*
-         * Retrieve the reach information for this forecast point
-         */
-
-        hazardAttributes.put(HazardConstants.POINTID,
-                riverForecastPoint.getId());
-        hazardAttributes.put(HazardConstants.STREAM_NAME,
-                riverForecastPoint.getStream());
-
-        hazardAttributes.put(HazardConstants.FLOOD_STAGE,
-                riverForecastPoint.getFloodStage());
-        hazardAttributes.put(HazardConstants.ACTION_STAGE,
-                riverForecastPoint.getActionStage());
-
-        hazardAttributes.put(HazardConstants.RISE_ABOVE, 0);
-
-        hazardAttributes.put(HazardConstants.CREST, 0);
-
-        hazardAttributes.put(HazardConstants.FALL_BELOW, 0);
-
-        pointHazardEvent.setStartTime(this.riverProDataManager.getFloodDAO()
-                .getSystemTime());
-
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(pointHazardEvent.getStartTime());
-        cal.add(Calendar.HOUR, this.riverProDataManager.getHazardSettings()
-                .getFlwExpirationHours());
-        pointHazardEvent.setEndTime(cal.getTime());
-
+            Map<String, Serializable> hazardAttributes) {
         /*
          * Default to unknown cause.
          */

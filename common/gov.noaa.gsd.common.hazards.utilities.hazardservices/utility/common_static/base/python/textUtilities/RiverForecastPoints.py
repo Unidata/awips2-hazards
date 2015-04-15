@@ -26,6 +26,7 @@
  Jan 12, 2015  4937      Robert.Blum  Moved constant outside of the RFP class
                                       so that the class does not have to be instantiated
                                       to access the constant.
+ Apr 07, 2015  7271      Chris.Golden Added reference to new missing time value constant.
 '''
 from com.raytheon.uf.common.hazards.hydro import RiverProDataManager
 from sets import Set
@@ -49,11 +50,10 @@ RECORD = 'RECORD'
 PE_H = 'H'
 PE_Q = 'Q'
 
-Missing_Value_Constant = -9999
+from HazardConstants import MISSING_VALUE
 
 class RiverForecastPoints(object):
     
-    MISSING_VALUE = Missing_Value_Constant
     MISSING_SHEF_QUALITY_CODE = 'Z'
 
     RIVERSTAT_PRIMARY_PE_FIELD_POSITION = 1
@@ -341,7 +341,7 @@ class RiverForecastPoints(object):
         '''
         maxForecastFloodCategory = self.getGroupMaximumForecastFloodCategory(forecastPointID)
         
-        if maxForecastFloodCategory != self.MISSING_VALUE:
+        if maxForecastFloodCategory != MISSING_VALUE:
             return True
         else:
             return False
@@ -563,10 +563,10 @@ class RiverForecastPoints(object):
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
         if primaryPE[0] == PE_H :
             # get flood stage
-            return ( riverForecastPoint.getFloodStage(), RiverForecastPoints.MISSING_VALUE )
+            return ( riverForecastPoint.getFloodStage(), MISSING_VALUE )
         else :
             # get flood flow
-            return ( RiverForecastPoints.MISSING_VALUE, riverForecastPoint.getFloodFlow() )
+            return ( MISSING_VALUE, riverForecastPoint.getFloodFlow() )
 
     def getFloodStage(self, forecastPointID):
         '''
@@ -928,8 +928,8 @@ class RiverForecastPoints(object):
             upperBound = referenceValue + math.fabs(stageWindowUpper)
             floodValueStage = floodStage - math.fabs(depthBelowFloodStage)
 
-        maximumValue = RiverForecastPoints.MISSING_VALUE
-        differenceValue = math.fabs(RiverForecastPoints.MISSING_VALUE) # start with a huge value
+        maximumValue = MISSING_VALUE
+        differenceValue = math.fabs(MISSING_VALUE) # start with a huge value
 
         maxIndex = None
         diffIndex = None
@@ -1006,7 +1006,7 @@ class RiverForecastPoints(object):
         # Index values need to be compared to None rather than submitted to a
         # pure boolean test, otherwise index value of 0 (first value in list)
         # will fail to get picked up.
-        stageDate = RiverForecastPoints.MISSING_VALUE, datetime.datetime.fromtimestamp(0)
+        stageDate = MISSING_VALUE, datetime.datetime.fromtimestamp(0)
         searchType = filters['Search Type']
         if searchType.find("Highest") >= 0 :
             if maxIndex != None :
@@ -1135,9 +1135,9 @@ class RiverForecastPoints(object):
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
 
         if type == TIME :
-            observedTime = self.MISSING_VALUE
+            observedTime = MISSING_VALUE
             stageIndex = riverForecastPoint.getObservedCurrentIndex()
-            if stageIndex != RiverForecastPoints.MISSING_VALUE:
+            if stageIndex != MISSING_VALUE:
                 observedHydrograph = riverForecastPoint.getObservedHydrograph().getShefHydroDataList()
                 observation = observedHydrograph.get(stageIndex)
                 observedTime = observation.getValidTime()
@@ -1148,10 +1148,10 @@ class RiverForecastPoints(object):
             category = riverForecastPoint.getCurrentObservationCategory()
             return RiverForecastPoints.FLOOD_CATEGORY_VALUE_DICT.get(category, 'UNKNOWN')
         else :
-            value = self.MISSING_VALUE
+            value = MISSING_VALUE
             stageIndex = riverForecastPoint.getObservedCurrentIndex()
         
-            if stageIndex != RiverForecastPoints.MISSING_VALUE:
+            if stageIndex != MISSING_VALUE:
                 observedHydrograph = riverForecastPoint.getObservedHydrograph().getShefHydroDataList()
                 observation = observedHydrograph.get(stageIndex)
                 value = observation.getValue()
@@ -1169,12 +1169,12 @@ class RiverForecastPoints(object):
         @param forecastPointID: The river forecast point identifier.
         @return: The current observed river stage.
         '''
-        value = self.MISSING_VALUE
+        value = MISSING_VALUE
         shefQualCode = RiverForecastPoints.MISSING_SHEF_QUALITY_CODE
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
         stageIndex = riverForecastPoint.getObservedCurrentIndex()
         
-        if stageIndex != RiverForecastPoints.MISSING_VALUE:
+        if stageIndex != MISSING_VALUE:
             observedHydrograph = riverForecastPoint.getObservedHydrograph().getShefHydroDataList()
             observation = observedHydrograph.get(stageIndex)
             value = observation.getValue()
@@ -1224,11 +1224,11 @@ class RiverForecastPoints(object):
         @param forecastPointID: The forecast point identifier
         @return: The time of the current stage observation in milliseconds.            
         '''
-        observedTime = self.MISSING_VALUE
+        observedTime = MISSING_VALUE
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
         stageIndex = riverForecastPoint.getObservedCurrentIndex()
         
-        if stageIndex != RiverForecastPoints.MISSING_VALUE:
+        if stageIndex != MISSING_VALUE:
             observedHydrograph = riverForecastPoint.getObservedHydrograph().getShefHydroDataList()
             observation = observedHydrograph.get(stageIndex)
             observedTime = observation.getValidTime()
@@ -1257,21 +1257,21 @@ class RiverForecastPoints(object):
             category = riverForecastPoint.getMaximumForecastCategory()
             return RiverForecastPoints.FLOOD_CATEGORY_VALUE_DICT.get(category, 'UNKNOWN')
         elif type == TIME :
-            maximumForecastTime = self.MISSING_VALUE
+            maximumForecastTime = MISSING_VALUE
             riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
             maximumForecastIndex = riverForecastPoint.getMaximumForecastIndex()
             
-            if maximumForecastIndex != RiverForecastPoints.MISSING_VALUE:
+            if maximumForecastIndex != MISSING_VALUE:
                 forecastHydrograph = riverForecastPoint.getForecastHydrograph().getShefHydroDataList()
                 maximumForecast = forecastHydrograph.get(maximumForecastIndex)
                 maximumForecastTime = maximumForecast.getValidTime()
     
             return maximumForecastTime
         else :
-            maximumForecastLevel = self.MISSING_VALUE
+            maximumForecastLevel = MISSING_VALUE
             maximumForecastIndex = riverForecastPoint.getMaximumForecastIndex()
             if primaryPE.startswith(PE_H) :
-                if maximumForecastIndex != RiverForecastPoints.MISSING_VALUE:
+                if maximumForecastIndex != MISSING_VALUE:
                     forecastHydrograph = riverForecastPoint.getForecastHydrograph().getShefHydroDataList()
                     forecast = forecastHydrograph.get(maximumForecastIndex)
                     maximumForecastLevel = forecast.getValue()
@@ -1292,11 +1292,11 @@ class RiverForecastPoints(object):
         @param forecastPointID: The river forecast point identifier.
         @return:  The maximum forecast stage for this river forecast point.
         '''
-        maximumForecastStage = self.MISSING_VALUE
+        maximumForecastStage = MISSING_VALUE
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
         maximumForecastIndex = riverForecastPoint.getMaximumForecastIndex()
         
-        if maximumForecastIndex != RiverForecastPoints.MISSING_VALUE:
+        if maximumForecastIndex != MISSING_VALUE:
             forecastHydrograph = riverForecastPoint.getForecastHydrograph().getShefHydroDataList()
             forecast = forecastHydrograph.get(maximumForecastIndex)
             maximumForecastStage = forecast.getValue()
@@ -1346,11 +1346,11 @@ class RiverForecastPoints(object):
         @param forecastPointID: The river forecast point identifier.
         @return:  The maximum forecast time for this river forecast point in milliseconds.
         '''
-        maximumForecastTime = self.MISSING_VALUE
+        maximumForecastTime = MISSING_VALUE
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
         maximumForecastIndex = riverForecastPoint.getMaximumForecastIndex()
         
-        if maximumForecastIndex != RiverForecastPoints.MISSING_VALUE:
+        if maximumForecastIndex != MISSING_VALUE:
             forecastHydrograph = riverForecastPoint.getForecastHydrograph().getShefHydroDataList()
             maximumForecast = forecastHydrograph.get(maximumForecastIndex)
             maximumForecastTime = maximumForecast.getValidTime()
@@ -1492,7 +1492,7 @@ class RiverForecastPoints(object):
         '''
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
         returnVal = riverForecastPoint.getForecastCrestValue()
-        if returnVal == self.MISSING_VALUE:
+        if returnVal == MISSING_VALUE:
             returnVal = None
         return returnVal
 
@@ -1635,12 +1635,12 @@ class RiverForecastPoints(object):
         @param forecastPointID: The river forecast point identifier.
         @return: The maximum observed stage for the last 24 hours.
         '''
-        maxObservation = self.MISSING_VALUE
+        maxObservation = MISSING_VALUE
         shefQualCode = self.MISSING_SHEF_QUALITY_CODE
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
         index = riverForecastPoint.getObservedMax24Index()
         
-        if index != self.MISSING_VALUE:
+        if index != MISSING_VALUE:
             observedHydrograph = riverForecastPoint.getObservedHydrograph().getShefHydroDataList()
             observation = observedHydrograph.get(index)
             maxObservation = observation.getValue()
@@ -1659,13 +1659,13 @@ class RiverForecastPoints(object):
         @param forecastPointID: The river forecast point identifier.
         @return: The maximum observed stage for the last 6 hours.
         '''
-        maxObservation = self.MISSING_VALUE
+        maxObservation = MISSING_VALUE
         shefQualCode = self.MISSING_SHEF_QUALITY_CODE
         shef
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
         index = riverForecastPoint.getObservedMax06Index()
         
-        if index != self.MISSING_VALUE:
+        if index != MISSING_VALUE:
             observedHydrograph = riverForecastPoint.getObservedHydrograph().getShefHydroDataList()
             observation = observedHydrograph.get(stageIndex)
             maxObservation = observation.getValue()

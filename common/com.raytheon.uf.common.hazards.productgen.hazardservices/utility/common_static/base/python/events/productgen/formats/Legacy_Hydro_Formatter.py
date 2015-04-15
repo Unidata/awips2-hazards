@@ -9,6 +9,7 @@
     Jan 31, 2015    4937    Robert.Blum General cleanup
     Feb 20, 2015    4937    Robert.Blum Added groupSummary productPart method
     Mar 17, 2015    6963    Robert.Blum Rounded rfp stage values to a precision of 2.
+    Apr 09, 2015    7271    Chris.Golden Changed to use MISSING_VALUE constant.
 '''
 import datetime
 import collections
@@ -20,12 +21,12 @@ from TableText import FloodPointTable
 from TableText import Column
 from com.raytheon.uf.common.time import SimulatedTime
 
-import RiverForecastPoints
+from HazardConstants import MISSING_VALUE
 
 class Format(Legacy_Base_Formatter.Format):
 
     def initialize(self) :
-        self.MISSING_VALUE = RiverForecastPoints.Missing_Value_Constant
+        self.MISSING_VALUE = MISSING_VALUE
         super(Format, self).initialize()
 
     @abstractmethod
