@@ -275,6 +275,10 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      to still allow their start and end times to be
  *                                      changed.
  * Apr 06, 2015   7272     mduff        Adding changes for Guava upgrade.  Last changes lost in merge.
+ * Apr 14, 2015   6935     Chris.Golden Fixed bug that caused duration choices for hazard
+ *                                      events to lag behind event type (e.g. when event
+ *                                      type of unissued FF.W.NonConvective was changed to
+ *                                      FF.W.BurnScar).
  * </pre>
  * 
  * @author bsteffen
@@ -713,6 +717,12 @@ public class SessionEventManager implements
                 + configManager.getDefaultDuration(event)), Originator.OTHER);
         event.removeHazardAttribute(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
 
+        /*
+         * Update the time boundaries and the duration choices for the event.
+         */
+        updateTimeBoundariesForEvents(event, false);
+        updateDurationChoicesForEvent(event, false);
+
         return (originator != Originator.OTHER);
     }
 
@@ -836,8 +846,6 @@ public class SessionEventManager implements
      */
     @Handler(priority = 1)
     public void hazardTypeChanged(SessionEventTypeModified change) {
-        updateTimeBoundariesForEvents(change.getEvent(), false);
-        updateDurationChoicesForEvent(change.getEvent(), false);
         updateEventMetadata(change.getEvent());
         updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
                 false);

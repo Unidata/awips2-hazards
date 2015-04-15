@@ -3,7 +3,8 @@
   "fieldType": "Text",
   "fieldName": "text1",
   "label": "Warning Message:",
-  "values": "Enter warning message here...",
+  "promptText": "Enter warning message here...",
+  "valueIfEmpty": "|* Enter Warning Message Here *|",
   "visibleChars": 40,
   "expandHorizontally": true
  },

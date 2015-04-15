@@ -28,10 +28,13 @@ import org.eclipse.swt.events.FocusAdapter;
 import org.eclipse.swt.events.FocusEvent;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.events.PaintEvent;
+import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontMetrics;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Point;
@@ -88,6 +91,9 @@ import com.raytheon.uf.viz.spellchecker.text.SpellCheckTextViewer;
  *                                           the megawidget, but are instead
  *                                           passed up to any ancestor that is a
  *                                           scrolled composite.
+ * Apr 10, 2015   6935     Chris.Golden      Added optional prompt text that if
+ *                                           provided is displayed when the text
+ *                                           field is empty.
  * </pre>
  * 
  * @author Chris.Golden
@@ -320,6 +326,37 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
         });
 
         /*
+         * If prompt text has been supplied, add a paint listener that renders
+         * this text (in the standard color if the widget is disabled, or in a
+         * dark gray if enabled so as to differentiate it from actual entered
+         * text) if there is no text entered.
+         */
+        final String promptText = specifier.getPromptText();
+        if ((promptText != null) && (promptText.isEmpty() == false)) {
+            textViewer.getTextWidget().addPaintListener(new PaintListener() {
+                @Override
+                public void paintControl(PaintEvent event) {
+                    StyledText styledText = textViewer.getTextWidget();
+                    if (styledText.getText().isEmpty()) {
+                        Font font = styledText.getFont();
+                        event.gc.setFont(font);
+                        event.gc.getFontMetrics().getAscent();
+                        if (styledText.isEnabled()) {
+                            event.gc.setForeground(event.display
+                                    .getSystemColor(SWT.COLOR_DARK_GRAY));
+                        }
+                        event.gc.drawText(
+                                promptText,
+                                styledText.getLeftMargin(),
+                                styledText.getTopMargin()
+                                        + styledText.getBaseline()
+                                        - event.gc.getFontMetrics().getAscent());
+                    }
+                }
+            });
+        }
+
+        /*
          * If the text area is multi-line, bind vertical scrollbar movements to
          * be recorded as part of the display settings.
          */
@@ -386,7 +423,7 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
     @Override
     public Object getMutableProperty(String name)
             throws MegawidgetPropertyException {
-        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+        if (IControlSpecifier.MEGAWIDGET_EDITABLE.equals(name)) {
             return isEditable();
         }
         return super.getMutableProperty(name);
@@ -395,7 +432,7 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
     @Override
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
-        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+        if (IControlSpecifier.MEGAWIDGET_EDITABLE.equals(name)) {
             setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
                     getSpecifier().getIdentifier(), getSpecifier().getType(),
                     value, name, null));
@@ -532,13 +569,18 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
 
     @Override
     protected final Object doGetState(String identifier) {
-        return state;
+        return getStateAdjustingForEmptiness();
     }
 
     @Override
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
         try {
+            String valueIfEmpty = ((TextSpecifier) getSpecifier())
+                    .getValueIfEmpty();
+            if ((state != null) && state.equals(valueIfEmpty)) {
+                state = "";
+            }
             this.state = stateValidator.convertToStateValue(state);
             updateDisplaySettingsForChangedState();
         } catch (MegawidgetException e) {
@@ -550,7 +592,8 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
     @Override
     protected final String doGetStateDescription(String identifier, Object state)
             throws MegawidgetStateException {
-        return (state == null ? null : state.toString());
+        return (state == null ? ((TextSpecifier) getSpecifier())
+                .getValueIfEmpty() : state.toString());
     }
 
     @Override
@@ -584,6 +627,21 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
         displaySettings.setCaretPosition(0);
         displaySettings.setScrollOrigin(new Point(0, 0));
         displaySettings.setSelectionRange(null);
+    }
+
+    /**
+     * Get the current state, adjusting for it being empty by using the
+     * value-if-empty value (if specified) if the current state is empty.
+     * 
+     * @return Current state, which may be <code>null</code>.
+     */
+    private String getStateAdjustingForEmptiness() {
+        if ((state == null) || state.isEmpty()) {
+            String valueIfEmpty = ((TextSpecifier) getSpecifier())
+                    .getValueIfEmpty();
+            return (valueIfEmpty != null ? valueIfEmpty : state);
+        }
+        return state;
     }
 
     /**
@@ -621,6 +679,7 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
      * Notify listeners of a state change.
      */
     private void notifyListeners() {
-        notifyListener(getSpecifier().getIdentifier(), state);
+        notifyListener(getSpecifier().getIdentifier(),
+                getStateAdjustingForEmptiness());
     }
 }

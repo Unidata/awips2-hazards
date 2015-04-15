@@ -57,7 +57,6 @@ class MetaData(CommonMetaData.MetaData):
         enabled = False
         edit = False
         if bsName is None:
-            bsName = "|* Enter Burn Scar or Location *|"
             enabled = True
             edit = True
         
@@ -65,6 +64,8 @@ class MetaData(CommonMetaData.MetaData):
             "fieldName": "burnScarText",
             "fieldType":"Text",
             "values": bsName,
+            "valueIfEmpty": "|* Enter Burn Scar or Location *|",
+            "promptText": "Enter burn scar or location",
             "visibleChars": 40,
             'enable': enabled,
             'editable': edit,
@@ -162,7 +163,7 @@ class MetaData(CommonMetaData.MetaData):
                              "fieldName": "debrisBurnScarDrainage",
                              "expandHorizontally": True,
                              "visibleChars": 12,
-                             "values": "Enter drainage",
+                             "promptText": "Enter drainage",
                             }]
                }
     def debrisFlowMudSlide(self):

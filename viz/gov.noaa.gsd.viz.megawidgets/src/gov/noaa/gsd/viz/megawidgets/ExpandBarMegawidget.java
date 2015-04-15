@@ -13,8 +13,11 @@ import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
 import gov.noaa.gsd.viz.megawidgets.displaysettings.MultiSelectSettings;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ExpandEvent;
@@ -24,6 +27,8 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.ExpandBar;
 import org.eclipse.swt.widgets.ExpandItem;
+
+import com.google.common.collect.ImmutableSet;
 
 /**
  * Expand bar megawidget, a megawidget that contains bars, each with an
@@ -39,6 +44,7 @@ import org.eclipse.swt.widgets.ExpandItem;
  * Oct 20, 2014    4818    Chris.Golden Added use of display settings, allowing
  *                                      the saving and restoring of expansion
  *                                      state for pages.
+ * Apr 14, 2015    6935    Chris.Golden Added visible page names mutable property.
  * </pre>
  * 
  * @author Chris.Golden
@@ -47,6 +53,19 @@ import org.eclipse.swt.widgets.ExpandItem;
  */
 public class ExpandBarMegawidget extends ContainerMegawidget implements
         IResizer {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = new HashSet<>(
+                ContainerMegawidget.MUTABLE_PROPERTY_NAMES);
+        names.add(ExpandBarSpecifier.MEGAWIDGET_EXPANDED_PAGES);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
+    };
 
     // Private Variables
 
@@ -153,9 +172,54 @@ public class ExpandBarMegawidget extends ContainerMegawidget implements
                 itemVisibilityChanged((ExpandItem) e.item, true);
             }
         });
+
+        /*
+         * Expand any pages that are to start off visible.
+         */
+        List<String> expandedPageNames = specifier.getExpandedPageNames();
+        Set<String> expanded = new HashSet<>(expandedPageNames.size(), 1.0f);
+        for (ExpandItem item : expandBar.getItems()) {
+            if (specifier.getExpandedPageNames().contains(item.getText())) {
+                expanded.add(item.getText());
+                item.setExpanded(true);
+                recalculateHeight(item, true);
+            }
+        }
+        displaySettings.clearSelectedItems();
+        displaySettings.addSelectedItems(expanded);
     }
 
     // Public Methods
+
+    @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (ExpandBarSpecifier.MEGAWIDGET_EXPANDED_PAGES.equals(name)) {
+            return new ArrayList<String>(displaySettings.getSelectedItems());
+        }
+        return super.getMutableProperty(name);
+    }
+
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (ExpandBarSpecifier.MEGAWIDGET_EXPANDED_PAGES.equals(name)) {
+            try {
+                setExpandedPages(((ExpandBarSpecifier) getSpecifier())
+                        .getVisiblePageNames(value));
+            } catch (MegawidgetException e) {
+                throw new MegawidgetPropertyException(
+                        ExpandBarSpecifier.MEGAWIDGET_EXPANDED_PAGES, e);
+            }
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
 
     @Override
     public IDisplaySettings getDisplaySettings() {
@@ -168,22 +232,8 @@ public class ExpandBarMegawidget extends ContainerMegawidget implements
         if ((displaySettings.getMegawidgetClass() == getClass())
                 && (displaySettings instanceof MultiSelectSettings)
                 && (expandBar.isDisposed() == false)) {
-            MultiSelectSettings<String> multiSelectSettings = (MultiSelectSettings<String>) displaySettings;
-            boolean changed = false;
-            for (ExpandItem item : expandBar.getItems()) {
-                boolean wasVisible = item.getExpanded();
-                item.setExpanded(multiSelectSettings.isSelected(item.getText()));
-                if (wasVisible != item.getExpanded()) {
-                    recalculateHeight(item, !wasVisible);
-                    changed = true;
-                }
-            }
-            this.displaySettings.clearSelectedItems();
-            this.displaySettings.addSelectedItems(multiSelectSettings
+            setExpandedPages(((MultiSelectSettings<String>) displaySettings)
                     .getSelectedItems());
-            if (changed && (resizeListener != null)) {
-                resizeListener.sizeChanged(this);
-            }
         }
     }
 
@@ -205,6 +255,29 @@ public class ExpandBarMegawidget extends ContainerMegawidget implements
             displaySettings.removeSelectedItem(expandItem.getText());
         }
         if (resizeListener != null) {
+            resizeListener.sizeChanged(this);
+        }
+    }
+
+    /**
+     * Change the expanded pages to those specified.
+     * 
+     * @param expandedPageNames
+     *            Names of pages to be expanded.
+     */
+    private void setExpandedPages(Collection<String> expandedPageNames) {
+        boolean changed = false;
+        for (ExpandItem item : expandBar.getItems()) {
+            boolean wasVisible = item.getExpanded();
+            item.setExpanded(expandedPageNames.contains(item.getText()));
+            if (wasVisible != item.getExpanded()) {
+                recalculateHeight(item, !wasVisible);
+                changed = true;
+            }
+        }
+        displaySettings.clearSelectedItems();
+        displaySettings.addSelectedItems(expandedPageNames);
+        if (changed && (resizeListener != null)) {
             resizeListener.sizeChanged(this);
         }
     }

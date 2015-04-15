@@ -44,6 +44,9 @@ import java.util.Map;
  * Aug 06, 2014   3777     Chris.Golden      Added "spellcheck" boolean property.
  * Oct 20, 2014   4818     Chris.Golden      Changed to only stretch across the full
  *                                           width of a details panel if multi-line.
+ * Apr 10, 2015   6935     Chris.Golden      Added optional prompt text that if
+ *                                           provided is displayed when the text
+ *                                           field is empty.
  * </pre>
  * 
  * @author Chris.Golden
@@ -55,6 +58,22 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
         IRapidlyChangingStatefulSpecifier {
 
     // Public Static Constants
+
+    /**
+     * Prompting text parameter name; a megawidget may include a string as the
+     * value associated with this name. If provided, the text will be shown as a
+     * visual prompt for the user when the text field is empty. If not
+     * specified, the default is an empty string.
+     */
+    public static final String MEGAWIDGET_PROMPT_TEXT = "promptText";
+
+    /**
+     * Value if empty parameter name; a megawidget may include a string as the
+     * value associated with this name. If provided, the text will be considered
+     * the current state of the megawidget if the megawidget's text field has
+     * nothing in it. If not specified, the default is an empty string.
+     */
+    public static final String MEGAWIDGET_VALUE_IF_EMPTY = "valueIfEmpty";
 
     /**
      * Maximum number of characters parameter name; a megawidget may include a
@@ -103,6 +122,19 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
     private final boolean sendingEveryChange;
 
     /**
+     * Prompting text, to be shown when the text field is empty; if <code>
+     * null<code>, no text will be shown in such cases.
+     */
+    private final String promptText;
+
+    /**
+     * State if empty, to be used as the current state when the text field is
+     * empty; if <code>null<code>, the state will be an empty string in such
+     * cases.
+     */
+    private final String valueIfEmpty;
+
+    /**
      * Visible character length.
      */
     private final int visibleLength;
@@ -142,6 +174,28 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
                 .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
                         parameters.get(MEGAWIDGET_SEND_EVERY_STATE_CHANGE),
                         MEGAWIDGET_SEND_EVERY_STATE_CHANGE, true);
+
+        /*
+         * Ensure that the prompt text, if present, is acceptable.
+         */
+        try {
+            promptText = (String) parameters.get(MEGAWIDGET_PROMPT_TEXT);
+        } catch (Exception e) {
+            throw new MegawidgetSpecificationException(getIdentifier(),
+                    getType(), MEGAWIDGET_PROMPT_TEXT,
+                    parameters.get(MEGAWIDGET_PROMPT_TEXT), "must be string");
+        }
+
+        /*
+         * Ensure that the value if empty text, if present, is acceptable.
+         */
+        try {
+            valueIfEmpty = (String) parameters.get(MEGAWIDGET_VALUE_IF_EMPTY);
+        } catch (Exception e) {
+            throw new MegawidgetSpecificationException(getIdentifier(),
+                    getType(), MEGAWIDGET_VALUE_IF_EMPTY,
+                    parameters.get(MEGAWIDGET_VALUE_IF_EMPTY), "must be string");
+        }
 
         /*
          * Ensure that the visible lines count, if present, is acceptable, and
@@ -225,6 +279,27 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
     @Override
     public final boolean isSendingEveryChange() {
         return sendingEveryChange;
+    }
+
+    /**
+     * Get the prompt text, to be shown when the text field is empty.
+     * 
+     * @return Prompt text, or <code>null</code> if no text is to be shown when
+     *         the field is empty.
+     */
+    public final String getPromptText() {
+        return promptText;
+    }
+
+    /**
+     * Get the value if empty text, to be considered the current state when the
+     * text field is empty.
+     * 
+     * @return Value if empty text, or <code>null</code> if the current state is
+     *         to be an empty string when the text field is empty.
+     */
+    public final String getValueIfEmpty() {
+        return valueIfEmpty;
     }
 
     /**

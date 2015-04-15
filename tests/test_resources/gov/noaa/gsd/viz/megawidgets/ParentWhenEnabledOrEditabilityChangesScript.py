@@ -25,6 +25,14 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
         "enable": mutableProperties["enabled"]["values"]
       }
     }
+    
+  elif "makePage2Visible" in triggerIdentifiers:
+      
+    return {
+      "container1": {
+        "visiblePage": "Second Tab"
+      }
+    }
 
   else:
     return None

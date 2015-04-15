@@ -99,7 +99,6 @@ class MetaData(CommonMetaData.MetaData):
         edit = False
         enabled = False
         if damName is None:
-            damName = "|* Enter Dam or Levee Name *|"
             edit =True 
             enabled = True
         
@@ -107,6 +106,8 @@ class MetaData(CommonMetaData.MetaData):
             "fieldName": "damNameLabel",
             "fieldType":"Text",
             "values": damName,
+            "valueIfEmpty": "|* Enter Dam or Levee Name *|",
+            "promptText": "Enter dam or levee name",
             "visibleChars": 80,
             "editable": edit,
             "enable": enabled,
@@ -401,7 +402,8 @@ class MetaData(CommonMetaData.MetaData):
             "visibleChars": 40,
             "editable": True,
             "enable": True,
-            "values": "|* Enter Dam or Levee Name *|"
+            "valueIfEmpty": "|* Enter Dam or Levee Name *|",
+            "promptText": "Enter dam or levee name"
             } 
         else: 
             damOrLevee = {
@@ -514,7 +516,7 @@ class MetaData(CommonMetaData.MetaData):
              "expandHorizontally": True,
              "visibleChars": 12,
              "lines": 2,
-             "values": "Enter source text",
+             "promptText": "Enter source text",
             } 
 
          

@@ -43,5 +43,5 @@ class MetaData(CommonMetaData.MetaData):
              "expandHorizontally": True,
              "visibleChars": 60,
              "lines": 6,
-             "values": "Enter basis text",
+             "promptText": "Enter basis text",
             } 

@@ -289,7 +289,7 @@ class MetaData(object):
                                          "expandHorizontally": True,
                                          "maxChars": 40,
                                          "visibleChars": 12,
-                                         "values": "Enter Location"
+                                         "promptText": "Enter location"
                                          }
                                         ]
                              }
@@ -447,7 +447,7 @@ class MetaData(object):
                              "fieldName": "basisEnteredText",
                              "expandHorizontally": True,
                              "visibleChars": 12,
-                             "values": "Enter basis text",
+                             "promptText": "Enter basis text",
                             }]
  
                 }
@@ -614,9 +614,9 @@ class MetaData(object):
                              "pageName": "Calls to Action",
                              "pageFields": [pageFields]
                             }
-                         ]
-                }        
-
+                         ],
+                "expandedPages": ["Calls to Action"]      
+                }
                        
                        
     def ctaFloodWatchMeans(self):

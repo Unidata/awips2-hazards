@@ -14,8 +14,10 @@ import gov.noaa.gsd.viz.megawidgets.displaysettings.SelectableMultiPageScrollSet
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
@@ -28,6 +30,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * Tabbed composite megawidget, a megawidget that contains tabs, each associated
@@ -56,6 +59,8 @@ import com.google.common.collect.ImmutableMap;
  *                                           saving and restoring of scroll
  *                                           origins and of the currently
  *                                           selected tab.
+ * Apr 14, 2015    6935    Chris.Golden      Added visible page name mutable
+ *                                           property.
  * </pre>
  * 
  * @author Chris.Golden
@@ -64,6 +69,19 @@ import com.google.common.collect.ImmutableMap;
  */
 public class TabbedCompositeMegawidget extends ContainerMegawidget implements
         IResizer {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = new HashSet<>(
+                ContainerMegawidget.MUTABLE_PROPERTY_NAMES);
+        names.add(TabbedCompositeSpecifier.MEGAWIDGET_VISIBLE_PAGE);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
+    };
 
     // Private Variables
 
@@ -213,12 +231,53 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget implements
                 .copyOf(scrolledCompositesForTabPages) : null);
 
         /*
-         * Select the first tab.
+         * Select whichever tab goes with the page that is to start off visible.
          */
-        tabFolder.setSelection(0);
+        String visiblePageName = specifier.getVisiblePageName();
+        int itemNumber = 0;
+        for (CTabItem item : tabFolder.getItems()) {
+            if (item.getData().equals(visiblePageName)) {
+                tabFolder.setSelection(item);
+                break;
+            }
+            itemNumber++;
+        }
+        displaySettings.setSelection(itemNumber);
     }
 
     // Public Methods
+
+    @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (TabbedCompositeSpecifier.MEGAWIDGET_VISIBLE_PAGE.equals(name)) {
+            Integer selection = displaySettings.getSelection();
+            return tabFolder.getItem(selection == null ? 0 : selection)
+                    .getData();
+        }
+        return super.getMutableProperty(name);
+    }
+
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (TabbedCompositeSpecifier.MEGAWIDGET_VISIBLE_PAGE.equals(name)) {
+            try {
+                setVisiblePage(((TabbedCompositeSpecifier) getSpecifier())
+                        .getVisiblePageName(value));
+            } catch (MegawidgetException e) {
+                throw new MegawidgetPropertyException(
+                        TabbedCompositeSpecifier.MEGAWIDGET_VISIBLE_PAGE, e);
+            }
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
 
     @Override
     public IDisplaySettings getDisplaySettings() {
@@ -239,7 +298,7 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget implements
                     if ((tabFolder.isDisposed() == false)
                             && ((selectedIndex == null) || (tabFolder
                                     .getItemCount() > selectedIndex))) {
-                        tabFolder.setSelection(selectedIndex == null ? -1
+                        tabFolder.setSelection(selectedIndex == null ? 0
                                 : selectedIndex);
                         TabbedCompositeMegawidget.this.displaySettings
                                 .setSelection(selectedIndex);
@@ -263,5 +322,27 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget implements
                 }
             }
         });
+    }
+
+    // Private Methods
+
+    /**
+     * Change the visible page to that specified.
+     * 
+     * @param visiblePageName
+     *            Name of the page to be made visible.
+     */
+    private void setVisiblePage(String visiblePageName) {
+        if (tabFolder.isDisposed() == false) {
+            int itemNumber = 0;
+            for (CTabItem item : tabFolder.getItems()) {
+                if (item.getData().equals(visiblePageName)) {
+                    tabFolder.setSelection(item);
+                    displaySettings.setSelection(itemNumber);
+                    return;
+                }
+                itemNumber++;
+            }
+        }
     }
 }

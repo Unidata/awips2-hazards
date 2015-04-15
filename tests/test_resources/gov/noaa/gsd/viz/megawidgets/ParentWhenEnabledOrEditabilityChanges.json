@@ -151,6 +151,11 @@
   }
  },
  {
+  "fieldType": "Button",
+  "fieldName": "makePage2Visible",
+  "label": "Select Second Page"
+ },
+ {
   "fieldType": "CheckBox",
   "fieldName": "enabled",
   "label": "Enabled",

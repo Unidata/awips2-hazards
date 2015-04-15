@@ -30,6 +30,7 @@ import java.util.Map;
  * Oct 20, 2014    4818    Chris.Golden      Added option of providing a scrollable
  *                                           panel for each page of child
  *                                           megawidgets.
+ * Apr 14, 2015    6935    Chris.Golden      Added visible page name parameter.
  * </pre>
  * 
  * @author Chris.Golden
@@ -39,7 +40,23 @@ import java.util.Map;
 public class TabbedCompositeSpecifier extends MultiPageMegawidgetSpecifier
         implements IPotentiallyScrollableContainerSpecifier<IControlSpecifier> {
 
+    // Public Static Constants
+
+    /**
+     * Visible page parameter name; each expand bar may contain a reference to a
+     * string associated with this name. The provided string must be one of page
+     * names specified within the {@link #MEGAWIDGET_PAGES} parameter. If
+     * specified, the page so specified will start off as visible (in front of
+     * all other pages).
+     */
+    public static final String MEGAWIDGET_VISIBLE_PAGE = "visiblePage";
+
     // Private Variables
+
+    /**
+     * Visible page name.
+     */
+    private final String visiblePageName;
 
     /**
      * Control options manager.
@@ -75,6 +92,17 @@ public class TabbedCompositeSpecifier extends MultiPageMegawidgetSpecifier
         scrollable = ConversionUtilities.getSpecifierBooleanValueFromObject(
                 getIdentifier(), getType(), parameters.get(SCROLLABLE),
                 SCROLLABLE, false);
+
+        /*
+         * Ensure that the visible page, if specified, is valid.
+         */
+        try {
+            visiblePageName = getVisiblePageName(parameters
+                    .get(MEGAWIDGET_VISIBLE_PAGE));
+        } catch (MegawidgetException e) {
+            throw new MegawidgetSpecificationException(MEGAWIDGET_VISIBLE_PAGE,
+                    e);
+        }
     }
 
     // Public Methods
@@ -102,5 +130,62 @@ public class TabbedCompositeSpecifier extends MultiPageMegawidgetSpecifier
     @Override
     public final boolean isScrollable() {
         return scrollable;
+    }
+
+    /**
+     * Get the name of the page that is to start off as visible.
+     * 
+     * @return Page name.
+     */
+    public final String getVisiblePageName() {
+        return visiblePageName;
+    }
+
+    /**
+     * Check the specified string to ensure it is a valid page name, and return
+     * it if it is. If no name is specified, the first page is returned.
+     * <p>
+     * TODO: Better to have the page names, visible page name, etc. be checked
+     * by a validator object, but no time to write one now.
+     * 
+     * @param name
+     *            Visible page name.
+     * @return Visible page name, assuming it is valid.
+     * @throws MegawidgetException
+     *             If the name was invalid.
+     */
+    public final String getVisiblePageName(Object name)
+            throws MegawidgetException {
+        String visiblePageName;
+        try {
+            visiblePageName = (String) name;
+        } catch (Exception e) {
+            throw createBadPageNameMegawidgetException(name);
+        }
+        if ((visiblePageName != null) && (visiblePageName.isEmpty() == false)) {
+            if (getPageNames().contains(visiblePageName) == false) {
+                throw createBadPageNameMegawidgetException(name);
+            }
+        } else {
+            visiblePageName = getPageNames().get(0);
+        }
+        return visiblePageName;
+    }
+
+    // Private Methods
+
+    /**
+     * Build and return a megawidget exception indicating that a page name was
+     * improperly specified.
+     * 
+     * @param badName
+     *            Object that is not a properly specified page name and thus
+     *            triggered the problem for which the exception is to be thrown.
+     * @return Megawidget exception.
+     */
+    private MegawidgetException createBadPageNameMegawidgetException(
+            Object badName) {
+        return new MegawidgetException(getIdentifier(), getType(), badName,
+                "must be page name");
     }
 }

@@ -70,6 +70,11 @@
   ]
  },
  {
+  "fieldType": "Button",
+  "fieldName": "expand1and3",
+  "label": "Expand Sections 1 and 3"
+ },
+ {
   "fieldType": "CheckBox",
   "fieldName": "enabled",
   "label": "Enabled",
