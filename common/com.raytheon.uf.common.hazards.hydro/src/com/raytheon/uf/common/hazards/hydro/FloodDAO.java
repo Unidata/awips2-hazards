@@ -45,6 +45,7 @@ import com.raytheon.uf.common.util.Pair;
  * Dec 17, 2014 2394       Ramer               Updated Interface
  * Feb 21, 2015 4959       Dan Schaffer        Improvements to add/remove UGCs
  * Feb 24, 2015 5960       Manross             Grab flood inundation areas
+ * Apr 9,  2015 7091       Hansen              No longer parsing double pipe
  * </pre>
  * 
  * @author bryon.lawrence
@@ -1182,9 +1183,7 @@ public class FloodDAO implements IFloodDAO {
             String lid = (String) lidLatlon[0];
             String areaCandidates = (String) lidLatlon[1];
             if (areaCandidates != null && areaCandidates.length() > 0) {
-                String[] areaAndCenter = areaCandidates.split(Pattern
-                        .quote("||"));
-                lidAreas.put(lid, areaAndCenter[0]);
+                lidAreas.put(lid, areaCandidates);
             }
         }
 

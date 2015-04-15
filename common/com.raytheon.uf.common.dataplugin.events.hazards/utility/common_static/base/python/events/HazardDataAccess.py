@@ -29,7 +29,7 @@
 #    ------------    ----------    -----------    --------------------------
 #    09/26/13                      mnash          Initial Creation.
 #    12/05/13        2527          bkowal         Use JUtil to convert Hazards
-#    
+#    4/8/15          7091          hansen         Added getHazardEventsBySite
 # 
 #
 
@@ -44,3 +44,17 @@ def getHazardEvent(eventId, mode):
         return None
     
     return JUtil.javaObjToPyVal(historyList.get(historyList.size() - 1))
+
+def getHazardEventsBySite(siteID, mode):
+    manager = HazardEventManager(Mode.valueOf(mode))
+    hazardEventMap = manager.getBySiteID(siteID)
+    if ((hazardEventMap == None) or (hazardEventMap.size() == 0)):
+        return []
+    hazardEvents = []
+    entrySet = hazardEventMap.entrySet()
+    iterator = entrySet.iterator()
+    while iterator.hasNext():
+        item = iterator.next()
+        historyList = item.getValue()
+        hazardEvents.append(JUtil.javaObjToPyVal(historyList.get(historyList.size() - 1)))    
+    return hazardEvents

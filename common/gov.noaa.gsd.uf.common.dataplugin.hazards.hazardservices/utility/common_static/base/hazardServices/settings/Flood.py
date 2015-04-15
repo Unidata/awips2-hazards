@@ -47,7 +47,7 @@ Flood = {
     "possibleSites": [ ],
     #The following variable needs to be overridden at the site level
     #    Example:  "visibleSites":  ["BOU", "OAX"]
-    "visibleSites": [ ], 
+    "visibleSites": [], 
     "defaultDuration": 28800000, 
     "visibleColumns": [
         "Event ID",

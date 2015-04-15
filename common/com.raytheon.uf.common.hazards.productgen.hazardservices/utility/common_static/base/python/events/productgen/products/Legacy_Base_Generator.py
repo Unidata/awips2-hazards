@@ -15,6 +15,8 @@
                                         on the Product Editor.
     Mar 23, 2015    7165    Robert.Blum Added _createSectionDictionary() and retrieving
                                         previously edited raw data values from the productText
+    Apr 10, 2015    7399    Robert.Blum Checking for empty strings in the additional info
+                                        to prevent the megawidget error.
                                         table using setVal() in TextProductCommon.
     Mar 27, 2015    6959    Robert.Blum Changes for Partial cancellations.
     Apr 07, 2015    6690    Robert.Blum List of drainages contents now matches WarnGen.
@@ -959,24 +961,26 @@ class Product(ProductTemplate.Product):
         citiesListFlag = False
         if len(attributeValue) > 0:
             for identifier in attributeValue:
+                additionalInfoText = ''
                 if identifier == 'listOfDrainages':
                     drainages = SpatialQuery.retrievePoints(event['geometry'], 'ffmp_basins', constraints={'cwa' : self._siteID},
                                                             sortBy=['streamname'], locationField='streamname')
-                    drainageText = self._tpc.formatDelimitedList(set(drainages))
-                    if len(drainageText)==0 :
-                        continue
+                    drainages = self._tpc.formatDelimitedList(set(drainages))
                     productString = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier)
-                    drainageText = productString + drainageText + "."
-                    additionalInfo.append(drainageText)
+                    if len(drainages)== 0 or len(productString) == 0:
+                        continue
+                    additionalInfoText = productString + drainages + "."
                 elif identifier == 'listOfCities':
                     citiesListFlag = True
                 elif identifier == 'floodMoving':
-                    productString = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier,
+                    additionalInfoText = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier,
                                     formatMethod=self.floodTimeStr, formatHashTags=['additionalInfoFloodMovingTime'])
-                    additionalInfo.append(productString)
                 else:
-                    productString = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier)
-                    additionalInfo.append(productString)
+                    additionalInfoText = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier)
+
+                # Add the additional info to the list if not None or empty.
+                if additionalInfoText:
+                    additionalInfo.append(additionalInfoText)
         return additionalInfo, citiesListFlag
 
     def floodTimeStr(self, creationTime, hashTag, flood_time_ms):
