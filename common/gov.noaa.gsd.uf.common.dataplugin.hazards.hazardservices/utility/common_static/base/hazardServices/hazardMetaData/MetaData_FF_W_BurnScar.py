@@ -19,6 +19,7 @@ class MetaData(CommonMetaData.MetaData):
                      self.getDebrisFlowOptions(),                                       
                      self.getRainAmt(),
                      self.getAdditionalInfo(),
+                     self.getListOfCities(False),
                      self.getCTAs(), 
                      # Preserving CAP defaults for future reference.                  
 #                      self.getCAP_Fields([
@@ -38,6 +39,7 @@ class MetaData(CommonMetaData.MetaData):
                      self.getDebrisFlowOptions(),                                       
                      self.getRainAmt(),
                      self.getAdditionalInfo(),
+                     self.getListOfCities(False),
                      self.getCTAs(), 
             ]
         return {
@@ -172,7 +174,6 @@ class MetaData(CommonMetaData.MetaData):
  
     def additionalInfoChoices(self):
         return [ 
-            self.listOfCities(),
             self.additionalRain(),
             self.listOfDrainages(),
             ]

@@ -13,6 +13,7 @@ class MetaData(CommonMetaData.MetaData):
                 metaData = [
                     self.getImmediateCause(),
                     self.getBasisStatement(),
+                    self.getListOfCities(),
                     self.getCTAs(), 
                     # Preserving CAP defaults for future reference.                   
 #                     self.getCAP_Fields([

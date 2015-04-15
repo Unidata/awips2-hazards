@@ -62,6 +62,9 @@ class Product(HydroGenerator.Product):
         self._FLS_ProductName_Advisory = 'Flood Advisory'
         self._includeAreaNames = True
         self._includeCityNames = False
+        # Not Polygon-based, so locations listed will not be limited to within the polygon, 
+        # but rather than UGC area e.g. county or zone
+        self._polygonBased = False
 
     def execute(self, eventSet, dialogInputMap):
         '''
@@ -102,10 +105,9 @@ class Product(HydroGenerator.Product):
         for attribute in attributes:
             # Special case attributes that need additional work before adding to the dictionary
             if attribute == 'additionalInfo':
-                additionalInfo, citiesListFlag = self._prepareAdditionalInfo(attributes[attribute] , event, metaData)
+                additionalInfo = self._prepareAdditionalInfo(attributes[attribute] , event, metaData)
                 additionalCommentsKey = KeyInfo('additionalComments', self._productCategory, self._productID, eventIDs, ugcList, True, label='Additional Comments')
                 section[additionalCommentsKey] = additionalInfo
-                section['citiesListFlag'] = citiesListFlag
             elif attribute == 'cta':
                 if vtecRecord.get("phen") != "HY":
                     # These are now added at the segment level. Do we want to add here as well?
@@ -120,11 +122,8 @@ class Product(HydroGenerator.Product):
                 if attribute == 'advisoryType':
                     section[attribute + '_productString'] = self._tpc.getProductStrings(event, metaData, attribute)
 
-        impactedLocationsKey = KeyInfo('impactedLocations', self._productCategory, self._productID, eventIDs, ugcList,True,label='Impacted Locations')
-        impactedLocationsValue = self._prepareImpactedLocations(event.getGeometry())
-        section[impactedLocationsKey] = impactedLocationsValue
-
-        section['impactedAreas'] = self._prepareImpactedAreas(attributes)
+        section['locationsAffected'] = self._prepareLocationsAffected(event)
+        section['impactedLocations'] = self._prepareImpactedLocations(event)
         section['geometry'] = event.getGeometry()
         section['subType'] = event.getSubType()
         section['timeZones'] = self._productSegment.timeZones

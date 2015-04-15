@@ -44,6 +44,8 @@ class Product(HydroGenerator.Product):
         self._FFS_ProductName = 'Flash Flood Statement'
         self._includeAreaNames = True
         self._includeCityNames = False
+        # Polygon-based, so locations listed will be limited to within the polygon rather than county area
+        self._polygonBased = True
 
     def defineScriptMetadata(self):
         metadata = collections.OrderedDict()
@@ -98,10 +100,9 @@ class Product(HydroGenerator.Product):
         for attribute in attributes:
             # Special case attributes that need additional work before adding to the dictionary
             if attribute == 'additionalInfo':
-                additionalInfo, citiesListFlag = self._prepareAdditionalInfo(attributes[attribute] , event, metaData)
+                additionalInfo = self._prepareAdditionalInfo(attributes[attribute] , event, metaData)
                 additionalCommentsKey = KeyInfo('additionalComments', self._productCategory, self._productID, eventIDs, ugcList, editable=True, label='Additional Comments')
                 section[additionalCommentsKey] = additionalInfo
-                section['citiesListFlag'] = citiesListFlag
             elif attribute == 'cta':
                 # These are now added at the segment level. Do we want to add here as well?
                 callsToActionValue = self._tpc.getProductStrings(event, metaData, 'cta')
@@ -111,11 +112,8 @@ class Product(HydroGenerator.Product):
             else:
                 section[attribute] = attributes.get(attribute, None)
 
-        impactedLocationsKey = KeyInfo('impactedLocations', self._productCategory, self._productID, eventIDs, ugcList,True,label='Impacted Locations')
-        impactedLocationsValue = self._prepareImpactedLocations(event.getGeometry())
-        section[impactedLocationsKey] = impactedLocationsValue
-
-        section['impactedAreas'] = self._prepareImpactedAreas(attributes)
+        section['locationsAffected'] = self._prepareLocationsAffected(event)
+        section['impactedLocations'] = self._prepareImpactedLocations(event)
         section['geometry'] = event.getGeometry()
         section['subType'] = event.getSubType()
         section['timeZones'] = self._productSegment.timeZones

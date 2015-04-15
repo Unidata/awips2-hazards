@@ -15,6 +15,7 @@ class MetaData(CommonMetaData.MetaData):
                 metaData = [
                             self.getEndingOption(),
                             self.getEndingSynopsis(),
+                            self.getListOfCities(False),
                             ]
             else:
                 metaData = []
@@ -29,6 +30,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getFloodLocation(),
                     self.getUpstreamLocation(),
                     self.getDownstreamLocation(),
+                    self.getListOfCities(False),
                     self.getCTAs(),  
                     # Preserving CAP defaults for future reference.                  
 #                     self.getCAP_Fields([
@@ -50,6 +52,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getFloodLocation(),
                     self.getUpstreamLocation(),
                     self.getDownstreamLocation(),
+                    self.getListOfCities(False),
                     self.getCTAs(), 
                 ] 
             
@@ -149,7 +152,6 @@ class MetaData(CommonMetaData.MetaData):
         
     def additionalInfoChoices(self):
         return [ 
-            self.listOfCities(),
             self.listOfDrainages(),
             self.additionalRain(),
             self.floodMoving(),

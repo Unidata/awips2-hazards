@@ -93,8 +93,8 @@ class Format(FormatTemplate.Formatter):
     def createAreaPhrase(self, sectionDict):
         areaPhrase = ''
         counter = 0
-        size = len(sectionDict.get('impactedAreas'))
-        for area in sectionDict.get('impactedAreas'):
+        size = len(sectionDict.get('impactedLocations'))
+        for area in sectionDict.get('impactedLocations'):
             areaPhrase += area['name']
             if size > 1:
                 if counter < size - 2:

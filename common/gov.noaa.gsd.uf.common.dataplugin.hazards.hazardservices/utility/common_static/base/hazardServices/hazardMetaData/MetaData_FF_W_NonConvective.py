@@ -43,13 +43,13 @@ class MetaData(CommonMetaData.MetaData):
                      self.getFloodSeverity(),
                      self.getHydrologicCause(),
                      self.getSource(hydrologicCause),
-                     self.getImpactedLocations(),
                      self.getAdditionalInfo(),
                      self.getScenario(),
                      self.getRiver(),
                      self.getFloodLocation(),
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
+                     self.getListOfCities(False),
                      self.getCTAs(), 
                         ]
         elif status == "issued":
@@ -58,13 +58,13 @@ class MetaData(CommonMetaData.MetaData):
                      self.getFloodSeverity(),
                      self.getHydrologicCause(editable=False),
                      self.getSource(hydrologicCause),
-                     self.getImpactedLocations(),
                      self.getAdditionalInfo(),
                      self.getScenario(),
                      self.getRiver(editable=False),
                      self.getFloodLocation(),
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
+                     self.getListOfCities(False),
                      self.getCTAs(), 
                      # Preserving CAP defaults for future reference.
 #                      self.getCAP_Fields([
@@ -78,6 +78,7 @@ class MetaData(CommonMetaData.MetaData):
             metaData = [
                     self.getEndingSynopsis(),
                     self.getAdditionalInfo(),
+                    self.getListOfCities(False),
                     ]
             return metaData
         
@@ -346,19 +347,8 @@ class MetaData(CommonMetaData.MetaData):
         if hydrologicCause in addVolcano:
             choices.append(self.alaskaVolcanoObservatorySource())
             choices.append(self.cascadesVolcanoObservatorySource())
-        
-        
+                
         return choices
-
-    def getImpactedLocations(self):
-            return {
-                     "fieldType":"CheckBoxes",
-                     "fieldName": "impactedLocations",
-                     "showAllNoneButtons" : False,
-                     "label": "Impacted Locations:",
-                     "choices": [self.listOfCities()],
-                     "lines": 1
-                    }
 
     def getAdditionalInfo(self):
         result = super(MetaData, self).getAdditionalInfo()

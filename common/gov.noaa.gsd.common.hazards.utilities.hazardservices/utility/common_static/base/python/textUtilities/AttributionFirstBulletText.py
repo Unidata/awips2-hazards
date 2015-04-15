@@ -42,7 +42,6 @@ class AttributionFirstBulletText(object):
         self.metaData = sectionDict.get('metaData')
         self.pointID = sectionDict.get('pointID')
         
-        self.cityString = sectionDict.get('cityString', '')
         self.ugcs = sectionDict.get('ugcs', [])
         self.ugcPortions = sectionDict.get('ugcPortions', {})
         self.ugcPartsOfState = sectionDict.get('ugcPartsOfState', {})
@@ -55,7 +54,11 @@ class AttributionFirstBulletText(object):
         self.creationTime = sectionDict.get('creationTime')
 
         self.endString = endString
-        self.listOfCities = sectionDict.get('citiesListFlag', False) 
+        listOfCities = sectionDict.get('listOfCities', [])
+        if 'selectListOfCities'in listOfCities:
+            self.cityListFlag = True
+        else:
+            self.cityListFlag = False  
         self.warningType = sectionDict.get('warningType')
         
         self.advisoryType = sectionDict.get('advisoryType_productString')
@@ -70,14 +73,18 @@ class AttributionFirstBulletText(object):
         self.streamName = sectionDict.get('streamName')
 
         self.nwsPhrase = 'The National Weather Service in ' + self.wfoCity + ' has '
-        
+                
         if not areaPhrase:
-            if self.phen in ["FF", "FA", "TO", "SV", "SM", "EW" , "FL" ] and \
-                self.action in [ "NEW", "EXA", "EXT", "EXB" ] and \
-                self.geoType == 'area' and self.sig != "A" :
-                self.areaPhrase = self.getAreaPhraseBullet()
-            else :
-                self.areaPhrase = self.getAreaPhrase(sectionDict)
+            if self.productID in ['FFA', 'FFS']:
+                self.areaPhrase = self.tpc.getAreaPhrase(self.ugcs)
+            elif self.productID == 'FFW':
+                self.areaPhrase = self.getAreaPhraseBullet(sectionDict, optionalCities=True)
+            elif self.phenSig in ['FA.W', 'FA.Y']:
+                self.areaPhrase = self.getAreaPhraseBullet(sectionDict)
+            elif self.phen == 'FL':
+                self.areaPhrase = self.getAreaPhraseForPoints(sectionDict)
+            else:
+                self.areaPhrase = ''
             self.areaPhrase.rstrip()
         
     def initialize_withHazardEvent(self, hazardEvent, vtecRecord, metaData, productID, issueTime, testMode, wfoCity, tpc, rfp, areaPhrase=None, endString='. '):
@@ -303,7 +310,7 @@ class AttributionFirstBulletText(object):
 
             
     # areaPhrase
-    def getAreaPhraseBullet(self):
+    def getAreaPhraseBullet(self, sectionDict, optionalCities=False):
         '''
         @return: Plain language list of counties/zones in the hazard appropriate
                  for bullet format products
@@ -330,29 +337,21 @@ class AttributionFirstBulletText(object):
             else :
                 textLine += part + " " + self.tpc.getInformationForUGC(ugc, "fullStateName") + "...\n"
             areaPhrase += textLine
+            
+        if optionalCities and self.cityListFlag:
+            cities = '  This includes the cities of '
+            cityList = sectionDict.get('cityList', [])
+            cities += self.tpc.getTextListStr(cityList)
+            areaPhrase += cities            
 
         return areaPhrase
-           
-    def getAreaPhrase(self, sectionDict):
-        '''
-        Central Kent County in Southwest Michigan
-        This includes the cities of City1 and City2
-
-        @param sectionDict       
-        @return text describing the UGC areas and optional cities
-        
-        ''' 
-        if self.geoType == 'area':
-            ugcPhrase = self.tpc.getAreaPhrase(self.ugcs)
-            if self.listOfCities:
-                ugcPhrase += '\n' + self.cityString
-            return ugcPhrase
-        else:
-            proximity = sectionDict.get('proximity', '')
-            # TODO fix rfp to never return None or decide what the below default value should be
-            if not proximity:
-                proximity = 'near'
-            return  '  the ' + sectionDict.get('riverName_GroupName', '') + ' ' + proximity + ' ' + sectionDict.get('riverPointName', '') + '.'
+                   
+    def getAreaPhraseForPoints(self, sectionDict):
+        proximity = sectionDict.get('proximity', '')
+        # TODO fix rfp to never return None or decide what the below default value should be
+        if not proximity:
+            proximity = 'near'
+        return  '  the ' + sectionDict.get('riverName_GroupName', '') + ' ' + proximity + ' ' + sectionDict.get('riverPointName', '') + '.'
 
 
     # The following tables are temporarily here until we determine the best central place to keep them.        

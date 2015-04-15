@@ -219,6 +219,7 @@ class HydroProductParts(object):
                     'ugcHeader',
                     'vtecRecords',
                     'areaList',
+                    'cityList',
                     'issuanceTimeDate',
                     'CR',
                     'summaryHeadlines',
@@ -314,18 +315,9 @@ class HydroProductParts(object):
                 non_CAN_EXP = False
             pil = vtecRecord['pil']  # All vtec records in this segment must have the same pil
             phen = vtecRecord['phen']
-            
-        if phen == "FA" :
-            partsList = [
-                'setUp_segment',
-                'ugcHeader',
-                'vtecRecords',
-                'areaList',
-                'issuanceTimeDate',
-                'CR'
-                ]
-        else :
-            partsList = [
+            sig = vtecRecord['sig']
+        
+        partsList = [
                 'setUp_segment',
                 'ugcHeader',
                 'vtecRecords',
@@ -392,7 +384,7 @@ class HydroProductParts(object):
                     'firstBullet',
                     'basisAndImpactsStatement',
                     ] 
-        if phen == "FA" :
+        if phen == "FA" and sig != "A":  # FA.W and FA.Y
             partsList.append('locationsAffected')
            
         return partsList

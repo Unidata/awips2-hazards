@@ -15,6 +15,7 @@
                                         on the Product Editor.
     Apr 10, 2015    7399    Robert.Blum Checking for empty strings in the additional info
                                         to prevent the megawidget error.
+    Apr 15  2015    6469    hansen      Cleaning up city list, locations affected, impacted locations
 '''
 
 import ProductTemplate
@@ -554,6 +555,7 @@ class Product(ProductTemplate.Product):
                     self._productSegment.ctas += cta + '\n\n'
 
             sectionDict = self._prepareSection(sectionHazardEvent, sectionVtecRecord, sectionMetaData)
+            sectionDict['cityList'] = self._productSegment.cityList
             sectionDicts.append(sectionDict)
 
         # Add the list of section dictionaries to the segment dictionary
@@ -817,11 +819,7 @@ class Product(ProductTemplate.Product):
         self._productSegment.ugcs.sort()
         self._productSegment.ctas = ''
         self._productSegment.pointID = hazardEvent.get('pointID')
-        self._productSegment.cityInfo = self.getCityInfo(self._productSegment.ugcs, returnType='list')
-        cityList = []
-        for city, ugcCity in self._productSegment.cityInfo:
-            cityList.append(city)
-        self._productSegment.cityList = cityList
+        self._productSegment.cityList = self._getCityList(hazardEvent)
         self._productSegment.timeZones = self._tpc.hazardTimeZones(self._productSegment.ugcs)
         self._productSegment.expireTime = self._tpc.getExpireTime(self._issueTime, self._purgeHours, 
                                                                     self._productSegment.vtecRecords_ms)
@@ -837,8 +835,22 @@ class Product(ProductTemplate.Product):
                 break  # take the first one
         self._productSegment.canVtecRecord = canVtecRecord
 
-    def _prepareImpactedAreas(self, attributes):
-        impactedAreas = []
+    def _prepareLocationsAffected(self, hazardEvent):
+        # TODO  
+        #  For now we're using the cityList, 
+        #  but we need to re-use the legacy updated 
+        #  WarnGen locations list 
+        return self._getCityList(hazardEvent)
+    
+    def _prepareImpactedLocations(self, hazardEvent):
+        # Returns a list of dictionaries. 
+        # TODO
+        #  Gathering impact information to potentially be used 
+        #  in the bullets. This could be hooked up if
+        #  needed e.g. 
+        #  The storm is moving through the northeast portion of Boulder County.
+        attributes = hazardEvent.getHazardAttributes()
+        impactedLocations = []
         ugcs = attributes.get('ugcs') 
         if 'ugcPortions' in attributes:
             portions = attributes.get('ugcPortions') 
@@ -861,10 +873,21 @@ class Product(ProductTemplate.Product):
             area['timeZone'] = self._areaDictionary.get(ugc).get('ugcTimeZone')
             if partsOfState:
                 area['partsOfState'] = partsOfState.get(ugc)
-            impactedAreas.append(area)
-        return impactedAreas
+            impactedLocations.append(area)
+        return impactedLocations
 
-    def _prepareImpactedLocations(self, geometry):
+    def _getCityList(self, hazardEvent):
+        if not self._polygonBased: # area based
+            self._productSegment.cityInfo = self.getCityInfo(self._productSegment.ugcs, returnType='list')
+            cityList = []
+            for city, ugcCity in self._productSegment.cityInfo:
+                cityList.append(city)
+        else: # polygon-based
+            cityList = self._getCityListForPolygon(hazardEvent)
+        return cityList
+        
+    def _getCityListForPolygon(self, hazardEvent):
+        geometry = hazardEvent.getGeometry()
         columns = ["name", "warngenlev"]
         try :
             cityGeoms = self._tpc.mapDataQuery("city", columns, geometry)
@@ -894,14 +917,16 @@ class Product(ProductTemplate.Product):
 
     def _prepareAdditionalInfo(self, attributeValue, event, metaData):
         additionalInfo = []
-        citiesListFlag = False
         if len(attributeValue) > 0:
             for identifier in attributeValue:
                 additionalInfoText = ''
                 if identifier == 'listOfDrainages':
                     # Not sure if this query is correct
                     drainages = self._retrievePoints(event['geometry'], 'basins')
-                    drainages = self._tpc.formatDelimitedList(drainages)
+                    try:
+                        drainages = self._tpc.formatDelimitedList(drainages)
+                    except:
+                        continue
                     productString = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier)
                     if len(drainages)== 0 or len(productString) == 0:
                         continue
@@ -917,7 +942,7 @@ class Product(ProductTemplate.Product):
                 # Add the additional info to the list if not None or empty.
                 if additionalInfoText:
                     additionalInfo.append(additionalInfoText)
-        return additionalInfo, citiesListFlag
+        return additionalInfo
 
     def floodTimeStr(self, creationTime, hashTag, flood_time_ms):
         floodTime = datetime.datetime.fromtimestamp(flood_time_ms/1000)
