@@ -67,6 +67,7 @@ import com.raytheon.uf.common.util.Pair;
  * 03/19/2015   7108       Robert.Blum  Rename Raw Data to Hazard Data Editor.
  * 03/23/2015   7165       Robert.Blum  Modifications to allow adding * to editor tab and product tab
  *                                      labels when there are unsaved changes.
+ * 04/16/2015   7579       Robert.Blum  Changes for amended Product Editor design.
  * </pre>
  * 
  * @author jsanchez
@@ -175,17 +176,21 @@ public class ProductDataEditor extends AbstractDataEditor {
                             // Update the map with the new value
                             updateKeyInfoValue(editableKeyInfo, keyInfo,
                                     newValue);
-                            // Regenerate with the updated data
-                            productEditor.regenerate();
 
                             // Update the editable key value
                             editableKeyInfo.updateValue(newValue);
+
+                            // Save the new value to the productText table
+                            saveModifiedValues();
 
                             // Update the enabled state of the save and undo buttons
                             updateButtonState();
 
                             // Update the tab label
                             updateTabLabel();
+
+                            // Regenerate with the updated data
+                            productEditor.regenerate(keyInfo);
                         }
 
                         @Override
@@ -254,56 +259,34 @@ public class ProductDataEditor extends AbstractDataEditor {
      * @param newValue
      *            The new value to assign to the keyinfo object
      */
-    @SuppressWarnings("unchecked")
     private void updateKeyInfoValue(EditableKeyInfo editableKeyInfo,
             KeyInfo keyInfo, Serializable newValue) {
-        /*
-         * Get path in the map
-         */
-        List<KeyInfo> path = new ArrayList<KeyInfo>();
-        if (editableKeyInfo.getPath() != null && !editableKeyInfo.getPath().isEmpty()) {
-            path.addAll(editableKeyInfo.getPath());
+        product.getEditableEntries().get(editableKeyInfo.getFormat())
+                .put(keyInfo, newValue);
+    }
+
+    public void updateValues(IGeneratedProduct product) {
+        editableKeys.updateEditableKeys(product);
+        Map<String, Object> state = manager.getState();
+        for (KeyInfo key : editableKeys.getKeyInfos()) {
+            EditableKeyInfo editableKeyInfo = editableKeys
+                    .getEditableKeyInfo(key);
+            // updates the values displayed in the GUI
+            state.put(key.toString(), editableKeyInfo.getOriginalValue());
+
         }
-        path.add(keyInfo);
 
-        Map<KeyInfo, Serializable> currentDataMap = this.product.getData();
-        for (int counter = 0; counter < path.size(); counter++) {
-            KeyInfo key = path.get(counter);
-            Serializable currentValue = currentDataMap.get(key);
-
-            if (counter == path.size() - 1 && currentDataMap.containsKey(key)) {
-                currentDataMap.put(key, newValue);
-                break;
-            } else if (currentValue instanceof Map<?, ?>) {
-                currentDataMap = (Map<KeyInfo, Serializable>) currentValue;
-            } else if (currentValue instanceof ArrayList<?>) {
-                /*
-                 * need to increment - going down another level
-                 */
-                KeyInfo nextKey = path.get(++counter);
-                int index = nextKey.getIndex();
-                List<?> list = (ArrayList<?>) currentValue;
-
-                if (list.get(index) instanceof Map<?, ?>) {
-                    Map<KeyInfo, Serializable> map = (Map<KeyInfo, Serializable>) list
-                            .get(index);
-                    if ((counter == path.size() - 1)
-                            && map.containsKey(nextKey)) {
-                        map.put(nextKey, newValue);
-                        break;
-                    } else if (map.get(nextKey) instanceof Map<?, ?>) {
-                        // found map to use
-                        currentDataMap = (Map<KeyInfo, Serializable>) map
-                                .get(nextKey);
-                    } else if (map.get(nextKey) instanceof ArrayList<?>) {
-                        currentDataMap = map;
-                        counter--;
-                    }
-                }
-            }
+        // Save the reverted value to the productText table
+        saveModifiedValues();
+        try {
+            manager.setState(state);
+        } catch (MegawidgetStateException exception) {
+            handler.error("Error trying to reset megawidget state: "
+                    + exception, exception);
         }
     }
 
+    @Override
     public void revertValues() {
         Map<String, Object> state = manager.getState();
         for (KeyInfo key : editableKeys.getKeyInfos()) {
@@ -318,7 +301,7 @@ public class ProductDataEditor extends AbstractDataEditor {
 
         }
         // regenerate with updated data
-        productEditor.regenerate();
+        productEditor.regenerate(null);
         try {
             manager.setState(state);
         } catch (MegawidgetStateException exception) {
@@ -353,8 +336,11 @@ public class ProductDataEditor extends AbstractDataEditor {
             // updates the values displayed in the GUI
             state.put(keyInfo.toString(), editableKeyInfo.getValue());
             
+            // Save the reverted value to the productText table
+            saveModifiedValues();
+
             // Regenerate with the updated data
-            productEditor.regenerate();
+            productEditor.regenerate(null);
             try {
                 manager.setState(state);
             } catch (MegawidgetStateException exception) {

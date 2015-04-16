@@ -47,6 +47,8 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
  * 1/15/2015    5109       bphillip     Changed type on editableEntries field
  * Mar 30, 2015 6929       Robert.Blum  Added eventSet that is used to write/retrieve
  *                                      from the productData table.
+ * Apr 16, 2015 7579       Robert.Blum  Changed type on editableEntries field and added
+ *                                      addEditableEntry().
  * 
  * </pre>
  * 
@@ -61,7 +63,7 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
     private Map<String, List<Serializable>> entries = new LinkedHashMap<String, List<Serializable>>();
 
     /** Map of editable entries - mainly used for GUI highlighting */
-    private Map<String, LinkedHashMap<String, Serializable>> editableEntries = new LinkedHashMap<String, LinkedHashMap<String, Serializable>>();
+    private Map<String, LinkedHashMap<KeyInfo, Serializable>> editableEntries = new LinkedHashMap<String, LinkedHashMap<KeyInfo, Serializable>>();
 
     private LinkedHashMap<KeyInfo, Serializable> data;
 
@@ -162,13 +164,21 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
         return null;
     }
 
-    public Map<String, LinkedHashMap<String, Serializable>> getEditableEntries() {
+    @Override
+    public Map<String, LinkedHashMap<KeyInfo, Serializable>> getEditableEntries() {
         return editableEntries;
     }
 
+    @Override
     public void setEditableEntries(
-            Map<String, LinkedHashMap<String, Serializable>> editableEntries) {
+            Map<String, LinkedHashMap<KeyInfo, Serializable>> editableEntries) {
         this.editableEntries = editableEntries;
+    }
+
+    @Override
+    public void addEditableEntry(String key,
+            LinkedHashMap<KeyInfo, Serializable> editableEntry) {
+        editableEntries.put(key, editableEntry);
     }
 
     /*

@@ -17,6 +17,7 @@ Jan 12, 2015   4937      Robert.Blum         Refactor to use new generator class
                                              introduced with ticket 4937.
 Jan 31, 2015   4937      Robert.Blum         General cleanup and minor bug fixes.
 Mar 23, 2015   7165      Robert.Blum         Code consolidation - removed _prepareSection().
+Apr 16, 2015   7579      Robert.Blum         Updates for amended Product Editor.
 
 @author Tracy.L.Hansen@noaa.gov
 @version 1.0
@@ -56,9 +57,9 @@ class Product(HydroGenerator.Product):
     def defineDialog(self, eventSet):
         return {}
 
-    def executeFrom(self, dataList, prevDataList=None):
-        if prevDataList is not None:
-            dataList = self.correctProduct(dataList, prevDataList, True)
+    def executeFrom(self, dataList, keyInfo=None):
+        if keyInfo is not None:
+            dataList = self.correctProduct(dataList, keyInfo, True)
         return dataList
 
     def execute(self, eventSet, dialogInputMap):

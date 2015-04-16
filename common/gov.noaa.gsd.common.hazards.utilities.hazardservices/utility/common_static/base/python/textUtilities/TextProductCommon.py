@@ -19,6 +19,8 @@
                                                 substituting hashtags.
    Feb 26, 2015   6599      Robert.Blum         Changed to new style class
    Mar 23, 2015   7165      Robert.Blum         Modified setVal() to work with new framework.
+   Apr 16, 2015   7579      Robert.Blum         Added new getSavedVal() method to retrieve user edits
+                                                from the ProductText table.
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -259,51 +261,80 @@ class TextProductCommon(object):
             return altDict.get(key)
         return default
 
-    def setVal(self, dictionary, key, default, editable=False, eventIDs=None, segment=None,
-                  label=None, productCategory=None, productID=None, formatMethod=None, formatArgs=None, displayable=False,
-                  useKeyAsLabel=False):      
+    def getSavedVal(self, key, eventIDs=None, segment=None, productCategory=None, productID=None):
         '''
-        If editable:
-             Retrieve user edited text using the given identifying information:
-                key, self._productCategory, productID, segment, eventIDs 
-             If not found, use the default value provided 
-        If formatMethdod:
-             format the field according to the formatMethod and formatArgs
-        '''  
-        
+        Retrieves any user edited text from the productText table if available.
+        Otherwise it returns a emtpy string.
+        '''
+        value = ''
+        if None in [key, productCategory, productID, eventIDs, segment]:
+            return value
+        productTextList = ProductTextUtil.retrieveProductText(key, productCategory, productID, segment, eventIDs)
+        if len(productTextList) > 0:
+            value = productTextList[0].getValue()
+        return value
+
+    def setVal(self, dictionary, key, value, editable=False, eventIDs=None, segment=None,
+                  label=None, productCategory=None, productID=None, displayable=False,
+                  useKeyAsLabel=False):
+        '''
+        Utility method to add a value to a dictionary. It will create the KeyInfo key
+        if editable or displayable are set to true. Otherwise it adds the value to 
+        dictionary using the default key provided.
+        '''
         if editable:
-            if None in [key, productCategory, productID, eventIDs, segment]:
-                userEditedKey = key
-                value = default
-            else:
-                # create KeyInfo object
-                userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, True, label=label)
-                        
-                # Try and retrieve previously edited text
-                productTextList = ProductTextUtil.retrieveProductText(key, productCategory, productID, segment, eventIDs)
-                
-                # If not there, use defaultValue
-                if len(productTextList) > 0:
-                    value = productTextList[0].getValue()
-                else:
-                    value = default
+            userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, True, label=label)
         elif displayable:
             if useKeyAsLabel: label = key
-            if label is None: label = ''                
+            if label is None: label = ''
             userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment='', editable=False, displayable=True, label=label) 
-            value = default           
         else:
-            value = default
             userEditedKey = key
-        
-        # TODO -- have Legacy handle the formatting e.g.
-        #     bulletFormat_CR...
-        # By setting value to {'value':value, 'valueFormat':formatMethod}
-        if formatMethod:
-            exec 'value = self.' + formatMethod + '(value, formatArgs)'
-        
+
         dictionary[userEditedKey] = value
-        
+
+    def parameterSetupForKeyInfo(self, dictionary):
+        '''
+        Utility method for preparing the eventIDs and UGCs to be 
+        passed into the KeyInfo constructor. This method determines
+        which level of dictionary is passed in (product, segment, section)
+        then determines the eventID and ugcs based on that.
+        '''
+        ugcs = set()
+        eventIDs = set()
+        if dictionary.get('segments', None):
+            # Product Level
+            for segment in dictionary.get('segments'):
+                ugcs.update(set(segment.get('ugcs', [])))
+                for vtecRecord in segment.get('vtecRecords', []):
+                    eventIDs.update(set(vtecRecord.get('eventID')))
+        elif dictionary.get('sections', None):
+            # Segment Level
+            ugcs.update(set(dictionary.get('ugcs', [])))
+            for vtecRecord in dictionary.get('vtecRecords', []):
+                eventIDs.update(set(vtecRecord.get('eventID')))
+        elif dictionary.get('vtecRecord',None):
+            # Section Level
+            ugcs.update(set(dictionary.get('ugcs', [])))
+            eventIDs.update(set(dictionary.get('vtecRecord').get('eventID')))
+        else:
+            # RVS
+            ugcs.update(set(dictionary.get('ugcs', [])))
+            eventIDs.update(set(dictionary.get('eventIDs', [])))
+        tmpEventIDs = []
+        for eventID in eventIDs:
+            tmpEventIDs.append(int(eventID))
+
+        ugcs = list(ugcs)
+        ugcs.sort()
+        ugcList = ''
+        for ugc in ugcs:
+            if len(ugcList) > 0:
+                ugcList += ', '
+            ugcList += ugc
+        ugcList = str(ugcList)
+        return tmpEventIDs, ugcList
+
     # ## Formatting helper methods    
                 
     def getFormattedTime(self, time_ms, format='%I%M %p %Z %a %b %d %Y',

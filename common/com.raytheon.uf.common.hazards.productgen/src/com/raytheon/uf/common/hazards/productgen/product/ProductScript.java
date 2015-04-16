@@ -68,6 +68,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  *                                      closing Cave.
  * 2/25/2015    6599       Robert.Blum  Adding fileObserver to TextUtility dir to allowing overrides.
  * 02/25/2015   6306       mduff        Pass the selected site.
+ * 04/16/2015   7579       Robert.Blum  Changed executeFrom method to take a KeyInfo object.
  * </pre>
  * 
  * @author jsanchez
@@ -87,7 +88,7 @@ public class ProductScript extends PythonScriptController {
 
     private static final String DATA_LIST = "dataList";
 
-    private static final String PREV_DATA_LIST = "prevDataList";
+    private static final String KEY_INFO = "keyInfo";
 
     /** Class name in the python modules */
     private static final String PYTHON_CLASS = "Product";
@@ -247,13 +248,12 @@ public class ProductScript extends PythonScriptController {
      */
     public GeneratedProductList updateGeneratedProducts(String product,
             List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList,
-            List<LinkedHashMap<KeyInfo, Serializable>> prevDataList,
-            String[] formats) {
+            KeyInfo keyInfo, String[] formats) {
 
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(product));
         args.put(DATA_LIST, updatedDataList);
-        args.put(PREV_DATA_LIST, prevDataList);
+        args.put(KEY_INFO, keyInfo);
         args.put(FORMATS, Arrays.asList(formats));
         GeneratedProductList retVal = null;
         try {

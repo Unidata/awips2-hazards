@@ -7,6 +7,7 @@
     Nov 24, 2014    4937    Robert.Blum Initial creation
     Jan 31, 2015    4937    Robert.Blum General cleanup and bug fixes.
     Mar 23, 2015    7165    Robert.Blum Code consolidation - removed _prepareSection().
+    Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
     
     @author Robert.Blum@noaa.gov
     @version 1.0
@@ -280,9 +281,9 @@ class Product(HydroGenerator.Product):
 
     #########################################
 
-    def executeFrom(self, dataList, prevDataList=None):
-        if prevDataList is not None:
-            dataList = self.correctProduct(dataList, prevDataList, True)
+    def executeFrom(self, dataList, keyInfo=None):
+        if keyInfo is not None:
+            dataList = self.correctProduct(dataList, keyInfo, True)
         return dataList
 
 # Allow interdependencies for the dialog's megawidgets to work.     

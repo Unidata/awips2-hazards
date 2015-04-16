@@ -29,7 +29,7 @@
 #    ------------    ----------    -----------    --------------------------
 #    02/20/13                      jsanchez        Initial Creation.
 #    08/20/13        1360          blawrenc       Added code to store an event
-#    11/05/13        2266          jsanchez        Added an intermediate step to just run formatters.                                             set in the generated product
+#    11/05/13        2266          jsanchez        Added an intermediate step to just run formatters.
 #    12/05/13        2527          bkowal         Remove unused EventConverter import. Register
 #                                                 Hazard Event conversion capabilities with JUtil.
 #    01/20/14        2766          bkowal         Updated to use the Python Overrider
@@ -42,6 +42,7 @@
 #    02/26/15        6599          Robert.Blum    Picking up overrides of TextUtilities directory.
 #    03/11/15        6885          bphillip       Made product entries an ordered dict to ensure consistent ordering
 #    03/30/15        6929          Robert.Blum    Added a eventSet to each GeneratedProduct.
+#    04/16/15        7579          Robert.Blum    Changes for amended Product Editor.
 #
 import PythonOverriderInterface
 import PythonOverrider
@@ -133,35 +134,29 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
         # executeFrom does not need formats
         formats = kwargs.pop('formats')
 
-        eventSet = None
+        eventSet = []
         if 'eventSet' in kwargs:
             eventSet = kwargs.pop('eventSet')
 
         # call executeFrom from product generator
         dataList = self.runMethod(moduleName, className, 'executeFrom', **kwargs)  
-          
-        genProdList.setProductInfo(moduleName)
 
-        if eventSet:
-            genProdList.addAll(self.createProductsFromDictionary(dataList, eventSet))
-        else:
-            genProdList.addAll(self.createProductsFromDictionary(dataList))
+        genProdList.setProductInfo(moduleName)
+        genProdList.addAll(self.createProductsFromDictionary(dataList, eventSet))
         return genProdList
     
     def executeFormatter(self, moduleName, className, **kwargs):
-        
         generatedProductList = kwargs['generatedProductList']
         formats = JUtil.javaObjToPyVal( kwargs['formats'])
         eventSet =  PythonEventSet(generatedProductList.getEventSet())
-        productInfo = generatedProductList.getProductInfo()
-        
+
         # Loop over each product that has been generated and format them
         for i in range(generatedProductList.size()):
-            self.formatProduct(generatedProductList.get(i),formats, eventSet, productInfo)
+            self.formatProduct(generatedProductList.get(i),formats, eventSet)
 
         return generatedProductList
       
-    def formatProduct(self, generatedProduct, formats, eventSet, productInfo):
+    def formatProduct(self, generatedProduct, formats, eventSet):
         # Retrieve the product's data to pass to the formatter
         productData = JUtil.javaObjToPyVal(generatedProduct.getData())
         
@@ -170,7 +165,6 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
         if isinstance(data, OrderedDict): 
             # Dictionary containing the formatted products
             productDict = OrderedDict()
-            editables = {}
             for format in formats:
                 try:
                     locPath = 'python/events/productgen/formats/'
@@ -179,9 +173,9 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
                         self.clearModuleAttributes(format)
                     formatModule = PythonOverrider.importModule(scriptName)
                     instance = formatModule.Format()
-                    result = instance.execute(data)
-                    productDict[format] = result[0]
-                    editables[format] = result[1]
+                    product, editableEntries = instance.execute(data)
+                    productDict[format] = product
+                    generatedProduct.addEditableEntry(format, JUtil.pyValToJavaObj(self.pyDictToKeyInfoDict(editableEntries)))
 
                 except Exception, e:
                     productDict[format] = ['Failed to execute ' + format + '. Make sure it exists. Check log for errors. ']
@@ -191,7 +185,6 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
 
             # TODO Use JUtil.pyValToJavaObj() when JUtil.pyDictToJavaMap() is fully resolved
             generatedProduct.setEntries(JUtil.pyDictToJavaMap(productDict))
-            generatedProduct.setEditableEntries(JUtil.pyDictToJavaMap(editables))
 
     def createProductsFromDictionary(self, dataList, eventSet=[]):
         generatedProductList = ArrayList()

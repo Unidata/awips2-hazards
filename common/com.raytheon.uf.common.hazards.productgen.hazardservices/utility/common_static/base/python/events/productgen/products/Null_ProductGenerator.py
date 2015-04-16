@@ -7,14 +7,13 @@ import collections
 import Legacy_Base_Generator
 
 class Product(Legacy_Base_Generator.Product):
-    
+
     def __init__(self):
-        super(Product, self).__init__()       
+        super(Product, self).__init__()
 
         # Used by the VTECEngineWrapper to access the productGeneratorTable
         self._productGeneratorName = 'Null_ProductGenerator'
-        
-                
+
     def getScriptMetadata(self):
         metadata = collections.OrderedDict()
         metadata['author'] = "GSD"
@@ -28,10 +27,8 @@ class Product(Legacy_Base_Generator.Product):
     def _initialize(self) :
         pass
     
-    def executeFrom(self, dataList, prevDataList=None):
+    def executeFrom(self, dataList, keyInfo=None):
         return dataList
 
-            
-    def execute(self, eventSet, dialogInputMap):          
+    def execute(self, eventSet, dialogInputMap):
         return [], []
-    

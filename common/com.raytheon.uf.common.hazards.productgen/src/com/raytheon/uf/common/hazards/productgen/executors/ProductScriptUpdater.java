@@ -41,6 +41,7 @@ import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
  * ------------ ---------- ----------- --------------------------
  * Oct 24, 2013  2266      jsanchez     Initial creation
  * Apr 23, 2014  1480      jsanchez     Added isCorrection attribute.
+ * Apr 16, 2015  7579      Robert.Blum  Replaced prevDataList with keyinfo.
  * 
  * </pre>
  * 
@@ -55,27 +56,26 @@ public class ProductScriptUpdater extends
 
     private List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList;
 
-    private List<LinkedHashMap<KeyInfo, Serializable>> prevDataList;
+    private KeyInfo keyInfo;
 
     /** String array of formats */
     private String[] formats;
 
     public ProductScriptUpdater(String product,
             List<LinkedHashMap<KeyInfo, Serializable>> updateDataList,
-            List<LinkedHashMap<KeyInfo, Serializable>> prevDataList,
-            String[] formats) {
+            KeyInfo keyInfo, String[] formats) {
         this.product = product;
         this.updatedDataList = updateDataList;
         this.formats = formats;
-        this.prevDataList = prevDataList;
+        this.keyInfo = keyInfo;
     }
 
     @Override
     public GeneratedProductList execute(ProductScript script)
             throws JepException {
         GeneratedProductList generatedProducts = script
-                .updateGeneratedProducts(product, updatedDataList,
-                        prevDataList, formats);
+                .updateGeneratedProducts(product, updatedDataList, keyInfo,
+                        formats);
         return generatedProducts;
     }
 

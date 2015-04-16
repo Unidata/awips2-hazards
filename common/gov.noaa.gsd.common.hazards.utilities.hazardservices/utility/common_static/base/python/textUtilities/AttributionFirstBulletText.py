@@ -16,6 +16,8 @@
     Feb 2015       6599    Robert.Blum       Changed to new style class
     Apr 2015       7375    Robert.Blum       Fixed first bullet to include hazard type
                                              for FFA area-EXT hazards.
+    Apr 2015       7579    Robert.Blum       Removed some '\n', they are added in the
+                                             formatter now.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
@@ -116,7 +118,7 @@ class AttributionFirstBulletText(object):
             attribution = self.attribution_CON()
         elif self.action == 'ROU':
             attribution = self.attribution_ROU()
-        return attribution + '\n\n'
+        return attribution
     
     def attribution_CAN(self):
         attribution = '...The ' + self.hazardName
@@ -189,10 +191,9 @@ class AttributionFirstBulletText(object):
         
         if self.testMode and self.geoType == 'area':
             prefix = 'This is a test message.  '
-            firstBullet += '\n'
         else:
             prefix = ''
-        return prefix + firstBullet + '\n'
+        return prefix + firstBullet
     
     def firstBullet_CAN(self):
         if self.geoType == 'area':

@@ -25,11 +25,8 @@ class Format(Legacy_Hydro_Formatter.Format):
     def execute(self, productDict):
         self.productDict = productDict
         self.initialize()
-        self._editableParts = {}
-        self._editableProductParts = self._getEditableParts(productDict)
         legacyText = self._createTextProduct()
-
-        return [[ProductUtils.wrapLegacy(legacyText)],self._editableParts]
+        return [ProductUtils.wrapLegacy(legacyText)], self._editableParts
 
     ######################################################
     #  Product Part Methods 
@@ -40,11 +37,11 @@ class Format(Legacy_Hydro_Formatter.Format):
     ################# Segment Level
 
     ################# Section Level    
-    def _narrativeForecastInformation(self, segmentDict):
-        text = ''
-        narrative = segmentDict.get('narrativeForecastInformation')
-        if narrative:
-            text = narrative
-            text += '\n\n'
-        return text
+    def _narrativeForecastInformation(self, sectionDict):
+        # Get saved value from productText table if available
+        narrative = self._getSavedVal('narrativeForecastInformation', sectionDict)
+        if not narrative:
+            narrative = sectionDict.get('narrativeForecastInformation', '')
+        self._setVal('narrativeForecastInformation', narrative, sectionDict, 'Narrative Forecast Information')
+        return narrative
     

@@ -78,6 +78,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      up every minute
  * Mar 10, 2015 6274       Robert.Blum  Changes for Product Corrections
  * Mar 23, 2015 7165       Robert.Blum  Modifications to allow for adding "*" to product tabs.
+ * Apr 16, 2015 7579       Robert.Blum  Changes for amended Product Editor design.
  * </pre>
  * 
  * @author jsanchez
@@ -314,15 +315,13 @@ public class ProductEditor extends CaveSWTDialog {
                          */
                         if (product instanceof ITextProduct) {
 
-                            // Add the text editor to the editor manager
-                            editorManager.addFormattedTextEditor(product
-                                    .getProductID(),
-                                    new FormattedTextDataEditor(this,
-                                            productTab, product,
-                                            editorAndFormatsTabFolder,
-                                            SWT.VERTICAL, entry.getKey(),
-                                            formattedTextIndex));
-
+                            // Add the text Viewer to the editor manager
+                            editorManager.addFormattedTextViewer(product
+                                    .getProductID(), new FormattedTextViewer(
+                                    this, productTab, product,
+                                    editorAndFormatsTabFolder,
+                                    SWT.VERTICAL, entry.getKey(),
+                                    formattedTextIndex));
                         } else {
                             throw new IllegalArgumentException(
                                     "Cannot create formatted text tab for format ["
@@ -400,39 +399,7 @@ public class ProductEditor extends CaveSWTDialog {
      * Issues all products
      */
     private void issueAll() {
-        // Calling the product generators to apply any required changes
-        // such as an updated ETN, issue time, etc.
-        issuableProducts = 0;
-        for (GeneratedProductList products : generatedProductListStorage) {
-            List<LinkedHashMap<KeyInfo, Serializable>> dataList = new ArrayList<LinkedHashMap<KeyInfo, Serializable>>();
-            for (IGeneratedProduct product : products) {
-                dataList.add(product.getData());
-            }
-            List<String> formats = new ArrayList<String>(products.get(0)
-                    .getEntries().keySet());
-            productGeneration.update(products.getProductInfo(), dataList, null,
-                    formats.toArray(new String[formats.size()]), issueListener);
-        }
-    }
-
-    /**
-     * Issues the specified format of the selected product
-     */
-    protected void issue(String productID, String format) {
-        issuableProducts--;
-        for (GeneratedProductList products : generatedProductListStorage) {
-            for (IGeneratedProduct selectedProduct : products) {
-                if (selectedProduct.getProductID().equals(productID)) {
-                    List<LinkedHashMap<KeyInfo, Serializable>> dataList = new ArrayList<LinkedHashMap<KeyInfo, Serializable>>(
-                            1);
-                    dataList.add(selectedProduct.getData());
-                    productGeneration.update(products.getProductInfo(),
-                            dataList, null, new String[] { format },
-                            issueListener);
-                    return;
-                }
-            }
-        }
+        invokeIssue(isCorrectable);
     }
 
     /**
@@ -506,8 +473,11 @@ public class ProductEditor extends CaveSWTDialog {
     /**
      * Regenerates the product data for the generated products already
      * associated with this ProductEditor
+     * 
+     * @param keyInfo
+     * 
      */
-    protected void regenerate() {
+    protected void regenerate(KeyInfo keyInfo) {
 
         progressBar.setVisible(true);
         for (GeneratedProductList products : generatedProductListStorage) {
@@ -516,76 +486,20 @@ public class ProductEditor extends CaveSWTDialog {
                 dataList.add(product.getData());
             }
 
-            List<LinkedHashMap<KeyInfo, Serializable>> prevDataList = null;
-            if (isCorrectable) {
-                prevDataList = new ArrayList<LinkedHashMap<KeyInfo, Serializable>>();
-                for (GeneratedProductList prevGeneratedProductList : prevGeneratedProductListStorage) {
-                    if (prevGeneratedProductList.getProductInfo().equals(
-                            products.getProductInfo())) {
-                        for (IGeneratedProduct prevProduct : prevGeneratedProductList) {
-                            prevDataList.add(prevProduct.getData());
-                        }
-                        break;
-                    }
-                }
-            }
-
             List<String> formats = new ArrayList<String>(products.get(0)
                     .getEntries().keySet());
-            productGeneration.update(products.getProductInfo(), dataList,
-                    prevDataList, formats.toArray(new String[formats.size()]),
-                    generateListener);
+
+            if (isCorrectable) {
+                productGeneration.update(products.getProductInfo(), dataList,
+                        keyInfo, formats.toArray(new String[formats.size()]),
+                        generateListener);
+            } else {
+                productGeneration.update(products.getProductInfo(), dataList,
+                        null, formats.toArray(new String[formats.size()]),
+                        generateListener);
+            }
         }
     }
-
-    /**
-     * Listener that handles Issue events
-     */
-    protected IPythonJobListener<GeneratedProductList> issueListener = new IPythonJobListener<GeneratedProductList>() {
-
-        @Override
-        public void jobFinished(final GeneratedProductList productList) {
-            VizApp.runAsync(new Runnable() {
-                @Override
-                public void run() {
-
-                    int totalSize = 0;
-                    for (GeneratedProductList products : generatedProductListStorage) {
-                        if (products.getProductInfo().equals(
-                                productList.getProductInfo())) {
-                            int index = 0;
-                            for (IGeneratedProduct product : productList) {
-                                products.set(index, product);
-                                index++;
-                                issuableProducts++;
-                            }
-                        }
-                        totalSize += products.size();
-                    }
-
-                    // Indicates that all generation is completed
-                    if (issuableProducts == totalSize) {
-                        for (AbstractDataEditor dataEditor : editorManager
-                                .getAllEditors()) {
-                            if (dataEditor != null) {
-                                dataEditor.saveModifiedValues();
-                            }
-                        }
-                        issuableProducts = 0;
-                        invokeIssue(isCorrectable);
-                        close();
-                    }
-                };
-            });
-
-        }
-
-        @Override
-        public void jobFailed(Throwable e) {
-            handler.error("Unable to issue", e);
-        }
-
-    };
 
     /**
      * Listener that handles generate events
@@ -607,18 +521,25 @@ public class ProductEditor extends CaveSWTDialog {
                                     IGeneratedProduct product = products
                                             .get(index);
 
-                                    if (editorManager.getProductDataEditor(
-                                            product.getProductID())
-                                            .getLastModifiedValue() != null) {
-                                        product.setEntries(updatedProduct
-                                                .getEntries());
-                                        product.setEditableEntries(updatedProduct
-                                                .getEditableEntries());
+                                    product.setEntries(updatedProduct
+                                            .getEntries());
+                                    product.setEditableEntries(updatedProduct
+                                            .getEditableEntries());
+                                    product.setData(updatedProduct.getData());
+                                    if (isDisposed() == false) {
+                                        if (isCorrectable) {
+                                            /* Update the editor tab only for corrections.
+                                             * The productHeader and VTEC Strings will 
+                                             * change from regenerate call and need updated.
+                                             */
+                                            editorManager.getProductDataEditor(
+                                                    product.getProductID())
+                                                    .updateValues(product);
+                                        }
                                         editorManager
-                                                .updateFormattedTextDataEditors(product
+                                                .updateFormattedTextViewers(product
                                                         .getProductID());
                                     }
-
                                 }
                             }
                         }
@@ -640,7 +561,9 @@ public class ProductEditor extends CaveSWTDialog {
                             }
                         }
                     } finally {
-                        progressBar.setVisible(false);
+                        if (isDisposed() == false) {
+                            progressBar.setVisible(false);
+                        }
                     }
                 };
             });

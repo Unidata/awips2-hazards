@@ -10,6 +10,7 @@
                                         productParts to the associated methods.
     Feb 20, 2015 4937       Robert.Blum Added groupSummary productPart method to mapping
     Mar 17, 2015 6958       Robert.Blum Removed the start time from basisBullet.
+    Apr 16, 2015 7579       Robert.Blum Updates for amended Product Editor.
 '''
 
 import datetime, collections
@@ -73,11 +74,8 @@ class Format(Legacy_Hydro_Formatter.Format):
     def execute(self, productDict):
         self.productDict = productDict
         self.initialize()
-
-        self._editableProductParts = self._getEditableParts(productDict)
-        self._editableParts = {}
         legacyText = self._createTextProduct()
-        return [[ProductUtils.wrapLegacy(legacyText)],self._editableParts]
+        return [ProductUtils.wrapLegacy(legacyText)], self._editableParts
 
     ######################################################
     #  Product Part Methods 
@@ -89,31 +87,30 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     ################# Section Level
 
-    def _timeBullet(self, segmentDict):
-        timeBullet = super(Format, self)._timeBullet(segmentDict)
-        if segmentDict.get('geoType', '') == 'area':
+    def _timeBullet(self, sectionDict):
+        timeBullet = super(Format, self)._timeBullet(sectionDict)
+        if sectionDict.get('geoType', '') == 'area':
             timeBullet+= '\n'
         return timeBullet
 
     def _basisBullet(self, sectionDict):
-        vtecRecord = sectionDict.get('vtecRecord')
-        startTime = sectionDict.get('startTime')
-        act = vtecRecord.get('act')
-        if act == 'COR':
-            act == vtecRecord.get('prevAct')
-        bulletText = ''
+        # Get saved value from productText table if available
+        bulletText = self._getSavedVal('basisBullet', sectionDict)
+        if not bulletText:
+            vtecRecord = sectionDict.get('vtecRecord')
+            startTime = sectionDict.get('startTime')
+            act = vtecRecord.get('act')
+            if act == 'COR':
+                act == vtecRecord.get('prevAct')
+            bulletText = ''
 
-        if act in ['NEW', 'CON','ROU', 'EXT']:
-            bulletText += '* '
+            if (self._runMode == 'Practice'):
+                bulletText += "This is a test message.  "
 
-        if (self._runMode == 'Practice'):
-            bulletText += "This is a test message.  "
-
-        basisStatement = sectionDict.get('basisStatement')
-        if basisStatement:
-            bulletText += basisStatement
-        else:
-            bulletText += ' |* current hydrometeorological basis *| '
-
-        bulletText += '\n\n'
-        return bulletText
+            basisStatement = sectionDict.get('basisStatement')
+            if basisStatement:
+                bulletText += basisStatement
+            else:
+                bulletText += ' |* current hydrometeorological basis *| '
+        self._setVal('basisBullet', bulletText, sectionDict, 'Basis Bullet')
+        return '* ' + bulletText + '\n\n'

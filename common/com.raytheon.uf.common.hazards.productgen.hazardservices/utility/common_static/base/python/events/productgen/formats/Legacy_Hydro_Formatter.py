@@ -10,6 +10,7 @@
     Feb 20, 2015    4937    Robert.Blum Added groupSummary productPart method
     Mar 17, 2015    6963    Robert.Blum Rounded rfp stage values to a precision of 2.
     Apr 09, 2015    7271    Chris.Golden Changed to use MISSING_VALUE constant.
+    Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
 '''
 import datetime
 import collections
@@ -45,90 +46,116 @@ class Format(Legacy_Base_Formatter.Format):
     ######################################################
 
     ################# Product Level
-    
 
     def _groupSummary(self, productDict):
         '''
         For the North Branch Potomac River...including KITZMILLER...CUMBERLAND...Record 
         flooding is forecast.
         '''
-        summaryStmt = ''
-        for segment in productDict.get('segments', None):
-            sections = segment.get('sections', None)
-            if sections:
-                groupName = sections[0].get('riverName_GroupName', None)
-                groupList = sections[0].get('groupForecastPointList', None)
-                groupList = groupList.replace(',',', ')
-                maxCatName = sections[0].get('groupMaxForecastFloodCatName', None)
-                groupSummary = 'For the ' + groupName + '...including ' + groupList + '...' + maxCatName + ' flooding is forecast.'
-                summaryStmt += groupSummary + '\n'
-        return summaryStmt + '\n'
+        # Get saved value from productText table if available
+        summaryStmt = self._getSavedVal('groupSummary', productDict)
+        if not summaryStmt:
+            for segment in productDict.get('segments', None):
+                sections = segment.get('sections', None)
+                if sections:
+                    groupName = sections[0].get('riverName_GroupName', None)
+                    groupList = sections[0].get('groupForecastPointList', None)
+                    groupList = groupList.replace(',',', ')
+                    maxCatName = sections[0].get('groupMaxForecastFloodCatName', None)
+                    groupSummary = 'For the ' + groupName + '...including ' + groupList + '...' + maxCatName + ' flooding is forecast.'
+                    summaryStmt += groupSummary
+        self._setVal('groupSummary', summaryStmt, productDict, 'Group Summary')
+        return summaryStmt + '\n\n'
     
     ################# Segment Level
 
     ###################### Section Level
 
-    def _observedStageBullet(self, segmentDict):
-        if segmentDict.get('observedCategory') < 0:
-            bulletContent = 'There is no current observed data.'
-        else:
-            stageFlowName = segmentDict.get('stageFlowName')
-            observedStage = segmentDict.get('observedStage')
-            # Round to 2 decimal point - result is a string
-            observedStage = format(observedStage, '.2f')
-            stageFlowUnits = segmentDict.get('stageFlowUnits')
-            observedTime = self._getFormattedTime(segmentDict.get('observedTime_ms'), timeZones=self.timezones)
-
-            bulletContent = 'At '+observedTime+ 'the '+stageFlowName+' was '+ observedStage +' '+stageFlowUnits+'.'
-        return '* ' + bulletContent + '\n'
-
-    def _floodStageBullet(self, segmentDict):
-        floodStage = segmentDict.get('floodStage')
-        if floodStage != self.MISSING_VALUE:
-            # Round to 2 decimal point - result is a string
-            floodStage = format(floodStage, '.2f')
-            bulletContent = 'Flood stage is '+ floodStage +' '+segmentDict.get('stageFlowUnits')+'.'
-        else:
-            bulletContent = ''
-        return '* ' + bulletContent + '\n'
-
-    def _otherStageBullet(self, segmentDict):
-        # TODO This productPart needs to be completed
-        bulletContent = '|* Default otherStageBullet *|'
-        return '* ' + bulletContent + '\n'
-
-    def _floodCategoryBullet(self, segmentDict):
-        observedCategory = segmentDict.get('observedCategory')
-        observedCategoryName = segmentDict.get('observedCategoryName')
-        maxFcstCategory = segmentDict.get('maxFcstCategory')
-        maxFcstCategoryName = segmentDict.get('maxFcstCategoryName')
-        if observedCategory <= 0 and maxFcstCategory > 0:
-            bulletContent = maxFcstCategoryName + ' flooding is forecast.'
-        elif observedCategory > 0 and maxFcstCategory > 0:
-            bulletContent = observedCategoryName + ' flooding is occurring and '+maxFcstCategoryName+' flooding is forecast.'
-        else:
-            action = segmentDict.get('vtecRecord').get('act')
-            if action == 'ROU' or (observedCategory == 0 and maxFcstCategory < 0):
-                bulletContent = 'No flooding is currently forecast.'
+    def _observedStageBullet(self, sectionDict):
+        # Get saved value from productText table if available
+        bulletContent = self._getSavedVal('observedStageBullet', sectionDict)
+        if not bulletContent:
+            if sectionDict.get('observedCategory') < 0:
+                bulletContent = 'There is no current observed data.'
             else:
-                bulletContent = '|* Default floodCategoryBullet *|'
+                stageFlowName = sectionDict.get('stageFlowName')
+                observedStage = sectionDict.get('observedStage')
+                # Round to 2 decimal point - result is a string
+                observedStage = format(observedStage, '.2f')
+                stageFlowUnits = sectionDict.get('stageFlowUnits')
+                observedTime = self._getFormattedTime(sectionDict.get('observedTime_ms'), timeZones=self.timezones)
+                bulletContent = 'At '+observedTime+ 'the '+stageFlowName+' was '+ observedStage +' '+stageFlowUnits+'.'
+        self._setVal('observedStageBullet', bulletContent, sectionDict, 'Observed Stage Bullet')
         return '* ' + bulletContent + '\n'
 
-    def _recentActivityBullet(self, segmentDict):
-        bulletContent = '* '
-        if segmentDict.get('observedCategory') > 0:
-            maxStage = segmentDict.get('max24HourObservedStage')
-            # Round to 2 decimal point - result is a string
-            maxStage = format(maxStage, '.2f')
-            observedTime = self._getFormattedTime(segmentDict.get('observedTime_ms'), timeZones=self.timezones).rstrip()
-            bulletContent = '* Recent Activity...The maximum river stage in the 24 hours ending at '+observedTime+' was '+ maxStage +' feet. '
-        else:
-            bulletContent = '* |* Default recentActivityBullet *|'
-        return bulletContent + '\n'
+    def _floodStageBullet(self, sectionDict):
+        # Get saved value from productText table if available
+        bulletContent = self._getSavedVal('floodStageBullet', sectionDict)
+        if not bulletContent:
+            floodStage = sectionDict.get('floodStage')
+            if floodStage != self.MISSING_VALUE:
+                # Round to 2 decimal point - result is a string
+                floodStage = format(floodStage, '.2f')
+                bulletContent = 'Flood stage is '+ floodStage +' '+sectionDict.get('stageFlowUnits')+'.'
+            else:
+                bulletContent = ''
+        self._setVal('floodStageBullet', bulletContent, sectionDict, 'Flood Stage Bullet')
+        return '* ' + bulletContent + '\n'
 
-    def _forecastStageBullet(self, segmentDict):
-        bulletContent = ForecastStageText().getForecastStageText(segmentDict, self.timezones)
-        return '* Forecast...' + bulletContent + '\n'
+    def _otherStageBullet(self, sectionDict):
+        # Get saved value from productText table if available
+        bulletContent = self._getSavedVal('otherStageBullet', sectionDict)
+        if not bulletContent:
+            # TODO This productPart needs to be completed
+            bulletContent = '|* Default otherStageBullet *|'
+        self._setVal('otherStageBullet', bulletContent, sectionDict, 'Other Stage Bullet')
+        return '* ' + bulletContent + '\n'
+
+    def _floodCategoryBullet(self, sectionDict):
+        # Get saved value from productText table if available
+        bulletContent = self._getSavedVal('floodCategoryBullet', sectionDict)
+        if not bulletContent:
+            observedCategory = sectionDict.get('observedCategory')
+            observedCategoryName = sectionDict.get('observedCategoryName')
+            maxFcstCategory = sectionDict.get('maxFcstCategory')
+            maxFcstCategoryName = sectionDict.get('maxFcstCategoryName')
+            if observedCategory <= 0 and maxFcstCategory > 0:
+                bulletContent = maxFcstCategoryName + ' flooding is forecast.'
+            elif observedCategory > 0 and maxFcstCategory > 0:
+                bulletContent = observedCategoryName + ' flooding is occurring and '+maxFcstCategoryName+' flooding is forecast.'
+            else:
+                action = sectionDict.get('vtecRecord').get('act')
+                if action == 'ROU' or (observedCategory == 0 and maxFcstCategory < 0):
+                    bulletContent = 'No flooding is currently forecast.'
+                else:
+                    bulletContent = '|* Default floodCategoryBullet *|'
+        self._setVal('floodCategoryBullet', bulletContent, sectionDict, 'Flood Category Bullet')
+        return '* ' + bulletContent + '\n'
+
+    def _recentActivityBullet(self, sectionDict):
+        # Get saved value from productText table if available
+        bulletContent = self._getSavedVal('recentActivityBullet', sectionDict)
+        if not bulletContent:
+            if sectionDict.get('observedCategory') > 0:
+                maxStage = sectionDict.get('max24HourObservedStage')
+                stageFlowUnits =  sectionDict.get('stageFlowUnits', 'feet') 
+                # Round to 2 decimal point - result is a string
+                maxStage = format(maxStage, '.2f')
+                observedTime = self._getFormattedTime(sectionDict.get('observedTime_ms'), timeZones=self.timezones).rstrip()
+                bulletContent = 'Recent Activity...The maximum river stage in the 24 hours ending at '+observedTime+' was '+ maxStage +' '+ stageFlowUnits+'. '
+            else:
+                bulletContent = '|* Default recentActivityBullet *|'
+        self._setVal('recentActivityBullet', bulletContent, sectionDict, 'Recent Activity Bullet')
+        return '* ' + bulletContent + '\n'
+
+    def _forecastStageBullet(self, sectionDict):
+        # Get saved value from productText table if available
+        bulletContent = self._getSavedVal('forecastStageBullet', sectionDict)
+        if not bulletContent:
+            bulletContent = ForecastStageText().getForecastStageText(sectionDict, self.timezones)
+            bulletContent = 'Forecast...' + bulletContent
+        self._setVal('forecastStageBullet', bulletContent, sectionDict, 'Forecast Stage Bullet')
+        return '* ' + bulletContent + '\n'
 
     def _getRiverDescription(self, segmentDict):
         '''
@@ -138,41 +165,63 @@ class Format(Legacy_Base_Formatter.Format):
         '''
         return 'The river'
 
-    def _pointImpactsBullet(self, segmentDict):
-        impactStrings = []
-        impactsList = segmentDict.get('pointImpacts', None)
-        if impactsList:
-            for height, textField in impactsList:
-                impactString = '* Impact...At ' + height + ' feet...'+textField
-                impactStrings.append(impactString)
-            if impactStrings:
-                impactBulletsString = '\n'.join(impactStrings)
-                impactBulletsString += '\n'
-        else:
-            impactBulletsString = ''
+    def _pointImpactsBullet(self, sectionDict):
+        # Get saved value from productText table if available
+        bulletContent = self._getSavedVal('pointImpactsBullet', sectionDict)
+        if not bulletContent:
+            impactStrings = []
+            impactsList = sectionDict.get('pointImpacts', None)
+            stageFlowUnits =  sectionDict.get('stageFlowUnits', 'feet') 
+            if impactsList:
+                for height, textField in impactsList:
+                    impactString = 'Impact...At ' + height + ' ' + stageFlowUnits +'...'+textField
+                    impactStrings.append(impactString)
+                if impactStrings:
+                    bulletContent = '\n'.join(impactStrings)
+            else:
+                bulletContent = ''
 
-        return impactBulletsString
+        if bulletContent:
+            self._setVal('pointImpactsBullet', bulletContent, sectionDict, 'Point Impacts Bullet')
+            # Add the bullets
+            bulletContent = '' 
+            for string in impactStrings:
+                bulletContent += '* ' + string + '\n'
+        return bulletContent
 
-    def _floodHistoryBullet(self, segmentDict):
-        crestString = ''
-        crestContents = segmentDict.get('crestsSelectedForecastPointsComboBox', None)
-        units = segmentDict.get('impactCompUnits', '')
-        if crestContents is not None:
-            crest,crestDate = crestContents.split(' ')
-            # Round to 2 decimal point - result is a string
-            crest = format(float(crest), '.2f')
-            crestString = "* Flood History...This crest compares to a previous crest of " + crest + " " + units + " on " + crestDate +"."
-        else:
-            crestString = '* Flood History...No available flood history available.'
-        return crestString + '\n'
+    def _floodHistoryBullet(self, sectionDict):
+        # Get saved value from productText table if available
+        bulletContent = self._getSavedVal('floodHistoryBullet', sectionDict)
+        if not bulletContent:
+            crestContents = sectionDict.get('crestsSelectedForecastPointsComboBox', None)
+            units = sectionDict.get('impactCompUnits', '')
+            if crestContents is not None:
+                crest,crestDate = crestContents.split(' ')
+                # Round to 2 decimal point - result is a string
+                crest = format(float(crest), '.2f')
+                bulletContent = "Flood History...This crest compares to a previous crest of " + crest + " " + units + " on " + crestDate +"."
+            else:
+                bulletContent = 'Flood History...No available flood history available.'
+        self._setVal('floodHistoryBullet', bulletContent, sectionDict, 'Flood History Bullet')
+        return '* ' + bulletContent + '\n'
 
-    def _floodPointHeader(self, segmentDict):
-        # TODO This productPart needs to be completed
-        return 'Flood point header' + '\n'
+    def _floodPointHeader(self, sectionDict):
+        # Get saved value from productText table if available
+        header = self._getSavedVal('floodPointHeader', sectionDict)
+        if not header:
+            # TODO This productPart needs to be completed
+            header = 'Flood point header'
+        self._setVal('floodPointHeader', header, sectionDict, 'Flood Point Header')
+        return header + '\n'
 
     def _floodPointHeadline(self, segmentDict):
-        # TODO This productPart needs to be completed
-        return 'Flood point headline' + '\n'
+        # Get saved value from productText table if available
+        headline = self._getSavedVal('floodPointHeadline', sectionDict)
+        if not headline:
+            # TODO This productPart needs to be completed
+            headline = 'Flood point headline'
+        self._setVal('floodPointHeadline', headline, sectionDict, 'Flood Point Headline')
+        return headline + '\n'
 
     def _floodPointTable(self, dataDictionary):
 #         floodPointDataList = None

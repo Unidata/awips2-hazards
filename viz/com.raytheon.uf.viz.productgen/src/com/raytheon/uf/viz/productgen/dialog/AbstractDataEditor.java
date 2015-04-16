@@ -51,6 +51,9 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * 03/11/2015   6889       bphillip     Changed revertButton to undoButton.  More than one undo is now allowed.
  * 03/23/2015   7165       Robert.Blum  Adding * to editor tab and product tab
  *                                      labels when there are unsaved changes.
+ * 04/16/2015   7579       Robert.Blum  Removed the Save Button from the Product Editor.
+ *                                      Saving the edits are required to generate the correct
+ *                                      product, so saving is now done automatically.
  * 
  * </pre>
  * 
@@ -58,9 +61,6 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * @version 1.0
  */
 public abstract class AbstractDataEditor extends CTabItem {
-
-    /** Label for the Save button on the editor tab */
-    private static final String SAVE_BUTTON_LABEL = "Save";
 
     /** Label for the Undo button on the editor tab */
     private static final String UNDO_BUTTON_LABEL = "Undo";
@@ -212,28 +212,9 @@ public abstract class AbstractDataEditor extends CTabItem {
         editorButtonPane.setLayout(buttonCompLayout);
         editorButtonPane.setLayoutData(buttonCompData);
         /*
-         * Create the buttons for the editor tab
+         * Create the button for the editor tab
          */
-
-        saveButton = new Button(editorButtonPane, SWT.PUSH);
         undoButton = new Button(editorButtonPane, SWT.PUSH);
-
-        /*
-         * Configure Save button
-         */
-        saveButton.setText(SAVE_BUTTON_LABEL);
-        ProductEditorUtil.setButtonGridData(saveButton);
-        saveButton.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                saveModifiedValues();
-                updateButtonState();
-                updateTabLabel();
-            }
-        });
-
-        // Editor save button is initially disabled
-        saveButton.setEnabled(false);
 
         /*
          * Configure Undo button
@@ -292,12 +273,6 @@ public abstract class AbstractDataEditor extends CTabItem {
         } else {
             prevLabel = prevLabel.replace("*", "");
             setText(prevLabel);
-            /*
-             * TODO - When/if formatted tabs become editable again the below
-             * logic will also have to check all the other data editors before
-             * updating the productTab text. Due to the fact that more than one
-             * sub tab within the productTab could have unsaved changes.
-             */
             prevProductLabel = prevProductLabel.replace("*", "");
             productTab.setText(prevProductLabel);
         }

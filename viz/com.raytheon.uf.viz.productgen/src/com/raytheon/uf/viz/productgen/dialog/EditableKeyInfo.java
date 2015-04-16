@@ -21,9 +21,6 @@ package com.raytheon.uf.viz.productgen.dialog;
 
 import java.io.Serializable;
 import java.util.LinkedList;
-import java.util.List;
-
-import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 
 /**
  * 
@@ -39,6 +36,7 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
  * 01/15/2015   5109       bphillip     Initial creation
  * 03/11/2015   6889       bphillip     Changed previous value to be a list to allow multiple undo actions
  *                                      on the Product Editor
+ * 04/16/2015   7579       Robert.Blum  Updates for the amended Product Editor.
  * 
  * </pre>
  * 
@@ -47,17 +45,14 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
  */
 class EditableKeyInfo {
 
-    /**
-     * Path to the editable key info object in the data map contained in the
-     * generated product
-     */
-    private List<KeyInfo> path;
-
     /** Denotes if this data item has been modified */
     private boolean modified = false;
 
     /** Denotes if this data item is displayable in the product editor */
     private boolean displayable = false;
+
+    /** The format that this info is associated with */
+    private String format;
 
     /** The current value associated with this key info */
     private Serializable value;
@@ -99,18 +94,18 @@ class EditableKeyInfo {
     }
 
     /**
-     * @return the path
+     * @return the format
      */
-    public List<KeyInfo> getPath() {
-        return path;
+    public String getFormat() {
+        return format;
     }
 
     /**
-     * @param path
-     *            the path to set
+     * @param format
+     *            the format to set
      */
-    public void setPath(List<KeyInfo> path) {
-        this.path = path;
+    public void setFormat(String format) {
+        this.format = format;
     }
 
     /**

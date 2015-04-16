@@ -8,6 +8,7 @@
     Jan 26, 2015   4936      Chris.Cody  Implement scripts for Flash Flood Watch Products (FFA,FAA,FLA)
     Jan 31, 2015   4937      Robert.Blum General cleanup along with moving some stuff to the formatter.
     Mar 23, 2015   7165      Robert.Blum Code consolidation - removed _prepareSection().
+    Apr 16, 2015   7579      Robert.Blum Updates for amended Product Editor.
     
     @author Chris.Cody
     @version 1.0
@@ -58,9 +59,9 @@ class Product(HydroGenerator.Product):
 
         return dialogDict
 
-    def executeFrom(self, dataList, prevDataList=None):
-        if prevDataList is not None:
-            dataList = self.correctProduct(dataList, prevDataList, False)
+    def executeFrom(self, dataList, keyInfo=None):
+        if keyInfo is not None:
+            dataList = self.correctProduct(dataList, keyInfo, False)
         return dataList
 
     def execute(self, eventSet, dialogInputMap):

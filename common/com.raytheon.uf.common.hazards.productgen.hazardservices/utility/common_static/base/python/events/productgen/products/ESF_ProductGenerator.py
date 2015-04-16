@@ -114,7 +114,7 @@ class Product(HydroGenerator.Product):
          '''  
         productDict['narrativeForecastInformation'] = self._section.hazardEvent.get('narrativeForecastInformation', default)
 
-    def executeFrom(self, dataList, prevDataList=None):
-        if prevDataList is not None:
-            dataList = self.correctProduct(dataList, prevDataList, False)
+    def executeFrom(self, dataList, keyInfo=None):
+        if keyInfo is not None:
+            dataList = self.correctProduct(dataList, keyInfo, False)
         return dataList

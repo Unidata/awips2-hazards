@@ -9,13 +9,14 @@
                                         instead of a list.
     Mar 30, 2015    6959    Robert.Blum Updated createAreaPhrase() to use functions
                                         in TextProductCommon.
+    Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
 '''
 
 import FormatTemplate
-from KeyInfo import KeyInfo
 from TextProductCommon import TextProductCommon
 from Bridge import Bridge
 import re
+from collections import OrderedDict
 
 class Format(FormatTemplate.Formatter):
 
@@ -31,6 +32,13 @@ class Format(FormatTemplate.Formatter):
         else:
             self._testMode = False
 
+        # Dictionary that will hold the KeyInfo entries of the
+        # product part text strings to be displayed in the Product
+        # Editor. 
+        # Since this is just a sample format, no editableParts
+        # are defined.
+        self._editableParts = OrderedDict()
+        
         # Setup the Time Zones
         self.timezones = []
         segments = self.productDict.get('segments')
@@ -40,8 +48,8 @@ class Format(FormatTemplate.Formatter):
     def execute(self, productDict):
         self.productDict = productDict
         self.initialize()
-
-        return [[self.createTwitterProduct()], {}]
+        product = self.createTwitterProduct()
+        return [product], self._editableParts
 
     def createTwitterProduct(self):
         text = ''

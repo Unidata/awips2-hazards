@@ -35,6 +35,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * 01/15/2015   5109       bphillip     Initial creation
+ * 04/16/2015   7579       Robert.Blum  Updates for amended Product Editor.
  * 
  * </pre>
  * 
@@ -69,18 +70,18 @@ class DataEditorManager {
     }
 
     /**
-     * Adds a text editor for the product specified
+     * Adds a text viewer for the product specified
      * 
      * @param productID
      *            The product associated with this text editor
-     * @param formatEditor
-     *            The editor to add
+     * @param formatViewer
+     *            The viewer to add
      */
-    protected void addFormattedTextEditor(String productID,
-            FormattedTextDataEditor formatEditor) {
-        formatEditor.initialize();
-        getProductEditorContainer(productID).textEditorMap.put(
-                formatEditor.getText(), formatEditor);
+    public void addFormattedTextViewer(String productID,
+            FormattedTextViewer formattedTextViewer) {
+        formattedTextViewer.initialize();
+        getProductEditorContainer(productID).textViewerMap.put(
+                formattedTextViewer.getText(), formattedTextViewer);
     }
 
     /**
@@ -121,28 +122,27 @@ class DataEditorManager {
     }
 
     /**
-     * Gets all formatted text editors associated with the given product ID
+     * Gets all formatted text viewers associated with the given product ID
      * 
      * @param productID
      *            The product ID
-     * @return All formatted text editors associated with the given product ID
+     * @return All formatted text viewers associated with the given product ID
      */
-    protected List<FormattedTextDataEditor> getFormattedTextDataEditors(
-            String productID) {
-        return new ArrayList<FormattedTextDataEditor>(
-                getProductEditorContainer(productID).textEditorMap.values());
+    protected List<FormattedTextViewer> getFormattedTextViewers(String productID) {
+        return new ArrayList<FormattedTextViewer>(
+                getProductEditorContainer(productID).textViewerMap.values());
     }
 
     /**
-     * Updates the formatted data editors when a product update occurs
+     * Updates the formatted text viewers when a product update occurs
      * 
      * @param productId
      *            The product ID of the product to update
      */
-    protected void updateFormattedTextDataEditors(String productId) {
-        List<FormattedTextDataEditor> dataEditors = getFormattedTextDataEditors(productId);
-        for (FormattedTextDataEditor dataEditor : dataEditors) {
-            dataEditor.refresh();
+    protected void updateFormattedTextViewers(String productId) {
+        List<FormattedTextViewer> dataViewers = getFormattedTextViewers(productId);
+        for (FormattedTextViewer dataViewer : dataViewers) {
+            dataViewer.refresh();
         }
     }
 
@@ -172,9 +172,8 @@ class DataEditorManager {
         /** The data editor instance */
         protected ProductDataEditor dataEditor;
 
-        /** Formatted text editors */
-        protected Map<String, FormattedTextDataEditor> textEditorMap = new HashMap<String, FormattedTextDataEditor>();
-
+        /** Formatted text viewers */
+        protected Map<String, FormattedTextViewer> textViewerMap = new HashMap<String, FormattedTextViewer>();
         /**
          * Gets all editors in this container
          * 
@@ -186,7 +185,7 @@ class DataEditorManager {
                 dataEditors.add(dataEditor);
             }
 
-            dataEditors.addAll(textEditorMap.values());
+            dataEditors.addAll(textViewerMap.values());
             return dataEditors;
         }
     }

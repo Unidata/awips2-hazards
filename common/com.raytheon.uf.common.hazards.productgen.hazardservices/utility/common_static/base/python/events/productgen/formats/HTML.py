@@ -8,15 +8,32 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     Feb 04, 2015    6322    Robert.Blum Initial creation
+    Apr 16, 2015    7579    Robert.Blum Added editableParts dictionary for
+                                        future use.
 '''
 
 import FormatTemplate
 import HazardConstants
-import os
-import time
-import collections
+import os, time
+from collections import OrderedDict
+from TextProductCommon import TextProductCommon
+from Bridge import Bridge
 
 class Format(FormatTemplate.Formatter):
+
+    def initialize(self):
+        self.bridge = Bridge()
+        areaDict = self.bridge.getAreaDictionary()
+        self._tpc = TextProductCommon()
+        self._tpc.setUp(areaDict)
+
+        # Dictionary that will hold the KeyInfo entries of the
+        # product part text strings to be displayed in the Product
+        # Editor. 
+        # Since this is just a sample format, no editableParts
+        # are defined currently.
+        self._editableParts = OrderedDict()
+
 
     def execute(self, productDict):
         '''
@@ -26,7 +43,9 @@ class Format(FormatTemplate.Formatter):
         @return: Returns the html string and map of editable parts
         '''
         self.productDict = productDict
-        return [[self.createHTMLProduct()], {}]
+        self.initialize()
+        htmlProduct = self.createHTMLProduct()
+        return [htmlProduct], self._editableParts
 
     def createHTMLProduct(self):
         html = "<!DOCTYPE html>\n"

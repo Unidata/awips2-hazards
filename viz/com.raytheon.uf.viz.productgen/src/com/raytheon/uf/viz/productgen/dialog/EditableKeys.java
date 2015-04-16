@@ -44,6 +44,7 @@ import com.raytheon.uf.common.util.Pair;
  * ------------ ---------- ------------ --------------------------
  * 01/15/2015   5109       bphillip     Initial creation
  * 03/11/2015   6889       bphillip     Modifications to allow more than one undo action in the Product Editor
+ * 04/16/2015   7579       Robert.Blum  This class now uses the formated EditableEntries instead of the raw data.
  * 
  * </pre>
  * 
@@ -62,7 +63,7 @@ class EditableKeys {
      *            The product to create the Editable Keys from
      */
     public EditableKeys(IGeneratedProduct product) {
-        determineEditableKeyPaths(null, product.getData(), 0);
+        createEditableKeyInfos(product.getEditableEntries());
     }
 
     /**
@@ -80,83 +81,32 @@ class EditableKeys {
     }
 
     /**
-     * Determines the path of the editable keys. The path are key values of
-     * dictionaries/maps within dictionaries/maps
+     * Create an EditableKeyInfo object for each editable part of the product.
      * 
-     * @param parentPath
-     *            The parent path
-     * @param data
-     *            The data map from the generated product
+     * @param editableEntries
+     *            The map of editable parts of the generated product
      */
-    @SuppressWarnings("unchecked")
-    private void determineEditableKeyPaths(List<KeyInfo> parentPath,
-            Map<KeyInfo, Serializable> data, int index) {
+    private void createEditableKeyInfos(
+            Map<String, LinkedHashMap<KeyInfo, Serializable>> editableEntries) {
 
-        if (data != null) {
-            for (Entry<KeyInfo, Serializable> entry : data.entrySet()) {
-                KeyInfo key = entry.getKey();
-                Serializable entryValue = entry.getValue();
-                boolean isEditable = key.isEditable();
-                boolean isDisplayable = key.isDisplayable();
+        if (editableEntries != null) {
+            for (String format : editableEntries.keySet()) {
+                for (Entry<KeyInfo, Serializable> entry : editableEntries.get(
+                        format)
+                        .entrySet()) {
+                    KeyInfo key = entry.getKey();
+                    boolean isEditable = key.isEditable();
+                    boolean isDisplayable = key.isDisplayable();
 
-                key.setIndex(index);
-                if (isEditable || isDisplayable) {
-                    EditableKeyInfo info = new EditableKeyInfo();
-                    info.setPath(parentPath);
-                    info.setValue(entry.getValue());
-                    info.setOriginalValue(entry.getValue());
-                    info.setDisplayable(isDisplayable);
-                    editableKeyInfoMap.put(key, info);
-                } else if (entryValue instanceof Map<?, ?>) {
-                    Map<KeyInfo, Serializable> subdata = (Map<KeyInfo, Serializable>) entry
-                            .getValue();
-                    determineEditableKeyPaths(createPath(parentPath, key),
-                            subdata, 0);
-                } else if (entryValue instanceof ArrayList) {
-                    List<Serializable> list = (ArrayList<Serializable>) entry
-                            .getValue();
-                    determineEditableKeyPaths(createPath(parentPath, key), list);
+                    if (isEditable || isDisplayable) {
+                        EditableKeyInfo info = new EditableKeyInfo();
+                        info.setFormat(format);
+                        info.setValue(entry.getValue());
+                        info.setOriginalValue(entry.getValue());
+                        info.setDisplayable(isDisplayable);
+                        editableKeyInfoMap.put(key, info);
+                    }
                 }
-            }
-        }
-    }
-
-    /**
-     * Creates the path to a key in the data map
-     * 
-     * @param parentPath
-     *            The path to the key's parent
-     * @param latestKey
-     *            The key to create the path for
-     * @return List of paths to this key
-     */
-    private List<KeyInfo> createPath(List<KeyInfo> parentPath, KeyInfo latestKey) {
-        List<KeyInfo> path = new ArrayList<>();
-        if (parentPath != null) {
-            path.addAll(parentPath);
-        }
-        path.add(latestKey);
-        return path;
-    }
-
-    /**
-     * Determines the editable key paths in the data from the generated product
-     * 
-     * @param parentPath
-     *            The parent path
-     * @param list
-     *            The list of paths to this key
-     */
-    @SuppressWarnings("unchecked")
-    private void determineEditableKeyPaths(List<KeyInfo> parentPath,
-            List<Serializable> list) {
-        for (int index = 0; index < list.size(); index++) {
-            Serializable item = list.get(index);
-            if (item instanceof Map<?, ?>) {
-                determineEditableKeyPaths(parentPath,
-                        (Map<KeyInfo, Serializable>) item, index);
-            } else if (item instanceof ArrayList) {
-                determineEditableKeyPaths(parentPath, (List<Serializable>) item);
             }
         }
     }
@@ -269,20 +219,6 @@ class EditableKeys {
     }
 
     /**
-     * Gets the path object for the editable object associated with the given
-     * KeyInfo
-     * 
-     * @param key
-     *            The lookup key
-     * @return The path object associated with the editable key info keyed by
-     *         the given KeyInfo. Returns null if key is null
-     */
-    public List<KeyInfo> getPath(KeyInfo key) {
-        EditableKeyInfo keyInfo = getEditableKeyInfo(key);
-        return keyInfo == null ? null : keyInfo.getPath();
-    }
-
-    /**
      * Gets if the editable keyInfo associated with the given keyinfo is
      * modified
      * 
@@ -349,5 +285,56 @@ class EditableKeys {
     public Serializable getPreviousValue(KeyInfo key) {
         EditableKeyInfo keyInfo = getEditableKeyInfo(key);
         return keyInfo == null ? null : keyInfo.getPreviousValue();
+    }
+
+    /**
+     * Updates the editableKeyInfoMap of this object based on a new product.
+     * 
+     * @param product
+     *            The product to update to
+     */
+    public void updateEditableKeys(IGeneratedProduct product) {
+        Map<String, LinkedHashMap<KeyInfo, Serializable>> editableEntries = product
+                .getEditableEntries();
+        if (editableEntries != null) {
+            for (String format : editableEntries.keySet()) {
+                for (Entry<KeyInfo, Serializable> entry : editableEntries.get(
+                        format)
+                        .entrySet()) {
+                    KeyInfo key = entry.getKey();
+                    for (KeyInfo keyInfo : this.editableKeyInfoMap.keySet()) {
+                        if (compareKeyInfo(key, keyInfo)) {
+                            EditableKeyInfo info = new EditableKeyInfo();
+                            info.setValue(entry.getValue());
+                            info.setFormat(format);
+                            info.setOriginalValue(entry.getValue());
+                            info.setDisplayable(key.isDisplayable());
+                            editableKeyInfoMap.put(keyInfo, info);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Compares two Keyinfo objects to see if they are for the same formatted
+     * text.
+     * 
+     * @param newKeyInfo
+     *            The KeyInfo from the new Product
+     * @param storedKeyInfo
+     *            The KeyInfo from the stored map.
+     */
+    public boolean compareKeyInfo(KeyInfo newKeyInfo, KeyInfo storedKeyInfo) {
+        if (newKeyInfo.getName().equals(storedKeyInfo.getName())
+                && newKeyInfo.getEventIDs().equals(storedKeyInfo.getEventIDs())
+                && newKeyInfo.getSegment().equals(storedKeyInfo.getSegment())
+                && newKeyInfo.getProductCategory().equals(
+                        storedKeyInfo.getProductCategory())) {
+            return true;
+        }
+        return false;
     }
 }

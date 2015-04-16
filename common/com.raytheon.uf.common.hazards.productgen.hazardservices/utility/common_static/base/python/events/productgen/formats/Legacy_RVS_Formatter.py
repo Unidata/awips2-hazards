@@ -5,6 +5,7 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     Feb 20, 2015    5109    Chris.Cody  Initial creation
+    Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
 '''
 
 
@@ -34,14 +35,9 @@ class Format(Legacy_Hydro_Formatter.Format):
     def execute(self, productDict):
         self.productDict = productDict
         self.initialize()
-
-        self._editableProductParts = self._getEditableParts(productDict)
-        self._editableParts = {}
-        
         self.timezones = productDict['timezones']
-        
         legacyText = self._createTextProduct()
-        return [[ProductUtils.wrapLegacy(legacyText)],self._editableParts]
+        return [ProductUtils.wrapLegacy(legacyText)], self._editableParts
 
     ######################################################
     #  Product Part Methods 
@@ -50,8 +46,19 @@ class Format(Legacy_Hydro_Formatter.Format):
     ################# Product Level
 
     def _headlineStatement(self, productDict):
-        return productDict.get('headlineStatement', "NO HEADLINE STATEMENT")
+        # Get saved value from productText table if available
+        statement = self._getSavedVal('headlineStatement', productDict)
+        if not statement:
+            statement = productDict.get('headlineStatement', "NO HEADLINE STATEMENT")
+        self._setVal('headlineStatement', statement, productDict, 'Headline Statement')
+        return statement
 
     def _narrativeInformation(self, productDict):
-        return productDict.get('narrativeInformation', "NO NARRATIVE INFORMATION")
+        # Get saved value from productText table if available
+        narrative = self._getSavedVal('narrativeInformation', productDict)
+        if not narrative:
+            narrative = productDict.get('narrativeInformation', "NO NARRATIVE INFORMATION")
+        self._setVal('narrativeInformation', narrative, productDict, 'Narrative Information')
+        return narrative
+
 

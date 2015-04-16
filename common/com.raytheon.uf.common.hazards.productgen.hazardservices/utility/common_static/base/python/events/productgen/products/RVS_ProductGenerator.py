@@ -1,6 +1,3 @@
-
-
-
 import collections
 import HydroGenerator
 
@@ -9,7 +6,7 @@ class Product(HydroGenerator.Product):
     def __init__(self) :
         ''' Hazard Types covered
              ('FL.W', "Flood"),
-             ('FL.Y', "Flood"),             
+             ('FL.Y', "Flood"),
              ('FL.A', "Flood"),
              ('HY.S', "Flood"),
         '''
@@ -66,12 +63,12 @@ class Product(HydroGenerator.Product):
         return dialogDict
 
 
-    def executeFrom(self, dataList, prevDataList=None):
-        if prevDataList is not None:
-            dataList = self.correctProduct(dataList, prevDataList, False)
+    def executeFrom(self, dataList, keyInfo=None):
+        if keyInfo is not None:
+            dataList = self.correctProduct(dataList, keyInfo, False)
         return dataList
 
-    def execute(self, eventSet, dialogInputMap):          
+    def execute(self, eventSet, dialogInputMap):
         '''
         Inputs:
         @param eventSet: a list of hazard events (hazardEvents) plus
@@ -129,15 +126,17 @@ class Product(HydroGenerator.Product):
             productDict['floodPointTable'] = self._floodPointTable()
 
         ugcs = []
+        eventIDs = []
         for hazardEvent in self._generatedHazardEvents:
             ugcs.extend(hazardEvent.get('ugcs'))
+            eventIDs.append(hazardEvent.getEventID())
         productDict['ugcs'] = ugcs
+        productDict['eventIDs'] = eventIDs
         timezones = self._tpc.hazardTimeZones(ugcs)
         productDict['timezones'] = timezones
-            
+
         expireTime = self._tpc.getExpireTime(self._issueTime, self._purgeHours, [], fixedExpire=True)
         productDict['expireTime'] = expireTime
-
 
     def _createAndAddSegmentsToDictionary(self, productDict, productSegmentGroup):
         pass

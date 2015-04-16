@@ -20,6 +20,7 @@
                                         table using setVal() in TextProductCommon.
     Mar 27, 2015    6959    Robert.Blum Changes for Partial cancellations.
     Apr 07, 2015    6690    Robert.Blum List of drainages contents now matches WarnGen.
+    Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
 '''
 
 import ProductTemplate
@@ -40,6 +41,7 @@ from KeyInfo import KeyInfo
 import os, collections
 import GeometryFactory
 import SpatialQuery
+import JUtil
 
 from abc import *
 
@@ -531,17 +533,13 @@ class Product(ProductTemplate.Product):
             # Add the sections to the segment dictionary
             self._addSectionsToSegment(segmentDict)
 
-            # Add CTAs to segment as keyinfo
-            eventIDs, ugcs = self.parameterSetupForKeyInfo(self._productSegment.segment[1], list(self._productSegment.segment[0]))
-            self._setVal(segmentDict, 'callsToAction', self._productSegment.ctas, eventIDs, ugcs, label='Calls To Action')
-
-
             # Add any remaining segment level data here
             segmentDict['expireTime'] = self._productSegment.expireTime
             segmentDict['vtecRecords'] = self._productSegment.vtecRecords
             segmentDict['ugcs'] = self._productSegment.ugcs
             segmentDict['timeZones'] = self._productSegment.timeZones
             segmentDict['cityList'] = self._productSegment.cityList
+            segmentDict['callsToAction'] = self._productSegment.ctas
 
             segmentDicts.append(segmentDict)
 
@@ -628,14 +626,11 @@ class Product(ProductTemplate.Product):
         section = collections.OrderedDict()
 
         attributes = hazardEvent.getHazardAttributes()
-        # This creates a list of ints for the eventIDs and also formats the UGCs correctly.
-        eventIDs, ugcList = self.parameterSetupForKeyInfo(list(vtecRecord.get('eventID', None)), attributes.get('ugcs', None))
-
         for attribute in attributes:
             # Special case attributes that need additional work before adding to the dictionary
             if attribute == 'additionalInfo':
                 additionalInfo, citiesListFlag = self._prepareAdditionalInfo(attributes[attribute] , hazardEvent, metaData)
-                self._setVal(section, 'additionalComments', additionalInfo, eventIDs, ugcList, label='Additional Comments')
+                section['additionalComments'] = additionalInfo
                 section['citiesListFlag'] = citiesListFlag
             elif attribute == 'cta':
                 # CTAs are gathered and displayed at the segment level, pass here
@@ -651,10 +646,6 @@ class Product(ProductTemplate.Product):
                 if attribute == 'advisoryType':
                     section[attribute + '_productString'] = self._tpc.getProductStrings(hazardEvent, metaData, attribute)
 
-        # Add impacted locations to the dictionary
-        self._setVal(section, 'impactedLocations', self._prepareImpactedLocations(hazardEvent.getGeometry()), eventIDs,
-                            ugcList, label='Impacted Locations')
-
         # Add impacts to the dictionary
         if vtecRecord.get("phen") != "HY" and vtecRecord.get('sig') != 'S':
             # TODO this does not seem to work, causing the placeholder to be in final product.
@@ -662,6 +653,7 @@ class Product(ProductTemplate.Product):
         else:
             section['impacts'] = ''
 
+        section['impactedLocations'] = self._prepareImpactedLocations(hazardEvent.getGeometry())
         section['endingSynopsis'] = hazardEvent.get('endingSynopsis')
         section['startTime'] = hazardEvent.getStartTime()
         section['endTime'] = hazardEvent.getEndTime()
@@ -681,16 +673,6 @@ class Product(ProductTemplate.Product):
 
         self._setProductInformation(vtecRecord, hazardEvent)
         return section
-
-    def _setVal(self, dictionary, key, value, eventIDs, ugcList, label=None):
-        '''
-        Helper method to call _setVal() in TextProductCommon. This method automatically
-        sets the productCategory=self._productCategory, productID='', editable=True,
-        and displayable=False parameters for you.
-        '''
-        self._tpc.setVal(dictionary, key, value, editable=True, eventIDs=eventIDs,
-                         segment=ugcList, label=label, productCategory=self._productCategory,
-                         productID='', displayable=False)
 
     def _showProductParts(self):
         # IF True will label the editable pieces in the Product Editor with product parts
@@ -1113,32 +1095,22 @@ class Product(ProductTemplate.Product):
         else:
             return cityList
 
-    def correctProduct(self, dataList, prevDataList, correctAllSegments):
+    def correctProduct(self, dataList, keyInfo, correctAllSegments):
         millis = SimulatedTime.getSystemTime().getMillis()
         dt = datetime.datetime.fromtimestamp(millis / 1000)
         currentTime = dt.strftime('%d%H%m')
         for i in range(0, len(dataList)):
             data = dataList[i]
-            prevData = prevDataList[i]
-            if self.correctionsCheck(data, prevData):
-                data['startTime'] = currentTime
-                segments = data.get('segments')
-                pSegments = prevData.get('segments')
-                for j in range(0, len(segments)):
-                    segment = segments[j]
-                    pSegment = pSegments[j]
-                    if correctAllSegments:
+            data['startTime'] = currentTime
+            data['correction'] = True
+            segments = data.get('segments')
+            for j in range(0, len(segments)):
+                segment = segments[j]
+                if correctAllSegments:
+                    segment = self.correctSegment(segment)
+                else:
+                    if self.correctionsCheck(segment, keyInfo):
                         segment = self.correctSegment(segment)
-                    else:
-                        if self.correctionsCheck(segment, pSegment):
-                            segment = self.correctSegment(segment)
-
-                productName = str(data.get('productName'))
-                if '...CORRECTED' not in productName:
-                    if productName.endswith('...TEST'):
-                        data['productName'] = productName[:-7] + '...CORRECTED...TEST'
-                    else:
-                        data['productName'] = productName + '...CORRECTED'
         return dataList
 
     def correctSegment(self, segment):
@@ -1153,51 +1125,42 @@ class Product(ProductTemplate.Product):
                 vtecRecord['vtecstr'] = updatedVtecString
         return segment
 
-    def correctionsCheck(self, dict1, dict2):
+    def correctionsCheck(self, segmentDict, keyInfo):
         '''
-            Returns True if the two dictionaries are not equal and the correction
-            should be applied to the product/segment. The GEOMETRYCOLLECTION object
-            that is in the sections dictionary must be compared using .equals(). 
-            Doing == on the two dictionaries themselves does not result in the correct
-            outcome.
+            Returns True if the correction should be applied to the segment.
+            It determines this by comparing the eventIDs UGCs in the keyInfo
+            object the eventIDs and UGCs in the VTEC records for the segment.
+            If the segment contains all of both the keyInfo object belongs 
+            to this segment.
         '''
-        # Compare the two dictionaries
-        added, removed, changed = self.compareDictionaries(dict1, dict2)
-        # A key was added/removed from the dictionary
-        if added or removed:
+        # Get the eventIDs and UGC from the KeyInfo object
+        eventIDs = JUtil.javaObjToPyVal(keyInfo.getEventIDs())
+        ugcs = JUtil.javaObjToPyVal(keyInfo.getSegment())
+
+        # Convert eventIds to strings
+        eventIDs = set(eventIDs)
+        for eventID in eventIDs:
+            eventIDs.discard(eventID)
+            eventIDs.add(str(eventID))
+
+        # Make a set out of the ugc string
+        ugcs = ugcs.split(',')
+        ugcs = set(ugcs)
+        for ugc in ugcs:
+            ugcs.discard(ugc)
+            ugcs.add(ugc.lstrip())
+
+        # Get the eventIDs and UGC from the segment dictionary
+        segmentEventIDs = set()
+        segmentUGCs = set()
+        for vtecRecord in segmentDict.get('vtecRecords', []):
+            segmentEventIDs.update(set(vtecRecord.get('eventID', [])))
+            segmentUGCs.update(set(vtecRecord.get('id', [])))
+
+        # If the segment contains both the eventIDs and ugcs from the keyInfo
+        # assume that that keyInfo productPart belongs to this segment.
+        if eventIDs.issubset(segmentEventIDs) and ugcs.issubset(segmentUGCs):
             return True
-        # A key was changed
-        elif changed:
-            # Check to see if it was segments that changed
-            if changed == set(['segments']):
-                if len(dict1.get('segments')) == len(dict2.get('segments')):
-                    index = 0
-                    while index < len(dict1.get('segments')):
-                        if (self.correctionsCheck(dict1.get('segments')[index], dict2.get('segments')[index])):
-                            return True
-                        index = index + 1
-                else:
-                    return True
-            elif changed == set(['sections']):
-                # Check to see if it was section that changed
-                if len(dict1.get('sections')) == len(dict2.get('sections')):
-                    index = 0
-                    while index < len(dict1.get('sections')):
-                        if (self.correctionsCheck(dict1.get('sections')[index], dict2.get('sections')[index])):
-                            return True
-                        index = index + 1
-                else:
-                    return True
-            elif changed == set(['geometry']):
-                # Only the geometry changed, compare using .equals()
-                geometry1 = dict1.get('geometry')
-                geometry2 = dict2.get('geometry')
-                if not geometry1.equals(geometry2):
-                    return True
-            else:
-                # Something other than the geometry changed
-                return True
-        # The dictionaries are the same, so no correction is needed
         return False
 
     def checkForPartialCan(self, productSegmentGroup):
@@ -1275,41 +1238,9 @@ class Product(ProductTemplate.Product):
         # Call the original method with the updated prevHazardEvent to get the section dictionary.
         return self._createSectionDictionary(prevHazardEvent, vtecRecord, metaData)
 
-    def compareDictionaries(self, dict1, dict2):
-        '''
-        Calculate the difference between two dictionaries as:
-        1 items added
-        2 items removed
-        3 keys same in both but changed values
-        '''
-        set_current, set_past = set(dict1.keys()), set(dict2.keys())
-        intersect = set_current.intersection(set_past)
-        addedEntries = set_current - intersect
-        removedEntries = set_past - intersect
-        changedEntries = set(o for o in intersect if dict2[o] != dict1[o])
-        return addedEntries, removedEntries, changedEntries
-
     def getCTAsPhrase(self, vtecRecord, hazardEvent, metaData, lineLength=69):
         ctas = self._tpc.getProductStrings(hazardEvent, metaData, 'cta')
         return ctas
-
-    def parameterSetupForKeyInfo(self, eventIDs, ugcs):
-        '''
-        Utility method for preparing the eventIDs and UGCs to be 
-        passed into the KeyInfo constructor.
-        '''
-        tmpEventIDs = []
-        for eventID in eventIDs:
-            tmpEventIDs.append(int(eventID))
-
-        ugcs.sort()
-        ugcList = ''
-        for ugc in ugcs:
-            if len(ugcList) > 0:
-                ugcList += ', '
-            ugcList += ugc
-        ugcList = str(ugcList)
-        return tmpEventIDs, ugcList
 
     def _floodPointTable(self):
 

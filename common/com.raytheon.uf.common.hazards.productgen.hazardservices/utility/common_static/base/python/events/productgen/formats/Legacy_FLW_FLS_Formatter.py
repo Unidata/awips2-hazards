@@ -9,6 +9,7 @@
                                         mapping of productParts to the associated methods.
     Feb 20, 2015 4937       Robert.Blum Added groupSummary productPart method to mapping.
     Mar 17, 2015 6958       Robert.Blum BasisBullet only has start time if it is Warning.
+    Apr 16, 2015 7579       Robert.Blum Updates for amended Product Editor.
 '''
 
 import datetime,collections
@@ -69,12 +70,8 @@ class Format(Legacy_Hydro_Formatter.Format):
     def execute(self, productDict):
         self.productDict = productDict
         self.initialize()
-
-        self._editableProductParts = self._getEditableParts(productDict)
-        self._editableParts = {}
         legacyText = self._createTextProduct()
-
-        return [[ProductUtils.wrapLegacy(legacyText)],self._editableParts]
+        return [ProductUtils.wrapLegacy(legacyText)], self._editableParts
 
     ######################################################
     #  Product Part Methods 
@@ -86,43 +83,42 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     ################# Section Level
 
-    def _timeBullet(self, segmentDict):
-        timeBullet = super(Format, self)._timeBullet(segmentDict)
-        if segmentDict.get('geoType', '') == 'area':
+    def _timeBullet(self, sectionDict):
+        timeBullet = super(Format, self)._timeBullet(sectionDict)
+        if sectionDict.get('geoType', '') == 'area':
             timeBullet+= '\n'
         return timeBullet
 
     def _basisBullet(self, sectionDict):
-        vtecRecord = sectionDict.get('vtecRecord')
-        act = vtecRecord.get('act')
-        if act == 'COR':
-            act = vtecRecord.get('prevAct')
-        phen = vtecRecord.get("phen")
-        sig = vtecRecord.get('sig')
-        bulletText = ''
+        # Get saved value from productText table if available
+        bulletText = self._getSavedVal('basisBullet', sectionDict)
+        if not bulletText:
+            vtecRecord = sectionDict.get('vtecRecord')
+            act = vtecRecord.get('act')
+            if act == 'COR':
+                act = vtecRecord.get('prevAct')
+            phen = vtecRecord.get("phen")
+            sig = vtecRecord.get('sig')
+            bulletText = ''
 
-        if act in ['NEW', 'ROU', 'EXT']:
-            bulletText += '* '
+            if (self._runMode == 'Practice'):
+                bulletText += "This is a test message.  "
 
-        if (self._runMode == 'Practice'):
-            bulletText += "This is a test message.  "
+            # Add startTime only for warnings
+            if sig == 'W':
+                if self.timezones:
+                    # use first time zone in the list
+                    bulletText += 'At ' + self._tpc.formatDatetime(self._issueTime, '%l%M %p %Z', self.timezones[0]).strip()
 
-        # Add startTime only for warnings
-        if sig == 'W':
-            if self.timezones:
-                # use first time zone in the list
-                bulletText += 'At ' + self._tpc.formatDatetime(self._issueTime, '%l%M %p %Z', self.timezones[0]).strip()
+            # Use basisFromHazardEvent for WarnGen only hazards
+            if phen == 'FA' and sig in ['W', 'Y']:
+                hazardType = phen + '.' + sig
+                basis = self.basisText.getBulletText(hazardType, sectionDict)
+                basis = self._tpc.substituteParameters(sectionDict, basis)
+            else:
+                # TODO Need to create basisText for Non-WarnGen hazards
+                basis = "...Flooding from heavy rain. This rain was located over the warned area."
 
-        # Use basisFromHazardEvent for WarnGen only hazards
-        if phen == 'FA' and sig in ['W', 'Y']:
-            hazardType = phen + '.' + sig
-            basis = self.basisText.getBulletText(hazardType, sectionDict)
-            basis = self._tpc.substituteParameters(sectionDict, basis)
-        else:
-            # TODO Need to create basisText for Non-WarnGen hazards
-            basis = "...Flooding from heavy rain. This rain was located over the warned area."
-
-        bulletText+= basis
-
-        return bulletText + '\n\n'
-
+            bulletText += basis
+        self._setVal('basisBullet', bulletText, sectionDict, 'Basis Bullet')
+        return '* ' + bulletText + '\n\n'

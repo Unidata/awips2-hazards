@@ -44,6 +44,8 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
  * 1/15/2015    5109       bphillip     Changed type on editableEntries field
  * Mar 30, 2015 6929       Robert.Blum  Added eventSet that is used to write/retrieve
  *                                      from the productData table.
+ * Apr 16, 2015 7579       Robert.Blum  Changed type on editableEntries field and added
+ *                                      addEditableEntry().
  * </pre>
  * 
  * @author jsanchez
@@ -59,9 +61,13 @@ public interface IGeneratedProduct {
 
     public void setEntries(Map<String, List<Serializable>> entries);
     
-    public void setEditableEntries(Map<String, LinkedHashMap<String, Serializable>> editableEntries);
+    public void setEditableEntries(
+            Map<String, LinkedHashMap<KeyInfo, Serializable>> editableEntries);
 
-    public Map<String, LinkedHashMap<String, Serializable>> getEditableEntries();
+    public void addEditableEntry(String key,
+            LinkedHashMap<KeyInfo, Serializable> editableEntry);
+
+    public Map<String, LinkedHashMap<KeyInfo, Serializable>> getEditableEntries();
 
     public LinkedHashMap<KeyInfo, Serializable> getData();
 

@@ -64,6 +64,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Jan 20, 2015 4476       rferrel      Implement shutdown of PythonJobCoordinator.
  * Feb 15, 2015 2271       Dan Schaffer Incur recommender/product generator init costs immediately
  * Feb 26, 2015 6306       mduff        Pass site id in.
+ * Apr 16, 2015 7579       Robert.Blum  Replace prevDataList with keyinfo object.
  * </pre>
  * 
  * @author jsanchez
@@ -142,11 +143,10 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      */
     public void update(String productGeneratorName,
             List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList,
-            List<LinkedHashMap<KeyInfo, Serializable>> prevDataList,
-            String[] productFormats,
+            KeyInfo keyInfo, String[] productFormats,
             IPythonJobListener<GeneratedProductList> listener) {
         IPythonExecutor<ProductScript, GeneratedProductList> executor = new ProductScriptUpdater(
-                productGeneratorName, updatedDataList, prevDataList,
+                productGeneratorName, updatedDataList, keyInfo,
                 productFormats);
 
         try {
