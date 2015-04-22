@@ -21,6 +21,7 @@
    Mar 23, 2015   7165      Robert.Blum         Modified setVal() to work with new framework.
    Apr 16, 2015   7579      Robert.Blum         Added new getSavedVal() method to retrieve user edits
                                                 from the ProductText table.
+   Apr 22, 2015   7549      Robert.Blum         Add None check to formatDelimitedList().
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -591,9 +592,15 @@ class TextProductCommon(object):
                 return str(items)
             except :
                 return ""
-        nLeft = len(items)
-        fmtList = ""
+        # Add items to new list if not None
+        newItems = []
         for item in items :
+            if item:
+                newItems.append(item)
+
+        nLeft = len(newItems)
+        fmtList = ""
+        for item in newItems :
             fmtList += item
             if nLeft == 2 :
                 fmtList += " and "
