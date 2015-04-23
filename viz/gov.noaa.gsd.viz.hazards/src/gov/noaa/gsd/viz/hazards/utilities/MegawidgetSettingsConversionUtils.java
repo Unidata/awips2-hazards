@@ -71,6 +71,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      Also fixed bugs caused by hazard category and types object
  *                                      sometimes having a list of maps for its children instead of
  *                                      a list of strings.
+ * Apr 10, 2015 6898       Chris.Cody   Modified Settings update logic
  * </pre>
  * 
  * @author bkowal
@@ -246,7 +247,7 @@ public class MegawidgetSettingsConversionUtils {
             ISessionConfigurationManager<ObservedSettings> configManager,
             IOriginator originator) {
 
-        ObservedSettings updatedSettings = settings;
+        ObservedSettings updatedSettings = new ObservedSettings(settings);
 
         // Update the visible types
         updatedSettings.setVisibleTypes((Set<String>) settingsMap
@@ -421,7 +422,7 @@ public class MegawidgetSettingsConversionUtils {
                     "staticSettingsID").toString());
         }
 
-        configManager.updateCurrentSettings(settings, originator);
+        configManager.updateCurrentSettings(updatedSettings, originator);
         return settings;
     }
 

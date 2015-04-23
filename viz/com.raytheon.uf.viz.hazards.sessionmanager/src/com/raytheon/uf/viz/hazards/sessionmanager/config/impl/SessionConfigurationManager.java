@@ -689,8 +689,6 @@ public class SessionConfigurationManager implements
          */
 
         ObservedHazardEventExt observedHazardEventExt = getObservedHazardEventExt(hazardEvent);
-        System.out.println("CREATED HazEvt EXT: "
-                + observedHazardEventExt.getEventID());
         IPythonExecutor<ContextSwitchingPythonEval, Map<String, Object>> executor = new MetaDataScriptExecutor(
                 observedHazardEventExt, ENVIRONMENT);
         Map<String, Object> result = null;

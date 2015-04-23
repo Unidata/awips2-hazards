@@ -33,9 +33,13 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Console;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
@@ -196,6 +200,15 @@ public class ConsolePresenter extends
      */
     @Handler
     public void currentSettingsChanged(SettingsModified change) {
+        if (change instanceof SettingsLoaded) {
+            ISessionConfigurationManager<ObservedSettings> configManager = this
+                    .getModel().getConfigurationManager();
+            List<Settings> availableSettings = configManager
+                    .getAvailableSettings();
+            ISettings loadedSettings = configManager.getSettings();
+            String loadedSettingsID = loadedSettings.getSettingsID();
+            this.getView().setSettings(loadedSettingsID, availableSettings);
+        }
         if (change.getOriginator() != UIOriginator.CONSOLE) {
             updateHazardEventsForSettingChange();
         }
