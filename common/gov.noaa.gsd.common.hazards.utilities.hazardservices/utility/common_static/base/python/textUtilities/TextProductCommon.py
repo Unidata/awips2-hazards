@@ -288,7 +288,7 @@ class TextProductCommon(object):
         elif displayable:
             if useKeyAsLabel: label = key
             if label is None: label = ''
-            userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment='', editable=False, displayable=True, label=label) 
+            userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, editable=False, displayable=True, label=label) 
         else:
             userEditedKey = key
 

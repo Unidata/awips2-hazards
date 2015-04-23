@@ -633,7 +633,7 @@ class Format(FormatTemplate.Formatter):
 
     def _basisAndImpactsStatement(self, segmentDict):
         # Get saved value from productText table if available
-        bulletText = self._getSavedVal('basisAndImpactsStatement', sectionDict)
+        bulletText = self._getSavedVal('basisAndImpactsStatement', segmentDict)
         if not bulletText:
             bulletText = ''
             if (self._runMode == 'Practice'):
