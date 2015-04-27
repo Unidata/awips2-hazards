@@ -11,6 +11,8 @@
     Mar 20, 2015    7149    Robert.Blum Adjusted _callsToAction() to handle a string
                                         instead of a list.
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
+    Apr 27, 2015    7579    Robert.Blum Removed non-editable fields from Product Editor. Only the 
+                                        ugcHeader and vtecString remain for context.
 '''
 
 import FormatTemplate
@@ -158,7 +160,6 @@ class Format(FormatTemplate.Formatter):
         header = wmoID + ' ' + fullStationID + ' ' + ddhhmmTime + '\n'
         header += self._productID + self._siteID
 
-        self._setVal('wmoHeader', header, productDict, 'WMO Header', editable=False)
         return header + '\n\n'
 
     def _productHeader(self, productDict):
@@ -173,7 +174,6 @@ class Format(FormatTemplate.Formatter):
         text += 'National Weather Service ' + self._wfoCityState + '\n'
         text += self.getIssuanceTimeDate(productDict)
 
-        self._setVal('productHeader', text, productDict, 'Product Header', editable=False)
         return text
 
     def _easMessage(self, productDict):
@@ -185,7 +185,6 @@ class Format(FormatTemplate.Formatter):
                 if vtecRecord.get('sig') is 'A':
                     easText = 'Urgent - Immediate broadcast requested'
                     break
-        self._setVal('easMessage', easText, productDict, 'EAS Meassage', editable=False)
         return easText + '\n'
 
     def _overviewSynopsis_area(self, productDict):
@@ -298,19 +297,18 @@ class Format(FormatTemplate.Formatter):
 
     def _ugcHeader(self, segmentDict):
         ugcHeader = self._tpc.formatUGCs(segmentDict.get('ugcs'), segmentDict.get('expireTime'))
-        self._setVal('ugcHeader', ugcHeader, segmentDict, 'UGC Header', editable=False)
+        self._setVal('ugcHeader', ugcHeader, segmentDict, editable=False)
         return ugcHeader + '\n'
 
     def _areaList(self, segmentDict):
         areaList =  self._tpc.formatUGC_names(segmentDict.get('ugcs'))
-        self._setVal('areaList', areaList, segmentDict, 'Area List', editable=False)
         return areaList + '\n'
 
     def _cityList(self, segmentDict):
         cities = 'Including the cities of '
         cityList = segmentDict.get('cityList', [])
         cities += self._tpc.getTextListStr(cityList)
-        self._setVal('cityList', cities, segmentDict, 'City List', editable=False)
+        self._setVal('cityList', cities, segmentDict, 'City List')
         return cities + '\n'
 
     def _callsToAction(self, segmentDict):
@@ -380,14 +378,12 @@ class Format(FormatTemplate.Formatter):
                 lat = int(100 * lat + 0.5)
                 polyStr += ' ' + str(lat) + ' ' + str(lon)
                 pointsOnLine += 1
-        self._setVal('polygonText', polyStr, segmentDict, 'Polygon Text', editable=False)
         if (self._runMode == 'Practice'):
             polyStr = 'This is a test message. Do not take action based on this message. \n\n' + polyStr
         return polyStr + '\n'
 
     def _issuanceTimeDate(self, segmentDict):
         text = self.getIssuanceTimeDate(segmentDict)
-        self._setVal('issuanceTimeDate', text, segmentDict, 'Issuance Time', editable=False)
         if (self._runMode == 'Practice'):
             text += '\n...This message is for test purposes only...\n'
         return text
@@ -526,7 +522,7 @@ class Format(FormatTemplate.Formatter):
                 if vtecRecord['hvtecstr'] != None:
                     vtecString += vtecRecord['hvtecstr'] + '\n'
 
-        self._setVal('vtecRecords', vtecString, sectionDict, 'VTEC Records', editable=False)
+        self._setVal('vtecRecords', vtecString, sectionDict, editable=False)
         return vtecString
 
     def _attribution(self, sectionDict):

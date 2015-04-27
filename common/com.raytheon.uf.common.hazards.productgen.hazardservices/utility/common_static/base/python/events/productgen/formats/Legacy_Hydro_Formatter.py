@@ -11,6 +11,7 @@
     Mar 17, 2015    6963    Robert.Blum Rounded rfp stage values to a precision of 2.
     Apr 09, 2015    7271    Chris.Golden Changed to use MISSING_VALUE constant.
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
+    Apr 27, 2015    7579    Robert.Blum Fix error when stageFlowUnits are None.
 '''
 import datetime
 import collections
@@ -139,6 +140,8 @@ class Format(Legacy_Base_Formatter.Format):
             if sectionDict.get('observedCategory') > 0:
                 maxStage = sectionDict.get('max24HourObservedStage')
                 stageFlowUnits =  sectionDict.get('stageFlowUnits', 'feet') 
+                if not stageFlowUnits:
+                    stageFlowUnits = 'feet'
                 # Round to 2 decimal point - result is a string
                 maxStage = format(maxStage, '.2f')
                 observedTime = self._getFormattedTime(sectionDict.get('observedTime_ms'), timeZones=self.timezones).rstrip()
@@ -171,7 +174,9 @@ class Format(Legacy_Base_Formatter.Format):
         if not bulletContent:
             impactStrings = []
             impactsList = sectionDict.get('pointImpacts', None)
-            stageFlowUnits =  sectionDict.get('stageFlowUnits', 'feet') 
+            stageFlowUnits =  sectionDict.get('stageFlowUnits', 'feet')
+            if not stageFlowUnits:
+                stageFlowUnits = 'feet'
             if impactsList:
                 for height, textField in impactsList:
                     impactString = 'Impact...At ' + height + ' ' + stageFlowUnits +'...'+textField

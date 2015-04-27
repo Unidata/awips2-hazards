@@ -31,6 +31,7 @@
 #    04/21/14        2336          Chris.Golden    Added capitalization of labels.
 #    04/23/14        3519          jsanchez        Added required fields.
 #    03/19/15        7094          Robert.Blum     Added eventIDs to label by default.
+#    04/27/15        7579          Robert.Blum     Only add eventIDs to label if there is a label.
 import JUtil
 from com.raytheon.uf.common.hazards.productgen import KeyInfo as JavaKeyInfo
 
@@ -47,14 +48,14 @@ class KeyInfo(JUtil.JavaWrapperClass):
             self.eventIDs = tuple([eventIDs])
         self.segment = segment
         self.editable = editable
-        self.displayable = displayable     
+        self.displayable = displayable
         if label is None:
             self.label = self.name.title()
         else:
             self.label = label
 
         # Add EventIDs to label
-        if eventIDInLabel:
+        if label and eventIDInLabel:
             if eventIDs:
                 firstEvent = True
                 for eventID in eventIDs:

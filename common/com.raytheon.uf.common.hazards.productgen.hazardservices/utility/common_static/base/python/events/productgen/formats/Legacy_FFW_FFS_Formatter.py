@@ -10,6 +10,7 @@
     Jan 31, 2015    4937    Robert.Blum General cleanup along with implementing a dictionary
                                         mapping of productParts to the associated methods.
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
+    Apr 27, 2015    7579    Robert.Blum Removed non-editable fields from product editor.
 '''
 
 
@@ -79,7 +80,6 @@ class Format(Legacy_Hydro_Formatter.Format):
                 if vtecRecord['sig'] is 'A':
                     easMessage = 'Urgent - Immediate broadcast requested'
                     break
-        self._setVal('easMessage', easMessage, productDict, 'EAS Message', editable=False)
         return easMessage + '\n'
 
     ################# Segment Level
