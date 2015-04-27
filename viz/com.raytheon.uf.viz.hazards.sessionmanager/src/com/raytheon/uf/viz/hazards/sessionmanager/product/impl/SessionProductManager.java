@@ -193,6 +193,8 @@ import com.vividsolutions.jts.geom.Puntal;
  * Mar 23, 2015 7110       hansen       Automatically include all allowedHazards if "includeAll"
  * Mar 26, 2015 7205       Robert.Blum  Fixed writing to the productData Table.
  * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
+ * Apr 27, 2015 7224       Robert.Blum  Added eventIDs and phensigs of products being issued to the
+ *                                      product generation confirmation dialog.
  * </pre>
  * 
  * @author bsteffen
@@ -601,11 +603,14 @@ public class SessionProductManager implements ISessionProductManager {
      *            issued; if false, they are to be previewed.
      * @param confirm
      *            Flag indicating whether or not to confirm issuance.
+     * @param productGenLabel
+     *            Label for the ProductGenConfirmationDialog to indicate which
+     *            products/events will be issued.
      * @return True if generation should continue, false otherwise.
      */
     private boolean generate(
             ProductGeneratorInformation productGeneratorInformation,
-            boolean issue, boolean confirm) {
+            boolean issue, boolean confirm, String productGenLabel) {
 
         /*
          * Just terminate ongoing operation and return if there is nothing to
@@ -617,7 +622,7 @@ public class SessionProductManager implements ISessionProductManager {
             return false;
         }
 
-        if (issue && confirm && !areYouSure()) {
+        if (issue && confirm && !areYouSure(productGenLabel)) {
             return false;
         }
 
@@ -705,7 +710,9 @@ public class SessionProductManager implements ISessionProductManager {
     @Override
     public void issueCorrection(
             ProductGeneratorInformation productGeneratorInformation) {
-        if (areYouSure()) {
+        StringBuilder sb = new StringBuilder();
+        buildProductGenLabel(productGeneratorInformation, sb);
+        if (areYouSure(sb.toString())) {
             disseminate(productGeneratorInformation);
             sessionManager.setIssueOngoing(false);
         }
@@ -1435,11 +1442,12 @@ public class SessionProductManager implements ISessionProductManager {
         return events;
     }
 
-    private boolean areYouSure() {
+    private boolean areYouSure(String eventLabel) {
         boolean answer = messenger.getQuestionAnswerer()
                 .getUserAnswerToQuestion(
                         "Are you sure "
-                                + "you want to issue the hazard event(s)?",
+                                + "you want to issue the following hazard event(s)?\n\n"
+                                + eventLabel,
                         new String[] { "Issue", "Cancel" });
         if (!answer) {
             sessionManager.setIssueOngoing(false);
@@ -1666,9 +1674,14 @@ public class SessionProductManager implements ISessionProductManager {
         synchronized (pgiMap) {
             pgiMap.clear();
             final AtomicInteger processed = new AtomicInteger(0);
+            StringBuilder sb = new StringBuilder();
+            for (ProductGeneratorInformation productGeneratorInformation : allMatchingProductGeneratorInformation) {
+                buildProductGenLabel(productGeneratorInformation, sb);
+            }
             for (ProductGeneratorInformation productGeneratorInformation : allMatchingProductGeneratorInformation) {
                 boolean continueGeneration = generate(
-                        productGeneratorInformation, issue, confirm);
+                        productGeneratorInformation, issue, confirm,
+                        sb.toString());
                 confirm = false;
                 if (continueGeneration == false) {
                     /*
@@ -1812,6 +1825,29 @@ public class SessionProductManager implements ISessionProductManager {
                 productGenerationAuditor.isIssue(),
                 productGenerationAuditor.getGeneratedProducts());
         eventBus.publishAsync(productGenerationComplete);
+    }
+
+    /**
+     * Take the ProductGeneratorInformation and creates a label to be used on
+     * the Product Generation Confirmation dialog to identify what is being
+     * issued.
+     * 
+     * @param productGeneratorInformation
+     * @return String
+     */
+    private void buildProductGenLabel(
+            ProductGeneratorInformation productGeneratorInformation,
+            StringBuilder sb) {
+        // Get all the events that will be issued and create a String to be
+        // used on the confirmation dialog.
+        if ( productGeneratorInformation.getProductEvents() !=  null){
+            for (IHazardEvent hazardEvent : productGeneratorInformation
+                .getProductEvents()) {
+                sb.append(hazardEvent.getEventID()).append(" ")
+                        .append(hazardEvent.getPhenomenon()).append(".")
+                        .append(hazardEvent.getSignificance()).append("\n");
+            }
+        }
     }
 
 }
