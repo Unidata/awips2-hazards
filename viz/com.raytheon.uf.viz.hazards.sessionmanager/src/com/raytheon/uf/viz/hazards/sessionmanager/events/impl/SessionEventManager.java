@@ -283,6 +283,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      type of unissued FF.W.NonConvective was changed to
  *                                      FF.W.BurnScar).
  * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
+ * Apr 27, 2015 7635       Robert.Blum  Added current config site to list of visible sites for 
+ *                                      when settings have not been overridden.
  * 
  * </pre>
  * 
@@ -1521,10 +1523,11 @@ public class SessionEventManager implements
         Set<String> visibleSites = settings.getVisibleSites();
 
         String configSiteID = configManager.getSiteID();
-        // This should not happen, but it is necessary to process the change of
-        // filters.
+        // If the settings file has not been overridden for the site,
+        // add the currently configured site to the list of visibleSites.
         if (visibleSites.contains(configSiteID) == false) {
             visibleSites.add(configSiteID);
+            settings.setVisibleSites(visibleSites);
             /*
              * <pre> This will dispatch a SettingsModified message; ONLY If this
              * is a NEW Site ID. It is a very slim possibility that this change
@@ -1535,7 +1538,6 @@ public class SessionEventManager implements
              * (SettingsModified) Message.
              */
             configManager.updateCurrentSettings(settings, originator);
-            return;
         }
         if (visibleSites == null || visibleSites.isEmpty()) {
             return;
