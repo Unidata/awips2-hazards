@@ -22,6 +22,7 @@
     Mar 27, 2015    6959    Robert.Blum Changes for Partial cancellations.
     Apr 07, 2015    6690    Robert.Blum List of drainages contents now matches WarnGen.
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
+    Apr 28, 2015    7914    Robert.Blum Fixed error cause by latest merge.
 '''
 
 import ProductTemplate
@@ -655,7 +656,7 @@ class Product(ProductTemplate.Product):
         else:
             section['impacts'] = ''
 
-        section['locationsAffected'] = self._prepareLocationsAffected(event)
+        section['locationsAffected'] = self._prepareLocationsAffected(hazardEvent)
         section['endingSynopsis'] = hazardEvent.get('endingSynopsis')
         section['startTime'] = hazardEvent.getStartTime()
         section['endTime'] = hazardEvent.getEndTime()
