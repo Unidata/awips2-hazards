@@ -11,11 +11,13 @@ class MetaData(CommonMetaData.MetaData):
         if self.hazardStatus == 'ending':
             metaData = [
                     self.getEndingSynopsis(), 
+                    self.getListOfCities(),
                     ]
         else:
             metaData = [
                     self.getImmediateCause(),
                     self.basisStatement(),
+                    self.getListOfCities(),
                     self.getCTAs(), 
                     # Preserving CAP defaults for future reference.
 #                     self.getCAP_Fields([

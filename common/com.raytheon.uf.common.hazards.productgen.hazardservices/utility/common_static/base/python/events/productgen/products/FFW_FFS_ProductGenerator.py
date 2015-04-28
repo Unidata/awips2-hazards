@@ -46,6 +46,8 @@ class Product(HydroGenerator.Product):
         self._FFS_ProductName = 'Flash Flood Statement'
         self._includeAreaNames = True
         self._includeCityNames = False
+        # Polygon-based, so locations listed will be limited to within the polygon rather than county area
+        self._polygonBased = True
 
     def defineScriptMetadata(self):
         metadata = collections.OrderedDict()

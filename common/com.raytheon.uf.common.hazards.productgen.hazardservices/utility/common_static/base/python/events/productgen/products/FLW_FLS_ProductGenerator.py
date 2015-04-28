@@ -64,6 +64,9 @@ class Product(HydroGenerator.Product):
         self._FLS_ProductName_Advisory = 'Flood Advisory'
         self._includeAreaNames = True
         self._includeCityNames = False
+        # Not Polygon-based, so locations listed will not be limited to within the polygon, 
+        # but rather than UGC area e.g. county or zone
+        self._polygonBased = False
 
     def execute(self, eventSet, dialogInputMap):
         '''

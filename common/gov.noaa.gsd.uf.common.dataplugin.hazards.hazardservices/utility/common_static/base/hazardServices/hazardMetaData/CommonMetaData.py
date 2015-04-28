@@ -451,6 +451,24 @@ class MetaData(object):
                             }]
  
                 }
+
+    def getListOfCities(self, defaultOn=True):
+        if defaultOn:
+            values = ["selectListOfCities"]
+        else:
+            values = []
+        return {
+             "fieldType":"CheckBoxes",
+             "fieldName": "listOfCities",
+             "showAllNoneButtons" : False,
+             "choices": [self.selectListOfCities()],
+             "lines": 1,
+             "values": values,
+            }
+    def selectListOfCities(self):
+        return {"identifier":"selectListOfCities", 
+                "displayString": "Select for a list of cities", 
+                "productString": "Arbitrary arguments used by cities list generator."}
  
     def getAdditionalInfo(self):
             return {
@@ -459,13 +477,8 @@ class MetaData(object):
                      "showAllNoneButtons" : False,
                      "label": "Additional Info:",
                      "choices": self.additionalInfoChoices(),
-                     "values":"listOfCities",
                      "lines": 3
                     }                    
-    def listOfCities(self):
-        return {"identifier":"listOfCities", 
-                "displayString": "Select for a list of cities", 
-                "productString": "ARBITRARY ARGUMENTS USED BY CITIES LIST GENERATOR." }
     def listOfDrainages(self):
         return {"identifier":"listOfDrainages", 
                 "displayString": "Automated list of drainages", 
@@ -1240,7 +1253,7 @@ class MetaData(object):
                        "Closest in Stage/Flow Window", 
                        "Highest in Stage/Flow Window"  
                        ]
-            values = "All Below Upper Stage/Flow"
+            values = "Closest in Stage/Flow Window"
         return {
                "fieldType": "ComboBox",
                "fieldName": parm + "SearchType",

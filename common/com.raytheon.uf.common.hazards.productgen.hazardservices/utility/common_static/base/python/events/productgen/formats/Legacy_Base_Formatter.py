@@ -305,11 +305,17 @@ class Format(FormatTemplate.Formatter):
         return areaList + '\n'
 
     def _cityList(self, segmentDict):
-        cities = 'Including the cities of '
-        cityList = segmentDict.get('cityList', [])
-        cities += self._tpc.getTextListStr(cityList)
+        cityList = []
+        for sectionDict in segmentDict.get('sections', []):
+            listOfCities = sectionDict.get('listOfCities', [])
+            if 'selectListOfCities'in listOfCities:
+                cityList += sectionDict.get('cityList', [])
+        if cityList:
+            cities = 'Including the cities of '
+            cities += self._tpc.getTextListStr(cityList)
         self._setVal('cityList', cities, segmentDict, 'City List')
-        return cities + '\n'
+            return cities + '\n'
+        return ''
 
     def _callsToAction(self, segmentDict):
         # Get saved value from productText table if available
@@ -675,10 +681,6 @@ class Format(FormatTemplate.Formatter):
                         if ruleOfThumb:
                             locationsAffected += ruleOfThumb + '\n\n'
 
-            # Need to check for List of cities here
-            if sectionDict.get('citiesListFlag', False) == True:
-                locationsAffected += 'Locations impacted include...' + self._tpc.getTextListStr(self._segmentDict.get('cityList', [])) + '\n\n'
-
             # Add any other additional Info
             locationsAffected += self.createAdditionalComments(sectionDict)
 
@@ -686,17 +688,13 @@ class Format(FormatTemplate.Formatter):
                 phen = vtecRecord.get("phen")
                 sig = vtecRecord.get("sig")
                 geoType = sectionDict.get('geoType')
-                if phen in ["FF", "FA", "TO", "SV", "SM", "EW" , "FL" ] and \
-                   geoType == 'area' and sig != "A" :
-                    if phen == "FF" :
-                        locationsAffected = "Some locations that will experience flash flooding include..."
-                    elif phen == "FA" or phen == "FL" :
-                        locationsAffected = "Some locations that will experience flooding include..."
-                    else :
-                        locationsAffected = "Locations impacted include..."
-                    locationsAffected += self.createImpactedLocations(sectionDict) + '\n\n'
-                else :
-                    locationsAffected = '|*Forecast path of flood and/or locations to be affected*|' + '\n\n'
+            if phen == "FF" :
+                locationsAffected = "Some locations that will experience flash flooding include..."
+            elif phen == "FA" or phen == "FL" :
+                locationsAffected = "Some locations that will experience flooding include..."
+            else :
+                locationsAffected = "Locations impacted include..."
+            locationsAffected += self.createLocationsAffected(sectionDict) + '\n\n'
                     
             locationsAffected = heading + locationsAffected
         self._setVal('locationsAffected', locationsAffected, sectionDict, 'Locations Affected')
@@ -733,17 +731,13 @@ class Format(FormatTemplate.Formatter):
         self._backupWfoCityState = siteEntry.get('wfoCityState')
         self._backupFullStationID = siteEntry.get('fullStationID')
 
-    def createImpactedLocations(self, sectionDict):
-        nullReturn = "mainly rural areas of the aforementioned areas."
-        elements = KeyInfo.getElements('impactedLocations', sectionDict)
-        if len(elements) > 0:
-             locations = sectionDict.get(elements[0], [])
-        else:
-             locations = sectionsDict.get('impactedLocations', [])
-             
+    def createLocationsAffected(self, sectionDict):
+        nullReturn = " mainly rural areas of the aforementioned areas."
+        locations = sectionDict.get('locationsAffected', [])
         if locations:
             return self._tpc.formatDelimitedList(locations)
-        return nullReturn
+        else:
+            return nullReturn
 
     def getIssuanceTimeDate(self, segmentDict):
         text = ''

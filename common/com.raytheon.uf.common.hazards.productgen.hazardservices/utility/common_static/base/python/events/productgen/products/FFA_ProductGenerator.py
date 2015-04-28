@@ -41,6 +41,9 @@ class Product(HydroGenerator.Product):
         self._purgeHours = 8
         self._includeAreaNames = True
         self._includeCityNames = True
+        # Not Polygon-based, so locations listed will not be limited to within the polygon, 
+        # but rather than UGC area e.g. county or zone
+        self._polygonBased = False
 
     def defineScriptMetadata(self):
         metadata = collections.OrderedDict()

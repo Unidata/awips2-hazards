@@ -18,6 +18,7 @@
     Apr 10, 2015    7399    Robert.Blum Checking for empty strings in the additional info
                                         to prevent the megawidget error.
                                         table using setVal() in TextProductCommon.
+    Apr 15  2015    6469    hansen      Cleaning up city list, locations affected, impacted locations
     Mar 27, 2015    6959    Robert.Blum Changes for Partial cancellations.
     Apr 07, 2015    6690    Robert.Blum List of drainages contents now matches WarnGen.
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
@@ -566,6 +567,8 @@ class Product(ProductTemplate.Product):
             else:
                 sectionDict = self._createSectionDictionary(sectionHazardEvent, sectionVtecRecord, sectionMetaData)
 
+            sectionDict['cityList'] = self._productSegment.cityList
+
             sectionDicts.append(sectionDict)
 
         # Add the list of section dictionaries to the segment dictionary
@@ -890,11 +893,7 @@ class Product(ProductTemplate.Product):
         self._productSegment.ugcs.sort()
         self._productSegment.ctas = ''
         self._productSegment.pointID = hazardEvent.get('pointID')
-        self._productSegment.cityInfo = self.getCityInfo(self._productSegment.ugcs, returnType='list')
-        cityList = []
-        for city, ugcCity in self._productSegment.cityInfo:
-            cityList.append(city)
-        self._productSegment.cityList = cityList
+        self._productSegment.cityList = self._getCityList(hazardEvent)
         self._productSegment.timeZones = self._tpc.hazardTimeZones(self._productSegment.ugcs)
         self._productSegment.expireTime = self._tpc.getExpireTime(self._issueTime, self._purgeHours, 
                                                                     self._productSegment.vtecRecords_ms)
@@ -909,6 +908,85 @@ class Product(ProductTemplate.Product):
                 canVtecRecord = vtecRecord
                 break  # take the first one
         self._productSegment.canVtecRecord = canVtecRecord
+
+    def _prepareLocationsAffected(self, hazardEvent):
+        # TODO  
+        #  For now we're using the cityList, 
+        #  but we need to re-use the legacy updated 
+        #  WarnGen locations list 
+        return self._getCityList(hazardEvent)
+    
+    def _prepareImpactedLocations(self, hazardEvent):
+        # Returns a list of dictionaries. 
+        # TODO
+        #  Gathering impact information to potentially be used 
+        #  in the bullets. This could be hooked up if
+        #  needed e.g. 
+        #  The storm is moving through the northeast portion of Boulder County.
+        attributes = hazardEvent.getHazardAttributes()
+        impactedLocations = []
+        ugcs = attributes.get('ugcs') 
+        if 'ugcPortions' in attributes:
+            portions = attributes.get('ugcPortions') 
+        else:
+            portions = None
+        if 'ugcPartsOfState' in attributes:
+            partsOfState = attributes.get('ugcPartsOfState')
+        else:
+            partsOfState = None
+        for ugc in ugcs:
+            area = {}
+            # query countytable           
+            area['ugc'] = ugc
+            area['name'] = self._areaDictionary.get(ugc).get('ugcName')
+            if portions:
+                area['portions'] = portions.get(ugc)
+            area['type'] = ugc[2]
+            # query state table
+            area['state'] = self._areaDictionary.get(ugc).get('fullStateName')
+            area['timeZone'] = self._areaDictionary.get(ugc).get('ugcTimeZone')
+            if partsOfState:
+                area['partsOfState'] = partsOfState.get(ugc)
+            impactedLocations.append(area)
+        return impactedLocations
+    def _getCityList(self, hazardEvent):
+        if not self._polygonBased: # area based
+            self._productSegment.cityInfo = self.getCityInfo(self._productSegment.ugcs, returnType='list')
+            cityList = []
+            for city, ugcCity in self._productSegment.cityInfo:
+                cityList.append(city)
+        else: # polygon-based
+            cityList = self._getCityListForPolygon(hazardEvent)
+        return cityList
+        
+    def _getCityListForPolygon(self, hazardEvent):
+        geometry = hazardEvent.getGeometry()
+        columns = ["name", "warngenlev"]
+        try :
+            cityGeoms = self._tpc.mapDataQuery("city", columns, geometry)
+        except :
+            return []
+        if not isinstance(cityGeoms, list) :
+            return []
+        names12 = []
+        namesOther = []
+        for cityGeom in cityGeoms :
+            try:
+                name = cityGeom.getString(columns[0])
+                if not name:
+                    continue
+                levData = str(cityGeom.getString(columns[1]))
+                if levData == "1" or levData == "2" :
+                      names12.append(name)
+                else :
+                      namesOther.append(name)
+            except :
+                pass
+        if len(names12) > 0 :
+            return names12
+        if len(namesOther) > 0 :
+            return namesOther
+        return []
 
     def _prepareImpactedLocations(self, geometry):
         columns = ["name", "warngenlev"]
@@ -940,7 +1018,6 @@ class Product(ProductTemplate.Product):
 
     def _prepareAdditionalInfo(self, attributeValue, event, metaData):
         additionalInfo = []
-        citiesListFlag = False
         if len(attributeValue) > 0:
             for identifier in attributeValue:
                 additionalInfoText = ''
@@ -963,7 +1040,7 @@ class Product(ProductTemplate.Product):
                 # Add the additional info to the list if not None or empty.
                 if additionalInfoText:
                     additionalInfo.append(additionalInfoText)
-        return additionalInfo, citiesListFlag
+        return additionalInfo
 
     def floodTimeStr(self, creationTime, hashTag, flood_time_ms):
         floodTime = datetime.datetime.fromtimestamp(flood_time_ms/1000)
