@@ -13,6 +13,7 @@
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
     Apr 27, 2015    7579    Robert.Blum Removed non-editable fields from Product Editor. Only the 
                                         ugcHeader and vtecString remain for context.
+    Apr 28, 2015    7914    Robert.Blum Fixed indent error from merge.
 '''
 
 import FormatTemplate
@@ -688,14 +689,13 @@ class Format(FormatTemplate.Formatter):
                 phen = vtecRecord.get("phen")
                 sig = vtecRecord.get("sig")
                 geoType = sectionDict.get('geoType')
-            if phen == "FF" :
-                locationsAffected = "Some locations that will experience flash flooding include..."
-            elif phen == "FA" or phen == "FL" :
-                locationsAffected = "Some locations that will experience flooding include..."
-            else :
-                locationsAffected = "Locations impacted include..."
-            locationsAffected += self.createLocationsAffected(sectionDict) + '\n\n'
-                    
+                if phen == "FF" :
+                    locationsAffected = "Some locations that will experience flash flooding include..."
+                elif phen == "FA" or phen == "FL" :
+                    locationsAffected = "Some locations that will experience flooding include..."
+                else :
+                    locationsAffected = "Locations impacted include..."
+                locationsAffected += self.createLocationsAffected(sectionDict) + '\n\n'
             locationsAffected = heading + locationsAffected
         self._setVal('locationsAffected', locationsAffected, sectionDict, 'Locations Affected')
         if action in ['NEW', 'EXT']:
