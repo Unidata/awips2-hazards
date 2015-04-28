@@ -313,7 +313,7 @@ class Format(FormatTemplate.Formatter):
         if cityList:
             cities = 'Including the cities of '
             cities += self._tpc.getTextListStr(cityList)
-        self._setVal('cityList', cities, segmentDict, 'City List')
+            self._setVal('cityList', cities, segmentDict, 'City List')
             return cities + '\n'
         return ''
 

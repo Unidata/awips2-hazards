@@ -632,9 +632,8 @@ class Product(ProductTemplate.Product):
         for attribute in attributes:
             # Special case attributes that need additional work before adding to the dictionary
             if attribute == 'additionalInfo':
-                additionalInfo, citiesListFlag = self._prepareAdditionalInfo(attributes[attribute] , hazardEvent, metaData)
+                additionalInfo = self._prepareAdditionalInfo(attributes[attribute] , hazardEvent, metaData)
                 section['additionalComments'] = additionalInfo
-                section['citiesListFlag'] = citiesListFlag
             elif attribute == 'cta':
                 # CTAs are gathered and displayed at the segment level, pass here
                 pass
@@ -656,7 +655,7 @@ class Product(ProductTemplate.Product):
         else:
             section['impacts'] = ''
 
-        section['impactedLocations'] = self._prepareImpactedLocations(hazardEvent.getGeometry())
+        section['locationsAffected'] = self._prepareLocationsAffected(event)
         section['endingSynopsis'] = hazardEvent.get('endingSynopsis')
         section['startTime'] = hazardEvent.getStartTime()
         section['endTime'] = hazardEvent.getEndTime()
@@ -915,40 +914,7 @@ class Product(ProductTemplate.Product):
         #  but we need to re-use the legacy updated 
         #  WarnGen locations list 
         return self._getCityList(hazardEvent)
-    
-    def _prepareImpactedLocations(self, hazardEvent):
-        # Returns a list of dictionaries. 
-        # TODO
-        #  Gathering impact information to potentially be used 
-        #  in the bullets. This could be hooked up if
-        #  needed e.g. 
-        #  The storm is moving through the northeast portion of Boulder County.
-        attributes = hazardEvent.getHazardAttributes()
-        impactedLocations = []
-        ugcs = attributes.get('ugcs') 
-        if 'ugcPortions' in attributes:
-            portions = attributes.get('ugcPortions') 
-        else:
-            portions = None
-        if 'ugcPartsOfState' in attributes:
-            partsOfState = attributes.get('ugcPartsOfState')
-        else:
-            partsOfState = None
-        for ugc in ugcs:
-            area = {}
-            # query countytable           
-            area['ugc'] = ugc
-            area['name'] = self._areaDictionary.get(ugc).get('ugcName')
-            if portions:
-                area['portions'] = portions.get(ugc)
-            area['type'] = ugc[2]
-            # query state table
-            area['state'] = self._areaDictionary.get(ugc).get('fullStateName')
-            area['timeZone'] = self._areaDictionary.get(ugc).get('ugcTimeZone')
-            if partsOfState:
-                area['partsOfState'] = partsOfState.get(ugc)
-            impactedLocations.append(area)
-        return impactedLocations
+
     def _getCityList(self, hazardEvent):
         if not self._polygonBased: # area based
             self._productSegment.cityInfo = self.getCityInfo(self._productSegment.ugcs, returnType='list')
@@ -958,37 +924,9 @@ class Product(ProductTemplate.Product):
         else: # polygon-based
             cityList = self._getCityListForPolygon(hazardEvent)
         return cityList
-        
+
     def _getCityListForPolygon(self, hazardEvent):
         geometry = hazardEvent.getGeometry()
-        columns = ["name", "warngenlev"]
-        try :
-            cityGeoms = self._tpc.mapDataQuery("city", columns, geometry)
-        except :
-            return []
-        if not isinstance(cityGeoms, list) :
-            return []
-        names12 = []
-        namesOther = []
-        for cityGeom in cityGeoms :
-            try:
-                name = cityGeom.getString(columns[0])
-                if not name:
-                    continue
-                levData = str(cityGeom.getString(columns[1]))
-                if levData == "1" or levData == "2" :
-                      names12.append(name)
-                else :
-                      namesOther.append(name)
-            except :
-                pass
-        if len(names12) > 0 :
-            return names12
-        if len(namesOther) > 0 :
-            return namesOther
-        return []
-
-    def _prepareImpactedLocations(self, geometry):
         columns = ["name", "warngenlev"]
         try :
             cityGeoms = self._tpc.mapDataQuery("city", columns, geometry)
