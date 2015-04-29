@@ -25,6 +25,7 @@ import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 
 import com.google.common.collect.ImmutableMap;
+import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 
 /**
  * Description: Parameters editor factory, capable of constructing GUI-based
@@ -78,6 +79,8 @@ import com.google.common.collect.ImmutableMap;
  *                                           set to true the default for text
  *                                           megawidgets.
  * Dec 15, 2014    3846    Tracy Hansen      small bug fix
+ * Apr 28, 2015    7579    Robert.Blum       Changes to allow LabelMegaWidgets on
+ *                                           the Product Editor.
  * </pre>
  * 
  * @author Chris.Golden
@@ -125,9 +128,9 @@ public class ParametersEditorFactory {
      * Mapping of commonly used stateful megawidget specifiers to nested maps,
      * the latter holding default specification parameters for those maps.
      */
-    private static final Map<Class<? extends IStatefulSpecifier>, Map<String, Object>> DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS;
+    private static final Map<Class<? extends ISpecifier>, Map<String, Object>> DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS;
     static {
-        Map<Class<? extends IStatefulSpecifier>, Map<String, Object>> map = new HashMap<>();
+        Map<Class<? extends ISpecifier>, Map<String, Object>> map = new HashMap<>();
 
         /*
          * Add default values for text megawidgets.
@@ -140,6 +143,14 @@ public class ParametersEditorFactory {
         defaults.put(TextSpecifier.MEGAWIDGET_VISIBLE_LINES, 5);
         defaults.put(TextSpecifier.SPELLCHECK_ENABLED, true);
         map.put(TextSpecifier.class, defaults);
+
+        /*
+         * Add default values for label megawidgets.
+         */
+        defaults = new HashMap<>();
+        defaults.put(LabelSpecifier.MEGAWIDGET_TYPE, "Label");
+        defaults.put(LabelSpecifier.MEGAWIDGET_SPACING, 5);
+        map.put(LabelSpecifier.class, defaults);
 
         /*
          * Add default values for integer spinner megawidgets.
@@ -656,22 +667,38 @@ public class ParametersEditorFactory {
             String key = parameter.getKey();
             String label = parameter.getLabel();
 
-            /*
-             * Get the base specifier for this parameter type.
-             */
             Object value = valuesForParameters.get(parameter);
             valuesForKeys.put(key, value);
             if (value == null) {
                 throw new MegawidgetException(key, null, null,
                         "no associated parameter value");
             }
+
+            /*
+             * Get the base specifier for this parameter type.
+             */
+            Map<String, Object> baseSpecifier;
             Class<?> parameterClass = value.getClass();
-            Map<String, Object> baseSpecifier = megawidgetSpecifiersForParameterClasses
-                    .getProximate(parameterClass);
-            if (baseSpecifier == null) {
-                throw new MegawidgetException(key, null, null,
-                        "no megawidget specifier associated with type \""
-                                + parameterClass + "\"");
+            if (((KeyInfo) parameter).isEditable()) {
+                /*
+                 * Editable so make it a TextMegawidget.
+                 */
+                baseSpecifier = DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS
+                        .get(TextSpecifier.class);
+                if (baseSpecifier == null) {
+                    throw new MegawidgetException(key, null, null,
+                            "no default parameters for TextSpecifier");
+                }
+            } else {
+                /*
+                 * Non-Editable so make it a LabelMegawidget.
+                 */
+                baseSpecifier = DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS
+                        .get(LabelSpecifier.class);
+                if (baseSpecifier == null) {
+                    throw new MegawidgetException(key, null, null,
+                            "no default parameters for LabelSpecifier");
+                }
             }
 
             /*
@@ -681,41 +708,27 @@ public class ParametersEditorFactory {
             parametersForKeys.put(key, parameter);
 
             /*
-             * Determine whether or not the megawidget should be embedded within
-             * an expand bar.
-             */
-            boolean expandable = expandabilityForParameterClasses
-                    .getProximate(parameterClass);
-
-            /*
              * Modify the base specifier by adding the key as its identifier.
              */
             Map<String, Object> specifier = new HashMap<>(baseSpecifier);
             specifier.put(IStatefulSpecifier.MEGAWIDGET_IDENTIFIER, key);
 
-            /*
-             * If the megawidget should be expandable, embed it within an expand
-             * bar megawidget; otherwise, just set the label of the megawidget.
-             */
-            if (expandable) {
-                List<Map<String, Object>> pageSpecifiers = new ArrayList<>(1);
-                pageSpecifiers.add(specifier);
-                Map<String, Object> page = new HashMap<>();
-                page.put(ExpandBarSpecifier.PAGE_IDENTIFIER, label);
-                page.put(ExpandBarSpecifier.PAGE_FIELDS, pageSpecifiers);
-                List<Map<String, Object>> pageList = new ArrayList<>(1);
-                pageList.add(page);
-                specifier = new HashMap<>(expandBarSpecifier);
-                specifier.put(ExpandBarSpecifier.MEGAWIDGET_IDENTIFIER,
-                        EXPAND_BAR_IDENTIFIER_PREFIX + key);
-                specifier.put(ExpandBarSpecifier.MEGAWIDGET_PAGES, pageList);
-            } else if (label.isEmpty() == false) {
+            if (label.isEmpty() == false) {
                 specifier.put(IStatefulSpecifier.MEGAWIDGET_LABEL, label + ":");
             }
 
             /*
-             * Add the megawidget (or its enclosing expand bar, if it is
-             * embedded within one) to the list.
+             * Set the initial value
+             */
+            if (specifier.get("fieldType").equals("Text")) {
+                specifier
+                        .put(IStatefulSpecifier.MEGAWIDGET_STATE_VALUES, value);
+            } else if (specifier.get("fieldType").equals("Label")) {
+                specifier.put(ISpecifier.MEGAWIDGET_LABEL, value);
+            }
+
+            /*
+             * Add the megawidget to the list.
              */
             specifiers.add(specifier);
 
@@ -769,4 +782,5 @@ public class ParametersEditorFactory {
         listenersForManagers.put(manager, parametersListener);
         return manager;
     }
+
 }

@@ -14,6 +14,7 @@
     Apr 27, 2015    7579    Robert.Blum Removed non-editable fields from Product Editor. Only the 
                                         ugcHeader and vtecString remain for context.
     Apr 28, 2015    7914    Robert.Blum Fixed indent error from merge.
+    Apr 28, 2015    7579    Robert.Blum Updated CityList to get saved values from the productText table.
 '''
 
 import FormatTemplate
@@ -306,16 +307,20 @@ class Format(FormatTemplate.Formatter):
         return areaList + '\n'
 
     def _cityList(self, segmentDict):
-        cityList = []
-        for sectionDict in segmentDict.get('sections', []):
-            listOfCities = sectionDict.get('listOfCities', [])
-            if 'selectListOfCities'in listOfCities:
-                cityList += sectionDict.get('cityList', [])
-        if cityList:
-            cities = 'Including the cities of '
-            cities += self._tpc.getTextListStr(cityList)
-            self._setVal('cityList', cities, segmentDict, 'City List')
-            return cities + '\n'
+        # Get saved value from productText table if available
+        cityListText = self._getSavedVal('cityList', segmentDict)
+        if not cityListText:
+            cityList = []
+            for sectionDict in segmentDict.get('sections', []):
+                listOfCities = sectionDict.get('listOfCities', [])
+                if 'selectListOfCities'in listOfCities:
+                    cityList += sectionDict.get('cityList', [])
+            if cityList:
+                cityListText = 'Including the cities of '
+                cityListText += self._tpc.getTextListStr(cityList)
+        if cityListText:
+            self._setVal('cityList', cityListText, segmentDict, 'City List')
+            return cityListText + '\n'
         return ''
 
     def _callsToAction(self, segmentDict):
