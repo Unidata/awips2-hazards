@@ -398,6 +398,10 @@ public class SessionTimeManager implements ISessionTimeManager {
      * Publish notification of a time change.
      */
     private void publishNotificationOfTimeChange() {
+
+        long now = SimulatedTime.getSystemTime().getMillis();
+        selectedTime = new SelectedTime(now);
+
         notificationSender.postNotificationAsync(new CurrentTimeChanged(
                 Originator.OTHER));
     }

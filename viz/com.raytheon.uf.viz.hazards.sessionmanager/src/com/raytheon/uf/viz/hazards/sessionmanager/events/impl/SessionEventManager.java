@@ -1790,9 +1790,13 @@ public class SessionEventManager implements
         updateDurationChoicesForEvent(oevent, false);
         updateConflictingEventsForSelectedEventIdentifiers(oevent, false);
 
+        List<ObservedHazardEvent> selectedEventList = this.getSelectedEvents();
+        this.timeManager.processSelectedEventsModified(selectedEventList);
+
         notificationSender.postNotificationAsync(new SessionEventAdded(oevent,
                 notifyAllowUntilFurtherNoticeSet, isLastChangedEventModified,
                 originator));
+
         return oevent;
     }
 

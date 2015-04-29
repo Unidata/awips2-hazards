@@ -429,6 +429,7 @@ public class ConsolePresenter extends
     @Handler
     public void sessionEventsTimeRangeBoundariesChanged(
             SessionEventsTimeRangeBoundariesModified change) {
+        this.updateHazardEventsForEventChange();
         getView().updateEventTimeRangeBoundaries(change.getChangedEventIdSet());
     }
 
