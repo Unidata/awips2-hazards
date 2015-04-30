@@ -39,6 +39,7 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * ------------ ---------- ----------- --------------------------
  * Nov 20, 2013  #2462     dgilling     Initial creation
  * Aug  6, 2014  2826      jsanchez     Added the parameter operationalMode to determine ActiveTable mode.
+ * Apr 30, 2015  3937      mduff        GetNextEtnRequest takes a Date instead of a Calendar.
  * 
  * </pre>
  * 
@@ -138,8 +139,8 @@ public class ProductGenVtecUtil {
         ActiveTableMode activeTable = operationalMode ? ActiveTableMode.OPERATIONAL
                 : ActiveTableMode.PRACTICE;
         GetNextEtnRequest req = new GetNextEtnRequest(office, activeTable,
-                phensig, currentTime, lockEtn, performISC, reportOnlyConflict,
-                etnOverride);
+                phensig, currentTime.getTime(), lockEtn, performISC,
+                reportOnlyConflict, etnOverride);
 
         GetNextEtnResponse resp = (GetNextEtnResponse) RequestRouter.route(req);
         GetNextEtnResponse rval = (resp != null) ? resp
