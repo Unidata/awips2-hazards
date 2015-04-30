@@ -1,3 +1,11 @@
+'''
+    Description: Legacy formatter for hydro ESF products
+    
+    SOFTWARE HISTORY
+    Date         Ticket#    Engineer    Description
+    ------------ ---------- ----------- --------------------------
+    Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
+'''
 import FormatTemplate
 
 import types, re, sys, collections
@@ -21,7 +29,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             'ugcHeader': self._ugcHeader,
             'narrativeForecastInformation': self._narrativeForecastInformation
                                 }
-        
+
     def execute(self, productDict):
         self.productDict = productDict
         self.initialize()
@@ -41,7 +49,9 @@ class Format(Legacy_Hydro_Formatter.Format):
         # Get saved value from productText table if available
         narrative = self._getSavedVal('narrativeForecastInformation', sectionDict)
         if not narrative:
-            narrative = sectionDict.get('narrativeForecastInformation', '')
+            # ESF sections will only contain one hazard
+            hazard = sectionDict.get('hazardEvents')[0]
+            narrative = hazard.get('narrativeForecastInformation', '')
         self._setVal('narrativeForecastInformation', narrative, sectionDict, 'Narrative Forecast Information')
         return narrative
     

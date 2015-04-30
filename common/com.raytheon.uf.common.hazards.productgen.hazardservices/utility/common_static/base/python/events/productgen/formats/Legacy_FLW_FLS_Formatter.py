@@ -10,6 +10,7 @@
     Feb 20, 2015 4937       Robert.Blum Added groupSummary productPart method to mapping.
     Mar 17, 2015 6958       Robert.Blum BasisBullet only has start time if it is Warning.
     Apr 16, 2015 7579       Robert.Blum Updates for amended Product Editor.
+    Apr 30, 2015 7579       Robert.Blum Changes for multiple hazards per section.
 '''
 
 import datetime,collections
@@ -63,6 +64,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             'forecastStageBullet': self._forecastStageBullet,
             'floodPointTable': self._floodPointTable,
             'setUp_segment': self._setUp_segment,
+            'setUp_section': self._setUp_section,
             'groupSummary': self._groupSummary,
             'endSegment': self._endSegment,
                                 }
@@ -85,7 +87,9 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     def _timeBullet(self, sectionDict):
         timeBullet = super(Format, self)._timeBullet(sectionDict)
-        if sectionDict.get('geoType', '') == 'area':
+        hazards = sectionDict.get('hazardEvents')
+        # Assume all hazards in the section have the same geoType
+        if hazards[0].get('geoType', '') == 'area':
             timeBullet+= '\n'
         return timeBullet
 
@@ -113,8 +117,10 @@ class Format(Legacy_Hydro_Formatter.Format):
             # Use basisFromHazardEvent for WarnGen only hazards
             if phen == 'FA' and sig in ['W', 'Y']:
                 hazardType = phen + '.' + sig
-                basis = self.basisText.getBulletText(hazardType, sectionDict)
-                basis = self._tpc.substituteParameters(sectionDict, basis)
+                # FFW_FFS sections will only contain one hazard
+                hazards = sectionDict.get('hazardEvents')
+                basis = self.basisText.getBulletText(hazardType, hazards[0])
+                basis = self._tpc.substituteParameters(hazards[0], basis)
             else:
                 # TODO Need to create basisText for Non-WarnGen hazards
                 basis = "...Flooding from heavy rain. This rain was located over the warned area."

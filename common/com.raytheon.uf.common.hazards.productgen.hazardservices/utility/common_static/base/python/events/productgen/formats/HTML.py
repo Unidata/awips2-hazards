@@ -10,6 +10,7 @@
     Feb 04, 2015    6322    Robert.Blum Initial creation
     Apr 16, 2015    7579    Robert.Blum Added editableParts dictionary for
                                         future use.
+    Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
 '''
 
 import FormatTemplate
@@ -157,14 +158,15 @@ class Format(FormatTemplate.Formatter):
         for segment in segments:
             sections = segment.get('sections')
             for section in sections:
-                for geometry in section.get('geometry'):
-                    if geometry.geom_type == HazardConstants.SHAPELY_POLYGON:
-                        polygonPointLists.append(list(geometry.exterior.coords))
-                    elif geometry.geom_type == HazardConstants.SHAPELY_POINT or geometry.geom_type == HazardConstants.SHAPELY_LINE:
-                        polygonPointLists.append(list(geometry.coords))
-                    else:
-                        for geo in geometry:
-                            polygonPointLists.append(list(geo.exterior.coords))
+                for hazard in section.get('hazardEvents', []):
+                    for geometry in hazard.get('geometry'):
+                        if geometry.geom_type == HazardConstants.SHAPELY_POLYGON:
+                            polygonPointLists.append(list(geometry.exterior.coords))
+                        elif geometry.geom_type == HazardConstants.SHAPELY_POINT or geometry.geom_type == HazardConstants.SHAPELY_LINE:
+                            polygonPointLists.append(list(geometry.coords))
+                        else:
+                            for geo in geometry:
+                                polygonPointLists.append(list(geo.exterior.coords))
         return polygonPointLists
 
     def addImpactedLocationsToTable(self):
@@ -172,12 +174,11 @@ class Format(FormatTemplate.Formatter):
         html = ''
         cityList = []
         for segment in self.productDict.get('segments', []):
-            # Get all the cities from the segments
-            cityList.extend(segment.get('cityList', []))
             for section in segment.get('sections', []):
-                if section.get('citiesListFlag', False):
-                    # Add to the table if flag is set
-                    addToTable = True
+                for hazard in section.get('hazardEvents', []):
+                    if hazard.get('citiesListFlag', False):
+                        cityList.extend(hazard.get('cityList', []))
+                        addToTable = True
 
         if addToTable:
             html += "<tr>\n"

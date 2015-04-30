@@ -79,6 +79,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Mar 10, 2015 6274       Robert.Blum  Changes for Product Corrections
  * Mar 23, 2015 7165       Robert.Blum  Modifications to allow for adding "*" to product tabs.
  * Apr 16, 2015 7579       Robert.Blum  Changes for amended Product Editor design.
+ * Apr 30, 2015 7579       Robert.Blum  Added space between Issue and Dismiss buttons.
  * </pre>
  * 
  * @author jsanchez
@@ -121,6 +122,9 @@ public class ProductEditor extends CaveSWTDialog {
 
     /** Message displayed by the regenerate dialog */
     private static final String REGENERATE_DIALOG_MESSAGE = "The selected events have changed. Do you want to regenerate the products or do you want to close the product editor?";
+
+    /** Horizontal spacing between Issue All and Dismiss buttons */
+    private static final int HORIZONTAL_BUTTON_SPACING = 65;
 
     /** List of generated product lists from the product generators */
     private final List<GeneratedProductList> generatedProductListStorage;
@@ -347,6 +351,7 @@ public class ProductEditor extends CaveSWTDialog {
     private void createButtons(Composite parent) {
         Composite buttonComp = new Composite(parent, SWT.NONE);
         GridLayout layout = new GridLayout(2, false);
+        layout.horizontalSpacing = HORIZONTAL_BUTTON_SPACING;
         GridData data = new GridData(SWT.CENTER, SWT.CENTER, true, false);
         buttonComp.setLayout(layout);
         buttonComp.setLayoutData(data);

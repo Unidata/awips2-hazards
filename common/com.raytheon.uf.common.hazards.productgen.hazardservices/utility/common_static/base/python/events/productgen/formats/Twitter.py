@@ -10,6 +10,7 @@
     Mar 30, 2015    6959    Robert.Blum Updated createAreaPhrase() to use functions
                                         in TextProductCommon.
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
+    Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
 '''
 
 import FormatTemplate
@@ -76,7 +77,9 @@ class Format(FormatTemplate.Formatter):
         action = vtecRecord.get('act')
         if action == 'COR':
             action = vtecRecord.get('prevAct')
-        endTime = sectionDict.get('endTime')
+        # Endtime for all hazards in the section will be the same.
+        hazard = sectionDict.get('hazardEvents')[0]
+        endTime = hazard.get('endTime')
         endTimePhrase = ' until ' + endTime.strftime('%l%M %p %Z').strip() + '.'
         areaPhrase = self.createAreaPhrase(sectionDict)
         attribution = hazName

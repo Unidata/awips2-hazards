@@ -23,6 +23,7 @@
     Apr 07, 2015    6690    Robert.Blum List of drainages contents now matches WarnGen.
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
     Apr 28, 2015    7914    Robert.Blum Fixed error cause by latest merge.
+    Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
 '''
 
 import ProductTemplate
@@ -526,22 +527,24 @@ class Product(ProductTemplate.Product):
             self.checkForPartialCan(productSegmentGroup)
 
             # Create and order the sections for the segment:     
-            self._productSegment.sections = self._createSections(self._productSegment.vtecRecords_ms, self._productSegment.metaDataList, 
-                                                           self._productID, self._issueTime_secs)
+            self._productSegment.sections = self._createSections(self._productSegment.vtecRecords_ms, self._productSegment.metaDataList)
 
             if not self._productSegment.sections:
-                self._setProductInformation(self._productSegment.vtecRecords_ms[0], self._productSegment.hazardEvents[0])
-             
+                self._setProductInformation(self._productSegment.vtecRecords_ms, self._productSegment.hazardEvents)
+
             # Add the sections to the segment dictionary
             self._addSectionsToSegment(segmentDict)
 
-            # Add any remaining segment level data here
             segmentDict['expireTime'] = self._productSegment.expireTime
             segmentDict['vtecRecords'] = self._productSegment.vtecRecords
             segmentDict['ugcs'] = self._productSegment.ugcs
             segmentDict['timeZones'] = self._productSegment.timeZones
             segmentDict['cityList'] = self._productSegment.cityList
-            segmentDict['callsToAction'] = self._productSegment.ctas
+            # Convert the CTAs from a set to a string
+            if self._productSegment.ctas:
+                segmentDict['callsToAction'] = '\n\n'.join(list(self._productSegment.ctas))
+            else:
+                segmentDict['callsToAction'] = ''
 
             segmentDicts.append(segmentDict)
 
@@ -556,39 +559,34 @@ class Product(ProductTemplate.Product):
 
         sectionDicts = []
         for section in self._productSegment.sections:
-            sectionVtecRecord, sectionMetaData, sectionHazardEvent = section
+            # A section can have multiple events/metaData
+            sectionVtecRecord, sectionMetaData, sectionHazardEvents = section
+            for hazardEvent in sectionHazardEvents:
+                metaData = sectionMetaData.get(hazardEvent.getEventID())
 
-            ctas = self.getCTAsPhrase(sectionVtecRecord, sectionHazardEvent, sectionMetaData)
-            if ctas:
-                for cta in ctas:
-                    self._productSegment.ctas += cta + '\n\n'
+                # Gather the section CTAs so they can be added at segment level.
+                ctas = self.getCTAsPhrase(hazardEvent, metaData)
+                if ctas:
+                    self._productSegment.ctas.update(ctas)
 
-            if self._partialCAN:
-                sectionDict = self._createSectionDictionary_forPartialCancellation(sectionHazardEvent, sectionVtecRecord, sectionMetaData)
-            else:
-                sectionDict = self._createSectionDictionary(sectionHazardEvent, sectionVtecRecord, sectionMetaData)
-
-            sectionDict['cityList'] = self._productSegment.cityList
-
+            sectionDict = self._createSectionDictionary(sectionHazardEvents, sectionVtecRecord, sectionMetaData)
             sectionDicts.append(sectionDict)
 
         # Add the list of section dictionaries to the segment dictionary
         segmentDict['sections'] = sectionDicts
 
-    def _createSections(self, vtecRecords, metaDataList, productID, issueTime):
+    def _createSections(self, vtecRecords, metaDataList):
         '''
         Order vtec records and create the sections for the segment
 
         @param vtecRecords:  vtecRecords for a segment
         @param metaDataList: list of (metaData, hazardEvent) for the segment
-        @param productID: product ID e.g. FFA, CWF, etc.
-        @param issueTime: in seconds so that it compares to the vtec records
-        '''        
+        '''
         sections = []
         hList = copy.deepcopy(vtecRecords)
 
         if len(hList):
-            if productID in ['CWF', 'NSH', 'OFF', 'GLF']:
+            if self._productID in ['CWF', 'NSH', 'OFF', 'GLF']:
                 hList.sort(self._tpc.marineSortHazardAlg)
             else:
                 hList.sort(self._tpc.regularSortHazardAlg)
@@ -602,80 +600,115 @@ class Product(ProductTemplate.Product):
                 continue
 
             # make sure the vtecRecord is still in effect or within EXP criteria
-            if (vtecRecord.get('act') != 'EXP' and issueTime >= vtecRecord.get('endTime')) or \
-            (vtecRecord.get('act') == 'EXP' and issueTime > 30 * 60 + vtecRecord.get('endTime')):
+            if (vtecRecord.get('act') != 'EXP' and self._issueTime_secs >= vtecRecord.get('endTime')) or \
+            (vtecRecord.get('act') == 'EXP' and self._issueTime_secs > 30 * 60 + vtecRecord.get('endTime')):
                 hList.remove(vtecRecord)
-                continue  # no headline for expired vtecRecords
+                continue
 
-            # Add to sections
+            # Add to sections - section can have multiple events
+            sectionHazardEvents = []
+            sectionMetaData = {}
             for metaData, hazardEvent in metaDataList:
                 if hazardEvent.getEventID() in vtecRecord.get('eventID'):
-                    sections.append((vtecRecord, metaData, hazardEvent))
-                    break 
+                    sectionHazardEvents.append(hazardEvent)
+                    sectionMetaData[hazardEvent.getEventID()] = metaData
+            sections.append((vtecRecord, sectionMetaData, sectionHazardEvents))
 
             # always remove the main vtecRecord from the list
             hList.remove(vtecRecord)
         return sections
 
-    def _createSectionDictionary(self, hazardEvent, vtecRecord, metaData):
+    def _createSectionDictionary(self, hazardEvents, vtecRecord, metaDataDictionary):
         '''
         Returns a dictionary that contains all the raw data associated with
         this section.
 
-        @param hazardEvent: hazardEvent associated with the section
+        @param hazardEvents: hazardEvents associated with the section
         @param vtecRecord:  vtecRecords for the section
-        @param metaData: metaData for the section
+        @param metaDataDictionary: metaData for the section - this is a dictionary with
+                         eventIDs as keys and the associated metadata as the values.
         '''
         # Dictionary for this section
         section = collections.OrderedDict()
+
+        # Create a list of dictionaries for each hazardEvent in the section
+        hazardEventDicts = []
+        self.sectionUGCs = set()
+        for hazardEvent in hazardEvents:
+            metaData = metaDataDictionary.get(hazardEvent.getEventID())
+            if self._partialCAN:
+                hazardEventDict = self._createHazardEventDictionary_forPartialCancellation(hazardEvent, vtecRecord, metaData)
+            else:
+                hazardEventDict = self._createHazardEventDictionary(hazardEvent, vtecRecord, metaData)
+            hazardEventDicts.append(hazardEventDict)
+
+        section['vtecRecord'] = vtecRecord
+        section['hazardEvents'] = hazardEventDicts
+        section['ugcs'] = self.sectionUGCs
+        return section
+
+    def _createHazardEventDictionary(self, hazardEvent, vtecRecord, metaData):
+        '''
+        Returns a dictionary that contains all the raw data associated with
+        this hazardEvent/metaData.
+
+        @param hazardEvent: hazardEvent associated with the section
+        @param vtecRecord:  vtecRecord for the section
+        @param metaData: metaData for the section - this is a dictionary with
+                         eventIDs as keys and the associated metadata as the values.
+        '''
+        # Dictionary for this section
+        hazardDict = collections.OrderedDict()
 
         attributes = hazardEvent.getHazardAttributes()
         for attribute in attributes:
             # Special case attributes that need additional work before adding to the dictionary
             if attribute == 'additionalInfo':
                 additionalInfo = self._prepareAdditionalInfo(attributes[attribute] , hazardEvent, metaData)
-                section['additionalComments'] = additionalInfo
+                hazardDict['additionalComments'] = additionalInfo
             elif attribute == 'cta':
                 # CTAs are gathered and displayed at the segment level, pass here
                 pass
             elif attribute == 'floodSeverity':
-                section['floodSeverity'] = self._tpc.getProductStrings(hazardEvent, metaData, 'floodSeverity')
+                hazardDict['floodSeverity'] = self._tpc.getProductStrings(hazardEvent, metaData, 'floodSeverity')
             elif attribute == 'floodRecord':
-                section['floodRecord'] = self._tpc.getProductStrings(hazardEvent, metaData, 'floodRecord')
+                hazardDict['floodRecord'] = self._tpc.getProductStrings(hazardEvent, metaData, 'floodRecord')
             else:
-                section[attribute] = attributes.get(attribute, None)
+                hazardDict[attribute] = attributes.get(attribute, None)
+                if attribute == 'ugcs':
+                    self.sectionUGCs.update(hazardEvent.get('ugcs', []))
                 # Add both the identifier and the productString for this attributes.
                 # The identifiers are needed for the BasisText module.
                 if attribute == 'advisoryType':
-                    section[attribute + '_productString'] = self._tpc.getProductStrings(hazardEvent, metaData, attribute)
+                    hazardDict[attribute + '_productString'] = self._tpc.getProductStrings(hazardEvent, metaData, attribute)
 
         # Add impacts to the dictionary
         if vtecRecord.get("phen") != "HY" and vtecRecord.get('sig') != 'S':
             # TODO this does not seem to work, causing the placeholder to be in final product.
-            section['impacts'] = self._tpc.getProductStrings(hazardEvent, metaData, 'impacts')
+            hazardDict['impacts'] = self._tpc.getProductStrings(hazardEvent, metaData, 'impacts')
         else:
-            section['impacts'] = ''
+            hazardDict['impacts'] = ''
 
-        section['locationsAffected'] = self._prepareLocationsAffected(hazardEvent)
-        section['endingSynopsis'] = hazardEvent.get('endingSynopsis')
-        section['startTime'] = hazardEvent.getStartTime()
-        section['endTime'] = hazardEvent.getEndTime()
-        section['creationTime'] = hazardEvent.getCreationTime()
-        section['impactsStringForStageFlowTextArea'] = hazardEvent.get('impactsStringForStageFlowTextArea', None)
-        section['geometry'] = hazardEvent.getGeometry()
-        section['subType'] = hazardEvent.getSubType()
-        section['timeZones'] = self._productSegment.timeZones
-        section['vtecRecord'] = vtecRecord
-        section['replacedBy'] = hazardEvent.get('replacedBy', None)
-        section['replaces'] = hazardEvent.get('replaces', None)
-        section['metaData'] = metaData
+        hazardDict['locationsAffected'] = self._prepareLocationsAffected(hazardEvent)
+        hazardDict['endingSynopsis'] = hazardEvent.get('endingSynopsis')
+        hazardDict['startTime'] = hazardEvent.getStartTime()
+        hazardDict['endTime'] = hazardEvent.getEndTime()
+        hazardDict['creationTime'] = hazardEvent.getCreationTime()
+        hazardDict['impactsStringForStageFlowTextArea'] = hazardEvent.get('impactsStringForStageFlowTextArea', None)
+        hazardDict['geometry'] = hazardEvent.getGeometry()
+        hazardDict['subType'] = hazardEvent.getSubType()
+        hazardDict['timeZones'] = self._productSegment.timeZones
+        hazardDict['replacedBy'] = hazardEvent.get('replacedBy', None)
+        hazardDict['replaces'] = hazardEvent.get('replaces', None)
+        hazardDict['metaData'] = metaData
+        hazardDict['cityList'] = self._getCityList([hazardEvent])
 
         if hazardEvent.get('pointID'):
             # Add RiverForecastPoint data to the dictionary
-            self._prepareRiverForecastPointData(hazardEvent.get('pointID'), section, hazardEvent)
+            self._prepareRiverForecastPointData(hazardEvent.get('pointID'), hazardDict, hazardEvent)
 
-        self._setProductInformation(vtecRecord, hazardEvent)
-        return section
+        self._setProductInformation([vtecRecord], [hazardEvent])
+        return hazardDict
 
     def _showProductParts(self):
         # IF True will label the editable pieces in the Product Editor with product parts
@@ -884,16 +917,21 @@ class Product(ProductTemplate.Product):
 
     def _setupSegment(self):
         self._productSegment.metaDataList, self._productSegment.hazardEvents = self.getSegmentMetaData(self._productSegment.segment)
+        # Assume that if there are multiple hazard events in 
+        # this segment that they all have the same geoType.
         hazardEvent = self._productSegment.hazardEvents[0]
         if hazardEvent.get('geoType') == 'area':
            self._productSegment.ugcs = list(self._productSegment.segment[0])
         else:
-            self._productSegment.ugcs = hazardEvent.get('ugcs', [])
+            ugcSet = set()
+            for hazard in self._productSegment.hazardEvents:
+                ugcSet.update(hazard.get('ugcs', []))
+            self._productSegment.ugcs = list(ugcSet)
         
         self._productSegment.ugcs.sort()
-        self._productSegment.ctas = ''
+        self._productSegment.ctas = set()
         self._productSegment.pointID = hazardEvent.get('pointID')
-        self._productSegment.cityList = self._getCityList(hazardEvent)
+        self._productSegment.cityList = self._getCityList(self._productSegment.hazardEvents)
         self._productSegment.timeZones = self._tpc.hazardTimeZones(self._productSegment.ugcs)
         self._productSegment.expireTime = self._tpc.getExpireTime(self._issueTime, self._purgeHours, 
                                                                     self._productSegment.vtecRecords_ms)
@@ -914,16 +952,17 @@ class Product(ProductTemplate.Product):
         #  For now we're using the cityList, 
         #  but we need to re-use the legacy updated 
         #  WarnGen locations list 
-        return self._getCityList(hazardEvent)
+        return self._getCityList([hazardEvent])
 
-    def _getCityList(self, hazardEvent):
+    def _getCityList(self, hazardEvents):
+        cityList = []
         if not self._polygonBased: # area based
             self._productSegment.cityInfo = self.getCityInfo(self._productSegment.ugcs, returnType='list')
-            cityList = []
             for city, ugcCity in self._productSegment.cityInfo:
                 cityList.append(city)
         else: # polygon-based
-            cityList = self._getCityListForPolygon(hazardEvent)
+            for hazardEvent in hazardEvents:
+                cityList.extend(self._getCityListForPolygon(hazardEvent))
         return cityList
 
     def _getCityListForPolygon(self, hazardEvent):
@@ -993,31 +1032,24 @@ class Product(ProductTemplate.Product):
             format = '%l%M %p'
         return floodTime.strftime(format).lstrip()
 
-    def _setProductInformation(self, vtecRecord, hazardEvent):
+    def _setProductInformation(self, vtecRecords, hazardEvents):
         if self._issueFlag:
-            # Need to make sure we are updating ALL the hazard events for the segment.
-            # There could be more than one.
-            eventIDs = vtecRecord.get('eventID')
-            for eventID in eventIDs:
-                if eventID == hazardEvent.getEventID(): 
-                    updateEvent = hazardEvent
-                else:
-                    for updateEvent in self._generatedHazardEvents:
-                        if updateEvent.getEventID() == eventID:
-                            break                    
-                # Update hazardEvent
-                expTime = updateEvent.get('expirationTime')
-                # Take the earliest expiration time
-                if (expTime and expTime > self._productSegment.expireTime) or not expTime:
-                    updateEvent.set('expirationTime', self._productSegment.expireTime)
-                updateEvent.set('issueTime', self._issueTime)
-                updateEvent.addToList('etns', vtecRecord['etn'])
-                updateEvent.addToList('vtecCodes', vtecRecord['act'])
-                updateEvent.addToList('pils', vtecRecord['pil'])
-                try:
-                    updateEvent.set('previousForecastCategory', self._maxFcstCategory)
-                except:
-                    pass
+            for vtecRecord in vtecRecords:
+                for hazardEvent in hazardEvents:
+                    if hazardEvent.getEventID() in vtecRecord.get('eventID'):
+                        # Update hazardEvent
+                        expTime = hazardEvent.get('expirationTime')
+                        # Take the earliest expiration time
+                        if (expTime and expTime > self._productSegment.expireTime) or not expTime:
+                            hazardEvent.set('expirationTime', self._productSegment.expireTime)
+                        hazardEvent.set('issueTime', self._issueTime)
+                        hazardEvent.addToList('etns', vtecRecord['etn'])
+                        hazardEvent.addToList('vtecCodes', vtecRecord['act'])
+                        hazardEvent.addToList('pils', vtecRecord['pil'])
+                        try:
+                            hazardEvent.set('previousForecastCategory', self._maxFcstCategory)
+                        except:
+                            pass
 
     def getSegmentHazardEvents(self, segments, hazardEventList=None):
         '''
@@ -1208,12 +1240,12 @@ class Product(ProductTemplate.Product):
                                 self._partialCAN =  True
                                 return
 
-    def _createSectionDictionary_forPartialCancellation(self, hazardEvent, vtecRecord, metaData):
+    def _createHazardEventDictionary_forPartialCancellation(self, hazardEvent, vtecRecord, metaData):
         '''
             This method grabs the previously issued hazard event from the database and compares it with
             the current hazardEvent. This is needed to determine the geometry that was removed,
             UGCs that were removed, etc. It then updates the attributes of the prevHazardEvent with 
-            the new values and calls _createSectionDictionary() to get the dictionary for the section.
+            the new values and calls _createHazardEventDictionary() to get the dictionary for the hazard.
         '''
         mode = self._sessionDict.get('hazardMode', 'PRACTICE').upper()
         eventID = hazardEvent.getEventID()
@@ -1252,16 +1284,14 @@ class Product(ProductTemplate.Product):
         prevHazardEvent.setGeometry(GeometryFactory.createCollection([geometry]))
 
         # Call the original method with the updated prevHazardEvent to get the section dictionary.
-        return self._createSectionDictionary(prevHazardEvent, vtecRecord, metaData)
+        return self._createHazardEventDictionary(prevHazardEvent, vtecRecord, metaData)
 
-    def getCTAsPhrase(self, vtecRecord, hazardEvent, metaData, lineLength=69):
+    def getCTAsPhrase(self, hazardEvent, metaData):
         ctas = self._tpc.getProductStrings(hazardEvent, metaData, 'cta')
         return ctas
 
     def _floodPointTable(self):
-
         floodPointDataList = []
-        
         hazardEventsList = self._generatedHazardEvents
         if hazardEventsList is not None:
             for hazardEvent in hazardEventsList:
@@ -1275,4 +1305,3 @@ class Product(ProductTemplate.Product):
     def flush(self):
         ''' Flush the print buffer '''
         os.sys.__stdout__.flush()
-

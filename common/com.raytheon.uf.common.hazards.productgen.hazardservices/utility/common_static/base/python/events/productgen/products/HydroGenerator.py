@@ -11,6 +11,7 @@
     Jan 31, 2015    4937    Robert.Blum General cleanup and bug fixes.
     Feb 20, 2015    4937    Robert.Blum Added required data for groupSummary to section dicitonary
     Mar 17, 2015    6963    Robert.Blum Rounded impact height to a precision of 2.
+    Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
 '''
 from RiverForecastPoints import RiverForecastPoints
 from HydroProductParts import HydroProductParts
@@ -36,64 +37,64 @@ class Product(Legacy_Base_Generator.Product):
 
     #### Utility methods
 
-    def _prepareRiverForecastPointData(self, pointID, segment, event):
+    def _prepareRiverForecastPointData(self, pointID, hazardEventDict, hazardEvent):
         '''
-            Adds all data related to RiverForecastPoints to the segment dictionary.
+            Adds all data related to RiverForecastPoints to the hazardEventDict dictionary.
         '''
         millis = SimulatedTime.getSystemTime().getMillis()
         currentTime = datetime.datetime.fromtimestamp(millis / 1000)
         if self._rfp is None:
             self._rfp = RiverForecastPoints(currentTime)
 
-        segment['pointID'] = pointID
-        segment['riverName_GroupName'] = self._rfp.getGroupName(pointID)
-        segment['riverName_RiverName'] = self._rfp.getRiverName(pointID)
-        segment['groupForecastPointList'] = self._rfp.getGroupForecastPointList(pointID)
-        segment['groupMaxForecastFloodCatName'] = self._rfp.getGroupMaximumForecastFloodCategoryName(pointID)
+        hazardEventDict['pointID'] = pointID
+        hazardEventDict['riverName_GroupName'] = self._rfp.getGroupName(pointID)
+        hazardEventDict['riverName_RiverName'] = self._rfp.getRiverName(pointID)
+        hazardEventDict['groupForecastPointList'] = self._rfp.getGroupForecastPointList(pointID)
+        hazardEventDict['groupMaxForecastFloodCatName'] = self._rfp.getGroupMaximumForecastFloodCategoryName(pointID)
 
-        segment['proximity'] = self._rfp.getRiverPointProximity(pointID)
-        segment['riverPointName'] = self._rfp.getRiverPointName(pointID)
+        hazardEventDict['proximity'] = self._rfp.getRiverPointProximity(pointID)
+        hazardEventDict['riverPointName'] = self._rfp.getRiverPointName(pointID)
         # Observed and Flood Stages
         observedStage, shefQualityCode = self._rfp.getObservedStage(pointID)
-        segment['observedStage'] = observedStage
-        segment['observedCategory'] = self._rfp.getObservedCategory(pointID)
-        segment['observedCategoryName'] = self._rfp.getObservedCategoryName(pointID)
-        segment['observedTime_ms'] = self._rfp.getObservedTime(pointID)
+        hazardEventDict['observedStage'] = observedStage
+        hazardEventDict['observedCategory'] = self._rfp.getObservedCategory(pointID)
+        hazardEventDict['observedCategoryName'] = self._rfp.getObservedCategoryName(pointID)
+        hazardEventDict['observedTime_ms'] = self._rfp.getObservedTime(pointID)
         max24HourObservedStage, shefQualityCode = self._rfp.getMaximum24HourObservedStage(pointID)
-        segment['max24HourObservedStage'] = max24HourObservedStage
-        segment['stageFlowName'] = self._rfp.getStageFlowName(pointID)
-        segment['floodStage'] = self._rfp.getFloodStage(pointID)
+        hazardEventDict['max24HourObservedStage'] = max24HourObservedStage
+        hazardEventDict['stageFlowName'] = self._rfp.getStageFlowName(pointID)
+        hazardEventDict['floodStage'] = self._rfp.getFloodStage(pointID)
         # Maximum Forecast Stage
         primaryPE = self._rfp.getPrimaryPhysicalElement(pointID)
-        segment['primaryPE'] = primaryPE
+        hazardEventDict['primaryPE'] = primaryPE
         maximumForecastStage = self._rfp.getMaximumForecastLevel(pointID, primaryPE)
-        segment['maximumForecastStage'] = maximumForecastStage
-        segment['maximumForecastTime_ms'] = self._rfp.getMaximumForecastTime(pointID)
+        hazardEventDict['maximumForecastStage'] = maximumForecastStage
+        hazardEventDict['maximumForecastTime_ms'] = self._rfp.getMaximumForecastTime(pointID)
         # Need to save this off to be set in the ProductInformation later.
         self._maxFcstCategory = self._rfp.getMaximumForecastCategory(pointID)
-        segment['maxFcstCategory'] = self._maxFcstCategory
-        segment['maxFcstCategoryName'] = self._rfp.getMaximumForecastCatName(pointID)
+        hazardEventDict['maxFcstCategory'] = self._maxFcstCategory
+        hazardEventDict['maxFcstCategoryName'] = self._rfp.getMaximumForecastCatName(pointID)
         # Rise
-        segment['forecastRiseAboveFloodStageTime_ms'] = self._rfp.getForecastRiseAboveFloodStageTime(pointID)
+        hazardEventDict['forecastRiseAboveFloodStageTime_ms'] = self._rfp.getForecastRiseAboveFloodStageTime(pointID)
         # Crest
-        segment['forecastCrestStage'] = self._rfp.getForecastCrestStage(pointID)
-        segment['forecastCrestTime_ms'] = self._rfp.getForecastCrestTime(pointID)
+        hazardEventDict['forecastCrestStage'] = self._rfp.getForecastCrestStage(pointID)
+        hazardEventDict['forecastCrestTime_ms'] = self._rfp.getForecastCrestTime(pointID)
         # Fall
-        segment['forecastFallBelowFloodStageTime_ms'] = self._rfp.getForecastFallBelowFloodStageTime(pointID)
+        hazardEventDict['forecastFallBelowFloodStageTime_ms'] = self._rfp.getForecastFallBelowFloodStageTime(pointID)
 
-        segment['stageFlowUnits'] = self._rfp.getStageFlowUnits(pointID)
+        hazardEventDict['stageFlowUnits'] = self._rfp.getStageFlowUnits(pointID)
         # Trend
-        segment['stageTrend'] = self._rfp.getStageTrend(pointID)
+        hazardEventDict['stageTrend'] = self._rfp.getStageTrend(pointID)
 
-        segment['pointImpacts'] = self._preparePointImpacts(event)
-        segment['impactCompUnits'] = self._rfp.getImpactCompUnits(pointID)
-        segment['crestsSelectedForecastPointsComboBox'] = event.get('crestsSelectedForecastPointsComboBox')
+        hazardEventDict['pointImpacts'] = self._preparePointImpacts(hazardEvent)
+        hazardEventDict['impactCompUnits'] = self._rfp.getImpactCompUnits(pointID)
+        hazardEventDict['crestsSelectedForecastPointsComboBox'] = hazardEvent.get('crestsSelectedForecastPointsComboBox')
 
         # Spec values
         forecastTypeSource = self._rfp.getForecastTopRankedTypeSource(pointID, primaryPE, 0, 'Z')
-        segment['specValue'] = self._rfp.getPhysicalElementValue(
+        hazardEventDict['specValue'] = self._rfp.getPhysicalElementValue(
                 pointID, primaryPE, 0, forecastTypeSource, 'Z', '4|1200|1', timeFlag=False, currentTime_ms=millis)
-        segment['specTime'] = self._rfp.getPhysicalElementValue(
+        hazardEventDict['specTime'] = self._rfp.getPhysicalElementValue(
                 pointID, primaryPE, 0, forecastTypeSource, 'Z', '4|1200|1', timeFlag=True, currentTime_ms=millis)
 
     def _preparePointImpacts(self, hazardEvent):

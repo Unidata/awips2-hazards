@@ -11,6 +11,7 @@
     Feb 20, 2015 4937       Robert.Blum Added groupSummary productPart method to mapping
     Mar 17, 2015 6958       Robert.Blum Removed the start time from basisBullet.
     Apr 16, 2015 7579       Robert.Blum Updates for amended Product Editor.
+    Apr 30, 2015 7579       Robert.Blum Changes for multiple hazards per section.
 '''
 
 import datetime, collections
@@ -67,6 +68,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             'forecastStageBullet': self._forecastStageBullet,
             'floodPointTable': self._floodPointTable,
             'setUp_segment': self._setUp_segment,
+            'setUp_section': self._setUp_section,
             'groupSummary': self._groupSummary,
             'endSegment': self._endSegment,
                                 }
@@ -89,7 +91,9 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     def _timeBullet(self, sectionDict):
         timeBullet = super(Format, self)._timeBullet(sectionDict)
-        if sectionDict.get('geoType', '') == 'area':
+        hazards = sectionDict.get('hazardEvents', [])
+        # All hazards in the section should have the same geoType
+        if hazards[0].get('geoType', '') == 'area':
             timeBullet+= '\n'
         return timeBullet
 
@@ -97,20 +101,19 @@ class Format(Legacy_Hydro_Formatter.Format):
         # Get saved value from productText table if available
         bulletText = self._getSavedVal('basisBullet', sectionDict)
         if not bulletText:
-            vtecRecord = sectionDict.get('vtecRecord')
-            startTime = sectionDict.get('startTime')
-            act = vtecRecord.get('act')
-            if act == 'COR':
-                act == vtecRecord.get('prevAct')
             bulletText = ''
-
             if (self._runMode == 'Practice'):
                 bulletText += "This is a test message.  "
-
-            basisStatement = sectionDict.get('basisStatement')
-            if basisStatement:
-                bulletText += basisStatement
+            # Could be multiple events - combine the basisStatements from the HID
+            hazards = sectionDict.get('hazardEvents')
+            basisStatements = []
+            for hazard in hazards:
+                basisStatement = hazard.get('basisStatement', None)
+                if basisStatement:
+                    basisStatements.append(basisStatement)
+            if len(basisStatements) > 0:
+                bulletText += '\n'.join(basisStatements)
             else:
-                bulletText += ' |* current hydrometeorological basis *| '
+                bulletText += '|* current hydrometeorological basis *|'
         self._setVal('basisBullet', bulletText, sectionDict, 'Basis Bullet')
         return '* ' + bulletText + '\n\n'

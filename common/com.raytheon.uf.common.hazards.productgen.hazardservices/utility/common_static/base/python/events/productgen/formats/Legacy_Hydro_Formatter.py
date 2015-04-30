@@ -56,15 +56,18 @@ class Format(Legacy_Base_Formatter.Format):
         # Get saved value from productText table if available
         summaryStmt = self._getSavedVal('groupSummary', productDict)
         if not summaryStmt:
-            for segment in productDict.get('segments', None):
-                sections = segment.get('sections', None)
-                if sections:
-                    groupName = sections[0].get('riverName_GroupName', None)
-                    groupList = sections[0].get('groupForecastPointList', None)
-                    groupList = groupList.replace(',',', ')
-                    maxCatName = sections[0].get('groupMaxForecastFloodCatName', None)
-                    groupSummary = 'For the ' + groupName + '...including ' + groupList + '...' + maxCatName + ' flooding is forecast.'
-                    summaryStmt += groupSummary
+            summaryStmts = []
+            for segment in productDict.get('segments', []):
+                for section in segment.get('sections', []):
+                    for hazard in section.get('hazardEvents', []):
+                        groupName = hazard.get('riverName_GroupName', '')
+                        groupList = hazard.get('groupForecastPointList', '')
+                        groupList = groupList.replace(',',', ')
+                        maxCatName = hazard.get('groupMaxForecastFloodCatName', '')
+                        groupSummary = 'For the ' + groupName + '...including ' + groupList + '...' + maxCatName + ' flooding is forecast.'
+                        summaryStmts.append(groupSummary)
+            if summaryStmts:
+                summaryStmt = '\n'.join(summaryStmts)
         self._setVal('groupSummary', summaryStmt, productDict, 'Group Summary')
         return summaryStmt + '\n\n'
     
@@ -76,15 +79,17 @@ class Format(Legacy_Base_Formatter.Format):
         # Get saved value from productText table if available
         bulletContent = self._getSavedVal('observedStageBullet', sectionDict)
         if not bulletContent:
-            if sectionDict.get('observedCategory') < 0:
+            # There will only be one hazard per section for point hazards
+            hazard = sectionDict.get('hazardEvents')[0]
+            if hazard.get('observedCategory') < 0:
                 bulletContent = 'There is no current observed data.'
             else:
-                stageFlowName = sectionDict.get('stageFlowName')
-                observedStage = sectionDict.get('observedStage')
+                stageFlowName = hazard.get('stageFlowName')
+                observedStage = hazard.get('observedStage')
                 # Round to 2 decimal point - result is a string
                 observedStage = format(observedStage, '.2f')
-                stageFlowUnits = sectionDict.get('stageFlowUnits')
-                observedTime = self._getFormattedTime(sectionDict.get('observedTime_ms'), timeZones=self.timezones)
+                stageFlowUnits = hazard.get('stageFlowUnits')
+                observedTime = self._getFormattedTime(hazard.get('observedTime_ms'), timeZones=self.timezones)
                 bulletContent = 'At '+observedTime+ 'the '+stageFlowName+' was '+ observedStage +' '+stageFlowUnits+'.'
         self._setVal('observedStageBullet', bulletContent, sectionDict, 'Observed Stage Bullet')
         return '* ' + bulletContent + '\n'
@@ -93,11 +98,13 @@ class Format(Legacy_Base_Formatter.Format):
         # Get saved value from productText table if available
         bulletContent = self._getSavedVal('floodStageBullet', sectionDict)
         if not bulletContent:
-            floodStage = sectionDict.get('floodStage')
+            # There will only be one hazard per section for point hazards
+            hazard = sectionDict.get('hazardEvents')[0]
+            floodStage = hazard.get('floodStage')
             if floodStage != self.MISSING_VALUE:
                 # Round to 2 decimal point - result is a string
                 floodStage = format(floodStage, '.2f')
-                bulletContent = 'Flood stage is '+ floodStage +' '+sectionDict.get('stageFlowUnits')+'.'
+                bulletContent = 'Flood stage is '+ floodStage +' '+hazard.get('stageFlowUnits')+'.'
             else:
                 bulletContent = ''
         self._setVal('floodStageBullet', bulletContent, sectionDict, 'Flood Stage Bullet')
@@ -116,10 +123,12 @@ class Format(Legacy_Base_Formatter.Format):
         # Get saved value from productText table if available
         bulletContent = self._getSavedVal('floodCategoryBullet', sectionDict)
         if not bulletContent:
-            observedCategory = sectionDict.get('observedCategory')
-            observedCategoryName = sectionDict.get('observedCategoryName')
-            maxFcstCategory = sectionDict.get('maxFcstCategory')
-            maxFcstCategoryName = sectionDict.get('maxFcstCategoryName')
+            # There will only be one hazard per section for point hazards
+            hazard = sectionDict.get('hazardEvents')[0]
+            observedCategory = hazard.get('observedCategory')
+            observedCategoryName = hazard.get('observedCategoryName')
+            maxFcstCategory = hazard.get('maxFcstCategory')
+            maxFcstCategoryName = hazard.get('maxFcstCategoryName')
             if observedCategory <= 0 and maxFcstCategory > 0:
                 bulletContent = maxFcstCategoryName + ' flooding is forecast.'
             elif observedCategory > 0 and maxFcstCategory > 0:
@@ -137,14 +146,16 @@ class Format(Legacy_Base_Formatter.Format):
         # Get saved value from productText table if available
         bulletContent = self._getSavedVal('recentActivityBullet', sectionDict)
         if not bulletContent:
-            if sectionDict.get('observedCategory') > 0:
-                maxStage = sectionDict.get('max24HourObservedStage')
-                stageFlowUnits =  sectionDict.get('stageFlowUnits', 'feet') 
+            # There will only be one hazard per section for point hazards
+            hazard = sectionDict.get('hazardEvents')[0]
+            if hazard.get('observedCategory') > 0:
+                maxStage = hazard.get('max24HourObservedStage')
+                stageFlowUnits =  hazard.get('stageFlowUnits', 'feet') 
                 if not stageFlowUnits:
                     stageFlowUnits = 'feet'
                 # Round to 2 decimal point - result is a string
                 maxStage = format(maxStage, '.2f')
-                observedTime = self._getFormattedTime(sectionDict.get('observedTime_ms'), timeZones=self.timezones).rstrip()
+                observedTime = self._getFormattedTime(hazard.get('observedTime_ms'), timeZones=self.timezones).rstrip()
                 bulletContent = 'Recent Activity...The maximum river stage in the 24 hours ending at '+observedTime+' was '+ maxStage +' '+ stageFlowUnits+'. '
             else:
                 bulletContent = '|* Default recentActivityBullet *|'
@@ -155,16 +166,18 @@ class Format(Legacy_Base_Formatter.Format):
         # Get saved value from productText table if available
         bulletContent = self._getSavedVal('forecastStageBullet', sectionDict)
         if not bulletContent:
-            bulletContent = ForecastStageText().getForecastStageText(sectionDict, self.timezones)
+            # There will only be one hazard per section for point hazards
+            hazard = sectionDict.get('hazardEvents')[0]
+            bulletContent = ForecastStageText().getForecastStageText(hazard, self.timezones)
             bulletContent = 'Forecast...' + bulletContent
         self._setVal('forecastStageBullet', bulletContent, sectionDict, 'Forecast Stage Bullet')
         return '* ' + bulletContent + '\n'
 
-    def _getRiverDescription(self, segmentDict):
+    def _getRiverDescription(self, hazardDict):
         '''
         To use the actual river name:
         
-        return riverDescription = segmentDict.get('riverName_RiverName')
+        return riverDescription = hazardDict.get('riverName_RiverName')
         '''
         return 'The river'
 
@@ -172,9 +185,11 @@ class Format(Legacy_Base_Formatter.Format):
         # Get saved value from productText table if available
         bulletContent = self._getSavedVal('pointImpactsBullet', sectionDict)
         if not bulletContent:
+            # There will only be one hazard per section for point hazards
+            hazard = sectionDict.get('hazardEvents')[0]
             impactStrings = []
-            impactsList = sectionDict.get('pointImpacts', None)
-            stageFlowUnits =  sectionDict.get('stageFlowUnits', 'feet')
+            impactsList = hazard.get('pointImpacts', None)
+            stageFlowUnits =  hazard.get('stageFlowUnits', 'feet')
             if not stageFlowUnits:
                 stageFlowUnits = 'feet'
             if impactsList:
@@ -198,8 +213,10 @@ class Format(Legacy_Base_Formatter.Format):
         # Get saved value from productText table if available
         bulletContent = self._getSavedVal('floodHistoryBullet', sectionDict)
         if not bulletContent:
-            crestContents = sectionDict.get('crestsSelectedForecastPointsComboBox', None)
-            units = sectionDict.get('impactCompUnits', '')
+            # There will only be one hazard per section for point hazards
+            hazard = sectionDict.get('hazardEvents')[0]
+            crestContents = hazard.get('crestsSelectedForecastPointsComboBox', None)
+            units = hazard.get('impactCompUnits', '')
             if crestContents is not None:
                 crest,crestDate = crestContents.split(' ')
                 # Round to 2 decimal point - result is a string

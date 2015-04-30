@@ -19,6 +19,7 @@
     Apr 2015       7579    Robert.Blum       Removed some '\n', they are added in the
                                              formatter now.
     Apr 2015       7140    Tracy Hansen      Adding FA.W / FA.Y / FL.Y /  logic 
+    Apr 2015       7579    Robert.Blum       Changes for multiple hazards per section.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
@@ -26,14 +27,16 @@ from com.raytheon.uf.common.time import SimulatedTime
 
 
 class AttributionFirstBulletText(object):
-    def initialize(self, sectionDict, productID, issueTime, testMode, wfoCity, tpc, timeZones=[], areaPhrase=None, endString='. '):
+
+    def initialize(self, sectionDict, productID, issueTime, testMode, wfoCity, tpc, timeZones=[], areaPhrase=None):
         # Variables to establish
         self.sectionDict = sectionDict
         self.productID = productID
         self.issueTime = issueTime
         self.testMode = testMode
         self.wfoCity = wfoCity
-        self.tpc = tpc               
+        self.tpc = tpc
+        self.timeZones = timeZones
         self.vtecRecord = sectionDict.get('vtecRecord')
         self.phen = self.vtecRecord.get("phen")
         self.sig = self.vtecRecord.get("sig")
@@ -42,74 +45,59 @@ class AttributionFirstBulletText(object):
         self.action = self.vtecRecord.get('act')
         self.endTime = self.vtecRecord.get('endTime')
         self.hazardName = self.tpc.hazardName(self.vtecRecord.get('hdln'), testMode, False)
-        self.geoType = sectionDict.get('geoType')        
-        self.metaData = sectionDict.get('metaData')
-        self.pointID = sectionDict.get('pointID')
-        self.timeZones = timeZones
-        
-        self.ugcs = sectionDict.get('ugcs', [])
-        self.ugcPortions = sectionDict.get('ugcPortions', {})
-        self.ugcPartsOfState = sectionDict.get('ugcPartsOfState', {})
-        self.immediateCause = sectionDict.get('immediateCause')
-        self.hydrologicCause = sectionDict.get('hydrologicCause')
+
+        # Assume that the following attributes are the same
+        # for all the hazards in the section
+        self.hazardEventDicts = sectionDict.get('hazardEvents', [])
+        self.hazardEventDict = self.hazardEventDicts[0]
+        self.geoType = self.hazardEventDict.get('geoType')
+        self.immediateCause = self.hazardEventDict.get('immediateCause')
+
+        self.cityList = []
+        self.cityListFlag = False
+        for hazardEventDict in self.hazardEventDicts:
+            listOfCities = hazardEventDict.get('listOfCities', [])
+            if 'selectListOfCities'in listOfCities:
+                self.cityListFlag = True
+                self.cityList.extend(hazardEventDict.get('cityList', []))
+
+        self.nwsPhrase = 'The National Weather Service in ' + self.wfoCity + ' has '
+
+        if not areaPhrase:
+            if self.productID in ['FFA', 'FFS'] and self.geoType != 'point':
+                self.areaPhrase = self.tpc.getAreaPhrase(sectionDict.get('ugcs'))
+            elif self.productID == 'FFW':
+                self.areaPhrase = self.getAreaPhraseBullet(optionalCities=True)
+            elif self.phenSig in ['FA.W', 'FA.Y']:
+                self.areaPhrase = self.getAreaPhraseBullet()
+            elif self.phen in 'FL' or self.phenSig == 'HY.S':
+                self.areaPhrase = self.getAreaPhraseForPoints(self.hazardEventDict)
+            else:
+                self.areaPhrase = ''
+            self.areaPhrase.rstrip()
+
+        # TODO - Rewrite module (mainly qualifiers method) to handle sections
+        # that have multiple hazard events. There is no gaurantee that the 
+        # below attributes will be the same for all the hazards in the section.
+        # For now using values from first hazard.
+        self.metaData = self.hazardEventDict.get('metaData')
+        self.pointID = self.hazardEventDict.get('pointID')
+        self.hydrologicCause = self.hazardEventDict.get('hydrologicCause')
         if self.hydrologicCause:
             self.typeOfFlooding = self.hydrologicCauseMapping(self.hydrologicCause, 'typeOfFlooding')
         else:
             self.typeOfFlooding = self.immediateCauseMapping(self.immediateCause)
-        self.creationTime = sectionDict.get('creationTime')
-
-        self.endString = endString
-        listOfCities = sectionDict.get('listOfCities', [])
-        if 'selectListOfCities'in listOfCities:
-            self.cityListFlag = True
-        else:
-            self.cityListFlag = False  
-        self.warningType = sectionDict.get('warningType')
-        
-        self.advisoryType = sectionDict.get('advisoryType_productString')
-        self.optionalSpecificType = sectionDict.get('optionalSpecificType')
-        self.damOrLeveeName = self.tpc.getProductStrings(sectionDict, self.metaData, 'damOrLeveeName')
-        self.damName = sectionDict.get('damName')
+        self.warningType = self.hazardEventDict.get('warningType')
+        self.advisoryType = self.hazardEventDict.get('advisoryType_productString')
+        self.optionalSpecificType = self.hazardEventDict.get('optionalSpecificType')
+        self.damOrLeveeName = self.tpc.getProductStrings(self.hazardEventDict, self.metaData, 'damOrLeveeName')
+        self.damName = self.hazardEventDict.get('damName')
         self.riverName = None
         if self.damName:
             damInfo = self._damInfo().get(self.damName)
             if damInfo:
                 self.riverName = damInfo.get('riverName')
-        if not self.riverName:
-            self.riverName = sectionDict.get('riverName')
-        self.streamName = sectionDict.get('streamName')
-        
-
-        self.nwsPhrase = 'The National Weather Service in ' + self.wfoCity + ' has '
-                
-        if not areaPhrase:
-            if self.productID in ['FFA', 'FFS']:
-                self.areaPhrase = self.tpc.getAreaPhrase(self.ugcs)
-            elif self.productID == 'FFW':
-                self.areaPhrase = self.getAreaPhraseBullet(sectionDict, optionalCities=True)
-            elif self.phenSig in ['FA.W', 'FA.Y']:
-                self.areaPhrase = self.getAreaPhraseBullet(sectionDict)
-            elif self.phen == 'FL':
-                self.areaPhrase = self.getAreaPhraseForPoints(sectionDict)
-            else:
-                self.areaPhrase = ''
-            self.areaPhrase.rstrip()
-        
-    def initialize_withHazardEvent(self, hazardEvent, vtecRecord, metaData, productID, issueTime, testMode, wfoCity, tpc, rfp, areaPhrase=None, endString='. '):
-        hazardEvent.set('creationTime', hazardEvent.getCreationTime())
-        hazardEvent.set('vtecRecord', vtecRecord)
-        hazardEvent.set('metaData', metaData)
-        pointID = hazardEvent.get('pointID')
-        if pointID:
-            if not rfp:
-                millis = SimulatedTime.getSystemTime().getMillis()
-                currentTime = datetime.datetime.fromtimestamp(millis / 1000)
-                from RiverForecastPoints import RiverForecastPoints
-                rfp = RiverForecastPoints(currentTime)
-            hazardEvent.set('riverName_GroupName', rfp.getGroupName(pointID))
-            hazardEvent.set('proximity', rfp.getRiverPointProximity(pointID))
-            hazardEvent.set('riverPointName', rfp.getRiverPointName(pointID))
-        self.initialize(hazardEvent, productID, issueTime, testMode, wfoCity, tpc, areaPhrase=None, endString='. ' )        
+        self.streamName = self.hazardEventDict.get('streamName')
 
     # attribution
     def getAttributionText(self):
@@ -245,13 +233,13 @@ class AttributionFirstBulletText(object):
     def firstBullet_NEW(self):
         firstBullet = self.hazardName
         if self.geoType == 'area':
-            forStr = ' for...'            
+            forStr = ' for...'
         else:
             forStr =  ' for\n'
         qualifiers = self.qualifiers()
         if qualifiers:
             firstBullet += qualifiers
-            forStr = ''                                   
+            forStr = ''
         firstBullet += forStr + self.areaPhrase
         return firstBullet
 
@@ -356,50 +344,71 @@ class AttributionFirstBulletText(object):
                      
         return qualifiers
 
-            
     # areaPhrase
-    def getAreaPhraseBullet(self, sectionDict, optionalCities=False):
+    def getAreaPhraseBullet(self, optionalCities=False):
         '''
-        @return: Plain language list of counties/zones in the hazard appropriate
+        @return: Plain language list of counties/zones in the hazard(s) appropriate
                  for bullet format products
         ''' 
         # These need to be ordered by area of state.
         orderedUgcs = []
-        for ugc in self.ugcs :
-            orderedUgcs.append(ugc[:2] + self.ugcPartsOfState.get(ugc, "") + "|" + ugc)
+        portions = {}
+        ugcPartsOfState = {}
+        for hazardEventDict in self.hazardEventDicts:
+            ugcs = hazardEventDict.get('ugcs', [])
+            ugcPortions = hazardEventDict.get('ugcPortions', {})
+            ugcPartsOfState.update(hazardEventDict.get('ugcPartsOfState', {}))
+            for ugc in ugcs:
+                currentPortion = portions.get(ugc)
+                if not currentPortion:
+                    currentPortion = set()
+                currentPortion.update([ugcPortions.get(ugc)])
+                portions[ugc] = currentPortion
+                orderedUgcs.append(ugc[:2] + ugcPartsOfState.get(ugc, "") + "|" + ugc)
         orderedUgcs.sort()
 
-        areaPhrase = "\n"
+        areaPhrase = ""
         for ougc in orderedUgcs :
             ugc = ougc.split("|")[1]
-            part = self.ugcPortions.get(ugc, "")
-            if part == "" :
-                textLine = "  "
+            part = portions.get(ugc, '')
+            textLine = '\n'
+            if part == ""  or part == None:
+                textLine += "  "
             else :
-                textLine = "  " + part + " "
+                size = len(part)
+                counter = 0
+                textLine += "  "
+                for portion in part:
+                    textLine += portion
+                    if size > 1:
+                        if counter < size - 2:
+                            textLine += ', '
+                        elif counter < size - 1:
+                            textLine += ' and '
+                    counter += 1
+                textLine += " "
             textLine += self.tpc.getInformationForUGC(ugc) + " "
             textLine += self.tpc.getInformationForUGC(ugc, "typeSingular") + " in "
-            part = self.ugcPartsOfState.get(ugc, "")
+            part = ugcPartsOfState.get(ugc, "")
             if part == "" :
-                textLine += self.tpc.getInformationForUGC(ugc, "fullStateName") + "...\n"
+                textLine += self.tpc.getInformationForUGC(ugc, "fullStateName") + "..."
             else :
-                textLine += part + " " + self.tpc.getInformationForUGC(ugc, "fullStateName") + "...\n"
+                textLine += part + " " + self.tpc.getInformationForUGC(ugc, "fullStateName") + "..."
             areaPhrase += textLine
             
-        if optionalCities and self.cityListFlag:
+        if optionalCities and self.cityListFlag and self.cityList:
             cities = '  This includes the cities of '
-            cityList = sectionDict.get('cityList', [])
-            cities += self.tpc.getTextListStr(cityList)
-            areaPhrase += cities            
+            cities += self.tpc.getTextListStr(self.cityList)
+            areaPhrase += cities
 
         return areaPhrase
-                   
-    def getAreaPhraseForPoints(self, sectionDict):
-        proximity = sectionDict.get('proximity', '')
+
+    def getAreaPhraseForPoints(self, hazardEventDict):
+        proximity = hazardEventDict.get('proximity', '')
         # TODO fix rfp to never return None or decide what the below default value should be
         if not proximity:
             proximity = 'near'
-        return  '  the ' + sectionDict.get('riverName_GroupName', '') + ' ' + proximity + ' ' + sectionDict.get('riverPointName', '') + '.'
+        return  '  the ' + hazardEventDict.get('riverName_GroupName', '') + ' ' + proximity + ' ' + hazardEventDict.get('riverPointName', '') + '.'
 
 
     # The following tables are temporarily here until we determine the best central place to keep them.        
@@ -420,7 +429,7 @@ class AttributionFirstBulletText(object):
         if mapping.has_key(hydrologicCause):
             return mapping[hydrologicCause][key]
         else:
-            return mapping['default'][key]                                         
+            return mapping['default'][key]
 
     def typeOfFloodingMapping(self, immediateCuase):
         mapping = {
@@ -464,5 +473,3 @@ class AttributionFirstBulletText(object):
     def flush(self):
         ''' Flush the print buffer '''
         os.sys.__stdout__.flush()
-               
-        

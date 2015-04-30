@@ -15,6 +15,7 @@
                                         ugcHeader and vtecString remain for context.
     Apr 28, 2015    7914    Robert.Blum Fixed indent error from merge.
     Apr 28, 2015    7579    Robert.Blum Updated CityList to get saved values from the productText table.
+    Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
 '''
 
 import FormatTemplate
@@ -87,7 +88,7 @@ class Format(FormatTemplate.Formatter):
             partText = ''
             if name in self.productPartMethodMapping:
                 partText = self.productPartMethodMapping[name](productDict)
-            elif name in ['setUp_product', 'setUp_segment', 'setUp_section']:
+            elif name in ['setUp_product']:
                 pass
             elif name == 'endSegment':
                 partText = '\n$$\n\n' 
@@ -278,11 +279,6 @@ class Format(FormatTemplate.Formatter):
     def _setUp_segment(self, segmentDict):
         # Save off the segmentDict so that all section productParts have a reference to it
         self._segmentDict = segmentDict
-        # ToDo -- Even for Hydro, there could be more than one section in a segment
-        sectionDict = segmentDict.get('sections')[0]
-        self.attributionFirstBullet = AttributionFirstBulletText()
-        self.attributionFirstBullet.initialize(
-            sectionDict, self._productID, self._issueTime, self._testMode, self._wfoCity, self._tpc, timeZones=self.timezones)
         return ''
 
     def _emergencyHeadline(self, segmentDict):
@@ -310,14 +306,15 @@ class Format(FormatTemplate.Formatter):
         # Get saved value from productText table if available
         cityListText = self._getSavedVal('cityList', segmentDict)
         if not cityListText:
-            cityList = []
+            cityList = set()
             for sectionDict in segmentDict.get('sections', []):
-                listOfCities = sectionDict.get('listOfCities', [])
-                if 'selectListOfCities'in listOfCities:
-                    cityList += sectionDict.get('cityList', [])
+                for hazard in sectionDict.get('hazardEvents', []):
+                    listOfCities = hazard.get('listOfCities', [])
+                    if 'selectListOfCities'in listOfCities:
+                        cityList.update(hazard.get('cityList', []))
             if cityList:
                 cityListText = 'Including the cities of '
-                cityListText += self._tpc.getTextListStr(cityList)
+                cityListText += self._tpc.getTextListStr(list(cityList))
         if cityListText:
             self._setVal('cityList', cityListText, segmentDict, 'City List')
             return cityListText + '\n'
@@ -335,42 +332,18 @@ class Format(FormatTemplate.Formatter):
             text = 'Precautionary/Preparedness actions...\n\n' + text + '\n\n'
         return text + '&&\n\n'
 
-    # This can be called either at the segment or section level
-    # depending on hazard type.
-    def _endingSynopsis(self, dictionary):
-        # Get saved value from productText table if available
-        endingSynopsis = self._getSavedVal('endingSynopsis', dictionary)
-        if not endingSynopsis:
-            # Try to get from the dictionary
-            endingSynopsis = dictionary.get('endingSynopsis')
-            if endingSynopsis is None:
-                # Try to get from sectionDictionary
-                sections = dictionary.get('sections')
-                if sections:
-                    endingSynopsis = sections[0].get('endingSynopsis')
-
-                if endingSynopsis is None:
-                    # Try to get from dialogInputMap  (case of partial cancellation)
-                    endingSynopsis = self._tpc.getVal(self.productDict, 'endingSynopsis', None)
-
-            if endingSynopsis is None:
-                # If still none use framed text
-                endingSynopsis = '|* Brief post-synopsis of hydrometeorological activity *|\n\n'
-
-        self._setVal('endingSynopsis', endingSynopsis, dictionary, 'Ending Synopsis')
-        return endingSynopsis + '\n\n'
-
     def _polygonText(self, segmentDict):
         polyStr = 'LAT...LON'
 
         polygonPointLists = []
-        for section in segmentDict.get('sections'):
-            for geometry in section.get('geometry'):
-                subGeoType = geometry.type
-                if subGeoType is not None and subGeoType is not 'LineString':
-                    polygonPointLists.append(list(geometry.exterior.coords))
-                else:
-                    polygonPointLists.append(list(geometry.coords))
+        for section in segmentDict.get('sections', []):
+            for hazard in section.get('hazardEvents', []):
+                for geometry in hazard.get('geometry'):
+                    subGeoType = geometry.type
+                    if subGeoType is not None and subGeoType is not 'LineString':
+                        polygonPointLists.append(list(geometry.exterior.coords))
+                    else:
+                        polygonPointLists.append(list(geometry.coords))
 
         for polygon in polygonPointLists:
             # 4 points per line
@@ -403,13 +376,8 @@ class Format(FormatTemplate.Formatter):
     def _summaryHeadlines(self, segmentDict, includeTiming=True):
         '''
         Creates the summary Headline
-        
         @param segmentDict:  dictionary for the segment.
         '''
-        # TODO Need to verify that PGFv3 preserves the full
-        # full functionality of the 'getHeadlinesAndSections' in
-        # TextProductCommon. V3 has split that method into this 
-        # method and also '_createSections' in Legacy_Base_Generator.
         headlines = []
         vtecRecords = segmentDict.get('vtecRecords', None)
         hList = copy.deepcopy(vtecRecords)
@@ -430,36 +398,66 @@ class Format(FormatTemplate.Formatter):
                 hList.remove(vtecRecord)
                 continue # no headline for expired vtecRecords
 
-            #assemble the vtecRecord type
+            # Get the corresponding section dictionary
+            section = None
+            for sectionDict in segmentDict.get('sections', []):
+                if sectionDict.get('vtecRecord') == vtecRecord:
+                    section = sectionDict
+                    break
+
+            # assemble the vtecRecord type
             hazStr = vtecRecord['hdln']
 
             #determine the actionWords
             actionWords = self._tpc.actionControlWord(vtecRecord, self._issueTime)
 
-            # get the immediateCause defaulting to 'ER' if None
-            immediateCause = segmentDict.get('immediateCause', 'ER')
+            # the section could have multiple hazards, need to combine 
+            # the info for each hazard into one summaryheadline.
+            # ImmediateCause will be the same for all.
+            immediateCause = None
+            hydrologicCause = None
+            damNames = []
+            streamNames = []
+            replacesList = []
+            replacedByList = []
+            for hazard in section.get('hazardEvents'):
+                # get the immediateCause defaulting to 'ER' if None
+                immediateCause = hazard.get('immediateCause', 'ER')
+                hydrologicCause = hazard.get('hydrologicCause')
+                damName = hazard.get('damOrLeveeName', None)
+                if not damName:
+                    dameName = hazard.get('damName', None)
+                if damName:
+                    damNames.append(damName)
+                streamName = hazard.get('riverName', None)
+                if streamName:
+                    streamNames.append(streamName)
+                replacedBy = hazard.get('replacedBy')
+                if replacedBy:
+                    replacedByList.append(replacedBy)
+                replaces = hazard.get('replaces')
+                if replaces:
+                    replacesList.append(replaces)
 
             if immediateCause in ['DM']:
-                #get the hydrologicCause, damName, and streamName
-                hydrologicCause = segmentDict.get('hydrologicCause')
-
-                # Inconsisentency between FFW and FFA attribute name below
-                damName = segmentDict.get('damOrLeveeName', None)
-                if not damName:
-                    dameName = segmentDict.get('damName', None)
-                streamName = segmentDict.get('riverName', None)
                 if hydrologicCause and hydrologicCause == 'siteImminent':
                     hazStr = hazStr + ' for the imminent failure of '
                 else:
                     hazStr = hazStr + ' for the failure of '
-                
-                if damName:
-                    hazStr += damName
+
+                # Add the damName - could be multiple
+                if len(damNames) > 0:
+                    names = self._tpc.formatDelimitedList(damNames, delimiter=', ')
+                    hazStr += names
                 else:
                     hazStr += 'the dam'
 
-                if streamName:
-                    hazStr += ' on the ' + streamName
+                # Add the streamNames - could be multiple
+                if len(streamNames) > 0:
+                    hazStr += ' on the '
+                    names = self._tpc.formatDelimitedList(streamNames, delimiter=', ')
+                    hazStr += names
+
                 hazStr += ' ' + actionWords
 
             elif immediateCause in ['DR', 'GO', 'IJ', 'RS', 'SM']:
@@ -479,7 +477,7 @@ class Format(FormatTemplate.Formatter):
                     hazStr = hazStr + ' ' + timeWords
 
             if vtecRecord.get('phen') == 'FF' and vtecRecord.get('sig') != 'A':
-                ugcPhrase = self._tpc.getAreaPhrase(segmentDict.get('ugcs'))
+                ugcPhrase = self._tpc.getAreaPhrase(section.get('ugcs'))
                 hazStr += ' for ' + ugcPhrase
 
             if len(hazStr):
@@ -490,12 +488,14 @@ class Format(FormatTemplate.Formatter):
                 headlineStr = '...' + hazStr + localStr + '...\n'
 
             # Add replaceStr
-            replacedBy = segmentDict.get('replacedBy')
-            replaces = segmentDict.get('replaces')
-            if replacedBy:
-                replaceStr =  '...REPLACED BY ' + replacedBy + '...\n'
-            elif replaces:
-                replaceStr =  '...REPLACES ' + replaces + '...\n'
+            if len(replacedByList) > 0:
+                replaceStr =  '...REPLACED BY '
+                names = self._tpc.formatDelimitedList(replacedByList, delimiter=', ')
+                replaceStr += names + '...\n'
+            elif len(replacesList) > 0:
+                replaceStr =  '...REPLACES '
+                names = self._tpc.formatDelimitedList(replacesList, delimiter=', ')
+                replaceStr += names + '...\n'
             else:
                 replaceStr = ''
             headlineStr += replaceStr
@@ -508,15 +508,22 @@ class Format(FormatTemplate.Formatter):
 
     def _basisAndImpactsStatement_segmentLevel(self, segmentDict):
         # Get saved value from productText table if available
-        statement = self._getSavedVal('basisAndImpactsStatement_segmentLevel', segmentDict)
-        if not statement:
-            sectionDict = segmentDict.get('sections', {})[0]
-            statement = sectionDict.get('basisAndImpactsStatement_segmentLevel', None)
-            # Check for a empty string from the HID
-            if statement == '' or statement == None:
-                statement = '|* Current hydrometeorological situation and expected impacts *|'
-        self._setVal('basisAndImpactsStatement_segmentLevel', statement, segmentDict, 'Basis and Impacts Statement')
-        return statement + '\n\n'
+        text = self._getSavedVal('basisAndImpactsStatement_segmentLevel', segmentDict)
+        if not text:
+            sections = segmentDict.get('sections', [])
+            statements = []
+            for section in sections:
+                for hazard in section.get('hazardEvents', []):
+                    statement = hazard.get('basisAndImpactsStatement_segmentLevel', None)
+                    # Check for a empty string from the HID
+                    if statement:
+                        statements.append(statement)
+            if len(statements) > 0:
+                text += '\n'.join(statements)
+            else:
+                text = '|* Current hydrometeorological situation and expected impacts *|'
+        self._setVal('basisAndImpactsStatement_segmentLevel', text, segmentDict, 'Basis and Impacts Statement')
+        return text + '\n\n'
 
     def _endSegment(self, segmentDict):
         # Reset to empty dictionary
@@ -524,6 +531,12 @@ class Format(FormatTemplate.Formatter):
         return '\n$$\n\n' 
 
     ###################### Section Level
+
+    def _setUp_section(self, sectionDict):
+        self.attributionFirstBullet = AttributionFirstBulletText()
+        self.attributionFirstBullet.initialize(
+            sectionDict, self._productID, self._issueTime, self._testMode, self._wfoCity, self._tpc)
+        return ''
 
     def _vtecRecords(self, sectionDict):
         vtecString = ''
@@ -582,11 +595,14 @@ class Format(FormatTemplate.Formatter):
         bulletText = self._getSavedVal('timeBullet', sectionDict)
         if not bulletText:
             bulletText = ''
-            if (self._runMode == 'Practice' and sectionDict.get('geoType') != 'point'):
+
+            # Get the endTime from the first hazard
+            hazard = sectionDict.get('hazardEvents', None)[0]
+            if (self._runMode == 'Practice' and hazard.get('geoType') != 'point'):
                 bulletText += "This is a test message.  "
             bulletText += 'Until '
 
-            endTime = sectionDict.get('endTime')
+            endTime = hazard.get('endTime')
             expireTime = self.round(endTime, roundMinutes)
 
             # Determine how far into the future the expire time is.
@@ -612,12 +628,14 @@ class Format(FormatTemplate.Formatter):
         return '* ' + bulletText + '\n'
 
     def _emergencyStatement(self, sectionDict):
-        includeChoices = sectionDict.get('include')
+        # FFW_FFS will only have one hazard per section
+        hazard = sectionDict.get('hazardEvents')[0]
+        includeChoices = hazard.get('include')
         if includeChoices and 'ffwEmergency' in includeChoices:
             # Get saved value from productText table if available
             statement = self._getSavedVal('emergencyStatement', sectionDict)
             if not statement:
-                statement = '  This is a Flash Flood Emergency for ' + sectionDict.get('includeEmergencyLocation') + '.'
+                statement = '  This is a Flash Flood Emergency for ' + hazard.get('includeEmergencyLocation') + '.'
             self._setVal('emergencyStatement', statement, sectionDict, 'Emergency Statement')
             return statement + '\n\n'
         else:
@@ -631,11 +649,16 @@ class Format(FormatTemplate.Formatter):
             if (self._runMode == 'Practice'):
                 bulletText += "This is a test message.  "
 
-            impacts = sectionDict.get('impacts')
-            if not impacts:
-                impacts = self._tpc.frame('(Optional) Potential impacts of flooding')
+            impacts = []
+            for hazard in sectionDict.get('hazardEvents'):
+                hazardImpacts = hazard.get('impacts')
+                if hazardImpacts:
+                    impacts.append(hazardImpacts)
+            if len(impacts) > 0:
+                bulletText += '\n'.join(impacts)
+            else:
+                bulletText += self._tpc.frame('(Optional) Potential impacts of flooding')
 
-            bulletText += impacts
         self._setVal('impactsBullet', bulletText, sectionDict, 'Impacts Bullet')
         return '* ' + bulletText + '\n\n'
 
@@ -646,12 +669,17 @@ class Format(FormatTemplate.Formatter):
             bulletText = ''
             if (self._runMode == 'Practice'):
                 bulletText += "This is a test message.  "
-            statement = sectionDict.get('basisAndImpactsStatement', None)
-            # Check for a empty string from the HID
-            if statement == '' or statement == None:
-                bulletText += '|* Current hydrometeorological situation and expected impacts *|'
+            statements = []
+            for hazard in sectionDict.get('hazardEvents', []):
+                statement = hazard.get('basisAndImpactsStatement', None)
+                # Check for a empty string from the HID
+                if statement:
+                    statements.append(statement)
+            if len(statements) > 0:
+                bulletText += '\n'.join(statements)
             else:
-                bulletText += statement
+                bulletText += '|* Current hydrometeorological situation and expected impacts *|'
+
         self._setVal('basisAndImpactsStatement', bulletText, sectionDict, 'Basis and Impacts Bullet')
         return '* ' + bulletText + '\n\n'
 
@@ -668,14 +696,16 @@ class Format(FormatTemplate.Formatter):
             if (self._runMode == 'Practice'):
                 heading += "This is a test message.  "
 
-            immediateCause = sectionDict.get('immediateCause', None)
+            # FA.W, FA.Y, and FF.W will only have one hazard per section
+            hazard = sectionDict.get('hazardEvents')[0]
+            immediateCause = hazard.get('immediateCause', None)
             if immediateCause == 'DM' or immediateCause == 'DR':
-                damOrLeveeName = sectionDict.get('damOrLeveeName')
+                damOrLeveeName = hazard.get('damOrLeveeName')
                 if damOrLeveeName:
                     damInfo = self._damInfo().get(damOrLeveeName)
                     if damInfo:
                         # Scenario
-                        scenario = sectionDict.get('scenario')
+                        scenario = hazard.get('scenario')
                         if scenario:
                             scenarios = damInfo.get('scenarios')
                             if scenarios:
@@ -688,25 +718,46 @@ class Format(FormatTemplate.Formatter):
                             locationsAffected += ruleOfThumb + '\n\n'
 
             # Add any other additional Info
-            locationsAffected += self.createAdditionalComments(sectionDict)
+            locationsAffected += self.createAdditionalComments(hazard)
 
             if not locationsAffected:
                 phen = vtecRecord.get("phen")
                 sig = vtecRecord.get("sig")
-                geoType = sectionDict.get('geoType')
+                geoType = hazard.get('geoType')
                 if phen == "FF" :
                     locationsAffected = "Some locations that will experience flash flooding include..."
                 elif phen == "FA" or phen == "FL" :
                     locationsAffected = "Some locations that will experience flooding include..."
                 else :
                     locationsAffected = "Locations impacted include..."
-                locationsAffected += self.createLocationsAffected(sectionDict) + '\n\n'
+                locationsAffected += self.createLocationsAffected(hazard) + '\n\n'
             locationsAffected = heading + locationsAffected
         self._setVal('locationsAffected', locationsAffected, sectionDict, 'Locations Affected')
         if action in ['NEW', 'EXT']:
             locationsAffected = '* ' + locationsAffected
         return locationsAffected
 
+    def _endingSynopsis(self, sectionDict):
+        # Get saved value from productText table if available
+        text = self._getSavedVal('endingSynopsis', sectionDict)
+        if not text:
+            endingSynopsisList = []
+            for hazard in sectionDict.get('hazardEvents', []):
+                endingSynopsis = hazard.get('endingSynopsis')
+                if endingSynopsis:
+                    endingSynopsisList.append(endingSynopsis)
+
+            if len(endingSynopsisList) > 0:
+                text = '\n'.join(endingSynopsisList)
+            else:
+                # Try to get from dialogInputMap  (case of partial cancellation)
+                text = self._tpc.getVal(self.productDict, 'endingSynopsis', None)
+                if text is None:
+                    # If still none use framed text
+                    text = '|* Brief post-synopsis of hydrometeorological activity *|'
+
+        self._setVal('endingSynopsis', text, sectionDict, 'Ending Synopsis')
+        return text + '\n\n'
     ###################### Utility methods
 
     def overviewSynopsis(self, productDict):
@@ -736,9 +787,9 @@ class Format(FormatTemplate.Formatter):
         self._backupWfoCityState = siteEntry.get('wfoCityState')
         self._backupFullStationID = siteEntry.get('fullStationID')
 
-    def createLocationsAffected(self, sectionDict):
+    def createLocationsAffected(self, hazardDict):
         nullReturn = " mainly rural areas of the aforementioned areas."
-        locations = sectionDict.get('locationsAffected', [])
+        locations = hazardDict.get('locationsAffected', [])
         if locations:
             return self._tpc.formatDelimitedList(locations)
         else:
@@ -775,13 +826,15 @@ class Format(FormatTemplate.Formatter):
 
             nameDescription, nameTypePhrase = self._tpc.getNameDescription(pointAreaGroups)
             affected = nameDescription + ' '+ nameTypePhrase
-            section = segment.get('sections')[0]
-            riverName = section.get('riverName_GroupName')
-            proximity = section.get('proximity')
-            if proximity is None:
-                proximity = 'near'
-            riverPointName = section.get('riverPointName')
-            locationPhrases.append(riverName + ' ' + proximity + ' ' + riverPointName + ' affecting ' + affected + '.')
+            # Note there should only be one section with one hazard to process
+            for section in segment.get('sections', []):
+                for hazard in section.get('hazardEvents', []):
+                    riverName = hazard.get('riverName_GroupName')
+                    proximity = hazard.get('proximity')
+                    if proximity is None:
+                        proximity = 'near'
+                    riverPointName = hazard.get('riverPointName')
+                    locationPhrases.append(riverName + ' ' + proximity + ' ' + riverPointName + ' affecting ' + affected + '.')
 
         locationPhrase = '\n'.join(locationPhrases)
         areaGroups = self._tpc.simplifyAreas(areaGroups)
@@ -835,11 +888,11 @@ class Format(FormatTemplate.Formatter):
               breakStrings=[' ', '-', '...'])
         return overview + locationPhrase + '\n\n'
 
-    def createAdditionalComments(self, segmentDict):
+    def createAdditionalComments(self, hazardDict):
         additionalComments = ''
-        elements = KeyInfo.getElements('additionalComments', segmentDict)
+        elements = KeyInfo.getElements('additionalComments', hazardDict)
         if len(elements) > 0:
-            for x in segmentDict.get(elements[0]):
+            for x in hazardDict.get(elements[0]):
                 additionalComment = x
 
                 if additionalComment != '':

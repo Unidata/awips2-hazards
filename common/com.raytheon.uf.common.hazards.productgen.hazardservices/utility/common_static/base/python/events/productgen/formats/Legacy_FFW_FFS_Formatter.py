@@ -11,6 +11,7 @@
                                         mapping of productParts to the associated methods.
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
     Apr 27, 2015    7579    Robert.Blum Removed non-editable fields from product editor.
+    Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
 '''
 
 
@@ -58,6 +59,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             'pointImpactsBullet': self._pointImpactsBullet,
             'floodPointTable': self._floodPointTable,
             'setUp_segment': self._setUp_segment,
+            'setUp_section': self._setUp_section,
             'endSegment': self._endSegment,
                                }
 
@@ -101,10 +103,12 @@ class Format(Legacy_Hydro_Formatter.Format):
             vtecRecord = sectionDict.get('vtecRecord')
             phen = vtecRecord.get('phen')
             sig = vtecRecord.get('sig')
-            subType = sectionDict.get('subType')
+            hazards = sectionDict.get('hazardEvents')
+            # FFW_FFS sections will only contain one hazard
+            subType = hazards[0].get('subType')
             hazardType = phen + '.' + sig + '.' + subType
-            basis = self.basisText.getBulletText(hazardType, sectionDict)
-            basis = self._tpc.substituteParameters(sectionDict, basis)
+            basis = self.basisText.getBulletText(hazardType, hazards[0])
+            basis = self._tpc.substituteParameters(hazards[0], basis)
 
             if basis is None :
                  basis = '...Flash Flooding was reported'

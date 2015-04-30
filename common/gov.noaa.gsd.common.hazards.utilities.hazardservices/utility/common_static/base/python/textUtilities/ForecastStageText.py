@@ -15,6 +15,7 @@
                                              times have minutes formatted to '00'.
     Apr 2015       7271    Chris.Golden      Changed to use MISSING_VALUE
                                              constant.
+    Apr 2015       7579    Robert.Blum       Updated variable names.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types
@@ -36,19 +37,19 @@ class ForecastStageText(object):
         text = self.getForecastStageText(section)
         print '\nResult:', text
 
-    def getForecastStageText(self, section, timeZones):
+    def getForecastStageText(self, hazard, timeZones):
         self.timeZones = timeZones
-        river_description = self.getRiverDescription(section)
-        forecast_description = self.getForecastDescription(section)
+        river_description = self.getRiverDescription(hazard)
+        forecast_description = self.getForecastDescription(hazard)
         bulletContent = river_description+' '+forecast_description
         return bulletContent
 
-    def getRiverDescription(self, section):
+    def getRiverDescription(self, hazard):
         # Alternative --
-        #  return 'The '+section.riverName
+        #  return 'The '+ hazard.get('riverName_RiverName')
         return 'The river'
         
-    def getForecastDescription(self, section):
+    def getForecastDescription(self, hazard):
         ''' Where are we in the cycle?
         # Determine if we are rising, falling, cresting
         # Determine if we will go above flood stage
@@ -62,32 +63,32 @@ class ForecastStageText(object):
         #  will continue to fall below flood stage
         #  is expected to remain below flood stage
         
-        @param section -- can be a dictionary or object which must contain the RiverForecastPoint 
+        @param hazard -- can be a dictionary or object which must contain the RiverForecastPoint 
                           values shown below
         '''
         
-        if type(section) is types.DictType or isinstance(section, collections.OrderedDict):
-            section = self.createSection(section)
+        if type(hazard) is types.DictType or isinstance(hazard, collections.OrderedDict):
+            hazard = self.createHazard(hazard)
 
 #         # Left in for Focal Points working on the module
 #         print 'ForecastStageText Inputs'
-#         print 'observedStage', section.observedStage
-#         print 'floodStage', section.floodStage
-#         print 'forecastCrestStage', section.forecastCrestStage
-#         print 'maximumForecastStage', section.maximumForecastStage
-#         print 'forecastRiseAboveFloodStageTime_ms', section.forecastRiseAboveFloodStageTime_ms
-#         print 'forecastRiseAboveFloodStageTime_str', section.forecastRiseAboveFloodStageTime_str
-#         print 'forecastCrestTime_str', section.forecastCrestTime_str
-#         print 'forecastFallBelowFloodStageTime_ms', section.forecastFallBelowFloodStageTime_ms
-#         print 'forecastFallBelowFloodStageTime_str', section.forecastFallBelowFloodStageTime_str
-#         print 'maximumForecastTime_str', section.maximumForecastTime_str
-#         print 'stageFlowUnits', section.stageFlowUnits
-#         print 'specValue', section.specValue
-#         print 'specTime', section.specTime
+#         print 'observedStage', hazard.observedStage
+#         print 'floodStage', hazard.floodStage
+#         print 'forecastCrestStage', hazard.forecastCrestStage
+#         print 'maximumForecastStage', hazard.maximumForecastStage
+#         print 'forecastRiseAboveFloodStageTime_ms', hazard.forecastRiseAboveFloodStageTime_ms
+#         print 'forecastRiseAboveFloodStageTime_str', hazard.forecastRiseAboveFloodStageTime_str
+#         print 'forecastCrestTime_str', hazard.forecastCrestTime_str
+#         print 'forecastFallBelowFloodStageTime_ms', hazard.forecastFallBelowFloodStageTime_ms
+#         print 'forecastFallBelowFloodStageTime_str', hazard.forecastFallBelowFloodStageTime_str
+#         print 'maximumForecastTime_str', hazard.maximumForecastTime_str
+#         print 'stageFlowUnits', hazard.stageFlowUnits
+#         print 'specValue', hazard.specValue
+#         print 'specTime', hazard.specTime
 #         self.flush()
         
-        if section.observedStage:
-            compareStage = section.observedStage
+        if hazard.observedStage:
+            compareStage = hazard.observedStage
         else:
             compareStage = 'first spec forecast point  e.g. 0 hours in future'
                
@@ -95,12 +96,12 @@ class ForecastStageText(object):
         fuzzFactor = 0.5
 
         # String variables for the rounded stage values
-        if section.forecastCrestStage:
-            forecastCrestStage = format(section.forecastCrestStage, '.2f')
-        if section.maximumForecastStage:
-            maximumForecastStage = format(section.maximumForecastStage, '.2f')
-        if section.specValue:
-            specValue = format(section.specValue, '.2f')
+        if hazard.forecastCrestStage:
+            forecastCrestStage = format(hazard.forecastCrestStage, '.2f')
+        if hazard.maximumForecastStage:
+            maximumForecastStage = format(hazard.maximumForecastStage, '.2f')
+        if hazard.specValue:
+            specValue = format(hazard.specValue, '.2f')
 
         '''
         # Determine where we are starting in the cycle and describe what follows
@@ -118,10 +119,10 @@ class ForecastStageText(object):
         '''
 
         # risingFalling -- Are we rising or falling?
-        if compareStage < section.maximumForecastStage - fuzzFactor:
+        if compareStage < hazard.maximumForecastStage - fuzzFactor:
             self.risingFalling = 'rise'
             self.trend = 'rise'
-        elif compareStage > section.maximumForecastStage + fuzzFactor:
+        elif compareStage > hazard.maximumForecastStage + fuzzFactor:
             self.risingFalling = 'fall'
             self.trend = 'fall'
         else: # steady
@@ -129,101 +130,101 @@ class ForecastStageText(object):
             self.trend = ['steady']
         
         # rise above / fall below flood stage
-        if section.forecastRiseAboveFloodStageTime_ms and section.forecastFallBelowFloodStageTime_ms:
-            if section.forecastRiseAboveFloodStageTime_ms < section.forecastFallBelowFloodStageTime_ms:
-                self.firstRiseFallTime = ' above flood stage at ' + section.forecastRiseAboveFloodStageTime_str
-                self.secondRiseFallTime = ', then fall below flood stage at ' + section.forecastFallBelowFloodStageTime_str + ' and continue falling'
-            elif section.forecastRiseAboveFloodStageTime_ms > section.forecastFallBelowFloodStageTime_ms:
-                self.firstRiseFallTime = ' below flood stage at ' + section.forecastFallBelowFloodStageTime_str
-                self.secondRiseFallTime = ', then rise above flood stage at ' + section.forecastRiseAboveFloodStageTime_str + ' and continue rising'
-        elif section.forecastRiseAboveFloodStageTime_ms and section.forecastFallBelowFloodStageTime_ms is None:
-            self.firstRiseFallTime = ' above flood stage at ' + section.forecastRiseAboveFloodStageTime_str + ' and continue rising'
+        if hazard.forecastRiseAboveFloodStageTime_ms and hazard.forecastFallBelowFloodStageTime_ms:
+            if hazard.forecastRiseAboveFloodStageTime_ms < hazard.forecastFallBelowFloodStageTime_ms:
+                self.firstRiseFallTime = ' above flood stage at ' + hazard.forecastRiseAboveFloodStageTime_str
+                self.secondRiseFallTime = ', then fall below flood stage at ' + hazard.forecastFallBelowFloodStageTime_str + ' and continue falling'
+            elif hazard.forecastRiseAboveFloodStageTime_ms > hazard.forecastFallBelowFloodStageTime_ms:
+                self.firstRiseFallTime = ' below flood stage at ' + hazard.forecastFallBelowFloodStageTime_str
+                self.secondRiseFallTime = ', then rise above flood stage at ' + hazard.forecastRiseAboveFloodStageTime_str + ' and continue rising'
+        elif hazard.forecastRiseAboveFloodStageTime_ms and hazard.forecastFallBelowFloodStageTime_ms is None:
+            self.firstRiseFallTime = ' above flood stage at ' + hazard.forecastRiseAboveFloodStageTime_str + ' and continue rising'
             self.secondRiseFallTime = ''
-        elif section.forecastRiseAboveFloodStageTime_ms is None and section.forecastFallBelowFloodStageTime_ms:
-            self.firstRiseFallTime = ' below flood stage at ' + section.forecastFallBelowFloodStageTime_str + ' and continue falling'
+        elif hazard.forecastRiseAboveFloodStageTime_ms is None and hazard.forecastFallBelowFloodStageTime_ms:
+            self.firstRiseFallTime = ' below flood stage at ' + hazard.forecastFallBelowFloodStageTime_str + ' and continue falling'
             self.secondRiseFallTime = ''         
         else: # both missing
             self.firstRiseFallTime = ''
             self.secondRiseFallTime = ''
                         
         # is crest = Maximum forecast stage/flow?  This is a proxy to determine if this a complex event.
-        if section.forecastCrestStage !=  section.maximumForecastStage:
+        if hazard.forecastCrestStage !=  hazard.maximumForecastStage:
             self._crestToMaximum = 'not equal'
         else:
             self._crestToMaximum = 'equal'            
 
         # is crest above/below/at Flood stage
-        if section.forecastCrestStage:
-            self.crestStatement=' to a crest of ' + forecastCrestStage + ' '+section.stageFlowUnits+' at '+section.forecastCrestTime_str
+        if hazard.forecastCrestStage:
+            self.crestStatement=' to a crest of ' + forecastCrestStage + ' '+hazard.stageFlowUnits+' at '+hazard.forecastCrestTime_str
         else:
             self.crestStatement=''  
         # determine final stage/flow
-        if self.trend == 'rise' and section.forecastCrestStage and self._crestToMaximum != 'equal':
-            self.finalStageFlow='. It will then rise to '+maximumForecastStage+' '+section.stageFlowUnits+' at '+section.maximumForecastTime_str+'. Additional rises are possible thereafter.'
-        elif self.trend == 'rise' and section.forecastCrestStage is None and self._crestToMaximum != 'equal':
-            self.finalStageFlow=' to '+maximumForecastStage+' '+section.stageFlowUnits+' at '+section.maximumForecastTime_str+'. Additional rises are possible thereafter.'
-        elif self.trend == 'rise' and section.forecastCrestStage and self._crestToMaximum == 'equal':
+        if self.trend == 'rise' and hazard.forecastCrestStage and self._crestToMaximum != 'equal':
+            self.finalStageFlow='. It will then rise to '+maximumForecastStage+' '+hazard.stageFlowUnits+' at '+hazard.maximumForecastTime_str+'. Additional rises are possible thereafter.'
+        elif self.trend == 'rise' and hazard.forecastCrestStage is None and self._crestToMaximum != 'equal':
+            self.finalStageFlow=' to '+maximumForecastStage+' '+hazard.stageFlowUnits+' at '+hazard.maximumForecastTime_str+'. Additional rises are possible thereafter.'
+        elif self.trend == 'rise' and hazard.forecastCrestStage and self._crestToMaximum == 'equal':
             self.finalStageFlow='.'
         elif self.trend == 'fall':
             self.finalStageFlow = ''
-            if section.specValue != MISSING_VALUE:
-                self.finalStageFlow = ' to '+specValue+' '+section.stageFlowUnits
-                if section.specTime != MISSING_VALUE:
-                    self.finalStageFlow += ' at '+section.specTime
+            if hazard.specValue != MISSING_VALUE:
+                self.finalStageFlow = ' to '+specValue+' '+hazard.stageFlowUnits
+                if hazard.specTime != MISSING_VALUE:
+                    self.finalStageFlow += ' at '+hazard.specTime
             self.finalStageFlow += '.'
         else: # steady
-            if section.maximumForecastStage >= section.floodStage:        
-                self.finalStageFlow=' above flood stage at '+maximumForecastStage+' '+section.stageFlowUnits+'.'
-            elif section.maximumForecastStage != MISSING_VALUE:
-                self.finalStageFlow=' below flood stage at '+maximumForecastStage+' '+section.stageFlowUnits+'.'
+            if hazard.maximumForecastStage >= hazard.floodStage:        
+                self.finalStageFlow=' above flood stage at '+maximumForecastStage+' '+hazard.stageFlowUnits+'.'
+            elif hazard.maximumForecastStage != MISSING_VALUE:
+                self.finalStageFlow=' below flood stage at '+maximumForecastStage+' '+hazard.stageFlowUnits+'.'
             else:
                 self.finalStageFlow='.'
         phrase = 'is expected to ' + self.risingFalling + self.firstRiseFallTime + self.crestStatement + self.secondRiseFallTime + self.finalStageFlow 
         return phrase
     
-    def createSection(self, sectionDict):
+    def createHazard(self, hazardDict):
         '''
         Interface for V3 formatters
         '''
         self.tpc = TextProductCommon()
-        section = Empty()
-        section.observedStage = sectionDict.get('observedStage')
-        section.floodStage = sectionDict.get('floodStage') 
-        section.forecastCrestStage = sectionDict.get('forecastCrestStage') 
-        section.maximumForecastStage = sectionDict.get('maximumForecastStage') 
+        hazard = Empty()
+        hazard.observedStage = hazardDict.get('observedStage')
+        hazard.floodStage = hazardDict.get('floodStage') 
+        hazard.forecastCrestStage = hazardDict.get('forecastCrestStage') 
+        hazard.maximumForecastStage = hazardDict.get('maximumForecastStage') 
         
-        section.forecastRiseAboveFloodStageTime_ms = sectionDict.get('forecastRiseAboveFloodStageTime_ms') 
-        section.forecastFallBelowFloodStageTime_ms = sectionDict.get('forecastFallBelowFloodStageTime_ms')
-        section.forecastCrestTime_ms = sectionDict.get('forecastCrestTime_ms')
+        hazard.forecastRiseAboveFloodStageTime_ms = hazardDict.get('forecastRiseAboveFloodStageTime_ms') 
+        hazard.forecastFallBelowFloodStageTime_ms = hazardDict.get('forecastFallBelowFloodStageTime_ms')
+        hazard.forecastCrestTime_ms = hazardDict.get('forecastCrestTime_ms')
          
-        if section.forecastRiseAboveFloodStageTime_ms:
-            section.forecastRiseAboveFloodStageTime_str = sectionDict.get('forecastRiseAboveFloodStageTime_str',
-                  self.tpc.getFormattedTime(section.forecastRiseAboveFloodStageTime_ms, format='%I00 %p %Z %a %b %d %Y',
+        if hazard.forecastRiseAboveFloodStageTime_ms:
+            hazard.forecastRiseAboveFloodStageTime_str = hazardDict.get('forecastRiseAboveFloodStageTime_str',
+                  self.tpc.getFormattedTime(hazard.forecastRiseAboveFloodStageTime_ms, format='%I00 %p %Z %a %b %d %Y',
                                             timeZones=self.timeZones))
         else:
-            section.forecastRiseAboveFloodStageTime_str = None
-        if section.forecastFallBelowFloodStageTime_ms:
-            section.forecastFallBelowFloodStageTime_str = sectionDict.get('forecastFallBelowFloodStageTime_str',
-                  self.tpc.getFormattedTime(section.forecastFallBelowFloodStageTime_ms, format='%I00 %p %Z %a %b %d %Y',
+            hazard.forecastRiseAboveFloodStageTime_str = None
+        if hazard.forecastFallBelowFloodStageTime_ms:
+            hazard.forecastFallBelowFloodStageTime_str = hazardDict.get('forecastFallBelowFloodStageTime_str',
+                  self.tpc.getFormattedTime(hazard.forecastFallBelowFloodStageTime_ms, format='%I00 %p %Z %a %b %d %Y',
                                             timeZones=self.timeZones)) 
         else:
-            section.forecastFallBelowFloodStageTime_str = None
-        if section.forecastCrestTime_ms:
-            section.forecastCrestTime_str = sectionDict.get('forecastCrestTime_str',
-                  self.tpc.getFormattedTime(section.forecastCrestTime_ms,format='%I00 %p %Z %a %b %d %Y',
+            hazard.forecastFallBelowFloodStageTime_str = None
+        if hazard.forecastCrestTime_ms:
+            hazard.forecastCrestTime_str = hazardDict.get('forecastCrestTime_str',
+                  self.tpc.getFormattedTime(hazard.forecastCrestTime_ms,format='%I00 %p %Z %a %b %d %Y',
                                             timeZones=self.timeZones))
         else:
-            section.forecastCrestTime_str = None
+            hazard.forecastCrestTime_str = None
 
-        section.maximumForecastTime_str = sectionDict.get('maximumForecastTime_str')
-        if section.maximumForecastTime_str is None:
-            maximumForecastTime_ms = sectionDict.get('maximumForecastTime_ms')
-            section.maximumForecastTime_str = self.tpc.getFormattedTime(maximumForecastTime_ms,format='%I00 %p %Z %a %b %d %Y',
+        hazard.maximumForecastTime_str = hazardDict.get('maximumForecastTime_str')
+        if hazard.maximumForecastTime_str is None:
+            maximumForecastTime_ms = hazardDict.get('maximumForecastTime_ms')
+            hazard.maximumForecastTime_str = self.tpc.getFormattedTime(maximumForecastTime_ms,format='%I00 %p %Z %a %b %d %Y',
                                                                         timeZones=self.timeZones) 
-        section.stageFlowUnits = sectionDict.get('stageFlowUnits') 
-        section.specValue =  sectionDict.get('specValue') 
-        section.specTime = sectionDict.get('specTime') 
-        return section
+        hazard.stageFlowUnits = hazardDict.get('stageFlowUnits') 
+        hazard.specValue =  hazardDict.get('specValue') 
+        hazard.specTime = hazardDict.get('specTime') 
+        return hazard
     
     def flush(self):
         ''' Flush the print buffer '''
