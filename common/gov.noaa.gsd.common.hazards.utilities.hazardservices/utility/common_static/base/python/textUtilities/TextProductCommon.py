@@ -22,6 +22,7 @@
    Apr 16, 2015   7579      Robert.Blum         Added new getSavedVal() method to retrieve user edits
                                                 from the ProductText table.
    Apr 22, 2015   7549      Robert.Blum         Add None check to formatDelimitedList().
+   Apr 28, 2015   7140      Tracy Hansen        Attribution first bullet adjustments
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -924,21 +925,21 @@ class TextProductCommon(object):
                     parishCnt = parishCnt + 1
         nameTypes = []
         if zoneCnt == 1:
-            nameTypes.append('AREA')
+            nameTypes.append('area')
         elif zoneCnt > 1:
-            nameTypes.append('AREAS')
+            nameTypes.append('areas')
         if countyCnt == 1:
-            nameTypes.append('COUNTY')
+            nameTypes.append('county')
         elif countyCnt > 1:
-            nameTypes.append('COUNTIES')
+            nameTypes.append('counties')
         if icCnt == 1:
-            nameTypes.append('INDEPENDENT CITY')
+            nameTypes.append('independent city')
         elif icCnt > 1:
-            nameTypes.append('INDEPENDENT CITIES')
+            nameTypes.append('independent cities')
         if parishCnt == 1:
-            nameTypes.append('PARISH')
+            nameTypes.append('parish')
         elif parishCnt > 1:
-            nameTypes.append('PARISHES')
+            nameTypes.append('parishes')
         nameTypePhrase = ' and '.join(nameTypes)
              
         # list of the specific areas

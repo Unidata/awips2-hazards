@@ -278,11 +278,11 @@ class Format(FormatTemplate.Formatter):
     def _setUp_segment(self, segmentDict):
         # Save off the segmentDict so that all section productParts have a reference to it
         self._segmentDict = segmentDict
-        # ToDo -- Post-Hydro there could be more than one section in a segment
+        # ToDo -- Even for Hydro, there could be more than one section in a segment
         sectionDict = segmentDict.get('sections')[0]
         self.attributionFirstBullet = AttributionFirstBulletText()
         self.attributionFirstBullet.initialize(
-            sectionDict, self._productID, self._issueTime, self._testMode, self._wfoCity, self._tpc)
+            sectionDict, self._productID, self._issueTime, self._testMode, self._wfoCity, self._tpc, timeZones=self.timezones)
         return ''
 
     def _emergencyHeadline(self, segmentDict):
@@ -639,20 +639,20 @@ class Format(FormatTemplate.Formatter):
         self._setVal('impactsBullet', bulletText, sectionDict, 'Impacts Bullet')
         return '* ' + bulletText + '\n\n'
 
-    def _basisAndImpactsStatement(self, segmentDict):
+    def _basisAndImpactsStatement(self, sectionDict):
         # Get saved value from productText table if available
-        bulletText = self._getSavedVal('basisAndImpactsStatement', segmentDict)
+        bulletText = self._getSavedVal('basisAndImpactsStatement', sectionDict)
         if not bulletText:
             bulletText = ''
             if (self._runMode == 'Practice'):
                 bulletText += "This is a test message.  "
-            statement = segmentDict.get('basisAndImpactsStatement', None)
+            statement = sectionDict.get('basisAndImpactsStatement', None)
             # Check for a empty string from the HID
             if statement == '' or statement == None:
                 bulletText += '|* Current hydrometeorological situation and expected impacts *|'
             else:
                 bulletText += statement
-        self._setVal('basisAndImpactsStatement', bulletText, segmentDict, 'Basis and Impacts Bullet')
+        self._setVal('basisAndImpactsStatement', bulletText, sectionDict, 'Basis and Impacts Bullet')
         return '* ' + bulletText + '\n\n'
 
     def _locationsAffected(self, sectionDict):

@@ -358,6 +358,7 @@ class HydroProductParts(object):
         action = vtecRecord['act']
         phen = vtecRecord['phen']
         sig = vtecRecord['sig']
+        phenSig = phen + '.' + sig
         # CAN EXP
         if action in ['CAN', 'EXP']:
             if pil in ['FLS', 'FFA']:
@@ -367,7 +368,7 @@ class HydroProductParts(object):
                     'endingSynopsis',
                     ]
         # FFA, FLW, or FLS FA.Y NEW OR EXT
-        elif pil in ['FFA', 'FLW'] or (phen == 'FA' and sig == 'Y' and action in ['NEW', 'EXT']):
+        elif pil in ['FFA', 'FLW'] or (phenSig == 'FA.Y' and action in ['NEW', 'EXT']):
             partsList = [
                     'setUp_section',
                     'attribution', 
@@ -375,6 +376,13 @@ class HydroProductParts(object):
                     'timeBullet',
                     'basisBullet',
                     'impactsBullet'
+                    ]
+        # FLS FA.Y, FA.W CON, CAN, EXP
+        elif phenSig in ['FA.Y', 'FA.W']:
+            partsList = [
+                    'setUp_section',
+                    'attribution',
+                    'basisAndImpactsStatement',
                     ]
         # Otherwise (FLS)
         else:

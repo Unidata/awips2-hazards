@@ -10,6 +10,8 @@ class MetaData(CommonMetaData.MetaData):
         self.initialize(hazardEvent, metaDict)
         if self.hazardStatus == "ending":
             metaData = [
+                        self.getImmediateCause(),
+                        self.getOptionalSpecificType(),
                         self.getEndingOption(),
                         self.getEndingSynopsis(),
                         self.getListOfCities(False),
@@ -90,13 +92,13 @@ class MetaData(CommonMetaData.MetaData):
     def rapidRiverRises(self):
                 return {"identifier":"rapidRiverRises",
                         "displayString": "Rapid River Rises",
-                        "productString":"rapid rises",
+                        "productString":"rapid river rises",
                  }
                 
     def poorDrainage(self):
                 return {"identifier":"poorDrainage",
                         "displayString": "Minor Flooding Of Poor Drainage",
-                        "productString":"poor drainage areas",
+                        "productString":"minor flooding of poor drainage areas",
                  }
         
     def generalMinorFlooding(self):

@@ -13,6 +13,8 @@ class MetaData(CommonMetaData.MetaData):
             # Removing the metaData for it so it does not show up in the HID.
             if hazardEvent.get('geoType', '') == 'area':
                 metaData = [
+                            self.getWarningType(),
+                            self.getImmediateCause(),
                             self.getEndingOption(),
                             self.getEndingSynopsis(),
                             self.getListOfCities(False),
