@@ -285,7 +285,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * Apr 27, 2015 7635       Robert.Blum  Added current config site to list of visible sites for 
  *                                      when settings have not been overridden.
- * 
+ * May 05, 2015 7624       mduff        added getEventsById
  * </pre>
  * 
  * @author bsteffen
@@ -504,6 +504,18 @@ public class SessionEventManager implements
             }
         }
         return null;
+    }
+
+    @Override
+    public List<ObservedHazardEvent> getEventsById(Collection<String> eventIds) {
+        List<ObservedHazardEvent> events = new ArrayList<>();
+        for (ObservedHazardEvent event : getEvents()) {
+            if (eventIds.contains(event.getEventID())) {
+                events.add(event);
+            }
+        }
+
+        return events;
     }
 
     @Override
@@ -834,6 +846,7 @@ public class SessionEventManager implements
      * Process (reload events) when Settings have been modified.
      * 
      */
+    @Override
     public void reloadEventsForSettings() {
         loadEventsForSettings();
     }
@@ -854,6 +867,7 @@ public class SessionEventManager implements
      * @param change
      *            Change that occurred.
      */
+    @Override
     public void processHazardStatusChanged(IHazardEvent event) {
         if ((event.getStatus() == HazardStatus.ENDING)
                 || (event.getStatus() == HazardStatus.ENDED)) {
@@ -882,6 +896,7 @@ public class SessionEventManager implements
      * @param productGenerationComplete
      *            Notification that is being received.
      */
+    @Override
     public void processProductGenerationComplete(
             IProductGenerationComplete productGenerationComplete) {
 
@@ -957,6 +972,7 @@ public class SessionEventManager implements
      * Respond to a CAVE current time tick by updating all the events' start and
      * end time editability boundaries.
      */
+    @Override
     public void processCurrentTimeChanged() {
         updateTimeBoundariesForEvents(null, false, true);
     }
@@ -1148,7 +1164,7 @@ public class SessionEventManager implements
         IHazardEvent evt = editor.getRiseCrestFallEditor(event);
         if (evt != null) {
             if (evt instanceof ObservedHazardEvent) {
-                event = (ObservedHazardEvent) evt;
+                event = evt;
             }
             updateEventMetadata(event);
         }
@@ -1245,6 +1261,7 @@ public class SessionEventManager implements
      * @param change
      *            Change that occurred.
      */
+    @Override
     public void processHazardAttributesChanged(IHazardEvent event,
             Map<String, Serializable> attributeMap, IOriginator originator) {
 
@@ -1309,6 +1326,7 @@ public class SessionEventManager implements
      * @param change
      *            Change that occurred.
      */
+    @Override
     public void processHazardTimeRangeChanged(IHazardEvent event) {
         updateConflictingEventsForSelectedEventIdentifiers(event, false);
     }
@@ -1320,6 +1338,7 @@ public class SessionEventManager implements
      * @param change
      *            Change that occurred.
      */
+    @Override
     public void processHazardGeometryChanged(IHazardEvent event) {
         updateConflictingEventsForSelectedEventIdentifiers(event, false);
     }
@@ -1926,6 +1945,7 @@ public class SessionEventManager implements
      * be added to this method's implementation as necessary if said logic must
      * be run whenever an event is so modified.
      */
+    @Override
     public void setEventAttributesModified(IHazardEvent event,
             String identifier, Serializable value, IOriginator originator) {
         Map<String, Serializable> modAttributesMap = new HashMap<String, Serializable>();
@@ -1934,6 +1954,7 @@ public class SessionEventManager implements
         setEventAttributesModified(event, modAttributesMap, originator);
     }
 
+    @Override
     public void setEventAttributesModified(IHazardEvent event,
             Map<String, Serializable> modAttributesMap, IOriginator originator) {
 
@@ -1953,6 +1974,7 @@ public class SessionEventManager implements
         notificationSender.postNotificationAsync(notification);
     }
 
+    @Override
     public void setEventStatus(IHazardEvent event, HazardStatus newStatus,
             boolean persist, IOriginator originator) {
 
