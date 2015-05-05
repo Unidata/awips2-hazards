@@ -120,10 +120,14 @@ class Product(HydroGenerator.Product):
         productSegmentGroup.setProductParts(self._hydroProductParts._productParts_RVS(productSegments))
 
     def _createProductLevelProductDictionaryData(self, productDict):
-        productPartsDict = productDict['productParts']
-        partsList = productPartsDict['partsList']
-        if ('floodPointTable' in partsList):
-            productDict['floodPointTable'] = self._floodPointTable()
+        hazardEventsList = self._generatedHazardEvents
+        if hazardEventsList is not None:
+            hazardEventDicts = []
+            for hazardEvent in hazardEventsList:
+                metaData = self.getHazardMetaData(hazardEvent)
+                hazardEventDict = self._createHazardEventDictionary(hazardEvent, {}, metaData)
+                hazardEventDicts.append(hazardEventDict)
+            productDict['hazardEvents'] = hazardEventDicts
 
         ugcs = []
         eventIDs = []

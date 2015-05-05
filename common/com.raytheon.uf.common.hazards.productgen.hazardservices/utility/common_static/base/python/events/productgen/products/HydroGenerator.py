@@ -12,6 +12,7 @@
     Feb 20, 2015    4937    Robert.Blum Added required data for groupSummary to section dicitonary
     Mar 17, 2015    6963    Robert.Blum Rounded impact height to a precision of 2.
     Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
+    May 05, 2015    7141    Robert.Blum Changes for floodPointTable.
 '''
 from RiverForecastPoints import RiverForecastPoints
 from HydroProductParts import HydroProductParts
@@ -59,7 +60,8 @@ class Product(Legacy_Base_Generator.Product):
         hazardEventDict['observedStage'] = observedStage
         hazardEventDict['observedCategory'] = self._rfp.getObservedCategory(pointID)
         hazardEventDict['observedCategoryName'] = self._rfp.getObservedCategoryName(pointID)
-        hazardEventDict['observedTime_ms'] = self._rfp.getObservedTime(pointID)
+        observedTime_ms = self._rfp.getObservedTime(pointID)
+        hazardEventDict['observedTime_ms'] = observedTime_ms
         max24HourObservedStage, shefQualityCode = self._rfp.getMaximum24HourObservedStage(pointID)
         hazardEventDict['max24HourObservedStage'] = max24HourObservedStage
         hazardEventDict['stageFlowName'] = self._rfp.getStageFlowName(pointID)
@@ -96,6 +98,20 @@ class Product(Legacy_Base_Generator.Product):
                 pointID, primaryPE, 0, forecastTypeSource, 'Z', '4|1200|1', timeFlag=False, currentTime_ms=millis)
         hazardEventDict['specTime'] = self._rfp.getPhysicalElementValue(
                 pointID, primaryPE, 0, forecastTypeSource, 'Z', '4|1200|1', timeFlag=True, currentTime_ms=millis)
+
+        # Next 3 days values for FloodPointTable
+        baseTime = self._tpc.getFormattedTime(observedTime_ms, '%H%M')
+        # Build timeArgs  e.g. '1|1200|1'
+        timeArgs = []
+        for i in range(3):
+            timeArgs.append(str(i+1)+'|'+baseTime+'|1')  
+        # TODO Fix getPhysicalElementValue              
+        hazardEventDict['day1'] = self._rfp.getPhysicalElementValue(pointID, primaryPE, 0, forecastTypeSource, 'Z', timeArgs[0], timeFlag=False, 
+                                                currentTime_ms=millis)
+        hazardEventDict['day2'] = self._rfp.getPhysicalElementValue(pointID, primaryPE, 0, forecastTypeSource, 'Z', timeArgs[1], timeFlag=False, 
+                                                currentTime_ms=millis)
+        hazardEventDict['day3'] = self._rfp.getPhysicalElementValue(pointID, primaryPE, 0, forecastTypeSource, 'Z', timeArgs[2], timeFlag=False, 
+                                                currentTime_ms=millis) 
 
     def _preparePointImpacts(self, hazardEvent):
         # Pull out the list of chosen impact text fields

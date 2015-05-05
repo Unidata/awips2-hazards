@@ -24,6 +24,7 @@
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
     Apr 28, 2015    7914    Robert.Blum Fixed error cause by latest merge.
     Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
+    May 05, 2015    7141    Robert.Blum Changes so RVS can call _createHazardEventDictionary().
 '''
 
 import ProductTemplate
@@ -675,7 +676,7 @@ class Product(ProductTemplate.Product):
                 hazardDict['floodRecord'] = self._tpc.getProductStrings(hazardEvent, metaData, 'floodRecord')
             else:
                 hazardDict[attribute] = attributes.get(attribute, None)
-                if attribute == 'ugcs':
+                if hasattr(self, 'sectionUGCs') and attribute == 'ugcs':
                     self.sectionUGCs.update(hazardEvent.get('ugcs', []))
                 # Add both the identifier and the productString for this attributes.
                 # The identifiers are needed for the BasisText module.
@@ -689,25 +690,28 @@ class Product(ProductTemplate.Product):
         else:
             hazardDict['impacts'] = ''
 
-        hazardDict['locationsAffected'] = self._prepareLocationsAffected(hazardEvent)
-        hazardDict['endingSynopsis'] = hazardEvent.get('endingSynopsis')
+        if self._productID != 'RVS':
+            hazardDict['locationsAffected'] = self._prepareLocationsAffected(hazardEvent)
+            hazardDict['timeZones'] = self._productSegment.timeZones
+            hazardDict['cityList'] = self._getCityList([hazardEvent])
+            hazardDict['endingSynopsis'] = hazardEvent.get('endingSynopsis')
+            hazardDict['subType'] = hazardEvent.getSubType()
+            hazardDict['replacedBy'] = hazardEvent.get('replacedBy', None)
+            hazardDict['replaces'] = hazardEvent.get('replaces', None)
+            hazardDict['impactsStringForStageFlowTextArea'] = hazardEvent.get('impactsStringForStageFlowTextArea', None)
+
         hazardDict['startTime'] = hazardEvent.getStartTime()
         hazardDict['endTime'] = hazardEvent.getEndTime()
         hazardDict['creationTime'] = hazardEvent.getCreationTime()
-        hazardDict['impactsStringForStageFlowTextArea'] = hazardEvent.get('impactsStringForStageFlowTextArea', None)
         hazardDict['geometry'] = hazardEvent.getGeometry()
-        hazardDict['subType'] = hazardEvent.getSubType()
-        hazardDict['timeZones'] = self._productSegment.timeZones
-        hazardDict['replacedBy'] = hazardEvent.get('replacedBy', None)
-        hazardDict['replaces'] = hazardEvent.get('replaces', None)
         hazardDict['metaData'] = metaData
-        hazardDict['cityList'] = self._getCityList([hazardEvent])
 
         if hazardEvent.get('pointID'):
             # Add RiverForecastPoint data to the dictionary
             self._prepareRiverForecastPointData(hazardEvent.get('pointID'), hazardDict, hazardEvent)
 
-        self._setProductInformation([vtecRecord], [hazardEvent])
+        if vtecRecord:
+            self._setProductInformation([vtecRecord], [hazardEvent])
         return hazardDict
 
     def _showProductParts(self):
@@ -1289,18 +1293,6 @@ class Product(ProductTemplate.Product):
     def getCTAsPhrase(self, hazardEvent, metaData):
         ctas = self._tpc.getProductStrings(hazardEvent, metaData, 'cta')
         return ctas
-
-    def _floodPointTable(self):
-        floodPointDataList = []
-        hazardEventsList = self._generatedHazardEvents
-        if hazardEventsList is not None:
-            for hazardEvent in hazardEventsList:
-                floodPointDict = { }
-                floodPointDict['pointID'] = hazardEvent.get('pointID')
-                floodPointDict['streamName'] = hazardEvent.get('streamName')
-                floodPointDataList.append(floodPointDict)
-                
-        return floodPointDataList
 
     def flush(self):
         ''' Flush the print buffer '''

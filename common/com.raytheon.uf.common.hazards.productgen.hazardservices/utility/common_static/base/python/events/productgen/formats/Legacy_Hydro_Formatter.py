@@ -12,6 +12,9 @@
     Apr 09, 2015    7271    Chris.Golden Changed to use MISSING_VALUE constant.
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
     Apr 27, 2015    7579    Robert.Blum Fix error when stageFlowUnits are None.
+    May 05, 2015    7141    Robert.Blum Passing required data to the TableText module and
+                                        adding back in floodPointTable since it no longer
+                                        re-instantiates RiverForecastPoints.
 '''
 import datetime
 import collections
@@ -19,7 +22,7 @@ import types, re, sys
 import Legacy_Base_Formatter
 from abc import *
 from ForecastStageText import ForecastStageText
-from TableText import FloodPointTable
+from TableText import Table
 from TableText import Column
 from com.raytheon.uf.common.time import SimulatedTime
 
@@ -245,45 +248,108 @@ class Format(Legacy_Base_Formatter.Format):
         self._setVal('floodPointHeadline', headline, sectionDict, 'Flood Point Headline')
         return headline + '\n'
 
-    def _floodPointTable(self, dataDictionary):
-#         floodPointDataList = None
-#         if dataDictionary.get('floodPointTable', None):
-#             # Dictionary has floodPointTable so this is a RVS
-#             floodPointDataList = dataDictionary.get('floodPointTable', None)
-#         elif dataDictionary.get('segments', None):
-#             # Non RVS Product Level Table
-#             floodPointDataList = []
-#             for segment in dataDictionary.get('segments'):
-#                 for section in segment.get('sections', []):
-#                     floodPointDataList.append(section)
-#         elif dataDictionary.get('sections', None):
-#             # Non RVS Segment Level Table
-#             floodPointDataList = []
-#             for section in dataDictionary.get('sections'):
-#                 floodPointDataList.append(section)
-#         else:
-#             # Non RVS Section Level Table
-#             floodPointDataList = [dataDictionary]
-# 
-#         millis = SimulatedTime.getSystemTime().getMillis() 
-#         currentTime = datetime.datetime.fromtimestamp(millis / 1000)
-#         rfp = RiverForecastPoints.RiverForecastPoints(currentTime)   
-# 
-#         columns = []
-#         columns.append(Column('floodStage', width=6, align='<', labelLine1='Fld', labelAlign1='<', labelLine2='Stg', labelAlign2='<'))
-#         columns.append(Column('observedStage', self._issueTime, width=20, align='<',labelLine1='Observed', labelAlign1='^', labelLine2='Stg    Day    Time', labelAlign2='<'))
-#         columns.append(Column('forecastStage_next3days', self._issueTime, width=20, labelLine1='Forecast', labelAlign1='^'))
-# 
-#         floodPointTableText = ''
-#         if (floodPointDataList is not None):
-#             floodPointTable = FloodPointTable(floodPointDataList, columns, millis, self.timezones, rfp)
-#             floodPointTableText = floodPointTable.makeTable()
-# 
-#         return(floodPointTableText)
+    def _floodPointTable(self, dictionary):
+        text = '\n&&\n'
+        HazardEventDicts = self.getDataForFloodPointTable(dictionary)
+        if HazardEventDicts:
+            columns = []
+            # Create the columns
+            columns.append(Column('location', width=16, align='<', labelLine1='___________', labelAlign1='<',  labelLine2='Location', labelAlign2='<'))
+            columns.append(Column('floodStage', width=6, align='<', labelLine1='Fld', labelAlign1='<', labelLine2='Stg', labelAlign2='<'))
+            columns.append(Column('observedStage', width=20, align='<',labelLine1='Observed', labelAlign1='^', labelLine2='Stg    Day    Time', labelAlign2='<'))
 
-        return( "|* floodPointTable *|")
+            hazardEventDict = HazardEventDicts[0]
+            observedTime_ms = hazardEventDict.get('observedTime_ms')
+            day1Label = self._tpc.getFormattedTime(observedTime_ms + 24*3600*1000, '%a', timeZones=self.timezones)
+            day2Label = self._tpc.getFormattedTime(observedTime_ms + 48*3600*1000, '%a', timeZones=self.timezones)
+            day3Label = self._tpc.getFormattedTime(observedTime_ms + 72*3600*1000, '%a', timeZones=self.timezones) 
+            headerLabel = day1Label + '   '+day2Label+ '   '+day3Label
+            columns.append(Column('forecastStage_next3days', width=20, align='<', labelLine1='Forecast', labelAlign1='^', labelLine2=headerLabel, labelAlign2='<'))
+ 
+            # Got the column headings now make the required data structure for the table
+            tableValuesDict = self.createDataDictForFloodPointTable(HazardEventDicts)
+
+            # Got the columns and data now format the table.
+            floodPointTable = Table(columns, tableValuesDict)
+            text += floodPointTable.makeTable()
+        return text
 
     ###################### Utility methods
+
+    def getDataForFloodPointTable(self, dictionary):
+        HazardEventDicts = []
+        if dictionary.get('segments', None):
+            # Product Level Table
+            for segment in dictionary.get('segments'):
+                for section in segment.get('sections', []):
+                    for hazard in section.get('hazardEvents', []):
+                        HazardEventDicts.append(hazard)
+        elif dictionary.get('sections', None):
+            # Segment Level Table
+            for section in dictionary.get('sections'):
+                for hazard in section.get('hazardEvents', []):
+                    HazardEventDicts.append(hazard)
+        else:
+            # RVS or Section Level Table
+            for hazard in dictionary.get('hazardEvents', []):
+                HazardEventDicts.append(hazard)
+        return HazardEventDicts
+    
+    def createDataDictForFloodPointTable(self, HazardEventDicts):
+        # Group the hazards based on streamName
+        riverGroups = {}
+        for hazardEvent in HazardEventDicts:
+            streamName = hazardEvent.get('streamName')
+            riverGroups.setdefault(streamName, []).append(hazardEvent)
+
+        # Dictionary that will hold all the column values for all the rows in the table.
+        tableValuesDict = {}
+        for streamName in riverGroups:
+            # Could have multiple rows for the same streamName
+            listOfValueDicts = []
+            for hazard in riverGroups.get(streamName):
+                # Dictionary that will hold the column values for this one row in the table.
+                valueDictionary = {}
+                # Info needed to create column values
+                observedTime = hazard.get('observedTime_ms')
+                timeStr = self.formatTime(observedTime, '%a   %I %p', timeZones=self.timezones)
+                timeStrs = timeStr.split(' ')
+                # Adding spaces so values line up with column headings.
+                timeStr = timeStrs[0] + '    ' + timeStrs[1] + ' ' + timeStrs[2]
+                # Round to 2 decimal point - result is a string
+                observedStage = format(hazard.get('observedStage'), '.2f')
+                floodStage = format(hazard.get('floodStage'), '.2f')
+                day1 = hazard.get('day1')
+                day2 = hazard.get('day2')
+                day3 = hazard.get('day3')
+                next3DaysValue = self.format(day1, 6) + self.format(day2, 6) + self.format(day3, 6)
+
+                # Add all the column values to the dictionary
+                valueDictionary['location'] = hazard.get('riverPointName')
+                valueDictionary['floodStage'] = floodStage
+                valueDictionary['observedStage'] = observedStage + '   ' + timeStr
+                valueDictionary['forecastStage_next3days'] = next3DaysValue
+
+                # Add the dictionary to the list
+                listOfValueDicts.append(valueDictionary)
+            tableValuesDict[streamName] = listOfValueDicts
+        return tableValuesDict 
+
+    def format(self, value, width=None, align='<'):
+        if value == self.MISSING_VALUE:
+            value = ' '
+        value = str(value) 
+        if width is None:
+            width = len(value)
+        formatStr = '{:'+align+str(width)+'}'
+        return formatStr.format(value)
+
+    def formatTime(self, time_ms, format='%a   %I %p', timeZones=[]): 
+        timeStr = self._tpc.getFormattedTime(time_ms, '%a    %I %p', timeZones=timeZones) 
+        timeStr = timeStr.replace("AM", 'am')
+        timeStr = timeStr.replace("PM", 'pm')
+        timeStr = timeStr.replace(' 0', '  ')
+        return timeStr
 
     def typeOfFloodingMapping(self, immediateCuase):
         mapping = {
