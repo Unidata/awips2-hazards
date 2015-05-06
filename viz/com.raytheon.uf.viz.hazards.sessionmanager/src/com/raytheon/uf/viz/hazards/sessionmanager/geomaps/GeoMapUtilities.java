@@ -94,7 +94,6 @@ import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
  * Feb 25, 2015 6632       Dan Schaffer Fixed bug handling hazard outside CWA
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
  * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen
- * May 05, 2015 7624       mduff        Removed multiple geometry point reductions
  * </pre>
  * 
  * @author blawrenc
@@ -370,9 +369,13 @@ public class GeoMapUtilities {
                             .getGeometry();
                     for (int geometryIndex = 0; geometryIndex < asCollection
                             .getNumGeometries(); geometryIndex++) {
+                        mappingGeometry = GeometryPrecisionReducer.reduce(
+                                mappingGeometry, precisionModel);
                         Geometry geometry = asCollection
                                 .getGeometryN(geometryIndex);
                         if (geometry instanceof Polygon) {
+                            geometry = GeometryPrecisionReducer.reduce(
+                                    geometry, precisionModel);
                             Geometry intersectionGeometry = mappingGeometry
                                     .intersection(geometry);
 
@@ -385,12 +388,14 @@ public class GeoMapUtilities {
                             }
                         }
                     }
+
                 }
+
             }
+
         } catch (TopologyException e) {
             statusHandler.error("Unexpected geometry error.  Redraw hazard");
         }
-
         return result;
     }
 

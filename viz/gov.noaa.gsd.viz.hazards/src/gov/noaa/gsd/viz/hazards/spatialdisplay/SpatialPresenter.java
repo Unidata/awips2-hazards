@@ -15,7 +15,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -31,8 +30,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionHatchingToggled;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
@@ -78,7 +75,6 @@ import com.vividsolutions.jts.geom.Point;
  * Feb 12, 2015 4959       Dan Schaffer      Modify MB3 add/remove UGCs to match Warngen
  * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
  * Apr 10, 2015 6898       Chris.Cody        Removed modelChanged legacy messaging method
- * May 05, 2015 7624       mduff             Pass the modified events to the spatial display
  * </pre>
  * 
  * @author Chris.Golden
@@ -115,21 +111,14 @@ public class SpatialPresenter extends
     }
 
     // Public Methods
+
     @Handler
     public void sessionHatchingToggled(SessionHatchingToggled notification) {
         updateSpatialDisplay();
     }
 
     @Handler
-    public void sessionEventAdded(SessionEventAdded notification) {
-        updateSpatialDisplay(notification.getEvent().getEventID());
-    }
-
-    @Handler
     public void sessionEventsModified(SessionEventsModified notification) {
-        if (notification instanceof SessionEventAttributesModified) {
-            return;
-        }
         updateSpatialDisplay();
         if (notification instanceof SessionSelectedEventsModified) {
             recenterZoom();
@@ -142,31 +131,9 @@ public class SpatialPresenter extends
     }
 
     /**
-     * Update the the spatial view without recreating geometries.
+     * Update the event areas drawn in the spatial view.
      */
     public void updateSpatialDisplay() {
-        updateSpatialDisplay(Collections.<String> emptyList());
-    }
-
-    /**
-     * Update the spatial view for the provided eventId
-     * 
-     * @param eventId
-     *            The updated Event ID
-     */
-    public void updateSpatialDisplay(String eventId) {
-        List<String> events = new ArrayList<String>();
-        events.add(eventId);
-        this.updateSpatialDisplay(events);
-    }
-
-    /**
-     * Update the spatial view for the provided eventIds
-     * 
-     * @param eventIds
-     *            The updated Event IDs
-     */
-    public void updateSpatialDisplay(Collection<String> eventIds) {
         getView().setUndoEnabled(getModel().isUndoable());
         getView().setRedoEnabled(getModel().isRedoable());
 
@@ -187,10 +154,8 @@ public class SpatialPresenter extends
 
         ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
                 .getEventManager();
-
         Collection<ObservedHazardEvent> events = eventManager
                 .getCheckedEvents();
-
         ISessionTimeManager timeManager = sessionManager.getTimeManager();
 
         SelectedTime selectedTime = timeManager.getSelectedTime();
@@ -205,21 +170,18 @@ public class SpatialPresenter extends
             eventOverlapSelectedTime.put(eventID,
                     doesEventOverlapSelectedTime(event, selectedTime));
             forModifyingStormTrack
-                    .put(eventID,
+                    .put(event.getEventID(),
                             event.getHazardAttribute(HazardConstants.TRACK_POINTS) != null);
-            eventEditability.put(eventID, event.canEventAreaBeChanged());
+            eventEditability.put(event.getEventID(),
+                    event.canEventAreaBeChanged());
         }
 
         updateSelectedEvents(events);
         /*
-         * Only pass in events that have changed.
+         * TODO It might be possible to optimize here by checking if the events
+         * have changed before displaying.
          */
-        List<ObservedHazardEvent> hazardList = new ArrayList<>(eventIds.size());
-        if (!eventIds.isEmpty()) {
-            hazardList = sessionManager.getEventManager().getEventsById(
-                    eventIds);
-        }
-        getView().drawEvents(hazardList, eventOverlapSelectedTime,
+        getView().drawEvents(events, eventOverlapSelectedTime,
                 forModifyingStormTrack, eventEditability,
                 getModel().isAutoHazardCheckingOn(),
                 getModel().areHatchedAreasDisplayed());
@@ -355,14 +317,6 @@ public class SpatialPresenter extends
         getModel().getEventManager().addOrRemoveEnclosingUGCs(location);
     }
 
-    /**
-     * Remove events that don't overlap with the selectedTime.
-     * 
-     * @param events
-     *            Collection of ObservedhazardEvent objects
-     * @param selectedTime
-     *            The selectedTime
-     */
     private void filterEventsForTime(Collection<ObservedHazardEvent> events,
             SelectedTime selectedTime) {
         Iterator<ObservedHazardEvent> it = events.iterator();
@@ -380,6 +334,8 @@ public class SpatialPresenter extends
                     it.remove();
                 }
             }
+
         }
     }
+
 }

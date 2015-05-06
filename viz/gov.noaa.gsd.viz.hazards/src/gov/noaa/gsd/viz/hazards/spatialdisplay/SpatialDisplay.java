@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NULL_PRODUCT_GENERATOR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NULL_RECOMMENDER;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
@@ -21,6 +22,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDr
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPolygon;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesText;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionAction;
 import gov.noaa.nws.ncep.ui.pgen.display.AbstractElementContainer;
@@ -32,6 +34,7 @@ import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
+import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 import gov.noaa.nws.ncep.ui.pgen.elements.Text;
 
 import java.awt.Color;
@@ -76,7 +79,6 @@ import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.core.AbstractTimeMatcher;
-import com.raytheon.uf.viz.core.DrawableLine;
 import com.raytheon.uf.viz.core.IDisplayPaneContainer;
 import com.raytheon.uf.viz.core.IGraphicsTarget;
 import com.raytheon.uf.viz.core.IGraphicsTarget.PointStyle;
@@ -172,7 +174,6 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
  * Mar 19, 2015 6938       mduff        Increased size of handlebars to 1.5 mag.
  * Apr 03, 2015 6815       mduff        Fix memory leak.
- * May 05, 2015 7624       mduff        More optimizations, added deleting of events from display.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -203,6 +204,13 @@ public class SpatialDisplay extends
      * A reference to an instance of app builder.
      */
     private HazardServicesAppBuilder appBuilder;
+
+    /*
+     * keep track of the previous zoom level for purposes of redrawing PGEN
+     * symbols. Symbols are raster objects, so we only want to redraw them when
+     * zooming.
+     */
+    private float previousZoomLevel = 0;
 
     /**
      * Not pulling in ElementCollectionFilter due to restriction on NCEP PGEN UI
@@ -305,13 +313,9 @@ public class SpatialDisplay extends
      * A list of drawables representing the annotations associated with hazard
      * hatch areas.
      */
-    private final List<AbstractDrawableComponent> drawableComponents;
+    private final List<AbstractDrawableComponent> hatchedAreaAnnotations;
 
     private IShadedShape hatchedAreaShadedShape;
-
-    private final RGB white;
-
-    private final Map<String, List<AbstractDrawableComponent>> hazardEventMap = new HashMap<>();
 
     /**
      * Constructor.
@@ -349,11 +353,6 @@ public class SpatialDisplay extends
             SimulatedTime.getSystemTime().setTime(simulatedDate.getTime());
         }
 
-        org.eclipse.swt.graphics.Color whiteColor = Display.getCurrent()
-                .getSystemColor(SWT.COLOR_WHITE);
-        white = new RGB(whiteColor.getRed(), whiteColor.getGreen(),
-                whiteColor.getBlue());
-
         displayMap = new ConcurrentHashMap<>();
         elSelected = new ArrayList<>();
         geometryFactory = new GeometryFactory();
@@ -361,10 +360,7 @@ public class SpatialDisplay extends
         dataManager = new SpatialDisplayDataManager();
         persistentShapeMap = new HashMap<>();
         hatchedAreas = new ArrayList<>();
-        drawableComponents = new ArrayList<>();
-
-        // Set this to an empty list by default
-        this.setObjects(drawableComponents);
+        hatchedAreaAnnotations = new ArrayList<>();
 
         dataTimes = new ArrayList<>();
 
@@ -496,6 +492,7 @@ public class SpatialDisplay extends
         if (hatchedAreaShadedShape != null) {
             hatchedAreaShadedShape.dispose();
         }
+
     }
 
     @Override
@@ -525,10 +522,19 @@ public class SpatialDisplay extends
             AbstractDrawableComponent object,
             AbstractMovableToolLayer.SelectionStatus status)
             throws VizException {
+
         /*
          * Draw the hazard event
          */
         drawProduct(target, paintProps, object);
+
+        /*
+         * Draw the selected polygon
+         */
+        if (selectedHazardLayer != null) {
+            drawSelected(target, paintProps);
+        }
+
     }
 
     @Override
@@ -557,6 +563,7 @@ public class SpatialDisplay extends
     @Override
     protected void paintInternal(IGraphicsTarget target,
             PaintProperties paintProps) throws VizException {
+
         /*
          * Paint shaded shapes for hatched areas
          */
@@ -567,10 +574,6 @@ public class SpatialDisplay extends
         }
 
         super.paintInternal(target, paintProps);
-
-        if (selectedHazardLayer != null) {
-            drawSelected(target, paintProps);
-        }
     }
 
     @Override
@@ -748,59 +751,39 @@ public class SpatialDisplay extends
             Map<String, Boolean> forModifyingStormTrack,
             Map<String, Boolean> eventEditability,
             boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed) {
-
-        /*
-         * Check the events. If events were removed then the allEvents will have
-         * fewer events so the extras will need to be removed.
-         */
-        List<String> allEventIds = getAllEventIds();
-        Collection<String> eventIds = hazardEventMap.keySet();
-        List<String> keysToDelete = new ArrayList<>();
-        for (String key : eventIds) {
-            if (!allEventIds.contains(key)) {
-                keysToDelete.add(key);
-            }
-        }
-
-        // Delete the keys
-        clearEvents(keysToDelete);
+        clearEvents();
+        selectedHazardLayer = null;
 
         hatchedAreas.clear();
-        drawableComponents.clear();
-        List<AbstractDrawableComponent> hatchedAreaAnnotations = new ArrayList<>();
+        hatchedAreaAnnotations.clear();
 
         for (ObservedHazardEvent hazardEvent : events) {
+
             /*
              * Keep an inventory of which events are selected.
              */
             String eventID = hazardEvent.getEventID();
-            List<AbstractDrawableComponent> items = drawableBuilder
-                    .buildDrawableComponents(this, hazardEvent,
-                            eventOverlapSelectedTime.get(eventID),
-                            getActiveLayer(),
-                            forModifyingStormTrack.get(eventID),
-                            eventEditability.get(eventID),
-                            areHatchedAreasDisplayed);
-            hazardEventMap.put(hazardEvent.getEventID(), items);
-        }
+            Boolean isSelected = (Boolean) hazardEvent
+                    .getHazardAttribute(HAZARD_EVENT_SELECTED);
 
-        ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = appBuilder
-                .getSessionManager();
-        List<ObservedHazardEvent> selectedEvents = sessionManager
-                .getEventManager().getSelectedEvents();
-        for (ObservedHazardEvent hazardEvent : selectedEvents) {
-            if (areHatchedAreasDisplayed) {
+            drawableBuilder.buildDrawableComponents(this, hazardEvent,
+                    eventOverlapSelectedTime.get(eventID), getActiveLayer(),
+                    forModifyingStormTrack.get(eventID),
+                    eventEditability.get(eventID), areHatchedAreasDisplayed);
+
+            if (areHatchedAreasDisplayed && isSelected) {
                 redrawHatchedAreas = true;
                 drawableBuilder.buildhazardAreas(this, hazardEvent,
                         getActiveLayer(), hatchedAreas, hatchedAreaAnnotations);
             }
+
         }
 
-        drawableComponents.addAll(hatchedAreaAnnotations);
-        for (List<AbstractDrawableComponent> adcList : hazardEventMap.values()) {
-            drawableComponents.addAll(adcList);
-        }
+        List<AbstractDrawableComponent> drawables = dataManager
+                .getActiveLayer().getDrawables();
 
+        hatchedAreaAnnotations.addAll(drawables);
+        setObjects(hatchedAreaAnnotations);
         issueRefresh();
     }
 
@@ -1400,16 +1383,35 @@ public class SpatialDisplay extends
     private void drawProduct(IGraphicsTarget target,
             PaintProperties paintProps, AbstractDrawableComponent el) {
         Layer layer = dataManager.getActiveLayer();
+
         DisplayProperties dprops = buildDisplayProperties(layer);
 
-        AbstractElementContainer container = displayMap.get(el);
-        if (container == null) {
-            container = ElementContainerFactory.createContainer(
-                    (DrawableElement) el, descriptor, target);
+        // Do this to force symbols to redraw themselves.
+        // This ensures that they scale properly as
+        // the user zooms in/out of the display.
+        // Only do this if the user is zooming.
+        if (el instanceof Symbol || el instanceof Text) {
+            if ((paintProps.isZooming())
+                    || (previousZoomLevel != paintProps.getZoomLevel())) {
+                previousZoomLevel = paintProps.getZoomLevel();
+
+                if (el instanceof HazardServicesText) {
+                    ((HazardServicesText) el).updatePosition();
+                }
+                AbstractElementContainer aec = displayMap.remove(el);
+                if (aec != null) {
+                    aec.dispose();
+                }
+            }
+        }
+
+        if (!displayMap.containsKey(el)) {
+            AbstractElementContainer container = ElementContainerFactory
+                    .createContainer((DrawableElement) el, descriptor, target);
             displayMap.put(el, container);
         }
 
-        container.draw(target, paintProps, dprops);
+        displayMap.get(el).draw(target, paintProps, dprops);
     }
 
     /**
@@ -1456,23 +1458,35 @@ public class SpatialDisplay extends
         return 0.0;
     }
 
-    private void clearEvents(List<String> events) {
+    /**
+     * Clear all events from the spatial display. Takes into account events that
+     * need to be persisted such as a storm track dot.
+     */
+    private void clearEvents() {
         List<AbstractDrawableComponent> deList = dataManager.getActiveLayer()
                 .getDrawables();
-        List<AbstractDrawableComponent> toRemove = new ArrayList<>();
-        for (AbstractDrawableComponent adc : deList) {
-            if (deList.contains(adc)) {
-                toRemove.add(adc);
+
+        // Needed to use an array to prevent concurrency issues.
+        AbstractDrawableComponent[] deArray = deList
+                .toArray(new AbstractDrawableComponent[100]);
+
+        for (AbstractDrawableComponent de : deArray) {
+            if (de == null) {
+                break;
+            }
+
+            String eventID = ((IHazardServicesShape) de).getID();
+            List<AbstractDrawableComponent> persistentDrawables = persistentShapeMap
+                    .get(eventID);
+
+            if (persistentDrawables == null
+                    || !persistentDrawables.contains(de)) {
+
+                removeElement(de);
             }
         }
 
-        for (AbstractDrawableComponent adc : toRemove) {
-            removeElement(adc);
-        }
-
-        for (String eventId : events) {
-            hazardEventMap.remove(eventId);
-        }
+        issueRefresh();
     }
 
     private void trackPersistentShapes(String id,
@@ -1574,15 +1588,9 @@ public class SpatialDisplay extends
                             .isEditable()) {
 
                 if (!handleBarPoints.isEmpty()) {
+
                     target.drawPoints(handleBarPoints, handleBarColor.getRGB(),
                             PointStyle.DISC, HANDLEBAR_MAGNIFICATION);
-                    DrawableLine line = new DrawableLine();
-                    line.basics.color = white;
-                    line.width = 5;
-                    for (double[] da : handleBarPoints) {
-                        line.addPoint(da[0], da[1]);
-                    }
-                    target.drawLine(line);
                 }
             }
         }
@@ -1636,6 +1644,7 @@ public class SpatialDisplay extends
                     }
 
                     hatchedAreaShadedShape.compile();
+
                     hatchedAreaShadedShape.setFillPattern(FillPatterns
                             .getGLPattern(GL_PATTERN_VERTICAL_DOTTED));
 
@@ -1643,6 +1652,7 @@ public class SpatialDisplay extends
                     statusHandler.error("Error compiling hazard hatched areas",
                             e);
                 }
+
             }
 
             try {
@@ -1651,6 +1661,7 @@ public class SpatialDisplay extends
             } catch (VizException e) {
                 statusHandler.error("Error drawing hazard hatched areas", e);
             }
+
         }
     }
 
@@ -1702,20 +1713,6 @@ public class SpatialDisplay extends
                 x, y);
         setCurrentEvent(containingComponents);
 
-    }
-
-    private List<String> getAllEventIds() {
-        ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = appBuilder
-                .getSessionManager();
-        Collection<ObservedHazardEvent> allEvents = sessionManager
-                .getEventManager().getEvents();
-
-        List<String> eventIds = new ArrayList<>(allEvents.size());
-        for (ObservedHazardEvent event : allEvents) {
-            eventIds.add(event.getEventID());
-        }
-
-        return eventIds;
     }
 
     /**

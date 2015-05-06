@@ -86,7 +86,6 @@ import com.vividsolutions.jts.geom.Puntal;
  * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
  * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen
- * May 05, 2015 7624       mduff        Optimizations and fixes for drawing FFMP small basins.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -105,10 +104,6 @@ public class HazardServicesDrawableBuilder {
     private static final String FILLED_STAR = "FILLED_STAR";
 
     private static final String TEXT = "TEXT";
-
-    private static final double SIMPLIFICATION_LEVEL = 0.0005;
-
-    private static final double BUFFER_LEVEL = SIMPLIFICATION_LEVEL / 4;
 
     /**
      * Logging mechanism.
@@ -237,38 +232,16 @@ public class HazardServicesDrawableBuilder {
 
             drawingAttributes.setAttributes(shapeNum, hazardEvent);
 
-            Coordinate[] coordinates = null;
             Geometry geometry = hazardEvent.getGeometry()
                     .getGeometryN(shapeNum);
-
-            if (geometry instanceof MultiPolygon) {
-                MultiPolygon mp = (MultiPolygon) geometry;
-                // From FFMP
-                int numGeoms = mp.getNumGeometries();
-                Geometry[] hucGeometries = new Geometry[numGeoms];
-                for (int i = 0; i < numGeoms; i++) {
-                    hucGeometries[i] = deholer(geometryFactory,
-                            (Polygon) mp.getGeometryN(i));
-                }
-                Geometry tmpGeom = geometryFactory.createGeometryCollection(
-                        hucGeometries).buffer(0);
-
-                drawableComponent = new HazardServicesPolygon(
-                        drawingAttributes, LINE, drawingAttributes
-                                .getLineStyle().toString(), tmpGeom,
-                        activeLayer, hazardEvent.getEventID());
-            } else {
-                coordinates = ((Polygon) geometry).getExteriorRing()
-                        .getCoordinates();
-                LinearRing linearRing = geometryFactory
-                        .createLinearRing(coordinates);
-                Polygon polygon = geometryFactory.createPolygon(linearRing,
-                        null);
-                drawableComponent = new HazardServicesPolygon(
-                        drawingAttributes, LINE, drawingAttributes
-                                .getLineStyle().toString(), polygon,
-                        activeLayer, hazardEvent.getEventID());
-            }
+            Coordinate[] coordinates = ((Polygon) geometry).getExteriorRing()
+                    .getCoordinates();
+            LinearRing linearRing = geometryFactory
+                    .createLinearRing(coordinates);
+            Polygon polygon = geometryFactory.createPolygon(linearRing, null);
+            drawableComponent = new HazardServicesPolygon(drawingAttributes,
+                    LINE, drawingAttributes.getLineStyle().toString(), polygon,
+                    activeLayer, hazardEvent.getEventID());
 
         } catch (VizException e) {
             statusHandler.error(
@@ -353,6 +326,7 @@ public class HazardServicesDrawableBuilder {
             boolean eventOverlapSelectedTime, Layer activeLayer,
             boolean forModifyingStormTrack, boolean isEventEditable,
             boolean drawHazardHatchArea) {
+
         List<AbstractDrawableComponent> result = Lists.newArrayList();
 
         if (forModifyingStormTrack) {
@@ -398,8 +372,8 @@ public class HazardServicesDrawableBuilder {
 
             addTextComponentAtGeometryCenterPoint(spatialDisplay, result,
                     hazardEvent);
-        }
 
+        }
         return result;
     }
 
@@ -687,13 +661,7 @@ public class HazardServicesDrawableBuilder {
             List<IGeometryData> hazardArea = geoMapUtilities
                     .buildHazardAreaForEvent(mapDBtableName, mapLabelParameter,
                             cwa, hazardEvent);
-            String sig = hazardEvent.getSignificance();
-            boolean drawPolygonAnnotation = true;
-            // Don't draw annotations if more than 100 polygons exist.
-            // TODO verify this is ok to do
-            if (hazardArea.size() > 100) {
-                drawPolygonAnnotation = false;
-            }
+
             for (IGeometryData geometryData : hazardArea) {
 
                 /*
@@ -716,21 +684,27 @@ public class HazardServicesDrawableBuilder {
                                     geometry, activeLayer);
                             hatchedAreas.add(drawableComponent);
                         }
-
-                        if (isWarngenHatching && drawPolygonAnnotation) {
-                            if (!geometry.isEmpty()
-                                    && (geometry instanceof Polygon || geometry instanceof MultiPolygon)) {
-                                Point centroid = geometryData.getGeometry()
-                                        .getCentroid();
-                                AbstractDrawableComponent textComponent = new HazardServicesText(
-                                        drawingAttributes, sig, TEXT, centroid,
-                                        activeLayer, sig);
-                                hatchedAreaAnnotations.add(textComponent);
-                            }
-                        }
                     }
                 }
             }
+
+            if (isWarngenHatching) {
+                for (IGeometryData geometryData : hazardArea) {
+                    Geometry geometry = geometryData.getGeometry();
+                    if (!geometry.isEmpty()
+                            && (geometry instanceof Polygon || geometry instanceof MultiPolygon)) {
+                        Point centroid = geometryData.getGeometry()
+                                .getCentroid();
+
+                        AbstractDrawableComponent textComponent = new HazardServicesText(
+                                drawingAttributes,
+                                hazardEvent.getSignificance(), TEXT, centroid,
+                                activeLayer, hazardEvent.getSignificance());
+                        hatchedAreaAnnotations.add(textComponent);
+                    }
+                }
+            }
+
         }
     }
 
@@ -795,29 +769,4 @@ public class HazardServicesDrawableBuilder {
         }
     }
 
-    /**
-     * Attempts to remove interior holes on a polygon. Will take up to 3 passes
-     * over the polygon expanding any interior rings and merging rings back in.
-     * 
-     * @param gf
-     * @param p
-     * @return
-     */
-    protected Geometry deholer(GeometryFactory gf, Polygon p) {
-        int interiorRings = p.getNumInteriorRing();
-        int iterations = 0;
-        while ((interiorRings > 0) && (iterations < 3)) {
-            Geometry[] hucGeometries = new Geometry[interiorRings + 1];
-            hucGeometries[0] = p;
-            for (int i = 0; i < interiorRings; i++) {
-                hucGeometries[i + 1] = p.getInteriorRingN(i).buffer(
-                        BUFFER_LEVEL);
-            }
-            p = (Polygon) gf.createGeometryCollection(hucGeometries).buffer(0);
-            iterations++;
-            interiorRings = p.getNumInteriorRing();
-        }
-
-        return p;
-    }
 }
