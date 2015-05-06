@@ -4,6 +4,8 @@
 # This object determines the product pil given a Product Generator 
 # Category e.g. "FFA", "FLW_FLS", "FFW_FFS" and a VTEC action code.
 #------------------------------------------------------------------
+from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
+from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
 
 from HazardConstants import *
 # For the VTEC tests to work, we need to be able to bypass the RiverForecastPoints module
@@ -17,6 +19,7 @@ class Pil:
         self._vtecRecord = vtecRecord
         self._hazardEvent = hazardEvent
         self._action = self._vtecRecord.get('act')
+        self._riverForecastManager = RiverForecastManager()
         
     def getPil(self):  
         pil = None      
@@ -63,13 +66,10 @@ class Pil:
                     prevCategory = 1
                     if pointID:
                         try:
-                            from com.raytheon.uf.common.time import SimulatedTime
-                            from RiverForecastPoints import RiverForecastPoints
-                            import datetime
-                            millis = SimulatedTime.getSystemTime().getMillis()
-                            currentTime = datetime.datetime.fromtimestamp(millis / 1000)
-                            self._rfp = RiverForecastPoints(currentTime)
-                            fcstCategory = self._rfp.getMaximumForecastCategory(pointID)
+                            from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
+                            from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
+                            riverForecastPoint = self._riverForecastManager.getRiverForecastPoint(pointID, True)
+                            fcstCategory = riverForecastPoint.getMaximumForecastCategory()
                             prevCategory = self._hazardEvent.get('previousForecastCategory')
                         except Exception, e:
                             LogStream.logProblem('Could not get category information' + str(e))

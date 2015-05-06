@@ -33,7 +33,6 @@ from abc import *
 from ForecastStageText import ForecastStageText
 from TableText import Table
 from TableText import Column
-from com.raytheon.uf.common.time import SimulatedTime
 
 from HazardConstants import MISSING_VALUE
 

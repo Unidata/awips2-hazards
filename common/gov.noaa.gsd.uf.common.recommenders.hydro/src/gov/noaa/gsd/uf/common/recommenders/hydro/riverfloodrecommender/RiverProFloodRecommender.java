@@ -15,10 +15,18 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.hydro.HazardSettings;
+import com.raytheon.uf.common.hazards.hydro.HydrographForecast;
+import com.raytheon.uf.common.hazards.hydro.HydrographObserved;
+import com.raytheon.uf.common.hazards.hydro.RecommenderData;
+import com.raytheon.uf.common.hazards.hydro.RecommenderManager;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastGroup;
+import com.raytheon.uf.common.hazards.hydro.RiverForecastManager;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastPoint;
-import com.raytheon.uf.common.hazards.hydro.RiverProDataManager;
-import com.raytheon.uf.common.hazards.hydro.SHEFObservation;
+import com.raytheon.uf.common.hazards.hydro.RiverHydroConstants;
+import com.raytheon.uf.common.hazards.hydro.RiverHydroConstants.HydroFloodCategories;
+import com.raytheon.uf.common.hazards.hydro.RiverStationInfo;
+import com.raytheon.uf.common.hazards.hydro.SHEFForecast;
+import com.raytheon.uf.common.hazards.hydro.SHEFObserved;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -46,22 +54,15 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                           info available.
  * Apr 09, 2015 7271       Kevin.Manross     Ensured generated FL.Y hazard events
  *                                           have riseAbove/crest/fallBelow values.
+ * May 08, 2015 6562       Chris.Cody        Restructure River Forecast Points/Recommender
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
 
 public class RiverProFloodRecommender {
-    /**
-     * Threshold confidence level (percent) which delineates an watch from a
-     * warning.
-     */
-    private static final int WARNING_THRESHOLD = 80;
 
-    /**
-     * Probabilistic threshold for watch/warning basis.
-     */
-    private static final String FORCAST_CONFIDENCE_PERCENTAGE = "forecastConfidencePercentage";
+    RecommenderData recommenderData = null;
 
     /**
      * Flag indicating whether or not to include non-flood points in the
@@ -80,13 +81,13 @@ public class RiverProFloodRecommender {
      */
     private static final char RIVER_FLOW_CHARACTER = 'Q';
 
-    private final RiverProDataManager riverProDataManager;
+    private RiverForecastManager riverForecastManager = null;
 
     /**
      * Default constructor
      */
-    public RiverProFloodRecommender(RiverProDataManager riverProDataManager) {
-        this.riverProDataManager = riverProDataManager;
+    public RiverProFloodRecommender() {
+        this.riverForecastManager = new RiverForecastManager();
     }
 
     /**
@@ -107,6 +108,17 @@ public class RiverProFloodRecommender {
 
         return createHazards(dialogInputMap);
 
+    }
+
+    private RecommenderData getRecommenderData() {
+        if (this.recommenderData == null) {
+            RecommenderManager recommenderManager = RecommenderManager
+                    .getInstance();
+            long currentSystemTime = TimeUtil.currentTimeMillis();
+            this.recommenderData = recommenderManager
+                    .getRiverFloodRecommenderData(currentSystemTime);
+        }
+        return (this.recommenderData);
     }
 
     /**
@@ -153,7 +165,7 @@ public class RiverProFloodRecommender {
             riverHazard.setStatus(HazardStatus.POTENTIAL);
 
             hazardAttributes.put(HazardConstants.POINTID,
-                    riverForecastPoint.getId());
+                    riverForecastPoint.getLid());
             hazardAttributes.put(HazardConstants.STREAM_NAME,
                     riverForecastPoint.getStream());
 
@@ -168,7 +180,7 @@ public class RiverProFloodRecommender {
             hazardAttributes.put(HazardConstants.CURRENT_STAGE, currentStage);
 
             long currentStageTime = riverForecastPoint.getCurrentObservation()
-                    .getValidTime();
+                    .getObsTime();
             hazardAttributes.put(HazardConstants.CURRENT_STAGE_TIME,
                     currentStageTime);
 
@@ -179,7 +191,8 @@ public class RiverProFloodRecommender {
                 buildFloodAttributes(riverForecastPoint, hazardAttributes);
 
             } else {
-                buildNonFloodAttributes(riverForecastPoint, hazardAttributes);
+                buildNonFloodAttributes(riverForecastPoint, hazardAttributes,
+                        riverHazard);
             }
 
             riverHazard.setCreationTime(TimeUtil.newCalendar().getTime());
@@ -194,7 +207,7 @@ public class RiverProFloodRecommender {
             forecastPointAttributes.put(HazardConstants.POINT_TYPE,
                     (Serializable) pointCoords);
             forecastPointAttributes.put(HazardConstants.RIVER_POINT_ID,
-                    riverForecastPoint.getId());
+                    riverForecastPoint.getLid());
             forecastPointAttributes.put(HazardConstants.RIVER_POINT_NAME,
                     riverForecastPoint.getName());
             hazardAttributes.put(HazardConstants.FORECAST_POINT,
@@ -218,27 +231,39 @@ public class RiverProFloodRecommender {
      *            - used for single point selection workflow.
      * @return A set of recommended hazards.
      */
-    public EventSet<IHazardEvent> getPotentialRiverHazards(
+    private EventSet<IHazardEvent> getPotentialRiverHazards(
             boolean includeNonFloodPoints, Map<String, Object> dialogInputMap) {
         EventSet<IHazardEvent> potentialRiverEventSet = new EventSet<IHazardEvent>();
 
         String pointID = (String) dialogInputMap.get(SELECTED_POINT_ID);
 
-        for (RiverForecastGroup riverGroup : this.riverProDataManager
-                .getRiverGroupList()) {
-            if (riverGroup.isIncludedInRecommendation()) {
-                for (RiverForecastPoint riverForecastPoint : riverGroup
-                        .getForecastPointList()) {
+        RecommenderData recommenderData = getRecommenderData();
 
-                    if (pointID != null) {
-                        if (riverForecastPoint.getId().equals(pointID)) {
-                            IHazardEvent riverHazard = setRiverHazard(
-                                    includeNonFloodPoints, riverForecastPoint);
-                            riverHazard.setStatus(HazardStatus.PENDING);
-                            potentialRiverEventSet.add(riverHazard);
-                            return potentialRiverEventSet;
-                        }
-                    } else {
+        if (pointID != null) {
+            RiverForecastPoint riverForecastPoint = getRiverForecastPoint(
+                    pointID, recommenderData);
+            if (riverForecastPoint != null) {
+                String groupId = riverForecastPoint.getGroupId();
+                RiverForecastGroup riverForecastGroup = getRiverForecastGroup(
+                        groupId, recommenderData);
+                if (riverForecastGroup.isIncludedInRecommendation() == true) {
+                    IHazardEvent riverHazard = setRiverHazard(
+                            includeNonFloodPoints, riverForecastPoint);
+                    riverHazard.setStatus(HazardStatus.PENDING);
+                    potentialRiverEventSet.add(riverHazard);
+                }
+            }
+            return (potentialRiverEventSet);
+        }
+
+        List<RiverForecastGroup> riverGroupList = null;
+        riverGroupList = recommenderData.getRiverForecastGroupList();
+        for (RiverForecastGroup riverForecastGroup : riverGroupList) {
+            if (riverForecastGroup.isIncludedInRecommendation()) {
+                List<RiverForecastPoint> riverForecastPointList = riverForecastGroup
+                        .getForecastPointList();
+                if (riverForecastPointList != null) {
+                    for (RiverForecastPoint riverForecastPoint : riverForecastPointList) {
                         IHazardEvent riverHazard = setRiverHazard(
                                 includeNonFloodPoints, riverForecastPoint);
                         potentialRiverEventSet.add(riverHazard);
@@ -273,21 +298,19 @@ public class RiverProFloodRecommender {
                         .getValue());
 
         // Define flood record
-        int floodCategory = Math.min(riverForecastPoint
-                .getMaximumObservedForecastCategory(),
-                RiverForecastPoint.HydroFloodCategories.MAJOR_FLOOD_CATEGORY
-                        .getRank());
+        int floodCategory = Math.min(
+                riverForecastPoint.getMaximumObservedForecastCategory(),
+                HydroFloodCategories.MAJOR_FLOOD_CATEGORY.getRank());
 
         String recordStatus = retrieveFloodRecord(
-                this.riverProDataManager.getHazardSettings(),
+                this.riverForecastManager.getHazardSettings(),
                 riverForecastPoint);
         hazardAttributes.put(HazardConstants.FLOOD_RECORD, recordStatus);
 
         /*
          * Need to translate the flood category to a string value.
          */
-        if (floodCategory == RiverForecastPoint.HydroFloodCategories.NULL_CATEGORY
-                .getRank()) {
+        if (floodCategory == HydroFloodCategories.NULL_CATEGORY.getRank()) {
             hazardAttributes.put(HazardConstants.FLOOD_SEVERITY_CATEGORY,
                     FloodRecommenderConstants.FloodSeverity.NONE.getValue());
         } else {
@@ -305,16 +328,14 @@ public class RiverProFloodRecommender {
          * Retrieve the reach information for this forecast point
          */
 
-        Date riseAbove = riverForecastPoint.getRiseAboveTime();
+        long riseAbove = riverForecastPoint.getRiseAboveTime();
 
-        if ((riseAbove != null) && (riseAbove.getTime() > 0)) {
-            hazardAttributes.put(HazardConstants.RISE_ABOVE,
-                    riseAbove.getTime());
-            riverHazardEvent.setStartTime(riseAbove);
+        if ((riseAbove != RiverHydroConstants.MISSING_VALUE) && (riseAbove > 0)) {
+            hazardAttributes.put(HazardConstants.RISE_ABOVE, riseAbove);
+            riverHazardEvent.setStartTime(new Date(riseAbove));
         } else {
             hazardAttributes.put(HazardConstants.RISE_ABOVE, 0);
-            riverHazardEvent.setStartTime(this.riverProDataManager
-                    .getFloodDAO().getSystemTime());
+            riverHazardEvent.setStartTime(RiverForecastManager.getSystemTime());
         }
 
         Date maxObservedForecastCrestDate = riverForecastPoint
@@ -330,18 +351,17 @@ public class RiverProFloodRecommender {
             hazardAttributes.put(HazardConstants.CREST_STAGE, 0);
         }
 
-        Date fallBelow = riverForecastPoint.getFallBelowTime();
+        long fallBelow = riverForecastPoint.getFallBelowTime();
 
-        if (fallBelow != null) {
-            hazardAttributes.put(HazardConstants.FALL_BELOW,
-                    fallBelow.getTime());
+        if ((fallBelow != RiverHydroConstants.MISSING_VALUE) && (fallBelow > 0)) {
+            hazardAttributes.put(HazardConstants.FALL_BELOW, fallBelow);
 
             /*
              * Need to consider the shift ahead hours here...
              */
-            Date virtualEndTime = riverForecastPoint
-                    .getVirtualFallBelowTime(true);
-            riverHazardEvent.setEndTime(virtualEndTime);
+            long virtualEndTime = this.riverForecastManager
+                    .getVirtualFallBelowTime(riverForecastPoint, true);
+            riverHazardEvent.setEndTime(new Date(virtualEndTime));
         } else {
 
             hazardAttributes.put(HazardConstants.FALL_BELOW,
@@ -356,16 +376,17 @@ public class RiverProFloodRecommender {
                     true);
 
             long latestTime = 0L;
-            if (riverForecastPoint.getForecastHydrograph() != null) {
-                if (riverForecastPoint.getForecastHydrograph()
-                        .getShefHydroDataList() != null) {
-                    for (SHEFObservation fcst : riverForecastPoint
-                            .getForecastHydrograph().getShefHydroDataList()) {
+            HydrographForecast hydrographForecast = riverForecastPoint
+                    .getHydrographForecast();
+            if (hydrographForecast != null) {
+                List<SHEFForecast> shefForecastList = hydrographForecast
+                        .getShefHydroDataList();
+                if (shefForecastList != null) {
+                    for (SHEFForecast fcst : shefForecastList) {
                         if (fcst.getValidTime() > latestTime) {
                             latestTime = fcst.getValidTime();
                         }
                     }
-
                     long interval = latestTime
                             - riverHazardEvent.getStartTime().getTime();
 
@@ -386,6 +407,31 @@ public class RiverProFloodRecommender {
             }
         }
 
+        // Default to excessive rainfall.
+        hazardAttributes.put(HazardConstants.IMMEDIATE_CAUSE,
+                FloodRecommenderConstants.ImmediateCause.EXCESSIVE_RAINFALL
+                        .getValue());
+
+        // Define flood record
+        int floodCategory = Math.min(
+                riverForecastPoint.getMaximumObservedForecastCategory(),
+                HydroFloodCategories.MAJOR_FLOOD_CATEGORY.getRank());
+
+        String recordStatus = retrieveFloodRecord(
+                this.riverForecastManager.getHazardSettings(),
+                riverForecastPoint);
+        hazardAttributes.put(HazardConstants.FLOOD_RECORD, recordStatus);
+
+        /*
+         * Need to translate the flood category to a string value.
+         */
+        if (floodCategory == HydroFloodCategories.NULL_CATEGORY.getRank()) {
+            hazardAttributes.put(HazardConstants.FLOOD_SEVERITY_CATEGORY,
+                    FloodRecommenderConstants.FloodSeverity.NONE.getValue());
+        } else {
+            hazardAttributes.put(HazardConstants.FLOOD_SEVERITY_CATEGORY,
+                    Integer.toString(floodCategory));
+        }
     }
 
     /**
@@ -400,7 +446,35 @@ public class RiverProFloodRecommender {
      * @return
      */
     private void buildNonFloodAttributes(RiverForecastPoint riverForecastPoint,
-            Map<String, Serializable> hazardAttributes) {
+            Map<String, Serializable> hazardAttributes,
+            IHazardEvent pointHazardEvent) {
+        /*
+         * Retrieve the reach information for this forecast point
+         */
+
+        hazardAttributes.put(HazardConstants.POINTID,
+                riverForecastPoint.getLid());
+        hazardAttributes.put(HazardConstants.STREAM_NAME,
+                riverForecastPoint.getStream());
+
+        hazardAttributes.put(HazardConstants.FLOOD_STAGE,
+                riverForecastPoint.getFloodStage());
+        hazardAttributes.put(HazardConstants.ACTION_STAGE,
+                riverForecastPoint.getActionStage());
+
+        hazardAttributes.put(HazardConstants.RISE_ABOVE, 0);
+
+        hazardAttributes.put(HazardConstants.CREST, 0);
+
+        hazardAttributes.put(HazardConstants.FALL_BELOW, 0);
+
+        pointHazardEvent.setStartTime(RiverForecastManager.getSystemTime());
+
+        Calendar cal = TimeUtil.newCalendar(pointHazardEvent.getStartTime());
+        cal.add(Calendar.HOUR, this.riverForecastManager.getHazardSettings()
+                .getFlwExpirationHours());
+        pointHazardEvent.setEndTime(cal.getTime());
+
         /*
          * Default to unknown cause.
          */
@@ -432,15 +506,16 @@ public class RiverProFloodRecommender {
      */
     public String retrieveFloodRecord(HazardSettings settings,
             RiverForecastPoint forecastPoint) {
+
         String pe = forecastPoint.getPhysicalElement();
         double crestValue = forecastPoint.getMaximumObservedForecastValue();
-        double recordValue = forecastPoint.getFloodCategory()[RiverForecastPoint.HydroFloodCategories.RECORD_FLOOD_CATEGORY
+        double recordValue = forecastPoint.getFloodCategory()[HydroFloodCategories.RECORD_FLOOD_CATEGORY
                 .getRank()];
         double threshold;
         String recordString = null;
 
-        if (crestValue != RiverForecastPoint.MISSINGVAL
-                && recordValue != RiverForecastPoint.MISSINGVAL) {
+        if (crestValue != RiverHydroConstants.MISSING_VALUE_DOUBLE
+                && recordValue != RiverHydroConstants.MISSING_VALUE_DOUBLE) {
             if (pe.charAt(0) == RIVER_FLOW_CHARACTER) {
                 threshold = settings.getVtecRecordFlowOffset();
             } else {
@@ -460,5 +535,192 @@ public class RiverProFloodRecommender {
         }
 
         return recordString;
+    }
+
+    /**
+     * Retrieve a deep queried River Forecast Group.
+     * 
+     * This data should be returned from the Cached Recommender Data object.
+     * 
+     * @param groupID
+     * @param recommenderData
+     * @return River Forecast Group (deep query)
+     */
+    public RiverForecastGroup getRiverForecastGroup(String groupID) {
+        RecommenderData localRecommenderData = getRecommenderData();
+
+        return getRiverForecastGroup(groupID, localRecommenderData);
+    }
+
+    /**
+     * Retrieve a deep queried River Forecast Group.
+     * 
+     * This data should be returned from the Cached Recommender Data object.
+     * 
+     * @param groupID
+     * @param recommenderData
+     * @return River Forecast Group (deep query)
+     */
+    private RiverForecastGroup getRiverForecastGroup(String groupID,
+            RecommenderData recommenderData) {
+
+        RiverForecastGroup riverForecastGroup = null;
+        if (groupID != null) {
+            if (recommenderData != null) {
+                Map<String, RiverForecastGroup> riverForecastGroupMap = recommenderData
+                        .getRiverForecastGroupMap();
+                if (riverForecastGroupMap != null) {
+                    riverForecastGroup = riverForecastGroupMap.get(groupID);
+                }
+            }
+            if (riverForecastGroup == null) {
+                // Unable to find Group Id in cached Recommender Data. Querying
+                // separately.
+                riverForecastGroup = riverForecastManager
+                        .getRiverForecastGroup(groupID, true);
+            }
+        }
+        return (riverForecastGroup);
+    }
+
+    /**
+     * Retrieve a deep queried River Forecast Point.
+     * 
+     * This data should be returned from the Cached Recommender Data object.
+     * 
+     * @param pointID
+     * @return River Forecast Point (deep query)
+     */
+    public RiverForecastPoint getRiverForecastPoint(String pointID) {
+        RecommenderData localRecommenderData = getRecommenderData();
+
+        return getRiverForecastPoint(pointID, localRecommenderData);
+    }
+
+    /**
+     * Retrieve a deep queried River Forecast Point.
+     * 
+     * This data should be returned from the Cached Recommender Data object.
+     * 
+     * @param pointID
+     * @param recommenderData
+     * @return River Forecast Point (deep query)
+     */
+    private RiverForecastPoint getRiverForecastPoint(String pointID,
+            RecommenderData recommenderData) {
+
+        RiverForecastPoint riverForecastPoint = null;
+        if (pointID != null) {
+            if (recommenderData != null) {
+                Map<String, RiverForecastPoint> riverForecastPointMap = recommenderData
+                        .getRiverForecastPointMap();
+                if (riverForecastPointMap != null) {
+                    riverForecastPoint = riverForecastPointMap.get(pointID);
+                }
+            }
+            if (riverForecastPoint == null) {
+                // Unable to find Point Id in cached Recommender Data. Querying
+                // separately.
+                riverForecastPoint = riverForecastManager
+                        .getRiverForecastPoint(pointID, true);
+            }
+        }
+        return (riverForecastPoint);
+    }
+
+    /**
+     * Retrieve a Map of LID (Gauge Id) to a string containing Lat/Lon coords
+     * for area Flood Inundation.
+     * 
+     * @return A Map with the gauge 'lid' as the key and a string of latitude
+     *         and longitude values as the value.
+     */
+    public Map<String, String> getAreaInundationCoordinates() {
+
+        return (this.riverForecastManager.getAreaInundationCoordinates());
+    }
+
+    /**
+     * Retrieve RiverStationInfo for a LID (Gauge Id)
+     * 
+     * @return River Station Info Object
+     */
+    public RiverStationInfo getRiverStationInfo(String pointID) {
+
+        return (this.riverForecastManager
+                .getRiverForecastPointRiverStationInfo(pointID));
+    }
+
+    /**
+     * Get an indexed SHEF Observed object for a River Forecast Point.
+     * 
+     * This is for use by Python scripts. Python does not handle lists of
+     * complex objects elegantly. This method retrieves a River Forecast Point
+     * from the Recommender Data Cache. Then it locates a SHEF Observed object
+     * from the River Forecast Point object's HydrographObserved list of SHEF
+     * Observed data objects.
+     * 
+     * @param pointID
+     *            River Forecast Point LID
+     * @index Index of the SHEF Observed object in the HydrographObserved lise
+     * @return Selected SHEF Observed object
+     */
+    public SHEFObserved getSHEFObserved(String pointID, int index) {
+        RecommenderData localRecommenderData = getRecommenderData();
+        Map<String, RiverForecastPoint> riverForecastPointMap = localRecommenderData
+                .getRiverForecastPointMap();
+        RiverForecastPoint riverForecastPoint = riverForecastPointMap
+                .get(pointID);
+        if (riverForecastPoint != null) {
+            HydrographObserved hydrographObserved = riverForecastPoint
+                    .getHydrographObserved();
+            if (hydrographObserved != null) {
+                List<SHEFObserved> shefObservedList = hydrographObserved
+                        .getShefHydroDataList();
+                if ((shefObservedList != null)
+                        && (shefObservedList.size() > index)) {
+                    SHEFObserved shefObserved = shefObservedList.get(index);
+                    return (shefObserved);
+                }
+            }
+        }
+        return (null);
+    }
+
+    /**
+     * Get an indexed SHEF Forecast object for a River Forecast Point.
+     * 
+     * This is for use by Python scripts. Python does not handle lists of
+     * complex objects elegantly. This method retrieves a River Forecast Point
+     * from the Recommender Data Cache. Then it locates a SHEF Forecast object
+     * from the River Forecast Point object's HydrographForecast list of SHEF
+     * Forecast data objects.
+     * 
+     * @param pointID
+     *            River Forecast Point LID
+     * @index Index of the SHEF Forecast object in the HydrographForecast lise
+     * @return Selected SHEF Forecast object
+     */
+    public SHEFForecast getSHEFForecast(String pointID, int index) {
+
+        RecommenderData localRecommenderData = getRecommenderData();
+        Map<String, RiverForecastPoint> riverForecastPointMap = localRecommenderData
+                .getRiverForecastPointMap();
+        RiverForecastPoint riverForecastPoint = riverForecastPointMap
+                .get(pointID);
+        if (riverForecastPoint != null) {
+            HydrographForecast hydrographForecast = riverForecastPoint
+                    .getHydrographForecast();
+            if (hydrographForecast != null) {
+                List<SHEFForecast> shefForecastList = hydrographForecast
+                        .getShefHydroDataList();
+                if ((shefForecastList != null)
+                        && (shefForecastList.size() > index)) {
+                    SHEFForecast shefForecast = shefForecastList.get(index);
+                    return (shefForecast);
+                }
+            }
+        }
+        return (null);
     }
 }

@@ -23,10 +23,12 @@ recommender framework
                                                  entry point function to be within the
                                                  recommender script.
     May 14, 2015    7974     Robert.Blum         Added hours label to cutoff time.
+    May 18, 2015    6562     Chris.Cody          Restructure River Forecast Points/Recommender
     
 @since: November 2012
 @author: GSD Hazard Services Team
 '''
+import sys
 import datetime
 import EventFactory
 import GeometryFactory
@@ -41,14 +43,12 @@ from MapsDatabaseAccessor import MapsDatabaseAccessor
 
 from HazardConstants import *
 import HazardDataAccess
+from RiverForecastUtils import RiverForecastUtils
 
-from com.raytheon.uf.common.hazards.hydro import RiverProDataManager
+from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
+from com.raytheon.uf.common.hazards.hydro import RiverStationInfo
 from gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender import RiverProFloodRecommender
-from gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender import FloodRecommenderConstants
-from com.raytheon.uf.common.hazards.hydro import FloodDAO
-from RiverForecastPoints import RiverForecastPoints
 from com.raytheon.uf.common.time import SimulatedTime
-
 #
 # The size of the buffer for default flood polygons.
 DEFAULT_POLYGON_BUFFER = 0.05
@@ -65,7 +65,8 @@ MISSING_VALUE = -9999
 class Recommender(RecommenderTemplate.Recommender):
 
     def __init__(self):
-        pass
+        self._riverProFloodRecommender = None
+        self._riverForecastUtils = RiverForecastUtils()
         
     def defineScriptMetadata(self):
         """
@@ -131,12 +132,9 @@ class Recommender(RecommenderTemplate.Recommender):
         """
         
         self._setHazardPolygonDict()
-        
-        millis = SimulatedTime.getSystemTime().getMillis()
-        currentTime = datetime.datetime.fromtimestamp(millis / 1000)
-        self._rfp = RiverForecastPoints(currentTime)
-        self._riverProDataManager = RiverProDataManager()
-        self._riverProFloodRecommender = RiverProFloodRecommender(self._riverProDataManager)
+
+        if self._riverProFloodRecommender is None:
+            self._riverProFloodRecommender = RiverProFloodRecommender()
         
         self._warningThreshold = dialogInputMap.get("warningThreshold")
         sessionAttributes = eventSet.getAttributes()
@@ -176,8 +174,9 @@ class Recommender(RecommenderTemplate.Recommender):
         except:
             print "Could not connect to HIRES inundation table:", HIRES_RIVERINUNDATION_TABLE
 
-        floodDAO = FloodDAO.getInstance()
-        lowresInundationAreas = JUtil.javaMapToPyDict(floodDAO.getAreaInundationCoordinates())
+        if self._riverProFloodRecommender is None:
+            self._riverProFloodRecommender = RiverProFloodRecommender()
+        lowresInundationAreas = JUtil.javaMapToPyDict(self._riverProFloodRecommender.getAreaInundationCoordinates())
 
         self.hazardPolygonDict = {}
         for k,v in lowresInundationAreas.iteritems():
@@ -235,6 +234,7 @@ class Recommender(RecommenderTemplate.Recommender):
     
     def mergeHazardEvents(self, currentEvents, recommendedEventSet):        
         mergedEvents = EventSet(None)
+        
         for recommendedEvent in recommendedEventSet:
             self.setHazardType(recommendedEvent)
             # Look for an event that already exists
@@ -257,24 +257,27 @@ class Recommender(RecommenderTemplate.Recommender):
                         mergedEvents.add(currentEvent)
                     found = True
             if not found:
-                mergedEvents.add(recommendedEvent) 
+                mergedEvents.add(recommendedEvent)
+                
         return mergedEvents
                             
     def setHazardType(self, hazardEvent):        
         pointID = hazardEvent.get(POINT_ID)
-        
-        riverMile = self._rfp.getRiverMile(pointID)
+
+        riverForecastPoint = self._riverProFloodRecommender.getRiverForecastPoint(pointID)
+        riverStationInfo = self._riverProFloodRecommender.getRiverStationInfo(pointID)
+        riverMile = riverStationInfo.getMile()
         hazardEvent.set("riverMile", riverMile)
         
         hazEvtStart = hazardEvent.get("currentStageTime")/1000
         warningTimeThresh = self.getWarningTimeThreshold(hazEvtStart)
         hazardEvent.setPhenomenon("FL")
         
-        if self.isWarning(pointID, warningTimeThresh):
+        if self.isWarning(riverForecastPoint, warningTimeThresh):
             hazardEvent.setSignificance("W")
-        elif self.isWatch(pointID, warningTimeThresh):
+        elif self.isWatch(riverForecastPoint, warningTimeThresh):
             hazardEvent.setSignificance("A")
-        elif self.isAdvisory(pointID):
+        elif self.isAdvisory(riverForecastPoint):
             hazardEvent.setSignificance("Y")
         else:
             hazardEvent.setPhenomenon("HY")
@@ -297,7 +300,7 @@ class Recommender(RecommenderTemplate.Recommender):
                       returnEventSet.add(hazardEvent)  
                 return returnEventSet
             
-        
+         
         for hazardEvent in hazardEvents:
             phenSig = hazardEvent.getHazardType()
             
@@ -373,10 +376,11 @@ class Recommender(RecommenderTemplate.Recommender):
     def _getWarningThreshold(self):
         return 24 
 
-    def isWatch(self, pointID, warningThreshEpoch):
-        maxFcstStage = self._rfp.getMaximumForecastStage(pointID)
-        floodStage = self._rfp.getFloodStage(pointID)
-        fcstRiseAboveFloodStageTime = self._rfp.getForecastRiseAboveFloodStageTime(pointID)
+    def isWatch(self, riverForecastPoint, warningThreshEpoch):
+        
+        maxFcstStage = riverForecastPoint.getMaximumForecastValue()
+        floodStage = riverForecastPoint.getFloodStage()
+        fcstRiseAboveFloodStageTime = riverForecastPoint.getForecastRiseAboveTime()
         if fcstRiseAboveFloodStageTime:
             fcstRiseAboveFloodStageTime = fcstRiseAboveFloodStageTime / 1000
         
@@ -385,10 +389,11 @@ class Recommender(RecommenderTemplate.Recommender):
         else:
             return False
         
-    def isWarning(self, pointID, warningThreshEpoch):
-        maxFcstStage = self._rfp.getMaximumForecastStage(pointID)
-        floodStage = self._rfp.getFloodStage(pointID)
-        fcstRiseAboveFloodStageTime = self._rfp.getForecastRiseAboveFloodStageTime(pointID)
+    def isWarning(self, riverForecastPoint, warningThreshEpoch):
+
+        maxFcstStage = riverForecastPoint.getMaximumForecastValue()
+        floodStage =  riverForecastPoint.getFloodStage()
+        fcstRiseAboveFloodStageTime = riverForecastPoint.getForecastRiseAboveTime()
         if fcstRiseAboveFloodStageTime:
             fcstRiseAboveFloodStageTime = fcstRiseAboveFloodStageTime / 1000
         
@@ -397,14 +402,15 @@ class Recommender(RecommenderTemplate.Recommender):
         else:
             return False
             
-    def isAdvisory(self, pointID):
-        actionStage = self._rfp.getRiverForecastPoint(pointID).getActionStage()
-        maxFcstStage = self._rfp.getMaximumForecastStage(pointID)
-        obsStage = self._rfp.getObservedStage(pointID)[0]
+    def isAdvisory(self, riverForecastPoint):
+
+        pointID = riverForecastPoint.getLid()
+        actionStage = riverForecastPoint.getActionStage()
+        maxFcstStage = riverForecastPoint.getMaximumForecastValue()
+        obsStage = riverForecastPoint.getObservedCurrentValue()
         
         if (obsStage >= actionStage) or (maxFcstStage >= actionStage):
             return True
         else:
             return False    
-
 

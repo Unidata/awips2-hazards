@@ -59,8 +59,7 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.hazards.hydro.HydroConstants;
-import com.raytheon.uf.common.hazards.hydro.RiverForecastPoint;
+import com.raytheon.uf.common.hazards.hydro.RiverHydroConstants;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.core.RGBColors;
@@ -645,7 +644,7 @@ public class EditorCanvas extends Canvas {
                 if (ratingCurveExist) {
                     double value = StageDischargeUtils.discharge2stage(
                             graphData.getLid(), tickVal);
-                    if (value != HydroConstants.MISSING_VALUE) {
+                    if (value != RiverHydroConstants.MISSING_VALUE) {
                         stageValue = value;
                     } else {
                         break;
@@ -669,8 +668,9 @@ public class EditorCanvas extends Canvas {
             /* Draw the tick marks and right axis values if rating curve exists */
             if (ratingCurveExist) {
                 int[] tick2 = { GRAPHBORDER_LEFT + graphAreaWidth,
-                    GRAPHBORDER_TOP + y,
-                    GRAPHBORDER_LEFT + graphAreaWidth + dx, GRAPHBORDER_TOP + y };
+                        GRAPHBORDER_TOP + y,
+                        GRAPHBORDER_LEFT + graphAreaWidth + dx,
+                        GRAPHBORDER_TOP + y };
                 gc.drawPolyline(tick2);
                 gc.drawText("" + formatter.format(dischargeValue), labelX2,
                         labelY);
@@ -783,7 +783,7 @@ public class EditorCanvas extends Canvas {
         gc.setLineStyle(SWT.LINE_SOLID);
 
         /* Action stage/flow */
-        if (graphData.getActionStage() != HydroConstants.MISSING_VALUE) {
+        if (graphData.getActionStage() != RiverHydroConstants.MISSING_VALUE) {
             y = y2pixel(graphData.getActionStage());
             if (y > GRAPHBORDER_TOP) {
                 gc.setForeground(yellow);
@@ -794,7 +794,7 @@ public class EditorCanvas extends Canvas {
         }
 
         /* Flood stage/flow */
-        if (graphData.getFloodStage() != HydroConstants.MISSING_VALUE) {
+        if (graphData.getFloodStage() != RiverHydroConstants.MISSING_VALUE) {
             y = y2pixel(graphData.getFloodStage());
             if (y > GRAPHBORDER_TOP) {
                 gc.setForeground(orange);
@@ -805,7 +805,7 @@ public class EditorCanvas extends Canvas {
         }
 
         /* Moderate stage/flow */
-        if (graphData.getModerateStage() != HydroConstants.MISSING_VALUE) {
+        if (graphData.getModerateStage() != RiverHydroConstants.MISSING_VALUE) {
             y = y2pixel(graphData.getModerateStage());
             if (y > GRAPHBORDER_TOP) {
                 gc.setForeground(red);
@@ -816,7 +816,7 @@ public class EditorCanvas extends Canvas {
         }
 
         /* Major stage/flow */
-        if (graphData.getMajorStage() != HydroConstants.MISSING_VALUE) {
+        if (graphData.getMajorStage() != RiverHydroConstants.MISSING_VALUE) {
             y = y2pixel(graphData.getMajorStage());
             gc.setForeground(purple);
             int[] gridLine = { GRAPHBORDER_LEFT, GRAPHBORDER_TOP + y,
@@ -952,7 +952,7 @@ public class EditorCanvas extends Canvas {
     }
 
     private int y2pixel(double val) {
-        if (val == RiverForecastPoint.MISSINGVAL) {
+        if (val == RiverHydroConstants.MISSING_VALUE) {
             return graphAreaHeight + GRAPHBORDER_TOP;
         }
 

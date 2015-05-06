@@ -29,13 +29,16 @@
         
 """
 
+from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
+from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
+from com.raytheon.uf.common.hazards.hydro import RiverForecastGroup
+from RiverForecastUtils import *
+
 import VTECConstants
 from LocalizationInterface import LocalizationInterface
-from HazardConstants import *
+from HazardConstants import MISSING_VALUE
 import os, sys
 from collections import OrderedDict
-
-MISSING = -9999
 
 class MetaData(object):
 
@@ -48,7 +51,10 @@ class MetaData(object):
         else:
             self.hazardStatus = "pending"
     
-            
+        self._riverForecastUtils = None
+        self._riverForecastManager = None
+        self._riverForecastPoint = None
+        
     def editableWhenNew(self):
         return self.hazardStatus == "pending"
     
@@ -1135,22 +1141,38 @@ class MetaData(object):
 
     def getForecastPointsSection(self,parm):
         pointID = self.hazardEvent.get("pointID")
+
+        if self._riverForecastUtils is None:
+            self._riverForecastUtils = RiverForecastUtils()
+        if self._riverForecastManager is None:
+            self._riverForecastManager = RiverForecastManager()
         
-        PE = self._rfp.getPrimaryPhysicalElement(pointID)
-        riverPointID = self._rfp.getRiverPointIdentifier(pointID)
-        riverName = self._rfp.getRiverPointName(pointID)
-        curObs = self._rfp.getObservedLevel(pointID)
-        if isinstance(curObs, (tuple,list)):
-            curObs = curObs[0]
-        maxFcst = self._rfp.getMaximumForecastLevel(pointID, PE)
-        if isinstance(maxFcst, (tuple,list)):
-            maxFcst = maxFcst[0]
-        (fldStg, fldFlow) = self._rfp.getFloodLevels(pointID)
+        
+        self._riverForecastPoint = self.getRiverForecastPoint(pointID, True)
+        PE = self._riverForecastPoint.getPrimaryPE()
+        riverPointID = self._riverForecastPoint.getLid()
+        riverName = self._riverForecastPoint.getName()
+        
+        curObs = self._riverForecastUtils.getObservedLevel(self._riverForecastPoint)
+        curObs = self._riverForecastUtils.getObservedLevel(self._riverForecastPoint)
+        maxFcst = self._riverForecastUtils.getMaximumForecastLevel(self._riverForecastPoint, PE)
+
+        if PE[0] == PE_H :
+            # get flood stage
+            fldStg = self._riverForecastPoint.getFloodStage()
+            fldFlow = MISSING_VALUE
+        else :
+            # get flood flow
+            fldStg = MISSING_VALUE
+            fldFlow = self._riverForecastPoint.getFloodFlow()
+    
 
         crestOrImpact = "Crest"
         label = "\tCurObs\tMaxFcst\tFldStg\tFldFlow\t|\tPE\tBased on PE"
-        
-        riverGrp = self._rfp.getGroupName(pointID) 
+
+        groupID = self._riverForecastPoint.getGroupId()
+        riverForecastGroup = self._riverForecastManager.getRiverForecastGroup(groupID, False)
+        riverGrp = riverForecastGroup.getGroupName() 
         
         point = "\t" + riverPointID + "\t- " + riverName
 
@@ -1194,16 +1216,19 @@ class MetaData(object):
         choices = ['Current Obs/Max Fcst']
         pointID = self.hazardEvent.get("pointID")
         
-        maxLevel = self._rfp.getMaximumForecastLevel(pointID)
-        if maxLevel != MISSING:
+        if self._riverForecastUtils is None:
+            self._riverForecastUtils = RiverForecastUtils()
+        self._riverForecastPoint = self.getRiverForecastPoint(pointID, True)
+        primaryPE = self._riverForecastPoint.getPrimaryPE()
+        maxLevel = self._riverForecastUtils.getMaximumForecastLevel(self._riverForecastPoint, primaryPE)
+        if maxLevel != MISSING_VALUE:
             choices.append('Max Forecast')
             
-        obLevel = self._rfp.getObservedLevel(pointID)
-        if obLevel != MISSING:
+        obLevel = self._riverForecastUtils.getObservedLevel(self._riverForecastPoint)
+        if obLevel != MISSING_VALUE:
             choices.append('Current Observed')
         
         choices.reverse()
-        
         
         refStageFlow = {
                             "fieldType": "ComboBox",
@@ -1340,7 +1365,6 @@ class MetaData(object):
                     }
             ]
         }
-                
         
 
     """
@@ -1401,12 +1425,24 @@ class MetaData(object):
         filterValues = {k:filters[k]['values'] for k in filters}
         
         pointID = self.hazardEvent.get("pointID")
+        if self._riverForecastManager is None:
+            self._riverForecastManager = RiverForecastManager()
+            
+        self._riverForecastPoint = self.getRiverForecastPoint(pointID, True)
+        primaryPE = self._riverForecastPoint.getPrimaryPE()
         
         impactsTextField = None
         if parm == "impacts":
             headerLabel = "Impacts to Use"
             selectionLabel = "ImpactStg/Flow - Start - End - Tendency"
-            characterizations, descriptions = self._rfp.getImpacts(pointID, filterValues)
+            
+            simTimeMils = SimulatedTime.getSystemTime().getMillis()
+            currentTime = datetime.datetime.fromtimestamp(simTimeMils / 1000)
+            
+            impactDataList = self._riverForecastManager.getImpactsDataList(pointID, currentTime.month, currentTime.day)
+            plist = JUtilHandler.javaCollectionToPyCollection(impactDataList)
+            
+            characterizations, descriptions = self._riverForecastUtils.getImpacts(plist, primaryPE, self._riverForecastPoint, filterValues)
             charDescDict = dict(zip(characterizations, descriptions))
             impactChoices, values = self._makeImpactsChoices(charDescDict)
 
@@ -1416,13 +1452,14 @@ class MetaData(object):
             # If searching for all below/upper, only check the closest impact.
             searchType = filters.get('Search Type')
             searchTypeValue = searchType.get('values')
+
             if searchTypeValue and searchTypeValue == 'All Below Upper Stage/Flow':
                 referenceType = filters['Reference Type']
                 referenceTypeValue = referenceType.get('values')
                 if referenceTypeValue == 'Max Forecast' :
-                    referenceValue = self._rfp.getMaximumForecastLevel(self.hazardEvent.get("pointID"))
+                    referenceValue = self._riverForecastUtils.getMaximumForecastLevel(self._riverForecastPoint, primaryPE)
                 elif referenceTypeValue == 'Current Observed' :
-                    referenceValue = self._rfp.getObservedLevel(self.hazardEvent.get("pointID"))
+                    referenceValue = self._riverForecastUtils.getObservedLevel(self._riverForecastPoint)
 
                 floatValues = []
                 floatMap = {}
@@ -1454,7 +1491,7 @@ class MetaData(object):
         else:
             headerLabel = "Crest to Use"
             selectionLabel = "CrestStg/Flow - CrestDate"
-            defCrest, crestList = self._rfp.getHistoricalCrest(pointID, filterValues)
+            defCrest, crestList = self._riverForecastUtils.getHistoricalCrest(self._riverForecastPoint, primaryPE, filterValues)
             
             choices = crestList
             value = defCrest
@@ -1567,7 +1604,19 @@ class MetaData(object):
      
         return filters
 
-
+    def getRiverForecastPoint(self, pointID, isDeepQuery=False):
+        doQuery = False
+        if self._riverForecastPoint is None:
+            doQuery = True
+        else:
+            if pointID != self._riverForecastPoint.getLid():
+                doQuery = True
+        if doQuery == True:
+            if self._riverForecastManager is None:
+                self._riverForecastManager = RiverForecastManager()
+            self._riverForecastPoint = self._riverForecastManager.getRiverForecastPoint(pointID, isDeepQuery)
+        return(self._riverForecastPoint)
+            
 
 def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
     

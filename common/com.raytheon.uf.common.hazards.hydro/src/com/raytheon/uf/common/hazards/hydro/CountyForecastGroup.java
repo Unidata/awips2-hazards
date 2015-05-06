@@ -1,6 +1,5 @@
 package com.raytheon.uf.common.hazards.hydro;
 
-import java.util.Date;
 import java.util.List;
 
 import com.google.common.collect.Lists;
@@ -10,7 +9,7 @@ import com.google.common.collect.Lists;
  * of the river forecast points in a given county. The observations and
  * forecasts are examined for each forecast point to determine the flood state
  * of the county. This was an optional mode in RiverPro. Generally, river
- * foreast points are examined individually or along a river reach.
+ * forecast points are examined individually or along a river reach.
  * 
  * 
  * <pre>
@@ -20,218 +19,226 @@ import com.google.common.collect.Lists;
  * June 2011               Bryon.Lawrence    Initial creation
  * March 1 2013            Bryon.Lawrence    Preparing for code review
  * May 1, 2014  3581       bkowal            Relocate to common hazards hydro
+ * May 08, 2015 6562       Chris.Cody        Restructure River Forecast Points/Recommender
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
 
 public final class CountyForecastGroup {
-    /*
-     * Static info, loaded in by load_grpdata() in get_fp_grp.c
-     */
-    private String county;
+
+    private String hsaId;
 
     private String state;
 
-    private final List<RiverForecastPoint> forecastPointsInCountyList;
+    private String county;
 
-    /*
-     * dynamic info. determined from observed max forecast data.
+    private List<RiverForecastPoint> forecastPointsInCountyList;
+
+    /**
+     * Computed data fields.
      */
     private int maxCurrentObservedCategory;
 
-    private Date maxCurrentObservedTime;
+    private long maxCurrentObservedTime;
 
     private int maxMaxForecastCategory;
 
-    private Date maxMaxForecastTime;
+    private long maxMaxForecastTime;
 
     private int maxOMFCategory;
 
-    private Date maxOMFTime;
+    private long maxOMFTime;
 
-    /*
-     * Injected data accessor object.
-     */
-    private final IFloodDAO floodDAO;
+    public CountyForecastGroup() {
+        this.hsaId = "";
+        this.state = "";
+        this.county = "";
+    }
 
     /**
      * Construct an instance of a county forecast group.
      * 
-     * @param forecastPointList
-     *            List of river forecast points
-     * @param countyRecord
-     *            Record read from the CountyNum IHFS table
      * @param hsaId
-     *            The hydrologic service area id
-     * @param floodDAO
-     *            The data accessor object.
-     */
-    public CountyForecastGroup(
-            final List<RiverForecastPoint> forecastPointList,
-            final Object[] countyRecord, String hsaId,
-            final IFloodDAO floodDAO) {
-        forecastPointsInCountyList = Lists.newArrayList();
-        this.floodDAO = floodDAO;
-        loadCountyData(forecastPointList, countyRecord, hsaId);
-    }
-
-    /**
-     * Loads the river forecast points in this particular county.
-     * 
+     *            The Hydrologic Service Area id
+     * @param state
+     *            State Name abbreviation
+     * @param county
+     *            County Name
      * @param forecastPointList
-     *            The master list of river forecast points.
-     * @param countyRecord
-     *            Record read from the CountyNum IHFS table
-     * @param hsaID
-     *            The hydrologic service area id
-     * 
-     * @return
+     *            List of river forecast points for the County
      */
-    private void loadCountyData(
-            final List<RiverForecastPoint> forecastPointList,
-            final Object[] countyRecord, String hsaID) {
-        /*
-         * Separate the concatenated state and county. The delimiter is a '|'.
-         */
-        String countyState = countyRecord[0].toString();
-        int delimiterPosition = countyState.indexOf('|');
-        this.county = countyState.substring(0, delimiterPosition);
-        this.state = countyState.substring(++delimiterPosition);
+    public CountyForecastGroup(String hsaId, String state, String county,
+            List<RiverForecastPoint> forecastPointList) {
+        this.hsaId = hsaId;
+        this.state = state;
+        this.county = county;
 
-        List<Object[]> countyForecastPointList = null;
-        int numberOfForecastPoints = 0;
-
-        countyForecastPointList = floodDAO.getForecastPointsInCountyStateHSA(
-                state, county, hsaID);
-
-        if (countyForecastPointList != null) {
-            numberOfForecastPoints = countyForecastPointList.size();
-
-            if (numberOfForecastPoints > 0) {
-                for (Object[] countyForecastPointRecord : countyForecastPointList) {
-                    String forecastPointId = countyForecastPointRecord[0]
-                            .toString();
-
-                    for (RiverForecastPoint forecastPoint : forecastPointList) {
-                        if (forecastPoint.getId().equals(forecastPointId)) {
-                            forecastPointsInCountyList.add(forecastPoint);
-                            break;
-                        }
-                    }
-                }
-            }
-
-        }
-    }
-
-    /**
-     * @return The number of river forecast points in this county forecast group
-     *         object.
-     */
-    public int getNumberOfForecastPoints() {
-        return forecastPointsInCountyList.size();
-    }
-
-    /**
-     * Calculates the maximum observed forecast river data for this county
-     * group. This determines whether or not the county will be considered in
-     * flood and the magnitude/severity of the flooding.
-     * 
-     * @param
-     * @return
-     */
-    protected void computeCountyMofo() {
-        int catval;
-        long timeval;
-        int max_curobs_cat, max_maxfcst_cat;
-        long max_curobs_time, max_maxfcst_time;
-
-        /* get the info for each of the forecast groups */
-
-        /* initialize the group data */
-
-        max_curobs_cat = max_maxfcst_cat = RiverForecastPoint.HydroFloodCategories.NULL_CATEGORY
-                .getRank();
-        max_curobs_time = max_maxfcst_time = (long) RiverForecastPoint.MISSINGVAL;
-
-        for (RiverForecastPoint forecastPoint : forecastPointsInCountyList) {
-
-            /*
-             * check the max current observed category value and omf category.
-             * always use the earliest cur observed.
-             */
-
-            if (forecastPoint.getCurrentObservationCategory() != RiverForecastPoint.HydroFloodCategories.NULL_CATEGORY
-                    .getRank()) {
-                catval = forecastPoint.getCurrentObservationCategory();
-                timeval = forecastPoint.getCurrentObservation().getValidTime();
-
-                if (catval > max_curobs_cat) {
-                    max_curobs_cat = catval;
-                    max_curobs_time = timeval;
-                } else if (catval == max_curobs_cat) {
-                    if (timeval < max_curobs_time
-                            || max_curobs_time == RiverForecastPoint.MISSINGVAL) {
-                        max_curobs_time = timeval;
-                    }
-                }
-            }
-
-            /*
-             * check the max forecast category and omf category. always use the
-             * earliest maxfcst
-             */
-
-            if (forecastPoint.getMaximumForecastCategory() != RiverForecastPoint.HydroFloodCategories.NULL_CATEGORY
-                    .getRank()) {
-                catval = forecastPoint.getMaximumForecastCategory();
-                timeval = forecastPoint.getMaximumForecast().getValidTime();
-
-                if (catval > max_maxfcst_cat) {
-                    max_maxfcst_cat = catval;
-                    max_maxfcst_time = timeval;
-                } else if (catval == max_maxfcst_cat) {
-                    if (timeval < max_maxfcst_time
-                            || max_maxfcst_time == RiverForecastPoint.MISSINGVAL) {
-                        max_maxfcst_time = timeval;
-                    }
-                }
-            }
-        } /* end of loop of fps in group */
-
-        /* load the local variables into the structure */
-        this.maxCurrentObservedCategory = max_curobs_cat;
-        this.maxCurrentObservedTime = new Date(max_curobs_time);
-
-        this.maxMaxForecastCategory = max_maxfcst_cat;
-        this.maxMaxForecastTime = new Date(max_maxfcst_time);
-
-        /*
-         * if the cats are equal, use the observed since it is earlier in time.
-         */
-
-        if (this.maxCurrentObservedCategory >= this.maxMaxForecastCategory) {
-            this.maxOMFCategory = this.maxCurrentObservedCategory;
-            this.maxOMFTime = this.maxCurrentObservedTime;
+        if (forecastPointsInCountyList != null) {
+            this.forecastPointsInCountyList = forecastPointList;
         } else {
-            this.maxOMFCategory = this.maxMaxForecastCategory;
-            this.maxOMFTime = this.maxMaxForecastTime;
+            this.forecastPointsInCountyList = Lists.newArrayList();
         }
     }
 
     /**
-     * @return the max observed forecast time.
+     * Get Hydrological Service Area Id
+     * 
+     * @return hsaId
      */
-    public Date getMaxOMFTime() {
-        return new Date(maxOMFTime.getTime());
+    public String getHsaId() {
+        return (this.hsaId);
     }
 
     /**
-     * @return the max observed forecast flood category.
+     * Get "<State abbr.>|<County Name>" String
+     * 
+     * 
+     * @return "state|county" string
+     */
+    public String getStateCountyString() {
+        return (this.state + "|" + this.county);
+    }
+
+    /**
+     * Get State Abbreviation
+     * 
+     * @return state
+     */
+    public String getState() {
+        return (this.state);
+    }
+
+    /**
+     * Get County Name
+     * 
+     * @return county
+     */
+    public String getCounty() {
+        return (this.county);
+    }
+
+    /**
+     * Set the max observed forecast time.
+     * 
+     * @param maxOMFTime
+     */
+    public void setMaxOMFTime(long maxOMFTime) {
+        this.maxOMFTime = maxOMFTime;
+    }
+
+    /**
+     * Get the max observed forecast time.
+     * 
+     * @return maxOMFTime
+     */
+    public long getMaxOMFTime() {
+        return (this.maxOMFTime);
+    }
+
+    /**
+     * Set the max observed forecast flood category.
+     * 
+     * @param maxOMFCategory
+     */
+    public void setMaxOMFCategory(int maxOMFCategory) {
+        this.maxOMFCategory = maxOMFCategory;
+    }
+
+    /**
+     * Get the max observed forecast flood category.
+     * 
+     * @return maxOMFCategory
      */
     public int getMaxOMFCategory() {
         return maxOMFCategory;
+    }
+
+    /**
+     * Get Forecast Category for the Computed Maximum of the Point Forecast Time
+     * values.
+     * 
+     * @return maxMaxForecastCategory
+     */
+    public int getMaxMaxForecastCategory() {
+        return this.maxMaxForecastCategory;
+    }
+
+    /**
+     * Set the max current observed time.
+     * 
+     * @param maxCurrentObservedTime
+     */
+    public void setMaxCurrentObservedTime(long maxCurrentObservedTime) {
+        this.maxCurrentObservedTime = maxCurrentObservedTime;
+    }
+
+    /**
+     * Get the max current observed time.
+     * 
+     * @return maxOMFTime
+     */
+    public long getMaxCurrentObservedTime() {
+        return (this.maxCurrentObservedTime);
+    }
+
+    /**
+     * Set the max observed flood category.
+     * 
+     * @param maxCurrentObservedCategory
+     */
+    public void setMaxCurrentObservedCategory(int maxCurrentObservedCategory) {
+        this.maxCurrentObservedCategory = maxCurrentObservedCategory;
+    }
+
+    /**
+     * Get Forecast Category for the Computed Maximum of the Point Observed Time
+     * values.
+     * 
+     * @return maxMaxForecastCategory
+     */
+    public int getMaxCurrentObservedCategory() {
+        return this.maxCurrentObservedCategory;
+    }
+
+    /**
+     * Get Computed Maximum of the Point Forecast Time values.
+     * 
+     * @return maxMaxForecastTime
+     */
+    public long getMaxMaxForecastTime() {
+        return this.maxMaxForecastTime;
+    }
+
+    public void setMaxMaxForecastCategory(int maxMaxForecastCategory) {
+        this.maxMaxForecastCategory = maxMaxForecastCategory;
+    }
+
+    public void setMaxMaxForecastTime(long maxMaxForecastTime) {
+        this.maxMaxForecastTime = maxMaxForecastTime;
+    }
+
+    /**
+     * Set Forecast Point List for HSA: State: County object
+     * 
+     * @param forecastPointsInCountyList
+     */
+    public void setForecastPointsInCountyList(
+            List<RiverForecastPoint> forecastPointsInCountyList) {
+        if (forecastPointsInCountyList != null) {
+            this.forecastPointsInCountyList = forecastPointsInCountyList;
+        } else {
+            this.forecastPointsInCountyList = Lists.newArrayList();
+        }
+    }
+
+    /**
+     * Get Forecast Point List for HSA: State: County object
+     * 
+     * @return forecastPointsInCountyList
+     */
+    public List<RiverForecastPoint> getForecastPointsInCountyList() {
+        return this.forecastPointsInCountyList;
     }
 
 }

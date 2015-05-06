@@ -20,6 +20,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * ------------ ---------- ----------- --------------------------
  * July 9, 2012            Bryon.Lawrence    Initial creation
  * May 1, 2014  3581       bkowal       Relocate to common hazards hydro
+ * May 08, 2015 6562       Chris.Cody  Restructure River Forecast Points/Recommender
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -64,9 +65,9 @@ public class HydroEvent {
     /*
      * Forecast point this event applies to.
      */
-    private RiverForecastPoint forecastPoint;
+    private RiverForecastPoint riverForecastPoint;
 
-    /*
+    /**
      * Recommendations. Of the VTEC fields, only the P-vtec action is determined
      * stored as a true recommendation. The actual vtec fields are initialized
      * separately to these recommended values. The other vtec fields do not have
@@ -79,7 +80,7 @@ public class HydroEvent {
 
     private int recommendationIndex;
 
-    /*
+    /**
      * P-VTEC line information. If a double_pvtec situation is requested, this
      * line of information is actually used to represent the second of the two
      * p-vtec lines. The office if is managed externally via the service backup
@@ -89,13 +90,13 @@ public class HydroEvent {
 
     private boolean eventActive;
 
-    /*
+    /**
      * private String productID; private Date productTime; private Date
      * expireTime;
      */
     private final Vtecevent vtecInfo;
 
-    /*
+    /**
      * Previous event information for each possible event tracked, i.e. the FL.W
      * warning, the FL.A watch, and FL.Y advisory. This is the previous event,
      * whether it be active or inactive.
@@ -106,7 +107,7 @@ public class HydroEvent {
 
     private HydroEvent previousFLY;
 
-    /*
+    /**
      * Information for the previous event, but for the most recent inactive
      * event. This information is needed for determining the time window for
      * which to retrieve stage/discharge information. Only stage/discharge data
@@ -130,7 +131,7 @@ public class HydroEvent {
      * 
      * @param eventDict
      *            event dict containing information to load into this hydro
-     *            event.
+     *            event. [ < Event Id, Map [property , value>> ]
      */
     public HydroEvent(Map<String, Object> eventDict) {
         this();
@@ -145,31 +146,30 @@ public class HydroEvent {
      * @param hazardSettings
      *            Settings controlling behavior of river flood recommender.
      * @param eventDict
-     *            eventDict with previous flood information
-     * @param floodDAO
-     *            The flood recommender data access object
+     *            eventDict with previous flood information [ < Event Id, Map
+     *            [property , value>> ]
      */
-    public HydroEvent(RiverForecastPoint forecastPoint,
-            HazardSettings hazardSettings, Map<String, Object> eventDict,
-            IFloodDAO floodDAO) {
+    public HydroEvent(RiverForecastPoint riverForecastPoint, String hsaId,
+            Map<String, Object> eventDict, long systemTime) {
         this();
-        this.forecastPoint = forecastPoint;
+        this.riverForecastPoint = riverForecastPoint;
 
         // Retrieve previous FL.W if any...
-        Map<String, Object> previousFLWevent = getPreviousEvent(
-                hazardSettings.getHsa(), eventDict, HydroEvent.SIGNIF_WARNING);
+        Map<String, Object> previousFLWevent = getPreviousEvent(hsaId,
+                eventDict, HydroEvent.SIGNIF_WARNING);
 
         // If available, load the previous observed and forecast data in
         // the forecast point.
-        forecastPoint.loadObservedForecastValues(previousFLWevent);
+        riverForecastPoint
+                .setFromPreviousObservedForecastValues(previousFLWevent);
 
         // Retrieve previous FL.A if any...
-        Map<String, Object> previousFLYevent = getPreviousEvent(
-                hazardSettings.getHsa(), eventDict, HydroEvent.SIGNIF_WATCH);
+        Map<String, Object> previousFLYevent = getPreviousEvent(hsaId,
+                eventDict, HydroEvent.SIGNIF_WATCH);
 
         // Retrieve previous FL.Y if any...
-        Map<String, Object> previousFLAevent = getPreviousEvent(
-                hazardSettings.getHsa(), eventDict, HydroEvent.SIGNIF_ADVISORY);
+        Map<String, Object> previousFLAevent = getPreviousEvent(hsaId,
+                eventDict, HydroEvent.SIGNIF_ADVISORY);
 
         this.previousFLW = new HydroEvent(previousFLWevent);
 
@@ -178,18 +178,15 @@ public class HydroEvent {
 
         // Retrieve previous inactive FL.W if any...
         Map<String, Object> previousInactiveFLWevent = getPreviousInactiveEvent(
-                hazardSettings.getHsa(), eventDict, floodDAO,
-                HydroEvent.SIGNIF_WARNING);
+                hsaId, eventDict, HydroEvent.SIGNIF_WARNING, systemTime);
 
         // Retrieve previous inactive FL.Y if any...
         Map<String, Object> previousInactiveFLYevent = getPreviousInactiveEvent(
-                hazardSettings.getHsa(), eventDict, floodDAO,
-                HydroEvent.SIGNIF_WARNING);
+                hsaId, eventDict, HydroEvent.SIGNIF_WARNING, systemTime);
 
         // Retrieve previous inactive FL.A if any...
         Map<String, Object> previousInactiveFLAevent = getPreviousInactiveEvent(
-                hazardSettings.getHsa(), eventDict, floodDAO,
-                HydroEvent.SIGNIF_WARNING);
+                hsaId, eventDict, HydroEvent.SIGNIF_WARNING, systemTime);
 
         this.inactiveFLW = new HydroEvent(previousInactiveFLWevent);
         this.inactiveFLY = new HydroEvent(previousInactiveFLYevent);
@@ -201,13 +198,14 @@ public class HydroEvent {
      * @return the river forecast point associated with this hydro event.
      */
     public RiverForecastPoint getForecastPoint() {
-        return forecastPoint;
+        return riverForecastPoint;
     }
 
     /**
      * 
      * @param geoId
      * @param eventDict
+     *            [ < Event Id, Map [property , value>> ]
      * @param significance
      * @return The previously issued event for this forecast point if any.
      */
@@ -259,16 +257,16 @@ public class HydroEvent {
      * @param geoId
      *            The identifier of the forecast point.
      * @param eventDict
-     *            The event to look for a previous event.
-     * @param floodDAO
-     *            The river flood data access object
+     *            The event to look for a previous event. [ < Event Id, Map
+     *            [property , value>> ]
      * @param significance
      *            The significance
+     * @param systemTime
+     *            Current System Time in milliseconds
      * @return The previous event (now inactive) for this forecast point.
      */
     private Map<String, Object> getPreviousInactiveEvent(String geoId,
-            Map<String, Object> eventDict, IFloodDAO floodDAO,
-            String significance) {
+            Map<String, Object> eventDict, String significance, long systemTime) {
         String activeETN = null;
 
         Map<String, Object> previousInactiveEvent = null;
@@ -298,15 +296,14 @@ public class HydroEvent {
                         && significance.equals(eventSignificance)
                         && phenomena.equals(HydroEvent.PHENOMENA)) {
 
-                    Number number = (Number) dict.get("creationTime");
-                    number = (Number) dict.get("endTime");
+                    Number number = (Number) dict.get("endTime");
                     long previousEventEndtime = number.longValue();
 
                     /*
                      * Check whether or not the event is active...
                      */
-                    boolean active = checkIfEventActive(previousEventEndtime,
-                            floodDAO);
+                    boolean active = checkIfEventActive(systemTime,
+                            previousEventEndtime);
 
                     if (active && (activeETN == null)) {
                         activeETN = eventID;
@@ -348,8 +345,8 @@ public class HydroEvent {
                     number = (Number) dict.get("endTime");
                     long previousEventEndtime = number.longValue();
 
-                    boolean active = checkIfEventActive(previousEventEndtime,
-                            floodDAO);
+                    boolean active = checkIfEventActive(systemTime,
+                            previousEventEndtime);
 
                     if (eventCreationTime >= mostRecentCreationTime && !active
                             && eventID != activeETN) {
@@ -370,6 +367,7 @@ public class HydroEvent {
      * 
      * @param eventDict
      *            contains the event information to load into this hydro event.
+     *            [ < Event Id, Map [property , value>> ]
      */
     private void loadEvent(Map<String, Object> eventDict) {
         if (eventDict != null) {
@@ -453,22 +451,20 @@ public class HydroEvent {
     }
 
     /**
-     * Tests whether or not an event is active.
-     * 
-     * @param previousEndtime
+     * @param currentSystemTime
+     *            Current Time in Milliseconds for comparison.
+     * @param previousEndtimeInMilliseconds
      *            The end time of the event to be tested.
      * @return true - the event is active, false - the event is not active.
      */
-    public boolean checkIfEventActive(long previousEndtimeInMilliseconds,
-            IFloodDAO floodDAO) {
+    public boolean checkIfEventActive(long systemTime,
+            long previousEndtimeInMilliseconds) {
 
         if (previousEndtimeInMilliseconds == 0) {
             return true;
         }
 
-        long currentTimeInMilliseconds = floodDAO.getSystemTime().getTime();
-
-        return previousEndtimeInMilliseconds > currentTimeInMilliseconds;
+        return previousEndtimeInMilliseconds > systemTime;
     }
 
     /**
@@ -477,12 +473,9 @@ public class HydroEvent {
      * 
      * @param event
      *            The hydro event to test for active status
-     * @param floodDAO
-     *            the data access object injected into the flood recommender.
      * @return true - the event is active, false - the event is not active
      */
-    static public boolean checkIfEventActive(HydroEvent event,
-            IFloodDAO floodDAO) {
+    public boolean checkIfEventActive(HydroEvent event, long currentSystemTime) {
         boolean active = false;
 
         Vtecevent vtecInfo = event.getPreviousFLW().getVtecInfo();
@@ -506,16 +499,16 @@ public class HydroEvent {
                  * If the end time is past the current time, then the event is
                  * still active.
                  */
-                long currentTime = floodDAO.getSystemTime().getTime();
                 long prevTime = endtime.getTime();
-
-                if (prevTime > currentTime) {
-                    active = true;
-                }
+                active = checkIfEventActive(currentSystemTime, prevTime);
             }
         }
 
         return active;
+    }
+
+    public boolean checkIfEventActive(long currentSystemTime) {
+        return (checkIfEventActive(this, currentSystemTime));
     }
 
     /**

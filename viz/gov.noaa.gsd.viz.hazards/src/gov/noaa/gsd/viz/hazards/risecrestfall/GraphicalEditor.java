@@ -48,12 +48,13 @@ import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.hazards.hydro.HazardSettings;
-import com.raytheon.uf.common.hazards.hydro.Hydrograph;
-import com.raytheon.uf.common.hazards.hydro.IFloodDAO;
+import com.raytheon.uf.common.hazards.hydro.HydrographForecast;
+import com.raytheon.uf.common.hazards.hydro.HydrographObserved;
+import com.raytheon.uf.common.hazards.hydro.RiverForecastManager;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastPoint;
-import com.raytheon.uf.common.hazards.hydro.RiverProDataManager;
-import com.raytheon.uf.common.hazards.hydro.SHEFObservation;
+import com.raytheon.uf.common.hazards.hydro.RiverHydroConstants;
+import com.raytheon.uf.common.hazards.hydro.SHEFForecast;
+import com.raytheon.uf.common.hazards.hydro.SHEFObserved;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
@@ -79,9 +80,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Mar 24, 2015    7205    mpduff      Fixes for missing values and until further notice.
  * Apr 01, 2015    7277    Chris.Cody  Changes to Handle Missing Time values.
  * May 14, 2015    7560    mpduff      Fixes for missing values being returned as 0.
- * 
+ * May 18, 2015    6562    Chris.Cody  Restructure River Forecast Points/Recommender
  * </pre>
- * 
  * 
  * @author mpduff
  * @version 1.0
@@ -146,8 +146,6 @@ public class GraphicalEditor extends CaveSWTDialog implements
     private Button fallMsgChk;
 
     private final IHazardEvent event;
-
-    private RiverProDataManager riverProDataManager;
 
     private SimpleDateFormat dateFormat;
 
@@ -218,7 +216,6 @@ public class GraphicalEditor extends CaveSWTDialog implements
     @Override
     protected void initializeComponents(Shell shell) {
         this.getShell().setText("Rise/Crest/Fall Editor");
-        riverProDataManager = new RiverProDataManager();
         dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
         dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
         dateFormat.setLenient(false);
@@ -232,7 +229,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
     private void populate() {
 
         double crestValue = graphData.getCrestValue();
-        if (crestValue != RiverForecastPoint.MISSINGVAL) {
+        if (crestValue != RiverHydroConstants.MISSING_VALUE_DOUBLE) {
             crestValTxt.setText(String.valueOf(crestValue));
         } else {
             crestValTxt.setText(MISSING_VAL);
@@ -329,66 +326,59 @@ public class GraphicalEditor extends CaveSWTDialog implements
             graphData.setFallDate(cal.getTime());
         }
 
-        IFloodDAO dao = riverProDataManager.getFloodDAO();
-        HazardSettings hazardSettings = riverProDataManager.getHazardSettings();
-        List<RiverForecastPoint> forecastPointList = dao
-                .getForecastPointInfo(hazardSettings);
-        RiverForecastPoint selectedPoint = null;
-        for (RiverForecastPoint point : forecastPointList) {
-            if (lid.equals(point.getId())) {
-                selectedPoint = point;
-                break;
-            }
-        }
-
-        if (selectedPoint == null) {
+        RiverForecastManager riverForecastManager = new RiverForecastManager();
+        RiverForecastPoint riverForecastPoint = riverForecastManager
+                .getRiverForecastPoint(lid, true);
+        if (riverForecastPoint == null) {
             statusHandler.warn("No river forecast point for " + lid);
             return;
         }
 
-        graphData.setName(selectedPoint.getName());
-        graphData.setActionFlow(selectedPoint.getActionFlow());
-        graphData.setActionStage(selectedPoint.getActionStage());
-        graphData.setFloodFlow(selectedPoint.getFloodFlow());
-        graphData.setFloodStage(selectedPoint.getFloodStage());
-        graphData.setModerateFlow(selectedPoint.getModerateFlow());
-        graphData.setModerateStage(selectedPoint.getModerateStage());
-        graphData.setMajorFlow(selectedPoint.getMajorFlow());
-        graphData.setMajorStage(selectedPoint.getMajorStage());
+        graphData.setName(riverForecastPoint.getName());
+        graphData.setActionFlow(riverForecastPoint.getActionFlow());
+        graphData.setActionStage(riverForecastPoint.getActionStage());
+        graphData.setFloodFlow(riverForecastPoint.getFloodFlow());
+        graphData.setFloodStage(riverForecastPoint.getFloodStage());
+        graphData.setModerateFlow(riverForecastPoint.getModerateFlow());
+        graphData.setModerateStage(riverForecastPoint.getModerateStage());
+        graphData.setMajorFlow(riverForecastPoint.getMajorFlow());
+        graphData.setMajorStage(riverForecastPoint.getMajorStage());
 
-        graphData.setPe(selectedPoint.getPhysicalElement());
+        graphData.setPe(riverForecastPoint.getPhysicalElement());
 
-        selectedPoint.loadTimeSeries(graphData.getPe());
-        Hydrograph observedHydrograph = selectedPoint.getObservedHydrograph();
-        List<SHEFObservation> dataList = observedHydrograph
+        HydrographObserved hydrographObserved = riverForecastPoint
+                .getHydrographObserved();
+        List<SHEFObserved> observedDataList = hydrographObserved
                 .getShefHydroDataList();
-        if (!dataList.isEmpty()) {
-            SHEFObservation so = dataList.get(0);
+        if (!observedDataList.isEmpty()) {
+            SHEFObserved so = observedDataList.get(0);
             graphData.setObservedTs(so.getTypeSource());
 
-            for (SHEFObservation ob : dataList) {
+            for (SHEFObserved ob : observedDataList) {
                 GraphPoint point = new GraphPoint();
-                point.setX(new Date(ob.getValidTime()));
+                point.setX(new Date(ob.getObsTime()));
                 point.setY(ob.getValue());
                 graphData.addObservedPoint(point);
             }
         }
 
-        Hydrograph fcstHydrograph = selectedPoint.getForecastHydrograph();
-        dataList = fcstHydrograph.getShefHydroDataList();
-        if (!dataList.isEmpty()) {
-            SHEFObservation so = dataList.get(0);
-            graphData.setForecastTs(so.getTypeSource());
-            graphData.setDur(String.valueOf(so.getDuration()));
-            for (SHEFObservation ob : dataList) {
+        HydrographForecast hydrographForecast = riverForecastPoint
+                .getHydrographForecast();
+        List<SHEFForecast> forecastDataList = hydrographForecast
+                .getShefHydroDataList();
+        if (!forecastDataList.isEmpty()) {
+            SHEFForecast shefForecast = forecastDataList.get(0);
+            graphData.setForecastTs(shefForecast.getTypeSource());
+            graphData.setDur(String.valueOf(shefForecast.getDuration()));
+            for (SHEFForecast shefForecastData : forecastDataList) {
                 GraphPoint point = new GraphPoint();
-                point.setX(new Date(ob.getValidTime()));
-                point.setY(ob.getValue());
+                point.setX(new Date(shefForecastData.getValidTime()));
+                point.setY(shefForecastData.getValue());
                 graphData.addFcstPoint(point);
             }
         }
 
-        graphData.setCrestValue(selectedPoint.getForecastCrestValue());
+        graphData.setCrestValue(riverForecastPoint.getForecastCrestValue());
     }
 
     private void createCanvas(Shell shell) {

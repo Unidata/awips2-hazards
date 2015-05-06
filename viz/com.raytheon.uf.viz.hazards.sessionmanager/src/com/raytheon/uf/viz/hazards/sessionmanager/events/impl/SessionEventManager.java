@@ -87,8 +87,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
-import com.raytheon.uf.common.hazards.hydro.FloodDAO;
-import com.raytheon.uf.common.hazards.hydro.IFloodDAO;
+import com.raytheon.uf.common.hazards.hydro.RiverForecastManager;
 import com.raytheon.uf.common.hazards.hydro.RiverPointZoneInfo;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.ProductGenerationException;
@@ -474,7 +473,7 @@ public class SessionEventManager implements
         }
     };
 
-    private final IFloodDAO floodDAO;
+    private final RiverForecastManager riverForecastManager;
 
     // Public Constructors
 
@@ -495,7 +494,7 @@ public class SessionEventManager implements
         this.messenger = messenger;
         geometryFactory = new GeometryFactory();
         this.geoMapUtilities = new GeoMapUtilities(this.configManager);
-        this.floodDAO = FloodDAO.getInstance();
+        this.riverForecastManager = new RiverForecastManager();
 
     }
 
@@ -3662,17 +3661,15 @@ public class SessionEventManager implements
         @SuppressWarnings("unchecked")
         Map<String, Serializable> forecastPoint = (Map<String, Serializable>) hazardEvent
                 .getHazardAttribute(FORECAST_POINT);
-        List<RiverPointZoneInfo> zoneInfo = floodDAO
-                .getRiverPointZonePointInfo();
         String hazardEventPointID = (String) forecastPoint.get(POINT_ID);
-        for (RiverPointZoneInfo riverPointZoneInfo : zoneInfo) {
-            if (riverPointZoneInfo.getLid().equals(hazardEventPointID)) {
-                StringBuilder sb = new StringBuilder();
-                sb.append(riverPointZoneInfo.getState()).append("Z")
-                        .append(riverPointZoneInfo.getZoneNum());
-                String ugc = sb.toString();
-                result.add(ugc);
-            }
+        RiverPointZoneInfo riverPointZoneInfo = this.riverForecastManager
+                .getRiverForecastPointRiverZoneInfo(hazardEventPointID);
+        if (riverPointZoneInfo != null) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(riverPointZoneInfo.getState()).append("Z")
+                    .append(riverPointZoneInfo.getZoneNum());
+            String ugc = sb.toString();
+            result.add(ugc);
         }
         return result;
     }

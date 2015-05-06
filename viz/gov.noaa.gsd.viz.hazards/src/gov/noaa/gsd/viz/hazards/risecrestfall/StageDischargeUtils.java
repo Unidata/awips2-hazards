@@ -22,7 +22,7 @@ package gov.noaa.gsd.viz.hazards.risecrestfall;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.raytheon.uf.common.hazards.hydro.HydroConstants;
+import com.raytheon.uf.common.hazards.hydro.RiverHydroConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.catalog.DirectDbQuery;
@@ -39,6 +39,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * Date         Ticket#  Engineer     Description
  * ------------------------------------------------------------
  * Mar 26, 2015  7205    Robert.Blum  Initial creation
+ * May 14, 2015  6562    Chris.Cody   Restructure River Forecast Points/Recommender
  * 
  * </pre>
  * 
@@ -47,6 +48,9 @@ import com.raytheon.uf.viz.core.exception.VizException;
  */
 
 public class StageDischargeUtils {
+
+    /** String constant ihfs */
+    private static final String IHFS = "ihfs";
 
     private static String previousLid = null;
 
@@ -76,11 +80,11 @@ public class StageDischargeUtils {
          * Check to determine if the stage value is missing. If it is then
          * return a flow value of missing.
          */
-        if (stage == HydroConstants.MISSING_VALUE) {
-            return HydroConstants.RATING_CONVERT_FAILED;
+        if (stage == RiverHydroConstants.MISSING_VALUE) {
+            return RiverHydroConstants.RATING_CONVERT_FAILED;
         }
 
-        double discharge = HydroConstants.MISSING_VALUE;
+        double discharge = RiverHydroConstants.MISSING_VALUE;
 
         /*
          * If the lid passed in is NOT the same as the previous lid then copy
@@ -106,7 +110,7 @@ public class StageDischargeUtils {
          * curve for that location
          */
         if (ratingData == null) {
-            return HydroConstants.RATING_CONVERT_FAILED;
+            return RiverHydroConstants.RATING_CONVERT_FAILED;
         }
 
         /*
@@ -114,7 +118,7 @@ public class StageDischargeUtils {
          * usable rating curve for that location
          */
         if (ratingData.getDischargeValues().size() < 2) {
-            return HydroConstants.RATING_CONVERT_FAILED;
+            return RiverHydroConstants.RATING_CONVERT_FAILED;
         }
 
         ArrayList<Object[]> ratingShiftArray = null;
@@ -210,7 +214,7 @@ public class StageDischargeUtils {
 
         /* If for some reason the discharge is < 0 then return missing */
         if (discharge < 0) {
-            return HydroConstants.RATING_CONVERT_FAILED;
+            return RiverHydroConstants.RATING_CONVERT_FAILED;
         }
 
         return discharge;
@@ -232,9 +236,9 @@ public class StageDischargeUtils {
          * bad, then return a stage value of missing.
          */
         if (discharge < 0.0) {
-            return HydroConstants.RATING_CONVERT_FAILED;
+            return RiverHydroConstants.RATING_CONVERT_FAILED;
         }
-        double stage = HydroConstants.MISSING_VALUE;
+        double stage = RiverHydroConstants.MISSING_VALUE;
         boolean needToFindShiftAmount = false;
 
         /*
@@ -263,7 +267,7 @@ public class StageDischargeUtils {
          * curve for that location
          */
         if (ratingData == null) {
-            return HydroConstants.RATING_CONVERT_FAILED;
+            return RiverHydroConstants.RATING_CONVERT_FAILED;
         }
 
         /*
@@ -273,7 +277,7 @@ public class StageDischargeUtils {
         if (ratingData.getDischargeValues().size() < 2) {
             statusHandler.info("Rating table has less than 2 points for " + lid
                     + ".");
-            return HydroConstants.RATING_CONVERT_FAILED;
+            return RiverHydroConstants.RATING_CONVERT_FAILED;
         }
 
         ArrayList<Object[]> ratingShiftArray = null;
@@ -422,8 +426,7 @@ public class StageDischargeUtils {
         Rating rating = new Rating(lid);
 
         List<Object[]> results = DirectDbQuery.executeQuery(
-                RATING_QUERY.replace(":lid", lid), HydroConstants.IHFS,
-                QueryLanguage.SQL);
+                RATING_QUERY.replace(":lid", lid), IHFS, QueryLanguage.SQL);
         if (results != null) {
             // the Rating constructor already add stage and discharge to it. so
             // clear it...
@@ -457,12 +460,11 @@ public class StageDischargeUtils {
         ArrayList<Object[]> results = null;
         try {
             results = (ArrayList<Object[]>) DirectDbQuery.executeQuery(
-                    RATING_SHIFT_QUERY.replace(":lid", lid),
-                    HydroConstants.IHFS,
+                    RATING_SHIFT_QUERY.replace(":lid", lid), IHFS,
                     QueryLanguage.SQL);
         } catch (Exception e) {
-            statusHandler.error("Error getting Rating Shift for " + lid
-                    + ": " + e, e);
+            statusHandler.error("Error getting Rating Shift for " + lid + ": "
+                    + e, e);
         }
         return results;
     }

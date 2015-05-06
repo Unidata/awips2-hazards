@@ -3,12 +3,19 @@ package com.raytheon.uf.common.hazards.hydro;
 import java.util.Date;
 import java.util.List;
 
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+
 /**
  * 
  * Description: Represents a set of river forecast points grouped together
  * according to the river they are on. These can be treated as a set and hazard
  * events can be generated which contain all of the river forecast points in
  * this group, even if individual points are not reaching above flood level.
+ * 
+ * This is a Data-Only object. This class contains BOTH table data AND
+ * calculated data values. Sub-queries and Calculations are performed within
+ * RiverForecastManager.
  * 
  * <pre>
  * 
@@ -17,6 +24,7 @@ import java.util.List;
  * ------------ ---------- ----------- --------------------------
  * June 2011               Bryon.Lawrence      Initial creation
  * Apr 1, 2014  3581       bkowal      Relocate to common hazards hydro
+ * May 08, 2015 6562       Chris.Cody  Restructure River Forecast Points/Recommender
  * 
  * </pre>
  * 
@@ -24,18 +32,45 @@ import java.util.List;
  * @version 1.0
  */
 public class RiverForecastGroup {
-    /*
-     * Static info, loaded in by load_grpdata() in get_fp_grp.c
-     */
+    private static final transient IUFStatusHandler statusHandler = UFStatus
+            .getHandler(RiverForecastGroup.class);
+
+    public static final String TABLE_NAME = "rpffcstgroup";
+
+    public static final String COLUMN_NAME_STRING = "group_id, group_name, ordinal, rec_all_included";
+
+    public static final String DISTINCT_COLUMN_NAME_STRING = "rpffcstgroup.group_id, rpffcstgroup.group_name, rpffcstgroup.ordinal, rpffcstgroup.rec_all_included";
+
+    private final int GROUP_ID_FIELD_IDX = 0;
+
+    private final int GROUP_NAME_FIELD_IDX = 1;
+
+    private final int ORDINAL_FIELD_IDX = 2;
+
+    private final int REC_ALL_INCLUDED_FIELD_IDX = 3;
+
     /**
      * forecast group id
      */
-    private String id;
+    private String groupId;
 
     /**
      * forecast group name
      */
-    private String name;
+    private String groupName;
+
+    /**
+     * ordinal
+     */
+    private int ordinal;
+
+    /**
+     * Recommend All Points In Group.
+     * 
+     * Whether or not to create a hazard containing a river points in this
+     * group.
+     */
+    private boolean recommendAllPointsInGroup;
 
     /**
      * The river points contained in this group.
@@ -43,14 +78,13 @@ public class RiverForecastGroup {
     private List<RiverForecastPoint> forecastPointList;
 
     /**
-     * Whether or not to create a hazard containing a river points in this
-     * group.
-     */
-    private boolean recommendAllPointsInGroup;
-
-    /**
      * dynamic info determined from maximum observed forecast data.
      */
+    /**
+     * Whether or not to include this river group in the recommendation.
+     */
+    private boolean includedInRecommendation;
+
     private int maxCurrentObservedCategory;
 
     private Date maxCurrentObservedTime;
@@ -64,151 +98,83 @@ public class RiverForecastGroup {
     private Date maxOMFTime;
 
     /**
-     * Whether or not to include this river group in the recommendation.
+     * Creates a River Forecast Group object
+     * 
+     * @param groupID
+     *            Group Identifier
+     * @param groupName
+     *            Name of Group
+     * @param ordinal
+     *            numeric order position of group
+     * @param isRecommenedInAll
+     *            Are the points of this group recommended
      */
-    private boolean includedInRecommendation;
+    public RiverForecastGroup(String groupId, String groupName, int ordinal,
+            boolean isRecommenedInAll) {
+        this.groupId = groupId;
+        this.groupName = groupName;
+        this.ordinal = ordinal;
+        this.recommendAllPointsInGroup = isRecommenedInAll;
+    }
 
     /**
      * Create a river forecast group.
      * 
-     * @param forecastPointList
-     *            - master river forecast point list
-     * @param groupRecord
-     *            - Information about this river group from the IHFS database
-     * @param forecastPointsInGroupList
-     *            - List of river forecast points in this group.
+     * @param queryResult
+     *            - Information about this river group (rpffcstgroup) from the
+     *            IHFS database
      */
-    public RiverForecastGroup(final List<RiverForecastPoint> forecastPointList,
-            final Object[] groupRecord,
-            final List<RiverForecastPoint> forecastPointsInGroupList) {
-        loadGroupData(forecastPointList, groupRecord, forecastPointsInGroupList);
-    }
-
-    /**
-     * Loads forecast point information and IHFS group information into this
-     * group object.
-     * 
-     * @param forecastPointList
-     *            The master forecast point list.
-     * @param groupRecord
-     *            The group information from the IHFS database
-     * @param forecastPointsInGroupList
-     *            The list of forecast points in this group.
-     * 
-     * @return
-     */
-    private void loadGroupData(
-            final List<RiverForecastPoint> forecastPointList,
-            final Object[] groupRecord,
-            final List<RiverForecastPoint> forecastPointsInGroupList) {
-        this.id = groupRecord[0].toString();
-        this.name = groupRecord[1].toString();
-        this.recommendAllPointsInGroup = Boolean.parseBoolean(groupRecord[3]
-                .toString());
-        this.forecastPointList = forecastPointsInGroupList;
-    }
-
-    /**
-     * @param
-     * @return The number of river stations in this group.
-     */
-    public int getNumberOfForecastPoints()
-
-    {
-        return (forecastPointList != null) ? forecastPointList.size() : 0;
-    }
-
-    /**
-     * @return the list of river stations in this group.
-     */
-    public List<RiverForecastPoint> getForecastPointList() {
-        return forecastPointList;
-    }
-
-    /**
-     * Calculates the maximum observed or forecast value for this group.
-     * 
-     * @param
-     * @return
-     */
-    public void computeGroupMofo() {
-        int catval;
-        long timeval;
-        int max_curobs_cat, max_maxfcst_cat;
-        long max_curobs_time, max_maxfcst_time;
-
-        /* get the info for each of the forecast groups */
-
-        /* initialize the group data */
-
-        max_curobs_cat = max_maxfcst_cat = RiverForecastPoint.HydroFloodCategories.NULL_CATEGORY
-                .getRank();
-        max_curobs_time = max_maxfcst_time = (long) RiverForecastPoint.MISSINGVAL;
-
-        for (RiverForecastPoint forecastPoint : forecastPointList) {
-
-            /*
-             * check the max current observed category value and omf category.
-             * always use the earliest cur observed.
-             */
-
-            if (forecastPoint.getCurrentObservationCategory() != RiverForecastPoint.HydroFloodCategories.NULL_CATEGORY
-                    .getRank()) {
-                catval = forecastPoint.getCurrentObservationCategory();
-                timeval = forecastPoint.getCurrentObservation().getValidTime();
-
-                if (catval > max_curobs_cat) {
-                    max_curobs_cat = catval;
-                    max_curobs_time = timeval;
-                } else if (catval == max_curobs_cat) {
-                    if (timeval < max_curobs_time
-                            || max_curobs_time == RiverForecastPoint.MISSINGVAL) {
-                        max_curobs_time = timeval;
+    public RiverForecastGroup(Object[] queryResult) {
+        if (queryResult != null) {
+            int queryResultSize = queryResult.length;
+            Object queryValue = null;
+            for (int i = 0; i < queryResultSize; i++) {
+                queryValue = queryResult[i];
+                switch (i) {
+                case GROUP_ID_FIELD_IDX:
+                    this.groupId = (String) queryValue;
+                    break;
+                case GROUP_NAME_FIELD_IDX:
+                    this.groupName = (String) queryValue;
+                    break;
+                case ORDINAL_FIELD_IDX:
+                    this.ordinal = (Integer) queryValue;
+                    break;
+                case REC_ALL_INCLUDED_FIELD_IDX:
+                    if ("Y".equals((String) queryValue)) {
+                        this.recommendAllPointsInGroup = true;
+                    } else {
+                        this.recommendAllPointsInGroup = false;
                     }
+                    break;
+                default:
+                    statusHandler
+                            .error("RiverForecastGroup Constructor array out of sync with number of data fields. Unknown field for value "
+                                    + (String) queryValue);
                 }
             }
-
-            /*
-             * check the max forecast category and omf category. always use the
-             * earliest maxfcst
-             */
-
-            if (forecastPoint.getMaximumForecastCategory() != RiverForecastPoint.HydroFloodCategories.NULL_CATEGORY
-                    .getRank()) {
-                catval = forecastPoint.getMaximumForecastCategory();
-                timeval = forecastPoint.getMaximumForecast().getValidTime();
-
-                if (catval > max_maxfcst_cat) {
-                    max_maxfcst_cat = catval;
-                    max_maxfcst_time = timeval;
-                } else if (catval == max_maxfcst_cat) {
-                    if (timeval < max_maxfcst_time
-                            || max_maxfcst_time == RiverForecastPoint.MISSINGVAL) {
-                        max_maxfcst_time = timeval;
-                    }
-                }
-            }
-        } /* end of loop of fps in group */
-
-        /* load the local variables into the structure */
-        this.maxCurrentObservedCategory = max_curobs_cat;
-        this.maxCurrentObservedTime = new Date(max_curobs_time);
-
-        this.maxForecastCategory = max_maxfcst_cat;
-        this.maxForecastTime = new Date(max_maxfcst_time);
-
-        /*
-         * if the cats are equal, use the observed since it is earlier in time.
-         */
-
-        if (this.maxCurrentObservedCategory >= this.maxForecastCategory) {
-            this.maxOMFCategory = this.maxCurrentObservedCategory;
-            this.maxOMFTime = this.maxCurrentObservedTime;
-        } else {
-            this.maxOMFCategory = this.maxForecastCategory;
-            this.maxOMFTime = this.maxForecastTime;
         }
+    }
 
+    /**
+     * @return the group_id
+     */
+    public String getGroupId() {
+        return (this.groupId);
+    }
+
+    /**
+     * @return the group_name of this river group
+     */
+    public String getGroupName() {
+        return (this.groupName);
+    }
+
+    /**
+     * @return the ordinal of this river group
+     */
+    public int getOrdinal() {
+        return (this.ordinal);
     }
 
     /**
@@ -220,12 +186,28 @@ public class RiverForecastGroup {
     }
 
     /**
-     * @return the id
+     * @param
+     * @return The number of River Forecast Points in this group.
      */
-    public String getId() {
-        return id;
+    public int getNumberOfForecastPoints() {
+        return (forecastPointList != null) ? forecastPointList.size() : 0;
     }
 
+    /**
+     * @return the list of river stations in this group.
+     */
+    public List<RiverForecastPoint> getForecastPointList() {
+        return this.forecastPointList;
+    }
+
+    /**
+     * @return the list of river stations in this group.
+     */
+    public void setForecastPointList(List<RiverForecastPoint> forecastPointList) {
+        this.forecastPointList = forecastPointList;
+    }
+
+    // RIVER FORECAST GROUP DYNAMIC (Computed) DATA
     /**
      * @param includedInRecommendation
      *            whether or not to include this river group in the hazard event
@@ -240,44 +222,123 @@ public class RiverForecastGroup {
      *         recommendation.
      */
     public boolean isIncludedInRecommendation() {
-        return includedInRecommendation;
+        return this.includedInRecommendation;
     }
 
     /**
-     * @return the name of this river group
+     * Set the maximum observed flood time.
+     * 
+     * @param maxCurrentObservedTime
      */
-    public String getName() {
-        return name;
+    public void setMaxCurrentObservedTime(Date maxCurrentObservedTime) {
+        this.maxCurrentObservedTime = maxCurrentObservedTime;
     }
 
     /**
-     * @return the max observed forecast category of all the river points in
-     *         this river group.
+     * Get the maximum observed flood time.
+     * 
+     * @return maxCurrentObservedTime
+     */
+    public Date getMaxCurrentObservedTime() {
+        return this.maxCurrentObservedTime;
+    }
+
+    /**
+     * Set the max observed forecast category of all the river points in this
+     * river group.
+     * 
+     * @param maxOMFCategory
+     */
+    public void setMaxOMFCategory(int maxOMFCategory) {
+        this.maxOMFCategory = maxOMFCategory;
+    }
+
+    /**
+     * SGet the max observed forecast category of all the river points in this
+     * river group.
+     * 
+     * @return maxOMFCategory
      */
     public int getMaxOMFCategory() {
-        return maxOMFCategory;
+        return this.maxOMFCategory;
     }
 
     /**
-     * @return the time of the maximum observed forecast data of all the river
-     *         points in this river group.
+     * Set the time of the maximum observed forecast data of all the river
+     * points in this river group.
+     * 
+     * @param maxOMFTime
+     */
+    public void setMaxOMFTime(Date maxOMFTime) {
+        this.maxOMFTime = maxOMFTime;
+    }
+
+    /**
+     * Get the time of the maximum observed forecast data of all the river
+     * points in this river group.
+     * 
+     * @return maxOMFTime
      */
     public Date getMaxOMFTime() {
-        return maxOMFTime;
+        return this.maxOMFTime;
     }
 
     /**
-     * @return the maxCurrentObservedCategory
+     * Set the Flood Category (rank) of the maximum observed data of all the
+     * river points in this river group.
+     * 
+     * @param maxCurrentObservedCategory
+     */
+    public void setMaxCurrentObservedCategory(int maxCurrentObservedCategory) {
+        this.maxCurrentObservedCategory = maxCurrentObservedCategory;
+    }
+
+    /**
+     * Get the Flood Category (rank) of the maximum observed data of all the
+     * river points in this river group.
+     * 
+     * @return maxCurrentObservedCategory
      */
     public int getMaxCurrentObservedCategory() {
-        return maxCurrentObservedCategory;
+        return this.maxCurrentObservedCategory;
     }
 
     /**
-     * @return the maxForecastCategory
+     * Set the Flood Category (rank) of the maximum forecast data of all the
+     * river points in this river group.
+     * 
+     * @param maxForecastCategory
+     */
+    public void setMaxForecastCategory(int maxForecastCategory) {
+        this.maxForecastCategory = maxForecastCategory;
+    }
+
+    /**
+     * Get the Flood Category (rank) of the maximum forecast data of all the
+     * river points in this river group.
+     * 
+     * @return maxForecastCategory
      */
     public int getMaxForecastCategory() {
-        return maxForecastCategory;
+        return this.maxForecastCategory;
+    }
+
+    /**
+     * Set the maxForecastTime
+     * 
+     * @param maxForecastTime
+     */
+    public void setMaxForecastTime(Date maxForecastTime) {
+        this.maxForecastTime = maxForecastTime;
+    }
+
+    /**
+     * Get the maximum forecast flood time.
+     * 
+     * @return maxForecastTime
+     */
+    public Date getMaxForecastTime() {
+        return this.maxForecastTime;
     }
 
 }

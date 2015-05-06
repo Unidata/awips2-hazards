@@ -1318,8 +1318,6 @@ public final class HazardServicesMessageHandler {
     public void hazardDetailActionOccurred(
             final HazardDetailAction hazardDetailAction) {
 
-        System.out.println("HSMH HazardDetailActionOccurred: "
-                + hazardDetailAction.getActionType());
         switch (hazardDetailAction.getActionType()) {
         case PREVIEW:
             preview();
@@ -1358,14 +1356,6 @@ public final class HazardServicesMessageHandler {
     @Handler
     public void productEditorActionOccurred(
             final ProductEditorAction productEditorAction) {
-        System.out.println("HSMH: ProductEditorAction received:\n\t"
-                + "Action: " + productEditorAction.getHazardAction().getValue()
-                + " Event Id: " + productEditorAction.getEventID());
-        List<GeneratedProductList> productsGenerated = productEditorAction
-                .getGeneratedProductsList();
-        for (GeneratedProductList product : productsGenerated) {
-            System.out.println("   Product: " + product.getProductInfo());
-        }
 
         handleProductDisplayAction(productEditorAction);
     }

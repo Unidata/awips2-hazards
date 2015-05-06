@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.raytheon.uf.common.hazards.hydro.HydroConstants;
+import com.raytheon.uf.common.hazards.hydro.RiverHydroConstants;
 import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
@@ -79,21 +79,21 @@ public class GraphData {
 
     private String forecastTs;
 
-    private double actionStage = HydroConstants.MISSING_VALUE;
+    private double actionStage = RiverHydroConstants.MISSING_VALUE;
 
-    private double floodStage = HydroConstants.MISSING_VALUE;
+    private double floodStage = RiverHydroConstants.MISSING_VALUE;
 
-    private double moderateStage = HydroConstants.MISSING_VALUE;
+    private double moderateStage = RiverHydroConstants.MISSING_VALUE;
 
-    private double majorStage = HydroConstants.MISSING_VALUE;
+    private double majorStage = RiverHydroConstants.MISSING_VALUE;
 
-    private double actionFlow = HydroConstants.MISSING_VALUE;
+    private double actionFlow = RiverHydroConstants.MISSING_VALUE;
 
-    private double floodFlow = HydroConstants.MISSING_VALUE;
+    private double floodFlow = RiverHydroConstants.MISSING_VALUE;
 
-    private double moderateFlow = HydroConstants.MISSING_VALUE;
+    private double moderateFlow = RiverHydroConstants.MISSING_VALUE;
 
-    private double majorFlow = HydroConstants.MISSING_VALUE;
+    private double majorFlow = RiverHydroConstants.MISSING_VALUE;
 
     private double riseAboveValue;
 

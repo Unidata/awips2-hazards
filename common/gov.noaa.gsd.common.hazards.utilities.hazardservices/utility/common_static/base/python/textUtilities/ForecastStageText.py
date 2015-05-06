@@ -16,6 +16,7 @@
     Apr 2015       7271    Chris.Golden      Changed to use MISSING_VALUE
                                              constant.
     Apr 2015       7579    Robert.Blum       Updated variable names.
+    May 19, 2015   6562    Chris.Cody        Implemented "work-around" code. This needs to be changed under a different issue.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types
@@ -66,7 +67,7 @@ class ForecastStageText(object):
         @param hazard -- can be a dictionary or object which must contain the RiverForecastPoint 
                           values shown below
         '''
-        
+
         if type(hazard) is types.DictType or isinstance(hazard, collections.OrderedDict):
             hazard = self.createHazard(hazard)
 
@@ -90,7 +91,8 @@ class ForecastStageText(object):
         if hazard.observedStage:
             compareStage = hazard.observedStage
         else:
-            compareStage = 'first spec forecast point  e.g. 0 hours in future'
+            #'first spec forecast point  e.g. 0 hours in future'
+            compareStage = MISSING_VALUE
                
         timeStr = ''     
         fuzzFactor = 0.5
@@ -98,10 +100,19 @@ class ForecastStageText(object):
         # String variables for the rounded stage values
         if hazard.forecastCrestStage:
             forecastCrestStage = format(hazard.forecastCrestStage, '.2f')
+        else:
+            forecastCrestStage = None
+            
         if hazard.maximumForecastStage:
             maximumForecastStage = format(hazard.maximumForecastStage, '.2f')
-        if hazard.specValue:
+        else:
+            maximumForecastStage = None
+            
+        if hazard.specValue and hazard.specValue != str(MISSING_VALUE):
             specValue = format(hazard.specValue, '.2f')
+        else:
+            specValue = None
+            
 
         '''
         # Determine where we are starting in the cycle and describe what follows
@@ -119,16 +130,20 @@ class ForecastStageText(object):
         '''
 
         # risingFalling -- Are we rising or falling?
-        if compareStage < hazard.maximumForecastStage - fuzzFactor:
-            self.risingFalling = 'rise'
-            self.trend = 'rise'
-        elif compareStage > hazard.maximumForecastStage + fuzzFactor:
-            self.risingFalling = 'fall'
-            self.trend = 'fall'
+        if compareStage != MISSING_VALUE:
+            if compareStage < hazard.maximumForecastStage - fuzzFactor:
+                self.risingFalling = 'rise'
+                self.trend = 'rise'
+            elif compareStage > hazard.maximumForecastStage + fuzzFactor:
+                self.risingFalling = 'fall'
+                self.trend = 'fall'
+            else: # steady
+                self.risingFalling = 'remain steady'
+                self.trend = ['steady']
         else: # steady
             self.risingFalling = 'remain steady'
             self.trend = ['steady']
-        
+
         # rise above / fall below flood stage
         if hazard.forecastRiseAboveFloodStageTime_ms and hazard.forecastFallBelowFloodStageTime_ms:
             if hazard.forecastRiseAboveFloodStageTime_ms < hazard.forecastFallBelowFloodStageTime_ms:
@@ -173,10 +188,13 @@ class ForecastStageText(object):
                     self.finalStageFlow += ' at '+hazard.specTime
             self.finalStageFlow += '.'
         else: # steady
-            if hazard.maximumForecastStage >= hazard.floodStage:        
-                self.finalStageFlow=' above flood stage at '+maximumForecastStage+' '+hazard.stageFlowUnits+'.'
-            elif hazard.maximumForecastStage != MISSING_VALUE:
-                self.finalStageFlow=' below flood stage at '+maximumForecastStage+' '+hazard.stageFlowUnits+'.'
+            if maximumForecastStage is not None:
+                if hazard.maximumForecastStage >= hazard.floodStage:        
+                    self.finalStageFlow=' above flood stage at '+maximumForecastStage+' '+hazard.stageFlowUnits+'.'
+                elif hazard.maximumForecastStage != MISSING_VALUE:
+                    self.finalStageFlow=' below flood stage at '+maximumForecastStage+' '+hazard.stageFlowUnits+'.'
+                else:
+                    self.finalStageFlow='.'
             else:
                 self.finalStageFlow='.'
         phrase = 'is expected to ' + self.risingFalling + self.firstRiseFallTime + self.crestStatement + self.secondRiseFallTime + self.finalStageFlow 
@@ -219,8 +237,10 @@ class ForecastStageText(object):
         hazard.maximumForecastTime_str = hazardDict.get('maximumForecastTime_str')
         if hazard.maximumForecastTime_str is None:
             maximumForecastTime_ms = hazardDict.get('maximumForecastTime_ms')
-            hazard.maximumForecastTime_str = self.tpc.getFormattedTime(maximumForecastTime_ms,format='%I00 %p %Z %a %b %d %Y',
-                                                                        timeZones=self.timeZones) 
+            if maximumForecastTime_ms:
+                hazard.maximumForecastTime_str = self.tpc.getFormattedTime(maximumForecastTime_ms,format='%I00 %p %Z %a %b %d %Y',
+                                                                        timeZones=self.timeZones)
+                  
         hazard.stageFlowUnits = hazardDict.get('stageFlowUnits') 
         hazard.specValue =  hazardDict.get('specValue') 
         hazard.specTime = hazardDict.get('specTime') 

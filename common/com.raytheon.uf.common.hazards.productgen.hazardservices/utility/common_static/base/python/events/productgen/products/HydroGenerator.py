@@ -14,9 +14,16 @@
     Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
     May 05, 2015    7141    Robert.Blum Changes for floodPointTable.
 '''
-from RiverForecastPoints import RiverForecastPoints
+from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
+from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
+from com.raytheon.uf.common.hazards.hydro import RiverForecastGroup
+from RiverForecastUtils import RiverForecastUtils
+from RiverForecastUtils import CATEGORY
+from RiverForecastUtils import CATEGORY_NAME
+from RiverForecastUtils import TIME
 from HydroProductParts import HydroProductParts
 from com.raytheon.uf.common.time import SimulatedTime
+from HazardConstants import MISSING_VALUE
 import logging, UFStatusHandler
 import datetime
 import Legacy_Base_Generator
@@ -25,7 +32,8 @@ from abc import *
 class Product(Legacy_Base_Generator.Product):
 
     def __init__(self):
-        self._rfp = None
+        self._riverForecastUtils = None
+        self._riverForecastManager = None
         self._hydroProductParts = HydroProductParts()
         super(Product, self).__init__()
 
@@ -42,62 +50,90 @@ class Product(Legacy_Base_Generator.Product):
         '''
             Adds all data related to RiverForecastPoints to the hazardEventDict dictionary.
         '''
+        
         millis = SimulatedTime.getSystemTime().getMillis()
         currentTime = datetime.datetime.fromtimestamp(millis / 1000)
-        if self._rfp is None:
-            self._rfp = RiverForecastPoints(currentTime)
-
+        if self._riverForecastUtils is None:
+            self._riverForecastUtils = RiverForecastUtils()
+        if self._riverForecastManager is None:
+            self._riverForecastManager = RiverForecastManager()
+        
+        riverForecastGroup = self._riverForecastManager.getRiverForecastGroupForRiverForecastPoint(pointID, True)
+        riverForecastPoint = self._riverForecastUtils.getRiverForecastPointFromRiverForecastGroup( pointID, riverForecastGroup)
         hazardEventDict['pointID'] = pointID
-        hazardEventDict['riverName_GroupName'] = self._rfp.getGroupName(pointID)
-        hazardEventDict['riverName_RiverName'] = self._rfp.getRiverName(pointID)
-        hazardEventDict['groupForecastPointList'] = self._rfp.getGroupForecastPointList(pointID)
-        hazardEventDict['groupMaxForecastFloodCatName'] = self._rfp.getGroupMaximumForecastFloodCategoryName(pointID)
+        hazardEventDict['riverName_GroupName'] = riverForecastGroup.getGroupName()
+        hazardEventDict['riverName_RiverName'] = riverForecastPoint.getStream()
+        hazardEventDict['groupForecastPointList'] = self._riverForecastUtils.getGroupForecastPointNameList(riverForecastGroup, None)
+        hazardEventDict['groupMaxForecastFloodCatName'] = self._riverForecastUtils.getMaximumForecastCatName(riverForecastPoint)
 
-        hazardEventDict['proximity'] = self._rfp.getRiverPointProximity(pointID)
-        hazardEventDict['riverPointName'] = self._rfp.getRiverPointName(pointID)
+        hazardEventDict['proximity'] = riverForecastPoint.getProximity()
+        hazardEventDict['riverPointName'] = riverForecastPoint.getName()
         # Observed and Flood Stages
-        observedStage, shefQualityCode = self._rfp.getObservedStage(pointID)
-        hazardEventDict['observedStage'] = observedStage
-        hazardEventDict['observedCategory'] = self._rfp.getObservedCategory(pointID)
-        hazardEventDict['observedCategoryName'] = self._rfp.getObservedCategoryName(pointID)
-        observedTime_ms = self._rfp.getObservedTime(pointID)
+        observedCurrentIndex = riverForecastPoint.getObservedCurrentIndex()
+        shefObserved = self._riverForecastManager.getSHEFObserved(riverForecastPoint, observedCurrentIndex)
+        if shefObserved is not None:
+            observedStage = shefObserved.getObsValue()
+            hazardEventDict['observedStage'] = observedStage
+        else:
+            hazardEventDict['observedStage'] = MISSING_VALUE
+        category = self._riverForecastUtils.getObservedLevel(riverForecastPoint, CATEGORY)
+        categoryName = self._riverForecastUtils.getObservedLevel(riverForecastPoint, CATEGORY_NAME)
+        observedTime_ms = self._riverForecastUtils.getObservedLevel(riverForecastPoint, TIME)
+        hazardEventDict['observedCategory'] = category
+        hazardEventDict['observedCategoryName'] = categoryName
         hazardEventDict['observedTime_ms'] = observedTime_ms
-        max24HourObservedStage, shefQualityCode = self._rfp.getMaximum24HourObservedStage(pointID)
+        
+        max24HourIndex = riverForecastPoint.getObservedMax24Index()
+        stageCodePair = riverForecastPoint.getMaximum24HourObservedStage()
+        tempStageString = str (stageCodePair.getFirst() )
+        
+        max24HourObservedStage = float( tempStageString )
+        max24HourObservedShefQualityCode = stageCodePair.getSecond()
         hazardEventDict['max24HourObservedStage'] = max24HourObservedStage
-        hazardEventDict['stageFlowName'] = self._rfp.getStageFlowName(pointID)
-        hazardEventDict['floodStage'] = self._rfp.getFloodStage(pointID)
-        # Maximum Forecast Stage
-        primaryPE = self._rfp.getPrimaryPhysicalElement(pointID)
+        primaryPE = riverForecastPoint.getPrimaryPE()
         hazardEventDict['primaryPE'] = primaryPE
-        maximumForecastStage = self._rfp.getMaximumForecastLevel(pointID, primaryPE)
-        hazardEventDict['maximumForecastStage'] = maximumForecastStage
-        hazardEventDict['maximumForecastTime_ms'] = self._rfp.getMaximumForecastTime(pointID)
-        # Need to save this off to be set in the ProductInformation later.
-        self._maxFcstCategory = self._rfp.getMaximumForecastCategory(pointID)
-        hazardEventDict['maxFcstCategory'] = self._maxFcstCategory
-        hazardEventDict['maxFcstCategoryName'] = self._rfp.getMaximumForecastCatName(pointID)
-        # Rise
-        hazardEventDict['forecastRiseAboveFloodStageTime_ms'] = self._rfp.getForecastRiseAboveFloodStageTime(pointID)
-        # Crest
-        hazardEventDict['forecastCrestStage'] = self._rfp.getForecastCrestStage(pointID)
-        hazardEventDict['forecastCrestTime_ms'] = self._rfp.getForecastCrestTime(pointID)
-        # Fall
-        hazardEventDict['forecastFallBelowFloodStageTime_ms'] = self._rfp.getForecastFallBelowFloodStageTime(pointID)
+        hazardEventDict['stageFlowName'] = self._riverForecastUtils.getStageFlowName(primaryPE)
+        hazardEventDict['floodStage'] = riverForecastPoint.getFloodStage()
+        # Maximum Forecast Stage
+        maxForecastIndex = riverForecastPoint.getMaximumForecastIndex()
+        maxShefForecast = self._riverForecastManager.getSHEFForecast(riverForecastPoint, maxForecastIndex)
+        if maxShefForecast is not None:
+            maximumForecastStage = maxShefForecast.getValue()
+            maximumForecastTime_ms = maxShefForecast.getValidTime()
+        else:
+            maximumForecastStage = MISSING_VALUE
+            maximumForecastTime_ms = MISSING_VALUE
 
-        hazardEventDict['stageFlowUnits'] = self._rfp.getStageFlowUnits(pointID)
+        # Need to save this off to be set in the ProductInformation later.
+        self._maxFcstCategory = riverForecastPoint.getMaximumForecastCategory()
+        hazardEventDict['maxFcstCategory'] = self._maxFcstCategory
+        
+        maxFcstCategoryName = self._riverForecastUtils.getMaximumForecastLevel(riverForecastPoint, primaryPE, CATEGORY_NAME)
+        hazardEventDict['maxFcstCategoryName'] = maxFcstCategoryName
+        # Rise
+        hazardEventDict['forecastRiseAboveFloodStageTime_ms'] = riverForecastPoint.getForecastRiseAboveTime()
+        # Crest
+        hazardEventDict['forecastCrestStage'] = riverForecastPoint.getForecastCrestValue()
+        hazardEventDict['forecastCrestTime_ms'] = riverForecastPoint.getForecastCrestTime()
+        # Fall
+        hazardEventDict['forecastFallBelowFloodStageTime_ms'] = riverForecastPoint.getForecastFallBelowTime()
+
+        hazardEventDict['stageFlowUnits'] = self._riverForecastUtils.getFlowUnits(primaryPE)
         # Trend
-        hazardEventDict['stageTrend'] = self._rfp.getStageTrend(pointID)
+        trendPhrase = self._riverForecastUtils.getStageTrend(riverForecastPoint)
+        hazardEventDict['stageTrend'] = trendPhrase
 
         hazardEventDict['pointImpacts'] = self._preparePointImpacts(hazardEvent)
-        hazardEventDict['impactCompUnits'] = self._rfp.getImpactCompUnits(pointID)
+        hazardEventDict['impactCompUnits'] = self._riverForecastUtils.getFlowUnits(primaryPE)
         hazardEventDict['crestsSelectedForecastPointsComboBox'] = hazardEvent.get('crestsSelectedForecastPointsComboBox')
 
         # Spec values
-        forecastTypeSource = self._rfp.getForecastTopRankedTypeSource(pointID, primaryPE, 0, 'Z')
-        hazardEventDict['specValue'] = self._rfp.getPhysicalElementValue(
-                pointID, primaryPE, 0, forecastTypeSource, 'Z', '4|1200|1', timeFlag=False, currentTime_ms=millis)
-        hazardEventDict['specTime'] = self._rfp.getPhysicalElementValue(
-                pointID, primaryPE, 0, forecastTypeSource, 'Z', '4|1200|1', timeFlag=True, currentTime_ms=millis)
+        forecastTypeSource = self._riverForecastManager.getTopRankedTypeSource(pointID, primaryPE, 0, 'Z')
+        hazardEventDict['specValue'] = self._riverForecastManager.getPhysicalElementValue(
+                pointID, primaryPE, 0, forecastTypeSource, 'Z', '4|1200|1', False, millis)
+        
+        hazardEventDict['specTime'] = self._riverForecastManager.getPhysicalElementValue(
+                pointID, primaryPE, 0, forecastTypeSource, 'Z', '4|1200|1', True, millis)
 
         # Next 3 days values for FloodPointTable
         baseTime = self._tpc.getFormattedTime(observedTime_ms, '%H%M')
@@ -105,13 +141,13 @@ class Product(Legacy_Base_Generator.Product):
         timeArgs = []
         for i in range(3):
             timeArgs.append(str(i+1)+'|'+baseTime+'|1')  
-        # TODO Fix getPhysicalElementValue              
-        hazardEventDict['day1'] = self._rfp.getPhysicalElementValue(pointID, primaryPE, 0, forecastTypeSource, 'Z', timeArgs[0], timeFlag=False, 
-                                                currentTime_ms=millis)
-        hazardEventDict['day2'] = self._rfp.getPhysicalElementValue(pointID, primaryPE, 0, forecastTypeSource, 'Z', timeArgs[1], timeFlag=False, 
-                                                currentTime_ms=millis)
-        hazardEventDict['day3'] = self._rfp.getPhysicalElementValue(pointID, primaryPE, 0, forecastTypeSource, 'Z', timeArgs[2], timeFlag=False, 
-                                                currentTime_ms=millis) 
+
+        hazardEventDict['day1'] = self._riverForecastManager.getPhysicalElementValue(pointID, primaryPE, 0, forecastTypeSource, 'Z', timeArgs[0], False, 
+                                                millis)
+        hazardEventDict['day2'] = self._riverForecastManager.getPhysicalElementValue(pointID, primaryPE, 0, forecastTypeSource, 'Z', timeArgs[1], False, 
+                                                millis)
+        hazardEventDict['day3'] = self._riverForecastManager.getPhysicalElementValue(pointID, primaryPE, 0, forecastTypeSource, 'Z', timeArgs[2], False, 
+                                                millis) 
 
     def _preparePointImpacts(self, hazardEvent):
         # Pull out the list of chosen impact text fields
@@ -159,3 +195,4 @@ class Product(Legacy_Base_Generator.Product):
             return mapping[hydrologicCause]
         else:
             return mapping['default']
+

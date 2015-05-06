@@ -2,16 +2,11 @@ import CommonMetaData
 from HazardConstants import *
 import datetime
 import json
-from RiverForecastPoints import RiverForecastPoints
-from com.raytheon.uf.common.time import SimulatedTime
 
 class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-        millis = SimulatedTime.getSystemTime().getMillis()
-        currentTime = datetime.datetime.fromtimestamp(millis / 1000)
-        self._rfp = RiverForecastPoints(currentTime)
         self._basedOnLookupPE = '{:15s}'.format('YES')
 
         if self.hazardStatus == "ending":

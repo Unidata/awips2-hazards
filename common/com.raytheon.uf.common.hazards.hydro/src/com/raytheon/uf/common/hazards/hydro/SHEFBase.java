@@ -1,11 +1,28 @@
+/**
+ * This software was developed and / or modified by Raytheon Company,
+ * pursuant to Contract DG133W-05-CQ-1067 with the US Government.
+ * 
+ * U.S. EXPORT CONTROLLED TECHNICAL DATA
+ * This software product contains export-restricted data whose
+ * export/transfer/disclosure is restricted by U.S. law. Dissemination
+ * to non-U.S. persons whether in the United States or abroad requires
+ * an export license or other authorization.
+ * 
+ * Contractor Name:        Raytheon Company
+ * Contractor Address:     6825 Pine Street, Suite 340
+ *                         Mail Stop B8
+ *                         Omaha, NE 68106
+ *                         402.291.0100
+ * 
+ * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
+ * further licensing information.
+ **/
 package com.raytheon.uf.common.hazards.hydro;
 
 /**
- * 
- * Description: Represents a SHEF observation. Hydrometeorological data written
- * to the hydro database are in SHEF format.
- * 
- * This class is not meant to be subclassed.
+ * This represents a base class for SHEF Forecast and SHEF Observed data.
+ * Hydrometeorological data written to the hydro database (Forecast: fcstheight,
+ * fcstdischarge) (Observed: height, discharge) are in SHEF format.
  * 
  * <pre>
  * 
@@ -14,65 +31,83 @@ package com.raytheon.uf.common.hazards.hydro;
  * ------------ ---------- ----------- --------------------------
  * July 2012               Bryon.Lawrence    Initial creation
  * May 1, 2014  3581       bkowal      Relocate to common hazards hydro
+ * May 08, 2015 6562       Chris.Cody  Restructure River Forecast Points/Recommender
  * 
  * </pre>
  * 
- * @author Bryon.Lawrence
+ * @author Chris.Cody
  * @version 1.0
  */
-public final class SHEFObservation implements Cloneable {
-    /*
-     * PEDTSEP items
-     */
-    /**
-     * Physical element
-     */
-    private String physicalElement;
+public abstract class SHEFBase {
 
     /**
-     * Duration of observation
+     * Forecast Point Identifier (LID)
      */
-    private long duration;
+    protected String lid;
+
+    /**
+     * Physical element (PE)
+     */
+    protected String physicalElement;
+
+    /**
+     * Duration of observation (DUR)
+     */
+    protected long duration;
 
     /**
      * Type source of observation
      */
-    private String typeSource;
+    protected String typeSource;
 
     /**
-     * Extremum of observation (e.g. max, min)
+     * Extremum of observation (e.g. max, min) (EXTREMUM)
      */
-    private char extremum;
+    protected char extremum;
 
     /**
-     * Probability of observation
+     * Observation value (VALUE)
      */
-    private double probability;
+    protected double value;
 
     /**
-     * SHEF quality code
+     * SHEF quality code (SHEF_QUAL_CODE)
      */
-    private String shefQualCode;
+    protected String shefQualCode;
 
     /**
-     * Observation quality code
+     * Observation quality code (QUALITY_CODE)
      */
-    private long qualityCode;
+    protected long qualityCode;
 
     /**
-     * Observation value
+     * revision number (REVISION)
      */
-    private double value;
+    protected int revision;
 
     /**
-     * valid time of observation
+     * Product Identifier (PRODUCT_ID)
      */
-    private long validTime;
+    protected String productId;
 
     /**
-     * basis time of observation
+     * Product Time (PRODUCTTIME)
      */
-    private long basisTime;
+    protected long productTime;
+
+    /**
+     * Posting Time (POSTINGTIME)
+     */
+    protected long postingTime;
+
+    /**
+     * Get Forecast Point Identifier.
+     * 
+     * @return lid
+     */
+    public String getLid() {
+        return (this.lid);
+    }
 
     /**
      * @param physicalElement
@@ -135,21 +170,6 @@ public final class SHEFObservation implements Cloneable {
     }
 
     /**
-     * @param probability
-     *            the probability to set
-     */
-    public void setProbability(double probability) {
-        this.probability = probability;
-    }
-
-    /**
-     * @return the probability
-     */
-    public double getProbability() {
-        return probability;
-    }
-
-    /**
      * @param shefQualCode
      *            the shefQualCode to set
      */
@@ -195,37 +215,39 @@ public final class SHEFObservation implements Cloneable {
     }
 
     /**
-     * @param validTime
-     *            the validTime to set
+     * Get Revision number
+     * 
+     * @return revision
      */
-    public void setValidTime(long validTime) {
-        this.validTime = validTime;
+    public int getRevision() {
+        return (this.revision);
     }
 
     /**
-     * @return the validTime
+     * Get Product Identifier.
+     * 
+     * @return productId
      */
-    public long getValidTime() {
-        return validTime;
+    public String getProductId() {
+        return (this.productId);
     }
 
     /**
-     * @param basisTime
-     *            the basisTime to set
+     * Get Product Time.
+     * 
+     * @return productTime
      */
-    public void setBasisTime(long basisTime) {
-        this.basisTime = basisTime;
+    public long getProductTime() {
+        return (this.productTime);
     }
 
     /**
-     * @return the basisTime
+     * Get Posting Time.
+     * 
+     * @return postingTime
      */
-    public long getBasisTime() {
-        return basisTime;
+    public long getPostingTime() {
+        return (this.postingTime);
     }
 
-    @Override
-    public Object clone() throws CloneNotSupportedException {
-        return super.clone();
-    }
 }

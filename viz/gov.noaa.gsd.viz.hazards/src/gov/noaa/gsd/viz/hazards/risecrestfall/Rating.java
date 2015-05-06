@@ -22,11 +22,12 @@ package gov.noaa.gsd.viz.hazards.risecrestfall;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.raytheon.uf.common.hazards.hydro.HydroConstants;
+import com.raytheon.uf.common.hazards.hydro.RiverHydroConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.catalog.DirectDbQuery;
 import com.raytheon.uf.viz.core.catalog.DirectDbQuery.QueryLanguage;
+import com.raytheon.viz.hydrocommon.HydroConstants;
 
 /**
  * Object holds the rating values for the Rise/Crest/Fall editor.
@@ -53,10 +54,12 @@ public class Rating {
     private String QUERY_SQL = "select lid,stage,discharge from rating where lid =':lid'";
 
     private String lid = null;
+
     private ArrayList<Double> stageValues = new ArrayList<Double>();
+
     private ArrayList<Double> dischargeValues = new ArrayList<Double>();
 
-    public Rating (String lid) {
+    public Rating(String lid) {
         this.lid = lid;
         populate(lid);
     }
@@ -69,9 +72,10 @@ public class Rating {
             if (results != null) {
                 for (int i = 0; i < results.size(); i++) {
                     Object[] sa = results.get(i);
-                    if (((sa[1] != null) || (sa[1] != "")) && ((sa[2] != null) || (sa[2] != ""))) {
-                        addStage((Double)sa[1]);
-                        addDischarge((Double)sa[2]);
+                    if (((sa[1] != null) || (sa[1] != ""))
+                            && ((sa[2] != null) || (sa[2] != ""))) {
+                        addStage((Double) sa[1]);
+                        addDischarge((Double) sa[2]);
                     }
                 }
             }
@@ -89,7 +93,8 @@ public class Rating {
     }
 
     /**
-     * @param lid the lid to set
+     * @param lid
+     *            the lid to set
      */
     public void setLid(String lid) {
         this.lid = lid;
@@ -155,7 +160,7 @@ public class Rating {
                 return dischargeValues.get(i);
             }
         }
-        return HydroConstants.MISSING_VALUE;
+        return RiverHydroConstants.MISSING_VALUE;
     }
 
     /**
@@ -170,6 +175,6 @@ public class Rating {
                 return stageValues.get(i);
             }
         }
-        return HydroConstants.MISSING_VALUE;
+        return RiverHydroConstants.MISSING_VALUE;
     }
 }

@@ -9,12 +9,8 @@
  */
 package com.raytheon.uf.common.hazards.hydro;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
-
-import com.raytheon.uf.common.util.Pair;
 
 /**
  * Description:
@@ -38,7 +34,7 @@ import com.raytheon.uf.common.util.Pair;
  * Dec 17, 2014 2394       Ramer/Manross    Updated Interface
  * Feb 21, 2015 4959       Dan Schaffer     Improvements to add/remove UGCs
  * Feb 24, 2015 5960       Manross             Grab flood inundation areas
- * 
+ * May 08, 2015 6562       Chris.Cody  Restructure River Forecast Points/Recommender
  * </pre>
  * 
  * @author bryon.lawrence
@@ -46,346 +42,196 @@ import com.raytheon.uf.common.util.Pair;
  */
 public interface IFloodDAO {
 
-    public static final String RO = "RO";
-
     /**
-     * Retrieves a list of river forecast points.
+     * Query for a list of Formatted "<County Name>|<State Abbreviation>" values
+     * for a Hydrologic Service Area.
      * 
-     * @param hazardSettings
-     *            Flood recommender configuration values
-     * @return List of river forecast points.
+     * @param hsaId
+     *            Hydrologic Service Area
+     * @return A list of strings containing "<County Name>|<State Abbreviation>"
+     *         values
      */
-    public List<RiverForecastPoint> getForecastPointInfo(
-            HazardSettings hazardSettings);
+    public List<String> queryCountyStateListForHsa(String hsaId);
 
     /**
-     * Retrieves a zone information for river points
+     * Query for a Map of State abbreviation to full State names.
      * 
-     * @return {@link RiverPointZoneInfo}s
+     * @return A Map of State abbreviation to full State names.
      */
-    public List<RiverPointZoneInfo> getRiverPointZonePointInfo();
+    public Map<String, String> queryStateAbbreviationToNameMap();
 
     /**
-     * Retrieves a list of river forecast groups.
+     * Query for All Hydrologic Service Area Id values.
      * 
-     * @param riverForecastPoints
-     *            A list of river forecast points
+     * @return List of all HSA ID values
+     */
+    public List<String> queryHydrologicServiceAreaIdList();
+
+    /**
+     * Query for a List of LID (Point Id) values for a: County, or County Num
+     * value.
+     * 
+     * Either List but not both may be null.
+     * 
+     * @param countyNameList
+     *            List of Count Names The name of the county, first letter
+     *            capitalized
+     * @param countyNumList
+     *            List of County Num values
+     * @return A list of Lid values which each array corresponding to one record
+     *         in the IHFS CountyNum table.
+     */
+    public List<String> queryLidListForCounty(List<String> countyNameList,
+            List<String> countyNumList);
+
+    /**
+     * Retrieves a List of RiverForecastPoint objects.
+     * 
+     * RiverForecastPoint objects contain data from FpInfo, Location, and the
+     * Primary PE (Primary Physical Element) value from the RiverStat table.
+     * 
+     * All but one of the given parameters can be null. All given parameters are
+     * AND'ed together.
+     * 
+     * This is a shallow query.
+     * 
+     * @param lidList
+     *            A list of specific Point Id (lid) values
+     * @param hsaList
+     *            A list of specific HSA (Hazard Area) values (OAX, etc)
+     * @param groupIdList
+     *            A list of specific Group Id values
+     * @param physicalElementList
+     *            A list of specific SHEF Physical Element values
+     * 
+     * @return {@link RiverForecastPoint} data objects
+     */
+    public List<RiverForecastPoint> queryRiverForecastPointList(
+            List<String> lidList, List<String> hsaList,
+            List<String> groupIdList, List<String> physicalElementList);
+
+    /**
+     * Query for a single River Forecast Point
+     * 
+     * This is a shallow query.
+     * 
+     * @param lid
+     *            River Forecast Point LID value
+     * @return River Forecast Point object.
+     */
+    public RiverForecastPoint queryRiverForecastPoint(String lid);
+
+    /**
+     * Query for a List of RiverPointZone (ZONENUM) objects for the given
+     * Parameters.
+     * 
+     * At least one input parameter should not be null.
+     * 
+     * @param lidList
+     *            River forecast point identifier list
+     * @param stateList
+     *            List of State abbreviations
+     * @param zoneNumberList
+     *            List of Zone Numbers
+     * @return A List of RiverPointZone objects
+     */
+    public List<RiverPointZoneInfo> queryRiverPointZoneInfoList(
+            List<String> lidList, List<String> stateList,
+            List<String> zoneNumberList);
+
+    /**
+     * Query for a RiverPointZone (ZONENUM) object for the given Lid
+     * 
+     * @param lid
+     *            River forecast point identifier
+     * @return A RiverPointZone object
+     */
+    public RiverPointZoneInfo queryRiverPointZoneInfo(String lid);
+
+    /**
+     * Query for All river forecast groups.
+     * 
+     * This is a shallow query.
+     * 
      * @return List of river forecast groups.
      */
-    public List<RiverForecastGroup> getForecastGroupInfo(
-            List<RiverForecastPoint> riverForecastPoints);
+    public List<RiverForecastGroup> queryAllRiverForecastGroup();
 
     /**
-     * Retrieves the county river point forecast groups.
+     * Query for a list of RiverForecastGroup Group Id strings for a Hydrologic
+     * Service Area Id.
      * 
-     * @param hazardSettings
-     *            Flood recommender configuration values
-     * @param riverForecastPoints
-     *            List of river forecast points
-     * @return List of county forecast groups
+     * @param hsaId
+     *            A Hydrological Service Area (HSA) Id
+     * @return List of RiverForecastGroup Group Id Strings.
      */
-    public List<CountyForecastGroup> getForecastCountyGroups(
-            HazardSettings hazardSettings,
-            List<RiverForecastPoint> riverForecastPoints);
+    public List<String> queryHsaRiverForecastGroupIdList(String hsa);
 
     /**
-     * Retrieves the most recent observation for a river forecast point.
+     * Query for a single RiverForecastGroup.
      * 
-     * @param id
-     *            River forecast point identifier
-     * @param physicalElement
-     *            The physical element to retrieve the more recent datum for.
-     * @param beginValidTime
-     *            The earliest time to search for a value
-     * @param systemTime
-     *            The latest time to search for a value
-     * @return A list of object arrays, where each array element corresponds to
-     *         a column in the IHFS RiverStatus table. For Example,
+     * This is a shallow query.
      * 
-     *         new Object[]{ "DCTN1", "HG", 0, "RG", "Z", -1,
-     *         "2011-02-08 04:00:00", null, 39.04d }
+     * @param groupId
+     *            the RiverForecastGroup Group Id value
+     * @return One River forecast group.
      */
-    public List<Object[]> retrieveRiverStatus(String id,
-            String physicalElement, long beginValidTime, long systemTime);
+    public RiverForecastGroup queryRiverForecastGroup(String groupId);
 
     /**
-     * Retrieves data from the IHFS IngestFilter Table.
+     * Query for a list of RiverForecastGroup objects.
      * 
-     * @param
-     * @return A list of object arrays, where each array element corresponds to
-     *         a pipe delimited string: ts_rank|ts|lid|pe
+     * Query parameters are and-ed together. Either but not both may be null.
+     * This is a shallow query.
      * 
-     *         For example: new Object[] {"1|FF|DCTN1|HG"}
+     * @param groupIdList
+     *            A list of RiverForecastGroup Group Id values
+     * @param groupNameList
+     *            A list of RiverForecastGroup Group Name values
+     * @return List of RiverForecastGroup objects.
      */
-    public List<Object[]> getIngestTable(String primary_pe);
+    public List<RiverForecastGroup> queryRiverForecastGroupList(
+            List<String> groupIdList, List<String> groupNameList);
 
     /**
-     * Retrieves IngestFilter settings for a given station and physical element.
-     * 
-     * @param id
-     *            Forecast point id
-     * @param physicalElement
-     *            The SHEF Physical element code
-     * @return List of object arrays, where each array element corresponds to a
-     *         pipe delimited string with values from the IngestFilter table:
-     *         ts_rank | ts
-     * 
-     *         For example:
-     * 
-     *         new Object[] {"1|RX"}
-     */
-    public List<Object[]> retrieveIngestSettings(String id,
-            String physicalElement);
-
-    /**
-     * Retrieves the configuration information which determines how the hazard
-     * recommendation algorithm works.
-     * 
-     * @param
-     * @return A HazardSettings object.
-     */
-    public HazardSettings retrieveSettings();
-
-    /**
-     * Retrieves the observed hydrograph for a river forecast point.
+     * Query for a single RiverForecastGroup for a RiverForecastPoint lid value.
      * 
      * @param lid
-     *            The river forecast point identifier
-     * @param physicalElement
-     *            The SHEF physical element code
-     * @param typeSource
-     *            The SHEF typesource code
-     * @param obsBeginTime
-     *            The lower bound of time window to retrieve observations for
-     * @param obsEndTime
-     *            The upper bound of the time window to retrieve observations
-     *            for.
-     * @return A list of Object arrays where each array corresponds to a row of
-     *         data from either the IHFS Discharge or Height table.
-     * 
-     *         For example:
-     * 
-     *         new Object[] { "DCTN1", "HG", 0, "RG", "Z",
-     *         "2011-02-07 17:00:00", 30.93, "Z", 1879048191, 0, "KWOHRRSOAX",
-     *         "2011-02-07 17:03:00", "2011-02-07 17:04:19" });
+     *            the RiverForecastPoint lid value
+     * @return Parent RiverForecastGroup.
      */
-    public List<Object[]> getRiverObservedHydrograph(String lid,
-            String physicalElement, String typeSource, long obsBeginTime,
-            long obsEndTime);
+    public RiverForecastGroup queryRiverForecastGroupForLid(String lid);
 
     /**
-     * Returns a list of basis times (the time each river forecast timeseries
-     * was created).
-     * 
-     * @param lid
-     *            River forecast point identifier
-     * @param physicalElement
-     *            The SHEF physical element code
-     * @param typeSource
-     *            The SHEF typesource code
-     * @param systemTime
-     *            The system time
-     * @param endValidTime
-     *            The latest possible forecast valid time
-     * @param basisBTime
-     *            The earliest basistime to accept
-     * @return A list object arrays. Each array contains a single basistime
-     *         value string.
-     * 
-     *         For example:
-     * 
-     *         new Object[]{ "2011-02-08 15:06:00" }
-     */
-    public List<Object[]> getRiverForecastBasisTimes(String lid,
-            String physicalElement, String typeSource, Date systemTime,
-            long endValidTime, long basisBTime);
-
-    /**
-     * Retrieves the forecast hydrograph for a river forecast point.
-     * 
-     * @param lid
-     *            The river forecast point identifier
-     * @param physicalElement
-     *            The SHEF physical element code
-     * @param typeSource
-     *            The SHEF typesource code
-     * @param systemTime
-     *            The system time
-     * @param endValidTime
-     *            The latest valid forecast time to accept
-     * @param basisBTime
-     *            The earliest basis time to search for
-     * @param useLatestForecast
-     *            Only consider the latest forecast
-     * @param basisTimeResults
-     *            Available forecast basis times
-     * 
-     * 
-     * @return A list of Object arrays. Each array corresponds to one row from
-     *         the IHFS FcstHeight or FcstDischarge tables.
-     * 
-     *         For example:
-     * 
-     *         new Object[] { "DCTN1", "HG", 0, "FF", "Z", -1,
-     *         "2011-02-08 18:00:00", "2011-02-08 15:06:00", 39.91, "Z",
-     *         1879048191, 1, "KKRFRVFMOM", "2011-02-08 15:15:00",
-     *         "2011-02-08 15:15:10" });
-     */
-    public List<Object[]> getRiverForecastHydrograph(String lid,
-            String physicalElement, String typeSource, Date systemTime,
-            long endValidTime, long basisBTime, boolean useLatestForecast,
-            List<Object[]> basisTimeResults);
-
-    public String getForecastTopRankedTypeSource(String lid, String primary_pe,
-            int duration, String extremum);
-
-    public String getPhysicalElement(String lid, String physicalElement,
-            int duration, String typeSource, String extremum, String timeArg,
-            String derivationInstruction, boolean timeFlag, long currentTime_ms);
-
-    // public String getImpact
-    /**
-     * 
-     * @param
-     * @return Number of hours to look back for observed data
-     */
-    public int getLookBackHoursForAllForecastPoints();
-
-    /**
-     * 
-     * @param
-     * @return Number of hours to look forward for forecast data
-     */
-    public int getLookForwardHoursForAllForecastPoints();
-
-    /**
-     * 
-     * @param
-     * @return The buffer around a reference stage .
-     */
-    public double getDefaultStageWindow();
-
-    /**
-     * 
-     * @param
-     * @return The max number of hours to look back for a river forecast basis
-     *         time.
-     */
-    public int getBasisHoursForAllForecastPoints();
-
-    /**
-     * 
-     * @param
-     * @return The number of hours to add to the fall below time.
-     * 
-     */
-    public int getShiftHoursForAllForecastPoints();
-
-    /**
-     * The date format expected by the persistence mechanism backing this DAO.
-     * 
-     * @param
-     * @return A SimpleDateFormat object which can be used to convert back and
-     *         forth between a date string representation.
-     */
-    public SimpleDateFormat getDateFormat();
-
-    /**
-     * Determines the best TS to use for retrieval of observed hydrographs.
-     * 
-     * @param lid
-     *            River forecast point identifier
-     * @param pe
-     *            The SHEF physical element code.
-     * @param ts_prefix
-     *            The type character in the SHEF typesource code
-     * @param ordinal
-     *            The type source ranking value
-     * 
-     * @return The typesource for which to retrieve data.
-     */
-    public String getBestTS(String lid, String pe, String ts_prefix, int ordinal);
-
-    /**
+     * Query for a List of River Forecast Point (LID) values for a given state
+     * and county
      * 
      * @param state
-     *            The two letter, state code (uppercase)
-     * @param county
-     *            The name of the county, first letter capitalized
-     * @param HSA
-     *            The HSA id
-     * @return A list of Object[] arrays which each array corresponding to one
-     *         record in the IHFS CountyNum table.
+     *            State abbreviation
+     * @param count
+     *            county County Name
+     * @return List of LID values
      */
-    public List<Object[]> getForecastPointsInCountyStateHSA(String state,
-            String county, String HSA);
+    public List<String> queryCountyRiverForecastPointIdList(String state,
+            String county);
 
     /**
+     * Query for the CountyStateData for a River Forecast Point List.
      * 
-     * @return A Map with the gauge 'lid' as the key and a string of latitude
-     *         and longitude values as the key.
+     * @param lidList
+     *            a list of River Forecast Point LID (Point ID) values
+     * @return a list of CountyStateData objects
      */
-    public Map<String, String> getAreaInundationCoordinates();
+    public List<CountyStateData> queryCountyStateDataList(List<String> lidList);
 
     /**
-     * 
-     * @param lid
-     *            River forecast point identifier
-     * @return A string of latitude and longitude values.
-     */
-    public String getAreaInundationCoordinates(String lid);
-
-    /**
+     * Query for the CountyStateData for a River Forecast Point.
      * 
      * @param lid
-     *            River forecast point identifier
-     * @return A list of Object[], each of which contains a latitude and a
-     *         longitude value. Note that Western Hemisphere longitudes are
-     *         positive.
-     * 
-     *         For example:
-     * 
-     *         new Object[]{ 42.0072222222222d, 96.2413888888889d }
+     *            River Forecast Point LID (Point ID)
+     * @return CountyStateData object
      */
-    public List<Object[]> getForecastPointCoordinates(String lid);
-
-    /**
-     * 
-     * @param lid
-     *            River forecast point identifier
-     * @param crestTypes
-     *            A string containing possible list of crest types to filter on.
-     *            P=preliminary, O=official, R=record. Empty string means take
-     *            all types.
-     * @return A list of Object[], each of which contains a single double value
-     *         representing a flow crest
-     */
-    public List<Pair<Integer, Date>> getFlowCrestHistory(String lid,
-            String crestTypes);
-
-    /**
-     * Define "RO" as the default crest types.
-     */
-    public List<Pair<Integer, Date>> getFlowCrestHistory(String lid);
-
-    /**
-     * 
-     * @param lid
-     *            River forecast point identifier
-     * @param crestTypes
-     *            A string containing possible list of crest types to filter on.
-     *            P=preliminary, O=official, R=record. Empty string means take
-     *            all types.
-     * @return A list of Object[], each of which contains a single double value
-     *         representing a stage crest
-     */
-    public List<Pair<Double, Date>> getStageCrestHistory(String lid,
-            String crestTypes);
-
-    /**
-     * Define "RO" as the default crest types.
-     */
-    public List<Pair<Double, Date>> getStageCrestHistory(String lid);
+    public CountyStateData queryCountyStateData(String lid);
 
     /**
      * 
@@ -395,49 +241,336 @@ public interface IFloodDAO {
      *            1-12 month of the year.
      * @param day
      *            1-31 day of the month.
-     * @return A list of Pair objects, each of which contains a double for the
-     *         stage/flow threshold for an impact, and a string describing the
-     *         impact.
+     * @return A list of FloodStmtData objects for the lid; and where the
+     *         specified month and day fall within the start and end dates.
      */
-    public List<Pair<Double, String>> getImpactValues(String lid, int month,
-            int day);
+    public List<FloodStmtData> queryFloodStatementDataList(String lid,
+            int month, int day);
 
     /**
-     * This methods allows the flood recommender to run displaced in
-     * circumstances such as Unit Tests.
+     * Retrieves a list of records from the RIVERSTAT table in the IHFS database
+     * for the specified river point.
      * 
-     * @param
-     * @return The system time.
+     * @param lidList
+     *            River point identifier list
+     * @return The List of records in the RIVERSTAT for the specified river
+     *         point lid values
      */
-    public Date getSystemTime();
+    public List<RiverStationInfo> queryRiverStationInfoList(List<String> lidList);
 
     /**
-     * Translates a state abbreviation into a state name using the state table
-     * in the IHFS database.
+     * Query for a List of LID (River Forecast Point Id) values for a State,
+     * County and/or Hydrological Service Area Id.
      * 
-     * @param stateAbbreviation
-     *            The two letter state abbreviation. These should be capital
-     *            letters.
-     * @return The name of the state which matches the abbreviation.
+     * All parameters must be set.
+     * 
+     * @param state
+     *            The two letter, state code (uppercase)
+     * @param county
+     *            The name of the county, first letter capitalized
+     * @param HSA
+     *            The Hydrologic Service Area (HSA) id
+     * @return A list of Lid values.
      */
-
-    public String getStateNameForAbbreviation(String stateAbbreviation);
+    public List<String> queryLidListForCountyStateHSA(String state,
+            String county, String hsaID);
 
     /**
-     * Retrieves the record from the riverstat table in the IHFS database for
-     * the specified river point.
+     * Query for the most recent observations for a river forecast point.
      * 
      * @param lid
-     *            River point identifier
-     * @return The record in the riverstat for the specified river point
+     *            River forecast point identifier
+     * @param physicalElement
+     *            The SHEF physical element code
+     * @param beginValidTime
+     *            The earliest time to search for a value
+     * @param systemTime
+     *            The latest time to search for a value
+     * @return A list of RiverStatus objects for the given parameters.
      */
-    public List<Object[]> getRiverStationInfo(String lid);
+    public List<RiverStatus> queryRiverStatusList(String lid,
+            String physicalElement, long beginValidTime, long systemTime);
 
     /**
-     * Gets the primary physical element
+     * Query for all observation for a river forecast point.
      * 
-     * @param
-     * @return
+     * @param lid
+     *            River forecast point identifier
+     * @param physicalElement
+     *            The SHEF physical element code
+     * @return A list of RiverStatus objects.
      */
-    public String getPrimaryPE(String lid);
+    public List<RiverStatus> queryRiverStatusList(String lid,
+            String physicalElement);
+
+    /**
+     * Query for all River Point Zone (ZONENUM) objects in the database.
+     * 
+     * @return A list of all RiverPointZoneInfo objects.
+     */
+    public List<RiverPointZoneInfo> queryAllRiverPointZoneInfo();
+
+    /**
+     * Query Ingest data from the IHFS IngestFilter Table.
+     * 
+     * Data queried has Physical Element value of 'H' or 'Q' and TS (Type
+     * Source) starts with 'F'.
+     * 
+     * @param Physical
+     *            Element value
+     * @return A list of IngestFilterInfo objects for the given parameters
+     */
+    public List<IngestFilterInfo> queryHydrographForecastIngestFilter(
+            String primary_pe);
+
+    /**
+     * Query for IngestFilter settings for a given station (LID) and physical
+     * element.
+     * 
+     * @param lid
+     *            River Forecast Point lid
+     * @param physicalElement
+     *            The SHEF Physical element code
+     * @return List of (partial) IngestFilterInfo objects containing ts_rank and
+     *         ts
+     */
+    public List<IngestFilterInfo> queryIngestSettings(String lid,
+            String physicalElement);
+
+    /**
+     * Query the Best Observed Type Source from the RiverStatus table.
+     * 
+     * @param lid
+     *            River forecast point identifier
+     * @param physicalElement
+     *            The SHEF physical element code
+     * @param obsBeginTime
+     *            Observation Begin Timestamp
+     * @param obsEndTime
+     *            Observation End Timestamp
+     * @return typeSource
+     */
+    public String queryBestObservedTypeSource(String lid,
+            String physicalElement, long obsBeginTime, long obsEndTime);
+
+    /**
+     * Query for the configuration information which determines how the hazard
+     * recommendation algorithm works.
+     * 
+     * @return A HazardSettings object.
+     */
+    public HazardSettings retrieveSettings();
+
+    /**
+     * Query for the Observed Hydrograph for a river forecast point.
+     * 
+     * @param lid
+     *            River Forecast Point identifier
+     * @param physicalElement
+     *            The SHEF physical element code
+     * @param typeSource
+     *            The SHEF typesource code
+     * @param obsBeginTime
+     *            The lower bound of time window to retrieve observations for
+     * @param obsEndTime
+     *            The upper bound of the time window to retrieve observations
+     *            for. (Current System Time
+     * @return A HydrographObserved object containing a List of SHEF Observed
+     *         objects corresponding to data from either the IHFS Discharge or
+     *         Height table.
+     */
+    public HydrographObserved queryRiverPointHydrographObserved(String lid,
+            String physicalElement, String typeSource, long obsBeginTime,
+            long obsEndTime);
+
+    /**
+     * Query a Complete HydrographForecast object.
+     * <p>
+     * Query for all of the fcstheight or fcstdischarge elements which match the
+     * given query parameters. Query for a list of valid basis time values (from
+     * basistime table). Match the valid basis time values to the basis time
+     * values queried from the SHEF data (fcstheight or fcstdischarge). Keep
+     * only the ones with valid basis data times.
+     * 
+     * Use this query to retrieve the correct HydrographForecast for a
+     * RiverForecast Point.
+     * 
+     * @param lid
+     *            River Forecast Point identifier
+     * @param physicalElement
+     *            The SHEF physical element code
+     * @param typeSource
+     *            The SHEF typesource code
+     * @param currentSystemTime
+     *            Current system time
+     * @param endValidTime
+     *            Timestamp marking the end of the valid forecast period
+     * @param basisBeginTime
+     *            Timestamp for the beginning of the valid forecast period
+     * @param useLatestForecast
+     *            Use Latest Results flag
+     * 
+     * @return A list of HydrographForecast objects. Each object corresponds to
+     *         one row from the IHFS FcstHeight or FcstDischarge tables.
+     * 
+     */
+    public HydrographForecast queryRiverPointHydrographForecast(String lid,
+            String physicalElement, long currentSystemTime, long endValidTime,
+            long basisBeginTime, boolean useLatestForecast);
+
+    /**
+     * Get the highest ranked type source given a primary physical element.
+     * 
+     * @param lid
+     *            River Forecast Point identifier
+     * @param physicalElement
+     *            The SHEF physical element code
+     * @param duration
+     * @param extremum
+     *            e.g. Z, X
+     */
+    public String queryTopRankedTypeSource(String lid, String primary_pe,
+            int duration, String extremum);
+
+    /**
+     * Retrieves the given physical element value for a river forecast point.
+     * 
+     * @param lid
+     *            River Forecast Point identifier
+     * @param physicalElement
+     *            The SHEF physical element code
+     * @param duration
+     * @param typeSource
+     *            The SHEF typesource code
+     * @param extremum
+     *            e.g. Z, X
+     * @param timeArg
+     *            The time specification dayOffset|hhmm|interval e.g. 0|1200|1
+     *            where dayOffset is 0 today, 1 tomorrow etc. hhmm is the GMT
+     *            hour of the day (24 hour clock) interval is the number of
+     *            hours to create window around
+     * 
+     *            For example:
+     * 
+     *            new Object[] { "DCTN1", "HG", 0, "FF", "Z", -1,
+     *            "2011-02-08 18:00:00", "2011-02-08 15:06:00", 39.91, "Z",
+     *            1879048191, 1, "KKRFRVFMOM", "2011-02-08 15:15:00",
+     *            "2011-02-08 15:15:10" });
+     * @param timeFlag
+     *            -- if True return a time string for requested value, otherwise
+     *            return requested value
+     * @param currentTime_ms
+     *            -- current time in milliseconds
+     * 
+     */
+    public String queryPhysicalElementValue(String lid, String physicalElement,
+            int duration, String typeSource, String extremum, String timeArg,
+            boolean timeFlag, long currentTime_ms);
+
+    /**
+     * Query for a Map of LID values to their inundation Lat Lon coordinates
+     * 
+     * @return A Map with the gauge 'lid' as the key and a string of latitude
+     *         and longitude values as the value.
+     */
+    public Map<String, String> queryAreaInundationCoordinateMap();
+
+    /**
+     * Query for a Lat Lon coordinate for a River Forecast Point inundation.
+     * 
+     * @param lid
+     *            River Forecast Point identifier
+     * @return A string of latitude and longitude values.
+     */
+    public String queryAreaInundationCoordinates(String lid);
+
+    /**
+     * Query for a List of Crest History values either for (Height or Discharge)
+     * based on LID and Historical type
+     * 
+     * @param lid
+     *            River forecast point identifier
+     * @param crestValueColumn
+     *            Determines whether to query for Height (Crest) or flow (Q)
+     *            crest values.
+     * @param crestTypes
+     *            A list of strings containing single character list of crest
+     *            types to filter on. P=preliminary, O=official, R=record. Empty
+     *            string means take all types.
+     * @return A list of CrestHistory objects which will contain Height or Flow
+     *         crest values
+     */
+    public List<CrestHistory> queryCrestHistory(String lid,
+            String crestValueColumn, List<String> crestTypeList);
+
+    /**
+     * Query for a List of FLOW Crest values based on a list of Crest Types.
+     * 
+     * @param lid
+     *            River Forecast Point identifier
+     * @param crestTypeList
+     *            A List containing possible crest types to filter on.
+     *            P=preliminary, O=official, R=record. Empty string means take
+     *            all types.
+     * @return A list of CrestHistory objects.
+     */
+    public List<CrestHistory> queryFlowCrestHistory(String lid,
+            List<String> crestTypeList);
+
+    /**
+     * Query for a List of FLOW Crest values based on River Forecast Point id
+     * and a list of Crest Types.
+     * 
+     * FLOW Crest Types are "R" and "O" for this query
+     * 
+     * @param lid
+     *            River forecast point identifier
+     * @return A list of CrestHistory objects.
+     */
+    public List<CrestHistory> queryFlowCrestHistory(String lid);
+
+    /**
+     * Query for a List of Stage Crest values based on a list of Crest Types.
+     * 
+     * @param lid
+     *            River forecast point identifier
+     * @param crestTypeList
+     *            A List containing possible crest types to filter on.
+     *            P=preliminary, O=official, R=record. Empty string means take
+     *            all types.
+     * @return A list of CrestHistory objects.
+     */
+    public List<CrestHistory> queryStageCrestHistory(String lid,
+            List<String> crestTypeList);
+
+    /**
+     * Query for a List of Stage Crest values.
+     * 
+     * Stage Crest Types are "R" and "O" for this query
+     * 
+     * @param lid
+     *            River forecast point identifier
+     * @return A list of CrestHistory objects.
+     */
+    public List<CrestHistory> queryStageCrestHistory(String lid);
+
+    /**
+     * Query for a County State Data for a LID (Point Id)
+     * 
+     * @param lid
+     *            LID value
+     * @return CountyStateData
+     */
+    public CountyStateData queryCountyData(String lid);
+
+    /**
+     * Query for a Map of LID (Point ID) to County State Data Map
+     * 
+     * @param lidList
+     *            List of LID values
+     * @return Map of LID to CountyStateData pairs
+     */
+    public Map<String, CountyStateData> queryLidToCountyDataMap(
+            List<String> lidList);
+
 }

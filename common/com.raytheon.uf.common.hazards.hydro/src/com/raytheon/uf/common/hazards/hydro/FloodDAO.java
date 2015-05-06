@@ -11,26 +11,26 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang.time.DateUtils;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil;
 import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil.QUERY_MODE;
 import com.raytheon.uf.common.dataplugin.shef.tables.Rpfparams;
 import com.raytheon.uf.common.ohd.AppsDefaults;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.time.SimulatedTime;
-import com.raytheon.uf.common.util.Pair;
 
 /**
  * Description: Product data accessor implementation of the IFloodDAO.
+ * 
+ * This class performs queries and creates data objects as a result of the
+ * queries.
  * 
  * <pre>
  * 
@@ -46,6 +46,7 @@ import com.raytheon.uf.common.util.Pair;
  * Feb 21, 2015 4959       Dan Schaffer        Improvements to add/remove UGCs
  * Feb 24, 2015 5960       Manross             Grab flood inundation areas
  * Apr 9,  2015 7091       Hansen              No longer parsing double pipe
+ * May 08, 2015 6562       Chris.Cody          Restructure River Forecast Points/Recommender
  * </pre>
  * 
  * @author bryon.lawrence
@@ -53,139 +54,15 @@ import com.raytheon.uf.common.util.Pair;
  */
 public class FloodDAO implements IFloodDAO {
 
-    private static final String NEXT = "NEXT";
+    /** String constant ihfs */
+    public static final String IHFS = "ihfs";
 
-    private static final String IHFS = "ihfs";
+    private static String COLUMN_Q = "Q";
 
-    private static final String MISSING_VALUE = "-9999";
+    private static String COLUMN_STAGE = "STAGE";
 
-    private static final String COLUMN_STAGE = "stage";
-
-    private static final String COLUMN_Q = "q";
-
-    /**
-     * For logging...
-     */
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(FloodDAO.class);
-
-    /**
-     * ThreadLocal instance of Standard date format for hydro data.
-     */
-    private final ThreadLocal<SimpleDateFormat> dateFormat = new ThreadLocal<SimpleDateFormat>() {
-        @Override
-        protected SimpleDateFormat initialValue() {
-            SimpleDateFormat sTemp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            sTemp.setTimeZone(TimeZone.getTimeZone("GMT"));
-            return sTemp;
-        }
-    };
-
-    /**
-     * Default hours to look for forecast basis time.
-     */
-    public final static int DEFAULT_OBS_FCST_BASIS_HOURS = 72;
-
-    /**
-     * Default number of hours to shift forward flood event end time.
-     */
-    public final static int DEFAULT_ENDTIME_SHIFT_HOURS = 6;
-
-    /**
-     * The default stage window.
-     */
-    public final static float DEFAULT_STAGE_WINDOW = 0.5f;
-
-    /**
-     * The number of hours to shift event end times for all forecast points.
-     */
-    private int shiftHoursForAllForecastPoints;
-
-    /**
-     * The basis hours for all forecast points.
-     */
-    private int basisHoursForAllForecastPoints;
-
-    /**
-     * The observation data look back hours for all forecast points.
-     */
-    private int lookBackHoursForAllForecastPoints;
-
-    /**
-     * The forecast data look forward hours for all forecast points.
-     */
-    private int lookForwardHoursForAllForecastPoints;
-
-    /**
-     * The default stage buffer window.
-     */
-    private double defaultStageWindow;
-
-    /**
-     * The questionable/bad observed river data qc value.
-     */
-    static public final long QUESTIONABLE_BAD_THRESHOLD = 1073741824;
-
-    /**
-     * Results from the IHFS ingestfilter table.
-     */
-    private List<Object[]> ingestResults = null;
-
-    /*
-     * Initialize the back hours, forward hours, adjust end hours, and shift
-     * hours fields. This just needs to be done once. These are the base values
-     * for all forecast points.
-     * 
-     * Also, load only once information from the IngestFilter table.
-     */
-    static {
-    }
-
-    /**
-     * Retrieve the time window hourly offsets for general use. These defaults
-     * apply to all forecast points. Individual forecast points may override
-     * them.
-     */
-    private void getHourValues() {
-        lookBackHoursForAllForecastPoints = DEFAULT_OBS_FCST_BASIS_HOURS;
-        lookForwardHoursForAllForecastPoints = DEFAULT_OBS_FCST_BASIS_HOURS;
-        basisHoursForAllForecastPoints = DEFAULT_OBS_FCST_BASIS_HOURS;
-
-        String query = "FROM "
-                + com.raytheon.uf.common.dataplugin.shef.tables.Rpfparams.class
-                        .getName();
-
-        /*
-         * Retrieve configuration information from the RpfParams table.
-         */
-
-        List<Object[]> rpfParmsList = DatabaseQueryUtil.executeDatabaseQuery(
-                QUERY_MODE.MODE_HQLQUERY, query, IHFS, "RpfParams db");
-
-        if (rpfParmsList != null && rpfParmsList.size() > 0) {
-            Object[] paramObject = rpfParmsList.get(0);
-            Rpfparams params = (Rpfparams) paramObject[0];
-            lookBackHoursForAllForecastPoints = params.getId().getObshrs();
-            lookForwardHoursForAllForecastPoints = params.getId().getFcsthrs();
-        }
-
-        AppsDefaults appsDefaults = AppsDefaults.getInstance();
-        basisHoursForAllForecastPoints = appsDefaults.getInt(
-                "basis_hours_filter", DEFAULT_OBS_FCST_BASIS_HOURS);
-        shiftHoursForAllForecastPoints = appsDefaults.getInt(
-                "rpf_endtime_shifthrs", DEFAULT_ENDTIME_SHIFT_HOURS);
-
-        if (shiftHoursForAllForecastPoints < 0
-                || shiftHoursForAllForecastPoints > 48) {
-            statusHandler
-                    .info("Error in specified value for token rpf_endtime_shifthrs.\n"
-                            + "Using default value of "
-                            + DEFAULT_ENDTIME_SHIFT_HOURS);
-        }
-
-        defaultStageWindow = appsDefaults.getDouble("rpf_stage_window",
-                DEFAULT_STAGE_WINDOW);
-    }
 
     /**
      * Singleton instance of this flood data access object
@@ -200,7 +77,6 @@ public class FloodDAO implements IFloodDAO {
      * class.
      */
     private FloodDAO() {
-        getHourValues();
     }
 
     /**
@@ -211,7 +87,7 @@ public class FloodDAO implements IFloodDAO {
      * 
      * @return An instance of this flood recommender data access object
      */
-    public static IFloodDAO getInstance() {
+    public synchronized static IFloodDAO getInstance() {
 
         if (floodDAOInstance == null) {
             floodDAOInstance = new FloodDAO();
@@ -220,193 +96,590 @@ public class FloodDAO implements IFloodDAO {
         return floodDAOInstance;
     }
 
-    /**
-     * Retrieves a list of river forecast points.
+    /*
+     * (non-Javadoc)
      * 
-     * @param hazardSettings
-     *            Flood recommender configuration values
-     * @return List of river forecast points.
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryHydrologicServiceAreaIdList()
      */
-    @Override
-    public List<RiverForecastPoint> getForecastPointInfo(
-            HazardSettings hazardSettings) {
-        /*
-         * Retrieve all of the forecast group information, which has the defined
-         * groups.
-         */
-        List<RiverForecastPoint> forecastPointList = Lists.newArrayList();
-        String query;
+    public List<String> queryHydrologicServiceAreaIdList() {
 
-        query = "SELECT * FROM FpInfo WHERE hsa = '" + hazardSettings.getHsa()
-                + "' ORDER BY ordinal, lid ASC";
+        List<String> hsaIdList = null;
+        StringBuilder querySB = new StringBuilder();
 
-        List<Object[]> fpInfoResults = DatabaseQueryUtil.executeDatabaseQuery(
-                QUERY_MODE.MODE_SQLQUERY, query, IHFS, "forecast point");
-        /*
-         * Loop on the number of groups defined in the table and determine the
-         * number of forecast points included per group. This is necessary since
-         * some groups may not be used, either because they have no forecast
-         * points, or because their forecast points are for a different office.
-         */
-        if (fpInfoResults != null) {
-            for (Object[] infoRecord : fpInfoResults) {
-                if (infoRecord != null) {
-                    // Create a new forecast point.
-                    // reference to fp structure.
-                    RiverForecastPoint fp = new RiverForecastPoint(infoRecord,
-                            this);
-                    forecastPointList.add(fp);
-                }
+        querySB.append("SELECT DISTINCT(hsa) FROM ");
+        querySB.append(RiverForecastGroup.TABLE_NAME);
+        querySB.append(" ORDER BY hsa ASC");
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "forecast FPINFO");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            hsaIdList = Lists.newArrayListWithExpectedSize(queryResults.size());
+            for (Object[] queryResult : queryResults) {
+                String hsaId = (String) queryResult[0];
+                hsaIdList.add(hsaId);
             }
+        } else {
+            hsaIdList = Lists.newArrayListWithExpectedSize(0);
         }
 
-        return forecastPointList;
-
+        return (hsaIdList);
     }
 
     /*
      * (non-Javadoc)
      * 
-     * @see
-     * com.raytheon.uf.common.hazards.hydro.IFloodDAO#getRiverPointZonePointInfo
-     * (com.raytheon.uf.common.hazards.hydro.HazardSettings)
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryAllRiverForecastGroup()
      */
     @Override
-    public List<RiverPointZoneInfo> getRiverPointZonePointInfo() {
+    public List<RiverForecastGroup> queryAllRiverForecastGroup() {
 
-        List<RiverPointZoneInfo> result = Lists.newArrayList();
-        String query;
+        List<RiverForecastGroup> riverGroupList = null;
+        StringBuilder querySB = new StringBuilder();
 
-        query = "SELECT lid, state, zoneNum, descr FROM ZoneInfo ORDER BY lid ASC";
+        querySB.append("SELECT ");
+        querySB.append(RiverForecastGroup.COLUMN_NAME_STRING);
+        querySB.append(" FROM ");
+        querySB.append(RiverForecastGroup.TABLE_NAME);
+        querySB.append(" ORDER BY ordinal, group_id ASC");
 
-        List<Object[]> zoneInfoResults = DatabaseQueryUtil
-                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY, query, IHFS,
-                        "zone info");
-
-        String lid;
-        String state;
-        String zoneNum;
-        String descr;
-        if (zoneInfoResults != null) {
-            for (Object[] infoRecord : zoneInfoResults) {
-                if (infoRecord != null) {
-                    lid = (String) infoRecord[0];
-                    state = (String) infoRecord[1];
-                    zoneNum = (String) infoRecord[2];
-                    descr = (String) infoRecord[3];
-                    RiverPointZoneInfo zoneInfo = new RiverPointZoneInfo(lid,
-                            state, zoneNum, descr, this);
-                    result.add(zoneInfo);
-                }
-            }
-        }
-
-        return result;
-
-    }
-
-    /**
-     * Retrieves a list of river forecast groups.
-     * 
-     * @param riverForecastPoints
-     *            A list of river forecast points
-     * @return List of river forecast groups.
-     */
-    @Override
-    public List<RiverForecastGroup> getForecastGroupInfo(
-            List<RiverForecastPoint> forecastPointList) {
-
-        List<RiverForecastGroup> riverGroupList = Lists.newArrayList();
-        String query = "SELECT * FROM rpffcstgroup ORDER BY ordinal, group_id ASC";
-
-        List<Object[]> rpffcstgroupResults = DatabaseQueryUtil
-                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY, query, IHFS,
-                        "forecast group");
-
-        if (rpffcstgroupResults != null) {
-            for (Object[] record : rpffcstgroupResults) {
-                int forecastPointCounter = 0;
-                ArrayList<RiverForecastPoint> forecastPointsInGroupList = new ArrayList<RiverForecastPoint>();
-                String groupID = record[0].toString();
-
-                for (RiverForecastPoint forecastPoint : forecastPointList) {
-
-                    String forecastPointGroupID = forecastPoint.getGroupId();
-
-                    if (groupID.equals(forecastPointGroupID)) {
-                        forecastPointsInGroupList.add(forecastPoint);
-                        forecastPointCounter++;
-                    }
-
-                }
-
-                if (forecastPointCounter > 0) {
-                    RiverForecastGroup riverGroup = new RiverForecastGroup(
-                            forecastPointList, record,
-                            forecastPointsInGroupList);
-                    riverGroupList.add(riverGroup);
-                }
-            }
-        }
-
-        return riverGroupList;
-    }
-
-    /**
-     * Retrieves the county river point forecast groups.
-     * 
-     * @param hazardSettings
-     *            Flood recommender configuration values
-     * @param forecastPointList
-     *            List of river forecast points
-     * @return List of county forecast groups
-     */
-    @Override
-    public List<CountyForecastGroup> getForecastCountyGroups(
-            HazardSettings hazardSettings,
-            List<RiverForecastPoint> forecastPointList) {
-        List<CountyForecastGroup> countyForecastGroupList = Lists
-                .newArrayList();
-
-        String query = "SELECT DISTINCT(county||'|'||state) "
-                + "FROM Countynum " + "WHERE lid in "
-                + "(SELECT lid FROM rpffcstpoint) " + "AND lid IN "
-                + "(SELECT lid FROM location WHERE hsa='"
-                + hazardSettings.getHsa() + "' "
-                + "AND (type IS NULL OR type NOT LIKE '%I%'));";
-
-        List<Object[]> countyStateList = DatabaseQueryUtil
-                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY, query, IHFS,
-                        "forecast county group");
-
-        if (countyStateList != null && countyStateList.size() > 0) {
-            for (Object[] countyRecord : countyStateList) {
-                CountyForecastGroup countyForecastGroup = new CountyForecastGroup(
-                        forecastPointList, countyRecord,
-                        hazardSettings.getHsa(), this);
-                countyForecastGroupList.add(countyForecastGroup);
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "forecast group");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            riverGroupList = Lists.newArrayListWithExpectedSize(queryResults
+                    .size());
+            for (Object[] queryResult : queryResults) {
+                RiverForecastGroup riverGroup = new RiverForecastGroup(
+                        queryResult);
+                riverGroupList.add(riverGroup);
             }
         } else {
-            statusHandler.info("No records in CountyNum table");
+            riverGroupList = Lists.newArrayListWithExpectedSize(0);
         }
 
-        return countyForecastGroupList;
+        return (riverGroupList);
+    }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryRiverForecastGroup()
+     */
+    @Override
+    public RiverForecastGroup queryRiverForecastGroup(String groupId) {
+
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT ");
+        querySB.append(RiverForecastGroup.COLUMN_NAME_STRING);
+        querySB.append(" FROM rpffcstgroup WHERE group_id = '");
+        querySB.append(groupId);
+        querySB.append("'");
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "forecast group");
+
+        RiverForecastGroup riverGroup = null;
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            riverGroup = new RiverForecastGroup(queryResults.get(0));
+        }
+
+        return (riverGroup);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryRiverForecastGroupForLid()
+     */
+    @Override
+    public RiverForecastGroup queryRiverForecastGroupForLid(String lid) {
+
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT ");
+        querySB.append(RiverForecastGroup.DISTINCT_COLUMN_NAME_STRING);
+        querySB.append(" FROM ");
+        querySB.append(RiverForecastGroup.TABLE_NAME);
+        querySB.append(", ");
+        querySB.append(RiverForecastPoint.TABLE_NAME);
+        querySB.append(" WHERE ");
+        querySB.append(RiverForecastPoint.TABLE_NAME);
+        querySB.append(".group_id = ");
+        querySB.append(RiverForecastGroup.TABLE_NAME);
+        querySB.append(".group_id");
+        querySB.append(" AND ");
+        querySB.append(RiverForecastPoint.TABLE_NAME);
+        querySB.append(".lid = '");
+        querySB.append(lid);
+        querySB.append("'");
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "forecast group");
+
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            for (Object[] queryResult : queryResults) {
+                RiverForecastGroup riverGroup = new RiverForecastGroup(
+                        queryResult);
+                return (riverGroup);
+            }
+        }
+
+        return (null);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryHsaRiverForecastGroupIdList()
+     */
+    @Override
+    public List<String> queryHsaRiverForecastGroupIdList(String hsaId) {
+
+        StringBuilder querySB = new StringBuilder();
+
+        querySB.append("SELECT ");
+        querySB.append(RiverForecastGroup.TABLE_NAME);
+        querySB.append(".group_id FROM ");
+        querySB.append(RiverForecastGroup.TABLE_NAME);
+        querySB.append(", ");
+        querySB.append(RiverForecastPoint.TABLE_NAME);
+        querySB.append(" WHERE ");
+        querySB.append(RiverForecastGroup.TABLE_NAME);
+        querySB.append(".group_id = ");
+        querySB.append(RiverForecastPoint.TABLE_NAME);
+        querySB.append(".group_id AND ");
+        querySB.append(RiverForecastPoint.TABLE_NAME);
+        querySB.append(".hsa = '");
+        querySB.append(hsaId);
+        querySB.append("'");
+
+        List<String> groupIdList = Lists.newArrayList();
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "rpffcstgroup. HSA Id");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            groupIdList = Lists.newArrayListWithExpectedSize(queryResults
+                    .size());
+            for (Object[] queryResult : queryResults) {
+                groupIdList.add((String) queryResult[0]);
+            }
+        } else {
+            groupIdList = Lists.newArrayListWithExpectedSize(0);
+        }
+
+        return (groupIdList);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryRiverForecastGroupList()
+     */
+    @Override
+    public List<RiverForecastGroup> queryRiverForecastGroupList(
+            List<String> groupIdList, List<String> groupNameList) {
+        List<RiverForecastGroup> forecastGroupList = null;
+
+        boolean isFirst = true;
+        StringBuilder querySB = new StringBuilder();
+
+        querySB.append("SELECT ");
+        querySB.append(RiverForecastGroup.COLUMN_NAME_STRING);
+        querySB.append(" FROM ");
+        querySB.append(RiverForecastGroup.TABLE_NAME);
+        querySB.append(" WHERE ");
+
+        if (groupIdList != null) {
+            appendToWhereClause(querySB, "group_id", groupIdList, true);
+            isFirst = false;
+        }
+
+        if (groupNameList != null) {
+            if (isFirst == false) {
+                querySB.append(" AND ");
+            }
+            appendToWhereClause(querySB, "group_name", groupNameList, true);
+        }
+        querySB.append("ORDER BY group_id, ordinal ASC");
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "forecast Group");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            forecastGroupList = Lists.newArrayListWithExpectedSize(queryResults
+                    .size());
+            for (Object[] queryResult : queryResults) {
+                // Create a new forecast Group.
+                RiverForecastGroup riverForecastGroup = new RiverForecastGroup(
+                        queryResult);
+                forecastGroupList.add(riverForecastGroup);
+            }
+        } else {
+            forecastGroupList = Lists.newArrayListWithExpectedSize(0);
+        }
+
+        return (forecastGroupList);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryCountyRiverForecastPointIdList()
+     */
+    @Override
+    public List<String> queryCountyRiverForecastPointIdList(String state,
+            String county) {
+        List<String> lidList = null;
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT DISTINCT(lid) FROM ");
+        querySB.append(FpInfo.TABLE_NAME);
+        querySB.append(" WHERE ");
+        querySB.append(" state = '");
+        querySB.append(state);
+        querySB.append("' AND county = '");
+        querySB.append(county);
+        querySB.append(" ORDER BY state, county ");
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "forecast FpInfo");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            lidList = Lists.newArrayListWithExpectedSize(queryResults.size());
+            for (Object[] queryResult : queryResults) {
+                lidList.add((String) queryResult[0]);
+            }
+        } else {
+            lidList = Lists.newArrayListWithExpectedSize(0);
+        }
+
+        return (lidList);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryRiverForecastPoint()
+     */
+    public RiverForecastPoint queryRiverForecastPoint(String lid) {
+        RiverForecastPoint riverForecastPoint = null;
+
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT ");
+        querySB.append(FpInfo.COLUMN_NAME_STRING);
+        querySB.append(" FROM FpInfo WHERE lid = '");
+        querySB.append(lid);
+        querySB.append("'");
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "forecast point");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            for (Object[] queryResult : queryResults) {
+                // Create a new forecast point.
+                riverForecastPoint = new RiverForecastPoint(queryResult);
+            }
+
+            Map<String, RiverForecastPoint> riverForecastPointMap = Maps
+                    .newHashMapWithExpectedSize(1);
+            riverForecastPointMap.put(riverForecastPoint.getLid(),
+                    riverForecastPoint);
+            queryRiverForecastPointExpandedData(riverForecastPointMap);
+        }
+        return (riverForecastPoint);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryRiverForecastPointList()
+     */
+    public List<RiverForecastPoint> queryRiverForecastPointList(
+            List<String> lidList, List<String> hsaList,
+            List<String> groupIdList, List<String> physicalElementList) {
+
+        List<RiverForecastPoint> forecastPointList = null;
+        boolean isFirst = true;
+        StringBuilder querySB = new StringBuilder();
+
+        querySB.append("SELECT ");
+        querySB.append(FpInfo.COLUMN_NAME_STRING);
+        querySB.append(" FROM FpInfo WHERE ");
+
+        if (lidList != null) {
+            appendToWhereClause(querySB, "lid", lidList, true);
+            isFirst = false;
+        }
+
+        if (hsaList != null) {
+            if (isFirst == false) {
+                querySB.append(" AND ");
+            } else {
+                isFirst = false;
+            }
+            appendToWhereClause(querySB, "hsa", hsaList, true);
+        }
+
+        if (groupIdList != null) {
+            if (isFirst == false) {
+                querySB.append(" AND ");
+            } else {
+                isFirst = false;
+            }
+            appendToWhereClause(querySB, "group_id", groupIdList, true);
+        }
+
+        if (physicalElementList != null) {
+            if (isFirst == false) {
+                querySB.append(" AND ");
+            }
+            appendToWhereClause(querySB, "pe", physicalElementList, true);
+        }
+        querySB.append(" ORDER BY ordinal, lid ASC");
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "forecast point");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            forecastPointList = Lists.newArrayListWithExpectedSize(queryResults
+                    .size());
+            // This is useful to avoid searching the list while placing
+            // locations.
+            Map<String, RiverForecastPoint> riverForecastPointMap = Maps
+                    .newHashMapWithExpectedSize(queryResults.size());
+            for (Object[] queryResult : queryResults) {
+                // Create a new forecast point.
+                RiverForecastPoint riverForecastPoint = new RiverForecastPoint(
+                        queryResult);
+                forecastPointList.add(riverForecastPoint);
+                riverForecastPointMap.put(riverForecastPoint.getLid(),
+                        riverForecastPoint);
+            }
+
+            if (riverForecastPointMap.isEmpty() == false) {
+                queryRiverForecastPointExpandedData(riverForecastPointMap);
+            }
+        } else {
+            forecastPointList = Lists.newArrayListWithExpectedSize(0);
+        }
+
+        return (forecastPointList);
     }
 
     /**
-     * Retrieves the configuration information which determines how the hazard
-     * recommendation algorithm works.
+     * Query for "expanded" FpInfo data.
      * 
-     * @param
-     * @return A HazardSettings object.
+     * Query for the location (latitude and longitude from Location table) and
+     * the Primary Physical Element (Primary PE from RiverStat table) for the
+     * Map of LID to RiverForecastPoint objects.
+     * 
+     * This is not considered to be part of a deep query.
+     * 
+     * @param riverForecastPointMap
+     */
+    protected void queryRiverForecastPointExpandedData(
+            Map<String, RiverForecastPoint> riverForecastPointMap) {
+
+        if ((riverForecastPointMap != null)
+                && (riverForecastPointMap.isEmpty() == false)) {
+            List<String> lidList = new ArrayList<String>(
+                    riverForecastPointMap.keySet());
+            List<Object[]> locationQueryResultList = queryForecastPointCoordinates(lidList);
+            RiverForecastPoint riverForecastPoint = null;
+            for (Object[] locationQueryResult : locationQueryResultList) {
+                String coordLid = (String) locationQueryResult[0];
+                riverForecastPoint = riverForecastPointMap.get(coordLid);
+                if (riverForecastPoint != null) {
+                    riverForecastPoint
+                            .setLatitude((Double) locationQueryResult[1]);
+                    riverForecastPoint
+                            .setLongitude((Double) locationQueryResult[2]);
+                }
+            }
+
+            Map<String, String> lidToPrimaryPEMap = queryRiverStatPrimaryPEMap(lidList);
+            if ((lidToPrimaryPEMap != null)
+                    && (lidToPrimaryPEMap.isEmpty() == false)) {
+                String primaryPE = null;
+                for (String lid : lidList) {
+                    riverForecastPoint = riverForecastPointMap.get(lid);
+                    if (riverForecastPoint != null) {
+                        primaryPE = lidToPrimaryPEMap.get(lid);
+                        riverForecastPoint.setPrimaryPE(primaryPE);
+                    }
+                }
+            }
+        }
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryAllRiverPointZoneInfo()
+     */
+    @Override
+    public List<RiverPointZoneInfo> queryAllRiverPointZoneInfo() {
+        List<RiverPointZoneInfo> riverPointZoneInfoList = null;
+        StringBuilder querySB = new StringBuilder();
+
+        querySB.append("SELECT ");
+        querySB.append(RiverPointZoneInfo.COLUMN_NAME_STRING);
+        querySB.append(" FROM ");
+        querySB.append(RiverPointZoneInfo.TABLE_NAME);
+        querySB.append(" ORDER BY lid ASC");
+
+        List<Object[]> queryResults = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                        querySB.toString(), IHFS, "zone info");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            riverPointZoneInfoList = Lists
+                    .newArrayListWithExpectedSize(queryResults.size());
+            for (Object[] queryResult : queryResults) {
+                RiverPointZoneInfo zoneInfo = new RiverPointZoneInfo(
+                        queryResult);
+                riverPointZoneInfoList.add(zoneInfo);
+            }
+        } else {
+            riverPointZoneInfoList = Lists.newArrayListWithExpectedSize(0);
+        }
+
+        return riverPointZoneInfoList;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryRiverPointZoneInfo()
+     */
+    @Override
+    public RiverPointZoneInfo queryRiverPointZoneInfo(String lid) {
+        RiverPointZoneInfo returnRiverPointZoneInfo = null;
+        List<String> lidList = Lists.newArrayList(lid);
+
+        List<RiverPointZoneInfo> riverPointZoneInfoList = queryRiverPointZoneInfoList(
+                lidList, null, null);
+        if ((riverPointZoneInfoList != null)
+                && (riverPointZoneInfoList.isEmpty() == false)) {
+            returnRiverPointZoneInfo = riverPointZoneInfoList.get(0);
+        }
+
+        return (returnRiverPointZoneInfo);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryRiverPointZoneInfoList()
+     */
+    @Override
+    public List<RiverPointZoneInfo> queryRiverPointZoneInfoList(
+            List<String> lidList, List<String> stateList,
+            List<String> zoneNumberList) {
+
+        List<RiverPointZoneInfo> riverPointZoneInfoList = null;
+        boolean isFirst = true;
+        StringBuilder querySB = new StringBuilder();
+
+        querySB.append("SELECT ");
+        querySB.append(RiverPointZoneInfo.COLUMN_NAME_STRING);
+        querySB.append(" FROM ZoneInfo WHERE ");
+        if (lidList != null) {
+            appendToWhereClause(querySB, "lid", lidList, true);
+            isFirst = false;
+        }
+
+        if (stateList != null) {
+            if (isFirst == false) {
+                querySB.append(" AND ");
+            } else {
+                isFirst = false;
+            }
+            appendToWhereClause(querySB, "state", stateList, true);
+        }
+
+        if (zoneNumberList != null) {
+            if (isFirst == false) {
+                querySB.append(" AND ");
+            }
+            appendToWhereClause(querySB, "zoneNum", zoneNumberList, true);
+        }
+        querySB.append("ORDER BY lid ASC");
+
+        List<Object[]> queryResults = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                        querySB.toString(), IHFS, "zone info");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            riverPointZoneInfoList = Lists
+                    .newArrayListWithExpectedSize(queryResults.size());
+            for (Object[] queryResult : queryResults) {
+                RiverPointZoneInfo zoneInfo = new RiverPointZoneInfo(
+                        queryResult);
+                riverPointZoneInfoList.add(zoneInfo);
+            }
+        } else {
+            riverPointZoneInfoList = Lists.newArrayListWithExpectedSize(0);
+        }
+
+        return riverPointZoneInfoList;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryCountyStateListForHsa()
+     */
+    @Override
+    public List<String> queryCountyStateListForHsa(String hsaId) {
+        List<String> countyStateList = null;
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT DISTINCT(county||'|'||state) ");
+        querySB.append(" FROM Countynum WHERE lid in ");
+        querySB.append("(SELECT lid FROM rpffcstpoint) AND lid IN ");
+        querySB.append("(SELECT lid FROM location WHERE hsa='");
+        querySB.append(hsaId);
+        querySB.append("' AND (type IS NULL OR type NOT LIKE '%I%'));");
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "forecast county group");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            countyStateList = Lists.newArrayListWithExpectedSize(queryResults
+                    .size());
+            for (Object[] queryResult : queryResults) {
+                countyStateList.add((String) queryResult[0]);
+            }
+        } else {
+            countyStateList = Lists.newArrayListWithExpectedSize(0);
+        }
+
+        return (countyStateList);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO #retrieveSettings()
      */
     @Override
     public HazardSettings retrieveSettings() {
         /*
          * Create the SQL Query for the IHFS RpfParams table.
          */
-        String query = "FROM "
+        String query = " FROM "
                 + com.raytheon.uf.common.dataplugin.shef.tables.Rpfparams.class
                         .getName();
 
@@ -417,7 +690,7 @@ public class FloodDAO implements IFloodDAO {
                 QUERY_MODE.MODE_HQLQUERY, query, IHFS, "IHFS hazard settings");
         HazardSettings hazardSettings = new HazardSettings();
 
-        if (rpfParmsList != null && rpfParmsList.size() > 0) {
+        if ((rpfParmsList != null) && (rpfParmsList.isEmpty() == false)) {
             Object[] paramObject = rpfParmsList.get(0);
             Rpfparams params = (Rpfparams) paramObject[0];
 
@@ -436,7 +709,7 @@ public class FloodDAO implements IFloodDAO {
         List<Object[]> adminList = DatabaseQueryUtil.executeDatabaseQuery(
                 QUERY_MODE.MODE_SQLQUERY, query, IHFS, "admin");
 
-        if (adminList != null && adminList.size() > 0) {
+        if ((adminList != null) && (adminList.isEmpty() == false)) {
             Object[] adminRecord = adminList.get(0);
             hazardSettings.setHsa(adminRecord[0].toString());
         } else {
@@ -471,252 +744,524 @@ public class FloodDAO implements IFloodDAO {
 
     }
 
-    /**
-     * Retrieves the most recent observation for a river forecast point.
+    /*
+     * (non-Javadoc)
      * 
-     * @param id
-     *            River forecast point identifier
-     * @param physicalElement
-     *            The physical element to retrieve the more recent datum for.
-     * @param beginValidTime
-     *            The earliest time to search for a value
-     * @param systemTime
-     *            The latest time to search for a value
-     * @return A list of object arrays, where each array element corresponds to
-     *         a column in the IHFS RiverStatus table. For Example,
-     * 
-     *         new Object[]{ "DCTN1", "HG", 0, "RG", "Z", -1,
-     *         "2011-02-08 04:00:00", null, 39.04d }
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryIngestSettings()
      */
     @Override
-    public List<Object[]> retrieveRiverStatus(String id,
-            String physicalElement, long beginValidTime, long systemTime) {
-        StringBuffer query = new StringBuffer();
-        query.append("SELECT * FROM RiverStatus ");
-        query.append("WHERE lid = '" + id + "' ");
-        query.append("AND pe = '" + physicalElement + "' ");
-        query.append("AND ( validtime >= '"
-                + dateFormat.get().format(beginValidTime) + "' ");
-        query.append("AND validtime <= '" + dateFormat.get().format(systemTime)
-                + "') ");
-        query.append("AND basistime IS NULL ");
-
-        List<Object[]> riverStatusResults = DatabaseQueryUtil
-                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
-                        query.toString(), IHFS, "RiverStatus");
-
-        return riverStatusResults;
-
-    }
-
-    /**
-     * Retrieves IngestFilter settings for a given station and physical element.
-     * 
-     * @param id
-     *            Forecast point id
-     * @param physicalElement
-     *            The SHEF Physical element code
-     * @return List of object arrays, where each array element corresponds to a
-     *         pipe delimited string with values from the IngestFilter table:
-     *         ts_rank | ts
-     * 
-     *         For example:
-     * 
-     *         new Object[] {"1|RX"}
-     */
-    @Override
-    public List<Object[]> retrieveIngestSettings(String id,
+    public List<IngestFilterInfo> queryIngestSettings(String lid,
             String physicalElement) {
         /*
-         * Retrieve a unique list of entries for typesources that match the
-         * given lid and pe. The ingestfilter entries are needed because they
-         * contain the type-source rank information. Insert a comma in between
-         * the two fields to make them easier to parse. Note that the ts rank
-         * sort method will not handle numbers greater than 9 (i.e. 12 is ranked
-         * higher than 3)! Also, note that the query does not filter out
-         * extremums that are not "Z". Only bother retrieving info if
+         * ((OLD COMMENT)) Retrieve a unique list of entries for typesources
+         * that match the given lid and pe. The ingestfilter entries are needed
+         * because they contain the type-source rank information. Insert a comma
+         * in between the two fields to make them easier to parse. Note that the
+         * ts rank sort method will not handle numbers greater than 9 (i.e. 12
+         * is ranked higher than 3)! Also, note that the query does not filter
+         * out extremums that are not "Z". Only bother retrieving info if
          * RiverStatus entries exist. We try and read RiverStatus first since
          * that table is smaller.
          */
-        StringBuffer query = new StringBuffer(
-                "SELECT DISTINCT(ts_rank||'|'||ts) ");
-        query.append("FROM IngestFilter WHERE lid = '" + id + "' ");
-        query.append("AND pe = '" + physicalElement + "' ");
-        query.append("AND ingest = 'T' ORDER BY 1 ");
+        List<IngestFilterInfo> ingestFilterInfoList = null;
+        StringBuilder querySB = new StringBuilder();
 
-        List<Object[]> ingestResults = DatabaseQueryUtil
-                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
-                        query.toString(), IHFS, "IHFS ingest");
+        querySB.append("SELECT ");
+        querySB.append(IngestFilterInfo.COLUMN_NAME_STRING);
+        querySB.append(" FROM IngestFilter WHERE lid = '");
+        querySB.append(lid);
+        querySB.append("' AND pe = '");
+        querySB.append(physicalElement);
+        querySB.append("' AND ingest = 'T' ");
+        querySB.append("ORDER BY ts_rank");
 
-        return ingestResults;
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "IHFS ingest");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            ingestFilterInfoList = Lists
+                    .newArrayListWithExpectedSize(queryResults.size());
+            for (Object[] queryResult : queryResults) {
+                IngestFilterInfo ingestFilterInfo = new IngestFilterInfo(
+                        queryResult);
+                ingestFilterInfoList.add(ingestFilterInfo);
+            }
+        } else {
+            ingestFilterInfoList = Lists.newArrayListWithExpectedSize(0);
+        }
 
+        return ingestFilterInfoList;
     }
 
-    /**
-     * Retrieves data from the IHFS IngestFilter Table.
+    /*
+     * (non-Javadoc)
      * 
-     * @param
-     * @return A list of object arrays, where each array element corresponds to
-     *         a pipe delimited string: ts_rank|ts|lid|pe
-     * 
-     *         For example: new Object[] {"1|FF|DCTN1|HG"}
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryHydrographForecastIngestFilter()
      */
     @Override
-    public List<Object[]> getIngestTable(String primary_pe) {
+    public List<IngestFilterInfo> queryHydrographForecastIngestFilter(
+            String primary_pe) {
         /*
          * load the type source which pe starts as 'H' or 'Q' and ts starts as
-         * 'F'. Only load once.
+         * 'F'.
          */
-        if (ingestResults == null) {
+        List<IngestFilterInfo> ingestFilterInfoList = null;
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT ");
+        querySB.append(IngestFilterInfo.DISTINCT_COLUMN_NAME_STRING);
+        querySB.append(" FROM IngestFilter WHERE ts LIKE 'F%%' ");
+        querySB.append("AND (pe = '");
+        querySB.append(primary_pe);
+        querySB.append("') AND ingest = 'T'");
 
-            StringBuffer query = new StringBuffer(
-                    "SELECT DISTINCT(ts_rank||'|'||ts||'|'||lid||'|'||pe) ");
-            query.append("FROM IngestFilter WHERE ts LIKE 'F%%' ");
-            query.append("AND (pe = '" + primary_pe + "') ");
-            // query.append("AND ingest = 'T' order by ts_rank");
-            query.append("AND ingest = 'T'");
-
-            ingestResults = DatabaseQueryUtil.executeDatabaseQuery(
-                    QUERY_MODE.MODE_SQLQUERY, query.toString(), IHFS,
-                    "IngestFilter");
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "IngestFilter");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            ingestFilterInfoList = Lists
+                    .newArrayListWithExpectedSize(queryResults.size());
+            for (Object[] queryResult : queryResults) {
+                IngestFilterInfo ingestFilterInfo = new IngestFilterInfo(
+                        queryResult);
+                ingestFilterInfoList.add(ingestFilterInfo);
+            }
+        } else {
+            ingestFilterInfoList = Lists.newArrayListWithExpectedSize(0);
         }
-
-        return ingestResults;
+        return ingestFilterInfoList;
     }
 
-    /**
-     * Retrieves the observed hydrograph for a river forecast point.
+    /*
+     * (non-Javadoc)
      * 
-     * @param lid
-     *            The river forecast point identifier
-     * @param physicalElement
-     *            The SHEF physical element code
-     * @param typeSource
-     *            The SHEF typesource code
-     * @param obsBeginTime
-     *            The lower bound of time window to retrieve observations for
-     * @param obsEndTime
-     *            The upper bound of the time window to retrieve observations
-     *            for.
-     * @return A list of Object arrays where each array corresponds to a row of
-     *         data from either the IHFS Discharge or Height table.
-     * 
-     *         For example:
-     * 
-     *         new Object[] { "DCTN1", "HG", 0, "RG", "Z",
-     *         "2011-02-07 17:00:00", 30.93, "Z", 1879048191, 0, "KWOHRRSOAX",
-     *         "2011-02-07 17:03:00", "2011-02-07 17:04:19" });
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryLidListForCountyStateHSA()
      */
     @Override
-    public List<Object[]> getRiverObservedHydrograph(String lid,
+    public List<String> queryLidListForCountyStateHSA(String state,
+            String county, String hsaID) {
+
+        List<String> lidList = null;
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT lid FROM Countynum WHERE county = '");
+        querySB.append(county);
+        querySB.append("'  AND state = '");
+        querySB.append(state);
+        querySB.append("'  AND lid in (SELECT lid FROM rpffcstpoint) ");
+        querySB.append(" AND lid IN (SELECT lid FROM location WHERE hsa='");
+        querySB.append(hsaID);
+        querySB.append("' AND (type IS NULL OR type NOT LIKE '%I%'));");
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "IHFS countynum");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            lidList = Lists.newArrayListWithExpectedSize(queryResults.size());
+            for (Object[] queryResult : queryResults) {
+                lidList.add((String) queryResult[0]);
+            }
+        } else {
+            lidList = Lists.newArrayListWithExpectedSize(0);
+        }
+
+        return lidList;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryStateAbbreviationToNameMap()
+     */
+    public Map<String, String> queryStateAbbreviationToNameMap() {
+
+        Map<String, String> stateAbbrToNameMap = null;
+
+        String query = "SELECT state, name FROM State";
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, query, IHFS, "IHFS state table");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            stateAbbrToNameMap = Maps.newHashMapWithExpectedSize(50);
+            for (Object[] queryResult : queryResults) {
+                stateAbbrToNameMap.put((String) queryResult[0],
+                        (String) queryResult[1]);
+            }
+        } else {
+            stateAbbrToNameMap = Maps.newHashMapWithExpectedSize(0);
+        }
+        return (stateAbbrToNameMap);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryRiverStatusList()
+     */
+    @Override
+    public List<RiverStatus> queryRiverStatusList(String lid,
+            String physicalElement, long beginValidTime, long systemTime) {
+
+        List<RiverStatus> riverStatusList = null;
+        SimpleDateFormat dateFormat = RiverHydroConstants.getDateFormat();
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT ");
+        querySB.append(RiverStatus.COLUMN_NAME_STRING);
+        querySB.append(" FROM ");
+        querySB.append(RiverStatus.TABLE_NAME);
+        querySB.append(" WHERE lid = '");
+        querySB.append(lid);
+        querySB.append("' AND pe = '");
+        querySB.append(physicalElement);
+        querySB.append("' AND ( validtime >= '");
+        querySB.append(dateFormat.format(beginValidTime));
+        querySB.append("' AND validtime <= '");
+        querySB.append(dateFormat.format(systemTime));
+        querySB.append("') AND basistime IS NULL ");
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "RiverStatus");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            riverStatusList = Lists.newArrayListWithExpectedSize(queryResults
+                    .size());
+            for (Object[] queryResult : queryResults) {
+                RiverStatus riverStatus = new RiverStatus(queryResult);
+                riverStatusList.add(riverStatus);
+            }
+        } else {
+            riverStatusList = Lists.newArrayListWithExpectedSize(0);
+        }
+
+        return riverStatusList;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryRiverStatusList()
+     */
+    @Override
+    public List<RiverStatus> queryRiverStatusList(String lid,
+            String physicalElement) {
+
+        List<RiverStatus> riverStatusList = null;
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT ");
+        querySB.append(RiverStatus.COLUMN_NAME_STRING);
+        querySB.append(" FROM ");
+        querySB.append(RiverStatus.TABLE_NAME);
+        querySB.append(" WHERE lid = '");
+        querySB.append(lid);
+        querySB.append("' AND pe = '");
+        querySB.append(physicalElement);
+        querySB.append("'");
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "RiverStatus");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            riverStatusList = Lists.newArrayListWithExpectedSize(queryResults
+                    .size());
+            for (Object[] queryResult : queryResults) {
+                RiverStatus riverStatus = new RiverStatus(queryResult);
+                riverStatusList.add(riverStatus);
+            }
+        } else {
+            riverStatusList = Lists.newArrayListWithExpectedSize(0);
+        }
+
+        return (riverStatusList);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryRiverPointHydrographObserved()
+     */
+    @Override
+    public HydrographObserved queryRiverPointHydrographObserved(String lid,
             String physicalElement, String typeSource, long obsBeginTime,
             long obsEndTime) {
-        /* Determine the table name to use. */
-        String tableName;
 
-        if (physicalElement.startsWith("Q") || physicalElement.startsWith("q")) {
-            tableName = "discharge";
-        } else {
-            tableName = "height";
+        List<SHEFObserved> shefObservedList = null;
+        if ((typeSource == null) || (typeSource.length() == 0)) {
+            typeSource = queryBestObservedTypeSource(lid, physicalElement);
         }
 
-        /*
-         * Get the data for the specified time window and for the determined
-         * PEDTSEP entry. Build the where clause depending upon whether
-         * considering only passed qc data.
-         */
-        StringBuffer query = new StringBuffer("SELECT * FROM " + tableName
-                + " ");
-        query.append("WHERE lid = '" + lid + "' ");
-        query.append("AND pe = '" + physicalElement + "' ");
-        query.append("AND ts = '" + typeSource + "' ");
-        query.append("AND obstime >= '"
-                + dateFormat.get().format(new Date(obsBeginTime)) + "' ");
-        query.append("AND obstime <= '"
-                + dateFormat.get().format(new Date(obsEndTime)) + "' ");
-        query.append("AND value != " + RiverForecastPoint.MISSINGVAL + " ");
-        query.append("AND quality_code >= " + QUESTIONABLE_BAD_THRESHOLD + " ");
-        query.append("ORDER BY obstime ASC ");
+        SimpleDateFormat dateFormat = RiverHydroConstants.getDateFormat();
+        /* Determine the table name to use. */
+        String tableName = this.getTableNameForPhysialElement(physicalElement,
+                false);
 
-        List<Object[]> observationRecordList = DatabaseQueryUtil
-                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
-                        query.toString(), IHFS, "observed river hydrograph");
+        if ((typeSource != null) && (typeSource.length() > 0)) {
+            /*
+             * Get the data for the specified time window and for the determined
+             * PEDTSEP entry. Build the where clause depending upon whether
+             * considering only passed qc data.
+             */
+            StringBuilder querySB = new StringBuilder();
+            querySB.append("SELECT ");
+            querySB.append(SHEFObserved.COLUMN_NAME_STRING);
+            querySB.append(" FROM ");
+            querySB.append(tableName);
+            querySB.append(" WHERE lid = '");
+            querySB.append(lid);
+            querySB.append("' AND pe = '");
+            querySB.append(physicalElement);
+            querySB.append("' AND ts = '");
+            querySB.append(typeSource);
+            querySB.append("' AND obstime >= '");
+            querySB.append(dateFormat.format(new Date(obsBeginTime)));
+            querySB.append("' AND obstime <= '");
+            querySB.append(dateFormat.format(new Date(obsEndTime)));
+            querySB.append("' AND value != ");
+            querySB.append(RiverHydroConstants.MISSING_VALUE_STRING);
+            querySB.append(" AND quality_code >= ");
+            querySB.append(RiverHydroConstants.QUESTIONABLE_BAD_THRESHOLD);
+            querySB.append(" ORDER BY obstime ASC ");
 
-        return observationRecordList;
+            List<Object[]> queryResults = DatabaseQueryUtil
+                    .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                            querySB.toString(), IHFS,
+                            "river observed hydrograph");
+            if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+                shefObservedList = Lists
+                        .newArrayListWithExpectedSize(queryResults.size());
+                for (Object[] queryResult : queryResults) {
+                    SHEFObserved shefObserved = new SHEFObserved(queryResult);
+                    shefObservedList.add(shefObserved);
+                }
+            } else {
+                shefObservedList = Lists.newArrayListWithExpectedSize(0);
+            }
+        } else {
+            shefObservedList = Lists.newArrayListWithExpectedSize(0);
+        }
+        HydrographObserved hydrographObserved = new HydrographObserved(lid,
+                physicalElement, typeSource, obsBeginTime, obsEndTime,
+                shefObservedList);
+
+        return (hydrographObserved);
     }
 
     /**
-     * Returns a list of basis times (the time each river forecast timeseries
-     * was created).
+     * Query the Best Observed Type Source from the IngestFilter table.
+     * 
+     * This is different from the public "queryBestObservedTypeSource" method.
      * 
      * @param lid
-     *            River forecast point identifier
+     *            River Forecast Point identifier
      * @param physicalElement
      *            The SHEF physical element code
-     * @param typeSource
-     *            The SHEF typesource code
-     * @param systemTime
-     *            The system time
-     * @param endValidTime
-     *            The latest possible forecast valid time
-     * @param basisBTime
-     *            The earliest basistime to accept
-     * @return A list object arrays. Each array contains a single basistime
-     *         value string.
-     * 
-     *         For example:
-     * 
-     *         new Object[]{ "2011-02-08 15:06:00" }
+     * @return Type Source value
      */
-    @Override
-    public List<Object[]> getRiverForecastBasisTimes(String lid,
-            String physicalElement, String typeSource, Date systemTime,
-            long endValidTime, long basisBTime) {
-        /*
-         * Set the table name to use.
-         */
-        String tableName;
+    protected String queryBestObservedTypeSource(String lid,
+            String physicalElement) {
+        String typeSource = null;
 
-        if (physicalElement.startsWith("h") || physicalElement.startsWith("H")) {
-            tableName = "fcstheight";
-        } else {
-            tableName = "fcstdischarge";
+        /*
+         * get the ingest filter entries for this location. note that the
+         * retrieval is ordered so that if multiple best ranks exist, there is
+         * some predictability for the identified best one. also note that this
+         * approach ignores the duration, extremum, and probability code.
+         */
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT ");
+        querySB.append(IngestFilterInfo.DISTINCT_SETTING_COLUMN_NAME_STRING);
+        querySB.append(" FROM ");
+        querySB.append(IngestFilterInfo.TABLE_NAME);
+        querySB.append(" WHERE lid ='");
+        querySB.append(lid);
+        querySB.append("' AND pe  = '");
+        querySB.append(physicalElement);
+        querySB.append("' AND ts LIKE 'R%' AND ingest = 'T' ORDER BY ts_rank, ts ");
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "IngestFilter (TS) table");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            Object[] queryResult = queryResults.get(0);
+            typeSource = (String) queryResult[1];
         }
 
+        return (typeSource);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryBestObservedTypeSource()
+     */
+    @Override
+    public String queryBestObservedTypeSource(String lid,
+            String physicalElement, long obsBeginTime, long obsEndTime) {
+
+        String bestTypeSource = null;
         /*
-         * Retrieve a list of unique basis times; use descending sort. Only
-         * consider forecast data before some ending time, and with some limited
-         * basis time ago.
+         * In an effort to minimize reads of the database, get the RiverStatus
+         * information all at once, for all ts's and for observed Data. There is
+         * a validtime limit for observed data.
          */
-        StringBuffer query = new StringBuffer();
-        query.append("SELECT DISTINCT(basistime) FROM " + tableName + " ");
-        query.append("WHERE lid = '" + lid + "' ");
-        query.append("AND pe = '" + physicalElement + "' ");
-        query.append("AND ts = '" + typeSource + "' ");
-        query.append("AND probability < 0.0 ");
-        query.append("AND ( validtime >= '"
-                + dateFormat.get().format(systemTime) + "' ");
-        query.append("AND validtime <= '"
-                + dateFormat.get().format(endValidTime) + "') ");
-        query.append("AND basistime >= '" + dateFormat.get().format(basisBTime)
-                + "' ");
-        query.append("AND value != " + RiverForecastPoint.MISSINGVAL + " ");
-        query.append("AND quality_code >= " + QUESTIONABLE_BAD_THRESHOLD + " ");
-        query.append("ORDER BY basistime DESC");
+        List<RiverStatus> riverStatusList = queryRiverStatusList(lid,
+                physicalElement, obsBeginTime, obsEndTime);
 
-        List<Object[]> basisTimeResults = DatabaseQueryUtil
-                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
-                        query.toString(), IHFS, "river forecast basis time");
+        if ((riverStatusList != null) && (riverStatusList.isEmpty() == false)) {
+            /*
+             * Retrieve a unique list of entries for typesources that match the
+             * given lid and pe. The ingestfilter entries are needed because
+             * they contain the type-source rank information. Insert a comma in
+             * between the two fields to make them easier to parse. Note that
+             * the ts rank sort method will not handle numbers greater than 9
+             * (i.e. 12 is ranked higher than 3)! Also, note that the query does
+             * not filter out extremums that are not "Z". Only bother retrieving
+             * info if RiverStatus entries exist. We try and read RiverStatus
+             * first since that table is smaller.
+             */
+            List<IngestFilterInfo> ingestFilterInfoList = queryIngestSettings(
+                    lid, physicalElement);
 
-        return basisTimeResults;
+            if ((ingestFilterInfoList != null)
+                    && (ingestFilterInfoList.isEmpty() == false)) {
 
+                for (IngestFilterInfo ingestFilterInfo : ingestFilterInfoList) {
+
+                    String testTypeSource = ingestFilterInfo.getTypeSource();
+                    if ((testTypeSource.startsWith("R") == true)
+                            || (testTypeSource.startsWith("P") == true)) {
+
+                        boolean hasRiverStatusRec = findRiverStatusTypeSource(
+                                riverStatusList, testTypeSource);
+                        if (hasRiverStatusRec == true) {
+                            bestTypeSource = testTypeSource;
+                            break;
+                        }
+                    }
+                }
+
+                if (bestTypeSource == null) {
+                    // Still do not have a valid Type Source for the given Lid,
+                    // Physical Element, and Valid Time range
+                    for (IngestFilterInfo ingestFilterInfo : ingestFilterInfoList) {
+                        String testTypeSource = ingestFilterInfo
+                                .getTypeSource();
+                        if (testTypeSource.startsWith("R") == true) {
+                            bestTypeSource = testTypeSource;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return (bestTypeSource);
     }
 
     /**
-     * Retrieves the forecast hydrograph for a river forecast point.
+     * Test Whether the given Type Source value is found within the list of
+     * RiverStatus objects.
+     * 
+     * @param riverStatusList
+     *            List of queried RiverStatus objects
+     * @param testTypeSource
+     *            Type Source value to fine
+     * @return true if found; false otherwise
+     */
+    protected boolean findRiverStatusTypeSource(
+            List<RiverStatus> riverStatusList, String testTypeSource) {
+        boolean isFound = false;
+        if ((riverStatusList != null) && (riverStatusList.isEmpty() == false)) {
+            for (RiverStatus riverStatus : riverStatusList) {
+                if (testTypeSource.equals(riverStatus.getTypeSource())) {
+                    isFound = true;
+                    break;
+                }
+            }
+        }
+
+        return (isFound);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryRiverPointHydrographForecast()
+     */
+    @Override
+    public HydrographForecast queryRiverPointHydrographForecast(String lid,
+            String physicalElement, long currentSystemTime, long endValidTime,
+            long basisBeginTime, boolean useLatestForecast) {
+        HydrographForecast returnHydrographForecast = null;
+
+        HydrographForecast hydrographForecast = null;
+        List<Long> uniqueBasisList = null;
+        List<IngestFilterInfo> ingestFilterInfoList = this.queryIngestSettings(
+                lid, physicalElement);
+        if ((ingestFilterInfoList != null)
+                && (ingestFilterInfoList.isEmpty() == false)) {
+            for (IngestFilterInfo ingestFilterInfo : ingestFilterInfoList) {
+                String typeSource = ingestFilterInfo.getTypeSource();
+
+                uniqueBasisList = queryHydrographForecastBasisTimeList(lid,
+                        physicalElement, typeSource, currentSystemTime,
+                        endValidTime, basisBeginTime);
+                if ((uniqueBasisList != null)
+                        && (uniqueBasisList.isEmpty() == false)) {
+                    hydrographForecast = this
+                            .queryRiverPointHydrographForecast(lid,
+                                    physicalElement, typeSource,
+                                    currentSystemTime, endValidTime,
+                                    basisBeginTime, useLatestForecast,
+                                    uniqueBasisList);
+                    if (hydrographForecast != null) {
+                        List<SHEFForecast> shefForecastList = hydrographForecast
+                                .getShefHydroDataList();
+                        if ((shefForecastList != null)
+                                && (shefForecastList.isEmpty() == false)) {
+                            break;
+                        }
+                    }
+                } else {
+                    hydrographForecast = new HydrographForecast(lid,
+                            physicalElement, typeSource, currentSystemTime,
+                            endValidTime, basisBeginTime, useLatestForecast,
+                            null, null);
+                }
+            }
+        }
+
+        if (hydrographForecast != null) {
+            List<SHEFForecast> origForecastList = hydrographForecast
+                    .getShefHydroDataList();
+            if ((origForecastList != null)
+                    && (origForecastList.isEmpty() == false)) {
+                List<SHEFForecast> shefForecastList = processKeepShefForecast(
+                        origForecastList, uniqueBasisList);
+                hydrographForecast.setShefHydroDataList(shefForecastList);
+            }
+            returnHydrographForecast = hydrographForecast;
+        } else {
+            returnHydrographForecast = new HydrographForecast(lid,
+                    physicalElement, "", currentSystemTime, endValidTime,
+                    basisBeginTime, useLatestForecast, null, null);
+
+        }
+
+        return (returnHydrographForecast);
+    }
+
+    /**
+     * Retrieves the FORECAST hydrograph for a river forecast point.
      * 
      * @param lid
-     *            The river forecast point identifier
+     *            River Forecast Point identifier
      * @param physicalElement
      *            The SHEF physical element code
      * @param typeSource
@@ -725,156 +1270,508 @@ public class FloodDAO implements IFloodDAO {
      *            The system time
      * @param endValidTime
      *            The latest valid forecast time to accept
-     * @param basisBTime
+     * @param basisBeginTime
      *            The earliest basis time to search for
      * @param useLatestForecast
      *            Only consider the latest forecast
-     * @param basisTimeResults
-     *            Available forecast basis times
-     * 
-     * 
-     * @return A list of Object arrays. Each array corresponds to one row from
-     *         the IHFS FcstHeight or FcstDischarge tables.
-     * 
-     *         For example:
-     * 
-     *         new Object[] { "DCTN1", "HG", 0, "FF", "Z", -1,
-     *         "2011-02-08 18:00:00", "2011-02-08 15:06:00", 39.91, "Z",
-     *         1879048191, 1, "KKRFRVFMOM", "2011-02-08 15:15:00",
-     *         "2011-02-08 15:15:10" });
+     * @param basisTimeList
+     *            Available forecast basis times (as Long)
+     * @return A HydrographForecast object. Containing an array corresponding to
+     *         matching rows from the IHFS FcstHeight or FcstDischarge tables.
      */
-    @Override
-    public List<Object[]> getRiverForecastHydrograph(String lid,
-            String physicalElement, String typeSource, Date systemTime,
-            long endValidTime, long basisBTime, boolean useLatestForecast,
-            List<Object[]> basisTimeResults) {
+    protected HydrographForecast queryRiverPointHydrographForecast(String lid,
+            String physicalElement, String typeSource, long systemTime,
+            long endValidTime, long basisBeginTime, boolean useLatestForecast,
+            List<Long> basisTimeList) {
+
+        SimpleDateFormat dateFormat = RiverHydroConstants.getDateFormat();
+
         /*
          * Set the table name to use.
          */
-        String tableName;
+        String tableName = this.getTableNameForPhysialElement(physicalElement,
+                true);
 
-        if (physicalElement.startsWith("h") || physicalElement.startsWith("H")) {
-            tableName = "fcstheight";
+        StringBuilder querySB = new StringBuilder();
+
+        if (useLatestForecast || basisTimeList.size() == 1) {
+            Long basisTimeValue = basisTimeList.get(0);
+            querySB.append("SELECT ");
+            querySB.append(SHEFForecast.COLUMN_NAME_STRING);
+            querySB.append(" FROM ");
+            querySB.append(tableName);
+            querySB.append(" WHERE lid = '");
+            querySB.append(lid);
+            querySB.append("' AND pe = '");
+            querySB.append(physicalElement);
+            querySB.append("' AND ts = '");
+            querySB.append(typeSource);
+            querySB.append("' AND probability < 0.0 ");
+            querySB.append("AND ( validtime >= '");
+            querySB.append(dateFormat.format(systemTime));
+            querySB.append("' AND validtime <= '");
+            querySB.append(dateFormat.format(endValidTime));
+            querySB.append("') AND basistime = '");
+            querySB.append(dateFormat.format(basisTimeValue));
+            querySB.append("' AND value != ");
+            querySB.append(RiverHydroConstants.MISSING_VALUE);
+            querySB.append(" AND quality_code >= ");
+            querySB.append(RiverHydroConstants.QUESTIONABLE_BAD_THRESHOLD);
+            querySB.append(" ORDER BY validtime ASC");
         } else {
-            tableName = "fcstdischarge";
+            querySB.append("SELECT ");
+            querySB.append(SHEFForecast.COLUMN_NAME_STRING);
+            querySB.append(" FROM ");
+            querySB.append(tableName);
+            querySB.append(" WHERE lid = '");
+            querySB.append(lid);
+            querySB.append("' AND pe = '");
+            querySB.append(physicalElement);
+            querySB.append("' AND ts = '");
+            querySB.append(typeSource);
+            querySB.append("' AND probability < 0.0 AND ( validtime >= '");
+            querySB.append(dateFormat.format(systemTime));
+            querySB.append("' AND validtime <= '");
+            querySB.append(dateFormat.format(endValidTime));
+            querySB.append("') AND basistime >= '");
+            querySB.append(dateFormat.format(basisBeginTime));
+            querySB.append("' AND value != "
+                    + RiverHydroConstants.MISSING_VALUE);
+            querySB.append(" AND quality_code >= ");
+            querySB.append(RiverHydroConstants.QUESTIONABLE_BAD_THRESHOLD);
+            querySB.append(" ORDER BY validtime ASC");
         }
 
-        StringBuffer query = new StringBuffer();
-
-        if (useLatestForecast || basisTimeResults.size() == 1) {
-            Object[] record = basisTimeResults.get(0);
-            String basisTime = record[0].toString();
-            query.append("SELECT * FROM " + tableName + " ");
-            query.append("WHERE lid = '" + lid + "' ");
-            query.append("AND pe = '" + physicalElement + "' ");
-            query.append("AND ts = '" + typeSource + "' ");
-            query.append("AND probability < 0.0 ");
-            query.append("AND ( validtime >= '"
-                    + dateFormat.get().format(systemTime) + "' ");
-            query.append("AND validtime <= '"
-                    + dateFormat.get().format(endValidTime) + "') ");
-            query.append("AND basistime = '" + basisTime + "' ");
-            query.append("AND value != " + RiverForecastPoint.MISSINGVAL + " ");
-            query.append("AND quality_code >= "
-                    + Hydrograph.QUESTIONABLE_BAD_THRESHOLD + " ");
-            query.append("ORDER BY validtime ASC");
+        List<SHEFForecast> shefForecastList = null;
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "river forecast hydrograph");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            shefForecastList = Lists.newArrayListWithExpectedSize(queryResults
+                    .size());
+            for (Object[] queryResult : queryResults) {
+                SHEFForecast shefForecast = new SHEFForecast(queryResult);
+                shefForecastList.add(shefForecast);
+            }
         } else {
-            query.append("SELECT * FROM " + tableName + " ");
-            query.append("WHERE lid = '" + lid + "' ");
-            query.append("AND pe = '" + physicalElement + "' ");
-            query.append("AND ts = '" + typeSource + "' ");
-            query.append("AND probability < 0.0 ");
-            query.append("AND ( validtime >= '"
-                    + dateFormat.get().format(systemTime) + "' ");
-            query.append("AND validtime <= '"
-                    + dateFormat.get().format(endValidTime) + "') ");
-            query.append("AND basistime >= '"
-                    + dateFormat.get().format(basisBTime) + "' ");
-            query.append("AND value != " + RiverForecastPoint.MISSINGVAL + " ");
-            query.append("AND quality_code >= "
-                    + Hydrograph.QUESTIONABLE_BAD_THRESHOLD + " ");
-            query.append("ORDER BY validtime ASC");
+            shefForecastList = Lists.newArrayListWithExpectedSize(0);
         }
+        HydrographForecast hydrographForecast = new HydrographForecast(lid,
+                physicalElement, typeSource, systemTime, endValidTime,
+                basisBeginTime, useLatestForecast, basisTimeList,
+                shefForecastList);
 
-        List<Object[]> forecastResults = DatabaseQueryUtil
-                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
-                        query.toString(), IHFS, "river forecast hydrograph");
-
-        return forecastResults;
+        return (hydrographForecast);
     }
 
     /**
-     * Get the highest ranked type source given a primary physical element
+     * Returns a list of basis times (the time each river forecast time series
+     * was created).
+     * 
+     * @param lid
+     *            River Forecast Point identifier
+     * @param physicalElement
+     *            The SHEF physical element code
+     * @param typeSource
+     *            The SHEF typesource code
+     * @param systemTime
+     *            The system time
+     * @param endValidTime
+     *            The latest possible forecast valid time
+     * @param basisBeginTime
+     *            The earliest basistime to accept
+     * @return A list of long integers containing a single, system basistime
+     *         value.
      * 
      */
-    @Override
-    public String getForecastTopRankedTypeSource(String lid, String primary_pe,
-            int duration, String extremum) {
-        StringBuffer query = new StringBuffer();
+    protected List<Long> queryHydrographForecastBasisTimeList(String lid,
+            String physicalElement, String typeSource, long systemTime,
+            long endValidTime, long basisBeginTime) {
+
+        List<Long> basisTimeList = null;
+        String tableName = this.getTableNameForPhysialElement(physicalElement,
+                true);
+
+        SimpleDateFormat dateFormat = RiverHydroConstants.getDateFormat();
         /*
-         * select ts_rank from ingestFilter where ingest = 'T' and lid = 'BRON1'
-         * and extremum = ‘ex’ and dur = ‘dur’ order by ts_rank, ts;
+         * Retrieve a list of unique basis times; use descending sort. Only
+         * consider forecast data before some ending time, and with some limited
+         * basis time ago.
          */
-        query.append(
-                "SELECT ts, ts_rank FROM ingestFilter where ingest = 'T' and lid ='")
-                .append(lid).append("' ");
-        query.append("AND extremum = '").append(extremum).append("' ");
-        query.append("AND dur = ").append(duration).append(" ");
-        query.append("ORDER BY ts_rank, ts");
-        List<Object[]> results = DatabaseQueryUtil
-                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
-                        query.toString(), IHFS, "type source");
+        StringBuilder querySB = new StringBuilder();
+
+        querySB.append("SELECT DISTINCT(basistime) FROM ");
+        querySB.append(tableName);
+        querySB.append(" WHERE lid = '");
+        querySB.append(lid);
+        querySB.append("' AND pe = '");
+        querySB.append(physicalElement);
+        querySB.append("' AND ts = '");
+        querySB.append(typeSource);
+        querySB.append("' AND probability < 0.0 ");
+        querySB.append("AND ( validtime >= '");
+        querySB.append(dateFormat.format(systemTime));
+        querySB.append("' AND validtime <= '");
+        querySB.append(dateFormat.format(endValidTime));
+        querySB.append("') AND basistime >= '");
+        querySB.append(dateFormat.format(basisBeginTime));
+        querySB.append("' AND value != ");
+        querySB.append(RiverHydroConstants.MISSING_VALUE);
+        querySB.append(" AND quality_code >= ");
+        querySB.append(RiverHydroConstants.QUESTIONABLE_BAD_THRESHOLD);
+        querySB.append(" ORDER BY basistime DESC");
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "river forecast basis time");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            basisTimeList = Lists.newArrayListWithExpectedSize(queryResults
+                    .size());
+            for (Object[] queryResult : queryResults) {
+                Date date = (Date) queryResult[0];
+                basisTimeList.add(date.getTime());
+            }
+        } else {
+            basisTimeList = Lists.newArrayListWithExpectedSize(0);
+        }
+        return basisTimeList;
+    }
+
+    /**
+     * Process through the queried SHEFForcast objects; comparing to a List of
+     * Unique Basis Time values and choose which entries to keep.
+     * <p>
+     * 
+     * This is code for RiverForecastPoint->HydrographForecast->SHEFForecast
+     * queries which was originally written in C, then ported to Java and
+     * re-written to RiverPro recommender operations.
+     * <p>
+     * The gist of the operations here is to process the results of a
+     * SHEFForecast query (which may have results from either the "fcstheight"
+     * or "fcstdischarge" table.
+     * <p>
+     * This code endures that the resultant Valid Time SHEFForecast value are
+     * between the valid Basis Times
+     * 
+     * @param shefForecastList
+     * @param uniqueBasisList
+     * @return
+     */
+    protected List<SHEFForecast> processKeepShefForecast(
+            List<SHEFForecast> shefForecastList, List<Long> uniqueBasisList) {
+
+        List<SHEFForecast> keepSHEFForecastList = null;
+
+        /* Size of forecastList */
+        int[] basisIndex = new int[shefForecastList.size()];
+
+        /* Size of uniqueBasisList */
+        long[] tsStartTime = new long[uniqueBasisList.size()];
+
+        /* Size of uniqueBasisList */
+        long[] tsEndTime = new long[uniqueBasisList.size()];
+
+        /* Size of uniqueBasisList */
+        boolean[] tsFirstCheck = new boolean[uniqueBasisList.size()];
+
+        for (int i = 0; i < tsFirstCheck.length; ++i) {
+            tsFirstCheck[i] = false;
+        }
+
+        long[] tsBasisTime = new long[uniqueBasisList.size()];
+
+        /*
+         * Now loop through the retrieved time series data values and get the
+         * start and end times for each of the basis times found.
+         */
+        for (int i = 0; i < shefForecastList.size(); ++i) {
+            SHEFForecast shefForecastRecord = shefForecastList.get(i);
+            long forecastBasisTime = shefForecastRecord.getBasisTime();
+
+            /*
+             * Find out which basis time's time series this value belongs to.
+             */
+            basisIndex[i] = RiverHydroConstants.MISSING_VALUE;
+
+            for (int j = 0; ((j < uniqueBasisList.size() && basisIndex[i] == RiverHydroConstants.MISSING_VALUE)); j++) {
+                Long uniqueBasisTime = uniqueBasisList.get(j);
+
+                if (forecastBasisTime == uniqueBasisTime.longValue()) {
+                    basisIndex[i] = j;
+                }
+            }
+
+            if (basisIndex[i] == RiverHydroConstants.MISSING_VALUE) {
+                statusHandler
+                        .debug("Unexpected error assigning basis_index for "
+                                + i);
+            }
+
+            /*
+             * Check if the values constitute the start or end time for the time
+             * series and record this times if they do.
+             */
+            long validTime = shefForecastRecord.getValidTime();
+
+            if (tsFirstCheck[basisIndex[i]]) {
+                if (validTime < tsStartTime[basisIndex[i]]) {
+                    tsStartTime[basisIndex[i]] = validTime;
+                } else if (validTime > tsEndTime[basisIndex[i]]) {
+                    tsEndTime[basisIndex[i]] = validTime;
+                }
+            } else {
+                tsStartTime[basisIndex[i]] = validTime;
+                tsEndTime[basisIndex[i]] = validTime;
+                tsFirstCheck[basisIndex[i]] = true;
+            }
+
+        }
+
+        /*
+         * For each of the unique basis times, assign the basis time in a
+         * convenient array for use in the adjust_started function.
+         */
+        for (int j = 0; j < uniqueBasisList.size(); ++j) {
+            long basisTime = uniqueBasisList.get(j).longValue();
+            tsBasisTime[j] = basisTime;
+        }
+
+        /*
+         * Knowing the actual start and end times for the multiple time series,
+         * loop thru the time series and adjust the start and end time so that
+         * they reflect the time span to use; i.e. there is no overlap. THIS IS
+         * THE KEY STEP IN THE PROCESS OF DEFINING AN AGGREGATE VIRTUAL TIME
+         * SERIES!!!
+         */
+        adjustStartEnd(uniqueBasisList, tsBasisTime, tsStartTime, tsEndTime);
+
+        /*
+         * Loop through the complete retrieved time series and only keep the
+         * value if it lies between the start and end time for this basis time.
+         */
+        int shefForecastListSize = shefForecastList.size();
+        keepSHEFForecastList = Lists
+                .newArrayListWithExpectedSize(shefForecastListSize);
+        for (int i = 0; i < shefForecastListSize; ++i) {
+            SHEFForecast forecastRecord = shefForecastList.get(i);
+            long validTime = forecastRecord.getValidTime();
+
+            if (validTime >= tsStartTime[basisIndex[i]]
+                    && validTime <= tsEndTime[basisIndex[i]]) {
+                // Keep
+                keepSHEFForecastList.add(forecastRecord);
+            }
+        }
+
+        return (keepSHEFForecastList);
+    }
+
+    /**
+     * This method uses the time series with the latest basis time first, and
+     * uses it in its entirety. Then the time series with the next latest basis
+     * time is used. If it overlaps portions of the already saved time series,
+     * then only that portion which doesn't overlap is used. This process
+     * continues until all time series have been considered. In essences, this
+     * method adjoins adjacent time series.
+     * 
+     * @param uniqueBasisList
+     *            List of unique forecast basis times
+     * @param basisTime
+     *            - basis times of forecasts
+     * @param startTime
+     *            - start times of forecasts
+     * @param endTime
+     *            - end times of forecasts
+     */
+    private void adjustStartEnd(List<Long> uniqueBasisList, long basisTime[],
+            long startTime[], long endTime[]) {
+        boolean found = false;
+        long tmpTime = 0;
+        long fullStartValidTime = 0;
+        long fullEndValidTime = 0;
+        int currentIndex = 0;
+
+        /*
+         * Initialize the array to keep track of order of the basis time series
+         */
+        int[] basisOrder = new int[uniqueBasisList.size()];
+
+        for (int i = 0; i < basisOrder.length; ++i) {
+            basisOrder[i] = -1;
+        }
+
+        /*
+         * Find the order of the time series by their latest basis time. If two
+         * time series have the same basis time, use the one that has the
+         * earlier starting time. Note that the order is such that the latest
+         * basis time is last in the resulting order array.
+         */
+        for (int i = 0; i < uniqueBasisList.size(); ++i) {
+            tmpTime = 0;
+            currentIndex = 0;
+
+            for (int j = 0; j < uniqueBasisList.size(); j++) {
+
+                /*
+                 * Only consider the time series if it hasn't been accounted for
+                 * in the order array
+                 */
+                found = false;
+                for (int k = 0; k < i; k++) {
+                    if (j == basisOrder[k]) {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    if (basisTime[j] > tmpTime) {
+                        currentIndex = j;
+                        tmpTime = basisTime[j];
+                    } else if (basisTime[j] == tmpTime) {
+                        if (startTime[j] < startTime[currentIndex]) {
+                            currentIndex = j;
+                            tmpTime = basisTime[j];
+                        }
+                    }
+                }
+            }
+
+            basisOrder[i] = currentIndex;
+        }
+
+        /*
+         * do NOT adjust the start and end time of the time series with the
+         * latest ending time. loop through all the other time series and adjust
+         * their start and end times as necessary so that they do not overlap
+         * the time limits of the being-built aggregate time series.
+         */
+
+        currentIndex = basisOrder[0];
+        if (currentIndex >= 0 && (currentIndex < startTime.length)
+                && (currentIndex < endTime.length)) {
+            fullStartValidTime = startTime[currentIndex];
+            fullEndValidTime = endTime[currentIndex];
+            return;
+        }
+
+        for (int i = 1; i < uniqueBasisList.size(); i++) {
+            currentIndex = basisOrder[i];
+
+            /*
+             * each additional time series being considered is checked to see if
+             * it falls outside the time window already encompassed by the
+             * assembled time series. there are four cases that can occur; each
+             * is handled below.
+             */
+
+            /*
+             * if the basis time series being considered is fully within the
+             * time of the already existing time series, then ignore it
+             * completely, and reset its times.
+             */
+
+            if (startTime[currentIndex] >= fullStartValidTime
+                    && endTime[currentIndex] <= fullEndValidTime) {
+                startTime[currentIndex] = 0;
+                endTime[currentIndex] = 0;
+            }
+
+            /*
+             * if the basis time series being considered covers time both before
+             * and after the existing time series, use the portion of it that is
+             * before the time series. it is not desirable to use both the
+             * before and after portion (this results in a non-contiguous
+             * time-series that is weird), and given a choice it is better to
+             * use the forecast data early on than the later forecast data, so
+             * use the before portion
+             */
+
+            else if (startTime[currentIndex] <= fullStartValidTime
+                    && endTime[currentIndex] >= fullEndValidTime) {
+                endTime[currentIndex] = fullStartValidTime - 1;
+                fullStartValidTime = startTime[currentIndex];
+            }
+
+            /*
+             * if the basis time series being considered straddles the beginning
+             * or is completely before the existing time series, then use the
+             * portion of it that is before the time series.
+             */
+
+            else if (startTime[currentIndex] <= fullStartValidTime
+                    && endTime[currentIndex] <= fullEndValidTime) {
+                endTime[currentIndex] = fullStartValidTime - 1;
+                fullStartValidTime = startTime[currentIndex];
+            }
+
+            /*
+             * if the basis time series being considered straddles the end or is
+             * completely after the existing time series, then use the portion
+             * of it that is after the time series.
+             */
+
+            else if (startTime[currentIndex] >= fullStartValidTime
+                    && endTime[currentIndex] >= fullEndValidTime) {
+                startTime[currentIndex] = fullEndValidTime + 1;
+                fullEndValidTime = endTime[currentIndex];
+            }
+
+        } /* end for loop on the unique ordered basis times */
+
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryTopRankedTypeSource()
+     */
+    @Override
+    public String queryTopRankedTypeSource(String lid, String primary_pe,
+            int duration, String extremum) {
+        StringBuilder querySB = new StringBuilder();
+
+        querySB.append("SELECT ts, ts_rank FROM ingestFilter where ingest = 'T' and lid ='");
+        querySB.append(lid);
+        querySB.append("' AND extremum = '");
+        querySB.append(extremum);
+        querySB.append("' AND dur = ");
+        querySB.append(duration);
+        querySB.append(" ORDER BY ts_rank, ts");
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "IngestFilter: type source");
         String typeSource = "";
-        for (Object[] oa : results) {
-            typeSource = (String) oa[0];
-            break;
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            typeSource = (String) queryResults.get(0)[0];
         }
         return typeSource;
     }
 
-    /**
-     * Retrieves the given physical element value for a river forecast point.
-     * TODO Rename this method to getPhysicalElementValue
+    /*
+     * (non-Javadoc)
      * 
-     * @param lid
-     *            The river forecast point identifier
-     * @param physicalElement
-     *            The SHEF physical element code
-     * @param duration
-     * @param typeSource
-     *            The SHEF typesource code
-     * @param extremum
-     *            e.g. Z, X
-     * @param timeArg
-     *            The time specification dayOffset|hhmm|interval e.g. 0|1200|1
-     *            where dayOffset is 0 today, 1 tomorrow etc. hhmm is the GMT
-     *            hour of the day (24 hour clock) interval is the number of
-     *            hours to create window around
-     * @param derivationInstruction
-     *            e.g. "Time", "Max24", etc.
-     * 
-     *            For example:
-     * 
-     *            new Object[] { "DCTN1", "HG", 0, "FF", "Z", -1,
-     *            "2011-02-08 18:00:00", "2011-02-08 15:06:00", 39.91, "Z",
-     *            1879048191, 1, "KKRFRVFMOM", "2011-02-08 15:15:00",
-     *            "2011-02-08 15:15:10" });
-     * @param timeFlag
-     *            -- if True return a time string for requested value, otherwise
-     *            return requested value
-     * @param currentTime_ms
-     *            -- current time in milliseconds
-     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryPhysicalElementValue()
      */
     @Override
-    public String getPhysicalElement(String lid, String physicalElement,
+    public String queryPhysicalElementValue(String lid, String physicalElement,
             int duration, String typeSource, String extremum, String timeArg,
-            String derivationInstruction, boolean timeFlag, long currentTime_ms) {
+            boolean timeFlag, long currentTime_ms) {
+        SimpleDateFormat dateFormat = RiverHydroConstants.getDateFormat();
 
         String queryTimeConstraint = "";
-        if (!NEXT.equals(timeArg)) {
+        if (!RiverHydroConstants.NEXT.equals(timeArg)) {
             boolean isForecast = typeSource.startsWith("f")
                     || typeSource.startsWith("F");
+
+            /*
+             * Set the table name to use.
+             */
+            String tableName = getTableNameForPhysialElement(physicalElement,
+                    isForecast);
 
             /*
              * Build the validTime from timeArg
@@ -890,8 +1787,8 @@ public class FloodDAO implements IFloodDAO {
             Date lowerBound = DateUtils.addHours(referenceTime, -windowHours);
             Date upperBound = DateUtils.addHours(referenceTime, windowHours);
 
-            String lowerBoundStr = dateFormat.get().format(lowerBound);
-            String upperBoundStr = dateFormat.get().format(upperBound);
+            String lowerBoundStr = dateFormat.format(lowerBound);
+            String upperBoundStr = dateFormat.format(upperBound);
             if (isForecast) {
                 queryTimeConstraint = "(validtime >= '" + lowerBoundStr
                         + "' and validtime <= '" + upperBoundStr + "')";
@@ -900,13 +1797,6 @@ public class FloodDAO implements IFloodDAO {
                         + "' and obstime <= '" + upperBoundStr + "')";
             }
 
-            /*
-             * Set the table name to use.
-             */
-            String tableName = getTableName(physicalElement, isForecast);
-
-            StringBuffer query = new StringBuffer();
-            String selectItem = "value, validTime";
             String basisTime = lowerBoundStr;
 
             /*
@@ -916,22 +1806,27 @@ public class FloodDAO implements IFloodDAO {
              * if obs use value passed in translate into database format -- see
              * Date formats)
              */
-
+            StringBuilder querySB = new StringBuilder();
             if (isForecast) {
                 /*
                  * pull out the basistime for the next query
                  */
-                query.append("SELECT basistime FROM ").append(tableName)
-                        .append(" ");
-                query.append("WHERE lid = '").append(lid).append("' ");
-                query.append("AND pe = '").append(physicalElement).append("' ");
-                query.append("AND ts = '").append(typeSource).append("' ");
-                query.append("AND extremum = '").append(extremum).append("' ");
-                query.append("ORDER BY basisTime desc limit 1");
+                querySB.append("SELECT basistime FROM ");
+                querySB.append(tableName);
+                querySB.append(" WHERE lid = '");
+                querySB.append(lid);
+                querySB.append("' AND pe = '");
+                querySB.append(physicalElement);
+                querySB.append("' AND ts = '");
+                querySB.append(typeSource);
+                querySB.append("' AND extremum = '");
+                querySB.append(extremum);
+                querySB.append("' ORDER BY basisTime desc limit 1");
+
                 List<Object[]> basisTimes = DatabaseQueryUtil
                         .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
-                                query.toString(), IHFS, "basis time");
-                if (!basisTimes.isEmpty()) {
+                                querySB.toString(), IHFS, "basis time");
+                if ((basisTimes != null) && (!basisTimes.isEmpty())) {
                     basisTime = basisTimes.get(0)[0].toString();
                 }
                 /*
@@ -941,52 +1836,47 @@ public class FloodDAO implements IFloodDAO {
                  * HH:MM within the +/- y interval
                  */
                 String validTimeCondition;
-                query = new StringBuffer();
+                querySB.setLength(0);
 
-                dateFormat.get().format(lowerBound);
-
-                String currentTime_ms_str = dateFormat.get().format(
-                        DateUtils.truncate(new Date(currentTime_ms),
-                                Calendar.DATE));
+                String currentTime_ms_str = dateFormat.format(DateUtils
+                        .truncate(new Date(currentTime_ms), Calendar.DATE));
                 validTimeCondition = ">= '" + currentTime_ms_str + "'";
-                query.append("SELECT value, validTime FROM ").append(tableName)
-                        .append(" ");
-                query.append("WHERE lid = '").append(lid).append("' ");
-                query.append("AND pe = '").append(physicalElement).append("' ");
-                query.append("AND ts = '").append(typeSource).append("' ");
-                query.append("AND basistime = '").append(basisTime)
-                        .append("' ");
-                query.append("AND extremum = '").append(extremum).append("' ");
-                if (NEXT.equals(timeArg)) {
+                querySB.append("SELECT value, validTime FROM ");
+                querySB.append(tableName);
+                querySB.append(" WHERE lid = '");
+                querySB.append(lid);
+                querySB.append("' AND pe = '");
+                querySB.append(physicalElement);
+                querySB.append("' AND ts = '");
+                querySB.append(typeSource);
+                querySB.append("' AND basistime = '");
+                querySB.append(basisTime);
+                querySB.append("' AND extremum = '");
+                querySB.append(extremum);
+                querySB.append("' ");
+                if (RiverHydroConstants.NEXT.equals(timeArg)) {
                     /*
-                     * TODO this will never be true because it's checked up
-                     * above
+                     * (Original, legacy. Leave in for now.) This will never be
+                     * true because it's checked up above
                      */
-                    query.append("AND validTime ").append(validTimeCondition)
-                            .append(" ");
-                    query.append("ORDER BY validTime limit 1");
+                    querySB.append("AND validTime ");
+                    querySB.append(validTimeCondition);
+                    querySB.append(" ORDER BY validTime limit 1");
                 } else {
-                    query.append("AND ").append(queryTimeConstraint);
-                }
-            } else {
-                /*
-                 * TODO observed needs to be fixed. It currently doesn't do
-                 * anything
-                 */
-                if (timeFlag) {
-                    selectItem = "obsTime";
+                    querySB.append("AND ");
+                    querySB.append(queryTimeConstraint);
                 }
             }
 
-            if (query.length() == 0) {
-                return MISSING_VALUE;
+            if (querySB.length() == 0) {
+                return RiverHydroConstants.MISSING_VALUE_STRING;
             }
 
-            List<Object[]> results = DatabaseQueryUtil.executeDatabaseQuery(
-                    QUERY_MODE.MODE_SQLQUERY, query.toString(), IHFS,
-                    "physical element");
+            List<Object[]> queryResults = DatabaseQueryUtil
+                    .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                            querySB.toString(), IHFS, "physical element");
 
-            if (!results.isEmpty()) {
+            if ((queryResults != null) && (queryResults.isEmpty() == false)) {
                 int closestIndex = 0;
                 long minDiff = 0;
                 Date resultDate;
@@ -995,13 +1885,13 @@ public class FloodDAO implements IFloodDAO {
                  * choose the closest value/time to the given value time (ref
                  * time)
                  */
-                for (int i = 0; i < results.size(); ++i) {
+                for (int i = 0; i < queryResults.size(); ++i) {
                     try {
-                        resultDate = (Date) results.get(i)[1];
+                        resultDate = (Date) queryResults.get(i)[1];
                     } catch (Exception e) {
-                        statusHandler.error(
-                                "Invalid result date: " + results.get(i)[1], e);
-                        return MISSING_VALUE;
+                        statusHandler.error("Invalid result date: "
+                                + queryResults.get(i)[1], e);
+                        return RiverHydroConstants.MISSING_VALUE_STRING;
                     }
                     long diff = Math.abs(resultDate.getTime()
                             - referenceTime.getTime());
@@ -1011,360 +1901,276 @@ public class FloodDAO implements IFloodDAO {
                     }
                 }
                 if (timeFlag) {
-                    return results.get(closestIndex)[1].toString();
+                    return (queryResults.get(closestIndex)[1].toString());
                 } else {
-                    return results.get(closestIndex)[0].toString();
+                    return (queryResults.get(closestIndex)[0].toString());
                 }
             }
         }
-        return MISSING_VALUE;
+        return (RiverHydroConstants.MISSING_VALUE_STRING);
     }
 
-    /**
-     * @return the number of hours to look back for observed river data.
-     */
-    @Override
-    public int getLookBackHoursForAllForecastPoints() {
-        return lookBackHoursForAllForecastPoints;
-    }
-
-    /**
-     * @return the number of hours to look into the future for forecast river
-     *         data.
-     */
-    @Override
-    public int getLookForwardHoursForAllForecastPoints() {
-        return lookForwardHoursForAllForecastPoints;
-    }
-
-    /**
-     * @return The buffer around a reference stage.
-     */
-    @Override
-    public double getDefaultStageWindow() {
-        return defaultStageWindow;
-    }
-
-    /**
+    /*
+     * (non-Javadoc)
      * 
-     * @param
-     * @return the max number of hours to look back for a river forecast basis
-     *         time.
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO #getCrestHistory()
      */
-    @Override
-    public int getBasisHoursForAllForecastPoints() {
-        return basisHoursForAllForecastPoints;
-    }
+    public List<CrestHistory> getCrestHistory(String lid, String peColumnName,
+            List<String> crestTypeList) {
 
-    /**
-     * 
-     * @param
-     * @return The number of hours to add to the fall below time.
-     */
-    @Override
-    public int getShiftHoursForAllForecastPoints() {
-        return shiftHoursForAllForecastPoints;
-    }
-
-    /**
-     * @return the dateFormat
-     */
-    @Override
-    public SimpleDateFormat getDateFormat() {
-        return dateFormat.get();
-    }
-
-    /**
-     * Determines the best TS to use for retrieval of observed hydrographs.
-     * 
-     * @param lid
-     *            River forecast point identifier
-     * @param pe
-     *            The SHEF physical element code.
-     * @param ts_prefix
-     *            The type character in the SHEF typesource code
-     * @param ordinal
-     *            The type source ranking value
-     * 
-     * @return The typesource for which to retrieve data.
-     */
-    @Override
-    public String getBestTS(String lid, String pe, String ts_prefix, int ordinal) {
-
-        int cnt;
-        String tsFound = null;
-
-        /*
-         * get the ingest filter entries for this location. note that the
-         * retrieval is ordered so that if multiple best ranks exist, there is
-         * some predictability for the identified best one. also note that this
-         * approach ignores the duration, extremum, and probability code.
-         */
-        StringBuffer query = new StringBuffer("SELECT * ");
-        query.append("FROM IngestFilter WHERE lid ='" + lid + "' ");
-        query.append("AND pe  = '" + pe + "' ");
-        query.append("AND ts LIKE '" + ts_prefix + "%' ");
-        query.append("AND ingest = 'T' ORDER BY ts_rank, ts");
-
-        List<Object[]> ingestResults = DatabaseQueryUtil.executeDatabaseQuery(
-                QUERY_MODE.MODE_SQLQUERY, query.toString(), IHFS,
-                "IngestFilter table");
-
-        if (ingestResults != null && ingestResults.size() > 0) {
-            /*
-             * if no specific ordinal number was requested, return with the
-             * highest rank.
-             */
-            if (ordinal <= 0) {
-                tsFound = ingestResults.get(0)[3].toString();
-            }
-            /* if a specific ordinal number was requested. */
-            else {
-                /*
-                 * get a count of the number of matching ts entries. if the
-                 * requested ordinal number is greater than the number available
-                 * then return with a not found status.
-                 */
-                cnt = ingestResults.size();
-
-                if (ordinal <= cnt) {
-                    Object[] ingestRecord = ingestResults.get(ordinal);
-                    tsFound = ingestRecord[3].toString();
+        List<CrestHistory> crestHistoryList = null;
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT ");
+        querySB.append(CrestHistory.COLUMN_NAME_STRING);
+        querySB.append(" FROM ");
+        querySB.append(CrestHistory.TABLE_NAME);
+        querySB.append(" WHERE ");
+        querySB.append(" lid = '");
+        querySB.append(lid);
+        querySB.append("'");
+        if (crestTypeList != null) {
+            if (crestTypeList.size() == 1) {
+                querySB.append(" AND prelim = '");
+                querySB.append(crestTypeList.get(0));
+                querySB.append("' ");
+            } else {
+                boolean isFirst = true;
+                for (String type : crestTypeList) {
+                    if (isFirst == true) {
+                        querySB.append(" AND ( prelim = '");
+                        isFirst = false;
+                    } else {
+                        querySB.append(" OR prelim = '");
+                    }
+                    querySB.append(type);
+                    querySB.append("'");
                 }
+                querySB.append(") ");
             }
+        }
+        if (peColumnName != null) {
+            querySB.append(" AND " + peColumnName + " is NOT NULL ");
+        }
+        querySB.append(" ORDER BY lid, datcrst ASC");
 
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "IHFS crest table");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            crestHistoryList = Lists.newArrayListWithExpectedSize(queryResults
+                    .size());
+            for (Object[] queryResult : queryResults) {
+                CrestHistory crestHistory = new CrestHistory(queryResult);
+                crestHistoryList.add(crestHistory);
+            }
+        } else {
+            crestHistoryList = Lists.newArrayListWithExpectedSize(0);
         }
 
-        return tsFound;
+        return (crestHistoryList);
     }
 
-    /**
+    /*
+     * (non-Javadoc)
      * 
-     * @param state
-     *            The two letter, state code (uppercase)
-     * @param county
-     *            The name of the county, first letter capitalized
-     * @param HSA
-     *            The HSA id
-     * @return A list of Object[] arrays which each array corresponding to one
-     *         record in the IHFS CountyNum table.
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryFlowCrestHistory()
      */
     @Override
-    public List<Object[]> getForecastPointsInCountyStateHSA(String state,
-            String county, String hsaID) {
-        String query = "SELECT * " + "FROM Countynum " + "WHERE county = '"
-                + county + "' " + "AND state = '" + state + "' "
-                + " AND lid in " + "(SELECT lid FROM rpffcstpoint) "
-                + "AND lid IN " + "(SELECT lid FROM location WHERE hsa='"
-                + hsaID + "' " + "AND (type IS NULL OR type NOT LIKE '%I%'));";
+    public List<CrestHistory> queryFlowCrestHistory(String lid,
+            List<String> crestTypeList) {
 
-        List<Object[]> countyForecastPointList = DatabaseQueryUtil
-                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY, query, IHFS,
-                        "IHFS countynum");
-
-        return countyForecastPointList;
+        /* Build the query depending on the crest types we want. */
+        return (queryCrestHistory(lid, COLUMN_Q, crestTypeList));
     }
 
-    /**
+    /*
+     * (non-Javadoc)
      * 
-     * @return A Map with the gauge 'lid' as the key and a string of latitude
-     *         and longitude values as the key.
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryFlowCrestHistory()
      */
     @Override
-    public Map<String, String> getAreaInundationCoordinates() {
+    public List<CrestHistory> queryFlowCrestHistory(String lid) {
+        List<String> crestTypeList = Lists.newArrayListWithExpectedSize(2);
+        crestTypeList.add("R");
+        crestTypeList.add("O");
+        return (queryCrestHistory(lid, COLUMN_Q, crestTypeList));
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryStageCrestHistory()
+     */
+    @Override
+    public List<CrestHistory> queryStageCrestHistory(String lid,
+            List<String> crestTypeList) {
+
+        /* Build the query depending on the crest types we want. */
+        return (queryCrestHistory(lid, COLUMN_STAGE, crestTypeList));
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryStageCrestHistory()
+     */
+    @Override
+    public List<CrestHistory> queryStageCrestHistory(String lid) {
+        List<String> crestTypeList = Lists.newArrayListWithExpectedSize(2);
+        crestTypeList.add("R");
+        crestTypeList.add("O");
+        return queryCrestHistory(lid, COLUMN_STAGE, crestTypeList);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryAreaInundationCoordinateMap()
+     */
+    @Override
+    public Map<String, String> queryAreaInundationCoordinateMap() {
+        Map<String, String> lidAreas = null;
         String query = new String("SELECT lid, area FROM locarea order by lid");
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, query.toString(), IHFS,
+                "IHFS locarea");
 
-        List<Object[]> locationResults = DatabaseQueryUtil
-                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
-                        query.toString(), IHFS, "IHFS location");
-
-        Map<String, String> lidAreas = new HashMap<String, String>();
-        for (Object[] lidLatlon : locationResults) {
-            String lid = (String) lidLatlon[0];
-            String areaCandidates = (String) lidLatlon[1];
-            if (areaCandidates != null && areaCandidates.length() > 0) {
-                lidAreas.put(lid, areaCandidates);
+        if (queryResults != null) {
+            lidAreas = Maps.newHashMapWithExpectedSize(queryResults.size());
+            for (Object[] queryResult : queryResults) {
+                String lid = (String) queryResult[0];
+                String areaCandidates = (String) queryResult[1];
+                if (areaCandidates != null && areaCandidates.length() > 0) {
+                    lidAreas.put(lid, areaCandidates);
+                }
             }
+        } else {
+            lidAreas = Maps.newHashMapWithExpectedSize(0);
         }
 
         return lidAreas;
     }
 
-    /**
+    /*
+     * (non-Javadoc)
      * 
-     * @param lid
-     *            River forecast point identifier
-     * @return A string of latitude and longitude values.
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryAreaInundationCoordinates()
      */
     @Override
-    public String getAreaInundationCoordinates(String lid) {
+    public String queryAreaInundationCoordinates(String lid) {
         /*
          * Load the lat/lon coords of this forecast point.
          */
-        StringBuffer query = new StringBuffer("SELECT area ");
-        query.append("FROM locarea WHERE lid = '").append(lid).append("'");
+        String[] areaAndCenter = null;
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT area FROM locarea WHERE lid = '");
+        querySB.append(lid);
+        querySB.append("'");
 
-        List<Object[]> locationResults = DatabaseQueryUtil
-                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
-                        query.toString(), IHFS, "IHFS location");
-
-        Object[] areaObj = locationResults.get(0);
-        String area = (String) areaObj[0];
-        String[] areaAndCenter = area.split(Pattern.quote("||"));
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "IHFS location");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            Object[] queryResult = queryResults.get(0);
+            String area = (String) queryResult[0];
+            areaAndCenter = area.split(Pattern.quote("||"));
+        } else {
+            areaAndCenter = new String[1];
+        }
 
         return areaAndCenter[0];
     }
 
     /**
+     * Query for the Lat/Lon Coordinates for a List of River Forecast Point Id
+     * (LID) values.
      * 
-     * @param lid
-     *            River forecast point identifier
+     * This is part of the automatic sub query for all RiverForecastPoint
+     * objects.
+     * 
+     * @param lidList
+     *            River forecast point identifier List
      * @return A list of Object[], each of which contains a latitude and a
      *         longitude value. Note that Western Hemisphere longitudes are
      *         positive.
      * 
      *         For example:
      * 
-     *         new Object[]{ 42.0072222222222d, 96.2413888888889d }
+     *         new Object[]{ LID, 42.0072222222222d, 96.2413888888889d }
      */
-    @Override
-    public List<Object[]> getForecastPointCoordinates(String lid) {
+    protected List<Object[]> queryForecastPointCoordinates(List<String> lidList) {
         /*
          * Load the lat/lon coords of this forecast point.
          */
-        StringBuffer query = new StringBuffer("SELECT lat, lon ");
-        query.append("FROM Location WHERE lid = '" + lid + "'");
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT lid, lat, lon FROM Location WHERE ");
+        appendToWhereClause(querySB, "lid", lidList, true);
 
-        List<Object[]> locationResults = DatabaseQueryUtil
-                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
-                        query.toString(), IHFS, "IHFS location");
-
-        return locationResults;
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "IHFS location");
+        return queryResults;
     }
 
-    public List<Object[]> getCrestHistory(String lid, String crestTypes,
-            String pe) {
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO #queryCrestHistory()
+     */
+    @Override
+    public List<CrestHistory> queryCrestHistory(String lid,
+            String crestValueColumn, List<String> crestTypeList) {
 
         /* Build the query depending on the crest types we want. */
-        String query = "SELECT " + pe + ", datcrst FROM Crest WHERE lid = '"
-                + lid + "' ";
-        if (crestTypes.length() == 1) {
-            query += "AND prelim = '" + crestTypes + "' ";
-        } else if (crestTypes.length() == 2) {
-            query += "AND ( prelim = '" + crestTypes.substring(0, 1)
-                    + "' OR prelim = '" + crestTypes.substring(1, 2) + "' ) ";
-        }
-        query += "AND " + pe + " is NOT NULL";
+        List<CrestHistory> crestHistoryList = null;
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT ");
+        querySB.append(CrestHistory.COLUMN_NAME_STRING);
+        querySB.append(" FROM ");
+        querySB.append(CrestHistory.TABLE_NAME);
+        querySB.append(" WHERE ");
+        querySB.append(" lid = '");
+        querySB.append(lid);
+        querySB.append("' AND ");
+        appendToWhereClause(querySB, "prelim", crestTypeList, true);
+        querySB.append(" AND ");
+        querySB.append(crestValueColumn);
+        querySB.append(" is not NULL ");
 
-        List<Object[]> crestResults = null;
-        if (pe.equals(COLUMN_STAGE.toString())) {
-            crestResults = DatabaseQueryUtil.executeDatabaseQuery(
-                    QUERY_MODE.MODE_SQLQUERY, query.toString(), IHFS,
-                    "IHFS crest table");
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "IHFS Crest");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            crestHistoryList = Lists.newArrayListWithExpectedSize(queryResults
+                    .size());
+            CrestHistory crestHistory = null;
+            for (Object[] queryResult : queryResults) {
+                crestHistory = new CrestHistory(queryResult);
+                crestHistoryList.add(crestHistory);
+            }
         } else {
-            crestResults = DatabaseQueryUtil.executeDatabaseQuery(
-                    QUERY_MODE.MODE_SQLQUERY, query.toString(), IHFS,
-                    "IHFS Crest");
+            crestHistoryList = Lists.newArrayListWithExpectedSize(0);
         }
 
-        return crestResults;
-
+        return (crestHistoryList);
     }
 
-    /**
+    /*
+     * (non-Javadoc)
      * 
-     * @param lid
-     *            River forecast point identifier
-     * @param crestTypes
-     *            A string containing possible list of crest types to filter on.
-     *            P=preliminary, O=official, R=record. Empty string means take
-     *            all types.
-     * @return A list of Pair objects, each of which contains a double
-     *         representing a historical flow crest and its date.
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryFloodStatementDataList()
      */
     @Override
-    public List<Pair<Integer, Date>> getFlowCrestHistory(String lid,
-            String crestTypes) {
+    public List<FloodStmtData> queryFloodStatementDataList(String lid,
+            int month, int day) {
 
-        /* Build the query depending on the crest types we want. */
-        List<Object[]> crestResults = getCrestHistory(lid, crestTypes, COLUMN_Q);
-
-        List<Pair<Integer, Date>> list = new ArrayList<>(crestResults.size());
-
-        for (Object[] ob : crestResults) {
-
-            Integer q = (Integer) ob[0];
-            Date datcrst = new java.util.Date(((Date) ob[1]).getTime());
-            Pair<Integer, Date> pair = new Pair<>(q, datcrst);
-            list.add(pair);
-        }
-        return list;
-    }
-
-    /**
-     * Define "RO" as the default crest types.
-     */
-    @Override
-    public List<Pair<Integer, Date>> getFlowCrestHistory(String lid) {
-        return this.getFlowCrestHistory(lid, RO);
-    }
-
-    /**
-     * 
-     * @param lid
-     *            River forecast point identifier
-     * @param crestTypes
-     *            A string containing possible list of crest types to filter on.
-     *            P=preliminary, O=official, R=record. Empty string means take
-     *            all types.
-     * @return A list of Pair objects, each of which contains a double
-     *         representing a historical stage crest and its date.
-     */
-    @Override
-    public List<Pair<Double, Date>> getStageCrestHistory(String lid,
-            String crestTypes) {
-
-        /* Build the query depending on the crest types we want. */
-        List<Object[]> crestResults = getCrestHistory(lid, crestTypes,
-                COLUMN_STAGE);
-
-        List<Pair<Double, Date>> list = new ArrayList<>(crestResults.size());
-
-        for (Object[] ob : crestResults) {
-
-            Double q = (Double) ob[0];
-            Date datcrst = new java.util.Date(((Date) ob[1]).getTime());
-            Pair<Double, Date> pair = new Pair<>(q, datcrst);
-            list.add(pair);
-        }
-        return list;
-    }
-
-    /**
-     * Define "RO" as the default crest types.
-     */
-    @Override
-    public List<Pair<Double, Date>> getStageCrestHistory(String lid) {
-        return this.getStageCrestHistory(lid, RO);
-    }
-
-    /**
-     * 
-     * @param lid
-     *            River forecast point identifier
-     * @param month
-     *            1-12 month of the year.
-     * @param day
-     *            1-31 day of the month.
-     * @return A list of Pair objects, each of which contains a double for the
-     *         stage/flow threshold for an impact, and a string describing the
-     *         impact.
-     */
-    @Override
-    public List<Pair<Double, String>> getImpactValues(String lid, int month,
-            int day) {
-
-        int reqcmp = month * 100 + day;
         /*
          * Build the query to get the database columns we want.
          * 
@@ -1375,121 +2181,373 @@ public class FloodDAO implements IFloodDAO {
          * Comparison below is a method to find all dates between 01/01 - 12/31
          * by turning the dates into digit, such as 01/01 = 101 and 12/31 = 1231
          */
-        String query = "SELECT impact_value,datestart,dateend,rf,statement"
-                + " FROM floodstmt WHERE lid = '" + lid + "' ";
+        List<FloodStmtData> floodStmtDataList = null;
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT ");
+        querySB.append(FloodStmtData.COLUMN_NAME_STRING);
+        querySB.append(" FROM ");
+        querySB.append(FloodStmtData.TABLE_NAME);
+        querySB.append(" WHERE lid = '");
+        querySB.append(lid);
+        querySB.append("' ");
 
-        List<Object[]> impactResults = DatabaseQueryUtil.executeDatabaseQuery(
-                QUERY_MODE.MODE_SQLQUERY, query, IHFS, "IHFS floodstmt table");
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "IHFS floodstmt table");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            floodStmtDataList = Lists.newArrayListWithExpectedSize(queryResults
+                    .size());
+            FloodStmtData floodStmtData = null;
+            for (Object[] queryResult : queryResults) {
+                floodStmtData = new FloodStmtData(queryResult);
 
-        List<Pair<Double, String>> list = new ArrayList<>(impactResults.size());
-        for (Object[] ob : impactResults) {
-            String[] startmmdd = ob[1].toString().split("/");
-            if (startmmdd.length != 2) {
-                continue;
-            }
-            int startcmp = (Integer.parseInt(startmmdd[0]) * 100 + (Integer
-                    .parseInt(startmmdd[1])));
-            String[] endmmdd = ob[2].toString().split("/");
-            if (endmmdd.length != 2) {
-                continue;
-            }
-            int endcmp = (new Integer(endmmdd[0])).intValue() * 100
-                    + (new Integer(endmmdd[1])).intValue();
-            if (startcmp != 101 && endcmp != 1231) {
-                if (reqcmp < startcmp || reqcmp > endcmp) {
-                    continue;
+                int floodStmtMonthStart = floodStmtData.getMonthStart();
+                int floodStmtDayStart = floodStmtData.getDayStart();
+                int floodStmtMonthEnd = floodStmtData.getMonthEnd();
+                int floodStmtDayEnd = floodStmtData.getDayEnd();
+                boolean isValid = true;
+                if ((month >= floodStmtMonthStart)
+                        && (month <= floodStmtMonthEnd)) {
+                    if ((month == floodStmtMonthStart)
+                            && (day < floodStmtDayStart)) {
+                        isValid = false;
+                    }
+                    if ((month == floodStmtMonthEnd) && (day > floodStmtDayEnd)) {
+                        isValid = false;
+                    }
+                } else {
+                    isValid = false;
+                }
+
+                if (isValid == true) {
+                    floodStmtDataList.add(floodStmtData);
                 }
             }
-            Double value = Double.parseDouble(ob[0].toString());
-            String impact = ob[3].toString().equals("R") ? "-Rising||"
-                    : "-Falling||";
-            impact = "-" + ob[1].toString() + "-" + ob[2].toString() + impact
-                    + ob[4].toString();
-            Pair<Double, String> pair = new Pair<>(value, impact);
-            list.add(pair);
-        }
-
-        return list;
-    }
-
-    /**
-     * This methods allows the flood recommender to run displaced in
-     * circumstances such as Unit Tests.
-     * 
-     * @param
-     * @return The system time.
-     */
-    @Override
-    public Date getSystemTime() {
-        return SimulatedTime.getSystemTime().getTime();
-    }
-
-    /**
-     * Translates a state abbreviation into a state name using the state table
-     * in the IHFS database.
-     * 
-     * @param stateAbbreviation
-     *            The two letter state abbreviation. These should be capital
-     *            letters.
-     * @return The name of the state which matches the abbreviation.
-     */
-    @Override
-    public String getStateNameForAbbreviation(String stateAbbreviation) {
-        String query = "SELECT name FROM State WHERE state = '"
-                + stateAbbreviation + "'";
-
-        List<Object[]> stateResults = DatabaseQueryUtil.executeDatabaseQuery(
-                QUERY_MODE.MODE_SQLQUERY, query, IHFS, "IHFS state table");
-
-        if (stateResults.size() > 0) {
-            Object[] record = stateResults.get(0);
-            return (String) record[0];
         } else {
-            return null;
+            floodStmtDataList = Lists.newArrayListWithExpectedSize(0);
         }
+
+        return (floodStmtDataList);
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryRiverStationInfoList()
+     */
     @Override
-    public List<Object[]> getRiverStationInfo(String lid) {
-        String query = "SELECT * FROM RiverStat WHERE lid = '" + lid + "'";
+    public List<RiverStationInfo> queryRiverStationInfoList(List<String> lidList) {
 
-        List<Object[]> statResults = DatabaseQueryUtil.executeDatabaseQuery(
-                QUERY_MODE.MODE_SQLQUERY, query, IHFS, "IHFS state table");
+        List<RiverStationInfo> riverStationInfoList = null;
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT ");
+        querySB.append(RiverStationInfo.COLUMN_NAME_STRING);
+        querySB.append(" FROM ");
+        querySB.append(RiverStationInfo.TABLE_NAME);
+        querySB.append(" WHERE ");
+        appendToWhereClause(querySB, "lid", lidList, true);
 
-        return statResults;
-    }
-
-    @Override
-    public String getPrimaryPE(String lid) {
-        String query = "SELECT primary_pe from RiverStat WHERE lid = '" + lid
-                + "';";
-        List<Object[]> primaryPE = DatabaseQueryUtil.executeDatabaseQuery(
-                QUERY_MODE.MODE_SQLQUERY, query, IHFS, "IHFS state table");
-        if (primaryPE.isEmpty() == false) {
-            return primaryPE.get(0)[0].toString();
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "IHFS River Station table");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            riverStationInfoList = Lists
+                    .newArrayListWithExpectedSize(queryResults.size());
+            RiverStationInfo riverStationInfo = null;
+            for (Object[] result : queryResults) {
+                riverStationInfo = new RiverStationInfo(result);
+                riverStationInfoList.add(riverStationInfo);
+            }
+        } else {
+            riverStationInfoList = Lists.newArrayListWithExpectedSize(0);
         }
-        return null;
+        return (riverStationInfoList);
     }
 
-    private String getTableName(String pe, boolean isForecast) {
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryLidToCountyDataMap()
+     */
+    @Override
+    public CountyStateData queryCountyData(String lid) {
+
+        List<String> lidList = Lists.newArrayList(lid);
+
+        CountyStateData countyStateData = null;
+        Map<String, CountyStateData> lidToCountyStateDataMap = queryLidToCountyDataMap(lidList);
+        if (lidToCountyStateDataMap != null) {
+            countyStateData = lidToCountyStateDataMap.get(lid);
+        }
+
+        return (countyStateData);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryLidToCountyDataMap()
+     */
+    @Override
+    public Map<String, CountyStateData> queryLidToCountyDataMap(
+            List<String> lidList) {
+        Map<String, CountyStateData> lidToCountyStateDataMap = null;
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT countynum.lid, ");
+        querySB.append(CountyStateData.QUALIFIED_COLUMN_NAME_STRING);
+        querySB.append(" FROM ");
+        querySB.append(CountyStateData.TABLE_NAME);
+        querySB.append(", CountyNum WHERE ");
+        appendToWhereClause(querySB, "CountyNum.lid", lidList, true);
+        querySB.append(" AND Counties.state = CountyNum.state AND Counties.county = CountyNum.county ");
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "IHFS Counties-CountyNum ");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            lidToCountyStateDataMap = Maps
+                    .newHashMapWithExpectedSize(queryResults.size());
+            CountyStateData countyStateData = null;
+            for (Object[] result : queryResults) {
+                countyStateData = new CountyStateData(result);
+                String lid = countyStateData.getLid();
+                lidToCountyStateDataMap.put(lid, countyStateData);
+            }
+        } else {
+            lidToCountyStateDataMap = Maps.newHashMapWithExpectedSize(0);
+        }
+        return (lidToCountyStateDataMap);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryLidListForCounty()
+     */
+    @Override
+    public List<String> queryLidListForCounty(List<String> countyNameList,
+            List<String> countyNumList) {
+
+        List<String> lidList = null;
+        boolean isFirst = true;
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT lid FROM ");
+        querySB.append(CountyStateData.TABLE_NAME);
+        querySB.append(" WHERE ");
+        if (countyNameList != null) {
+            this.appendToWhereClause(querySB, "county", countyNameList, true);
+            isFirst = false;
+        }
+
+        if (countyNumList != null) {
+            if (isFirst == false) {
+                querySB.append(" AND ");
+            }
+            appendToWhereClause(querySB, "countyNum", countyNumList, true);
+        }
+
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "IHFS CountyNum table");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            lidList = Lists.newArrayListWithExpectedSize(queryResults.size());
+            for (Object[] result : queryResults) {
+                lidList.add((String) result[0]);
+            }
+        } else {
+            lidList = Lists.newArrayListWithExpectedSize(0);
+        }
+        return (lidList);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryCountyStateData()
+     */
+    @Override
+    public CountyStateData queryCountyStateData(String lid) {
+        CountyStateData countyStateData = null;
+        List<String> lidList = Lists.newArrayList(lid);
+
+        List<CountyStateData> countyStateDataList = queryCountyStateDataList(lidList);
+        if ((countyStateDataList != null)
+                && (countyStateDataList.isEmpty() == false)) {
+            countyStateData = countyStateDataList.get(0);
+        }
+
+        return (countyStateData);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryCountyStateDataList()
+     */
+    @Override
+    public List<CountyStateData> queryCountyStateDataList(List<String> lidList) {
+
+        List<CountyStateData> countyStateDataList = null;
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT ");
+        querySB.append("CountyNum."); // This is a bit hokey but it does work
+        querySB.append(CountyStateData.COLUMN_NAME_STRING);
+        querySB.append(" FROM ");
+        querySB.append("CountyNum, ");
+        querySB.append(CountyStateData.TABLE_NAME);
+        querySB.append(" WHERE ");
+        appendToWhereClause(querySB, "CountyNum.lid", lidList, true);
+        querySB.append(" AND CountyNum.state = ");
+        querySB.append(CountyStateData.TABLE_NAME);
+        querySB.append(".state AND CountyNum.county = ");
+        querySB.append(CountyStateData.TABLE_NAME);
+        querySB.append(".county");
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "IHFS Counties, CountyNum tables");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            countyStateDataList = Lists
+                    .newArrayListWithExpectedSize(queryResults.size());
+            CountyStateData countyStateData = null;
+            for (Object[] result : queryResults) {
+                countyStateData = new CountyStateData(result);
+                countyStateDataList.add(countyStateData);
+            }
+        } else {
+            countyStateDataList = Lists.newArrayListWithExpectedSize(0);
+
+        }
+        return (countyStateDataList);
+    }
+
+    /**
+     * Query "Primary" Physical Element Value Map for a list of River Forecast
+     * Point Id (LID) values.
+     * 
+     * This is part of the default River Forecast Point (shallow) query.
+     * 
+     * @param lid
+     *            River Forecast Point identifier List
+     * @return Map of Lid to Primary Physical Element values
+     */
+    protected Map<String, String> queryRiverStatPrimaryPEMap(
+            List<String> lidList) {
+
+        StringBuilder querySB = new StringBuilder();
+        querySB.append("SELECT lid, primary_pe FROM ");
+        querySB.append(RiverStationInfo.TABLE_NAME);
+        querySB.append(" WHERE ");
+        this.appendToWhereClause(querySB, "lid", lidList, true);
+
+        Map<String, String> lidToPrimaryPEMap = Maps
+                .newHashMapWithExpectedSize(lidList.size());
+        List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
+                "IHFS RiverStat table");
+        if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+            for (Object[] result : queryResults) {
+                String lid = (String) (String) result[0];
+                String primaryPE = (String) result[1];
+                lidToPrimaryPEMap.put(lid, primaryPE);
+            }
+        }
+        return (lidToPrimaryPEMap);
+    }
+
+    /**
+     * Get the correct table name for queries base on the Physical Element value
+     * and isForecast flag.
+     * 
+     * @param pe
+     *            The SHEF physical element code
+     * @param isForecast
+     *            Boolean flag denoting whether this is for a Forecast query or
+     *            not
+     * @return Table Name String
+     */
+    private String getTableNameForPhysialElement(String pe, boolean isForecast) {
         String tableName;
         boolean isHeight = pe.startsWith("h") || pe.startsWith("H");
         // Forecast
         if (isForecast) {
             if (isHeight) {
-                tableName = "fcstheight";
+                tableName = SHEFForecast.TABLE_NAME_HEIGHT; // "fcstheight";
             } else {
-                tableName = "fcstdischarge";
+                tableName = SHEFForecast.TABLE_NAME_DISCHARGE; // "fcstdischarge";
             }
         } else {
             // observed
             if (isHeight) {
-                tableName = "height";
+                tableName = SHEFObserved.TABLE_NAME_HEIGHT; // "height";
             } else {
-                tableName = "discharge";
+                tableName = SHEFObserved.TABLE_NAME_DISCHARGE; // "discharge";
             }
         }
 
         return tableName;
     }
+
+    /**
+     * Append an element or list of elements to a WHERE clause.
+     * 
+     * If there is only 1 element in the list than a "<field name> = <val 1>"
+     * construct will be used. Otherwise, the clause
+     * "<field name> IN (<val 1>, <val 2>, ..., <val n>)" will be generated.
+     * 
+     * @param querySB
+     *            String Builder with the existng SELECT FROM WHERE clauses
+     * @param columnName
+     *            Name of table column to query
+     * @param columnValueList
+     *            List of values to query for
+     * @param addSingleTicks
+     *            true for querying quoted string values
+     */
+    private void appendToWhereClause(StringBuilder querySB, String columnName,
+            List<? extends Object> columnValueList, boolean addSingleTicks) {
+
+        if ((querySB != null) && (columnName != null)
+                && (columnValueList != null)
+                && (columnValueList.isEmpty() == false)) {
+            querySB.append(" ");
+            if (columnValueList.size() == 1) {
+                querySB.append(columnName);
+                querySB.append(" = ");
+                if (addSingleTicks == true) {
+                    querySB.append("'");
+                }
+                querySB.append(columnValueList.get(0));
+                if (addSingleTicks == true) {
+                    querySB.append("' ");
+                }
+            } else {
+                // For simplicity a simple "IN(...) clause is implemented
+                boolean isFirst = true;
+                querySB.append(columnName);
+                querySB.append(" IN (");
+                for (Object val : columnValueList) {
+                    if (isFirst == false) {
+                        querySB.append(",");
+                    } else {
+                        isFirst = false;
+                    }
+                    if (addSingleTicks == true) {
+                        querySB.append("'");
+                    }
+                    querySB.append(val);
+                    if (addSingleTicks == true) {
+                        querySB.append("'");
+                    }
+                }
+                querySB.append(") ");
+            }
+        }
+    }
+
 }
