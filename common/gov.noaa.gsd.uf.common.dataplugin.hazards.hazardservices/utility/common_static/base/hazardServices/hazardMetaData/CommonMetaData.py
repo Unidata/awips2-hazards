@@ -1253,7 +1253,7 @@ class MetaData(object):
                        "Closest in Stage/Flow Window", 
                        "Highest in Stage/Flow Window"  
                        ]
-            values = "Closest in Stage/Flow Window"
+            values = "All Below Upper Stage/Flow"
         return {
                "fieldType": "ComboBox",
                "fieldName": parm + "SearchType",
@@ -1390,7 +1390,7 @@ class MetaData(object):
 
     """
     Create a radio button list for user to select the "Settings for Selected Forecast Point"
-    """        
+    """
     def getSelectedForecastPoints(self,parm):
         
         filters = self._setupSearchParameterFilters(parm)
@@ -1409,13 +1409,45 @@ class MetaData(object):
             characterizations, descriptions = self._rfp.getImpacts(pointID, filterValues)
             charDescDict = dict(zip(characterizations, descriptions))
             impactChoices, values = self._makeImpactsChoices(charDescDict)
-            
+
+            # default to having all the values checked
+            checkedValues = values
+
+            # If searching for all below/upper, only check the closest impact.
+            searchType = filters.get('Search Type')
+            searchTypeValue = searchType.get('values')
+            if searchTypeValue and searchTypeValue == 'All Below Upper Stage/Flow':
+                referenceType = filters['Reference Type']
+                referenceTypeValue = referenceType.get('values')
+                if referenceTypeValue == 'Max Forecast' :
+                    referenceValue = self._rfp.getMaximumForecastLevel(self.hazardEvent.get("pointID"))
+                elif referenceTypeValue == 'Current Observed' :
+                    referenceValue = self._rfp.getObservedLevel(self.hazardEvent.get("pointID"))
+
+                floatValues = []
+                floatMap = {}
+                for value in values:
+                    # Split out the float value
+                    strings = value.split('-')
+                    strings = strings[0].split('_')
+                    floatValue = float(strings[1])
+                    floatValues.append(floatValue)
+                    floatMap[floatValue] = value
+
+                # Sort the float Values
+                floatValues.sort()
+                for floatValue in floatValues:
+                    # Search for the first value above the current referenceValue
+                    if floatValue >= referenceValue:
+                        checkedValues = [floatMap.get(floatValue)]
+                        break
+
             selectedForecastPoints = {
                                       "fieldType":"CheckBoxes",
                                       "fieldName": "impactCheckBoxes",
                                       "label": "Impacts",
                                       "choices": impactChoices,
-                                      "values" : values,
+                                      "values" : checkedValues,
                                       "extraData" : { "origList" : values },
                                       }
                 
