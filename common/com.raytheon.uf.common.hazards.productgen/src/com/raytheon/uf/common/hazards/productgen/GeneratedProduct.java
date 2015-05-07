@@ -21,6 +21,7 @@ package com.raytheon.uf.common.hazards.productgen;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,7 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
  *                                      from the productData table.
  * Apr 16, 2015 7579       Robert.Blum  Changed type on editableEntries field and added
  *                                      addEditableEntry().
+ * May 07, 2015 6979       Robert.Blum  Changes for product corrections.
  * 
  * </pre>
  * 
@@ -62,10 +64,10 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
     /** Resulting products generated */
     private Map<String, List<Serializable>> entries = new LinkedHashMap<String, List<Serializable>>();
 
-    /** Map of editable entries - mainly used for GUI highlighting */
-    private Map<String, LinkedHashMap<KeyInfo, Serializable>> editableEntries = new LinkedHashMap<String, LinkedHashMap<KeyInfo, Serializable>>();
+    /** List of editable entries - mainly used for GUI highlighting */
+    private List<EditableEntryMap> editableEntries = new ArrayList<EditableEntryMap>();
 
-    private LinkedHashMap<KeyInfo, Serializable> data;
+    private Map<String, Serializable> data;
 
     /** Errors thrown executing python product classes */
     private String errors;
@@ -80,19 +82,19 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
         this.productID = generatedProduct.getProductID();
         this.entries = generatedProduct.getEntries();
         this.editableEntries = generatedProduct.getEditableEntries();
-        this.data = deepCopyHashMap(generatedProduct.getData());
+        this.data = deepCopyHashMap((HashMap<String, Serializable>) generatedProduct
+                .getData());
     }
 
-    private LinkedHashMap<KeyInfo, Serializable> deepCopyHashMap(
-            LinkedHashMap<KeyInfo, Serializable> map) {
-        LinkedHashMap<KeyInfo, Serializable> data = new LinkedHashMap<KeyInfo, Serializable>();
-        for (Entry<KeyInfo, Serializable> entry : map.entrySet()) {
-            KeyInfo key = entry.getKey();
+    private HashMap<String, Serializable> deepCopyHashMap(
+            HashMap<String, Serializable> map) {
+        HashMap<String, Serializable> data = new HashMap<String, Serializable>();
+        for (Entry<String, Serializable> entry : map.entrySet()) {
+            String key = entry.getKey();
             Serializable value = entry.getValue();
             if (value instanceof Map) {
-                data.put(
-                        key,
-                        deepCopyHashMap((LinkedHashMap<KeyInfo, Serializable>) value));
+                data.put(key,
+                        deepCopyHashMap((HashMap<String, Serializable>) value));
             } else if (value instanceof List) {
                 data.put(key,
                         deepCopyArrayList((ArrayList<Serializable>) value));
@@ -109,7 +111,7 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
         ArrayList<Serializable> data = new ArrayList<Serializable>();
         for (Serializable item : list) {
             if (item instanceof Map) {
-                data.add(deepCopyHashMap((LinkedHashMap<KeyInfo, Serializable>) item));
+                data.add(deepCopyHashMap((HashMap<String, Serializable>) item));
             } else if (item instanceof List) {
                 data.add(deepCopyArrayList((ArrayList<Serializable>) item));
             } else {
@@ -138,11 +140,11 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
         this.entries.put(key, entry);
     }
 
-    public LinkedHashMap<KeyInfo, Serializable> getData() {
+    public Map<String, Serializable> getData() {
         return data;
     }
 
-    public void setData(LinkedHashMap<KeyInfo, Serializable> data) {
+    public void setData(Map<String, Serializable> data) {
         this.data = data;
     }
 
@@ -165,20 +167,26 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
     }
 
     @Override
-    public Map<String, LinkedHashMap<KeyInfo, Serializable>> getEditableEntries() {
+    public List<EditableEntryMap> getEditableEntries() {
         return editableEntries;
     }
 
     @Override
-    public void setEditableEntries(
-            Map<String, LinkedHashMap<KeyInfo, Serializable>> editableEntries) {
+    public void setEditableEntries(List<EditableEntryMap> editableEntries) {
         this.editableEntries = editableEntries;
     }
 
     @Override
-    public void addEditableEntry(String key,
-            LinkedHashMap<KeyInfo, Serializable> editableEntry) {
-        editableEntries.put(key, editableEntry);
+    public void addEditableEntry(EditableEntryMap editableEntry) {
+        String format = editableEntry.getFormat();
+        // If a EditableEntryMap with the same format already
+        // exists in the list remove it first.
+        for (EditableEntryMap map : new ArrayList<>(editableEntries)) {
+            if (map.getFormat().equals(format)) {
+                editableEntries.remove(map);
+            }
+        }
+        editableEntries.add(editableEntry);
     }
 
     /*

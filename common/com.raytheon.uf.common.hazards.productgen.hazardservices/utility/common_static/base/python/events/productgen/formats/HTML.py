@@ -11,6 +11,7 @@
     Apr 16, 2015    7579    Robert.Blum Added editableParts dictionary for
                                         future use.
     Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
+    May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
 '''
 
 import FormatTemplate
@@ -22,7 +23,7 @@ from Bridge import Bridge
 
 class Format(FormatTemplate.Formatter):
 
-    def initialize(self):
+    def initialize(self, editableEntries):
         self.bridge = Bridge()
         areaDict = self.bridge.getAreaDictionary()
         self._tpc = TextProductCommon()
@@ -33,10 +34,15 @@ class Format(FormatTemplate.Formatter):
         # Editor. 
         # Since this is just a sample format, no editableParts
         # are defined currently.
-        self._editableParts = OrderedDict()
+        if editableEntries:
+            self._useProductTextTable = False
+            self._editableParts = editableEntries
+        else:
+            self._useProductTextTable = True
+            self._editableParts = OrderedDict()
 
 
-    def execute(self, productDict):
+    def execute(self, productDict, editableEntries=None):
         '''
         Returns an html formatted string and a map of editable parts that
         is currently blank for this format.
@@ -44,7 +50,7 @@ class Format(FormatTemplate.Formatter):
         @return: Returns the html string and map of editable parts
         '''
         self.productDict = productDict
-        self.initialize()
+        self.initialize(editableEntries)
         htmlProduct = self.createHTMLProduct()
         return [htmlProduct], self._editableParts
 

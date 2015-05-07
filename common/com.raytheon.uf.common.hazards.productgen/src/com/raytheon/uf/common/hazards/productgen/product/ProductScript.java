@@ -23,7 +23,6 @@ import java.io.File;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -69,6 +68,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * 2/25/2015    6599       Robert.Blum  Adding fileObserver to TextUtility dir to allowing overrides.
  * 02/25/2015   6306       mduff        Pass the selected site.
  * 04/16/2015   7579       Robert.Blum  Changed executeFrom method to take a KeyInfo object.
+ * 05/07/2015   6979       Robert.Blum  Added a method to call the new updateDataList method in the product
+ *                                      generators.
  * </pre>
  * 
  * @author jsanchez
@@ -90,6 +91,8 @@ public class ProductScript extends PythonScriptController {
 
     private static final String KEY_INFO = "keyInfo";
 
+    private static final String EDITABLE_ENTRIES = "editableEntries";
+
     /** Class name in the python modules */
     private static final String PYTHON_CLASS = "Product";
 
@@ -103,9 +106,11 @@ public class ProductScript extends PythonScriptController {
     private static final String GENERATED_PRODUCT = "generatedProductList";
 
     /** Method in ProductInterface.py for executing the generators */
-    private static final String GENERATOR_METHOD = "executeGenerator";
+    private static final String GENERATOR_EXECUTE_METHOD = "executeGenerator";
 
-    private static final String GENERATOR_UPDATE_METHOD = "executeGeneratorFrom";
+    private static final String GENERATOR_EXECUTE_FROM_METHOD = "executeGeneratorFrom";
+
+    private static final String GENERATOR_UPDATE_METHOD = "executeGeneratorUpdate";
 
     /** Method in ProductInterface.py for executing the formatters */
     private static final String FORMATTER_METHOD = "executeFormatter";
@@ -225,8 +230,9 @@ public class ProductScript extends PythonScriptController {
             retVal = formatProduct(
                     product,
                     formats,
-                    (GeneratedProductList) execute(GENERATOR_METHOD, INTERFACE,
-                            args));
+                    (GeneratedProductList) execute(GENERATOR_EXECUTE_METHOD,
+                            INTERFACE,
+ args));
 
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
@@ -237,22 +243,68 @@ public class ProductScript extends PythonScriptController {
     }
 
     /**
+     * Updates the dataList from a previous generator call and generates a list
+     * of IGeneratedProducts.
+     * 
+     * @param product
+     *            Product ID of the product type being generated
+     * @param eventSet
+     *            The set of events used by the generator to create the product
+     * @param dataList
+     *            The dictionarys from the previous genenrator call
+     * @param formats
+     *            Optional array of formatters to be run after the generator
+     * @return GeneratedProductList object containing all products produced by
+     *         the generator
+     */
+    public GeneratedProductList updateProduct(String product,
+            EventSet<IEvent> eventSet,
+            List<Map<String, Serializable>> dataList,
+            String... formats) {
+        Map<String, Object> args = new HashMap<String, Object>(
+                getStarterMap(product));
+        args.put(EVENT_SET, eventSet);
+        args.put(DATA_LIST, dataList);
+        args.put(FORMATS, Arrays.asList(formats));
+        GeneratedProductList retVal = null;
+        try {
+            if (this.verifyProductGeneratorIsLoaded(product) == false) {
+                return new GeneratedProductList();
+            }
+
+            // Run the generator update method and formatters
+            retVal = formatProduct(
+                    product,
+                    formats,
+                    (GeneratedProductList) execute(GENERATOR_UPDATE_METHOD,
+                            INTERFACE, args));
+
+        } catch (JepException e) {
+            statusHandler.handle(Priority.ERROR,
+                    "Unable to execute product generator update method", e);
+        }
+
+        return retVal;
+    }
+
+    /**
      * Passes the updatedDataList to the python formatters to return a new
      * GeneratedProductList.
      * 
+     * @param product
+     * @param eventSet
      * @param updatedDataList
+     * @param keyInfo
      * @param formats
-     * @param dailogVaues
-     * 
      * @return
      */
-    public GeneratedProductList updateGeneratedProducts(String product,
-            List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList,
-            KeyInfo keyInfo, String[] formats) {
+    public GeneratedProductList generateProductFrom(String product,
+            GeneratedProductList generatedProducts, KeyInfo keyInfo,
+            String[] formats) {
 
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(product));
-        args.put(DATA_LIST, updatedDataList);
+        args.put(GENERATED_PRODUCT, generatedProducts);
         args.put(KEY_INFO, keyInfo);
         args.put(FORMATS, Arrays.asList(formats));
         GeneratedProductList retVal = null;
@@ -261,11 +313,12 @@ public class ProductScript extends PythonScriptController {
                 return new GeneratedProductList();
             }
 
+            // Run the generator executeFrom method and formatters
             retVal = formatProduct(
                     product,
                     formats,
-                    (GeneratedProductList) execute(GENERATOR_UPDATE_METHOD,
-                            INTERFACE, args));
+                    (GeneratedProductList) execute(
+                            GENERATOR_EXECUTE_FROM_METHOD, INTERFACE, args));
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
                     "Unable to update the generated products", e);
@@ -292,35 +345,6 @@ public class ProductScript extends PythonScriptController {
                     "Unable to execute product formatter", e);
         }
         return retVal;
-    }
-
-    /**
-     * Updates generated products. This method does not regenerate the products.
-     * 
-     * @param product
-     * @param prevProduct
-     * @param formats
-     * @return
-     */
-    public GeneratedProductList formatProducts(GeneratedProductList product,
-            GeneratedProductList prevProduct, String[] formats) {
-
-        Map<String, Object> args = new HashMap<String, Object>(
-                getStarterMap(product.getProductInfo()));
-        try {
-            if (this.verifyProductGeneratorIsLoaded(product.getProductInfo()) == false) {
-                return new GeneratedProductList();
-            }
-            args.put(GENERATED_PRODUCT, product);
-            args.put(FORMATS, Arrays.asList(formats));
-            execute(FORMATTER_METHOD, INTERFACE, args);
-
-        } catch (JepException e) {
-            statusHandler.handle(Priority.ERROR,
-                    "Unable to update the generated products", e);
-        }
-
-        return product;
     }
 
     /**

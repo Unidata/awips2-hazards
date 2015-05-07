@@ -20,7 +20,6 @@
 package com.raytheon.uf.common.hazards.productgen;
 
 import java.io.Serializable;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -46,6 +45,7 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
  *                                      from the productData table.
  * Apr 16, 2015 7579       Robert.Blum  Changed type on editableEntries field and added
  *                                      addEditableEntry().
+ * May 07, 2015 6979       Robert.Blum  Changes for product corrections.
  * </pre>
  * 
  * @author jsanchez
@@ -61,17 +61,15 @@ public interface IGeneratedProduct {
 
     public void setEntries(Map<String, List<Serializable>> entries);
     
-    public void setEditableEntries(
-            Map<String, LinkedHashMap<KeyInfo, Serializable>> editableEntries);
+    public void setEditableEntries(List<EditableEntryMap> editableEntries);
 
-    public void addEditableEntry(String key,
-            LinkedHashMap<KeyInfo, Serializable> editableEntry);
+    public void addEditableEntry(EditableEntryMap editableEntry);
 
-    public Map<String, LinkedHashMap<KeyInfo, Serializable>> getEditableEntries();
+    public List<EditableEntryMap> getEditableEntries();
 
-    public LinkedHashMap<KeyInfo, Serializable> getData();
+    public Map<String, Serializable> getData();
 
-    public void setData(LinkedHashMap<KeyInfo, Serializable> data);
+    public void setData(Map<String, Serializable> data);
 
     public EventSet<IEvent> getEventSet();
 

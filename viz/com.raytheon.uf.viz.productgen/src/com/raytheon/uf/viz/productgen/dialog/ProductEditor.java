@@ -24,7 +24,6 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
@@ -80,6 +79,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Mar 23, 2015 7165       Robert.Blum  Modifications to allow for adding "*" to product tabs.
  * Apr 16, 2015 7579       Robert.Blum  Changes for amended Product Editor design.
  * Apr 30, 2015 7579       Robert.Blum  Added space between Issue and Dismiss buttons.
+ * May 06, 2015 6979       Robert.Blum  Additional changes for product Corrections.
  * </pre>
  * 
  * @author jsanchez
@@ -404,6 +404,15 @@ public class ProductEditor extends CaveSWTDialog {
      * Issues all products
      */
     private void issueAll() {
+        // Save all values first
+        for (AbstractDataEditor de : editorManager.getAllEditors()) {
+            if (de != null) {
+                if (de.hasUnsavedChanges()) {
+                    de.saveModifiedValues();
+                    de.updateTabLabel();
+                }
+            }
+        }
         invokeIssue(isCorrectable);
     }
 
@@ -457,7 +466,9 @@ public class ProductEditor extends CaveSWTDialog {
                             for (AbstractDataEditor de : editorManager
                                     .getAllEditors()) {
                                 if (de != null) {
-                                    de.saveModifiedValues();
+                                    if (de.hasUnsavedChanges()) {
+                                        de.saveModifiedValues();
+                                    }
                                 }
                             }
                             invokeDismiss(false);
@@ -486,21 +497,18 @@ public class ProductEditor extends CaveSWTDialog {
 
         progressBar.setVisible(true);
         for (GeneratedProductList products : generatedProductListStorage) {
-            List<LinkedHashMap<KeyInfo, Serializable>> dataList = new ArrayList<>();
-            for (IGeneratedProduct product : products) {
-                dataList.add(product.getData());
-            }
-
             List<String> formats = new ArrayList<String>(products.get(0)
                     .getEntries().keySet());
 
             if (isCorrectable) {
-                productGeneration.update(products.getProductInfo(), dataList,
-                        keyInfo, formats.toArray(new String[formats.size()]),
+                productGeneration.generateFrom(products.getProductInfo(),
+                        products, keyInfo,
+                        formats.toArray(new String[formats.size()]),
                         generateListener);
             } else {
-                productGeneration.update(products.getProductInfo(), dataList,
-                        null, formats.toArray(new String[formats.size()]),
+                productGeneration.generateFrom(products.getProductInfo(),
+                        products, null,
+                        formats.toArray(new String[formats.size()]),
                         generateListener);
             }
         }

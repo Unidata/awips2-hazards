@@ -42,7 +42,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -66,15 +65,15 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HasConflictsRequest;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
-import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
 import com.raytheon.uf.common.hazards.productgen.ProductUtils;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
@@ -195,6 +194,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * Apr 27, 2015 7224       Robert.Blum  Added eventIDs and phensigs of products being issued to the
  *                                      product generation confirmation dialog.
+ * May 07, 2015 6979       Robert.Blum  Changes for product corrections.
  * </pre>
  * 
  * @author bsteffen
@@ -556,39 +556,54 @@ public class SessionProductManager implements ISessionProductManager {
         }
 
         if (allProductData.isEmpty() == false) {
-            List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList = new ArrayList<>();
-            EventSet<IEvent> eventSet = new EventSet<>();
+            HazardEventManager.Mode mode = (caveMode == CAVEMode.PRACTICE) ? HazardEventManager.Mode.PRACTICE
+                    : HazardEventManager.Mode.OPERATIONAL;
+            HazardEventManager manager = new HazardEventManager(mode);
+
+            GeneratedProductList generatedProductList = new GeneratedProductList();
+
+            EventSet<IEvent> genProductListEventSet = new EventSet<>();
+            Set<IHazardEvent> prodGenInfoHazardEvents = new HashSet<IHazardEvent>();
             for (ProductData productData : allProductData) {
+                EventSet<IEvent> productEventSet = new EventSet<>();
+                GeneratedProduct product = new GeneratedProduct(
+                        (String) productData.getData().get("productID"));
+                product.setData(productData.getData());
+                product.setEditableEntries(productData.getEditableEntries());
 
-                updatedDataList.add(productData.getData());
+                String productGeneratorName = productData
+                        .getProductGeneratorName();
+                productGeneratorInformation
+                        .setProductGeneratorName(productGeneratorName);
+                productGeneratorInformation.setProductFormats(sessionManager
+                        .getConfigurationManager().getProductGeneratorTable()
+                        .getProductFormats(productGeneratorName));
 
-                if (productGeneratorInformation.getProductGeneratorName() == null) {
-                    String productGeneratorName = productData
-                            .getProductGeneratorName();
-                    productGeneratorInformation
-                            .setProductGeneratorName(productGeneratorName);
-                    productGeneratorInformation
-                            .setProductFormats(sessionManager
-                                    .getConfigurationManager()
-                                    .getProductGeneratorTable()
-                                    .getProductFormats(productGeneratorName));
-
-                    for (Integer eventID : productData.getEventIDs()) {
-                        IHazardEvent hazardEvent = new HazardEvent();
-                        hazardEvent.setEventID(String.valueOf(eventID));
-                        hazardEvent.addHazardAttribute("issueTime",
-                                productData.getIssueTime());
-                        eventSet.add(hazardEvent);
+                for (Integer eventID : productData.getEventIDs()) {
+                    // Get the hazardEvents
+                    HazardHistoryList historyList = manager.getByEventID(String
+                            .valueOf(eventID));
+                    if (historyList != null && historyList.isEmpty() == false) {
+                        IHazardEvent hazardEvent = historyList.get(historyList
+                                .size() - 1);
+                        productEventSet.add(hazardEvent);
+                        genProductListEventSet.add(hazardEvent);
+                        prodGenInfoHazardEvents.add(hazardEvent);
                     }
-
-                    GeneratedProductList generatedProducts = new GeneratedProductList();
-                    generatedProducts.setEventSet(eventSet);
-                    productGeneratorInformation
-                            .setGeneratedProducts(generatedProducts);
                 }
+                // Add the events to the product and then
+                // add the product to the list.
+                product.setEventSet(productEventSet);
+                generatedProductList.add(product);
             }
+            // Set the eventSet for productList and GeneratorInformation
+            generatedProductList.setEventSet(genProductListEventSet);
+            productGeneratorInformation
+                    .setProductEvents(prodGenInfoHazardEvents);
 
-            generateProductReview(productGeneratorInformation, updatedDataList);
+            productGeneratorInformation
+                    .setGeneratedProducts(generatedProductList);
+            generateProductReview(productGeneratorInformation);
         }
 
     }
@@ -641,11 +656,25 @@ public class SessionProductManager implements ISessionProductManager {
                 .getProductGeneratorName();
         String[] productFormats = productGeneratorInformation
                 .getProductFormats().getPreviewFormats().toArray(new String[0]);
+        GeneratedProductList productList = productGeneratorInformation
+                .getGeneratedProducts();
         IPythonJobListener<GeneratedProductList> listener = new JobListener(
                 issue, notificationSender, productGeneratorInformation);
-        productGen.generate(productGeneratorName, events,
-                productGeneratorInformation.getDialogSelections(),
-                productFormats, listener);
+        if (productList != null) {
+            // Generator already ran, so update existing product dictionaries
+            List<Map<String, Serializable>> dataList = new ArrayList<>(
+                    productList.size());
+            for (IGeneratedProduct product : productList) {
+                dataList.add(product.getData());
+            }
+            productGen.update(productGeneratorName, events, dataList,
+                    productFormats, listener);
+        } else {
+            // Issuing/Previewing from the HID, run entire Generator
+            productGen.generate(productGeneratorName, events,
+                    productGeneratorInformation.getDialogSelections(),
+                    productFormats, listener);
+        }
 
         return true;
     }/* end generate() method */
@@ -778,25 +807,26 @@ public class SessionProductManager implements ISessionProductManager {
      * 
      * @param productGeneratorInformation
      *            Information about the product to be generated.
-     * @param updatedDataList
-     *            Updated data list from the database.
      */
     private void generateProductReview(
-            ProductGeneratorInformation productGeneratorInformation,
-            List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList) {
+            ProductGeneratorInformation productGeneratorInformation) {
         sessionManager.setPreviewOngoing(true);
         String[] productFormats = productGeneratorInformation
                 .getProductFormats().getPreviewFormats().toArray(new String[0]);
         UpdateListener listener = new UpdateListener(
                 productGeneratorInformation, notificationSender);
+
+        GeneratedProductList generatedProductList = productGeneratorInformation
+                .getGeneratedProducts();
+
         /*
          * Generating a product review does not need to do any comparisons of a
          * previous version. Instead, the data only needs to be passed to the
          * formatters.
          */
-        productGen.update(
+        productGen.generateFrom(
                 productGeneratorInformation.getProductGeneratorName(),
-                updatedDataList, null, productFormats, listener);
+                generatedProductList, null, productFormats, listener);
     }
 
     /**
@@ -1045,6 +1075,9 @@ public class SessionProductManager implements ISessionProductManager {
                 if (productList.getProductInfo().equals(
                         productGeneratorInformation.getProductGeneratorName())) {
                     matchingProductGeneratorInformation = productGeneratorInformation;
+                    // Set the Generated Products in the Information
+                    matchingProductGeneratorInformation
+                            .setGeneratedProducts(productList);
                     break;
                 }
             }
@@ -1492,7 +1525,8 @@ public class SessionProductManager implements ISessionProductManager {
             }
 
             ProductDataUtil.createOrUpdateProductData(caveModeStr, productInfo,
-                    eventIDs, issueTime, product.getData());
+                    eventIDs, issueTime, product.getData(),
+                    product.getEditableEntries());
         }
 
         /*

@@ -19,6 +19,7 @@
                                         the HID and not the database also minor change to
                                         put impacts on the product Editor even if no impacts
                                         were chosen on the HID.
+    May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
 '''
 import datetime
 import collections
@@ -34,12 +35,12 @@ from HazardConstants import MISSING_VALUE
 
 class Format(Legacy_Base_Formatter.Format):
 
-    def initialize(self) :
+    def initialize(self, editableEntries) :
         self.MISSING_VALUE = MISSING_VALUE
-        super(Format, self).initialize()
+        super(Format, self).initialize(editableEntries)
 
     @abstractmethod
-    def execute(self, eventSet, dialogInputMap):
+    def execute(self, productDict, editableEntries=None):
         '''
         Must be overridden by the Product Formatter
         '''
@@ -61,7 +62,7 @@ class Format(Legacy_Base_Formatter.Format):
         flooding is forecast.
         '''
         # Get saved value from productText table if available
-        summaryStmt = self._getSavedVal('groupSummary', productDict)
+        summaryStmt = self._getVal('groupSummary', productDict)
         if not summaryStmt:
             summaryStmts = []
             for segment in productDict.get('segments', []):
@@ -84,7 +85,7 @@ class Format(Legacy_Base_Formatter.Format):
 
     def _observedStageBullet(self, sectionDict):
         # Get saved value from productText table if available
-        bulletContent = self._getSavedVal('observedStageBullet', sectionDict)
+        bulletContent = self._getVal('observedStageBullet', sectionDict)
         if not bulletContent:
             # There will only be one hazard per section for point hazards
             hazard = sectionDict.get('hazardEvents')[0]
@@ -103,7 +104,7 @@ class Format(Legacy_Base_Formatter.Format):
 
     def _floodStageBullet(self, sectionDict):
         # Get saved value from productText table if available
-        bulletContent = self._getSavedVal('floodStageBullet', sectionDict)
+        bulletContent = self._getVal('floodStageBullet', sectionDict)
         if not bulletContent:
             # There will only be one hazard per section for point hazards
             hazard = sectionDict.get('hazardEvents')[0]
@@ -119,7 +120,7 @@ class Format(Legacy_Base_Formatter.Format):
 
     def _otherStageBullet(self, sectionDict):
         # Get saved value from productText table if available
-        bulletContent = self._getSavedVal('otherStageBullet', sectionDict)
+        bulletContent = self._getVal('otherStageBullet', sectionDict)
         if not bulletContent:
             # TODO This productPart needs to be completed
             bulletContent = '|* Default otherStageBullet *|'
@@ -128,7 +129,7 @@ class Format(Legacy_Base_Formatter.Format):
 
     def _floodCategoryBullet(self, sectionDict):
         # Get saved value from productText table if available
-        bulletContent = self._getSavedVal('floodCategoryBullet', sectionDict)
+        bulletContent = self._getVal('floodCategoryBullet', sectionDict)
         if not bulletContent:
             # There will only be one hazard per section for point hazards
             hazard = sectionDict.get('hazardEvents')[0]
@@ -151,7 +152,7 @@ class Format(Legacy_Base_Formatter.Format):
 
     def _recentActivityBullet(self, sectionDict):
         # Get saved value from productText table if available
-        bulletContent = self._getSavedVal('recentActivityBullet', sectionDict)
+        bulletContent = self._getVal('recentActivityBullet', sectionDict)
         if not bulletContent:
             # There will only be one hazard per section for point hazards
             hazard = sectionDict.get('hazardEvents')[0]
@@ -171,7 +172,7 @@ class Format(Legacy_Base_Formatter.Format):
 
     def _forecastStageBullet(self, sectionDict):
         # Get saved value from productText table if available
-        bulletContent = self._getSavedVal('forecastStageBullet', sectionDict)
+        bulletContent = self._getVal('forecastStageBullet', sectionDict)
         if not bulletContent:
             # There will only be one hazard per section for point hazards
             hazard = sectionDict.get('hazardEvents')[0]
@@ -190,7 +191,7 @@ class Format(Legacy_Base_Formatter.Format):
 
     def _pointImpactsBullet(self, sectionDict):
         # Get saved value from productText table if available
-        bulletContent = self._getSavedVal('pointImpactsBullet', sectionDict)
+        bulletContent = self._getVal('pointImpactsBullet', sectionDict)
         if not bulletContent:
             # There will only be one hazard per section for point hazards
             hazard = sectionDict.get('hazardEvents')[0]
@@ -211,6 +212,7 @@ class Format(Legacy_Base_Formatter.Format):
         self._setVal('pointImpactsBullet', bulletContent, sectionDict, 'Point Impacts Bullet')
         if bulletContent:
             # Add the bullets
+            impactStrings = bulletContent.split('\n')
             bulletContent = '' 
             for string in impactStrings:
                 bulletContent += '* ' + string + '\n'
@@ -218,7 +220,7 @@ class Format(Legacy_Base_Formatter.Format):
 
     def _floodHistoryBullet(self, sectionDict):
         # Get saved value from productText table if available
-        bulletContent = self._getSavedVal('floodHistoryBullet', sectionDict)
+        bulletContent = self._getVal('floodHistoryBullet', sectionDict)
         if not bulletContent:
             # There will only be one hazard per section for point hazards
             hazard = sectionDict.get('hazardEvents')[0]
@@ -236,7 +238,7 @@ class Format(Legacy_Base_Formatter.Format):
 
     def _floodPointHeader(self, sectionDict):
         # Get saved value from productText table if available
-        header = self._getSavedVal('floodPointHeader', sectionDict)
+        header = self._getVal('floodPointHeader', sectionDict)
         if not header:
             # TODO This productPart needs to be completed
             header = 'Flood point header'
@@ -245,7 +247,7 @@ class Format(Legacy_Base_Formatter.Format):
 
     def _floodPointHeadline(self, segmentDict):
         # Get saved value from productText table if available
-        headline = self._getSavedVal('floodPointHeadline', sectionDict)
+        headline = self._getVal('floodPointHeadline', sectionDict)
         if not headline:
             # TODO This productPart needs to be completed
             headline = 'Flood point headline'

@@ -32,13 +32,14 @@
 #    04/23/14        3519          jsanchez        Added required fields.
 #    03/19/15        7094          Robert.Blum     Added eventIDs to label by default.
 #    04/27/15        7579          Robert.Blum     Only add eventIDs to label if there is a label.
+#    05/07/15        6979          Robert.Blum     Changed default value for eventIDInLabel.
 import JUtil
 from com.raytheon.uf.common.hazards.productgen import KeyInfo as JavaKeyInfo
 
 class KeyInfo(JUtil.JavaWrapperClass):
-    
+
     def __init__(self, name, productCategory=None, productID=None, eventIDs=[], segment=None, editable=False, displayable=False,
-                 label=None, required=False, index=0, eventIDInLabel=True):
+                 label=None, required=False, index=0, eventIDInLabel=False):
         self.name = name
         self.productCategory = productCategory
         self.productID = productID

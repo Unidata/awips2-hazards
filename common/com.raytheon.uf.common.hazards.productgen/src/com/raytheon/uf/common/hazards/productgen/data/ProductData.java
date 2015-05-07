@@ -22,7 +22,7 @@ package com.raytheon.uf.common.hazards.productgen.data;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -30,7 +30,7 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 import com.raytheon.uf.common.dataplugin.persist.PersistableDataObject;
-import com.raytheon.uf.common.hazards.productgen.KeyInfo;
+import com.raytheon.uf.common.hazards.productgen.EditableEntryMap;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -46,6 +46,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Apr 11, 2014            jsanchez     Initial creation
  * Mar 30, 2015    6929    Robert.Blum  Changed startTime to issueTime.
+ * May 07, 2015    6979    Robert.Blum  Added editableEntries.
  * 
  * </pre>
  * 
@@ -71,7 +72,11 @@ public class ProductData extends PersistableDataObject<String> implements
 
     @Column
     @DynamicSerializeElement
-    private LinkedHashMap<KeyInfo, Serializable> data;
+    private HashMap<String, Serializable> data;
+
+    @Column
+    @DynamicSerializeElement
+    private ArrayList<EditableEntryMap> editableEntries;
 
     public ProductData() {
 
@@ -79,10 +84,12 @@ public class ProductData extends PersistableDataObject<String> implements
 
     public ProductData(String mode, String productGeneratorName,
             ArrayList<Integer> eventIDs, Date issueTime,
-            LinkedHashMap<KeyInfo, Serializable> data) {
+            HashMap<String, Serializable> data,
+            ArrayList<EditableEntryMap> editableEntries) {
         id = new CustomDataId(mode, productGeneratorName, eventIDs);
         this.issueTime = issueTime;
         this.data = data;
+        this.editableEntries = editableEntries;
     }
 
     public CustomDataId getId() {
@@ -125,12 +132,19 @@ public class ProductData extends PersistableDataObject<String> implements
         this.id.setEventIDs(eventIDs);
     }
 
-    public LinkedHashMap<KeyInfo, Serializable> getData() {
+    public HashMap<String, Serializable> getData() {
         return data;
     }
 
-    public void setData(LinkedHashMap<KeyInfo, Serializable> data) {
+    public void setData(HashMap<String, Serializable> data) {
         this.data = data;
     }
 
+    public ArrayList<EditableEntryMap> getEditableEntries() {
+        return editableEntries;
+    }
+
+    public void setEditableEntries(ArrayList<EditableEntryMap> editableEntries) {
+        this.editableEntries = editableEntries;
+    }
 }

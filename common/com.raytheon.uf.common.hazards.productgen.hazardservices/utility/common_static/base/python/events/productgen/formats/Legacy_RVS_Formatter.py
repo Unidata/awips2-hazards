@@ -6,6 +6,7 @@
     ------------ ---------- ----------- --------------------------
     Feb 20, 2015    5109    Chris.Cody  Initial creation
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
+    May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
 '''
 
 
@@ -17,9 +18,9 @@ import Legacy_Hydro_Formatter
 
 class Format(Legacy_Hydro_Formatter.Format):
 
-    def initialize(self) :
+    def initialize(self, editableEntries) :
         self.initProductPartMethodMapping()
-        super(Format, self).initialize()
+        super(Format, self).initialize(editableEntries)
 
     def initProductPartMethodMapping(self):
         self.productPartMethodMapping = {
@@ -32,9 +33,9 @@ class Format(Legacy_Hydro_Formatter.Format):
             'floodPointTable': self._floodPointTable,
                                 }
 
-    def execute(self, productDict):
+    def execute(self, productDict, editableEntries=None):
         self.productDict = productDict
-        self.initialize()
+        self.initialize(editableEntries)
         self.timezones = productDict['timezones']
         legacyText = self._createTextProduct()
         return [ProductUtils.wrapLegacy(legacyText)], self._editableParts
@@ -47,7 +48,7 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     def _headlineStatement(self, productDict):
         # Get saved value from productText table if available
-        statement = self._getSavedVal('headlineStatement', productDict)
+        statement = self._getVal('headlineStatement', productDict)
         if not statement:
             statement = productDict.get('headlineStatement', "NO HEADLINE STATEMENT")
         self._setVal('headlineStatement', statement, productDict, 'Headline Statement')
@@ -55,7 +56,7 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     def _narrativeInformation(self, productDict):
         # Get saved value from productText table if available
-        narrative = self._getSavedVal('narrativeInformation', productDict)
+        narrative = self._getVal('narrativeInformation', productDict)
         if not narrative:
             narrative = productDict.get('narrativeInformation', "NO NARRATIVE INFORMATION")
         self._setVal('narrativeInformation', narrative, productDict, 'Narrative Information')

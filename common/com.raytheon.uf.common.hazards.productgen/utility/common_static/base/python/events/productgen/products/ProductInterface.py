@@ -43,6 +43,7 @@
 #    03/11/15        6885          bphillip       Made product entries an ordered dict to ensure consistent ordering
 #    03/30/15        6929          Robert.Blum    Added a eventSet to each GeneratedProduct.
 #    04/16/15        7579          Robert.Blum    Changes for amended Product Editor.
+#    05/07/15        6979          Robert.Blum    Changes Product Corrections
 #
 import PythonOverriderInterface
 import PythonOverrider
@@ -59,7 +60,7 @@ JUtil.registerPythonToJava(pyKeyInfoToJavaKeyInfo)
 JUtil.registerJavaToPython(javaKeyInfoToPyKeyInfo)
 from collections import OrderedDict
 from java.util import ArrayList
-from com.raytheon.uf.common.hazards.productgen import GeneratedProduct, GeneratedProductList
+from com.raytheon.uf.common.hazards.productgen import GeneratedProduct, GeneratedProductList, EditableEntryMap
 import traceback, sys, os, string
 import logging, UFStatusHandler
 
@@ -90,6 +91,8 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
         if javaDialogInput is not None :
             kwargs['dialogInputMap'] = JUtil.javaObjToPyVal(javaDialogInput)
         formats = kwargs.pop('formats')
+        javaEventSet = kwargs['eventSet']
+        # execute method in generators is expecting a python eventSet
         kwargs['eventSet'] = PythonEventSet(kwargs['eventSet'])
         dataList, events = self.runMethod(moduleName, className, 'execute', **kwargs)
         if not isinstance(dataList, list):
@@ -97,6 +100,8 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
 
         kwargs['dataList'] = dataList
         kwargs['formats'] = formats
+        # executeGeneratorFrom method is expecting a javaEventSet
+        kwargs['eventSet'] = javaEventSet
         # dialogInputMap no longer needed for executeFrom method
         kwargs.pop('dialogInputMap')
 
@@ -108,61 +113,79 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
         return genProdList
 
     def executeGeneratorFrom(self, moduleName, className, **kwargs):
-        genProdList = GeneratedProductList()
-        
-        dataList = kwargs['dataList']
-
-        # make sure dataList is a python object
-        if hasattr(dataList, 'jclassname'):
-            dataList = JUtil.javaObjToPyVal(dataList)
-            dList = []
-            for data in dataList:
-                dList.append(self.keyInfoDictToPythonDict(data))
-            dataList = dList
-            kwargs['dataList'] = dataList            
-        
-        if 'prevDataList' in kwargs:
-            prevDataList = kwargs['prevDataList']
-            if prevDataList is not None:
-                prevDataList = JUtil.javaObjToPyVal(prevDataList)
-                pList = []
-                for data in prevDataList:
-                    pList.append(self.keyInfoDictToPythonDict(data))
-                prevDataList = pList
-                kwargs['prevDataList'] = prevDataList           
+        eventSet = []
+        if 'generatedProductList' in kwargs:
+            updateList = True
+            genProdList = kwargs.pop('generatedProductList')
+            eventSet = PythonEventSet(genProdList.getEventSet())
+            dataList = []
+            for i in range(genProdList.size()):
+                # make sure dataList is a python object
+                dataList.append(JUtil.javaObjToPyVal(genProdList.get(i).getData()))
+            kwargs['dataList'] = dataList
+        else:
+            updateList = False
+            genProdList = GeneratedProductList()
+            eventSet = PythonEventSet(kwargs.pop('eventSet'))
 
         # executeFrom does not need formats
         formats = kwargs.pop('formats')
 
-        eventSet = []
-        if 'eventSet' in kwargs:
-            eventSet = kwargs.pop('eventSet')
-
         # call executeFrom from product generator
-        dataList = self.runMethod(moduleName, className, 'executeFrom', **kwargs)  
+        dataList = self.runMethod(moduleName, className, 'executeFrom', **kwargs)
 
         genProdList.setProductInfo(moduleName)
-        genProdList.addAll(self.createProductsFromDictionary(dataList, eventSet))
+        self.createProductsFromDictionary(dataList, eventSet, genProdList, updateList)
         return genProdList
-    
+
+    def executeGeneratorUpdate(self, moduleName, className, **kwargs):
+        dataList = kwargs['dataList']
+        # make sure dataList is a python object
+        if hasattr(dataList, 'jclassname'):
+            dataList = JUtil.javaObjToPyVal(dataList)
+            kwargs['dataList'] = dataList
+
+        formats = kwargs.pop('formats')
+        javaEventSet = kwargs['eventSet']
+        kwargs['eventSet'] = PythonEventSet(javaEventSet)
+
+        # call updateDataList from product generator
+        dataList, events = self.runMethod(moduleName, className, 'updateDataList', **kwargs)
+
+        if not isinstance(dataList, list):
+            raise Exception('Expecting a list from ' + moduleName + '.execute()')
+
+        kwargs['dataList'] = dataList
+        kwargs['formats'] = formats
+        # executeGeneratorFrom method is expected a javaEventSet
+        kwargs['eventSet'] = javaEventSet
+        genProdList = self.executeGeneratorFrom(moduleName, className, **kwargs)
+
+        javaEventSet = EventSet()
+        javaEventSet.addAll(JUtil.pyValToJavaObj(events))
+        genProdList.setEventSet(javaEventSet)
+        return genProdList
+
     def executeFormatter(self, moduleName, className, **kwargs):
         generatedProductList = kwargs['generatedProductList']
         formats = JUtil.javaObjToPyVal( kwargs['formats'])
-        eventSet =  PythonEventSet(generatedProductList.getEventSet())
 
         # Loop over each product that has been generated and format them
         for i in range(generatedProductList.size()):
-            self.formatProduct(generatedProductList.get(i),formats, eventSet)
+            generatedProduct = generatedProductList.get(i)
+            self.formatProduct(generatedProduct,formats)
 
         return generatedProductList
-      
-    def formatProduct(self, generatedProduct, formats, eventSet):
+
+    def formatProduct(self, generatedProduct, formats):
         # Retrieve the product's data to pass to the formatter
         productData = JUtil.javaObjToPyVal(generatedProduct.getData())
-        
+        # Retrieve the product's editableEntries if available
+        editableEntriesList = generatedProduct.getEditableEntries()
+
         data = self.keyInfoDictToPythonDict(productData)
-        
-        if isinstance(data, OrderedDict): 
+
+        if isinstance(data, dict): 
             # Dictionary containing the formatted products
             productDict = OrderedDict()
             for format in formats:
@@ -173,9 +196,15 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
                         self.clearModuleAttributes(format)
                     formatModule = PythonOverrider.importModule(scriptName)
                     instance = formatModule.Format()
-                    product, editableEntries = instance.execute(data)
+                    editableEntries = None
+                    if editableEntriesList:
+                        for i in range(editableEntriesList.size()):
+                            if format == editableEntriesList.get(i).getFormat():
+                                editableEntries = JUtil.javaObjToPyVal(editableEntriesList.get(i).getEditableEntries())
+                    product, editableEntries = instance.execute(data, editableEntries)
                     productDict[format] = product
-                    generatedProduct.addEditableEntry(format, JUtil.pyValToJavaObj(self.pyDictToKeyInfoDict(editableEntries)))
+                    editableEntryMap = EditableEntryMap(format, JUtil.pyValToJavaObj(self.pyDictToKeyInfoDict(editableEntries)))
+                    generatedProduct.addEditableEntry(editableEntryMap)
 
                 except Exception, e:
                     productDict[format] = ['Failed to execute ' + format + '. Make sure it exists. Check log for errors. ']
@@ -186,29 +215,23 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
             # TODO Use JUtil.pyValToJavaObj() when JUtil.pyDictToJavaMap() is fully resolved
             generatedProduct.setEntries(JUtil.pyDictToJavaMap(productDict))
 
-    def createProductsFromDictionary(self, dataList, eventSet=[]):
-        generatedProductList = ArrayList()
-        
+    def createProductsFromDictionary(self, dataList, eventSet, genProdList, updateList):
         if dataList is not None:
-            for data in dataList:
-                if isinstance(data, OrderedDict):
-                    if 'productID' in data:
+            if updateList:
+                for i in range(len(dataList)):
+                    data = dataList[i]
+                    if isinstance(data, dict):
+                        generatedProduct = genProdList.get(i)
+                        generatedProduct.setData(JUtil.pyValToJavaObj(data));
+            else:
+                for data in dataList:
+                    if isinstance(data, dict):
                         productID = data.get('productID')
-                    else:
-                        wmoHeader = data.get('wmoHeader') 
-                        if wmoHeader:
-                            productID = wmoHeader.get('productID')
-                  
-                    generatedProduct = GeneratedProduct(productID)
-                    generatedProduct.setData(JUtil.pyValToJavaObj(self.pyDictToKeyInfoDict(data)));
-
-                    javaEventSet = self.getEventSetForProduct(data, eventSet)
-                    generatedProduct.setEventSet(javaEventSet)
-                else:
-                    generatedProduct = GeneratedProduct(None)
-                generatedProductList.add(generatedProduct)
-
-        return generatedProductList
+                        generatedProduct = GeneratedProduct(productID)
+                        generatedProduct.setData(JUtil.pyValToJavaObj(data));
+                        javaEventSet = self.getEventSetForProduct(data, eventSet)
+                        generatedProduct.setEventSet(javaEventSet)
+                        genProdList.add(generatedProduct)
 
     def getEventSetForProduct(self, data, eventSet):
         """

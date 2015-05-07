@@ -11,6 +11,7 @@
                                         in TextProductCommon.
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
     Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
+    May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
 '''
 
 import FormatTemplate
@@ -21,7 +22,7 @@ from collections import OrderedDict
 
 class Format(FormatTemplate.Formatter):
 
-    def initialize(self):
+    def initialize(self, editableEntries):
         self.bridge = Bridge()
         areaDict = self.bridge.getAreaDictionary()
         self._tpc = TextProductCommon()
@@ -38,17 +39,22 @@ class Format(FormatTemplate.Formatter):
         # Editor. 
         # Since this is just a sample format, no editableParts
         # are defined.
-        self._editableParts = OrderedDict()
-        
+        if editableEntries:
+            self._useProductTextTable = False
+            self._editableParts = editableEntries
+        else:
+            self._useProductTextTable = True
+            self._editableParts = OrderedDict()
+
         # Setup the Time Zones
         self.timezones = []
         segments = self.productDict.get('segments')
         for segment in segments:
             self.timezones += segment.get('timeZones')
 
-    def execute(self, productDict):
+    def execute(self, productDict, editableEntries=None):
         self.productDict = productDict
-        self.initialize()
+        self.initialize(editableEntries)
         product = self.createTwitterProduct()
         return [product], self._editableParts
 

@@ -22,10 +22,11 @@ package com.raytheon.uf.common.hazards.productgen.data;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import com.raytheon.uf.common.hazards.productgen.KeyInfo;
+import com.raytheon.uf.common.hazards.productgen.EditableEntryMap;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataRequest.ProductRequestType;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -42,6 +43,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Apr 11, 2014            jsanchez     Initial creation
  * Mar 30, 2015    6929    Robert.Blum  Changed startTime to issueTime.
+ * May 07, 2015    6979    Robert.Blum  Changes for product corrections.
  * 
  * </pre>
  * 
@@ -62,13 +64,16 @@ public class ProductDataUtil {
      * @param eventIDs
      * @param issueTime
      * @param data
+     * @param editableEntries
      * @return
      */
     public static ProductDataResponse createProductData(String mode,
             String productGeneratorName, ArrayList<Integer> eventIDs,
-            Date issueTime, LinkedHashMap<KeyInfo, Serializable> data) {
+            Date issueTime, Map<String, Serializable> data,
+            List<EditableEntryMap> editableEntries) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
-                eventIDs, issueTime, data, ProductRequestType.CREATE, null);
+                eventIDs, issueTime, data, editableEntries,
+                ProductRequestType.CREATE, null);
         if (response.getExceptions() != null) {
             handler.error(
                     "Unable to store product data, most likely the database already contains an entry",
@@ -85,13 +90,16 @@ public class ProductDataUtil {
      * @param eventIDs
      * @param issueTime
      * @param data
+     * @param editableEntries
      * @return
      */
     public static ProductDataResponse updateProductData(String mode,
             String productGeneratorName, ArrayList<Integer> eventIDs,
-            Date issueTime, LinkedHashMap<KeyInfo, Serializable> data) {
+            Date issueTime, Map<String, Serializable> data,
+            List<EditableEntryMap> editableEntries) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
-                eventIDs, issueTime, data, ProductRequestType.UPDATE, null);
+                eventIDs, issueTime, data, editableEntries,
+                ProductRequestType.UPDATE, null);
         if (response.getExceptions() != null) {
             handler.error(
                     "Unable to update product data, most likely the database does not contain a matching entry",
@@ -111,7 +119,7 @@ public class ProductDataUtil {
     public static ProductDataResponse deleteProductData(String mode,
             String productGeneratorName, ArrayList<Integer> eventIDs) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
-                eventIDs, null, null, ProductRequestType.DELETE, null);
+                eventIDs, null, null, null, ProductRequestType.DELETE, null);
         if (response.getExceptions() != null) {
             handler.error(
                     "Unable to delete product data, most likely the database does not contain a matching entry",
@@ -131,7 +139,7 @@ public class ProductDataUtil {
     public static List<ProductData> retrieveProductData(String mode,
             String productGeneratorName, ArrayList<Integer> eventIDs) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
-                eventIDs, null, null, ProductRequestType.RETRIEVE, null);
+                eventIDs, null, null, null, ProductRequestType.RETRIEVE, null);
         if (response != null && response.getData() != null) {
             return response.getData();
         }
@@ -148,7 +156,8 @@ public class ProductDataUtil {
     public static List<ProductData> retrieveCorrectableProductData(String mode,
             Date currentTime) {
         ProductDataResponse response = sendRequest(mode, null, null, null,
-                null, ProductRequestType.RETRIEVE_CORRECTABLE, currentTime);
+                null, null, ProductRequestType.RETRIEVE_CORRECTABLE,
+                currentTime);
         if (response != null && response.getData() != null) {
             return response.getData();
         }
@@ -163,13 +172,16 @@ public class ProductDataUtil {
      * @param eventIDs
      * @param issueTime
      * @param data
+     * @param editableEntries
      * @return
      */
     public static ProductDataResponse createOrUpdateProductData(String mode,
             String productGeneratorName, ArrayList<Integer> eventIDs,
-            Date issueTime, LinkedHashMap<KeyInfo, Serializable> data) {
+            Date issueTime, Map<String, Serializable> data,
+            List<EditableEntryMap> editableEntries) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
-                eventIDs, issueTime, data, ProductRequestType.SAVE_OR_UPDATE,
+                eventIDs, issueTime, data, editableEntries,
+                ProductRequestType.SAVE_OR_UPDATE,
                 null);
         if (response.getExceptions() != null) {
             handler.error("Unable to store product data",
@@ -186,6 +198,7 @@ public class ProductDataUtil {
      * @param eventIDs
      * @param issueTime
      * @param data
+     * @param editableEntries
      * @param type
      * @param currentTime
      * 
@@ -193,10 +206,12 @@ public class ProductDataUtil {
      */
     private static ProductDataResponse sendRequest(String mode,
             String productGeneratorName, ArrayList<Integer> eventIDs,
-            Date issueTime, LinkedHashMap<KeyInfo, Serializable> data,
+            Date issueTime, Map<String, Serializable> data,
+            List<EditableEntryMap> editableEntries,
             ProductRequestType type, Date currentTime) {
         ProductData productData = new ProductData(mode, productGeneratorName,
-                eventIDs, issueTime, data);
+                eventIDs, issueTime, (HashMap<String, Serializable>) data,
+                (ArrayList<EditableEntryMap>) editableEntries);
         ProductDataRequest request = new ProductDataRequest(productData, type,
                 currentTime);
         ProductDataResponse response = null;

@@ -20,14 +20,16 @@
 package com.raytheon.uf.common.hazards.productgen.executors;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
 
 /**
- * TODO Add Description
+ * Executes the updateProduct method of ProductScript
  * 
  * <pre>
  * 
@@ -35,29 +37,48 @@ import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Mar  7, 2013            jsanchez    Initial creation
- * May 07, 2015    6979    Robert.Blum Removed product since it
- *                                     is declared in AbstractProductExecutor. 
+ * Apr 22, 2015    6979    Robert.Blum Initial creation
  * 
  * </pre>
  * 
- * @author jsanchez
+ * @author Robert.Blum
  * @version 1.0
  */
 
-public class ProductMetadataExecutor extends
-        AbstractProductExecutor<Map<String, Serializable>> {
+public class UpdateProductExecutor extends
+        AbstractProductExecutor<GeneratedProductList> {
 
-    private final EventSet<IEvent> eventSet;
+    /** provide the information for the product generator */
+    private EventSet<IEvent> eventSet;
 
-    public ProductMetadataExecutor(String product, EventSet<IEvent> eventSet) {
+    /** product dictionary to be updated */
+    private List<Map<String, Serializable>> updatedDataList;
+
+    /** String array of formats */
+    private String[] formats;
+
+    /**
+     * Constructor.
+     * 
+     * @param product
+     *            name of the product generator
+     * @param eventSet
+     *            the EventSet<IEvent> object that will provide the information
+     *            for the product generator
+     */
+    public UpdateProductExecutor(String product, EventSet<IEvent> eventSet,
+            List<Map<String, Serializable>> updateDataList,
+            String[] formats) {
         this.product = product;
         this.eventSet = eventSet;
+        this.updatedDataList = updateDataList;
+        this.formats = formats;
     }
 
     @Override
-    public Map<String, Serializable> execute(ProductScript script) {
-        return script.getScriptMetadata(product, eventSet);
+    public GeneratedProductList execute(ProductScript script) {
+        return script
+                .updateProduct(product, eventSet, updatedDataList, formats);
     }
 
 }

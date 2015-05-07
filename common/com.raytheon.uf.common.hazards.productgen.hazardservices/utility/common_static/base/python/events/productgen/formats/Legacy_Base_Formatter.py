@@ -19,6 +19,7 @@
     May 08, 2015    7864    Robert.Blum Added "Rain So Far" statement to basisAndImpacts product part.
     May 11, 2015    7918    Robert.Blum Moved round method to TextProductCommon and fixed bug
                                         when comparing dictionaries.
+    May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
 '''
 
 import FormatTemplate
@@ -38,7 +39,7 @@ from abc import *
 
 class Format(FormatTemplate.Formatter):
 
-    def initialize(self) :
+    def initialize(self, editableEntries=None) :
         self.bridge = Bridge()
         self.basisText = BasisText()
         areaDict = self.bridge.getAreaDictionary()
@@ -49,7 +50,12 @@ class Format(FormatTemplate.Formatter):
         # Dictionary that will hold the KeyInfo entries of the
         # product part text strings to be displayed in the Product
         # Editor. 
-        self._editableParts = OrderedDict()
+        if editableEntries:
+            self._useProductTextTable = False
+            self._editableParts = editableEntries
+        else:
+            self._useProductTextTable = True
+            self._editableParts = OrderedDict()
 
         self._productID = self.productDict.get('productID')
         self._productName = self.productDict.get('productName')
@@ -113,7 +119,7 @@ class Format(FormatTemplate.Formatter):
         return text
 
     @abstractmethod
-    def execute(self, eventSet, dialogInputMap):
+    def execute(self, productDict, editableEntries=None):
         '''
         Must be overridden by the Product Formatter
         '''
@@ -229,7 +235,7 @@ class Format(FormatTemplate.Formatter):
     def _callsToAction_productLevel(self, productDict):
         productLabel = productDict.get('productLabel')
         ctaKey = 'callsToAction_productLevel_' + productLabel
-        text = self._getSavedVal(ctaKey, productDict)
+        text = self._getVal(ctaKey, productDict)
 
         if not text:
             callsToAction =  self._tpc.getVal(productDict, ctaKey, None)
@@ -262,7 +268,7 @@ class Format(FormatTemplate.Formatter):
 
     def _additionalInfoStatement(self, productDict):
         # Get saved value from productText table if available
-        text = self._getSavedVal('additionalInfoStatement', productDict)
+        text = self._getVal('additionalInfoStatement', productDict)
         if not text:
             # Please override this method for your site
             text = 'Additional information is available at <Web site URL>.'
@@ -271,7 +277,7 @@ class Format(FormatTemplate.Formatter):
 
     def _rainFallStatement(self, productDict):
         # Get saved value from productText table if available
-        text = self._getSavedVal('rainFallStatement', productDict)
+        text = self._getVal('rainFallStatement', productDict)
         if not text:
             text = 'The segments in this product are river forecasts for selected locations in the watch area.'
         self._setVal('rainFallStatement', text, productDict, 'Rainfall Statement')
@@ -289,7 +295,7 @@ class Format(FormatTemplate.Formatter):
         includeChoices = segmentDict.get('include')
         if includeChoices and 'ffwEmergency' in includeChoices:
             # Get saved value from productText table if available
-            partText = self._getSavedVal('emergencyHeadline', segmentDict)
+            partText = self._getVal('emergencyHeadline', segmentDict)
             if not partText:
                 partText += '...Flash Flood Emergency for ' + segmentDict.get('includeEmergencyLocation') + '...'
             self._setVal('emergencyHeadline', partText, segmentDict, 'Emergency Headline')
@@ -307,7 +313,7 @@ class Format(FormatTemplate.Formatter):
 
     def _cityList(self, segmentDict):
         # Get saved value from productText table if available
-        cityListText = self._getSavedVal('cityList', segmentDict)
+        cityListText = self._getVal('cityList', segmentDict)
         if not cityListText:
             cityList = set()
             for sectionDict in segmentDict.get('sections', []):
@@ -325,7 +331,7 @@ class Format(FormatTemplate.Formatter):
 
     def _callsToAction(self, segmentDict):
         # Get saved value from productText table if available
-        text = self._getSavedVal('callsToAction', segmentDict)
+        text = self._getVal('callsToAction', segmentDict)
         if not text:
             callsToAction =  self._tpc.getVal(segmentDict, 'callsToAction', '')
             if callsToAction and callsToAction != '':
@@ -563,7 +569,7 @@ class Format(FormatTemplate.Formatter):
 
     def _attribution(self, sectionDict):
         # Get saved value from productText table if available
-        attribution = self._getSavedVal('attribution', sectionDict)
+        attribution = self._getVal('attribution', sectionDict)
         if not attribution:
             attribution = self.attributionFirstBullet.getAttributionText()
         self._setVal('attribution', attribution, sectionDict, 'Attribution')
@@ -571,7 +577,7 @@ class Format(FormatTemplate.Formatter):
 
     def _attribution_point(self, sectionDict):
         # Get saved value from productText table if available
-        attribution = self._getSavedVal('attribution_point', sectionDict)
+        attribution = self._getVal('attribution_point', sectionDict)
         if not attribution:
             attribution = self.attributionFirstBullet.getAttributionText()
         self._setVal('attribution_point', attribution, sectionDict, 'Attribution')
@@ -579,7 +585,7 @@ class Format(FormatTemplate.Formatter):
 
     def _firstBullet(self, sectionDict):
         # Get saved value from productText table if available
-        firstBullet = self._getSavedVal('firstBullet', sectionDict)
+        firstBullet = self._getVal('firstBullet', sectionDict)
         if not firstBullet:
             firstBullet = self.attributionFirstBullet.getFirstBulletText()
         self._setVal('firstBullet', firstBullet, sectionDict, 'First Bullet')
@@ -587,7 +593,7 @@ class Format(FormatTemplate.Formatter):
 
     def _firstBullet_point(self, sectionDict):
         # Get saved value from productText table if available
-        firstBullet = self._getSavedVal('firstBullet_point', sectionDict)
+        firstBullet = self._getVal('firstBullet_point', sectionDict)
         if not firstBullet:
             firstBullet += self.attributionFirstBullet.getFirstBulletText()
         self._setVal('firstBullet_point', firstBullet, sectionDict, 'First Bullet')
@@ -603,7 +609,7 @@ class Format(FormatTemplate.Formatter):
         - More than 1 week . . . should include date
         '''
         # Get saved value from productText table if available
-        bulletText = self._getSavedVal('timeBullet', sectionDict)
+        bulletText = self._getVal('timeBullet', sectionDict)
         if not bulletText:
             bulletText = ''
 
@@ -644,7 +650,7 @@ class Format(FormatTemplate.Formatter):
         includeChoices = hazard.get('include')
         if includeChoices and 'ffwEmergency' in includeChoices:
             # Get saved value from productText table if available
-            statement = self._getSavedVal('emergencyStatement', sectionDict)
+            statement = self._getVal('emergencyStatement', sectionDict)
             if not statement:
                 statement = '  This is a Flash Flood Emergency for ' + hazard.get('includeEmergencyLocation') + '.'
             self._setVal('emergencyStatement', statement, sectionDict, 'Emergency Statement')
@@ -654,7 +660,7 @@ class Format(FormatTemplate.Formatter):
 
     def _impactsBullet(self, sectionDict):
         # Get saved value from productText table if available
-        bulletText = self._getSavedVal('impactsBullet', sectionDict)
+        bulletText = self._getVal('impactsBullet', sectionDict)
         if not bulletText:
             bulletText = ''
             if (self._runMode == 'Practice'):
@@ -675,7 +681,7 @@ class Format(FormatTemplate.Formatter):
 
     def _basisAndImpactsStatement(self, sectionDict):
         # Get saved value from productText table if available
-        bulletText = self._getSavedVal('basisAndImpactsStatement', sectionDict)
+        bulletText = self._getVal('basisAndImpactsStatement', sectionDict)
         if not bulletText:
             bulletText = ''
             if (self._runMode == 'Practice'):
@@ -705,7 +711,7 @@ class Format(FormatTemplate.Formatter):
         action = vtecRecord.get('act', None)
 
         # Get saved value from productText table if available
-        locationsAffected = self._getSavedVal('locationsAffected', sectionDict)
+        locationsAffected = self._getVal('locationsAffected', sectionDict)
         if not locationsAffected:
             heading = ''
             locationsAffected = ''
@@ -810,7 +816,7 @@ class Format(FormatTemplate.Formatter):
         # Get saved value from productText table if available
         productLabel = productDict.get('productLabel')
         synopsisKey = 'overviewSynopsis_' + productLabel
-        synopsis = self._getSavedVal(synopsisKey, productDict)
+        synopsis = self._getVal(synopsisKey, productDict)
 
         if not synopsis:
             synopsis = productDict.get(synopsisKey, '')
@@ -961,12 +967,23 @@ class Format(FormatTemplate.Formatter):
                          segment=ugcList, label=label, displayable=displayable,
                          productCategory=self._productCategory, productID='')
 
-    def _getSavedVal(self, key, dictionary):
+    def _getVal(self, key, dictionary):
+        '''
+        Helper method that will either get the value of the product part from the productTextTable or
+        self._editableParts if it was passed into the formatter.
+        '''
+        eventIDs, ugcList = self._tpc.parameterSetupForKeyInfo(dictionary)
+        if self._useProductTextTable:
+            return self._getSavedVal(key, eventIDs, ugcList)
+        else:
+            userEditedKey = KeyInfo(key, self._productCategory, '', eventIDs, ugcList, True)
+            return self._editableParts.get(userEditedKey)
+
+    def _getSavedVal(self, key, eventIDs, ugcList):
         '''
         Helper method to call _getSavedVal() in TextProductCommon. This method automatically
         sets the productCategory=self._productCategory, productID='' parameters for you.
         '''
-        eventIDs, ugcList = self._tpc.parameterSetupForKeyInfo(dictionary)
         return self._tpc.getSavedVal(key, eventIDs=eventIDs, segment=ugcList, 
                                      productCategory=self._productCategory, productID='')
 

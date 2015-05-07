@@ -11,6 +11,7 @@
     Mar 17, 2015 6958       Robert.Blum BasisBullet only has start time if it is Warning.
     Apr 16, 2015 7579       Robert.Blum Updates for amended Product Editor.
     Apr 30, 2015 7579       Robert.Blum Changes for multiple hazards per section.
+    May 07, 2015 6979       Robert.Blum EditableEntries are passed in for reuse.
 '''
 
 import datetime,collections
@@ -21,9 +22,9 @@ import Legacy_Hydro_Formatter
 
 class Format(Legacy_Hydro_Formatter.Format):
 
-    def initialize(self) :
+    def initialize(self, editableEntries) :
         self.initProductPartMethodMapping()
-        super(Format, self).initialize()
+        super(Format, self).initialize(editableEntries)
 
     def initProductPartMethodMapping(self):
         self.productPartMethodMapping = {
@@ -69,9 +70,9 @@ class Format(Legacy_Hydro_Formatter.Format):
             'endSegment': self._endSegment,
                                 }
 
-    def execute(self, productDict):
+    def execute(self, productDict, editableEntries=None):
         self.productDict = productDict
-        self.initialize()
+        self.initialize(editableEntries)
         legacyText = self._createTextProduct()
         return [ProductUtils.wrapLegacy(legacyText)], self._editableParts
 
@@ -95,7 +96,7 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     def _basisBullet(self, sectionDict):
         # Get saved value from productText table if available
-        bulletText = self._getSavedVal('basisBullet', sectionDict)
+        bulletText = self._getVal('basisBullet', sectionDict)
         if not bulletText:
             vtecRecord = sectionDict.get('vtecRecord')
             act = vtecRecord.get('act')

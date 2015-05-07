@@ -21,7 +21,6 @@ package com.raytheon.uf.common.hazards.productgen;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -31,10 +30,11 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.interfaces.IDefineDialog;
 import com.raytheon.uf.common.dataplugin.events.interfaces.IProvideMetadata;
+import com.raytheon.uf.common.hazards.productgen.executors.GenerateProductExecutor;
+import com.raytheon.uf.common.hazards.productgen.executors.GenerateProductFromExecutor;
 import com.raytheon.uf.common.hazards.productgen.executors.ProductDialogInfoExecutor;
 import com.raytheon.uf.common.hazards.productgen.executors.ProductMetadataExecutor;
-import com.raytheon.uf.common.hazards.productgen.executors.ProductScriptExecutor;
-import com.raytheon.uf.common.hazards.productgen.executors.ProductScriptUpdater;
+import com.raytheon.uf.common.hazards.productgen.executors.UpdateProductExecutor;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScriptFactory;
 import com.raytheon.uf.common.localization.IPathManager;
@@ -65,6 +65,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Feb 15, 2015 2271       Dan Schaffer Incur recommender/product generator init costs immediately
  * Feb 26, 2015 6306       mduff        Pass site id in.
  * Apr 16, 2015 7579       Robert.Blum  Replace prevDataList with keyinfo object.
+ * May 07, 2015 6979       Robert.Blum  Added method to update product dictionaries without
+ *                                      running the entire generator again.
  * </pre>
  * 
  * @author jsanchez
@@ -122,7 +124,7 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
         // Validates the parameter values
         validate(productFormats, productGeneratorName, eventSet, listener);
 
-        IPythonExecutor<ProductScript, GeneratedProductList> executor = new ProductScriptExecutor(
+        IPythonExecutor<ProductScript, GeneratedProductList> executor = new GenerateProductExecutor(
                 productGeneratorName, eventSet, dialogInfo, productFormats);
 
         try {
@@ -141,13 +143,51 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      * @param productFormats
      * @param listener
      */
-    public void update(String productGeneratorName,
-            List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList,
+    public void generateFrom(String productGeneratorName,
+            GeneratedProductList generatedProducts,
             KeyInfo keyInfo, String[] productFormats,
             IPythonJobListener<GeneratedProductList> listener) {
-        IPythonExecutor<ProductScript, GeneratedProductList> executor = new ProductScriptUpdater(
-                productGeneratorName, updatedDataList, keyInfo,
+        IPythonExecutor<ProductScript, GeneratedProductList> executor = new GenerateProductFromExecutor(
+                productGeneratorName, generatedProducts, keyInfo,
                 productFormats);
+
+        try {
+            coordinator.submitAsyncJob(executor, listener);
+        } catch (Exception e) {
+            statusHandler.error("Error executing async job", e);
+        }
+    }
+
+    /**
+     * Updates the updatedDataList then passes them to the different formats.
+     * The job is performed asynchronously and will be passed to the session
+     * manager.
+     * 
+     * @param productGeneratorName
+     *            name of the product generator. "ExampleFFW" refers to the
+     *            python class "ExampleFFW.py" which should be in the
+     *            /common_static/base/python/events/productgen/products
+     *            directory
+     * @param eventSet
+     *            the EventSet<IEvent> object that will provide the information
+     *            for the product generator
+     * @param updatedDataList
+     *            the previously generated dictionaries that will be updated.
+     * @param productFormats
+     *            array of formats to be generated (i.e. "XML", "ASCII")
+     * @param listener
+     *            the listener to the aysnc job
+     */
+    public void update(String productGeneratorName,
+            EventSet<IEvent> eventSet,
+            List<Map<String, Serializable>> updatedDataList,
+            String[] productFormats,
+            IPythonJobListener<GeneratedProductList> listener) {
+        // Validates the parameter values
+        validate(productFormats, productGeneratorName, eventSet, listener);
+
+        IPythonExecutor<ProductScript, GeneratedProductList> executor = new UpdateProductExecutor(
+                productGeneratorName, eventSet, updatedDataList, productFormats);
 
         try {
             coordinator.submitAsyncJob(executor, listener);

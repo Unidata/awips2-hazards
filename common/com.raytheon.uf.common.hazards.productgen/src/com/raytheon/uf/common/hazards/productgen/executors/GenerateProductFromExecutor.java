@@ -19,10 +19,6 @@
  **/
 package com.raytheon.uf.common.hazards.productgen.executors;
 
-import java.io.Serializable;
-import java.util.LinkedHashMap;
-import java.util.List;
-
 import jep.JepException;
 
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
@@ -30,8 +26,7 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
 
 /**
- * Allows a python dictionary to be updated without having to go through a
- * product generator.
+ * Executes the generateProductFrom method of ProductScript
  * 
  * <pre>
  * 
@@ -42,6 +37,7 @@ import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
  * Oct 24, 2013  2266      jsanchez     Initial creation
  * Apr 23, 2014  1480      jsanchez     Added isCorrection attribute.
  * Apr 16, 2015  7579      Robert.Blum  Replaced prevDataList with keyinfo.
+ * Apr 23, 2015  6979      Robert.Blum  Renamed - changes for product corrections.
  * 
  * </pre>
  * 
@@ -49,23 +45,21 @@ import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
  * @version 1.0
  */
 
-public class ProductScriptUpdater extends
+public class GenerateProductFromExecutor extends
         AbstractProductExecutor<GeneratedProductList> {
 
-    private String product;
-
-    private List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList;
+    private GeneratedProductList generatedProducts;
 
     private KeyInfo keyInfo;
 
     /** String array of formats */
     private String[] formats;
 
-    public ProductScriptUpdater(String product,
-            List<LinkedHashMap<KeyInfo, Serializable>> updateDataList,
+    public GenerateProductFromExecutor(String product,
+            GeneratedProductList generatedProducts,
             KeyInfo keyInfo, String[] formats) {
         this.product = product;
-        this.updatedDataList = updateDataList;
+        this.generatedProducts = generatedProducts;
         this.formats = formats;
         this.keyInfo = keyInfo;
     }
@@ -73,9 +67,8 @@ public class ProductScriptUpdater extends
     @Override
     public GeneratedProductList execute(ProductScript script)
             throws JepException {
-        GeneratedProductList generatedProducts = script
-                .updateGeneratedProducts(product, updatedDataList, keyInfo,
-                        formats);
+        GeneratedProductList generatedProducts = script.generateProductFrom(
+                product, this.generatedProducts, keyInfo, formats);
         return generatedProducts;
     }
 

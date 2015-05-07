@@ -39,7 +39,11 @@ import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.PlatformUI;
 
+import com.raytheon.uf.common.hazards.productgen.EditableEntryMap;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.hazards.productgen.editable.ProductTextUtil;
@@ -68,6 +72,9 @@ import com.raytheon.uf.common.util.Pair;
  * 03/23/2015   7165       Robert.Blum  Modifications to allow adding * to editor tab and product tab
  *                                      labels when there are unsaved changes.
  * 04/16/2015   7579       Robert.Blum  Changes for amended Product Editor design.
+ * 05/07/2015   6979       Robert.Blum  Removed automatic saving of changed/reverted values.
+ *                                      Also save/undo buttons are always enabled due to issues
+ *                                      being able to correctly enable them via the megawidgets.
  * </pre>
  * 
  * @author jsanchez
@@ -180,9 +187,6 @@ public class ProductDataEditor extends AbstractDataEditor {
                             // Update the editable key value
                             editableKeyInfo.updateValue(newValue);
 
-                            // Save the new value to the productText table
-                            saveModifiedValues();
-
                             // Update the enabled state of the save and undo buttons
                             updateButtonState();
 
@@ -261,8 +265,12 @@ public class ProductDataEditor extends AbstractDataEditor {
      */
     private void updateKeyInfoValue(EditableKeyInfo editableKeyInfo,
             KeyInfo keyInfo, Serializable newValue) {
-        product.getEditableEntries().get(editableKeyInfo.getFormat())
-                .put(keyInfo, newValue);
+        String format = editableKeyInfo.getFormat();
+        for (EditableEntryMap map : product.getEditableEntries()) {
+            if (map.getFormat().equals(format)) {
+                map.getEditableEntries().put(keyInfo, newValue);
+            }
+        }
     }
 
     public void updateValues(IGeneratedProduct product) {
@@ -276,8 +284,6 @@ public class ProductDataEditor extends AbstractDataEditor {
 
         }
 
-        // Save the reverted value to the productText table
-        saveModifiedValues();
         try {
             manager.setState(state);
         } catch (MegawidgetStateException exception) {
@@ -313,7 +319,14 @@ public class ProductDataEditor extends AbstractDataEditor {
     @Override
     public void undoModification() {
         if (modificationHistory.isEmpty()) {
-            handler.info("Cannot undo.  No modifications have been made.");
+            String undoText = "No modifications to undo.";
+            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                    .getShell();
+            MessageBox messageBox = new MessageBox(shell, SWT.OK | SWT.ICON_INFORMATION);
+            messageBox.setText("Unable to undo");
+            messageBox.setMessage(undoText);
+            messageBox.open();
+            handler.info(undoText);
         } else {
             Map<String, Object> state = manager.getState();
             
@@ -335,9 +348,6 @@ public class ProductDataEditor extends AbstractDataEditor {
             
             // updates the values displayed in the GUI
             state.put(keyInfo.toString(), editableKeyInfo.getValue());
-            
-            // Save the reverted value to the productText table
-            saveModifiedValues();
 
             // Regenerate with the updated data
             productEditor.regenerate(null);
@@ -385,19 +395,35 @@ public class ProductDataEditor extends AbstractDataEditor {
         return true;
     }
 
+    @Override
     public boolean hasUnsavedChanges() {
         return editableKeys.isModified();
     }
 
+    @Override
     public void saveModifiedValues() {
+        boolean showMB = true;
         for (KeyInfo keyInfo : editableKeys.getKeyInfos()) {
             Serializable value = editableKeys.getModifiedValue(keyInfo, true);
             if (value != null) {
+                showMB = false;
                 ProductTextUtil.createOrUpdateProductText(keyInfo.getName(),
                         keyInfo.getProductCategory(), keyInfo.getProductID(),
                         keyInfo.getSegment(),
                         new ArrayList<Integer>(keyInfo.getEventIDs()), value);
             }
+        }
+
+        if (showMB) {
+            String saveText = "No modifications to save.";
+            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                    .getShell();
+            MessageBox messageBox = new MessageBox(shell, SWT.OK | SWT.ON_TOP
+                    | SWT.ICON_INFORMATION);
+            messageBox.setText("Unable to save");
+            messageBox.setMessage(saveText);
+            messageBox.open();
+            handler.info(saveText);
         }
 
         editableKeys.clearModifiedValues();

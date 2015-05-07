@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import com.raytheon.uf.common.hazards.productgen.EditableEntryMap;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.util.Pair;
@@ -45,6 +46,7 @@ import com.raytheon.uf.common.util.Pair;
  * 01/15/2015   5109       bphillip     Initial creation
  * 03/11/2015   6889       bphillip     Modifications to allow more than one undo action in the Product Editor
  * 04/16/2015   7579       Robert.Blum  This class now uses the formated EditableEntries instead of the raw data.
+ * 05/07/2015   6979       Robert.Blum  Changes to use new EditableEntryMap object.
  * 
  * </pre>
  * 
@@ -86,21 +88,19 @@ class EditableKeys {
      * @param editableEntries
      *            The map of editable parts of the generated product
      */
-    private void createEditableKeyInfos(
-            Map<String, LinkedHashMap<KeyInfo, Serializable>> editableEntries) {
+    private void createEditableKeyInfos(List<EditableEntryMap> editableEntries) {
 
         if (editableEntries != null) {
-            for (String format : editableEntries.keySet()) {
-                for (Entry<KeyInfo, Serializable> entry : editableEntries.get(
-                        format)
-                        .entrySet()) {
+            for (EditableEntryMap map : editableEntries) {
+                for (Entry<KeyInfo, Serializable> entry : map
+                        .getEditableEntries().entrySet()) {
                     KeyInfo key = entry.getKey();
                     boolean isEditable = key.isEditable();
                     boolean isDisplayable = key.isDisplayable();
 
                     if (isEditable || isDisplayable) {
                         EditableKeyInfo info = new EditableKeyInfo();
-                        info.setFormat(format);
+                        info.setFormat(map.getFormat());
                         info.setValue(entry.getValue());
                         info.setOriginalValue(entry.getValue());
                         info.setDisplayable(isDisplayable);
@@ -294,21 +294,21 @@ class EditableKeys {
      *            The product to update to
      */
     public void updateEditableKeys(IGeneratedProduct product) {
-        Map<String, LinkedHashMap<KeyInfo, Serializable>> editableEntries = product
-                .getEditableEntries();
+        List<EditableEntryMap> editableEntries = product.getEditableEntries();
         if (editableEntries != null) {
-            for (String format : editableEntries.keySet()) {
-                for (Entry<KeyInfo, Serializable> entry : editableEntries.get(
-                        format)
-                        .entrySet()) {
+            for (EditableEntryMap map : editableEntries) {
+                for (Entry<KeyInfo, Serializable> entry : map
+                        .getEditableEntries().entrySet()) {
                     KeyInfo key = entry.getKey();
-                    for (KeyInfo keyInfo : this.editableKeyInfoMap.keySet()) {
+                    for (KeyInfo keyInfo : editableKeyInfoMap.keySet()) {
                         if (compareKeyInfo(key, keyInfo)) {
                             EditableKeyInfo info = new EditableKeyInfo();
                             info.setValue(entry.getValue());
-                            info.setFormat(format);
+                            info.setFormat(map.getFormat());
                             info.setOriginalValue(entry.getValue());
                             info.setDisplayable(key.isDisplayable());
+                            info.setModified(editableKeyInfoMap.get(key)
+                                    .isModified());
                             editableKeyInfoMap.put(keyInfo, info);
                             break;
                         }

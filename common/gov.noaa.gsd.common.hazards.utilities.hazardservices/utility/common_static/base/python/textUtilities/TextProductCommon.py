@@ -25,6 +25,7 @@
    Apr 28, 2015   7140      Tracy Hansen        Attribution first bullet adjustments
    May 11, 2015   7918      Robert.Blum         Time adjustments for summary headlines and added method
                                                 to compare dictionaries.
+   May 07, 2015   6979      Robert.Blum         Changes for KeyInfo labels.
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -288,11 +289,11 @@ class TextProductCommon(object):
         dictionary using the default key provided.
         '''
         if editable:
-            userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, True, label=label)
+            userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, True, label=label, eventIDInLabel=True)
         elif displayable:
             if useKeyAsLabel: label = key
             if label is None: label = ''
-            userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, editable=False, displayable=True, label=label) 
+            userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, editable=False, displayable=True, label=label, eventIDInLabel=True) 
         else:
             userEditedKey = key
 

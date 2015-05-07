@@ -24,10 +24,11 @@ import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
 
 /**
- * TODO Add Description
+ * Executes the generateProduct method of ProductScript
  * 
  * <pre>
  * 
@@ -35,9 +36,10 @@ import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Mar  7, 2013            jsanchez    Initial creation
- * May 07, 2015    6979    Robert.Blum Removed product since it
- *                                     is declared in AbstractProductExecutor. 
+ * Feb 18, 2013            jsanchez     Initial creation
+ * Nov  5, 2013 2266       jsanchez     Used GeneratedProductList.
+ * Apr 23, 2015 6979       Robert.Blum  Renamed and removed product since it
+ *                                      is declared in AbstractProductExecutor.
  * 
  * </pre>
  * 
@@ -45,19 +47,37 @@ import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
  * @version 1.0
  */
 
-public class ProductMetadataExecutor extends
-        AbstractProductExecutor<Map<String, Serializable>> {
+public class GenerateProductExecutor extends
+        AbstractProductExecutor<GeneratedProductList> {
 
-    private final EventSet<IEvent> eventSet;
+    /** provide the information for the product generator */
+    private EventSet<IEvent> eventSet;
 
-    public ProductMetadataExecutor(String product, EventSet<IEvent> eventSet) {
+    private Map<String, Serializable> dialogInfo;
+
+    /** String array of formats */
+    private String[] formats;
+
+    /**
+     * Constructor.
+     * 
+     * @param product
+     *            name of the product generator
+     * @param eventSet
+     *            the EventSet<IEvent> object that will provide the information
+     *            for the product generator
+     */
+    public GenerateProductExecutor(String product, EventSet<IEvent> eventSet,
+            Map<String, Serializable> dialogInfo, String[] formats) {
         this.product = product;
         this.eventSet = eventSet;
+        this.dialogInfo = dialogInfo;
+        this.formats = formats;
     }
 
     @Override
-    public Map<String, Serializable> execute(ProductScript script) {
-        return script.getScriptMetadata(product, eventSet);
+    public GeneratedProductList execute(ProductScript script) {
+        return script.generateProduct(product, eventSet, dialogInfo, formats);
     }
 
 }

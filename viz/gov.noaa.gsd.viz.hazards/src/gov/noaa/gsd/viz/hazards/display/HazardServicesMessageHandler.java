@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -214,6 +215,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Apr 08, 2015 7369       Robert.Blum        Added message box to notify users that a recommender
  *                                            has completed and return no hazard events.
  * Apr 10, 2015  6898       Chris.Cody        Refactored async messaging
+ * May 07, 2015  6979      Robert.Blum        Added events to the productGeneratorInformation for 
+ *                                            product corrections. 
  * </pre>
  * 
  * @author bryon.lawrence
@@ -987,6 +990,12 @@ public final class HazardServicesMessageHandler {
                                         .getProductGeneratorName());
                 productGeneratorInformation.setProductFormats(productFormats);
                 productGeneratorInformation.setGeneratedProducts(products);
+                Set<IHazardEvent> events = new HashSet<IHazardEvent>(products
+                        .getEventSet().size());
+                for (IEvent event : products.getEventSet()) {
+                    events.add((IHazardEvent) event);
+                }
+                productGeneratorInformation.setProductEvents(events);
                 sessionManager.getProductManager().issueCorrection(
                         productGeneratorInformation);
             }

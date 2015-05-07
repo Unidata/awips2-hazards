@@ -81,6 +81,8 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
  * Dec 15, 2014    3846    Tracy Hansen      small bug fix
  * Apr 28, 2015    7579    Robert.Blum       Changes to allow LabelMegaWidgets on
  *                                           the Product Editor.
+ * May 07, 2015    6979    Robert.Blum       Additional changes for LabelMegaWidgets,
+ *                                           they are now stateful.
  * </pre>
  * 
  * @author Chris.Golden
@@ -89,12 +91,6 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 public class ParametersEditorFactory {
 
     // Private Static Constants
-
-    /**
-     * Expand bar megawidget identifier prefix, used for expand bars that are to
-     * enclose megawidgets.
-     */
-    private static final String EXPAND_BAR_IDENTIFIER_PREFIX = "__expandBar__";
 
     /**
      * Minimum fraction value allowed.
@@ -128,9 +124,9 @@ public class ParametersEditorFactory {
      * Mapping of commonly used stateful megawidget specifiers to nested maps,
      * the latter holding default specification parameters for those maps.
      */
-    private static final Map<Class<? extends ISpecifier>, Map<String, Object>> DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS;
+    private static final Map<Class<? extends IStatefulSpecifier>, Map<String, Object>> DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS;
     static {
-        Map<Class<? extends ISpecifier>, Map<String, Object>> map = new HashMap<>();
+        Map<Class<? extends IStatefulSpecifier>, Map<String, Object>> map = new HashMap<>();
 
         /*
          * Add default values for text megawidgets.
@@ -720,12 +716,7 @@ public class ParametersEditorFactory {
             /*
              * Set the initial value
              */
-            if (specifier.get("fieldType").equals("Text")) {
-                specifier
-                        .put(IStatefulSpecifier.MEGAWIDGET_STATE_VALUES, value);
-            } else if (specifier.get("fieldType").equals("Label")) {
-                specifier.put(ISpecifier.MEGAWIDGET_LABEL, value);
-            }
+            specifier.put(IStatefulSpecifier.MEGAWIDGET_STATE_VALUES, value);
 
             /*
              * Add the megawidget to the list.

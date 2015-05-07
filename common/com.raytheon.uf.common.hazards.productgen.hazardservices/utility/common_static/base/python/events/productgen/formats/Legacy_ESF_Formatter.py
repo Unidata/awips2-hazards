@@ -5,6 +5,7 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
+    May 07, 2015    6979    EditableEntries are passed in for reuse.
 '''
 import FormatTemplate
 
@@ -15,8 +16,8 @@ import Legacy_Hydro_Formatter
 
 class Format(Legacy_Hydro_Formatter.Format):
 
-    def initialize(self) :
-        super(Format, self).initialize()
+    def initialize(self, editableEntries) :
+        super(Format, self).initialize(editableEntries)
         self.initProductPartMethodMapping()
         
     def initProductPartMethodMapping(self):
@@ -30,9 +31,9 @@ class Format(Legacy_Hydro_Formatter.Format):
             'narrativeForecastInformation': self._narrativeForecastInformation
                                 }
 
-    def execute(self, productDict):
+    def execute(self, productDict, editableEntries=None):
         self.productDict = productDict
-        self.initialize()
+        self.initialize(editableEntries)
         legacyText = self._createTextProduct()
         return [ProductUtils.wrapLegacy(legacyText)], self._editableParts
 
@@ -47,7 +48,7 @@ class Format(Legacy_Hydro_Formatter.Format):
     ################# Section Level    
     def _narrativeForecastInformation(self, sectionDict):
         # Get saved value from productText table if available
-        narrative = self._getSavedVal('narrativeForecastInformation', sectionDict)
+        narrative = self._getVal('narrativeForecastInformation', sectionDict)
         if not narrative:
             # ESF sections will only contain one hazard
             hazard = sectionDict.get('hazardEvents')[0]

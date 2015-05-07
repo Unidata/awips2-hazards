@@ -27,6 +27,10 @@
     May 05, 2015    7141    Robert.Blum Changes so RVS can call _createHazardEventDictionary().
     May 12, 2015    7729    Robert.Blum Added the floodSeverity to the dictionary as is along with
                                         the productString for it.
+    May 07, 2015    6979    Robert.Blum Added a updateDataList() which removes the need for 
+                                        the entire generator to be called twice. It takes
+                                        the previously generated dictionaries and updates the
+                                        required fields.
 '''
 
 import ProductTemplate
@@ -703,6 +707,7 @@ class Product(ProductTemplate.Product):
             hazardDict['replaces'] = hazardEvent.get('replaces', None)
             hazardDict['impactsStringForStageFlowTextArea'] = hazardEvent.get('impactsStringForStageFlowTextArea', None)
 
+        hazardDict['eventID'] = hazardEvent.getEventID()
         hazardDict['startTime'] = hazardEvent.getStartTime()
         hazardDict['endTime'] = hazardEvent.getEndTime()
         hazardDict['creationTime'] = hazardEvent.getCreationTime()
@@ -1174,7 +1179,23 @@ class Product(ProductTemplate.Product):
             for vtecRecord in vtecRecords:
                 action = vtecRecord['act']
                 vtecRecord['act'] = 'COR'
-                vtecRecord['prevAct'] = action
+                # Do not set prevAct to COR
+                # incase 2 corrections occur.
+                if action != 'COR':
+                    vtecRecord['prevAct'] = action
+                vtecString = vtecRecord['vtecstr']
+                updatedVtecString = vtecString.replace(action, 'COR')
+                vtecRecord['vtecstr'] = updatedVtecString
+        if 'sections' in segment:
+            sections = segment.get('sections')
+            for section in sections:
+                vtecRecord = section.get('vtecRecord')
+                action = vtecRecord['act']
+                vtecRecord['act'] = 'COR'
+                # Do not set prevAct to COR
+                # incase 2 corrections occur.
+                if action != 'COR':
+                    vtecRecord['prevAct'] = action
                 vtecString = vtecRecord['vtecstr']
                 updatedVtecString = vtecString.replace(action, 'COR')
                 vtecRecord['vtecstr'] = updatedVtecString
@@ -1189,32 +1210,29 @@ class Product(ProductTemplate.Product):
             to this segment.
         '''
         # Get the eventIDs and UGC from the KeyInfo object
-        eventIDs = JUtil.javaObjToPyVal(keyInfo.getEventIDs())
-        ugcs = JUtil.javaObjToPyVal(keyInfo.getSegment())
+        eventIDInts = JUtil.javaObjToPyVal(keyInfo.getEventIDs())
+        ugcString = JUtil.javaObjToPyVal(keyInfo.getSegment())
 
         # Convert eventIds to strings
-        eventIDs = set(eventIDs)
-        for eventID in eventIDs:
-            eventIDs.discard(eventID)
+        eventIDs = set()
+        for eventID in eventIDInts:
             eventIDs.add(str(eventID))
 
         # Make a set out of the ugc string
-        ugcs = ugcs.split(',')
-        ugcs = set(ugcs)
+        ugcs = ugcString.split(',')
+        ugcSet = set()
         for ugc in ugcs:
-            ugcs.discard(ugc)
-            ugcs.add(ugc.lstrip())
+            ugcSet.add(ugc.lstrip())
 
-        # Get the eventIDs and UGC from the segment dictionary
+        # Get the eventIDs and UGCs from the segment dictionary
         segmentEventIDs = set()
-        segmentUGCs = set()
+        segmentUGCs = set(segmentDict.get('ugcs', []))
         for vtecRecord in segmentDict.get('vtecRecords', []):
             segmentEventIDs.update(set(vtecRecord.get('eventID', [])))
-            segmentUGCs.update(set(vtecRecord.get('id', [])))
 
         # If the segment contains both the eventIDs and ugcs from the keyInfo
         # assume that that keyInfo productPart belongs to this segment.
-        if eventIDs.issubset(segmentEventIDs) and ugcs.issubset(segmentUGCs):
+        if eventIDs.issubset(segmentEventIDs) and ugcSet.issubset(segmentUGCs):
             return True
         return False
 
@@ -1300,3 +1318,75 @@ class Product(ProductTemplate.Product):
     def flush(self):
         ''' Flush the print buffer '''
         os.sys.__stdout__.flush()
+
+    def updateDataList(self, dataList, eventSet):
+        '''
+        Takes the dataList (product dictionaries) from a previous execution of the generator and updates them. 
+        '''
+        self._initialize()
+
+        # Extract information for update
+        self._getVariables(eventSet)
+
+        productDicts, hazardEvents = self.updateProductDictionaries(dataList, self._inputHazardEvents)
+        return productDicts, hazardEvents 
+
+    def updateProductDictionaries(self, dataList, hazardEvents):
+        '''
+        Updates each productDictionary with the updated VTECRecords,
+        database values, etc.
+        '''
+        # Determine the list of segments given the hazard events 
+        segments = self._getSegments(hazardEvents)
+
+        # Determine the list of products and associated segments given the segments
+        productSegmentGroups = self._groupSegments(segments)
+
+        # Update each product dictionary
+        productCounter = 0
+        for productSegmentGroup in productSegmentGroups:
+            self._productID = productSegmentGroup.productID
+            # Get the corresponding productDictionary from the dataList
+            productDictionary = dataList[productCounter]
+            segmentCounter = 0
+            for productSegment in productSegmentGroup.productSegments:
+                self._productSegment = productSegment
+                # Get the corresponding segmentDict from the dataList
+                segmentDict = productDictionary.get('segments')[segmentCounter]
+
+                productSegment.metaDataList, productSegment.hazardEvents = self.getSegmentMetaData(productSegment.segment)
+                self._productSegment.expireTime = self._tpc.getExpireTime(self._issueTime, self._purgeHours, 
+                                                                          self._productSegment.vtecRecords_ms)
+
+                # Create and order the sections for the segment:     
+                productSegment.sections = self._createSections(productSegment.vtecRecords_ms, productSegment.metaDataList)
+
+                # What segmentDict level info needs updated here?
+                segmentDict['vtecRecords'] = productSegment.vtecRecords
+                segmentDict['expireTime'] = self._tpc.getExpireTime(self._issueTime, self._purgeHours, 
+                                                                productSegment.vtecRecords_ms)
+
+                sectionCounter = 0
+                for productSection in productSegment.sections:
+                    sectionVtecRecord, sectionMetaData, sectionHazardEvents = productSection
+                    # Get the corresponding sectionDict from the dataList
+                    sectionDict = segmentDict.get('sections')[sectionCounter]
+                    sectionDict['vtecRecord'] = sectionVtecRecord
+                    # Update the Product Information
+                    self._setProductInformation([sectionVtecRecord], sectionHazardEvents)
+
+                    # Update the RFP values for each hazard
+                    for hazardDict in sectionDict.get('hazardEvents', []):
+                        # Find the corresponding sectionHazardEvent
+                        for hazard in sectionHazardEvents:
+                            if hazard.getEventID() == hazardDict.get('eventID'):
+                                if hazard.get('pointID', None):
+                                    self._prepareRiverForecastPointData(hazard.get('pointID'), hazardDict, hazard)
+                                break
+                    sectionCounter = sectionCounter + 1
+                segmentCounter = segmentCounter + 1
+            productCounter = productCounter + 1
+
+        # If issuing, save the VTEC records for legacy products
+        self._saveVTEC(self._generatedHazardEvents)
+        return dataList, self._generatedHazardEvents

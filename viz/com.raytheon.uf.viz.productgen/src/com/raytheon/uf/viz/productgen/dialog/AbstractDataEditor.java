@@ -54,6 +54,8 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * 04/16/2015   7579       Robert.Blum  Removed the Save Button from the Product Editor.
  *                                      Saving the edits are required to generate the correct
  *                                      product, so saving is now done automatically.
+ * 05/04/2015   6979       Robert.Blum  Adding Save button back as well as making the save and
+ *                                      undo buttons always enabled.
  * 
  * </pre>
  * 
@@ -62,11 +64,17 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  */
 public abstract class AbstractDataEditor extends CTabItem {
 
+    /** Label for the Save button on the editor tab */
+    private static final String SAVE_BUTTON_LABEL = "Save";
+
     /** Label for the Undo button on the editor tab */
     private static final String UNDO_BUTTON_LABEL = "Undo";
 
     /** The number of buttons on the GUI */
     private static final int BUTTON_COUNT = 2;
+
+    /** Horizontal spacing between Save and Undo buttons */
+    private static final int HORIZONTAL_BUTTON_SPACING = 65;
 
     /** The composite which holds the editor */
     protected Composite editorPane;
@@ -193,7 +201,6 @@ public abstract class AbstractDataEditor extends CTabItem {
 
         // Put the buttons on the bottom of the data editor
         createEditorButtons(editorPane);
-        disableButtons();
     }
 
     /**
@@ -207,14 +214,33 @@ public abstract class AbstractDataEditor extends CTabItem {
         // Initialize the composite to hold the buttons for the editor
         editorButtonPane = new Composite(editorPane, SWT.NONE);
         GridLayout buttonCompLayout = new GridLayout(getButtonCount(), false);
+        buttonCompLayout.horizontalSpacing = HORIZONTAL_BUTTON_SPACING;
         GridData buttonCompData = new GridData(SWT.CENTER, SWT.CENTER, true,
                 false);
         editorButtonPane.setLayout(buttonCompLayout);
         editorButtonPane.setLayoutData(buttonCompData);
         /*
-         * Create the button for the editor tab
+         * Create the buttons for the editor tab
          */
+
+        saveButton = new Button(editorButtonPane, SWT.PUSH);
         undoButton = new Button(editorButtonPane, SWT.PUSH);
+
+        /*
+         * Configure Save button
+         */
+        saveButton.setText(SAVE_BUTTON_LABEL);
+        ProductEditorUtil.setButtonGridData(saveButton);
+        saveButton.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                saveModifiedValues();
+                updateTabLabel();
+            }
+        });
+
+        // Editor save button always enabled.
+        saveButton.setEnabled(true);
 
         /*
          * Configure Undo button
@@ -230,18 +256,14 @@ public abstract class AbstractDataEditor extends CTabItem {
             }
         });
 
-        // Editor Undo button is initially disabled
-        undoButton.setEnabled(false);
+        // Editor Undo button is always enabled.
+        undoButton.setEnabled(true);
     }
 
     /**
-     * Enables/Disables the save and undo buttons based on whether there are
-     * unsaved changes and undos remaining respectively
+     * Updates the text on the undo button.
      */
     protected void updateButtonState() {
-        // Undo button enabled if undo actions are still remaining
-        setButtonEnabled(undoButton, undosRemaining());
-        
         // Update the undo button with how many undo actions are available
         if (undosRemaining()) {
             undoButton.setText(UNDO_BUTTON_LABEL + "(" + getUndosRemaining()
@@ -249,9 +271,6 @@ public abstract class AbstractDataEditor extends CTabItem {
         } else {
             undoButton.setText(UNDO_BUTTON_LABEL);
         }
-        
-        // Save button enabled if unsaved changes are present
-        setButtonEnabled(saveButton, hasUnsavedChanges());
     }
 
     /**
@@ -275,64 +294,6 @@ public abstract class AbstractDataEditor extends CTabItem {
             setText(prevLabel);
             prevProductLabel = prevProductLabel.replace("*", "");
             productTab.setText(prevProductLabel);
-        }
-    }
-
-    /**
-     * Enables the save and revert buttons
-     */
-    protected void enableButtons() {
-        enableSaveButton();
-        enableUndoButton();
-    }
-
-    /**
-     * Disables the save and revert buttons
-     */
-    protected void disableButtons() {
-        disableSaveButton();
-        disableUndoButton();
-    }
-
-    /**
-     * Enables the save button
-     */
-    protected void enableSaveButton() {
-        setButtonEnabled(this.saveButton, true);
-    }
-
-    /**
-     * Enables the revert button
-     */
-    protected void enableUndoButton() {
-        setButtonEnabled(this.undoButton, true);
-    }
-
-    /**
-     * Disables the save button
-     */
-    protected void disableSaveButton() {
-        setButtonEnabled(this.saveButton, false);
-    }
-
-    /**
-     * Disables the revert button
-     */
-    protected void disableUndoButton() {
-        setButtonEnabled(this.undoButton, false);
-    }
-
-    /**
-     * Enables/Disables a button
-     * 
-     * @param button
-     *            The button to enable/disabled
-     * @param enabled
-     *            True if the button is to be enabled, false for disabled
-     */
-    protected void setButtonEnabled(Button button, boolean enabled) {
-        if (button != null && !button.isDisposed()) {
-            button.setEnabled(enabled);
         }
     }
 
