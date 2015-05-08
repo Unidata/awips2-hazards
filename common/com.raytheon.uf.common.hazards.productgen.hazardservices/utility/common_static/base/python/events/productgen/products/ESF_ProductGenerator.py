@@ -47,8 +47,10 @@ class Product(HydroGenerator.Product):
         self._includeAreaNames = False
         self._includeCityNames = False
         self._vtecProduct = False
-                
-    def execute(self, eventSet, dialogInputMap):          
+        # Polygon-based, so locations listed will be limited to within the polygon rather than county area
+        self._polygonBased = True
+
+    def execute(self, eventSet, dialogInputMap):
         '''
         Inputs:
         @param eventSet: a list of hazard events (hazardEvents) plus
