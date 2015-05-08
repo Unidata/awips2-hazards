@@ -31,6 +31,7 @@ import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -54,6 +55,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
 
 /**
  * Console presenter, used to manage the console view.
@@ -189,6 +191,23 @@ public class ConsolePresenter extends
             getView().updateSelectedTimeRange(
                     new Date(selectedTime.getLowerBound()),
                     new Date(selectedTime.getUpperBound()));
+        }
+    }
+
+    /**
+     * Respond to the selected time changing.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void visibleTimeChanged(VisibleTimeRangeChanged change) {
+
+        if (change.getOriginator() != UIOriginator.CONSOLE) {
+            TimeRange visibleTime = getModel().getTimeManager()
+                    .getVisibleTimeRange();
+            getView().updateVisibleTimeRange(visibleTime.getStart().getTime(),
+                    visibleTime.getEnd().getTime());
         }
     }
 

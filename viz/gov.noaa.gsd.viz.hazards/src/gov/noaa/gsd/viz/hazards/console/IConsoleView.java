@@ -42,6 +42,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * Dec 05, 2014    4124    Chris.Golden      Changed to use ObservedSettings.
  * Feb 10, 2015    2331    Chris.Golden      Changed to use time range boundaries
  *                                           for the events.
+ * May 05, 2015 6898       Chris.Cody        Pan & Scale Visible and Selected Time
  * </pre>
  * 
  * @author Chris.Golden
@@ -140,24 +141,24 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
     /**
      * Update the visible time delta.
      * 
-     * @param jsonVisibleTimeDelta
-     *            JSON string holding the amount of time visible at once in the
-     *            time line as an epoch time range in milliseconds.
+     * @param visibleTimeDelta
+     *            Unix timestamp in milliseconds holding the amount of time
+     *            visible at once in the time line.
      */
-    public void updateVisibleTimeDelta(String jsonVisibleTimeDelta);
+    public void updateVisibleTimeDelta(long visibleTimeDelta);
 
     /**
      * Update the visible time range.
      * 
-     * @param jsonEarliestVisibleTime
-     *            JSON string holding the earliest visible time in the time line
-     *            as an epoch time range in milliseconds.
-     * @param jsonLatestVisibleTime
-     *            JSON string holding the latest visible time in the time line
-     *            as an epoch time range in milliseconds.
+     * @param earliestVisibleTime
+     *            Unix timestamp in milliseconds holding the earliest visible
+     *            time in the time line.
+     * @param latestVisibleTime
+     *            Unix timestamp in milliseconds holding the latest visible time
+     *            in the time line.
      */
-    public void updateVisibleTimeRange(String jsonEarliestVisibleTime,
-            String jsonLatestVisibleTime);
+    public void updateVisibleTimeRange(long earliestVisibleTime,
+            long latestVisibleTime);
 
     /**
      * Update the time range boundaries for the events.

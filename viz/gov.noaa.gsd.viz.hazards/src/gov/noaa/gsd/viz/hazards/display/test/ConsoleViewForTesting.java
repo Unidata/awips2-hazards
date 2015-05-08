@@ -35,6 +35,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * May 18, 2014    2925  Chris.Golden More changes to get it to work with the new HID.
  * Nov 18, 2014    4124  Chris.Golden Changed to work with new version of IConsoleView.
  * Dec 05, 2014    4124  Chris.Golden Changed to work with ObservedSettings.
+ * May 05, 2015    6898   Chris.Cody  Pan & Scale Visible and Selected Time
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -79,13 +80,13 @@ public class ConsoleViewForTesting implements
     }
 
     @Override
-    public void updateVisibleTimeDelta(String jsonVisibleTimeDelta) {
+    public void updateVisibleTimeDelta(long vsibleTimeDelta) {
 
     }
 
     @Override
-    public void updateVisibleTimeRange(String jsonEarliestVisibleTime,
-            String jsonLatestVisibleTime) {
+    public void updateVisibleTimeRange(long earliestVisibleTime,
+            long latestVisibleTime) {
 
     }
 

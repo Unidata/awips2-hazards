@@ -266,6 +266,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           made that was incorrect.
  * Apr 06, 2015 6602       mduff             If a date is missing return an empty string
  *                                           rather than 0 formatted as Jan 1, 1970.
+ * May 05, 2015 6898       Chris.Cody        Pan & Scale Visible and Selected Time
  * </pre>
  * 
  * @author Chris.Golden
@@ -1877,17 +1878,16 @@ class TemporalDisplay {
      * Update the visible time delta.
      * 
      * @param newVisibleTimeDelta
-     *            JSON string holding the amount of time visible at once in the
-     *            time line as an epoch time range in milliseconds.
+     *            Unix timestamp in milliseconds holding the amount of time
+     *            visible at once in the time line.
      */
-    public void updateVisibleTimeDelta(String newVisibleTimeDelta) {
+    public void updateVisibleTimeDelta(long visibleTimeDelta) {
 
         // Get the new visible time range boundaries.
-        long range = Long.parseLong(newVisibleTimeDelta);
         long lower = (ruler.getFreeThumbValueCount() != 0 ? ruler
                 .getFreeThumbValue(0) : ruler.getConstrainedThumbValue(0))
-                - (range / 4L);
-        long upper = lower + range - 1L;
+                - (visibleTimeDelta / 4L);
+        long upper = lower + visibleTimeDelta - 1L;
 
         // Use the new visible time range boundaries.
         setVisibleTimeRange(lower, upper, true);
@@ -1897,21 +1897,16 @@ class TemporalDisplay {
      * Update the visible time range.
      * 
      * @param newEarliestVisibleTime
-     *            JSON string holding the earliest visible time in the time line
-     *            as an epoch time range in milliseconds.
+     *            Unix timestamp in milliseconds holding the earliest visible
+     *            time in the time line as an epoch time range in milliseconds.
      * @param newLatestVisibleTime
-     *            JSON string holding the latest visible time in the time line
-     *            as an epoch time range in milliseconds.
+     *            Unix timestamp in milliseconds holding the latest visible time
+     *            in the time line as an epoch time range in milliseconds.
      */
-    public final void updateVisibleTimeRange(String newEarliestVisibleTime,
-            String newLatestVisibleTime) {
-
-        // Get the new visible time range boundaries.
-        long lower = Long.parseLong(newEarliestVisibleTime);
-        long upper = Long.parseLong(newLatestVisibleTime);
-
+    public final void updateVisibleTimeRange(long earliestVisibleTime,
+            long latestVisibleTime) {
         // Use the new visible time range boundaries.
-        setVisibleTimeRange(lower, upper, false);
+        setVisibleTimeRange(earliestVisibleTime, latestVisibleTime, false);
     }
 
     /**
@@ -4557,6 +4552,7 @@ class TemporalDisplay {
         // already had, commit to the change.
         if ((lower != ruler.getLowerVisibleValue())
                 || (upper != ruler.getUpperVisibleValue())) {
+
             ruler.setVisibleValueRange(lower, upper);
             if (forwardAction || altered) {
                 fireConsoleActionOccurred(new ConsoleAction(

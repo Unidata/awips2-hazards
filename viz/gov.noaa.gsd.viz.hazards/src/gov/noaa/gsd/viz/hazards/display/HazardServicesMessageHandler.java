@@ -638,9 +638,8 @@ public final class HazardServicesMessageHandler {
      * This method is called when the visible time range is changed in the
      * Temporal Window.
      */
-    private void updateVisibleTimeRange(String jsonStartTime, String jsonEndTime) {
-        TimeRange visibleRange = new TimeRange(toDate(jsonStartTime),
-                toDate(jsonEndTime));
+    private void updateVisibleTimeRange(long startTime, long endTime) {
+        TimeRange visibleRange = new TimeRange(startTime, endTime);
         sessionTimeManager.setVisibleTimeRange(visibleRange,
                 UIOriginator.CONSOLE);
     }
@@ -1226,8 +1225,10 @@ public final class HazardServicesMessageHandler {
             break;
 
         case VISIBLE_TIME_RANGE_CHANGED:
-            updateVisibleTimeRange(consoleAction.getStartTime(),
-                    consoleAction.getEndTime());
+
+            long startTime = Long.parseLong(consoleAction.getStartTime());
+            long endTime = Long.parseLong(consoleAction.getEndTime());
+            updateVisibleTimeRange(startTime, endTime);
             break;
 
         case SELECTED_TIME_RANGE_CHANGED:

@@ -62,6 +62,7 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           if the latter has been changed.
  * Feb 09, 2015   2331     Chris.Golden      Changed to use time range boundaries
  *                                           for the events.
+ * May 05, 2015   6898     Chris.Cody        Pan & Scale Visible and Selected Time
  * </pre>
  * 
  * @author Chris.Golden
@@ -247,27 +248,27 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      * Update the visible time delta.
      * 
      * @param newVisibleTimeRange
-     *            JSON string holding the amount of time visible at once in the
-     *            time line as an epoch time range in milliseconds.
+     *            Unix timestamp in milliseconds holding the amount of time
+     *            visible at once in the time line.
      */
-    public void updateVisibleTimeDelta(String newVisibleTimeDelta) {
-        temporalDisplay.updateVisibleTimeDelta(newVisibleTimeDelta);
+    public void updateVisibleTimeDelta(long visibleTimeDelta) {
+        temporalDisplay.updateVisibleTimeDelta(visibleTimeDelta);
     }
 
     /**
      * Update the visible time range.
      * 
      * @param newEarliestVisibleTime
-     *            JSON string holding the earliest visible time in the time line
-     *            as an epoch time range in milliseconds.
+     *            Unix timestamp in milliseconds holding the earliest visible
+     *            time in the time line.
      * @param newLatestVisibleTime
-     *            JSON string holding the latest visible time in the time line
-     *            as an epoch time range in milliseconds.
+     *            Unix timestamp in milliseconds holding the latest visible time
+     *            in the time line.
      */
-    public void updateVisibleTimeRange(String newEarliestVisibleTime,
-            String newLatestVisibleTime) {
-        temporalDisplay.updateVisibleTimeRange(newEarliestVisibleTime,
-                newLatestVisibleTime);
+    public void updateVisibleTimeRange(long earliestVisibleTime,
+            long latestVisibleTime) {
+        temporalDisplay.updateVisibleTimeRange(earliestVisibleTime,
+                latestVisibleTime);
     }
 
     /**

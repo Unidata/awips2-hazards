@@ -89,6 +89,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Feb 06, 2015    2331    Chris.Golden      Removed bogus debug message, and also
  *                                           changed to use time range boundaries for
  *                                           the events.
+ * May 05, 2015 6898       Chris.Cody        Pan & Scale Visible and Selected Time
  * </pre>
  * 
  * @author Chris.Golden
@@ -777,11 +778,11 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     }
 
     @Override
-    public final void updateVisibleTimeDelta(final String jsonVisibleTimeDelta) {
+    public final void updateVisibleTimeDelta(final long visibleTimeDelta) {
         executeOnCreatedViewPart(new Runnable() {
             @Override
             public void run() {
-                getViewPart().updateVisibleTimeDelta(jsonVisibleTimeDelta);
+                getViewPart().updateVisibleTimeDelta(visibleTimeDelta);
             }
         });
     }
@@ -797,14 +798,13 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     }
 
     @Override
-    public final void updateVisibleTimeRange(
-            final String jsonEarliestVisibleTime,
-            final String jsonLatestVisibleTime) {
+    public final void updateVisibleTimeRange(final long earliestVisibleTime,
+            final long latestVisibleTime) {
         executeOnCreatedViewPart(new Runnable() {
             @Override
             public void run() {
-                getViewPart().updateVisibleTimeRange(jsonEarliestVisibleTime,
-                        jsonLatestVisibleTime);
+                getViewPart().updateVisibleTimeRange(earliestVisibleTime,
+                        latestVisibleTime);
             }
         });
     }

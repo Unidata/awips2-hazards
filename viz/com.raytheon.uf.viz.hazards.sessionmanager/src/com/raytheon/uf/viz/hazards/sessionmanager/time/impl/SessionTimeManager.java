@@ -34,6 +34,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.time.DateUtils;
 
 import com.google.common.collect.Range;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
@@ -195,8 +196,8 @@ public class SessionTimeManager implements ISessionTimeManager {
     public SessionTimeManager(ISessionNotificationSender notificationSender) {
         this.notificationSender = notificationSender;
         Date currentTime = getCurrentTime();
-        selectedTime = new SelectedTime(currentTime.getTime());
 
+        selectedTime = new SelectedTime(currentTime.getTime());
         /*
          * Create a timer that fires every CAVE current time minute, and
          * schedule the firings. Also subscribe to notifications of simulated
@@ -247,9 +248,37 @@ public class SessionTimeManager implements ISessionTimeManager {
         if (selectedTime.equals(this.selectedTime)) {
             return;
         }
+
         this.selectedTime = selectedTime;
         notificationSender.postNotificationAsync(new SelectedTimeChanged(
                 originator));
+
+        /*
+         * Adjust the Visible Time window (Time Range) to include all of the
+         * currently Selected Time Range.
+         */
+        long newLower = selectedTime.getLowerBound();
+        long newUpper = selectedTime.getUpperBound();
+        long newDelta = newUpper - newLower;
+        long visibleLower = getLowerVisibleTimeInMillis();
+        long visibleUpper = getUpperVisibleTimeInMillis();
+        long visibleDelta = visibleUpper - visibleLower;
+        if ((newLower != newUpper)
+                && ((newLower < visibleLower) || (newLower > visibleUpper)
+                        || (newUpper < visibleLower) || (newUpper > visibleUpper))) {
+            long modNewUpper = 0;
+            if (newDelta < visibleDelta) {
+                // Keep the time scale the same if the selected time is smaller
+                // than the current time frame
+                modNewUpper = newLower + visibleDelta;
+            } else {
+                modNewUpper = newUpper;
+            }
+
+            TimeRange newVisibleTimeRange = new TimeRange(newLower, modNewUpper);
+            setVisibleTimeRange(newVisibleTimeRange, originator);
+        }
+
     }
 
     @Override
@@ -398,7 +427,6 @@ public class SessionTimeManager implements ISessionTimeManager {
      * Publish notification of a time change.
      */
     private void publishNotificationOfTimeChange() {
-
         long now = SimulatedTime.getSystemTime().getMillis();
         selectedTime = new SelectedTime(now);
 
@@ -419,65 +447,44 @@ public class SessionTimeManager implements ISessionTimeManager {
             Collection<ObservedHazardEvent> events) {
 
         /*
-         * Iterate through the events, starting with an unbounded range and
-         * narrowing the range by intersecting it with each event's time range.
-         * (Any value within this intersection range may then be used as the
-         * selected time.) If in the course of doing this the intersection is
-         * reduced to nothing, begin building up a range indicating the minimum
-         * range required to intersect all the events.
+         * Iterate through the events, find the narrowest time span that covers
+         * the begin and end times of all selected events. If the selected begin
+         * and end times are narrower than the current view; then do not change
+         * the visible time values. If an event has an end time of
+         * "Until further Notice"
+         * HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS, then set its
+         * end time to the current upper bound of the visible time range.
          */
-        Range<Long> intersection = Range.all();
-        Range<Long> span = null;
+
+        Range<Long> sigmaEventRange = null;
         for (ObservedHazardEvent event : events) {
-            Range<Long> eventRange = Range.closed(event.getStartTime()
-                    .getTime(), event.getEndTime().getTime());
-            if (intersection != null) {
-                if (intersection.isConnected(eventRange)) {
-                    intersection = intersection.intersection(eventRange);
+            Range<Long> eventRange = null;
+
+            long eventEndTime = 0;
+            if ((event.getEndTime() == null)
+                    || (event.getEndTime().getTime() == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)) {
+                eventEndTime = this.visibleTimeRange.getEnd().getTime();
+            } else {
+                eventEndTime = event.getEndTime().getTime();
+            }
+
+            eventRange = Range.closed(event.getStartTime().getTime(),
+                    eventEndTime);
+            if (sigmaEventRange != null) {
+                if (sigmaEventRange.encloses(eventRange) == false) {
+                    sigmaEventRange = sigmaEventRange.span(eventRange);
                 } else {
-                    boolean eventRangeHigher = (intersection.upperEndpoint() < eventRange
-                            .lowerEndpoint());
-                    span = Range.closed(
-                            (eventRangeHigher ? intersection.upperEndpoint()
-                                    : eventRange.upperEndpoint()),
-                            (eventRangeHigher ? eventRange.lowerEndpoint()
-                                    : intersection.lowerEndpoint()));
-                    intersection = null;
                 }
-            } else if (span.isConnected(eventRange) == false) {
-                boolean eventRangeHigher = (span.upperEndpoint() < eventRange
-                        .lowerEndpoint());
-                span = Range.closed(
-                        (eventRangeHigher ? span.lowerEndpoint() : eventRange
-                                .upperEndpoint()),
-                        (eventRangeHigher ? eventRange.lowerEndpoint() : span
-                                .upperEndpoint()));
+            } else {
+                sigmaEventRange = eventRange;
             }
         }
 
-        /*
-         * If there is an intersection, use the existing selected time if the
-         * latter intersects with the intersection; otherwise, use the lower
-         * bound of the intersection. If instead there is a minimum range, use
-         * the existing selected time if the latter encloses the former,
-         * otherwise, use the span.
-         */
-        if (intersection != null) {
-            if (intersection.isConnected(selectedTime.getRange())) {
-                return selectedTime;
-            } else {
-                return new SelectedTime(
-                        selectedTime.getLowerBound() > intersection
-                                .upperEndpoint() ? intersection.upperEndpoint()
-                                : intersection.lowerEndpoint());
-            }
+        if (sigmaEventRange == null) {
+            return selectedTime;
         } else {
-            if (selectedTime.getRange().encloses(span)) {
-                return selectedTime;
-            } else {
-                return new SelectedTime(span.lowerEndpoint(),
-                        span.upperEndpoint());
-            }
+            return new SelectedTime(sigmaEventRange.lowerEndpoint(),
+                    sigmaEventRange.upperEndpoint());
         }
     }
 
