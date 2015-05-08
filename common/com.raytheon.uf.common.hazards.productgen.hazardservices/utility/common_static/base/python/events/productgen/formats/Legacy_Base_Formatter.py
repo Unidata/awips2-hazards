@@ -16,6 +16,7 @@
     Apr 28, 2015    7914    Robert.Blum Fixed indent error from merge.
     Apr 28, 2015    7579    Robert.Blum Updated CityList to get saved values from the productText table.
     Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
+    May 08, 2015    7864    Robert.Blum Added "Rain So Far" statement to basisAndImpacts product part.
 '''
 
 import FormatTemplate
@@ -670,15 +671,21 @@ class Format(FormatTemplate.Formatter):
             if (self._runMode == 'Practice'):
                 bulletText += "This is a test message.  "
             statements = []
-            for hazard in sectionDict.get('hazardEvents', []):
-                statement = hazard.get('basisAndImpactsStatement', None)
+            hazardEventDicts = sectionDict.get('hazardEvents', [])
+            rainSoFarText = self.rainSoFar(hazardEventDicts)
+            for hazardEventDict in hazardEventDicts:
+                statement = hazardEventDict.get('basisAndImpactsStatement', None)
                 # Check for a empty string from the HID
                 if statement:
                     statements.append(statement)
             if len(statements) > 0:
                 bulletText += '\n'.join(statements)
+                bulletText += rainFallText
             else:
-                bulletText += '|* Current hydrometeorological situation and expected impacts *|'
+                if rainSoFarText and rainSoFarText != '':
+                    bulletText += rainSoFarText
+                else:
+                    bulletText += '|* Current hydrometeorological situation and expected impacts *|'
 
         self._setVal('basisAndImpactsStatement', bulletText, sectionDict, 'Basis and Impacts Bullet')
         return '* ' + bulletText + '\n\n'
@@ -759,6 +766,35 @@ class Format(FormatTemplate.Formatter):
         self._setVal('endingSynopsis', text, sectionDict, 'Ending Synopsis')
         return text + '\n\n'
     ###################### Utility methods
+
+    def rainSoFar(self, hazardEventDicts):
+        result = ""
+        lowerBound = None
+        upperBound = None
+        for hazardEventDict in hazardEventDicts:
+            rainAmt = hazardEventDict.get("rainAmt");
+            if rainAmt == "rainKnown":
+                hazardLowerBound = hazardEventDict.get("rainSoFarLowerBound")
+                hazardUpperBound = hazardEventDict.get("rainSoFarUpperBound")
+                if hazardLowerBound:
+                    if not lowerBound or hazardLowerBound < lowerBound:
+                        lowerBound = hazardLowerBound
+                if hazardUpperBound:
+                    if not upperBound or hazardUpperBound > upperBound:
+                        upperBound = hazardUpperBound
+        # Must have a upperbound
+        if not upperBound:
+            return result
+        else:
+            rainText = " inches of rain have fallen. "
+            upperBound = "{:2.1f}".format(upperBound)
+            if lowerBound:
+                lowerBound = "{:2.1f}".format(lowerBound)
+            if lowerBound == upperBound or lowerBound == None:
+                result = "Up to " + upperBound + rainText
+            else:
+                result = " Between " + lowerBound + " and " + upperBound + rainText
+        return result
 
     def overviewSynopsis(self, productDict):
         # Get saved value from productText table if available
@@ -889,15 +925,12 @@ class Format(FormatTemplate.Formatter):
         return overview + locationPhrase + '\n\n'
 
     def createAdditionalComments(self, hazardDict):
-        additionalComments = ''
-        elements = KeyInfo.getElements('additionalComments', hazardDict)
-        if len(elements) > 0:
-            for x in hazardDict.get(elements[0]):
-                additionalComment = x
-
-                if additionalComment != '':
-                    additionalComments += additionalComment + '\n\n' 
-        return additionalComments
+        text = ''
+        additionalComments =  self._tpc.getVal(hazardDict, 'additionalComments', [])
+        for comment in additionalComments:
+            if comment and comment != '':
+                text += comment + '\n\n'
+        return text.rstrip()
 
     def _getFormattedTime(self, time_ms, format=None, stripLeading=True, emptyValue=None, timeZones=['GMT']):
         if not time_ms:
