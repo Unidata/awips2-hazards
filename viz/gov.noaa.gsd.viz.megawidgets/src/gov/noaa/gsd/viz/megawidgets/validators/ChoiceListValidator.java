@@ -32,6 +32,8 @@ import java.util.Set;
  * ------------ ---------- ------------ --------------------------
  * Oct 10, 2014   4042     Chris.Golden Initial creation (extracted from
  *                                      BoundedChoicesValidatorHelper).
+ * May 11, 2015   7973     Robert.Blum  Removed check for a empty list of 
+ *                                      choices.
  * </pre>
  * 
  * @author Chris.Golden
@@ -604,17 +606,13 @@ public class ChoiceListValidator {
             throws InvalidChoicesException {
 
         /*
-         * Ensure that the object is a non-empty list.
+         * Ensure that the object is a instance of a List
          */
         if (choices instanceof List == false) {
             throw new InvalidChoicesException(null, null, choices,
-                    "must be non-empty list of choices");
+                    "must be an instance of a List");
         }
         List<?> choicesList = (List<?>) choices;
-        if (choicesList.isEmpty()) {
-            throw new InvalidChoicesException(null, null, choices,
-                    "must be non-empty list of choices");
-        }
 
         /*
          * Perform validation of the elements of the list, and if successful,
