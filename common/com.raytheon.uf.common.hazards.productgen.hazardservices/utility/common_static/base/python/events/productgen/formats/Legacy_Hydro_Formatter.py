@@ -15,6 +15,10 @@
     May 05, 2015    7141    Robert.Blum Passing required data to the TableText module and
                                         adding back in floodPointTable since it no longer
                                         re-instantiates RiverForecastPoints.
+    May 12, 2015    7729    Robert.Blum Changed floodCategoryBullet to use severity from 
+                                        the HID and not the database also minor change to
+                                        put impacts on the product Editor even if no impacts
+                                        were chosen on the HID.
 '''
 import datetime
 import collections
@@ -128,8 +132,8 @@ class Format(Legacy_Base_Formatter.Format):
         if not bulletContent:
             # There will only be one hazard per section for point hazards
             hazard = sectionDict.get('hazardEvents')[0]
-            observedCategory = hazard.get('observedCategory')
-            observedCategoryName = hazard.get('observedCategoryName')
+            observedCategory = int(hazard.get('floodSeverity'))
+            observedCategoryName = hazard.get('floodSeverityName')
             maxFcstCategory = hazard.get('maxFcstCategory')
             maxFcstCategoryName = hazard.get('maxFcstCategoryName')
             if observedCategory <= 0 and maxFcstCategory > 0:
@@ -204,8 +208,8 @@ class Format(Legacy_Base_Formatter.Format):
             else:
                 bulletContent = ''
 
+        self._setVal('pointImpactsBullet', bulletContent, sectionDict, 'Point Impacts Bullet')
         if bulletContent:
-            self._setVal('pointImpactsBullet', bulletContent, sectionDict, 'Point Impacts Bullet')
             # Add the bullets
             bulletContent = '' 
             for string in impactStrings:

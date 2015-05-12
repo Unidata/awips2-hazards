@@ -25,6 +25,8 @@
     Apr 28, 2015    7914    Robert.Blum Fixed error cause by latest merge.
     Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
     May 05, 2015    7141    Robert.Blum Changes so RVS can call _createHazardEventDictionary().
+    May 12, 2015    7729    Robert.Blum Added the floodSeverity to the dictionary as is along with
+                                        the productString for it.
 '''
 
 import ProductTemplate
@@ -671,7 +673,8 @@ class Product(ProductTemplate.Product):
                 # CTAs are gathered and displayed at the segment level, pass here
                 pass
             elif attribute == 'floodSeverity':
-                hazardDict['floodSeverity'] = self._tpc.getProductStrings(hazardEvent, metaData, 'floodSeverity')
+                hazardDict['floodSeverity'] = attributes.get(attribute, None)
+                hazardDict['floodSeverityName'] = self._tpc.getProductStrings(hazardEvent, metaData, 'floodSeverity')
             elif attribute == 'floodRecord':
                 hazardDict['floodRecord'] = self._tpc.getProductStrings(hazardEvent, metaData, 'floodRecord')
             else:
