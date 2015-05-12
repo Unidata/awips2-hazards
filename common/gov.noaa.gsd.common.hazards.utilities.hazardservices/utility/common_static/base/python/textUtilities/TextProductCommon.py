@@ -23,6 +23,8 @@
                                                 from the ProductText table.
    Apr 22, 2015   7549      Robert.Blum         Add None check to formatDelimitedList().
    Apr 28, 2015   7140      Tracy Hansen        Attribution first bullet adjustments
+   May 11, 2015   7918      Robert.Blum         Time adjustments for summary headlines and added method
+                                                to compare dictionaries.
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -31,6 +33,7 @@ import cPickle, os, types, string, copy
 import sys, gzip, time, re
 import logging, UFStatusHandler
 from datetime import datetime
+from datetime import timedelta
 from dateutil import tz
 import EventFactory
 import GeometryFactory
@@ -1815,7 +1818,30 @@ class TextProductCommon(object):
     def flush(self):
         ''' Flush the print buffer '''
         os.sys.__stdout__.flush()    
-    
+
+    def compareDictionaries(self, dict1, dict2):
+        '''
+        Calculate the difference between two dictionaries as:
+        1 items added
+        2 items removed
+        3 keys same in both but changed values
+        '''
+        set_current, set_past = set(dict1.keys()), set(dict2.keys())
+        intersect = set_current.intersection(set_past)
+        addedEntries = set_current - intersect
+        removedEntries = set_past - intersect
+        changedEntries = set(o for o in intersect if dict2[o] != dict1[o])
+        return addedEntries, removedEntries, changedEntries
+
+    def round(self, dt, roundMinute=15):
+        discard = timedelta(minutes=dt.minute % roundMinute,
+                             seconds=dt.second,
+                             microseconds=dt.microsecond)
+        dt -= discard
+        if discard >= timedelta(minutes=roundMinute/2):
+            dt += timedelta(minutes=roundMinute)
+        return dt
+
     def timingWordTableEXPLICIT(self, issueTime, eventTime, timezone,
       timeType='startTime'):
         # returns (timeValue, timeZone, descriptiveWord).  
@@ -1844,8 +1870,9 @@ class TextProductCommon(object):
         os.environ['TZ'] = timezone  # set the new time zone
         ltissue = time.localtime(issueTime / 1000)  # issuance local time
         ltevent = time.localtime(eventTime / 1000)  # event local time
-        # get the hour string (e.g., 8 PM)
-        hourStr = time.strftime('%I %p', ltevent)
+        # get the hour/min string (e.g., 800 PM)
+        dt = self.round(datetime.fromtimestamp(eventTime / 1000))
+        hourStr = time.strftime('%I%M %p', dt.timetuple())
         if hourStr[0] == '0':
             hourStr = hourStr[1:]  # eliminate leading zero
 

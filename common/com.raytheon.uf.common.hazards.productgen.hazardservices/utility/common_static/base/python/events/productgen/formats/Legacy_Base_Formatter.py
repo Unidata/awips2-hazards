@@ -17,6 +17,8 @@
     Apr 28, 2015    7579    Robert.Blum Updated CityList to get saved values from the productText table.
     Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
     May 08, 2015    7864    Robert.Blum Added "Rain So Far" statement to basisAndImpacts product part.
+    May 11, 2015    7918    Robert.Blum Moved round method to TextProductCommon and fixed bug
+                                        when comparing dictionaries.
 '''
 
 import FormatTemplate
@@ -402,9 +404,17 @@ class Format(FormatTemplate.Formatter):
             # Get the corresponding section dictionary
             section = None
             for sectionDict in segmentDict.get('sections', []):
-                if sectionDict.get('vtecRecord') == vtecRecord:
+                added, removed, changed = self._tpc.compareDictionaries(sectionDict.get('vtecRecord', {}), vtecRecord)
+                # Equal if nothing was added/removed/changed in the 2 dictionaries
+                if not added and not removed and not changed:
                     section = sectionDict
                     break
+
+            # Can not make a headline without the corresponding
+            # section to the vtecRecord.
+            if not section:
+                hList.remove(vtecRecord)
+                continue
 
             # assemble the vtecRecord type
             hazStr = vtecRecord['hdln']
@@ -604,7 +614,7 @@ class Format(FormatTemplate.Formatter):
             bulletText += 'Until '
 
             endTime = hazard.get('endTime')
-            expireTime = self.round(endTime, roundMinutes)
+            expireTime = self._tpc.round(endTime, roundMinutes)
 
             # Determine how far into the future the expire time is.
             issueTime = datetime.datetime.fromtimestamp(float(self._issueTime)/1000)
@@ -939,15 +949,6 @@ class Format(FormatTemplate.Formatter):
             format = '%I%M %p %A %Z '
         return self._tpc.getFormattedTime(
                 time_ms, format, stripLeading=stripLeading, timeZones=timeZones)
-
-    def round(self, tm, roundMinute=15):
-        discard = datetime.timedelta(minutes=tm.minute % roundMinute,
-                             seconds=tm.second,
-                             microseconds=tm.microsecond)
-        tm -= discard
-        if discard >= datetime.timedelta(minutes=roundMinute/2):
-            tm += datetime.timedelta(minutes=roundMinute)
-        return tm
 
     def _setVal(self, key, value, dictionary, label=None, editable=True, displayable=True):
         '''
