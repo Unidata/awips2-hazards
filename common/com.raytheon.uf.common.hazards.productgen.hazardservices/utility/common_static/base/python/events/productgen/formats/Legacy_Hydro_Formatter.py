@@ -20,6 +20,8 @@
                                         put impacts on the product Editor even if no impacts
                                         were chosen on the HID.
     May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
+    May 13, 2015    7729    Robert.Blum Updated floodCategoryBullet to account for None and
+                                        Unknown flood severities.
 '''
 import datetime
 import collections
@@ -133,20 +135,25 @@ class Format(Legacy_Base_Formatter.Format):
         if not bulletContent:
             # There will only be one hazard per section for point hazards
             hazard = sectionDict.get('hazardEvents')[0]
-            observedCategory = int(hazard.get('floodSeverity'))
+            observedCategory = hazard.get('floodSeverity')
             observedCategoryName = hazard.get('floodSeverityName')
             maxFcstCategory = hazard.get('maxFcstCategory')
             maxFcstCategoryName = hazard.get('maxFcstCategoryName')
-            if observedCategory <= 0 and maxFcstCategory > 0:
-                bulletContent = maxFcstCategoryName + ' flooding is forecast.'
-            elif observedCategory > 0 and maxFcstCategory > 0:
-                bulletContent = observedCategoryName + ' flooding is occurring and '+maxFcstCategoryName+' flooding is forecast.'
+            if observedCategory in ['N', 'U']:
+                observedCategoryInt = 0
             else:
-                action = sectionDict.get('vtecRecord').get('act')
-                if action == 'ROU' or (observedCategory == 0 and maxFcstCategory < 0):
-                    bulletContent = 'No flooding is currently forecast.'
+                observedCategoryInt = int(observedCategory)
+
+            if observedCategoryInt <= 0 and maxFcstCategory > 0:
+                bulletContent = maxFcstCategoryName + ' flooding is forecast.'
+            elif observedCategoryInt > 0 and maxFcstCategory > 0:
+                bulletContent = observedCategoryName + ' flooding is occurring and '+ maxFcstCategoryName+' flooding is forecast.'
+            else:
+                if observedCategory is 'U':
+                    bulletContent = 'Flooding is forecast.'
                 else:
-                    bulletContent = '|* Default floodCategoryBullet *|'
+                    bulletContent = 'No flooding is currently forecast.'
+
         self._setVal('floodCategoryBullet', bulletContent, sectionDict, 'Flood Category Bullet')
         return '* ' + bulletContent + '\n'
 
