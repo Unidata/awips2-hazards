@@ -13,20 +13,13 @@ import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
-import net.engio.mbassy.listener.Handler;
-
-import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
@@ -67,6 +60,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Feb 15, 2015 2271       Dan Schaffer      Incur recommender/product generator init costs immediately
  * Feb 26, 2015 6306       mduff             Pass site id to product editor.
  * Apr 10, 2015 6898       Chris.Cody        Removed modelChanged legacy messaging method
+ * May 13, 2015 6899       Robert.Blum       Removed sessionEventsModified handler.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -189,33 +183,5 @@ public class ProductEditorPresenter extends
     private void dismissProductEditor() {
         getModel().setPreviewOngoing(false);
         getView().closeProductEditorDialog();
-    }
-
-    @Handler
-    public void sessionEventsModified(final SessionEventsModified notification) {
-        if (getView() != null) {
-            List<GeneratedProductList> generatedProductListStorage = getView()
-                    .getGeneratedProductsList();
-            List<String> currentEvents = new ArrayList<String>();
-            for (GeneratedProductList productList : generatedProductListStorage) {
-                Iterator<IEvent> iterator = productList.getEventSet()
-                        .iterator();
-                while (iterator.hasNext()) {
-                    IHazardEvent hazardEvent = (IHazardEvent) iterator.next();
-                    currentEvents.add(hazardEvent.getEventID());
-                }
-            }
-            List<ObservedHazardEvent> selectedEventList = getModel()
-                    .getEventManager().getSelectedEvents();
-            List<String> modifiedEventIDList = new ArrayList<String>(
-                    selectedEventList.size());
-            for (ObservedHazardEvent observedHazardEvent : selectedEventList) {
-                modifiedEventIDList.add(observedHazardEvent.getEventID());
-            }
-            currentEvents.retainAll(modifiedEventIDList);
-            if (!currentEvents.isEmpty()) {
-                getView().notifySessionEventsModified();
-            }
-        }
     }
 }

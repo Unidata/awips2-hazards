@@ -80,6 +80,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Apr 16, 2015 7579       Robert.Blum  Changes for amended Product Editor design.
  * Apr 30, 2015 7579       Robert.Blum  Added space between Issue and Dismiss buttons.
  * May 06, 2015 6979       Robert.Blum  Additional changes for product Corrections.
+ * May 13, 2015 6899       Robert.Blum  Removed showSelectedEventsModifiedDialog().
  * </pre>
  * 
  * @author jsanchez
@@ -117,12 +118,6 @@ public class ProductEditor extends CaveSWTDialog {
     private static final String DISMISS_DIALOG_MESSAGE = "Are you sure you want to 'Dismiss'?"
             + " Your product(s) will NOT be issued and your edits have not been saved.";
 
-    /** Regenerate Dialog title */
-    private static final String REGENERATE_DIALOG_TITLE = "Selected Events Changed";
-
-    /** Message displayed by the regenerate dialog */
-    private static final String REGENERATE_DIALOG_MESSAGE = "The selected events have changed. Do you want to regenerate the products or do you want to close the product editor?";
-
     /** Horizontal spacing between Issue All and Dismiss buttons */
     private static final int HORIZONTAL_BUTTON_SPACING = 65;
 
@@ -152,12 +147,6 @@ public class ProductEditor extends CaveSWTDialog {
 
     /** ProductGeneration instance used to regenerate products */
     private final ProductGeneration productGeneration;
-
-    /**
-     * Dialog displayed when the user attempts to close the product editor with
-     * unsaved values
-     */
-    private MessageDialog selectedEventsModifiedDialog;
 
     /** The total number of products that are able to be issued */
     protected int issuableProducts;
@@ -614,30 +603,6 @@ public class ProductEditor extends CaveSWTDialog {
             copy.add(new GeneratedProductList(generatedProductList));
         }
         this.prevGeneratedProductListStorage = copy;
-    }
-
-    /**
-     * Shows a dialog notifying the user he has selected other hazard events in
-     * the console. The user will have the option to regenerate the product(s)
-     * or just close the product editor dialog.
-     */
-    public void showSelectedEventsModifiedDialog() {
-        // if (selectedEventsModifiedDialog == null) {
-        // String[] buttonLabels = new String[] { "Regenerate", "Close Dialog"
-        // };
-        // selectedEventsModifiedDialog = new MessageDialog(null,
-        // REGENERATE_DIALOG_TITLE, null, REGENERATE_DIALOG_MESSAGE,
-        // MessageDialog.WARNING, buttonLabels, 0) {
-        // @Override
-        // protected void buttonPressed(int buttonId) {
-        // setReturnCode(buttonId);
-        // close();
-        // }
-        // };
-        //
-        // boolean regenerate = selectedEventsModifiedDialog.open() == 0;
-        // invokeDismiss(regenerate);
-        // }
     }
 
     private void invokeIssue(boolean isCorrectable) {

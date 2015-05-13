@@ -34,6 +34,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * May 08, 2014 2925       Chris.Golden      Changed to work with MVP framework changes.
  * Jul 28, 2014 3214       jsanchez     Added notifySessionEventsModified method.  
  * Feb 26, 2015 6306       mduff        Pass site id to product editor.
+ * May 13, 2015 6899       Robert.Blum  Removed notifySessionEventsModified method.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -78,6 +79,4 @@ public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
     public ICommandInvoker<String> getDismissInvoker();
 
     public void openDialog();
-
-    public void notifySessionEventsModified();
 }

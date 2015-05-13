@@ -46,6 +46,7 @@ import com.raytheon.viz.ui.VizWorkbenchManager;
  * Jun 18, 2014  3519      jsanchez         Replaced ProductGenerationDialog with ProductEditor.
  * Jul 09, 2014  3214      jsanchez     Listens if the selected events have changed.
  * Feb 26, 2015  6306      mduff        Pass site id to product editor.
+ * May 13, 2015  6899      Robert.Blum  Removed notifySessionEventsModified().
  * </pre>
  * 
  * @author bryon.lawrence
@@ -157,12 +158,4 @@ public final class ProductEditorView implements
         });
 
     }
-
-    @Override
-    public void notifySessionEventsModified() {
-        if (productEditor != null) {
-            productEditor.showSelectedEventsModifiedDialog();
-        }
-    }
-
 }
