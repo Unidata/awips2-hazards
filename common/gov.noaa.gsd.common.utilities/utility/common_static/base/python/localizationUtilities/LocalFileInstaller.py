@@ -9,6 +9,7 @@ May 3, 2013             BLawrence         Created from AppFileInstaller, swapped
                                           ThriftClient in favor of RequestRouter.
 Aug 22, 2013            JRamer            Fix delete operation, add some pydoc.
 Feb 24, 2015 4204       Robert.Blum       Updated User import
+May 13, 2015 8161       mduff             Change for Jep upgrade.
                                           
 """
 
@@ -28,8 +29,8 @@ from com.raytheon.uf.common.localization.msgs import UtilityResponseMessage
 from com.raytheon.uf.common.localization.msgs import AbstractUtilityCommand
 from com.raytheon.uf.common.localization.msgs import AbstractPrivilegedUtilityCommand
 from com.raytheon.uf.common.localization import LocalizationContext
-from com.raytheon.uf.common.localization import LocalizationContext_LocalizationType as LocalizationType
-from com.raytheon.uf.common.localization import LocalizationContext_LocalizationLevel as LocalizationLevel
+LocalizationLevel = LocalizationContext.LocalizationLevel
+LocalizationType = LocalizationContext.LocalizationType
 from com.raytheon.uf.common.auth.resp import UserNotAuthorized
 from com.raytheon.uf.common.auth.resp import SuccessfulExecution
 from com.raytheon.uf.common.auth.user import User

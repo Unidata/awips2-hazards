@@ -30,6 +30,7 @@
 #    01/22/13                      mnash          Initial Creation.
 #    08/20/13        1360          blawrenc       Changed toStr() to __str__() for debugging
 #    12/05/13        2527          bkowal         Removed obsolete conversion methods
+#    05/13/15        8161          mduff          Changes for Jep upgrade.
 # 
 #
 
@@ -39,8 +40,9 @@ from shapely import wkt
 from Event import Event
 
 from java.util import Date
-from com.raytheon.uf.common.dataplugin.events.hazards import HazardConstants, HazardConstants_ProductClass as ProductClass, HazardConstants_HazardStatus as HazardStatus
-
+from com.raytheon.uf.common.dataplugin.events.hazards import HazardConstants
+ProductClass = HazardConstants.ProductClass
+HazardStatus = HazardConstants.HazardStatus
 
 class HazardEvent(Event, JUtil.JavaWrapperClass):
         

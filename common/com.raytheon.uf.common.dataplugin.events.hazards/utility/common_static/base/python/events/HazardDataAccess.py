@@ -30,12 +30,13 @@
 #    09/26/13                      mnash          Initial Creation.
 #    12/05/13        2527          bkowal         Use JUtil to convert Hazards
 #    4/8/15          7091          hansen         Added getHazardEventsBySite
+#    05/13/15        8161          mduff          Changes for Jep upgrade.
 # 
 #
 
 import JUtil
 from com.raytheon.uf.common.dataplugin.events.hazards.datastorage import HazardEventManager
-from com.raytheon.uf.common.dataplugin.events.hazards.datastorage import HazardEventManager_Mode as Mode
+Mode = HazardEventManager.Mode
 
 def getHazardEvent(eventId, mode):        
     manager = HazardEventManager(Mode.valueOf(mode))

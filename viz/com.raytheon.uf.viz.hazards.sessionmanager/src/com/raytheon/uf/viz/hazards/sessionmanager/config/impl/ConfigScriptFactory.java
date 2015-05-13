@@ -60,6 +60,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * Feb 4,  2015    5691    kmanross     Changed include paths for DataAccess
  * Feb 18, 2015    5071    Robert.Blum  Added productTextUtilPath and hazardCategoriesPath 
  *                                      to the include path.
+ * May 13, 2015    8161    mduff        Change for Jep upgrade.
  * </pre>
  * 
  * @author Chris.Golden
@@ -117,7 +118,6 @@ public class ConfigScriptFactory extends
     private static final List<String> PYTHON_PRE_EVALS = Lists
             .newArrayList(
                     "import json",
-                    "import JavaImporter",
                     "import JUtil",
                     "import HazardServicesMetaDataRetriever",
                     "from HazardEventHandler import javaHazardEventToPyHazardEvent, pyHazardEventToJavaHazardEvent",

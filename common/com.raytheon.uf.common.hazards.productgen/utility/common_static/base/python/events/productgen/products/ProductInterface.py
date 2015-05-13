@@ -44,6 +44,7 @@
 #    03/30/15        6929          Robert.Blum    Added a eventSet to each GeneratedProduct.
 #    04/16/15        7579          Robert.Blum    Changes for amended Product Editor.
 #    05/07/15        6979          Robert.Blum    Changes Product Corrections
+#    05/13/15        8161          mduff          Changes for Jep upgrade.
 #
 import PythonOverriderInterface
 import PythonOverrider
@@ -141,7 +142,7 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
     def executeGeneratorUpdate(self, moduleName, className, **kwargs):
         dataList = kwargs['dataList']
         # make sure dataList is a python object
-        if hasattr(dataList, 'jclassname'):
+        if hasattr(dataList, 'java_name'):
             dataList = JUtil.javaObjToPyVal(dataList)
             kwargs['dataList'] = dataList
 

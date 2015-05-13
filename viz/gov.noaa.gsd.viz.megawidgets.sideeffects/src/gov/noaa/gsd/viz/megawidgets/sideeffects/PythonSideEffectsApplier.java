@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 
 import jep.Jep;
 import jep.JepException;
+import jep.NamingConventionClassEnquirer;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -99,6 +100,7 @@ import com.raytheon.uf.common.util.FileUtil;
  *                                           identifiers to not be deserialized
  *                                           properly on the Python side in some
  *                                           cases.
+ * May 13, 2015    8161    mduff             Changes for Jep upgrade.
  * </pre>
  * 
  * @author Chris.Golden
@@ -111,7 +113,7 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
     /**
      * Python script used for initializing the Jep instance.
      */
-    private static final String INITIALIZE = "import json, JavaImporter";
+    private static final String INITIALIZE = "import json";
 
     /**
      * Name of the Python function that calls the instance's script's
@@ -280,7 +282,8 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
             if ((++requestCounter == 1) && (jep == null)) {
                 try {
 
-                    jep = new Jep(false, includePath, classLoader);
+                    jep = new Jep(false, includePath, classLoader,
+                            new NamingConventionClassEnquirer());
                     jep.eval(INITIALIZE);
                     jep.eval(DEFINE_APPLY_INTERDEPENDENCIES_WRAPPER_FUNCTION);
                 } catch (JepException e) {
