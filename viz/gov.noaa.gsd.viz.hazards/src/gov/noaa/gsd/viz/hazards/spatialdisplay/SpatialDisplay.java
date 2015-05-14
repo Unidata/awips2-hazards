@@ -22,7 +22,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDr
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPolygon;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesText;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionAction;
 import gov.noaa.nws.ncep.ui.pgen.display.AbstractElementContainer;
@@ -34,7 +33,6 @@ import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
-import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 import gov.noaa.nws.ncep.ui.pgen.elements.Text;
 
 import java.awt.Color;
@@ -174,6 +172,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
  * Mar 19, 2015 6938       mduff        Increased size of handlebars to 1.5 mag.
  * Apr 03, 2015 6815       mduff        Fix memory leak.
+ * May 05, 2015 7624       mduff        Drawing Optimizations.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -204,13 +203,6 @@ public class SpatialDisplay extends
      * A reference to an instance of app builder.
      */
     private HazardServicesAppBuilder appBuilder;
-
-    /*
-     * keep track of the previous zoom level for purposes of redrawing PGEN
-     * symbols. Symbols are raster objects, so we only want to redraw them when
-     * zooming.
-     */
-    private float previousZoomLevel = 0;
 
     /**
      * Not pulling in ElementCollectionFilter due to restriction on NCEP PGEN UI
@@ -527,14 +519,6 @@ public class SpatialDisplay extends
          * Draw the hazard event
          */
         drawProduct(target, paintProps, object);
-
-        /*
-         * Draw the selected polygon
-         */
-        if (selectedHazardLayer != null) {
-            drawSelected(target, paintProps);
-        }
-
     }
 
     @Override
@@ -574,6 +558,13 @@ public class SpatialDisplay extends
         }
 
         super.paintInternal(target, paintProps);
+
+        /*
+         * Draw the selected polygon
+         */
+        if (selectedHazardLayer != null) {
+            drawSelected(target, paintProps);
+        }
     }
 
     @Override
@@ -1386,32 +1377,14 @@ public class SpatialDisplay extends
 
         DisplayProperties dprops = buildDisplayProperties(layer);
 
-        // Do this to force symbols to redraw themselves.
-        // This ensures that they scale properly as
-        // the user zooms in/out of the display.
-        // Only do this if the user is zooming.
-        if (el instanceof Symbol || el instanceof Text) {
-            if ((paintProps.isZooming())
-                    || (previousZoomLevel != paintProps.getZoomLevel())) {
-                previousZoomLevel = paintProps.getZoomLevel();
-
-                if (el instanceof HazardServicesText) {
-                    ((HazardServicesText) el).updatePosition();
-                }
-                AbstractElementContainer aec = displayMap.remove(el);
-                if (aec != null) {
-                    aec.dispose();
-                }
-            }
-        }
-
-        if (!displayMap.containsKey(el)) {
-            AbstractElementContainer container = ElementContainerFactory
-                    .createContainer((DrawableElement) el, descriptor, target);
+        AbstractElementContainer container = displayMap.get(el);
+        if (container == null) {
+            container = ElementContainerFactory.createContainer(
+                    (DrawableElement) el, descriptor, target);
             displayMap.put(el, container);
         }
 
-        displayMap.get(el).draw(target, paintProps, dprops);
+        container.draw(target, paintProps, dprops);
     }
 
     /**
@@ -1468,7 +1441,7 @@ public class SpatialDisplay extends
 
         // Needed to use an array to prevent concurrency issues.
         AbstractDrawableComponent[] deArray = deList
-                .toArray(new AbstractDrawableComponent[100]);
+                .toArray(new AbstractDrawableComponent[0]);
 
         for (AbstractDrawableComponent de : deArray) {
             if (de == null) {

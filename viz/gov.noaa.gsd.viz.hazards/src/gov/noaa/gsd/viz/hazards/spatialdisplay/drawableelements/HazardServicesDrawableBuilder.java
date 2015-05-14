@@ -86,6 +86,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
  * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen
+ * May 05, 2015 7624       mduff        Handle MultiPolygons, added deholer method.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -104,6 +105,10 @@ public class HazardServicesDrawableBuilder {
     private static final String FILLED_STAR = "FILLED_STAR";
 
     private static final String TEXT = "TEXT";
+
+    private static final double SIMPLIFICATION_LEVEL = 0.0005;
+
+    private static final double BUFFER_LEVEL = SIMPLIFICATION_LEVEL / 4;
 
     /**
      * Logging mechanism.
@@ -232,17 +237,39 @@ public class HazardServicesDrawableBuilder {
 
             drawingAttributes.setAttributes(shapeNum, hazardEvent);
 
+            Coordinate[] coordinates = null;
             Geometry geometry = hazardEvent.getGeometry()
                     .getGeometryN(shapeNum);
-            Coordinate[] coordinates = ((Polygon) geometry).getExteriorRing()
-                    .getCoordinates();
-            LinearRing linearRing = geometryFactory
-                    .createLinearRing(coordinates);
-            Polygon polygon = geometryFactory.createPolygon(linearRing, null);
-            drawableComponent = new HazardServicesPolygon(drawingAttributes,
-                    LINE, drawingAttributes.getLineStyle().toString(), polygon,
-                    activeLayer, hazardEvent.getEventID());
 
+            if (geometry instanceof MultiPolygon) {
+                MultiPolygon mp = (MultiPolygon) geometry;
+                // From FFMP
+                int numGeoms = mp.getNumGeometries();
+                Geometry[] hucGeometries = new Geometry[numGeoms];
+                for (int i = 0; i < numGeoms; i++) {
+                    hucGeometries[i] = deholer(geometryFactory,
+                            (Polygon) mp.getGeometryN(i));
+                }
+
+                Geometry tmpGeom = geometryFactory.createGeometryCollection(
+                        hucGeometries).buffer(0);
+                drawableComponent = new HazardServicesPolygon(
+                        drawingAttributes, LINE, drawingAttributes
+                                .getLineStyle().toString(), tmpGeom,
+                        activeLayer, hazardEvent.getEventID());
+            } else {
+
+                coordinates = ((Polygon) geometry).getExteriorRing()
+                        .getCoordinates();
+                LinearRing linearRing = geometryFactory
+                        .createLinearRing(coordinates);
+                Polygon polygon = geometryFactory.createPolygon(linearRing,
+                        null);
+                drawableComponent = new HazardServicesPolygon(
+                        drawingAttributes, LINE, drawingAttributes
+                                .getLineStyle().toString(), polygon,
+                        activeLayer, hazardEvent.getEventID());
+            }
         } catch (VizException e) {
             statusHandler.error(
                     "HazardServicesDrawableBuilder.buildPolygon(): build "
@@ -769,4 +796,29 @@ public class HazardServicesDrawableBuilder {
         }
     }
 
+    /**
+     * Attempts to remove interior holes on a polygon. Will take up to 3 passes
+     * over the polygon expanding any interior rings and merging rings back in.
+     * 
+     * @param gf
+     * @param p
+     * @return
+     */
+    protected Geometry deholer(GeometryFactory gf, Polygon p) {
+        int interiorRings = p.getNumInteriorRing();
+        int iterations = 0;
+        while ((interiorRings > 0) && (iterations < 3)) {
+            Geometry[] hucGeometries = new Geometry[interiorRings + 1];
+            hucGeometries[0] = p;
+            for (int i = 0; i < interiorRings; i++) {
+                hucGeometries[i + 1] = p.getInteriorRingN(i).buffer(
+                        BUFFER_LEVEL);
+            }
+            p = (Polygon) gf.createGeometryCollection(hucGeometries).buffer(0);
+            iterations++;
+            interiorRings = p.getNumInteriorRing();
+        }
+
+        return p;
+    }
 }
