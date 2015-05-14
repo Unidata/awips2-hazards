@@ -212,6 +212,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Feb 26, 2015 6306       mduff               Pass site id to product editor.
  * Feb 28, 2015 3847       mduff               Added rise/crest/fall editor
  * Apr 10, 2015  6898      Chris.Cody          Refactored async messaging
+ * May 14, 2015  7560      mpduff              Added Apply callback
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -603,11 +604,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         this.graphicalEditor = new IRiseCrestFallEditor() {
 
             @Override
-            public IHazardEvent getRiseCrestFallEditor(IHazardEvent event) {
+            public IHazardEvent getRiseCrestFallEditor(IHazardEvent event,
+                    IEventApplier applier) {
                 Shell shell = PlatformUI.getWorkbench()
                         .getActiveWorkbenchWindow().getShell();
                 if (editor == null || editor.isDisposed()) {
-                    editor = new GraphicalEditor(shell, event);
+                    editor = new GraphicalEditor(shell, event, applier);
                 } else {
                     editor.bringToTop();
                 }
@@ -1419,5 +1421,4 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     public IRiseCrestFallEditor getRiseCrestFallEditor(IHazardEvent event) {
         return this.graphicalEditor;
     }
-
 }

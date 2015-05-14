@@ -98,6 +98,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.IEventModifyingScriptJobListener;
@@ -123,6 +124,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsMo
 import com.raytheon.uf.viz.hazards.sessionmanager.geomaps.GeoMapUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
+import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IEventApplier;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IRiseCrestFallEditor;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
@@ -285,6 +287,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * Apr 27, 2015 7635       Robert.Blum  Added current config site to list of visible sites for 
  *                                      when settings have not been overridden.
+ * May 14, 2015    7560    mpduff       Trying to get the Time Range to update from Graphical Editor.
  * 
  * </pre>
  * 
@@ -834,6 +837,7 @@ public class SessionEventManager implements
      * Process (reload events) when Settings have been modified.
      * 
      */
+    @Override
     public void reloadEventsForSettings() {
         loadEventsForSettings();
     }
@@ -854,6 +858,7 @@ public class SessionEventManager implements
      * @param change
      *            Change that occurred.
      */
+    @Override
     public void processHazardStatusChanged(IHazardEvent event) {
         if ((event.getStatus() == HazardStatus.ENDING)
                 || (event.getStatus() == HazardStatus.ENDED)) {
@@ -882,6 +887,7 @@ public class SessionEventManager implements
      * @param productGenerationComplete
      *            Notification that is being received.
      */
+    @Override
     public void processProductGenerationComplete(
             IProductGenerationComplete productGenerationComplete) {
 
@@ -957,6 +963,7 @@ public class SessionEventManager implements
      * Respond to a CAVE current time tick by updating all the events' start and
      * end time editability boundaries.
      */
+    @Override
     public void processCurrentTimeChanged() {
         updateTimeBoundariesForEvents(null, false, true);
     }
@@ -1109,7 +1116,6 @@ public class SessionEventManager implements
          * and those holding Serializable values must be done.
          */
         ObservedHazardEvent hazardEvent = (ObservedHazardEvent) event;
-        boolean eventModified = hazardEvent.isModified();
         Map<String, Serializable> attributes = hazardEvent
                 .getHazardAttributes();
         Map<String, Object> newAttributes = new HashMap<>(attributes.size());
@@ -1125,7 +1131,6 @@ public class SessionEventManager implements
             attributes.put(name, (Serializable) newAttributes.get(name));
         }
         hazardEvent.setHazardAttributes(attributes);
-        hazardEvent.setModified(eventModified);
 
         /*
          * Fire off a notification that the metadata may have changed for this
@@ -1144,13 +1149,32 @@ public class SessionEventManager implements
      *            Event for which to edit the rise-crest-fall information.
      */
     private void startRiseCrestFallEdit(IHazardEvent event) {
+        IEventApplier applier = new IEventApplier() {
+            @Override
+            public void apply(IHazardEvent event) {
+                updateEventMetadata(event);
+                /*
+                 * TODO: Added this line in hopes it would update the start/end
+                 * times, but it doesn't
+                 */
+                updateTimeBoundariesForSingleEvent(event,
+                        TimeUtil.currentTimeMillis());
+            }
+
+        };
         IRiseCrestFallEditor editor = messenger.getRiseCrestFallEditor(event);
-        IHazardEvent evt = editor.getRiseCrestFallEditor(event);
+        IHazardEvent evt = editor.getRiseCrestFallEditor(event, applier);
         if (evt != null) {
             if (evt instanceof ObservedHazardEvent) {
-                event = (ObservedHazardEvent) evt;
+                event = evt;
             }
             updateEventMetadata(event);
+            /*
+             * TODO: Added this line in hopes it would update the start/end
+             * times, but it doesn't
+             */
+            updateTimeBoundariesForSingleEvent(event,
+                    TimeUtil.currentTimeMillis());
         }
     }
 
@@ -1245,6 +1269,7 @@ public class SessionEventManager implements
      * @param change
      *            Change that occurred.
      */
+    @Override
     public void processHazardAttributesChanged(IHazardEvent event,
             Map<String, Serializable> attributeMap, IOriginator originator) {
 
@@ -1309,6 +1334,7 @@ public class SessionEventManager implements
      * @param change
      *            Change that occurred.
      */
+    @Override
     public void processHazardTimeRangeChanged(IHazardEvent event) {
         updateConflictingEventsForSelectedEventIdentifiers(event, false);
     }
@@ -1320,6 +1346,7 @@ public class SessionEventManager implements
      * @param change
      *            Change that occurred.
      */
+    @Override
     public void processHazardGeometryChanged(IHazardEvent event) {
         updateConflictingEventsForSelectedEventIdentifiers(event, false);
     }
@@ -1926,6 +1953,7 @@ public class SessionEventManager implements
      * be added to this method's implementation as necessary if said logic must
      * be run whenever an event is so modified.
      */
+    @Override
     public void setEventAttributesModified(IHazardEvent event,
             String identifier, Serializable value, IOriginator originator) {
         Map<String, Serializable> modAttributesMap = new HashMap<String, Serializable>();
@@ -1934,6 +1962,7 @@ public class SessionEventManager implements
         setEventAttributesModified(event, modAttributesMap, originator);
     }
 
+    @Override
     public void setEventAttributesModified(IHazardEvent event,
             Map<String, Serializable> modAttributesMap, IOriginator originator) {
 
@@ -1953,6 +1982,7 @@ public class SessionEventManager implements
         notificationSender.postNotificationAsync(notification);
     }
 
+    @Override
     public void setEventStatus(IHazardEvent event, HazardStatus newStatus,
             boolean persist, IOriginator originator) {
 

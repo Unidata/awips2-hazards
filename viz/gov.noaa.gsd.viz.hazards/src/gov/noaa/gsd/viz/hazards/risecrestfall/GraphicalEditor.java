@@ -22,7 +22,6 @@ package gov.noaa.gsd.viz.hazards.risecrestfall;
 import gov.noaa.gsd.viz.hazards.risecrestfall.EventRegion.EventType;
 
 import java.io.Serializable;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -59,6 +58,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IEventApplier;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IRiseCrestFallEditor;
 import com.raytheon.viz.ui.dialogs.AwipsCalendar;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
@@ -78,6 +78,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Mar 17, 2015    6974    mpduff      FAT fixes.
  * Mar 24, 2015    7205    mpduff      Fixes for missing values and until further notice.
  * Apr 01, 2015    7277    Chris.Cody  Changes to Handle Missing Time values.
+ * May 14, 2015    7560    mpduff      Fixes for missing values being returned as 0.
  * 
  * </pre>
  * 
@@ -166,10 +167,14 @@ public class GraphicalEditor extends CaveSWTDialog implements
 
     private final String fallLblTxt = "Fall Below Time: ";
 
-    public GraphicalEditor(Shell parentShell, IHazardEvent event) {
+    private final IEventApplier applier;
+
+    public GraphicalEditor(Shell parentShell, IHazardEvent event,
+            IEventApplier applier) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL
                 | SWT.RESIZE);
         this.event = event;
+        this.applier = applier;
     }
 
     /*
@@ -302,20 +307,24 @@ public class GraphicalEditor extends CaveSWTDialog implements
         graphData.setBeginDate(new Date(event.getStartTime().getTime()));
         graphData.setEndDate(new Date(event.getEndTime().getTime()));
 
-        long riseTime = (Long) event
-                .getHazardAttribute(HazardConstants.RISE_ABOVE);
         Calendar cal = TimeUtil.newGmtCalendar();
-        cal.setTimeInMillis(riseTime);
-        graphData.setRiseDate(cal.getTime());
+        long riseTime = getAttributeTime(HazardConstants.RISE_ABOVE);
+        if (riseTime != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS
+                && riseTime != HazardConstants.MISSING_VALUE) {
+            cal.setTimeInMillis(riseTime);
+            graphData.setRiseDate(cal.getTime());
+        }
 
-        long crestTime = (Long) event.getHazardAttribute(HazardConstants.CREST);
-        cal.setTimeInMillis(crestTime);
-        graphData.setCrestDate(cal.getTime());
+        long crestTime = getAttributeTime(HazardConstants.CREST);
+        if (crestTime != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS
+                && crestTime != HazardConstants.MISSING_VALUE) {
+            cal.setTimeInMillis(crestTime);
+            graphData.setCrestDate(cal.getTime());
+        }
 
-        long fallTime = (Long) event
-                .getHazardAttribute(HazardConstants.FALL_BELOW);
-
-        if (fallTime != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
+        long fallTime = getAttributeTime(HazardConstants.FALL_BELOW);
+        if (fallTime != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS
+                && fallTime != HazardConstants.MISSING_VALUE) {
             cal.setTimeInMillis(fallTime);
             graphData.setFallDate(cal.getTime());
         }
@@ -392,6 +401,19 @@ public class GraphicalEditor extends CaveSWTDialog implements
         canvasComp.setLayoutData(gd);
 
         displayCanvas = new EditorCanvas(canvasComp, graphData, this, SWT.NONE);
+    }
+
+    private long getAttributeTime(String attribute) {
+        long timeLong = HazardConstants.MISSING_VALUE;
+        Object obj = event.getHazardAttribute(attribute);
+        if (obj instanceof Integer) {
+            int timeInt = (int) obj;
+            timeLong = timeInt;
+        } else if (obj instanceof Long) {
+            timeLong = (long) obj;
+        }
+
+        return timeLong;
     }
 
     private void createDataEntryComposite(Shell shell) {
@@ -476,6 +498,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
                 beginTimeTxt.setText(dateFormat.format(currentTime));
                 beginDate = currentTime;
                 displayCanvas.setVisible(EventType.BEGIN, true);
+                displayCanvas.setDate(EventType.BEGIN, beginDate);
                 displayCanvas.redraw();
             }
         });
@@ -555,6 +578,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
                 Date currentTime = SimulatedTime.getSystemTime().getTime();
                 endTimeTxt.setText(dateFormat.format(currentTime));
                 endDate = currentTime;
+                displayCanvas.setDate(EventType.END, endDate);
                 displayCanvas.setVisible(EventType.END, true);
                 displayCanvas.redraw();
 
@@ -641,9 +665,20 @@ public class GraphicalEditor extends CaveSWTDialog implements
                     riseTxt.setText(MISSING_VAL);
                     riseDate = null;
                 } else {
-                    riseDate = graphData.getRiseDate();
-                    if (riseDate != null) {
-                        riseTxt.setText(dateFormat.format(riseDate));
+                    if (riseDate == null || riseDate.getTime() == 0) {
+                        Date date = graphData.getRiseDate();
+                        date = setTime(date);
+                        if (date != null) {
+                            riseTxt.setText(dateFormat.format(date));
+                            displayCanvas.setDate(EventType.RISE, date);
+                            riseDate = date;
+                            riseMsgChk.setSelection(false);
+                        } else {
+                            riseMsgChk.setSelection(true);
+                        }
+                    } else {
+                        riseTxt.setText(dateFormat.format(graphData
+                                .getRiseDate()));
                     }
                 }
                 displayCanvas.setVisible(EventType.RISE,
@@ -692,9 +727,20 @@ public class GraphicalEditor extends CaveSWTDialog implements
                     crestTxt.setText(MISSING_VAL);
                     crestDate = null;
                 } else {
-                    crestDate = graphData.getCrestDate();
-                    if (crestDate != null) {
-                        crestTxt.setText(dateFormat.format(crestDate));
+                    if (crestDate == null || crestDate.getTime() == 0) {
+                        Date date = graphData.getCrestDate();
+                        date = setTime(date);
+                        if (date != null) {
+                            crestTxt.setText(dateFormat.format(date));
+                            displayCanvas.setDate(EventType.CREST, date);
+                            crestDate = date;
+                            crestMsgChk.setSelection(false);
+                        } else {
+                            crestMsgChk.setSelection(true);
+                        }
+                    } else {
+                        crestTxt.setText(dateFormat.format(graphData
+                                .getCrestDate()));
                     }
                 }
                 displayCanvas.setVisible(EventType.CREST,
@@ -743,9 +789,20 @@ public class GraphicalEditor extends CaveSWTDialog implements
                     fallTxt.setText(MISSING_VAL);
                     fallDate = null;
                 } else {
-                    fallDate = graphData.getFallDate();
-                    if (fallDate != null) {
-                        fallTxt.setText(dateFormat.format(fallDate));
+                    if (fallDate == null || fallDate.getTime() == 0) {
+                        Date date = graphData.getFallDate();
+                        date = setTime(date);
+                        if (date != null) {
+                            fallTxt.setText(dateFormat.format(date));
+                            displayCanvas.setDate(EventType.FALL, date);
+                            fallDate = date;
+                            fallMsgChk.setSelection(false);
+                        } else {
+                            fallMsgChk.setSelection(true);
+                        }
+                    } else {
+                        fallTxt.setText(dateFormat.format(graphData
+                                .getFallDate()));
                     }
                 }
                 displayCanvas.setVisible(EventType.FALL,
@@ -768,7 +825,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
         okBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if (handleOk() == true) {
+                if (handleApply()) {
                     close();
                 }
             }
@@ -781,7 +838,9 @@ public class GraphicalEditor extends CaveSWTDialog implements
         applyBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                handleOk();
+                if (handleApply()) {
+                    applier.apply((IHazardEvent) getReturnValue());
+                }
             }
         });
 
@@ -812,7 +871,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
         });
     }
 
-    private boolean handleOk() {
+    private boolean handleApply() {
 
         if (verifyDialogInput() != true) {
             return (false);
@@ -871,8 +930,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
         this.event.setHazardAttributes(newAttributes);
 
         setReturnValue(event);
-
-        return (true);
+        return true;
     }
 
     private Date setTime(Date date) {
@@ -892,7 +950,8 @@ public class GraphicalEditor extends CaveSWTDialog implements
     }
 
     @Override
-    public IHazardEvent getRiseCrestFallEditor(IHazardEvent event) {
+    public IHazardEvent getRiseCrestFallEditor(IHazardEvent event,
+            IEventApplier applier) {
         // TODO Here because it's required by the interface
         return null;
     }
@@ -924,18 +983,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
 
         StringBuffer errMsgSB = new StringBuffer();
 
-        Date beginDateTime = parseInputFieldToDate(beginTimeLblTxt,
-                beginTimeTxt.getText(), errMsgSB);
-        Date endDateTime = parseInputFieldToDate(endTimeLblTxt,
-                endTimeTxt.getText(), errMsgSB);
-        Date riseDateTime = parseInputFieldToDate(riseLblTxt,
-                riseTxt.getText(), errMsgSB);
-        Date crestDateTime = parseInputFieldToDate(crestLblTxt,
-                crestTxt.getText(), errMsgSB);
-        Date fallDateTime = parseInputFieldToDate(fallLblTxt,
-                fallTxt.getText(), errMsgSB);
-
-        if (endDateTime.before(beginDateTime) == true) {
+        if (endDate != null && endDate.before(beginDate)) {
             errMsgSB.append("Invalid date time:\n");
             errMsgSB.append(beginTimeLblTxt);
             errMsgSB.append(": ");
@@ -965,71 +1013,6 @@ public class GraphicalEditor extends CaveSWTDialog implements
             isValid = false;
         }
 
-        if (isValid) {
-            this.beginDate = beginDateTime;
-            this.endDate = endDateTime;
-            this.riseDate = riseDateTime;
-            this.crestDate = crestDateTime;
-            this.fallDate = fallDateTime;
-        }
-
         return (isValid);
     }
-
-    /**
-     * Validate dialog date time input field.
-     * 
-     * This function only checks for the validity of the field's date string.
-     * 
-     * @param labelText
-     *            Label of Date Time Field
-     * @param dateTextField
-     *            Date Time Field
-     * @param errMsgSB
-     *            Error Message String Buffer
-     */
-
-    private Date parseInputFieldToDate(String labelText, String dateString,
-            StringBuffer errMsgSB) {
-        Date parsedDate = new Date(0);
-
-        if (dateString != null) {
-            dateString = dateString.trim();
-            if (dateString.isEmpty() == false) {
-                if (dateString.equals(UNTIL_FURTHER_NOTICE) == true) {
-                    if (labelText.equals(this.endTimeLblTxt) == true) {
-                        parsedDate = new Date(
-                                HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
-                    } else {
-                        // This should not be possible with the date formatters,
-                        // but full coverage is better.
-                        errMsgSB.append(labelText);
-                        errMsgSB.append(" value: ");
-                        errMsgSB.append(dateString);
-                        errMsgSB.append(" is invalid for this Date field.");
-                    }
-                } else if (dateString.equals(MISSING_VAL) == false) {
-                    try {
-                        parsedDate = (Date) dateFormat.parseObject(dateString);
-                    } catch (ParseException ex) {
-                        errMsgSB.append("Unable to parse ");
-                        errMsgSB.append(labelText);
-                        errMsgSB.append("from ");
-                        errMsgSB.append(dateString);
-                    }
-                }
-            } else {
-                errMsgSB.append(labelText);
-                errMsgSB.append("is empty");
-                errMsgSB.append("\n");
-            }
-        } else {
-            errMsgSB.append(labelText);
-            errMsgSB.append("is NULL");
-            errMsgSB.append("\n");
-        }
-
-        return (parsedDate);
-    }
-
 }

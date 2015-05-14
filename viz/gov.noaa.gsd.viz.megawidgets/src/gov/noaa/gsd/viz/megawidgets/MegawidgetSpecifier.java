@@ -66,6 +66,8 @@ import org.eclipse.swt.widgets.Widget;
  *                                           package, updated Javadoc and other
  *                                           comments.
  * Jun 24, 2014   4009     Chris.Golden      Added extra data functionality.
+ * May 14, 2015   7560     mpduff            Added a debug statement for performance monitoring.
+ * 
  * </pre>
  * 
  * @author Chris.Golden
@@ -228,7 +230,6 @@ public abstract class MegawidgetSpecifier implements ISpecifier {
     public <P extends Widget, M extends IMegawidget> M createMegawidget(
             P parent, Class<M> superClass, Map<String, Object> creationParams)
             throws MegawidgetException {
-
         /*
          * Determine the full path and name of the megawidget class of which an
          * instance is to be created.
@@ -338,6 +339,9 @@ public abstract class MegawidgetSpecifier implements ISpecifier {
         Object[] constructorArgValues = { this, parent, creationParams };
         M megawidget = null;
         try {
+            // TODO: Remove this. Leaving for inspection of megawidget code
+            System.out.println("Creating a newInstance via bestConstructor: "
+                    + bestConstructor.toString());
             megawidget = (M) bestConstructor.newInstance(constructorArgValues);
         } catch (Throwable e) {
             if (e instanceof IllegalAccessException) {

@@ -25,6 +25,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * ------------ ---------- ----------- --------------------------
  * Dec 29, 2013            Bryon.Lawrence      Initial creation
  * Feb 28, 2015   3847     mpduff      Add Rise Crest Fall editor
+ * May 14, 2015   7560     mpduff      Added apply callback.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -62,7 +63,15 @@ public interface IMessenger {
      * specified hazard event graphically.
      */
     public interface IRiseCrestFallEditor {
-        public IHazardEvent getRiseCrestFallEditor(IHazardEvent event);
+        public IHazardEvent getRiseCrestFallEditor(IHazardEvent event,
+                IEventApplier applier);
+    }
+
+    /**
+     * Interface for applying the Graphical Editor changes without closing.
+     */
+    public interface IEventApplier {
+        public void apply(IHazardEvent event);
     }
 
     /**
