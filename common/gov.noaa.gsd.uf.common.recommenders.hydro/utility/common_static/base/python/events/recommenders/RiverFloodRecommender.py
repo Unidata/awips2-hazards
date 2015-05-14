@@ -22,6 +22,7 @@ recommender framework
     Aug 15, 2014    4243     Chris.Golden        Changed megawidget interdependency script
                                                  entry point function to be within the
                                                  recommender script.
+    May 14, 2015    7974     Robert.Blum         Added hours label to cutoff time.
     
 @since: November 2012
 @author: GSD Hazard Services Team
@@ -100,7 +101,7 @@ class Recommender(RecommenderTemplate.Recommender):
         warningThreshCutOff = {}
         warningThreshCutOff["fieldType"] = "IntegerSpinner"
         warningThreshCutOff["fieldName"] = "warningThreshold"
-        warningThreshCutOff["label"] = "Watch/Warning Cutoff Time"
+        warningThreshCutOff["label"] = "Watch/Warning Cutoff Time (hours)"
         warningThreshCutOff["values"] = self._getWarningThreshold()
         warningThreshCutOff["minValue"] = 1
         warningThreshCutOff["maxValue"] = 72
@@ -327,7 +328,7 @@ class Recommender(RecommenderTemplate.Recommender):
         """
         if hazardEvents is not None:
             for hazardEvent in hazardEvents:
-                self.getFloodPolygonForRiverPointHazard(hazardEvent)                
+                self.getFloodPolygonForRiverPointHazard(hazardEvent)
 
     def getFloodPolygonForRiverPointHazard(self, hazardEvent):
         """
