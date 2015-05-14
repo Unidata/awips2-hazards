@@ -81,6 +81,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Apr 30, 2015 7579       Robert.Blum  Added space between Issue and Dismiss buttons.
  * May 06, 2015 6979       Robert.Blum  Additional changes for product Corrections.
  * May 13, 2015 6899       Robert.Blum  Removed showSelectedEventsModifiedDialog().
+ * May 14, 2015 7376       Robert.Blum  Added method to update the state of the issueAll button.
  * </pre>
  * 
  * @author jsanchez
@@ -363,16 +364,9 @@ public class ProductEditor extends CaveSWTDialog {
         ProductEditorUtil.setButtonGridData(issueAllButton);
 
         /*
-         * If all required fields are completed on all editors, then enable the
-         * Issue All Button
+         * Update the state of the issueAll button
          */
-        issueAllButton.setEnabled(true);
-        for (AbstractDataEditor editor : editorManager.getAllEditors()) {
-            if (!editor.requiredFieldsCompleted()) {
-                issueAllButton.setEnabled(false);
-                break;
-            }
-        }
+        updateIssueAllButton();
 
         /*
          * Adds the selection listener to this button
@@ -550,17 +544,9 @@ public class ProductEditor extends CaveSWTDialog {
                             setPrevGeneratedProductListStorage(prevGeneratedProductListStorage);
 
                             /*
-                             * If all required fields are completed on all
-                             * editors, then enable the Issue All Button
+                             * Update the state of the issueAll button
                              */
-                            issueAllButton.setEnabled(true);
-                            for (AbstractDataEditor editor : editorManager
-                                    .getAllEditors()) {
-                                if (!editor.requiredFieldsCompleted()) {
-                                    issueAllButton.setEnabled(false);
-                                    break;
-                                }
-                            }
+                            updateIssueAllButton();
                         }
                     } finally {
                         if (isDisposed() == false) {
@@ -603,6 +589,21 @@ public class ProductEditor extends CaveSWTDialog {
             copy.add(new GeneratedProductList(generatedProductList));
         }
         this.prevGeneratedProductListStorage = copy;
+    }
+
+    /**
+     * Updates the state of the issueAll button based on whether any
+     * requiredFields are not completed.
+     */
+    public void updateIssueAllButton() {
+        boolean setEnabled = true;
+        for (AbstractDataEditor editor : editorManager.getAllEditors()) {
+            if (!editor.requiredFieldsCompleted()) {
+                setEnabled = false;
+                break;
+            }
+        }
+        issueAllButton.setEnabled(setEnabled);
     }
 
     private void invokeIssue(boolean isCorrectable) {

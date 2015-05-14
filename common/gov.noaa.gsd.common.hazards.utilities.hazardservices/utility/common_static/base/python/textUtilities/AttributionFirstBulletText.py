@@ -20,6 +20,7 @@
                                              formatter now.
     Apr 2015       7140    Tracy Hansen      Adding FA.W / FA.Y / FL.Y /  logic 
     Apr 2015       7579    Robert.Blum       Changes for multiple hazards per section.
+    May 2015       7376    Robert.Blum       Fixed burnscar error.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
@@ -91,6 +92,7 @@ class AttributionFirstBulletText(object):
         self.advisoryType = self.hazardEventDict.get('advisoryType_productString')
         self.optionalSpecificType = self.hazardEventDict.get('optionalSpecificType')
         self.damOrLeveeName = self.tpc.getProductStrings(self.hazardEventDict, self.metaData, 'damOrLeveeName')
+        self.burnScarName = self.hazardEventDict.get('burnScarText')
         self.damName = self.hazardEventDict.get('damName')
         self.riverName = None
         if self.damName:
@@ -206,13 +208,9 @@ class AttributionFirstBulletText(object):
             firstBullet = self.firstBullet_CON()
         elif self.action == 'ROU':
             firstBullet = self.firstBullet_ROU()
-        
-        if self.testMode and self.geoType == 'area':
-            prefix = 'This is a test message.  '
-        else:
-            prefix = ''
-        return prefix + firstBullet
-    
+
+        return firstBullet
+
     def firstBullet_CAN(self):
         if self.geoType == 'area':
             firstBullet = ''

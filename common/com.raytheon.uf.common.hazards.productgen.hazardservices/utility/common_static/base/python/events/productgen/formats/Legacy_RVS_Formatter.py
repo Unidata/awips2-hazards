@@ -7,6 +7,8 @@
     Feb 20, 2015    5109    Chris.Cody  Initial creation
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
     May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
+    May 14, 2015    7376    Robert.Blum Changed to look for only None and not
+                                        empty string.
 '''
 
 
@@ -49,7 +51,7 @@ class Format(Legacy_Hydro_Formatter.Format):
     def _headlineStatement(self, productDict):
         # Get saved value from productText table if available
         statement = self._getVal('headlineStatement', productDict)
-        if not statement:
+        if statement is None:
             statement = productDict.get('headlineStatement', "NO HEADLINE STATEMENT")
         self._setVal('headlineStatement', statement, productDict, 'Headline Statement')
         return statement
@@ -57,9 +59,7 @@ class Format(Legacy_Hydro_Formatter.Format):
     def _narrativeInformation(self, productDict):
         # Get saved value from productText table if available
         narrative = self._getVal('narrativeInformation', productDict)
-        if not narrative:
+        if narrative is None:
             narrative = productDict.get('narrativeInformation', "NO NARRATIVE INFORMATION")
         self._setVal('narrativeInformation', narrative, productDict, 'Narrative Information')
-        return narrative
-
-
+        return self._getFormattedText(narrative, endText='\n')

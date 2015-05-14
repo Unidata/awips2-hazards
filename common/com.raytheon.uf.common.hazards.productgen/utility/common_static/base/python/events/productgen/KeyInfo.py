@@ -33,6 +33,7 @@
 #    03/19/15        7094          Robert.Blum     Added eventIDs to label by default.
 #    04/27/15        7579          Robert.Blum     Only add eventIDs to label if there is a label.
 #    05/07/15        6979          Robert.Blum     Changed default value for eventIDInLabel.
+#    05/14/15        7376          Robert.Blum     Moved required * to the beginning of the label.
 import JUtil
 from com.raytheon.uf.common.hazards.productgen import KeyInfo as JavaKeyInfo
 
@@ -70,10 +71,10 @@ class KeyInfo(JUtil.JavaWrapperClass):
         self.required = required
         # This should be refactored after the ParametersEditorFactory
         # can receive a KeyInfo class.
-        if required:
-            self.label = label + '*'          
+        if label and required:
+            self.label = '*' + self.label
         self.index = index
-    
+
     def getName(self):
         return self.name
     
@@ -144,6 +145,3 @@ class KeyInfo(JUtil.JavaWrapperClass):
     
     def __repr__(self):
         return self.name
-    
-
-    

@@ -75,6 +75,9 @@ import com.raytheon.uf.common.util.Pair;
  * 05/07/2015   6979       Robert.Blum  Removed automatic saving of changed/reverted values.
  *                                      Also save/undo buttons are always enabled due to issues
  *                                      being able to correctly enable them via the megawidgets.
+ * 5/14/2015    7376       Robert.Blum  Changed requiredFieldsCompleted() to looked at the value
+ *                                      instead of modifiedValue. Updating issueAll button when
+ *                                      changes are made.
  * </pre>
  * 
  * @author jsanchez
@@ -195,6 +198,9 @@ public class ProductDataEditor extends AbstractDataEditor {
 
                             // Regenerate with the updated data
                             productEditor.regenerate(keyInfo);
+
+                            // Update IssueAll button state
+                            productEditor.updateIssueAllButton();
                         }
 
                         @Override
@@ -351,6 +357,9 @@ public class ProductDataEditor extends AbstractDataEditor {
 
             // Regenerate with the updated data
             productEditor.regenerate(null);
+
+            // Update IssueAll button state
+            productEditor.updateIssueAllButton();
             try {
                 manager.setState(state);
             } catch (MegawidgetStateException exception) {
@@ -386,7 +395,7 @@ public class ProductDataEditor extends AbstractDataEditor {
 
     public boolean requiredFieldsCompleted() {
         for (KeyInfo keyInfo : editableKeys.getKeyInfos()) {
-            Serializable value = editableKeys.getModifiedValue(keyInfo, false);
+            Serializable value = editableKeys.getValue(keyInfo);
             if (keyInfo.isRequired()
                     && (value == null || String.valueOf(value).trim().length() == 0)) {
                 return false;

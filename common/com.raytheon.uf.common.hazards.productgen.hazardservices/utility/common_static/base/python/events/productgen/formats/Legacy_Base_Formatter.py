@@ -20,6 +20,8 @@
     May 11, 2015    7918    Robert.Blum Moved round method to TextProductCommon and fixed bug
                                         when comparing dictionaries.
     May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
+    May 14, 2015    7376    Robert.Blum Changed to look for only None and not
+                                        empty string. Also some additional bug fixes.
 '''
 
 import FormatTemplate
@@ -222,13 +224,15 @@ class Format(FormatTemplate.Formatter):
                 else:  # CAN, EXP
                     can_exp_productSegments.append(segment) 
 
-        overviewHeadline = ''
-        for segments in  [
-                        new_ext_productSegments,
-                        con_productSegments,
-                        can_exp_productSegments]: 
-            if segments:
-                overviewHeadline += self.getOverviewHeadlinePhrase(segments)
+        overviewHeadline = self._getVal('overviewHeadline', productDict)
+        if overviewHeadline is None:
+            overviewHeadline = ''
+            for segments in  [
+                            new_ext_productSegments,
+                            con_productSegments,
+                            can_exp_productSegments]: 
+                if segments:
+                    overviewHeadline += self.getOverviewHeadlinePhrase(segments)
         self._setVal('overviewHeadline', overviewHeadline, productDict, 'Overview Headline')
         return overviewHeadline
 
@@ -237,7 +241,7 @@ class Format(FormatTemplate.Formatter):
         ctaKey = 'callsToAction_productLevel_' + productLabel
         text = self._getVal(ctaKey, productDict)
 
-        if not text:
+        if text is None:
             callsToAction =  self._tpc.getVal(productDict, ctaKey, None)
             if callsToAction:
                 text = ''
@@ -246,61 +250,51 @@ class Format(FormatTemplate.Formatter):
                     cta = re.sub('\s+',' ',cta)
                     text += cta + '\n\n'
                 text = text.rstrip()
-        self._setVal('callsToAction_productLevel', text, productDict, 'Calls To Action - Product Level')
-        text = 'Precautionary/Preparedness actions...\n\n' + text + '\n\n'
-        return text
+        self._setVal(ctaKey, text, productDict, 'Calls To Action - Product Level', required=False)
+        return self._getFormattedText(text, startText='Precautionary/Preparedness actions...\n\n', endText='\n\n')
 
     def _nextIssuanceStatement(self, productDict):
-        expireTime = self._tpc.getExpireTime(
-                    self._issueTime, self._purgeHours, [], fixedExpire=True)
-        ### want description from timingWordTableFUZZY4, hence [2]
-        ### Using only first timezone. Don't think 1 hr diff enough to include extra description
-        nextIssue = self._tpc.timingWordTableFUZZY4(self._issueTime, expireTime, self.timezones[0], 'startTime')[2] + ' at'
-        for timeZone in self.timezones:
-            fmtIssueTme = self._tpc.getFormattedTime(expireTime, timeZones=[timeZone], format='%I%M %p %Z')
-            ### If more than one timezone, will read like: 
-            ### "The next statement will be issued at Tuesday morning at 600 AM CST. 500 AM MST."
-            nextIssue += ' ' + fmtIssueTme + '.'
-        
-        partText = 'The next statement will be issued at ' + nextIssue
+        # Get saved value from productText table if available
+        partText = self._getVal('nextIssuanceStatement', productDict)
+        if partText is None:
+            expireTime = self._tpc.getExpireTime(
+                        self._issueTime, self._purgeHours, [], fixedExpire=True)
+            ### want description from timingWordTableFUZZY4, hence [2]
+            ### Using only first timezone. Don't think 1 hr diff enough to include extra description
+            nextIssue = self._tpc.timingWordTableFUZZY4(self._issueTime, expireTime, self.timezones[0], 'startTime')[2] + ' at'
+            for timeZone in self.timezones:
+                fmtIssueTme = self._tpc.getFormattedTime(expireTime, timeZones=[timeZone], format='%I%M %p %Z')
+                ### If more than one timezone, will read like: 
+                ### "The next statement will be issued at Tuesday morning at 600 AM CST. 500 AM MST."
+                nextIssue += ' ' + fmtIssueTme + '.'
+            
+            partText = 'The next statement will be issued at ' + nextIssue
         self._setVal('nextIssuanceStatement', partText, productDict, 'Next Issuance Statement')
-        return partText + '\n\n&&\n\n'
+        return self._getFormattedText(partText, endText='\n\n') + '&&\n\n'
 
     def _additionalInfoStatement(self, productDict):
         # Get saved value from productText table if available
         text = self._getVal('additionalInfoStatement', productDict)
-        if not text:
+        if text is None:
             # Please override this method for your site
             text = 'Additional information is available at <Web site URL>.'
         self._setVal('additionalInfoStatement', text, productDict, 'Additional Info Statement')
-        return text + '\n\n'
+        return self._getFormattedText(text, endText='\n\n')
 
     def _rainFallStatement(self, productDict):
         # Get saved value from productText table if available
         text = self._getVal('rainFallStatement', productDict)
-        if not text:
+        if text is None:
             text = 'The segments in this product are river forecasts for selected locations in the watch area.'
         self._setVal('rainFallStatement', text, productDict, 'Rainfall Statement')
-        return text + '\n\n'
+        return self._getFormattedText(text, endText='\n\n')
 
     ################# Segment Level
-    
+
     def _setUp_segment(self, segmentDict):
         # Save off the segmentDict so that all section productParts have a reference to it
         self._segmentDict = segmentDict
         return ''
-
-    def _emergencyHeadline(self, segmentDict):
-        partText = ''
-        includeChoices = segmentDict.get('include')
-        if includeChoices and 'ffwEmergency' in includeChoices:
-            # Get saved value from productText table if available
-            partText = self._getVal('emergencyHeadline', segmentDict)
-            if not partText:
-                partText += '...Flash Flood Emergency for ' + segmentDict.get('includeEmergencyLocation') + '...'
-            self._setVal('emergencyHeadline', partText, segmentDict, 'Emergency Headline')
-            partText += '\n\n'
-        return partText
 
     def _ugcHeader(self, segmentDict):
         ugcHeader = self._tpc.formatUGCs(segmentDict.get('ugcs'), segmentDict.get('expireTime'))
@@ -314,7 +308,8 @@ class Format(FormatTemplate.Formatter):
     def _cityList(self, segmentDict):
         # Get saved value from productText table if available
         cityListText = self._getVal('cityList', segmentDict)
-        if not cityListText:
+        if cityListText is None:
+            cityListText = ''
             cityList = set()
             for sectionDict in segmentDict.get('sections', []):
                 for hazard in sectionDict.get('hazardEvents', []):
@@ -324,22 +319,18 @@ class Format(FormatTemplate.Formatter):
             if cityList:
                 cityListText = 'Including the cities of '
                 cityListText += self._tpc.getTextListStr(list(cityList))
-        if cityListText:
-            self._setVal('cityList', cityListText, segmentDict, 'City List')
-            return cityListText + '\n'
-        return ''
+        self._setVal('cityList', cityListText, segmentDict, 'City List', required=False)
+        return self._getFormattedText(cityListText, endText='\n')
 
     def _callsToAction(self, segmentDict):
         # Get saved value from productText table if available
-        text = self._getVal('callsToAction', segmentDict)
-        if not text:
+        callsToAction = self._getVal('callsToAction', segmentDict)
+        if callsToAction is None:
             callsToAction =  self._tpc.getVal(segmentDict, 'callsToAction', '')
             if callsToAction and callsToAction != '':
-                text = callsToAction.rstrip()
-        self._setVal('callsToAction', text, segmentDict, 'Calls To Action')
-        if text:
-            text = 'Precautionary/Preparedness actions...\n\n' + text + '\n\n'
-        return text + '&&\n\n'
+                callsToAction = callsToAction.rstrip()
+        self._setVal('callsToAction', callsToAction, segmentDict, 'Calls To Action', required=False)
+        return self._getFormattedText(callsToAction, startText='Precautionary/Preparedness actions...\n\n', endText='\n\n&&\n\n')
 
     def _polygonText(self, segmentDict):
         polyStr = 'LAT...LON'
@@ -387,146 +378,150 @@ class Format(FormatTemplate.Formatter):
         Creates the summary Headline
         @param segmentDict:  dictionary for the segment.
         '''
-        headlines = []
-        vtecRecords = segmentDict.get('vtecRecords', None)
-        hList = copy.deepcopy(vtecRecords)
-        if len(hList):
-            hList.sort(self._tpc.regularSortHazardAlg)
+        # Get saved value from productText table if available
+        headlineStr = self._getVal('summaryHeadlines', segmentDict)
+        if headlineStr is None:
+            headlines = []
+            vtecRecords = segmentDict.get('vtecRecords', None)
+            hList = copy.deepcopy(vtecRecords)
+            if len(hList):
+                hList.sort(self._tpc.regularSortHazardAlg)
 
-        while len(hList) > 0:
-            vtecRecord = hList[0]
+            while len(hList) > 0:
+                vtecRecord = hList[0]
 
-            # Can't make phrases with vtecRecords with no 'hdln' entry 
-            if vtecRecord['hdln'] == '':
-                hList.remove(vtecRecord)
-                continue
+                # Can't make phrases with vtecRecords with no 'hdln' entry 
+                if vtecRecord['hdln'] == '':
+                    hList.remove(vtecRecord)
+                    continue
 
-            # make sure the vtecRecord is still in effect or within EXP criteria
-            if (vtecRecord['act'] != 'EXP' and self._issueTime >= vtecRecord['endTime']) or \
-            (vtecRecord['act'] == 'EXP' and self._issueTime > 30*60 + vtecRecord['endTime']):
-                hList.remove(vtecRecord)
-                continue # no headline for expired vtecRecords
+                # make sure the vtecRecord is still in effect or within EXP criteria
+                if (vtecRecord['act'] != 'EXP' and self._issueTime >= vtecRecord['endTime']) or \
+                (vtecRecord['act'] == 'EXP' and self._issueTime > 30*60 + vtecRecord['endTime']):
+                    hList.remove(vtecRecord)
+                    continue # no headline for expired vtecRecords
 
-            # Get the corresponding section dictionary
-            section = None
-            for sectionDict in segmentDict.get('sections', []):
-                added, removed, changed = self._tpc.compareDictionaries(sectionDict.get('vtecRecord', {}), vtecRecord)
-                # Equal if nothing was added/removed/changed in the 2 dictionaries
-                if not added and not removed and not changed:
-                    section = sectionDict
-                    break
+                # Get the corresponding section dictionary
+                section = None
+                for sectionDict in segmentDict.get('sections', []):
+                    added, removed, changed = self._tpc.compareDictionaries(sectionDict.get('vtecRecord', {}), vtecRecord)
+                    # Equal if nothing was added/removed/changed in the 2 dictionaries
+                    if not added and not removed and not changed:
+                        section = sectionDict
+                        break
 
-            # Can not make a headline without the corresponding
-            # section to the vtecRecord.
-            if not section:
-                hList.remove(vtecRecord)
-                continue
+                # Can not make a headline without the corresponding
+                # section to the vtecRecord.
+                if not section:
+                    hList.remove(vtecRecord)
+                    continue
 
-            # assemble the vtecRecord type
-            hazStr = vtecRecord['hdln']
+                # assemble the vtecRecord type
+                hazStr = vtecRecord['hdln']
 
-            #determine the actionWords
-            actionWords = self._tpc.actionControlWord(vtecRecord, self._issueTime)
+                #determine the actionWords
+                actionWords = self._tpc.actionControlWord(vtecRecord, self._issueTime)
 
-            # the section could have multiple hazards, need to combine 
-            # the info for each hazard into one summaryheadline.
-            # ImmediateCause will be the same for all.
-            immediateCause = None
-            hydrologicCause = None
-            damNames = []
-            streamNames = []
-            replacesList = []
-            replacedByList = []
-            for hazard in section.get('hazardEvents'):
-                # get the immediateCause defaulting to 'ER' if None
-                immediateCause = hazard.get('immediateCause', 'ER')
-                hydrologicCause = hazard.get('hydrologicCause')
-                damName = hazard.get('damOrLeveeName', None)
-                if not damName:
-                    dameName = hazard.get('damName', None)
-                if damName:
-                    damNames.append(damName)
-                streamName = hazard.get('riverName', None)
-                if streamName:
-                    streamNames.append(streamName)
-                replacedBy = hazard.get('replacedBy')
-                if replacedBy:
-                    replacedByList.append(replacedBy)
-                replaces = hazard.get('replaces')
-                if replaces:
-                    replacesList.append(replaces)
+                # the section could have multiple hazards, need to combine 
+                # the info for each hazard into one summaryheadline.
+                # ImmediateCause will be the same for all.
+                immediateCause = None
+                hydrologicCause = None
+                damNames = []
+                streamNames = []
+                replacesList = []
+                replacedByList = []
+                for hazard in section.get('hazardEvents'):
+                    # get the immediateCause defaulting to 'ER' if None
+                    immediateCause = hazard.get('immediateCause', 'ER')
+                    hydrologicCause = hazard.get('hydrologicCause')
+                    damName = hazard.get('damOrLeveeName', None)
+                    if not damName:
+                        dameName = hazard.get('damName', None)
+                    if damName:
+                        damNames.append(damName)
+                    streamName = hazard.get('riverName', None)
+                    if streamName:
+                        streamNames.append(streamName)
+                    replacedBy = hazard.get('replacedBy')
+                    if replacedBy:
+                        replacedByList.append(replacedBy)
+                    replaces = hazard.get('replaces')
+                    if replaces:
+                        replacesList.append(replaces)
 
-            if immediateCause in ['DM']:
-                if hydrologicCause and hydrologicCause == 'siteImminent':
-                    hazStr = hazStr + ' for the imminent failure of '
+                if immediateCause in ['DM']:
+                    if hydrologicCause and hydrologicCause == 'siteImminent':
+                        hazStr = hazStr + ' for the imminent failure of '
+                    else:
+                        hazStr = hazStr + ' for the failure of '
+
+                    # Add the damName - could be multiple
+                    if len(damNames) > 0:
+                        names = self._tpc.formatDelimitedList(damNames, delimiter=', ')
+                        hazStr += names
+                    else:
+                        hazStr += 'the dam'
+
+                    # Add the streamNames - could be multiple
+                    if len(streamNames) > 0:
+                        hazStr += ' on the '
+                        names = self._tpc.formatDelimitedList(streamNames, delimiter=', ')
+                        hazStr += names
+
+                    hazStr += ' ' + actionWords
+
+                elif immediateCause in ['DR', 'GO', 'IJ', 'RS', 'SM']:
+                    typeOfFlooding = self.typeOfFloodingMapping(immediateCause)
+                    typeOfFlooding.lower()
+                    if typeOfFlooding:
+                        hazStr += ' for ' + typeOfFlooding + ' ' +actionWords
+                    else:
+                        hazStr = hazStr + ' ' + actionWords
                 else:
-                    hazStr = hazStr + ' for the failure of '
-
-                # Add the damName - could be multiple
-                if len(damNames) > 0:
-                    names = self._tpc.formatDelimitedList(damNames, delimiter=', ')
-                    hazStr += names
-                else:
-                    hazStr += 'the dam'
-
-                # Add the streamNames - could be multiple
-                if len(streamNames) > 0:
-                    hazStr += ' on the '
-                    names = self._tpc.formatDelimitedList(streamNames, delimiter=', ')
-                    hazStr += names
-
-                hazStr += ' ' + actionWords
-
-            elif immediateCause in ['DR', 'GO', 'IJ', 'RS', 'SM']:
-                typeOfFlooding = self.typeOfFloodingMapping(immediateCause)
-                typeOfFlooding.lower()
-                if typeOfFlooding:
-                    hazStr += ' for ' + typeOfFlooding + ' ' +actionWords
-                else:
+                    # add on the action
                     hazStr = hazStr + ' ' + actionWords
-            else:
-                # add on the action
-                hazStr = hazStr + ' ' + actionWords
 
-            if includeTiming:
-                timeWords = self._tpc.getTimingPhrase(vtecRecord, [], self._issueTime, timeZones=self.timezones)
-                if len(timeWords):
-                    hazStr = hazStr + ' ' + timeWords
+                if includeTiming:
+                    timeWords = self._tpc.getTimingPhrase(vtecRecord, [], self._issueTime, timeZones=self.timezones)
+                    if len(timeWords):
+                        hazStr = hazStr + ' ' + timeWords
 
-            if vtecRecord.get('phen') == 'FF' and vtecRecord.get('sig') != 'A':
-                ugcPhrase = self._tpc.getAreaPhrase(section.get('ugcs'))
-                hazStr += ' for ' + ugcPhrase
+                if vtecRecord.get('phen') == 'FF' and vtecRecord.get('sig') != 'A':
+                    ugcPhrase = self._tpc.getAreaPhrase(section.get('ugcs'))
+                    hazStr += ' for ' + ugcPhrase
 
-            if len(hazStr):
-                # Call user hook
-                localStr = self._tpc.hazard_hook(
-                  None, None, vtecRecord['phen'], vtecRecord['sig'], vtecRecord['act'],
-                  vtecRecord['startTime'], vtecRecord['endTime'])  # May need to add leading space if non-null 
-                headlineStr = '...' + hazStr + localStr + '...\n'
+                if len(hazStr):
+                    # Call user hook
+                    localStr = self._tpc.hazard_hook(
+                      None, None, vtecRecord['phen'], vtecRecord['sig'], vtecRecord['act'],
+                      vtecRecord['startTime'], vtecRecord['endTime'])  # May need to add leading space if non-null 
+                    headlineStr = '...' + hazStr + localStr + '...'
 
-            # Add replaceStr
-            if len(replacedByList) > 0:
-                replaceStr =  '...REPLACED BY '
-                names = self._tpc.formatDelimitedList(replacedByList, delimiter=', ')
-                replaceStr += names + '...\n'
-            elif len(replacesList) > 0:
-                replaceStr =  '...REPLACES '
-                names = self._tpc.formatDelimitedList(replacesList, delimiter=', ')
-                replaceStr += names + '...\n'
-            else:
-                replaceStr = ''
-            headlineStr += replaceStr
+                # Add replaceStr
+                if len(replacedByList) > 0:
+                    replaceStr =  '\n...REPLACED BY '
+                    names = self._tpc.formatDelimitedList(replacedByList, delimiter=', ')
+                    replaceStr += names + '...'
+                elif len(replacesList) > 0:
+                    replaceStr =  '\n...REPLACES '
+                    names = self._tpc.formatDelimitedList(replacesList, delimiter=', ')
+                    replaceStr += names + '...'
+                else:
+                    replaceStr = ''
+                headlineStr += replaceStr
 
-            # always remove the main vtecRecord from the list
-            hList.remove(vtecRecord)
+                # always remove the main vtecRecord from the list
+                hList.remove(vtecRecord)
 
         self._setVal('summaryHeadlines', headlineStr, segmentDict, 'Summary Headlines')
-        return headlineStr
+        return self._getFormattedText(headlineStr, endText='\n')
 
     def _basisAndImpactsStatement_segmentLevel(self, segmentDict):
         # Get saved value from productText table if available
-        text = self._getSavedVal('basisAndImpactsStatement_segmentLevel', segmentDict)
-        if not text:
+        text = self._getVal('basisAndImpactsStatement_segmentLevel', segmentDict)
+        if text is None:
+            text = ''
             sections = segmentDict.get('sections', [])
             statements = []
             for section in sections:
@@ -540,7 +535,7 @@ class Format(FormatTemplate.Formatter):
             else:
                 text = '|* Current hydrometeorological situation and expected impacts *|'
         self._setVal('basisAndImpactsStatement_segmentLevel', text, segmentDict, 'Basis and Impacts Statement')
-        return text + '\n\n'
+        return self._getFormattedText(text, endText='\n\n')
 
     def _endSegment(self, segmentDict):
         # Reset to empty dictionary
@@ -567,39 +562,56 @@ class Format(FormatTemplate.Formatter):
         self._setVal('vtecRecords', vtecString, sectionDict, editable=False)
         return vtecString
 
+    def _emergencyHeadline(self, sectionDict):
+        # FFW_FFS will only have one hazard per section
+        headline = ''
+        hazard = sectionDict.get('hazardEvents')[0]
+        includeChoices = hazard.get('include')
+        if includeChoices and 'ffwEmergency' in includeChoices:
+            # Get saved value from productText table if available
+            headline = self._getVal('emergencyHeadline', sectionDict)
+            if headline is None:
+                headline = '...Flash Flood Emergency for ' + hazard.get('includeEmergencyLocation') + '...'
+            self._setVal('emergencyHeadline', headline, sectionDict, 'Emergency Headline')
+        return self._getFormattedText(headline, endText='\n\n')
+
     def _attribution(self, sectionDict):
         # Get saved value from productText table if available
         attribution = self._getVal('attribution', sectionDict)
-        if not attribution:
+        if attribution is None:
             attribution = self.attributionFirstBullet.getAttributionText()
         self._setVal('attribution', attribution, sectionDict, 'Attribution')
-        return attribution + '\n\n'
+        return self._getFormattedText(attribution, endText='\n\n')
 
     def _attribution_point(self, sectionDict):
         # Get saved value from productText table if available
         attribution = self._getVal('attribution_point', sectionDict)
-        if not attribution:
+        if attribution is None:
             attribution = self.attributionFirstBullet.getAttributionText()
         self._setVal('attribution_point', attribution, sectionDict, 'Attribution')
-        return attribution + '\n\n'
+        return self._getFormattedText(attribution, endText='\n\n')
 
     def _firstBullet(self, sectionDict):
         # Get saved value from productText table if available
         firstBullet = self._getVal('firstBullet', sectionDict)
-        if not firstBullet:
+        if firstBullet is None:
             firstBullet = self.attributionFirstBullet.getFirstBulletText()
         self._setVal('firstBullet', firstBullet, sectionDict, 'First Bullet')
-        return '* ' + firstBullet + '\n\n'
+        startText = '* '
+        if (self._runMode == 'Practice'):
+            startText += "This is a test message.  "
+        return self._getFormattedText(firstBullet, startText=startText, endText='\n\n')
 
     def _firstBullet_point(self, sectionDict):
         # Get saved value from productText table if available
         firstBullet = self._getVal('firstBullet_point', sectionDict)
-        if not firstBullet:
-            firstBullet += self.attributionFirstBullet.getFirstBulletText()
+        if firstBullet is None:
+            firstBullet = self.attributionFirstBullet.getFirstBulletText()
         self._setVal('firstBullet_point', firstBullet, sectionDict, 'First Bullet')
+        startText = ''
         if sectionDict.get('vtecRecord').get('act') == 'NEW':
-            firstBullet = '* ' + firstBullet
-        return firstBullet + '\n'
+            startText = '* '
+        return self._getFormattedText(firstBullet, startText=startText, endText='\n')
 
     def _timeBullet(self, sectionDict, roundMinutes=15):
         '''
@@ -608,17 +620,13 @@ class Format(FormatTemplate.Formatter):
         - Into the next day . . . should include day
         - More than 1 week . . . should include date
         '''
+        # Get the endTime from the first hazard
+        hazard = sectionDict.get('hazardEvents', None)[0]
+
         # Get saved value from productText table if available
         bulletText = self._getVal('timeBullet', sectionDict)
-        if not bulletText:
-            bulletText = ''
-
-            # Get the endTime from the first hazard
-            hazard = sectionDict.get('hazardEvents', None)[0]
-            if (self._runMode == 'Practice' and hazard.get('geoType') != 'point'):
-                bulletText += "This is a test message.  "
-            bulletText += 'Until '
-
+        if bulletText is None:
+            bulletText = 'Until '
             endTime = hazard.get('endTime')
             expireTime = self._tpc.round(endTime, roundMinutes)
 
@@ -640,32 +648,31 @@ class Format(FormatTemplate.Formatter):
                     timeStr += '/'
                 timeStr += self._tpc.formatDatetime(expireTime, format, tz).strip()
             bulletText += timeStr + '.'
-
         self._setVal('timeBullet', bulletText, sectionDict, 'Time Bullet')
-        return '* ' + bulletText + '\n'
+
+        startText = '* '
+        if (self._runMode == 'Practice' and hazard.get('geoType') != 'point'):
+            startText += "This is a test message.  "
+        return self._getFormattedText(bulletText, startText=startText, endText='\n')
 
     def _emergencyStatement(self, sectionDict):
         # FFW_FFS will only have one hazard per section
+        statement = ''
         hazard = sectionDict.get('hazardEvents')[0]
         includeChoices = hazard.get('include')
         if includeChoices and 'ffwEmergency' in includeChoices:
             # Get saved value from productText table if available
             statement = self._getVal('emergencyStatement', sectionDict)
-            if not statement:
+            if statement is None:
                 statement = '  This is a Flash Flood Emergency for ' + hazard.get('includeEmergencyLocation') + '.'
             self._setVal('emergencyStatement', statement, sectionDict, 'Emergency Statement')
-            return statement + '\n\n'
-        else:
-            return ''
+        return self._getFormattedText(statement, endText='\n\n')
 
     def _impactsBullet(self, sectionDict):
         # Get saved value from productText table if available
         bulletText = self._getVal('impactsBullet', sectionDict)
-        if not bulletText:
+        if bulletText is None:
             bulletText = ''
-            if (self._runMode == 'Practice'):
-                bulletText += "This is a test message.  "
-
             impacts = []
             for hazard in sectionDict.get('hazardEvents'):
                 hazardImpacts = hazard.get('impacts')
@@ -673,19 +680,17 @@ class Format(FormatTemplate.Formatter):
                     impacts.append(hazardImpacts)
             if len(impacts) > 0:
                 bulletText += '\n'.join(impacts)
-            else:
-                bulletText += self._tpc.frame('(Optional) Potential impacts of flooding')
-
-        self._setVal('impactsBullet', bulletText, sectionDict, 'Impacts Bullet')
-        return '* ' + bulletText + '\n\n'
+        self._setVal('impactsBullet', bulletText, sectionDict, 'Impacts Bullet', required=False)
+        startText = '* '
+        if (self._runMode == 'Practice'):
+            startText += "This is a test message.  "
+        return self._getFormattedText(bulletText, startText=startText, endText='\n\n')
 
     def _basisAndImpactsStatement(self, sectionDict):
         # Get saved value from productText table if available
         bulletText = self._getVal('basisAndImpactsStatement', sectionDict)
-        if not bulletText:
+        if bulletText is None:
             bulletText = ''
-            if (self._runMode == 'Practice'):
-                bulletText += "This is a test message.  "
             statements = []
             hazardEventDicts = sectionDict.get('hazardEvents', [])
             rainSoFarText = self.rainSoFar(hazardEventDicts)
@@ -704,7 +709,10 @@ class Format(FormatTemplate.Formatter):
                     bulletText += '|* Current hydrometeorological situation and expected impacts *|'
 
         self._setVal('basisAndImpactsStatement', bulletText, sectionDict, 'Basis and Impacts Bullet')
-        return '* ' + bulletText + '\n\n'
+        startText = '* '
+        if (self._runMode == 'Practice'):
+            startText += "This is a test message.  "
+        return self._getFormattedText(bulletText, startText=startText, endText='\n\n')
 
     def _locationsAffected(self, sectionDict):
         vtecRecord = sectionDict.get('vtecRecord', {})
@@ -712,12 +720,9 @@ class Format(FormatTemplate.Formatter):
 
         # Get saved value from productText table if available
         locationsAffected = self._getVal('locationsAffected', sectionDict)
-        if not locationsAffected:
+        if locationsAffected is None:
             heading = ''
             locationsAffected = ''
-
-            if (self._runMode == 'Practice'):
-                heading += "This is a test message.  "
 
             # FA.W, FA.Y, and FF.W will only have one hazard per section
             hazard = sectionDict.get('hazardEvents')[0]
@@ -753,22 +758,36 @@ class Format(FormatTemplate.Formatter):
                     locationsAffected = "Some locations that will experience flooding include..."
                 else :
                     locationsAffected = "Locations impacted include..."
-                locationsAffected += self.createLocationsAffected(hazard) + '\n\n'
+                locationsAffected += self.createLocationsAffected(hazard)
             locationsAffected = heading + locationsAffected
         self._setVal('locationsAffected', locationsAffected, sectionDict, 'Locations Affected')
-        if action in ['NEW', 'EXT']:
-            locationsAffected = '* ' + locationsAffected
-        return locationsAffected
 
-    def _endingSynopsis(self, sectionDict):
+        startText = ''
+        if action in ['NEW', 'EXT']:
+            startText += '* '
+        if (self._runMode == 'Practice'):
+            startText += "This is a test message.  "
+        return self._getFormattedText(locationsAffected.rstrip(),startText=startText, endText='\n\n')
+
+    def _endingSynopsis(self, dictionary):
         # Get saved value from productText table if available
-        text = self._getSavedVal('endingSynopsis', sectionDict)
-        if not text:
+        text = self._getVal('endingSynopsis', dictionary)
+        if text is None:
+            text = ''
             endingSynopsisList = []
-            for hazard in sectionDict.get('hazardEvents', []):
-                endingSynopsis = hazard.get('endingSynopsis')
-                if endingSynopsis:
-                    endingSynopsisList.append(endingSynopsis)
+            if dictionary.get('sections', None):
+                # Segment Level
+                for section in dictionary.get('sections', []):
+                    for hazard in section.get('hazardEvents', []):
+                        endingSynopsis = hazard.get('endingSynopsis')
+                        if endingSynopsis:
+                            endingSynopsisList.append(hazard.get('endingSynopsis'))
+            else:
+                # Section Level
+                for hazard in dictionary.get('hazardEvents', []):
+                    endingSynopsis = hazard.get('endingSynopsis')
+                    if endingSynopsis:
+                        endingSynopsisList.append(endingSynopsis)
 
             if len(endingSynopsisList) > 0:
                 text = '\n'.join(endingSynopsisList)
@@ -779,8 +798,9 @@ class Format(FormatTemplate.Formatter):
                     # If still none use framed text
                     text = '|* Brief post-synopsis of hydrometeorological activity *|'
 
-        self._setVal('endingSynopsis', text, sectionDict, 'Ending Synopsis')
-        return text + '\n\n'
+        self._setVal('endingSynopsis', text, dictionary, 'Ending Synopsis')
+        return self._getFormattedText(text, endText='\n\n')
+
     ###################### Utility methods
 
     def rainSoFar(self, hazardEventDicts):
@@ -818,12 +838,10 @@ class Format(FormatTemplate.Formatter):
         synopsisKey = 'overviewSynopsis_' + productLabel
         synopsis = self._getVal(synopsisKey, productDict)
 
-        if not synopsis:
+        if synopsis is None:
             synopsis = productDict.get(synopsisKey, '')
-        self._setVal('overviewSynopsis_' + productLabel, synopsis, productDict, 'Overview Synopsis')
-        if synopsis:
-            synopsis += '\n\n'
-        return synopsis
+        self._setVal('overviewSynopsis_' + productLabel, synopsis, productDict, 'Overview Synopsis', required=False)
+        return self._getFormattedText(synopsis, endText='\n\n')
 
     def setSiteInfo(self):
         # Primary Site
@@ -956,7 +974,7 @@ class Format(FormatTemplate.Formatter):
         return self._tpc.getFormattedTime(
                 time_ms, format, stripLeading=stripLeading, timeZones=timeZones)
 
-    def _setVal(self, key, value, dictionary, label=None, editable=True, displayable=True):
+    def _setVal(self, key, value, dictionary, label=None, editable=True, displayable=True, required=True):
         '''
         Helper method to call _setVal() in TextProductCommon. This method automatically
         sets the productCategory=self._productCategory, productID='', and editable=True
@@ -964,13 +982,15 @@ class Format(FormatTemplate.Formatter):
         '''
         eventIDs, ugcList = self._tpc.parameterSetupForKeyInfo(dictionary)
         self._tpc.setVal(self._editableParts, key, value, editable=editable, eventIDs=eventIDs,
-                         segment=ugcList, label=label, displayable=displayable,
+                         segment=ugcList, label=label, displayable=displayable, required=required,
                          productCategory=self._productCategory, productID='')
 
     def _getVal(self, key, dictionary):
         '''
         Helper method that will either get the value of the product part from the productTextTable or
         self._editableParts if it was passed into the formatter.
+        
+        Could return a string, a empty string, or None.
         '''
         eventIDs, ugcList = self._tpc.parameterSetupForKeyInfo(dictionary)
         if self._useProductTextTable:
@@ -986,6 +1006,19 @@ class Format(FormatTemplate.Formatter):
         '''
         return self._tpc.getSavedVal(key, eventIDs=eventIDs, segment=ugcList, 
                                      productCategory=self._productCategory, productID='')
+
+    def _getFormattedText(self, text, startText='', endText=''):
+        '''
+        Utility method to add beginning and ending text to a string only
+        if the string exists. Otherwise it returns a empty string.
+        
+        @param text: text for a specific product part
+        @param startText: text that should come before the product part text
+        @param endText: text that should follow the product part text
+        '''
+        if text:
+            return startText + text + endText
+        return ''
 
     def flush(self):
         ''' Flush the print buffer '''

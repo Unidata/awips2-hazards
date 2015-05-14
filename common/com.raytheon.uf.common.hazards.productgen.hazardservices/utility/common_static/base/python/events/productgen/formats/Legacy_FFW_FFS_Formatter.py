@@ -13,6 +13,8 @@
     Apr 27, 2015    7579    Robert.Blum Removed non-editable fields from product editor.
     Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
     May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
+    May 14, 2015    7376    Robert.Blum Changed to look for only None and not
+                                        empty string.
 '''
 
 
@@ -91,16 +93,13 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     def _timeBullet(self, sectionDict):
         bulletText = super(Format, self)._timeBullet(sectionDict)
-        return bulletText + '\n'
+        return self._getFormattedText(bulletText, endText='\n')
 
     def _basisBullet(self, sectionDict):
         # Get saved value from productText table if available
         bulletText = self._getVal('basisBullet', sectionDict)
-        if not bulletText:
+        if bulletText is None:
             bulletText = ''
-            if self._runMode == 'Practice':
-                bulletText += 'This is a test message.  '
-
             vtecRecord = sectionDict.get('vtecRecord')
             phen = vtecRecord.get('phen')
             sig = vtecRecord.get('sig')
@@ -110,7 +109,6 @@ class Format(Legacy_Hydro_Formatter.Format):
             hazardType = phen + '.' + sig + '.' + subType
             basis = self.basisText.getBulletText(hazardType, hazards[0])
             basis = self._tpc.substituteParameters(hazards[0], basis)
-
             if basis is None :
                  basis = '...Flash Flooding was reported'
 
@@ -120,7 +118,11 @@ class Format(Legacy_Hydro_Formatter.Format):
             bulletText += 'At ' + eventTime.rstrip()
             bulletText += basis
         self._setVal('basisBullet', bulletText, sectionDict, 'Basis Bullet')
-        return '* ' + bulletText + '\n\n'
+
+        startText = '* '
+        if (self._runMode == 'Practice'):
+            startText += "This is a test message.  "
+        return self._getFormattedText(bulletText, startText=startText, endText='\n\n')
 
     def _damInfo(self):
         from MapsDatabaseAccessor import MapsDatabaseAccessor

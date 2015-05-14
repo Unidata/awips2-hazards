@@ -6,6 +6,8 @@
     ------------ ---------- ----------- --------------------------
     Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
     May 07, 2015    6979    EditableEntries are passed in for reuse.
+    May 14, 2015    7376    Robert.Blum Changed to look for only None and not
+                                        empty string.
 '''
 import FormatTemplate
 
@@ -49,10 +51,9 @@ class Format(Legacy_Hydro_Formatter.Format):
     def _narrativeForecastInformation(self, sectionDict):
         # Get saved value from productText table if available
         narrative = self._getVal('narrativeForecastInformation', sectionDict)
-        if not narrative:
+        if narrative is None:
             # ESF sections will only contain one hazard
             hazard = sectionDict.get('hazardEvents')[0]
             narrative = hazard.get('narrativeForecastInformation', '')
         self._setVal('narrativeForecastInformation', narrative, sectionDict, 'Narrative Forecast Information')
-        return narrative
-    
+        return self._getFormattedText(narrative, endText='\n\n$$\n\n')

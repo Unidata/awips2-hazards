@@ -26,6 +26,9 @@
    May 11, 2015   7918      Robert.Blum         Time adjustments for summary headlines and added method
                                                 to compare dictionaries.
    May 07, 2015   6979      Robert.Blum         Changes for KeyInfo labels.
+   May 14, 2015   7376      Robert.Blum         Adding the required field to the KeyInfo objects also
+                                                returning None instead of a empty string when reading
+                                                from the productText table and there is nothing to return.
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -270,11 +273,11 @@ class TextProductCommon(object):
     def getSavedVal(self, key, eventIDs=None, segment=None, productCategory=None, productID=None):
         '''
         Retrieves any user edited text from the productText table if available.
-        Otherwise it returns a emtpy string.
+        Otherwise it returns None.
         '''
-        value = ''
+        value = None
         if None in [key, productCategory, productID, eventIDs, segment]:
-            return value
+            return None
         productTextList = ProductTextUtil.retrieveProductText(key, productCategory, productID, segment, eventIDs)
         if len(productTextList) > 0:
             value = productTextList[0].getValue()
@@ -282,18 +285,20 @@ class TextProductCommon(object):
 
     def setVal(self, dictionary, key, value, editable=False, eventIDs=None, segment=None,
                   label=None, productCategory=None, productID=None, displayable=False,
-                  useKeyAsLabel=False):
+                  required=True, useKeyAsLabel=False):
         '''
         Utility method to add a value to a dictionary. It will create the KeyInfo key
         if editable or displayable are set to true. Otherwise it adds the value to 
         dictionary using the default key provided.
         '''
         if editable:
-            userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, True, label=label, eventIDInLabel=True)
+            userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, True, 
+                                    label=label, eventIDInLabel=True, required=required)
         elif displayable:
             if useKeyAsLabel: label = key
             if label is None: label = ''
-            userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, editable=False, displayable=True, label=label, eventIDInLabel=True) 
+            userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, editable=False,
+                                    displayable=True, label=label, eventIDInLabel=True, required=required)
         else:
             userEditedKey = key
 

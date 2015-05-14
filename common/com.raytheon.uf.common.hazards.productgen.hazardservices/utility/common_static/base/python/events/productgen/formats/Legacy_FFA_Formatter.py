@@ -13,6 +13,8 @@
     Apr 16, 2015 7579       Robert.Blum Updates for amended Product Editor.
     Apr 30, 2015 7579       Robert.Blum Changes for multiple hazards per section.
     May 07, 2015 6979       Robert.Blum EditableEntries are passed in for reuse.
+    May 14, 2015 7376       Robert.Blum Changed to look for only None and not
+                                        empty string.
 '''
 
 import datetime, collections
@@ -91,20 +93,19 @@ class Format(Legacy_Hydro_Formatter.Format):
     ################# Section Level
 
     def _timeBullet(self, sectionDict):
+        endText = ''
         timeBullet = super(Format, self)._timeBullet(sectionDict)
         hazards = sectionDict.get('hazardEvents', [])
         # All hazards in the section should have the same geoType
         if hazards[0].get('geoType', '') == 'area':
-            timeBullet+= '\n'
-        return timeBullet
+            endText += '\n'
+        return self._getFormattedText(timeBullet, endText=endText)
 
     def _basisBullet(self, sectionDict):
         # Get saved value from productText table if available
         bulletText = self._getVal('basisBullet', sectionDict)
-        if not bulletText:
+        if bulletText is None:
             bulletText = ''
-            if (self._runMode == 'Practice'):
-                bulletText += "This is a test message.  "
             # Could be multiple events - combine the basisStatements from the HID
             hazards = sectionDict.get('hazardEvents')
             basisStatements = []
@@ -117,4 +118,8 @@ class Format(Legacy_Hydro_Formatter.Format):
             else:
                 bulletText += '|* current hydrometeorological basis *|'
         self._setVal('basisBullet', bulletText, sectionDict, 'Basis Bullet')
-        return '* ' + bulletText + '\n\n'
+
+        startText = '* '
+        if (self._runMode == 'Practice'):
+            startText += "This is a test message.  "
+        return self._getFormattedText(bulletText, startText=startText, endText='\n\n')
