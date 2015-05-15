@@ -75,6 +75,7 @@ import com.vividsolutions.jts.geom.Point;
  * Feb 12, 2015 4959       Dan Schaffer      Modify MB3 add/remove UGCs to match Warngen
  * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
  * Apr 10, 2015 6898       Chris.Cody        Removed modelChanged legacy messaging method
+ * May 15, 2015 7935       Chris.Cody        Fixed NPE caused by immediate HS close after opening
  * </pre>
  * 
  * @author Chris.Golden
@@ -134,8 +135,6 @@ public class SpatialPresenter extends
      * Update the event areas drawn in the spatial view.
      */
     public void updateSpatialDisplay() {
-        getView().setUndoEnabled(getModel().isUndoable());
-        getView().setRedoEnabled(getModel().isRedoable());
 
         /**
          * TODO For reasons that are not clear to Chris Golden and Dan Schaffer,
@@ -146,11 +145,17 @@ public class SpatialPresenter extends
          * why this method is called in the old one when you switch
          * perspectives.
          */
-
+        ISpatialView<?, ?> spatialView = getView();
+        if (spatialView == null) {
+            return;
+        }
         ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = getModel();
         if (sessionManager == null) {
             return;
         }
+
+        spatialView.setUndoEnabled(sessionManager.isUndoable());
+        spatialView.setRedoEnabled(sessionManager.isRedoable());
 
         ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
                 .getEventManager();
@@ -181,10 +186,10 @@ public class SpatialPresenter extends
          * TODO It might be possible to optimize here by checking if the events
          * have changed before displaying.
          */
-        getView().drawEvents(events, eventOverlapSelectedTime,
+        spatialView.drawEvents(events, eventOverlapSelectedTime,
                 forModifyingStormTrack, eventEditability,
-                getModel().isAutoHazardCheckingOn(),
-                getModel().areHatchedAreasDisplayed());
+                sessionManager.isAutoHazardCheckingOn(),
+                sessionManager.areHatchedAreasDisplayed());
 
     }
 
