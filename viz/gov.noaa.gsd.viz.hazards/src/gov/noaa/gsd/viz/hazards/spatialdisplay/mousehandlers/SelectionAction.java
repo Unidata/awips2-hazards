@@ -77,6 +77,7 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      If the user moused over the circle in the middle
  *                                      then the storm polygon became un-editable.
  * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
+ * May 20, 2015 6730       mduff        Fix to not zoom on middle mouse button click to remove vertex.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -251,7 +252,7 @@ public class SelectionAction extends NonDrawingAction {
                 if (getSpatialDisplay().getSelectedHazardLayer() != null) {
                     handleVertexAdditionOrDeletion();
                 }
-                result = false;
+                result = true;
             } else if (isVertexMove) {
                 handleVertexMove();
 
