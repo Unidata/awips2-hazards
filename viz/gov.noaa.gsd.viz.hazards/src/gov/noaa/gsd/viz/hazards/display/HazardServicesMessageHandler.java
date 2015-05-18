@@ -216,7 +216,9 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            has completed and return no hazard events.
  * Apr 10, 2015  6898       Chris.Cody        Refactored async messaging
  * May 07, 2015  6979      Robert.Blum        Added events to the productGeneratorInformation for 
- *                                            product corrections. 
+ *                                            product corrections.
+ * May 18, 2015  6898       Chris.Cody        Restored set visible types for recommender completion
+ * 
  * </pre>
  * 
  * @author bryon.lawrence
@@ -487,7 +489,6 @@ public final class HazardServicesMessageHandler {
          * Make sure the updated hazard type is a part of the visible types in
          * the current setting. If not, add it.
          */
-
         ISettings modSettings = configManager.getSettings();
         Set<String> visibleTypes = modSettings.getVisibleTypes();
         int startSize = visibleTypes.size();
@@ -496,6 +497,8 @@ public final class HazardServicesMessageHandler {
             visibleTypes.add(HazardEventUtilities.getHazardType(event));
         }
         if (startSize != visibleTypes.size()) {
+
+            modSettings.setVisibleTypes(visibleTypes);
             configManager.updateCurrentSettings(modSettings, Originator.OTHER);
         }
 
