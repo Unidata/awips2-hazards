@@ -19,15 +19,10 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ASCII_PRODUCT_KEY;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NULL_PRODUCT_GENERATOR;
-
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map.Entry;
 
-import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
@@ -44,6 +39,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
  * May 29, 2013 1257       bsteffen    Initial creation
  * Apr 24, 2014 1480       jsanchez    Added getProductFormats method.
  * Feb 15, 2015 2271       Dan Schaffer Incur recommender/product generator init costs immediately
+ * May 18, 2015 8227       Chris.Cody   Remove NullRecommender
  * </pre>
  * 
  * @author bsteffen
@@ -76,10 +72,6 @@ public class ProductGeneratorTable extends
                     .getIssueFormatters()));
             productFormats.setPreviewFormats(Arrays.asList(entry
                     .getPreviewFormatters()));
-        } else if (productGeneratorName.equals(NULL_PRODUCT_GENERATOR)) {
-            List<String> formats = Lists.newArrayList(ASCII_PRODUCT_KEY);
-            productFormats.setIssueFormats(formats);
-            productFormats.setPreviewFormats(formats);
         }
 
         return productFormats;

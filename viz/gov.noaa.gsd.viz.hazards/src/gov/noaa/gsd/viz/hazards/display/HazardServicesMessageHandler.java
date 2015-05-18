@@ -218,6 +218,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * May 07, 2015  6979      Robert.Blum        Added events to the productGeneratorInformation for 
  *                                            product corrections.
  * May 18, 2015  6898       Chris.Cody        Restored set visible types for recommender completion
+ * May 20, 2015  8227      Chris.Cody         Remove NullRecommender
  * 
  * </pre>
  * 
@@ -311,6 +312,7 @@ public final class HazardServicesMessageHandler {
      *            The name of the recommender to run.
      */
     public void runRecommender(String recommenderName) {
+
         AbstractRecommenderEngine<?> recommenderEngine = appBuilder
                 .getSessionManager().getRecommenderEngine();
 
@@ -474,8 +476,7 @@ public final class HazardServicesMessageHandler {
          * If no events recommended then display message box declaring that the
          * recommender has completed.
          */
-        if (eventList.isEmpty()
-                && toolAction.getToolName().equals("NullRecommender") == false) {
+        if (eventList.isEmpty()) {
             Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                     .getShell();
             RecommenderCompletedMessageBox msgBox = new RecommenderCompletedMessageBox(
@@ -1356,7 +1357,6 @@ public final class HazardServicesMessageHandler {
     @Handler
     public void productEditorActionOccurred(
             final ProductEditorAction productEditorAction) {
-
         handleProductDisplayAction(productEditorAction);
     }
 
@@ -1617,7 +1617,6 @@ public final class HazardServicesMessageHandler {
     @Handler(priority = 1)
     public void handleProductGenerationCompletion(
             IProductGenerationComplete productGenerationComplete) {
-
         if (productGenerationComplete.isIssued() == true) {
             sessionEventManager
                     .processProductGenerationComplete(productGenerationComplete);

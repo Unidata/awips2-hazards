@@ -72,6 +72,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Feb 17, 2015 3847      Chris.Golden  Added edit-rise-crest-fall metadata trigger constant.
  * Feb 19, 2015 5071      Robert.Blum   Added HAZARD_CATEGORIES_LOCALIZATION_DIR
  * Feb 23, 2015 3618      Chris.Golden  Added possible sites to settings.
+ * May 18, 2015 8227      Chris.Cody    Remove NullRecommender
  * </pre>
  * 
  * @author mnash
@@ -575,12 +576,6 @@ public final class HazardConstants {
      */
     public static final String PRODUCTS = "products";
 
-    /**
-     * The null product generator run at Hazard Services startup so that the
-     * product generation framework can be initialized immediately.
-     */
-    public static final String NULL_PRODUCT_GENERATOR = "Null_ProductGenerator";
-
     public static final String ISSUE_FLAG = "issueFlag";
 
     public static final String CORRECTION_FLAG = "correctionFlag";
@@ -658,12 +653,6 @@ public final class HazardConstants {
      * Maximum initial height key.
      */
     public static final String MAX_INITIAL_HEIGHT_KEY = "maxInitialHeight";
-
-    /**
-     * The null recommender run at Hazard Services startup so that the
-     * recommender framework can be initialized immediately.
-     */
-    public static final String NULL_RECOMMENDER = "NullRecommender";
 
     /*
      * The following are related to hazard geometries and their supporting meta

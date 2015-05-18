@@ -25,7 +25,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.MAPDATA_COUNTY;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NULL_PRODUCT_GENERATOR;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
@@ -195,6 +194,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Apr 27, 2015 7224       Robert.Blum  Added eventIDs and phensigs of products being issued to the
  *                                      product generation confirmation dialog.
  * May 07, 2015 6979       Robert.Blum  Changes for product corrections.
+ * May 18, 2015 8227       Chris.Cody   Remove NullRecommender
  * </pre>
  * 
  * @author bsteffen
@@ -910,18 +910,16 @@ public class SessionProductManager implements ISessionProductManager {
     public void generateProducts(String productGeneratorName) {
         List<ObservedHazardEvent> selectedEvents = eventManager
                 .getSelectedEvents();
-        if (!productGeneratorName.equals(NULL_PRODUCT_GENERATOR)) {
-            if (!areValidEvents(selectedEvents, false)) {
-                return;
-            }
+        if (!areValidEvents(selectedEvents, false)) {
+            return;
+        }
 
-            boolean matchingAllowedHazards = isAtLeastOneSelectedAllowed(
-                    productGeneratorName, selectedEvents);
-            if (!matchingAllowedHazards) {
-                messenger.getWarner().warnUser("Product Generation Error",
-                        "Generation not supported for selected hazards");
-                return;
-            }
+        boolean matchingAllowedHazards = isAtLeastOneSelectedAllowed(
+                productGeneratorName, selectedEvents);
+        if (!matchingAllowedHazards) {
+            messenger.getWarner().warnUser("Product Generation Error",
+                    "Generation not supported for selected hazards");
+            return;
         }
         Collection<ProductGeneratorInformation> allProductGeneratorInfo = productGeneratorInfoFromName(
                 productGeneratorName, selectedEvents);
@@ -1476,7 +1474,8 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     private boolean areYouSure(String eventLabel) {
-        boolean answer = messenger.getQuestionAnswerer()
+        boolean answer = messenger
+                .getQuestionAnswerer()
                 .getUserAnswerToQuestion(
                         "Are you sure "
                                 + "you want to issue the following hazard event(s)?\n\n"
@@ -1874,9 +1873,9 @@ public class SessionProductManager implements ISessionProductManager {
             StringBuilder sb) {
         // Get all the events that will be issued and create a String to be
         // used on the confirmation dialog.
-        if ( productGeneratorInformation.getProductEvents() !=  null){
+        if (productGeneratorInformation.getProductEvents() != null) {
             for (IHazardEvent hazardEvent : productGeneratorInformation
-                .getProductEvents()) {
+                    .getProductEvents()) {
                 sb.append(hazardEvent.getEventID()).append(" ")
                         .append(hazardEvent.getPhenomenon()).append(".")
                         .append(hazardEvent.getSignificance()).append("\n");

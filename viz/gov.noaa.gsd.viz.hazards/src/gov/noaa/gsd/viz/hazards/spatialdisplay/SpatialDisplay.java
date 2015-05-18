@@ -8,15 +8,12 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NULL_PRODUCT_GENERATOR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NULL_RECOMMENDER;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
-import gov.noaa.gsd.viz.hazards.display.action.ToolAction.RecommenderActionEnum;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDrawableBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
@@ -398,20 +395,6 @@ public class SpatialDisplay extends
                             .getCurrentSettings();
                     ((SpatialDisplayResourceData) getResourceData())
                             .setSettings(observedSettings);
-                    Tool nullRecommenderTool = observedSettings
-                            .getTool(NULL_RECOMMENDER);
-                    ToolAction nullRecommenderAction = new ToolAction(
-                            RecommenderActionEnum.RUN_RECOMENDER,
-                            nullRecommenderTool);
-                    eventBus.publishAsync(nullRecommenderAction);
-
-                    Tool nullProductGeneratorTool = observedSettings
-                            .getTool(NULL_PRODUCT_GENERATOR);
-                    ToolAction nullProductGeneratorAction = new ToolAction(
-                            RecommenderActionEnum.RUN_RECOMENDER,
-                            nullProductGeneratorTool);
-                    eventBus.publishAsync(nullProductGeneratorAction);
-
                 }
 
             }
