@@ -76,6 +76,8 @@ import com.vividsolutions.jts.geom.Point;
  * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
  * Apr 10, 2015 6898       Chris.Cody        Removed modelChanged legacy messaging method
  * May 15, 2015 7935       Chris.Cody        Fixed NPE caused by immediate HS close after opening
+ * May 19, 2015 4781       Robert.Blum       Removed filtering of pending hazards they should always
+ *                                           be visible on the spatial display.
  * </pre>
  * 
  * @author Chris.Golden
@@ -332,14 +334,15 @@ public class SpatialPresenter extends
              * Test for unissued storm track operations. These should not be
              * filtered out by time.
              */
-            if (!(event.getHazardAttribute(HazardConstants.TRACK_POINTS) != null && !HazardStatus
-                    .hasEverBeenIssued(event.getStatus()))) {
+            if (event.getStatus() != HazardStatus.PENDING) {
+                if (!(event.getHazardAttribute(HazardConstants.TRACK_POINTS) != null && !HazardStatus
+                        .hasEverBeenIssued(event.getStatus()))) {
 
-                if (!doesEventOverlapSelectedTime(event, selectedTime)) {
-                    it.remove();
+                    if (!doesEventOverlapSelectedTime(event, selectedTime)) {
+                        it.remove();
+                    }
                 }
             }
-
         }
     }
 
