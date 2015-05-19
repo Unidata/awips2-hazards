@@ -289,6 +289,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * May 14, 2015    7560    mpduff       Trying to get the Time Range to update from Graphical Editor.
  * May 19, 2015    7975    Robert.Blum  Fixed bug that could incorrectly set the hazard status to ended
  *                                      if it was reverted and contained the REPLACED_BY attribute.
+ * May 19, 2015    7706    Robert.Blum  Fixed bug when checking for conflicts where it would check hazards
+ *                                      that were ended.
  * 
  * </pre>
  * 
@@ -2970,7 +2972,8 @@ public class SessionEventManager implements
                             HazardStatus.ISSUED);
                     hazardQueryBuilder.addKey(HAZARD_EVENT_STATUS,
                             HazardStatus.ENDING);
-
+                    hazardQueryBuilder.addKey(HAZARD_EVENT_STATUS,
+                            HazardStatus.ENDED);
                     hazardQueryBuilder.addKey(HAZARD_EVENT_STATUS,
                             HazardStatus.PROPOSED);
 
@@ -3074,20 +3077,40 @@ public class SessionEventManager implements
                 getEvents());
         Map<String, IHazardEvent> sessionEventMap = new HashMap<>();
 
-        for (IHazardEvent sessionEvent : eventsToCheck) {
-            sessionEventMap.put(sessionEvent.getEventID(), sessionEvent);
+        for (IHazardEvent sessionEvent : new ArrayList<IHazardEvent>(
+                eventsToCheck)) {
+            if (sessionEvent.getStatus() != HazardStatus.ENDED) {
+                sessionEventMap.put(sessionEvent.getEventID(), sessionEvent);
+            } else {
+                eventsToCheck.remove(sessionEvent);
+            }
         }
 
         for (String eventID : eventMap.keySet()) {
-            HazardHistoryList historyList = eventMap.get(eventID);
-            IHazardEvent eventFromManager = historyList.get(0);
-
             if (!sessionEventMap.containsKey(eventID)) {
-                if (eventFromManager.getStatus() != HazardStatus.ENDED) {
-                    eventsToCheck.add(eventFromManager);
+                HazardHistoryList historyList = eventMap.get(eventID);
+
+                // Find the hazard in the history list with the most recent time
+                if (historyList != null && historyList.isEmpty() == false) {
+                    IHazardEvent eventFromManager = historyList.get(0);
+                    Long latestTime = eventFromManager.getInsertTime()
+                            .getTime();
+
+                    for (int count = 1; count < historyList.size(); count++) {
+                        IHazardEvent hazardEvent = historyList.get(count);
+                        Long hazardTime = hazardEvent.getInsertTime().getTime();
+
+                        if (hazardTime > latestTime) {
+                            latestTime = hazardTime;
+                            eventFromManager = hazardEvent;
+                        }
+                    }
+
+                    if (eventFromManager.getStatus() != HazardStatus.ENDED) {
+                        eventsToCheck.add(eventFromManager);
+                    }
                 }
             }
-
         }
 
         return eventsToCheck;
