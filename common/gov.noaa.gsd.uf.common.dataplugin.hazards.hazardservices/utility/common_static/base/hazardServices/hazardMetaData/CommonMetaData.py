@@ -550,7 +550,7 @@ class MetaData(object):
                 "productString": 
                 '''The heavy rain has ended...and flooding is no longer expected to pose a threat.''',}
  
-    def getRiver(self, editable=True):
+    def getRiver(self):
         riverName = self.hazardEvent.get('riverName','')
         return {
              "fieldType": "Text",
@@ -559,7 +559,7 @@ class MetaData(object):
              "label" : "River name:",
              "maxChars": 40,
              "visibleChars": 12,
-             "editable": editable,
+             "editable": True,
              "values": riverName,
             } 
 

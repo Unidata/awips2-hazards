@@ -60,7 +60,7 @@ class MetaData(CommonMetaData.MetaData):
                      self.getSource(hydrologicCause),
                      self.getAdditionalInfo(),
                      self.getScenario(),
-                     self.getRiver(editable=False),
+                     self.getRiver(),
                      self.getFloodLocation(),
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
