@@ -288,6 +288,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Apr 27, 2015 7635       Robert.Blum  Added current config site to list of visible sites for 
  *                                      when settings have not been overridden.
  * May 14, 2015    7560    mpduff       Trying to get the Time Range to update from Graphical Editor.
+ * May 19, 2015    7975    Robert.Blum  Fixed bug that could incorrectly set the hazard status to ended
+ *                                      if it was reverted and contained the REPLACED_BY attribute.
  * 
  * </pre>
  * 
@@ -683,6 +685,7 @@ public class SessionEventManager implements
             baseEvent.removeHazardAttribute(VTEC_CODES);
             baseEvent.removeHazardAttribute(ETNS);
             baseEvent.removeHazardAttribute(PILS);
+            baseEvent.removeHazardAttribute(REPLACED_BY);
 
             /*
              * The originator should be the session manager, since the addition
@@ -1993,6 +1996,8 @@ public class SessionEventManager implements
                 switch (newStatus) {
                 case ISSUED:
                     event.addHazardAttribute(ATTR_ISSUED, true);
+                    // Remove this incase the hazard was reverted
+                    event.removeHazardAttribute(REPLACED_BY);
                     needsPersist = true;
                     break;
                 case PROPOSED:
