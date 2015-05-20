@@ -160,6 +160,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Apr 09, 2015    7382    Chris.Golden      Added "show start-end time sliders" flag.
  * Apr 10, 2015    6898    Chris.Cody        Removed modelChanged legacy messaging method
  * Apr 15, 2015    3508    Chris.Golden      Added "hazard detail to be wide" flag.
+ * May 20, 2015    8192    Chris.Cody        Set HID Durations for new Events on type selection
  * </pre>
  * 
  * @author Chris.Golden
@@ -1428,6 +1429,7 @@ public class HazardDetailPresenter extends
         if (selectedEventDisplayables.equals(eventDisplayables) == false) {
             selectedEventDisplayables = eventDisplayables;
             updateViewSelectedEvents();
+            updateViewVisibleEvent();
         }
     }
 
