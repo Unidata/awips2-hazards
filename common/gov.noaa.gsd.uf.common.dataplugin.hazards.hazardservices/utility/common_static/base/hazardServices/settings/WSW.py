@@ -27,23 +27,12 @@ WSW = {
         "zoom": 7
     }, 
     "defaultCategory": "Winter Weather", 
-    "possibleSites": [
-                      "BOU",
-                      "PUB",
-                      "GJT",
-                      "CYS",
-                      "OAX",
-                      "FSD",
-                      "DMX",
-                      "GID",
-                      "EAX",
-                      "TOP",
-                      "RAH"
-    ],
-    "visibleSites": [
-        "BOU", 
-        "OAX"
-    ], 
+    #The following variable needs to be overridden at the site level e.g. 
+    #    Example:  "possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
+    "possibleSites": [],
+    #The following variable needs to be overridden at the site level
+    #    Example:  "visibleSites":  ["BOU", "OAX"]
+    "visibleSites": [], 
     "defaultDuration": 28800000, 
     "visibleColumns": [
         "Event ID",
