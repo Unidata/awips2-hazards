@@ -170,6 +170,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Mar 19, 2015 6938       mduff        Increased size of handlebars to 1.5 mag.
  * Apr 03, 2015 6815       mduff        Fix memory leak.
  * May 05, 2015 7624       mduff        Drawing Optimizations.
+ * May 21, 2015 7730       Chris.Cody   Move Add/Delete Vertex to top of Context Menu
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1194,6 +1195,24 @@ public class SpatialDisplay extends
                 .getSpatialPresenter(), sessionManager);
         List<IAction> actions = new ArrayList<>();
 
+        IAction action = null;
+        // This isn't the best way to determine this, but not sure what to do at
+        // the moment.
+        boolean drawCursor = spatialView
+                .isCurrentCursor(SpatialViewCursorTypes.DRAW_CURSOR);
+        boolean moveCursor = spatialView
+                .isCurrentCursor(SpatialViewCursorTypes.MOVE_VERTEX_CURSOR);
+        String menuLabel = null;
+        if (moveCursor) {
+            menuLabel = HazardConstants.CONTEXT_MENU_DELETE_VERTEX;
+        } else if (drawCursor) {
+            menuLabel = HazardConstants.CONTEXT_MENU_ADD_VERTEX;
+        }
+        if (menuLabel != null) {
+            action = helper.newTopLevelAction(menuLabel);
+            actions.add(action);
+        }
+
         ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
                 .getEventManager();
         List<IContributionItem> items = helper
@@ -1203,23 +1222,15 @@ public class SpatialDisplay extends
                     .newAction(ContextMenuHelper.ContextMenuSelections.REMOVE_POTENTIAL_HAZARDS
                             .getValue()));
         }
-        IAction action = helper.createMenu("Manage hazards",
+        action = helper.createMenu("Manage hazards",
                 items.toArray(new IContributionItem[0]));
 
         if (action != null) {
             actions.add(action);
         }
 
-        // This isn't the best way to determine this, but not sure what to do at
-        // the moment.
-        boolean drawCursor = spatialView
-                .isCurrentCursor(SpatialViewCursorTypes.DRAW_CURSOR);
-        boolean moveCursor = spatialView
-                .isCurrentCursor(SpatialViewCursorTypes.MOVE_VERTEX_CURSOR);
-        action = helper.createMenu(
-                "Modify area...",
-                helper.getSpatialHazardItems(drawCursor, moveCursor).toArray(
-                        new IContributionItem[0]));
+        action = helper.createMenu("Modify area...", helper
+                .getSpatialHazardItems().toArray(new IContributionItem[0]));
         if (action != null) {
             actions.add(action);
         }

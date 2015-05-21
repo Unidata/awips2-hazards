@@ -19,8 +19,6 @@
  **/
 package gov.noaa.gsd.viz.hazards.contextmenu;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_ADD_VERTEX;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_DELETE_VERTEX;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 
@@ -68,6 +66,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * Feb  7, 2015 4375       Dan Schaffer Fixed duplicate context menu entries bug
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
+ * May 21, 2015 7730       Chris.Cody   Move Add/Delete Vertex to top of Context Menu
  * </pre>
  * 
  * @author mnash
@@ -273,8 +272,8 @@ public class ContextMenuHelper {
      * is used, for example, by the "Add/Remove Shapes" entry which applies to
      * hazard geometries created by the draw-by-area tool.
      */
-    public List<IContributionItem> getSpatialHazardItems(boolean drawing,
-            boolean moving) {
+    public List<IContributionItem> getSpatialHazardItems() {
+
         Set<String> itemNames = new HashSet<>();
         for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
             if (event.getHazardType() != null) {
@@ -303,11 +302,7 @@ public class ContextMenuHelper {
                 }
             }
         }
-        if (moving) {
-            itemNames.add(CONTEXT_MENU_DELETE_VERTEX);
-        } else if (drawing) {
-            itemNames.add(CONTEXT_MENU_ADD_VERTEX);
-        }
+
         List<IContributionItem> items = new ArrayList<>(itemNames.size());
         for (String itemName : itemNames) {
             items.add(newAction(itemName));
@@ -393,6 +388,17 @@ public class ContextMenuHelper {
             return result;
         }
 
+    }
+
+    public IAction newTopLevelAction(String text) {
+        IAction action = new Action(text) {
+            @Override
+            public void run() {
+                super.run();
+                handleAction(getText());
+            }
+        };
+        return action;
     }
 
     public IContributionItem newAction(String text) {
