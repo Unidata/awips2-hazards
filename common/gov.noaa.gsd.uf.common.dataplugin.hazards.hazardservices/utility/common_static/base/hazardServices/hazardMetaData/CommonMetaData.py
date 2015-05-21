@@ -1699,14 +1699,13 @@ def applyRiseCrestFallInterdependencies(triggerIdentifiers, mutableProperties):
     if len(toBeUpdated) > 0:
         from HazardConstants import MISSING_VALUE
         newMutableProperties = {}
-        from pytz import utc
         from datetime import datetime
         for identifier in toBeUpdated:
             try:
                 if mutableProperties[identifier]["values"] == MISSING_VALUE:
                     newMutableProperties[identifier + "Description"] = { "values": "missing" }
                 else:
-                    timestamp = datetime.fromtimestamp(mutableProperties[identifier]["values"] / 1000, utc)
+                    timestamp = datetime.fromtimestamp(mutableProperties[identifier]["values"] / 1000)
                     newMutableProperties[identifier + "Description"] = { "values": timestamp.strftime("%d-%b-%Y %H:%M") }
             except:
                 return None
