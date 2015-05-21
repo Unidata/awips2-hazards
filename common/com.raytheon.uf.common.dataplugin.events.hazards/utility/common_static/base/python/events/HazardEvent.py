@@ -31,6 +31,7 @@
 #    08/20/13        1360          blawrenc       Changed toStr() to __str__() for debugging
 #    12/05/13        2527          bkowal         Removed obsolete conversion methods
 #    05/13/15        8161          mduff          Changes for Jep upgrade.
+#    05/26/15        8112          Chris.Cody     Add get handling for 0 values
 # 
 #
 
@@ -159,8 +160,16 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def get(self, key, default=None):
         '''
          Get the value of the hazard attribute with given key.
+         Note that a return of 0 will be evaluated as None.
          '''
         value = JUtil.javaObjToPyVal(self.jobj.getHazardAttribute(key))
+        if isinstance(value,int) and value == 0:
+            return int(0)
+        if isinstance(value,long) and value == 0:
+            return long(0)
+        if isinstance(value,float) and value == 0:
+            return float(0.0)
+        
         if not value:
             value = default
         return value

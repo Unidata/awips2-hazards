@@ -27,7 +27,8 @@
  Date         Ticket#    Engineer    Description
  ------------ ---------- ----------- --------------------------
  May 08, 2015  6562      Chris.Cody  Initial Creation: Restructure River Forecast Points/Recommender
-                                     Legacy functions and constants imported from RiverForecastPoints.py 
+                                     Legacy functions and constants imported from RiverForecastPoints.py
+ May 21, 2015  8112      Chris.Cody  Python reads 0 values from Java methods as None. The return type is lost. 
 '''
 
 from com.raytheon.uf.common.time import SimulatedTime
@@ -212,11 +213,11 @@ class RiverForecastUtils(object):
     
     
         referenceType = filters['Reference Type']
-        depthBelowFloodStage = float(filters['Depth Below Flood Stage'])
-        flowWindowLower = filters['Flow Window Lower']
-        flowWindowUpper = filters['Flow Window Upper']
-        stageWindowLower = filters['Stage Window Lower']
-        stageWindowUpper = filters['Stage Window Upper']
+        depthBelowFloodStage = filters.get('Depth Below Flood Stage', float(0.0) )
+        flowWindowLower = filters.get('Flow Window Lower', float(0.0) )
+        flowWindowUpper = filters.get('Flow Window Upper', float(0.0) )
+        stageWindowLower = filters.get('Stage Window Lower', float(0.0) )
+        stageWindowUpper = filters.get('Stage Window Upper', float(0.0) )
         
         ### yearLookBack found only in Crests.  Expect 'None' for impacts
         yearLookBack = filters.get('Year Lookback')
@@ -243,12 +244,18 @@ class RiverForecastUtils(object):
             currentDate = riverForecastPoint.getObservedCurrentTime()
         else :
             maxFcst = riverForecastPoint.getMaximumForecastValue()
+            if maxFcst is None:
+                maxFcst = float(0.0)
             maxObs = riverForecastPoint.getObservedCurrentValue()
+            if maxObs is None:
+                maxObs = float(0.0)
             if maxFcst > maxObs :
                 referenceValue = maxFcst
             else:
                 referenceValue = maxObs
                 currentDate = riverForecastPoint.getObservedCurrentTime()
+        if referenceValue is None:
+            referenceValue = float(0.0)
                 
         ### curDateDate through minDateDate used with Crests only
         minDateDate = None
@@ -269,6 +276,12 @@ class RiverForecastUtils(object):
             upperBound = referenceValue + math.fabs(flowWindowUpper)
             floodValueStage = floodStage - math.fabs(flowStageWindow)
         else :
+            if stageWindowLower is None:
+                stageWindowLower = float(0.0)
+            if stageWindowUpper is None:
+                stageWindowUpper = float(0.0)
+            if depthBelowFloodStage is None:
+                depthBelowFloodStage = float(0.0)
             lowerBound = referenceValue - math.fabs(stageWindowLower)
             upperBound = referenceValue + math.fabs(stageWindowUpper)
             floodValueStage = floodStage - math.fabs(depthBelowFloodStage)
@@ -620,4 +633,3 @@ class RiverForecastUtils(object):
                         return riverForecastPoint
         return None
 
-    
