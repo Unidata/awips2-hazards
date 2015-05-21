@@ -3,7 +3,6 @@
 '''
 import CommonMetaData
 from HazardConstants import *
-from MapsDatabaseAccessor import MapsDatabaseAccessor
 
 class MetaData(CommonMetaData.MetaData):
     
@@ -13,15 +12,15 @@ class MetaData(CommonMetaData.MetaData):
         hydrologicCause = None
         if hazardEvent is not None:
             hydrologicCause = hazardEvent.get("hydrologicCause")
-            damName = hazardEvent.get('damName')
+            damOrLeveeName = hazardEvent.get('damOrLeveeName')
 
-        metaData = self.buildMetaDataList(self.hazardStatus, hydrologicCause, damName)
+        metaData = self.buildMetaDataList(self.hazardStatus, hydrologicCause, damOrLeveeName)
         
         return {
                 METADATA_KEY: metaData
                 }    
        
-    def buildMetaDataList(self, status, hydrologicCause, damName):
+    def buildMetaDataList(self, status, hydrologicCause, damOrLeveeName):
         
         
         addDam = [
@@ -81,56 +80,18 @@ class MetaData(CommonMetaData.MetaData):
                     self.getListOfCities(False),
                     ]
             return metaData
-        
-        if damName is not None:
-                metaData.insert(0,self.setDamNameLabel(damName))
-                
-        if hydrologicCause is not None:
-            
-            if hydrologicCause in addDam:
-                metaData.insert(6, self.getDamOrLevee(damName))
-                
-            if hydrologicCause in addVolcano:
-                metaData.insert(len(metaData)-2,self.getVolcano())
-                
+
+        if self.hazardEvent is not None:
+            if self.hazardEvent.get('cause') == 'Dam Failure' and damOrLeveeName:
+                # Ran recommender so already have the Dam/Levee name
+                metaData.insert(6,self.setDamNameLabel(damOrLeveeName))
+            elif hydrologicCause in addDam:
+                # Add the combo box to select the name
+                metaData.insert(6, self.getDamOrLevee(damOrLeveeName))
+
+        if hydrologicCause in addVolcano:
+            metaData.insert(len(metaData)-2,self.getVolcano())
         return metaData
-
-    def setDamNameLabel(self, damName):
-       
-        edit = False
-        enabled = False
-        if damName is None:
-            edit =True 
-            enabled = True
-        
-        label = {
-            "fieldName": "damNameLabel",
-            "fieldType":"Text",
-            "values": damName,
-            "valueIfEmpty": "|* Enter Dam or Levee Name *|",
-            "promptText": "Enter dam or levee name",
-            "visibleChars": 80,
-            "editable": edit,
-            "enable": enabled,
-            "bold": True,
-            "italic": True
-                }  
-        
-        group = {
-                    "fieldType": "Group",
-                    "fieldName": "damNameGroup",
-                    "label": "Dam Name: ",
-                    "leftMargin": 10,
-                    "rightMargin": 10,
-                    "topMargin": 10,
-                    "bottomMargin": 10,
-                    "expandHorizontally": True,
-                    "expandVertically": True,
-                    "fields": [label]
-                }
-        
-        return group
-
 
     def getSource(self, hydrologicCause):
         choices = self.sourceChoices(hydrologicCause)
@@ -336,7 +297,7 @@ class MetaData(CommonMetaData.MetaData):
             self.countyDispatchSource(),
             self.localLawEnforcementSource(),
             self.corpsOfEngineersSource(),
-            self.bureauOfReclamationSource(),            
+            self.bureauOfReclamationSource(),
             self.publicSource(),
             self.gaugesSource(),
             self.civilAirPatrolSource(),
@@ -381,49 +342,7 @@ class MetaData(CommonMetaData.MetaData):
     # <damInfoBullet bulletGroup="ruleofthumb" bulletText="rule of thumb" bulletName="BranchedOakruleofthumb"  parseString="FLOOD WAVE ESTIMATE"/>
     # </damInfoBullets> 
     #           
-    def getDamOrLevee(self, damOrLeveeName):
 
-        
-        if damOrLeveeName is None:
-            damOrLevee = {
-            "fieldName": "damOrLeveeName",
-            "fieldType":"Text",
-            "label":"Dam or Levee:",
-            "visibleChars": 40,
-            "editable": True,
-            "enable": True,
-            "valueIfEmpty": "|* Enter Dam or Levee Name *|",
-            "promptText": "Enter dam or levee name"
-            } 
-        else: 
-            damOrLevee = {
-                           "fieldName": "damOrLeveeName",
-                            "fieldType":"ComboBox",
-                            "autocomplete":  True,
-                            "label":"Dam or Levee:",
-                            "editable": False,
-                            "enable": False,
-                            "values": damOrLeveeName,
-                            "choices": self.damOrLeveeChoices(),
-                            } 
-            
-            
-        return damOrLevee
-    
-    
-    
-    def damOrLeveeChoices(self):
-        damList = []
-        mapsAccessor = MapsDatabaseAccessor()
-        damNames = mapsAccessor.getPolygonNames(DAMINUNDATION_TABLE)
-        for damName in damNames:
-            ids = {}
-            ids["identifier"] = damName
-            ids["displayString"] = damName
-            ids["productString"] = damName
-            damList.append(ids)
-        
-        return damList
 
     def getScenario(self):
         return {

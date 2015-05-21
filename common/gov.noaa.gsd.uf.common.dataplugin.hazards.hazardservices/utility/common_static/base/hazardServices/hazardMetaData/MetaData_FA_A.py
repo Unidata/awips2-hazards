@@ -27,6 +27,12 @@ class MetaData(CommonMetaData.MetaData):
 #                                         ("responseType", "Prepare"),
 #                                         ])
                     ]
+            if hazardEvent is not None:
+                damOrLeveeName = hazardEvent.get('damOrLeveeName')
+                immediateCause = hazardEvent.get("immediateCause")
+                if immediateCause == self.immediateCauseDM()['identifier']:
+                    metaData.insert(1, self.getDamOrLevee(damOrLeveeName))
+
         return {
                 METADATA_KEY: metaData
                 }    
@@ -47,3 +53,7 @@ class MetaData(CommonMetaData.MetaData):
              "lines": 6,
              "promptText": "Enter basis text",
             } 
+
+def applyInterdependencies(triggerIdentifiers, mutableProperties):
+    propertyChanges = CommonMetaData.applyInterdependencies(triggerIdentifiers, mutableProperties)
+    return propertyChanges

@@ -10,11 +10,11 @@ class MetaData(CommonMetaData.MetaData):
                         self.getEndingSynopsis(), 
                 ]
         else:
-                metaData = [
-                    self.getImmediateCause(),
-                    self.getBasisStatement(),
-                    self.getListOfCities(),
-                    self.getCTAs(), 
+            metaData = [
+                self.getImmediateCause(),
+                self.getBasisStatement(),
+                self.getListOfCities(),
+                self.getCTAs(), 
                     # Preserving CAP defaults for future reference.                   
 #                     self.getCAP_Fields([
 #                                           ("urgency", "Future"),
@@ -23,41 +23,17 @@ class MetaData(CommonMetaData.MetaData):
 #                                           ("responseType", "Monitor"),
 #                                         ]) 
                     ]
+        if hazardEvent is not None:
+            damOrLeveeName = hazardEvent.get('damOrLeveeName')
+            immediateCause = hazardEvent.get("immediateCause")
+            if hazardEvent.get('cause') == 'Dam Failure' and damOrLeveeName:
+                # Ran recommender so already have the Dam/Levee name
+                metaData.insert(1,self.setDamNameLabel(damOrLeveeName))
+            elif immediateCause == self.immediateCauseDM()['identifier']:
+                # Add the combo box to select the name
+                metaData.insert(1, self.getDamOrLevee(damOrLeveeName))
         return {
                 METADATA_KEY: metaData
-                }    
-
-
-    # IMMEDIATE CAUSE
-    def getImmediateCause(self):
-        damName = self.hazardEvent.get('damName')
-        if damName:
-            values = 'DM'
-        else:
-            values = 'ER'
-        return {
-            "fieldName": "immediateCause",
-            "fieldType":"ComboBox",
-            "label":"Immediate Cause:",
-            "values": values,
-            "expandHorizontally": True,
-            "choices": [
-                self.immediateCauseER(),
-                self.immediateCauseSM(),
-                self.immediateCauseRS(),
-                self.immediateCauseDM(),
-                self.immediateCauseDR(),
-                self.immediateCauseGO(),
-                self.immediateCauseIJ(),
-                self.immediateCauseIC(),
-                self.immediateCauseFS(),
-                self.immediateCauseFT(),
-                self.immediateCauseET(),
-                self.immediateCauseWT(),
-                self.immediateCauseOT(),
-                self.immediateCauseMC(),
-                self.immediateCauseUU(),
-                ]
                 }
 
     # CALLS TO ACTION
@@ -76,3 +52,7 @@ class MetaData(CommonMetaData.MetaData):
              "lines": 6,
              "promptText": "Enter basis text",
             } 
+
+def applyInterdependencies(triggerIdentifiers, mutableProperties):
+    propertyChanges = CommonMetaData.applyInterdependencies(triggerIdentifiers, mutableProperties)
+    return propertyChanges

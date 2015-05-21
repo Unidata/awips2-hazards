@@ -22,6 +22,7 @@
     May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
     May 14, 2015    7376    Robert.Blum Changed to look for only None and not
                                         empty string. Also some additional bug fixes.
+    May 21, 2015    7959    Robert.Blum Consolidated the Dam/Levee name into one attribute.
 '''
 
 import FormatTemplate
@@ -427,7 +428,7 @@ class Format(FormatTemplate.Formatter):
                 # ImmediateCause will be the same for all.
                 immediateCause = None
                 hydrologicCause = None
-                damNames = []
+                damOrLeveeNames = []
                 streamNames = []
                 replacesList = []
                 replacedByList = []
@@ -435,11 +436,9 @@ class Format(FormatTemplate.Formatter):
                     # get the immediateCause defaulting to 'ER' if None
                     immediateCause = hazard.get('immediateCause', 'ER')
                     hydrologicCause = hazard.get('hydrologicCause')
-                    damName = hazard.get('damOrLeveeName', None)
-                    if not damName:
-                        dameName = hazard.get('damName', None)
-                    if damName:
-                        damNames.append(damName)
+                    damOrLeveeName = hazard.get('damOrLeveeName', None)
+                    if damOrLeveeName:
+                        damOrLeveeNames.append(damOrLeveeName)
                     streamName = hazard.get('riverName', None)
                     if streamName:
                         streamNames.append(streamName)
@@ -456,9 +455,9 @@ class Format(FormatTemplate.Formatter):
                     else:
                         hazStr = hazStr + ' for the failure of '
 
-                    # Add the damName - could be multiple
-                    if len(damNames) > 0:
-                        names = self._tpc.formatDelimitedList(damNames, delimiter=', ')
+                    # Add the damOrLeveeNames - could be multiple
+                    if len(damOrLeveeNames) > 0:
+                        names = self._tpc.formatDelimitedList(damOrLeveeNames, delimiter=', ')
                         hazStr += names
                     else:
                         hazStr += 'the dam'

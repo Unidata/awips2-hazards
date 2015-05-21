@@ -36,13 +36,14 @@ from RiverForecastUtils import *
 
 import VTECConstants
 from LocalizationInterface import LocalizationInterface
-from HazardConstants import MISSING_VALUE
+from HazardConstants import *
 import os, sys
 from collections import OrderedDict
+from MapsDatabaseAccessor import MapsDatabaseAccessor
 
 class MetaData(object):
 
-    def initialize(self, hazardEvent, metaDict):    
+    def initialize(self, hazardEvent, metaDict):
         self.hazardEvent = hazardEvent
         self.metaDict = metaDict
                 
@@ -96,14 +97,20 @@ class MetaData(object):
         
     
     def getImmediateCause(self):
+        damOrLeveeName = self.hazardEvent.get('damOrLeveeName')
+        if damOrLeveeName:
+            values = 'DM'
+        else:
+            values = 'ER'
         return {
             "fieldName": "immediateCause",
             "fieldType":"ComboBox",
             "label":"Immediate Cause:",
-            "values": "ER",
+            "values": values,
             "expandHorizontally": False,
             "choices": self.immediateCauseChoices(),
             "editable" : self.editableWhenNew(),
+             "refreshMetadata": True,
                 }
         
     def immediateCauseChoices(self):
@@ -1616,7 +1623,49 @@ class MetaData(object):
                 self._riverForecastManager = RiverForecastManager()
             self._riverForecastPoint = self._riverForecastManager.getRiverForecastPoint(pointID, isDeepQuery)
         return(self._riverForecastPoint)
-            
+
+    def setDamNameLabel(self, damOrLeveeName):
+        return {
+             "fieldType": "Text",
+             "fieldName": "damOrLeveeName",
+             "expandHorizontally": True,
+             "label" : "Dam Name: ",
+             "visibleChars": 80,
+             "editable": False,
+             "enable": True,
+             "values": damOrLeveeName,
+             "valueIfEmpty": "|* Enter Dam or Levee Name *|",
+             "promptText": "Enter dam or levee name",
+             "bold": True,
+            } 
+
+    def getDamOrLevee(self, damOrLeveeName):
+        choices  = self.damOrLeveeChoices()
+        if not damOrLeveeName and choices:
+            damOrLeveeName = choices[0]
+        damOrLevee = {
+                       "fieldName": "damOrLeveeName",
+                        "fieldType":"ComboBox",
+                        "autocomplete":  True,
+                        "label":"Dam or Levee:",
+                        "editable": self.editableWhenNew(),
+                        "enable": True,
+                        "values": damOrLeveeName,
+                        "choices": choices,
+                        } 
+        return damOrLevee
+
+    def damOrLeveeChoices(self):
+        damList = []
+        mapsAccessor = MapsDatabaseAccessor()
+        damOrLeveeNames = mapsAccessor.getPolygonNames(DAMINUNDATION_TABLE)
+        for damOrLeveeName in damOrLeveeNames:
+            ids = {}
+            ids["identifier"] = damOrLeveeName
+            ids["displayString"] = damOrLeveeName
+            ids["productString"] = damOrLeveeName
+            damList.append(ids)
+        return damList
 
 def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
     

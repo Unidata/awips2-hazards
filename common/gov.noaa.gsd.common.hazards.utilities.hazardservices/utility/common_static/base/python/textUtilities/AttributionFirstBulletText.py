@@ -21,6 +21,7 @@
     Apr 2015       7140    Tracy Hansen      Adding FA.W / FA.Y / FL.Y /  logic 
     Apr 2015       7579    Robert.Blum       Changes for multiple hazards per section.
     May 2015       7376    Robert.Blum       Fixed burnscar error.
+    May 2015       7959    Robert.Blum       Consolidated the Dam/Levee name into one attribute.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
@@ -91,12 +92,11 @@ class AttributionFirstBulletText(object):
         self.warningType = self.hazardEventDict.get('warningType')
         self.advisoryType = self.hazardEventDict.get('advisoryType_productString')
         self.optionalSpecificType = self.hazardEventDict.get('optionalSpecificType')
-        self.damOrLeveeName = self.tpc.getProductStrings(self.hazardEventDict, self.metaData, 'damOrLeveeName')
         self.burnScarName = self.hazardEventDict.get('burnScarText')
-        self.damName = self.hazardEventDict.get('damName')
+        self.damOrLeveeName = self.hazardEventDict.get('damOrLeveeName')
         self.riverName = None
-        if self.damName:
-            damInfo = self._damInfo().get(self.damName)
+        if self.damOrLeveeName:
+            damInfo = self._damInfo().get(self.damOrLeveeName)
             if damInfo:
                 self.riverName = damInfo.get('riverName')
         self.streamName = self.hazardEventDict.get('streamName')
@@ -295,8 +295,8 @@ class AttributionFirstBulletText(object):
 
         if self.phenSig in ['FF.A', 'FA.A']:
             if self.immediateCause == 'DM':
-                if self.riverName and self.damName:
-                    qualifiers += ' for...\nThe ' + self.riverName + ' below ' + self.damName
+                if self.riverName and self.damOrLeveeName:
+                    qualifiers += ' for...\nThe ' + self.riverName + ' below ' + self.damOrLeveeName
                     if addPreposition:
                         qualifiers += ' in '
                                 
@@ -308,8 +308,8 @@ class AttributionFirstBulletText(object):
                         qualifiers += ' for ' + warningTypeStr
                         if addPreposition:
                             qualifiers += ' in...'
-            elif self.immediateCause == 'DM' and self.riverName and self.damName:
-                qualifiers += ' for...\nThe ' + self.riverName + ' below ' + self.damName
+            elif self.immediateCause == 'DM' and self.riverName and self.damOrLeveeName:
+                qualifiers += ' for...\nThe ' + self.riverName + ' below ' + self.damOrLeveeName
                 if addPreposition:
                     qualifiers += ' in '
             elif self.subType == 'BurnScar' and self.burnScarName:

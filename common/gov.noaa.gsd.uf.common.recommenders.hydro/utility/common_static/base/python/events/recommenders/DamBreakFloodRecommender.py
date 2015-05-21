@@ -42,7 +42,7 @@ class Recommender(RecommenderTemplate.Recommender):
         dialogDict = {"title": "Dam/Levee Break Flood Recommender"}
         
         damFieldDict = {}
-        damFieldDict["fieldName"] = "damName"
+        damFieldDict["fieldName"] = "damOrLeveeName"
         damFieldDict["label"] = "Please Select a Dam or Levee"
         damFieldDict["fieldType"] = "ComboBox"
         damFieldDict["autocomplete"] = True
@@ -56,15 +56,15 @@ class Recommender(RecommenderTemplate.Recommender):
 Please click CANCEL and manually draw an inundation area. 
 (Please verify your maps database for mapdata. '''+ DAMINUNDATION_TABLE + ''')'''
             damFieldDict["fieldType"] = "Label"
-            valueDict = {"damName": None}
+            valueDict = {"damOrLeveeName": None}
             dialogDict["fields"] = damFieldDict
             dialogDict["valueDict"] = valueDict
             return dialogDict
             
 
             
-        damList = sorted(self.damPolygonDict.keys())
-        damFieldDict["choices"] = damList
+        damOrLeveeNameList = sorted(self.damPolygonDict.keys())
+        damFieldDict["choices"] = damOrLeveeNameList
         
         urgencyFieldDict = {}
         urgencyFieldDict["fieldName"] = "urgencyLevel"
@@ -78,11 +78,11 @@ Please click CANCEL and manually draw an inundation area.
         fieldDicts = [damFieldDict, urgencyFieldDict]
         dialogDict["fields"] = fieldDicts
         
-        if len(damList):
-            damName =  damList[0]
+        if len(damOrLeveeNameList):
+            damOrLeveeName =  damOrLeveeNameList[0]
         else:
-            damName = None
-        valueDict = {"damName": damName, "urgencyLevel":urgencyList[0]}
+            damOrLeveeName = None
+        valueDict = {"damOrLeveeName": damOrLeveeName, "urgencyLevel":urgencyList[0]}
         dialogDict["valueDict"] = valueDict
         
         return dialogDict
@@ -129,11 +129,11 @@ Please click CANCEL and manually draw an inundation area.
         @return: A hazard event representing a dam break flash flood watch or warning 
         """
         
-        damName = dialogDict.get("damName")
-        if not damName:
+        damOrLeveeName = dialogDict.get("damOrLeveeName")
+        if not damOrLeveeName:
             return None
         
-        hazardGeometry =  self.getFloodPolygonForDam(damName)
+        hazardGeometry =  self.getFloodPolygonForDam(damOrLeveeName)
 
         if hazardGeometry is None:
             return None
@@ -170,25 +170,25 @@ Please click CANCEL and manually draw an inundation area.
         hazardEvent.setGeometry(GeometryFactory.createCollection([hazardGeometry]))
 
         hazardEvent.setHazardAttributes({"cause":"Dam Failure",
-                                          "damName":damName
+                                          "damOrLeveeName":damOrLeveeName
                                          })
         return hazardEvent
         
     
-    def getFloodPolygonForDam(self, damName):
+    def getFloodPolygonForDam(self, damOrLeveeName):
         """
         Returns a user-defined flood hazard polygon for 
         a dam. The base version of this tool does nothing. It is up to the implementer
         to override this method.
         
-        @param  damName: The name of the dam for which to retrieve a 
+        @param  damOrLeveeName: The name of the dam or levee for which to retrieve a 
                          hazard polygon
                            
         @return Geometry: A Shapely geometry representing
                           the flood hazard polygon
         """
-        if damName in self.damPolygonDict:
-            return GeometryFactory.createPolygon(self.damPolygonDict[damName])
+        if damOrLeveeName in self.damPolygonDict:
+            return GeometryFactory.createPolygon(self.damPolygonDict[damOrLeveeName])
         else:
             return None    
         
