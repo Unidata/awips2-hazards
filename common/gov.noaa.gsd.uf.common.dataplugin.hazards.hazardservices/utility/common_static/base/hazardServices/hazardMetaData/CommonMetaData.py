@@ -533,7 +533,7 @@ class MetaData(object):
         return {"identifier":"floodMoving",
                 "displayString": "Flood waters are moving down",
                 "productString":
-                '''Flood waters are moving down #riverName# from #upstreamLocation# to 
+                '''Flood waters are moving down the #riverName# from #upstreamLocation# to 
                 #floodLocation#. The flood crest is expected to reach #downstreamLocation# by #additionalInfoFloodMovingTime#.''',
                 "detailFields": [
                             {
