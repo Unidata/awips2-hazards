@@ -20,7 +20,8 @@ class MetaData(CommonMetaData.MetaData):
                     self.getAdvisoryType(),
                     self.getImmediateCause(),
                     self.getOptionalSpecificType(),
-                    self.getEventSpecificSource(),
+                    self.getSource(),
+                    self.getEventType(),
                     self.getRainAmt(),
                     self.getAdditionalInfo(),
                     self.getCTAs(),   
@@ -38,7 +39,8 @@ class MetaData(CommonMetaData.MetaData):
                     self.getAdvisoryType(),
                     self.getImmediateCause(),
                     self.getOptionalSpecificType(),
-                    self.getEventSpecificSource(),
+                    self.getSource(),
+                    self.getEventType(),
                     self.getRainAmt(),
                     self.getAdditionalInfo(),
                     self.getCTAs(),   
@@ -158,24 +160,17 @@ class MetaData(CommonMetaData.MetaData):
 
     def getEventType(self):
         return {
-                "fieldType": "Composite",
-                # TODO Eliminate this wrapper when RM 5037 is addressed.
-                "fieldName": "eventTypeWrapper",
-                "fields": [
-                    {
-                     "fieldType":"RadioButtons",
-                     "fieldName": "eventType",
-                     "label": "Event type:",
-                     "values": "thunderEvent",
-                     "choices": [
-                            self.eventTypeThunder(),
-                            self.eventTypeRain(),
-                            self.eventTypeMinorFlooding(),
-                            ]
-                        }
-                    ]
-            }  
-        
+                 "fieldType":"ComboBox",
+                 "fieldName": "eventType",
+                 "label": "Event type:",
+                 "values": "thunderEvent",
+                 "choices": [
+                        self.eventTypeThunder(),
+                        self.eventTypeRain(),
+                        self.eventTypeMinorFlooding(),
+                        ]
+                }
+
     def additionalInfoChoices(self):
         return [ 
             self.additionalRain(),

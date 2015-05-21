@@ -15,7 +15,8 @@ class MetaData(CommonMetaData.MetaData):
                      self.getInclude(),
                      self.setBurnScarNameLabel(hazardEvent),
                      self.getImmediateCause(),
-                     self.getEventSpecificSource(),
+                     self.getSource(),
+                     self.getEventType(),
                      self.getDebrisFlowOptions(),
                      self.getRainAmt(),
                      self.getAdditionalInfo(),
@@ -35,7 +36,8 @@ class MetaData(CommonMetaData.MetaData):
                      self.getInclude(),
                      self.setBurnScarNameLabel(hazardEvent),
                      self.getImmediateCause(),
-                     self.getEventSpecificSource(),
+                     self.getSource(),
+                     self.getEventType(),
                      self.getDebrisFlowOptions(),
                      self.getRainAmt(),
                      self.getAdditionalInfo(),
@@ -119,24 +121,17 @@ class MetaData(CommonMetaData.MetaData):
 
     def getEventType(self):
         return {
-                "fieldType": "Composite",
-                # TODO Eliminate this wrapper when RM 5037 is addressed.
-                "fieldName": "eventTypeWrapper",
-                "fields": [
-                    {
-                     "fieldType":"DetailedComboBox",
-                     "fieldName": "eventType",
-                     "label": "Event type:",
-                     "expandVertically": False,
-                     "values": "thunderEvent",
-                     "choices": [
-                            self.eventTypeThunder(),
-                            self.eventTypeRain(),
-                            self.eventTypeFlashFlooding(),
-                            ]
-                        }
-                    ]
-            }
+                 "fieldType":"ComboBox",
+                 "fieldName": "eventType",
+                 "label": "Event type:",
+                 "expandVertically": False,
+                 "values": "thunderEvent",
+                 "choices": [
+                        self.eventTypeThunder(),
+                        self.eventTypeRain(),
+                        self.eventTypeFlashFlooding(),
+                        ]
+                }
 
     def getDebrisFlowOptions(self):
         choices = [

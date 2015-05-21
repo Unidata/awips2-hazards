@@ -164,17 +164,6 @@ class MetaData(object):
     def immediateCauseUU(self):
         return {"identifier":"UU", "displayString":"UU (Unknown)"}
 
-    def getEventSpecificSource(self):
-        return {
-               "fieldType":"Group",
-               "fieldName":"eventSpecificSource",
-               "numColumns":2,
-               "fields" : [
-                       self.getSource(),
-                       self.getEventType(),
-                       ]
-               }
-
     def getFloodSeverity(self):
         return {
              "fieldName": "floodSeverity",

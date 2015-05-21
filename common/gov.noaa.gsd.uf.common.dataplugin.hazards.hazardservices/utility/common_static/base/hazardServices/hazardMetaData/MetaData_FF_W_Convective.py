@@ -17,7 +17,8 @@ class MetaData(CommonMetaData.MetaData):
             metaData = [
                     self.getInclude(),
                     self.getImmediateCause(),
-                    self.getEventSpecificSource(),
+                    self.getSource(),
+                    self.getEventType(),
                     self.getRainAmt(),
                     self.getAdditionalInfo(),
                     self.getRiver(),
@@ -39,7 +40,8 @@ class MetaData(CommonMetaData.MetaData):
                     self.getBasisAndImpacts('basisAndImpactsStatement_segmentLevel'), 
                     self.getInclude(),
                     self.getImmediateCause(),
-                    self.getEventSpecificSource(),
+                    self.getSource(),
+                    self.getEventType(),
                     self.getRainAmt(),
                     self.getAdditionalInfo(),
                     self.getRiver(),
@@ -82,23 +84,16 @@ class MetaData(CommonMetaData.MetaData):
 
     def getEventType(self):
         return {
-                "fieldType": "Composite",
-                # TODO Eliminate this wrapper when RM 5037 is addressed.
-                "fieldName": "eventTypeWrapper",
-                "fields": [
-                    {
-                     "fieldType":"ComboBox",
-                     "fieldName": "eventType",
-                     "label": "Event type:",
-                     "values": "thunderEvent",
-                     "choices": [
-                            self.eventTypeThunder(),
-                            self.eventTypeRain(),
-                            self.eventTypeFlashFlooding(),
-                            ]
-                        }
-                    ]
-            }  
+                 "fieldType":"ComboBox",
+                 "fieldName": "eventType",
+                 "label": "Event type:",
+                 "values": "thunderEvent",
+                 "choices": [
+                        self.eventTypeThunder(),
+                        self.eventTypeRain(),
+                        self.eventTypeFlashFlooding(),
+                        ]
+                }
 
     def additionalInfoChoices(self):
         return [ 

@@ -24,7 +24,8 @@ class MetaData(CommonMetaData.MetaData):
             metaData = [
                     self.getWarningType(),
                     self.getImmediateCause(),
-                    self.getEventSpecificSource(),
+                    self.getSource(),
+                    self.getEventType(),
                     self.getRainAmt(),
                     self.getAdditionalInfo(),
                     self.getRiver(),
@@ -45,7 +46,8 @@ class MetaData(CommonMetaData.MetaData):
                     self.getBasisAndImpacts('basisAndImpactsStatement'),
                     self.getWarningType(),
                     self.getImmediateCause(),
-                    self.getEventSpecificSource(),
+                    self.getSource(),
+                    self.getEventType(),
                     self.getRainAmt(),
                     self.getAdditionalInfo(),
                     self.getRiver(),
@@ -129,26 +131,19 @@ class MetaData(CommonMetaData.MetaData):
 
     def getEventType(self):
         return {
-                "fieldType": "Composite",
-                # TODO Eliminate this wrapper when RM 5037 is addressed.
-                "fieldName": "eventTypeWrapper",
-                "fields": [
-                    {
-                     "fieldType":"DetailedComboBox",
-                     "fieldName": "eventType",
-                     "label": "Event type:",
-                     "expandVertically": True,
-                     "values": "thunderEvent",
-                     "choices": [
-                            self.eventTypeThunder(),
-                            self.eventTypeRain(),
-                            self.eventTypeFlooding(),
-                            self.eventTypeGenericFlooding(),
-                            ]
-                        }
-                    ]
-            }  
-        
+                 "fieldType":"DetailedComboBox",
+                 "fieldName": "eventType",
+                 "label": "Event type:",
+                 "expandVertically": True,
+                 "values": "thunderEvent",
+                 "choices": [
+                        self.eventTypeThunder(),
+                        self.eventTypeRain(),
+                        self.eventTypeFlooding(),
+                        self.eventTypeGenericFlooding(),
+                        ]
+                    }
+
     def additionalInfoChoices(self):
         return [ 
             self.listOfDrainages(),
