@@ -31,6 +31,7 @@
                                         the entire generator to be called twice. It takes
                                         the previously generated dictionaries and updates the
                                         required fields.
+    May 21, 2015    8181    Robert.Blum Added phen and sig to the hazard Dictionary.
 '''
 
 import ProductTemplate
@@ -708,6 +709,8 @@ class Product(ProductTemplate.Product):
             hazardDict['impactsStringForStageFlowTextArea'] = hazardEvent.get('impactsStringForStageFlowTextArea', None)
 
         hazardDict['eventID'] = hazardEvent.getEventID()
+        hazardDict['phen'] = hazardEvent.getPhenomenon()
+        hazardDict['sig'] = hazardEvent.getSignificance()
         hazardDict['startTime'] = hazardEvent.getStartTime()
         hazardDict['endTime'] = hazardEvent.getEndTime()
         hazardDict['creationTime'] = hazardEvent.getCreationTime()

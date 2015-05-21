@@ -14,7 +14,6 @@ class MetaData(CommonMetaData.MetaData):
                         self.getOptionalSpecificType(),
                         self.getEndingOption(),
                         self.getEndingSynopsis(),
-                        self.getListOfCities(False),
                         ]
         elif self.hazardStatus == 'pending':
             metaData = [
@@ -24,7 +23,6 @@ class MetaData(CommonMetaData.MetaData):
                     self.getEventSpecificSource(),
                     self.getRainAmt(),
                     self.getAdditionalInfo(),
-                    self.getListOfCities(False),
                     self.getCTAs(),   
                     # Preserving CAP defaults for future reference.                 
 #                     self.getCAP_Fields([
@@ -43,7 +41,6 @@ class MetaData(CommonMetaData.MetaData):
                     self.getEventSpecificSource(),
                     self.getRainAmt(),
                     self.getAdditionalInfo(),
-                    self.getListOfCities(False),
                     self.getCTAs(),   
                 ]
         return {

@@ -46,6 +46,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getFloodLocation(),
                     self.getUpstreamLocation(),
                     self.getDownstreamLocation(),
+                    # TODO this should only be on the HID for EXT and not CON
                     self.getListOfCities(False),
                     self.getCTAs(),   
             ]            

@@ -16,12 +16,12 @@ class MetaData(CommonMetaData.MetaData):
                      self.setBurnScarNameLabel(hazardEvent),
                      self.getImmediateCause(),
                      self.getEventSpecificSource(),
-                     self.getDebrisFlowOptions(),                                       
+                     self.getDebrisFlowOptions(),
                      self.getRainAmt(),
                      self.getAdditionalInfo(),
                      self.getListOfCities(False),
                      self.getCTAs(), 
-                     # Preserving CAP defaults for future reference.                  
+                     # Preserving CAP defaults for future reference.
 #                      self.getCAP_Fields([
 #                                           ("urgency", "Immediate"),
 #                                           ("severity", "Severe"),
@@ -36,9 +36,10 @@ class MetaData(CommonMetaData.MetaData):
                      self.setBurnScarNameLabel(hazardEvent),
                      self.getImmediateCause(),
                      self.getEventSpecificSource(),
-                     self.getDebrisFlowOptions(),                                       
+                     self.getDebrisFlowOptions(),
                      self.getRainAmt(),
                      self.getAdditionalInfo(),
+                     # TODO this should only be on the HID for EXT and not CON
                      self.getListOfCities(False),
                      self.getCTAs(), 
             ]

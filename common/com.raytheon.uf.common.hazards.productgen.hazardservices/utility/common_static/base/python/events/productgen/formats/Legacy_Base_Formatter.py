@@ -23,6 +23,7 @@
     May 14, 2015    7376    Robert.Blum Changed to look for only None and not
                                         empty string. Also some additional bug fixes.
     May 21, 2015    7959    Robert.Blum Consolidated the Dam/Levee name into one attribute.
+    May 21, 2015    8181    Robert.Blum Adjustments to cityList product part for being required vs optional.
 '''
 
 import FormatTemplate
@@ -308,19 +309,40 @@ class Format(FormatTemplate.Formatter):
 
     def _cityList(self, segmentDict):
         # Get saved value from productText table if available
+        required = None
         cityListText = self._getVal('cityList', segmentDict)
         if cityListText is None:
             cityListText = ''
             cityList = set()
             for sectionDict in segmentDict.get('sections', []):
                 for hazard in sectionDict.get('hazardEvents', []):
+                    phen = hazard.get('phen')
+                    sig = hazard.get('sig')
+                    phensig = phen + '.' + sig
                     listOfCities = hazard.get('listOfCities', [])
-                    if 'selectListOfCities'in listOfCities:
+                    # Optional for these phensigs
+                    if phensig in ['FA.A', 'FF.A']:
+                        required = False
+                        # Add the cities if boxed checked in HID
+                        if 'selectListOfCities'in listOfCities:
+                            cityList.update(hazard.get('cityList', []))
+                    else:
+                        required = True
+                        # Required add the cities
                         cityList.update(hazard.get('cityList', []))
             if cityList:
                 cityListText = 'Including the cities of '
                 cityListText += self._tpc.getTextListStr(list(cityList))
-        self._setVal('cityList', cityListText, segmentDict, 'City List', required=False)
+        if required is None:
+            # Determine if the saved value is required
+            required = False
+            for vtecRecord in segmentDict.get('vtecRecords', []):
+                phen = vtecRecord.get('phen')
+                sig = vtecRecord.get('sig')
+                phensig = phen + '.' + sig
+                if phensig not in ['FA.A', 'FF.A']:
+                    required = True
+        self._setVal('cityList', cityListText, segmentDict, 'City List', required=required)
         return self._getFormattedText(cityListText, endText='\n')
 
     def _callsToAction(self, segmentDict):

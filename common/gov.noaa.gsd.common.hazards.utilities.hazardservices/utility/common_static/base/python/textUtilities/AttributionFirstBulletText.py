@@ -22,6 +22,7 @@
     Apr 2015       7579    Robert.Blum       Changes for multiple hazards per section.
     May 2015       7376    Robert.Blum       Fixed burnscar error.
     May 2015       7959    Robert.Blum       Consolidated the Dam/Levee name into one attribute.
+    May 2015       8181    Robert.Blum       Minor changes to listOfCities.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
@@ -393,10 +394,10 @@ class AttributionFirstBulletText(object):
             else :
                 textLine += part + " " + self.tpc.getInformationForUGC(ugc, "fullStateName") + "..."
             areaPhrase += textLine
-            
-        if optionalCities and self.cityListFlag and self.cityList:
-            cities = '  This includes the cities of '
-            cities += self.tpc.getTextListStr(self.cityList)
+
+        if optionalCities and self.cityListFlag and self.cityList and self.phenSig == 'FF.W':
+            cities = '\n  This includes the cities of '
+            cities += self.tpc.getTextListStr(self.cityList) + '.'
             areaPhrase += cities
 
         return areaPhrase

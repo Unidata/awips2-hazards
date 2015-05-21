@@ -7,7 +7,8 @@ class MetaData(CommonMetaData.MetaData):
         self.initialize(hazardEvent, metaDict)
         if self.hazardStatus == "ending":
             metaData = [
-                        self.getEndingSynopsis(), 
+                        self.getEndingSynopsis(),
+                        self.getListOfCities(),
                 ]
         else:
             metaData = [

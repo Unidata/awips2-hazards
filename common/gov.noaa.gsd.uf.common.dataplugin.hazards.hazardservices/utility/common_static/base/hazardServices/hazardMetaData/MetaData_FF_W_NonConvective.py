@@ -63,6 +63,7 @@ class MetaData(CommonMetaData.MetaData):
                      self.getFloodLocation(),
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
+                     # TODO this should only be on the HID for EXT and not CON
                      self.getListOfCities(False),
                      self.getCTAs(), 
                      # Preserving CAP defaults for future reference.
@@ -72,12 +73,11 @@ class MetaData(CommonMetaData.MetaData):
 #                                           ("certainty", "Likely"),
 #                                           ("responseType", "Avoid"),
 #                                          ]) 
-                    ]  
+                    ]
         else:
             metaData = [
                     self.getEndingSynopsis(),
                     self.getAdditionalInfo(),
-                    self.getListOfCities(False),
                     ]
             return metaData
 
