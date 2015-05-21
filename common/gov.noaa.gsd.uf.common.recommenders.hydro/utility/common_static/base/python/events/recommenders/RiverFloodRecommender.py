@@ -24,6 +24,7 @@ recommender framework
                                                  recommender script.
     May 14, 2015    7974     Robert.Blum         Added hours label to cutoff time.
     May 18, 2015    6562     Chris.Cody          Restructure River Forecast Points/Recommender
+    May 26, 2015    7634     Chris.Cody          Changes for Forecast Bullet Generation
     
 @since: November 2012
 @author: GSD Hazard Services Team
@@ -269,7 +270,14 @@ class Recommender(RecommenderTemplate.Recommender):
         riverMile = riverStationInfo.getMile()
         hazardEvent.set("riverMile", riverMile)
         
-        hazEvtStart = hazardEvent.get("currentStageTime")/1000
+        currentStageTime = MISSING_VALUE
+        currentShefObserved = riverForecastPoint.getCurrentObservation()
+        if currentShefObserved is not None:
+            currentStageTime = currentShefObserved.getObsTime()
+        if currentStageTime == MISSING_VALUE:
+            currentStageTime = SimulatedTime.getSystemTime()
+        
+        hazEvtStart = currentStageTime/1000
         warningTimeThresh = self.getWarningTimeThreshold(hazEvtStart)
         hazardEvent.setPhenomenon("FL")
         

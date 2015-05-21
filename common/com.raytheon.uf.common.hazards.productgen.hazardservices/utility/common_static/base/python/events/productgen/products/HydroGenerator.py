@@ -13,6 +13,7 @@
     Mar 17, 2015    6963    Robert.Blum Rounded impact height to a precision of 2.
     Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
     May 05, 2015    7141    Robert.Blum Changes for floodPointTable.
+    May 26, 2015    7634    Chris.Cody  Changes for Forecast Bullet Generation
 '''
 from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
 from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
@@ -72,7 +73,7 @@ class Product(Legacy_Base_Generator.Product):
         observedCurrentIndex = riverForecastPoint.getObservedCurrentIndex()
         shefObserved = self._riverForecastManager.getSHEFObserved(riverForecastPoint, observedCurrentIndex)
         if shefObserved is not None:
-            observedStage = shefObserved.getObsValue()
+            observedStage = shefObserved.getValue()
             hazardEventDict['observedStage'] = observedStage
         else:
             hazardEventDict['observedStage'] = MISSING_VALUE
@@ -105,6 +106,7 @@ class Product(Legacy_Base_Generator.Product):
             maximumForecastTime_ms = MISSING_VALUE
 
         # Need to save this off to be set in the ProductInformation later.
+        
         self._maxFcstCategory = riverForecastPoint.getMaximumForecastCategory()
         hazardEventDict['maxFcstCategory'] = self._maxFcstCategory
         
@@ -127,6 +129,12 @@ class Product(Legacy_Base_Generator.Product):
         hazardEventDict['impactCompUnits'] = self._riverForecastUtils.getFlowUnits(primaryPE)
         hazardEventDict['crestsSelectedForecastPointsComboBox'] = hazardEvent.get('crestsSelectedForecastPointsComboBox')
 
+        if maximumForecastStage and maximumForecastStage != MISSING_VALUE:
+            hazardEventDict['maximumForecastStage'] = maximumForecastStage            
+
+        if maximumForecastTime_ms and maximumForecastTime_ms != MISSING_VALUE:
+            hazardEventDict['maximumForecastTime_ms'] = maximumForecastTime_ms
+            
         # Spec values
         forecastTypeSource = self._riverForecastManager.getTopRankedTypeSource(pointID, primaryPE, 0, 'Z')
         hazardEventDict['specValue'] = self._riverForecastManager.getPhysicalElementValue(

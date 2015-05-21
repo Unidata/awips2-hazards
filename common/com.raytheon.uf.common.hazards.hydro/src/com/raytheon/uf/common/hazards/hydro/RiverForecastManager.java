@@ -54,6 +54,7 @@ import com.raytheon.uf.common.util.Pair;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * May 26, 2015 7634       Chris.Cody  Correct omission of setting Current Observation Index
  * </pre>
  * 
  * @author Chris.Cody
@@ -1124,6 +1125,8 @@ public class RiverForecastManager {
                     .get(latestObservedObsTimeIndex);
             latestObservedValue = latestObservedValidTime.getValue();
             riverForecastPoint.setCurrentObservation(latestObservedValidTime);
+            riverForecastPoint
+                    .setObservedCurrentIndex(latestObservedObsTimeIndex);
         }
         int mostCurrentObservationCatRank = this.computeFloodStageCategory(
                 riverForecastPoint, latestObservedValue);
