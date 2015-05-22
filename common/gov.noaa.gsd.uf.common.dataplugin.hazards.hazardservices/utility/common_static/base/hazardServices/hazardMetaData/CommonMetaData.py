@@ -97,18 +97,23 @@ class MetaData(object):
         
     
     def getImmediateCause(self):
+        values = 'ER'
         damOrLeveeName = self.hazardEvent.get('damOrLeveeName')
+        choices = self.immediateCauseChoices()
         if damOrLeveeName:
-            values = 'DM'
-        else:
-            values = 'ER'
+            # Default to DM if it is a valid choice
+            for choice in choices:
+                if choice.get('identifier') == 'DM':
+                    values = 'DM'
+                    break
+
         return {
             "fieldName": "immediateCause",
             "fieldType":"ComboBox",
             "label":"Immediate Cause:",
             "values": values,
             "expandHorizontally": False,
-            "choices": self.immediateCauseChoices(),
+            "choices": choices,
             "editable" : self.editableWhenNew(),
              "refreshMetadata": True,
                 }
