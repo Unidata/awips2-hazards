@@ -21,10 +21,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getEventType(),
                     self.getRainAmt(),
                     self.getAdditionalInfo(),
-                    self.getRiver(),
                     self.getFloodLocation(),
-                    self.getUpstreamLocation(),
-                    self.getDownstreamLocation(),
                     self.getListOfCities(False),
                     self.getCTAs(),   
                     # Preserving CAP defaults for future reference.                 
@@ -44,10 +41,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getEventType(),
                     self.getRainAmt(),
                     self.getAdditionalInfo(),
-                    self.getRiver(),
                     self.getFloodLocation(),
-                    self.getUpstreamLocation(),
-                    self.getDownstreamLocation(),
                     # TODO this should only be on the HID for EXT and not CON
                     self.getListOfCities(False),
                     self.getCTAs(),   
@@ -99,7 +93,6 @@ class MetaData(CommonMetaData.MetaData):
         return [ 
             self.listOfDrainages(),
             self.additionalRain(),
-            self.floodMoving(),
             ]
             
     def immediateCauseChoices(self):
