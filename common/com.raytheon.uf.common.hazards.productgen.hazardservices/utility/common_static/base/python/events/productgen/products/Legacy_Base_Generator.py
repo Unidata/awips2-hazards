@@ -32,6 +32,8 @@
                                         the previously generated dictionaries and updates the
                                         required fields.
     May 21, 2015    8181    Robert.Blum Added phen and sig to the hazard Dictionary.
+    May 26, 2015    7447    Robert.Blum Changes to create accurate dictionaries for EXA/EXB and
+                                        resulting segments.
 '''
 
 import ProductTemplate
@@ -531,8 +533,8 @@ class Product(ProductTemplate.Product):
             # Setup critical info for the segment
             self._setupSegment()
 
-            # Check whether this segment is the CAN of a partial cancellation
-            self.checkForPartialCan(productSegmentGroup)
+            # Check whether this segment requires any special processing
+            self.checkSegment(productSegmentGroup)
 
             # Create and order the sections for the segment:     
             self._productSegment.sections = self._createSections(self._productSegment.vtecRecords_ms, self._productSegment.metaDataList)
@@ -644,8 +646,8 @@ class Product(ProductTemplate.Product):
         self.sectionUGCs = set()
         for hazardEvent in hazardEvents:
             metaData = metaDataDictionary.get(hazardEvent.getEventID())
-            if self._partialCAN:
-                hazardEventDict = self._createHazardEventDictionary_forPartialCancellation(hazardEvent, vtecRecord, metaData)
+            if self._partialCAN or self._CONorEXTofEXA_EXB or self._EXA_EXB:
+                hazardEventDict = self._prepareToCreateHazardEventDictionary(hazardEvent, vtecRecord, metaData)
             else:
                 hazardEventDict = self._createHazardEventDictionary(hazardEvent, vtecRecord, metaData)
             hazardEventDicts.append(hazardEventDict)
@@ -1239,24 +1241,34 @@ class Product(ProductTemplate.Product):
             return True
         return False
 
-    def checkForPartialCan(self, productSegmentGroup):
+    def checkSegment(self, productSegmentGroup):
         '''
-            Determines if the current productSegment is the "CAN" segment
-            of a partial cancellation.
-        '''
-        # Always reset flag to false
-        self._partialCAN = False
+            The below method checks for special segments that 
+            require additional processing to create an accurate
+            dictionary. For example the hazard geometries need
+            updated since the hazard objects only hold the most
+            recent polygon which is incorrect in some cases.
 
+            Checks for:
+                EXA/EXB segment
+                CAN segment of Partial Cancellation
+                CON or EXT segment of EXA/EXB
+        '''
+        # Always reset flags to false
+        self._EXA_EXB = False
+        self._partialCAN = False
+        self._CONorEXTofEXA_EXB = False
         vtecRecords = self._productSegment.vtecRecords
 
-        # If more than one record not a CAN of partial cancellation
-        if len(vtecRecords) == 1:
-            act = vtecRecords[0].get('act')
-            eventIDs = vtecRecords[0].get('eventID')
-            if act == 'CAN' and len(eventIDs) == 1:
-                # This segment is a CAN - Now check the
-                # other segments for same eventID
-                # indicating a partial cancellation.
+        for vtecRecord in vtecRecords:
+            act = vtecRecord.get('act')
+            if act in ['EXA', 'EXB']:
+                self._EXA_EXB = True
+                return
+            eventIDs = vtecRecord.get('eventID')
+            if act in ['CAN', 'CON', 'EXT']:
+                # Check the other segments for same eventID
+                # indicating the same event is in multiple segments.
                 for productSegment in productSegmentGroup.productSegments:
                     # Dont check the current segment
                     if productSegment == self._productSegment:
@@ -1265,16 +1277,13 @@ class Product(ProductTemplate.Product):
                         otherVtecRecords = productSegment.vtecRecords
                         for vtecRecord in otherVtecRecords:
                             if eventIDs.issubset(vtecRecord.get('eventID')):
-                                self._partialCAN =  True
+                                if act == 'CAN':
+                                    self._partialCAN =  True
+                                else:
+                                    self._CONorEXTofEXA_EXB = True
                                 return
 
-    def _createHazardEventDictionary_forPartialCancellation(self, hazardEvent, vtecRecord, metaData):
-        '''
-            This method grabs the previously issued hazard event from the database and compares it with
-            the current hazardEvent. This is needed to determine the geometry that was removed,
-            UGCs that were removed, etc. It then updates the attributes of the prevHazardEvent with 
-            the new values and calls _createHazardEventDictionary() to get the dictionary for the hazard.
-        '''
+    def _prepareToCreateHazardEventDictionary(self, hazardEvent, vtecRecord, metaData):
         mode = self._sessionDict.get('hazardMode', 'PRACTICE').upper()
         eventID = hazardEvent.getEventID()
 
@@ -1285,6 +1294,78 @@ class Product(ProductTemplate.Product):
         prevAttributes = prevHazardEvent.getHazardAttributes()
         attributes = hazardEvent.getHazardAttributes()
 
+        if self._CONorEXTofEXA_EXB:
+            return self._createHazardEventDictionary_forCONorEXTofEXA_EXB(hazardEvent, prevHazardEvent, attributes,
+                                                                          prevAttributes, vtecRecord, metaData)
+        elif self._EXA_EXB:
+            return self._createHazardEventDictionary_forEXA_EXB(hazardEvent, prevHazardEvent, attributes,
+                                                                prevAttributes, vtecRecord, metaData)
+        elif self._partialCAN:
+            return self._createHazardEventDictionary_forPartialCancellation(hazardEvent, prevHazardEvent, attributes,
+                                                                            prevAttributes, vtecRecord, metaData)
+        else:
+            return self._createHazardEventDictionary(hazardEvent, vtecRecord, metaData)
+
+    def _createHazardEventDictionary_forEXA_EXB(self, hazardEvent, prevHazardEvent, attributes, prevAttributes, vtecRecord, metaData):
+        '''
+            Creates a event dictionary for a EXA or EXB segment. It correctly adjusts
+            the geometry and ugcs since the current polygon is incorrect for this segment.
+        '''
+        # Geometry/UGCs for the EXA/EXB hazard
+        geometry = hazardEvent.getGeometry().difference(prevHazardEvent.getGeometry())
+        prevUGCs = set(prevAttributes.get('ugcs'))
+        currentUGCs = set(attributes.get('ugcs'))
+        ugcs = list(currentUGCs.difference(prevUGCs))
+
+        # Determine the portions and partsOfState for the CAN hazard
+        ugcPortions = {}
+        ugcPartsOfState = {}
+        for ugc in ugcs:
+            if attributes.get('ugcPortions', None):
+                ugcPortions[ugc] = attributes.get('ugcPortions').get(ugc)
+            if attributes.get('ugcPartsOfState', None):
+                ugcPartsOfState[ugc] = attributes.get('ugcPartsOfState').get(ugc)
+
+        # Update the prevAttributes to reflect the current EXA/EXB segment
+        attributes['ugcs'] = ugcs
+        attributes['ugcPortions'] = ugcPortions
+        attributes['ugcPartsOfState'] = ugcPartsOfState
+
+        # Store the updated attributes back in the hazard object
+        hazardEvent.setHazardAttributes(attributes)
+
+        # Update the geometry as well
+        hazardEvent.setGeometry(GeometryFactory.createCollection([geometry]))
+
+        # Call the original method with the updated hazardEvent to get the hazard dictionary.
+        return self._createHazardEventDictionary(hazardEvent, vtecRecord, metaData)
+
+    def _createHazardEventDictionary_forCONorEXTofEXA_EXB(self, hazardEvent, prevHazardEvent, attributes, prevAttributes, vtecRecord, metaData):
+        '''
+            Creates a event dictionary for a CON or EXT segment resulting from a EXA or EXB. 
+            It correctly adjusts the geometry and ugcs since the current polygon is incorrect
+            for this segment.
+        '''
+        # Update the Attributes to reflect the current CON segment
+        attributes['ugcs'] = prevAttributes.get('ugcs', [])
+        attributes['ugcPortions'] = prevAttributes.get('ugcPortions', {})
+        attributes['ugcPartsOfState'] = prevAttributes.get('ugcPartsOfState', {})
+
+        # Store the updated attributes back in the hazard object
+        hazardEvent.setHazardAttributes(attributes)
+
+        # Update the geometry as well
+        hazardEvent.setGeometry(GeometryFactory.createCollection([prevHazardEvent.getGeometry()]))
+
+        # Call the original method with the updated hazardEvent to get the hazard dictionary.
+        return self._createHazardEventDictionary(hazardEvent, vtecRecord, metaData)
+
+    def _createHazardEventDictionary_forPartialCancellation(self, hazardEvent, prevHazardEvent, attributes, prevAttributes, vtecRecord, metaData):
+        '''
+            Creates a event dictionary for a CAN segment resulting from a partial cancellation. 
+            It correctly adjusts the geometry and ugcs since the current polygon is incorrect
+            for this segment.
+        '''
         # Geometry/UGCs for the CAN hazard
         geometry = prevHazardEvent.getGeometry().difference(hazardEvent.getGeometry())
         prevUGCs = set(prevAttributes.get('ugcs'))
