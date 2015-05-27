@@ -11,6 +11,7 @@
     01/26/2015   4936       chris.cody     Implement scripts for Flash Flood Watch Products (FFA,FAA,FLA)
     01/31/2015   4937       Robert.Blum    Removed unneeded code.
     02/26/2015   6599       Robert.Blum    Changed to new style class
+    05/27/2015   7748       Robert.Blum    Added Flood History bullet for all FL.* hazards.
 
 '''
 import types, collections
@@ -511,10 +512,13 @@ class HydroProductParts(object):
                 'forecastStageBullet',
                 'pointImpactsBullet',
             ] 
-         
-        if not pil == 'FFA' and not (pil == 'FLS' and phen == 'FL' and sig == 'Y'):
-            # NOT for FFA, FLS FL.Y
-            partsList.append('floodHistoryBullet')  
+
+        # RM 7748 The below if statement is being removed to allow the Flood History
+        # bullet for all FL.* hazards. This was requested by the IWT and also matches
+        # the capability of RiverPro.
+        # if not pil == 'FFA' and not (pil == 'FLS' and phen == 'FL' and sig == 'Y'):
+             # NOT for FFA, FLS FL.Y
+        partsList.append('floodHistoryBullet')  
         return partsList
 
 
