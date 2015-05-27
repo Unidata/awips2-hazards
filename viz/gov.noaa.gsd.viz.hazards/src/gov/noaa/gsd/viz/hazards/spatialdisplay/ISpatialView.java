@@ -40,6 +40,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Dec 05, 2014   4124     Chris.Golden      Changed to work with ObservedSettings.
  * Dec 13, 2014 4959       Dan Schaffer      Spatial Display cleanup and other bug fixes
  * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
+ * May 20, 2015 7624       mduff             Added removeEvent().
  * </pre>
  * 
  * @author Chris.Golden
@@ -195,5 +196,13 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
      * @return
      */
     public void setRedoEnabled(final Boolean redoFlag);
+
+    /**
+     * Remove the event from the spatial display.
+     * 
+     * @param eventID
+     *            id of the event to remove
+     */
+    public void removeEvent(String eventID);
 
 }

@@ -15,9 +15,9 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -25,11 +25,14 @@ import net.engio.mbassy.listener.Handler;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionHatchingToggled;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
@@ -78,6 +81,7 @@ import com.vividsolutions.jts.geom.Point;
  * May 15, 2015 7935       Chris.Cody        Fixed NPE caused by immediate HS close after opening
  * May 19, 2015 4781       Robert.Blum       Removed filtering of pending hazards they should always
  *                                           be visible on the spatial display.
+ * May 20, 2015 7624       mduff             Changes to support drawing fixes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -121,15 +125,35 @@ public class SpatialPresenter extends
     }
 
     @Handler
+    public void sessionEventAdded(SessionEventAdded notification) {
+        updateSpatialDisplay(notification.getEvent().getEventID());
+    }
+
+    @Handler
     public void sessionEventsModified(SessionEventsModified notification) {
-        updateSpatialDisplay();
         if (notification instanceof SessionSelectedEventsModified) {
             recenterZoom();
+            return;
+        }
+        updateSpatialDisplay(notification.getEventIds());
+    }
+
+    @Handler
+    public void sessionEventModified(SessionEventModified notification) {
+        if (notification instanceof SessionEventAttributesModified) {
+            return;
+        }
+
+        if (notification instanceof SessionEventRemoved) {
+            removeEvent(notification.getEvent());
+        } else {
+            updateSpatialDisplay(notification.getEvent().getEventID());
         }
     }
 
     @Handler
     public void selectedTimeChanged(SelectedTimeChanged notification) {
+        // TODO on a time change update without recreating anything
         updateSpatialDisplay();
     }
 
@@ -137,7 +161,28 @@ public class SpatialPresenter extends
      * Update the event areas drawn in the spatial view.
      */
     public void updateSpatialDisplay() {
+        updateSpatialDisplay(Collections.<String> emptyList());
+    }
 
+    /**
+     * Update the spatial view for the provided eventId
+     * 
+     * @param eventId
+     *            The updated Event ID
+     */
+    public void updateSpatialDisplay(String eventId) {
+        List<String> events = new ArrayList<String>(1);
+        events.add(eventId);
+        this.updateSpatialDisplay(events);
+    }
+
+    /**
+     * Update the spatial view for the provided eventIds
+     * 
+     * @param eventIds
+     *            1 The updated Event IDs
+     */
+    public void updateSpatialDisplay(Collection<String> eventIds) {
         /**
          * TODO For reasons that are not clear to Chris Golden and Dan Schaffer,
          * this method is called for the old SpatialDisplay when you switch
@@ -166,8 +211,6 @@ public class SpatialPresenter extends
         ISessionTimeManager timeManager = sessionManager.getTimeManager();
 
         SelectedTime selectedTime = timeManager.getSelectedTime();
-        filterEventsForTime(events, selectedTime);
-
         Map<String, Boolean> eventOverlapSelectedTime = new HashMap<>();
         Map<String, Boolean> forModifyingStormTrack = new HashMap<>();
         Map<String, Boolean> eventEditability = new HashMap<>();
@@ -177,22 +220,34 @@ public class SpatialPresenter extends
             eventOverlapSelectedTime.put(eventID,
                     doesEventOverlapSelectedTime(event, selectedTime));
             forModifyingStormTrack
-                    .put(event.getEventID(),
+                    .put(eventID,
                             event.getHazardAttribute(HazardConstants.TRACK_POINTS) != null);
-            eventEditability.put(event.getEventID(),
-                    event.canEventAreaBeChanged());
+            eventEditability.put(eventID, event.canEventAreaBeChanged());
         }
 
         updateSelectedEvents(events);
         /*
-         * TODO It might be possible to optimize here by checking if the events
-         * have changed before displaying.
+         * Only pass in events that have changed.
          */
-        spatialView.drawEvents(events, eventOverlapSelectedTime,
+        List<ObservedHazardEvent> hazardList = new ArrayList<>(eventIds.size());
+        if (!eventIds.isEmpty()) {
+            hazardList = sessionManager.getEventManager().getEventsById(
+                    eventIds);
+        }
+        spatialView.drawEvents(hazardList, eventOverlapSelectedTime,
                 forModifyingStormTrack, eventEditability,
                 sessionManager.isAutoHazardCheckingOn(),
                 sessionManager.areHatchedAreasDisplayed());
 
+    }
+
+    private void removeEvent(IHazardEvent event) {
+        ISpatialView<?, ?> spatialView = getView();
+        if (spatialView == null) {
+            return;
+        }
+
+        spatialView.removeEvent(event.getEventID());
     }
 
     private void recenterZoom() {
@@ -323,27 +378,4 @@ public class SpatialPresenter extends
     public void zoneSelected(Coordinate location) {
         getModel().getEventManager().addOrRemoveEnclosingUGCs(location);
     }
-
-    private void filterEventsForTime(Collection<ObservedHazardEvent> events,
-            SelectedTime selectedTime) {
-        Iterator<ObservedHazardEvent> it = events.iterator();
-        while (it.hasNext()) {
-            IHazardEvent event = it.next();
-
-            /*
-             * Test for unissued storm track operations. These should not be
-             * filtered out by time.
-             */
-            if (event.getStatus() != HazardStatus.PENDING) {
-                if (!(event.getHazardAttribute(HazardConstants.TRACK_POINTS) != null && !HazardStatus
-                        .hasEverBeenIssued(event.getStatus()))) {
-
-                    if (!doesEventOverlapSelectedTime(event, selectedTime)) {
-                        it.remove();
-                    }
-                }
-            }
-        }
-    }
-
 }

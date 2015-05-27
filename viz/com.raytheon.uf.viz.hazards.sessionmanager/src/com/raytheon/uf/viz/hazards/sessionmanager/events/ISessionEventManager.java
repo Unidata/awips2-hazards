@@ -82,6 +82,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
  * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
+ * May 05, 2015 7624       mduff        Added getEventsById.
  * </pre>
  * 
  * @author bsteffen
@@ -109,6 +110,15 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @return
      */
     public E getEventById(String eventId);
+
+    /**
+     * Get the events with the given IDs or an empty list if there are no such
+     * events in the session.
+     * 
+     * @param eventId
+     * @return
+     */
+    public List<E> getEventsById(Collection<String> eventIds);
 
     /**
      * Set the specified event to have the specified category. As a side effect,

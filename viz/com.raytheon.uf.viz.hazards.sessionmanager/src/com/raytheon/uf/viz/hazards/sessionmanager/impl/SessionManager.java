@@ -100,6 +100,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove polygons from hazards
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
+ * May 20, 2015 7624       mduff        Removed unused line.
  * </pre>
  * 
  * @author bsteffen
@@ -276,8 +277,6 @@ public class SessionManager implements
     @Override
     public void toggleHatchedAreaDisplay() {
         hatchAreaDisplay = !hatchAreaDisplay;
-
-        ISessionEventManager<ObservedHazardEvent> eventManager = getEventManager();
         eventBus.publish(new SessionHatchingToggled(Originator.OTHER));
     }
 

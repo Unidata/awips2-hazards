@@ -104,6 +104,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           range boundaries for the events.
  * Apr 10, 2015 6898       Chris.Cody        Removed modelChanged legacy messaging method
  *                                           Removed extraneous @Handler methods
+ * May 20, 2015 7624       mduff             Changed method signature.
  * </pre>
  * 
  * @author Chris.Golden
@@ -449,7 +450,7 @@ public class ConsolePresenter extends
     public void sessionEventsTimeRangeBoundariesChanged(
             SessionEventsTimeRangeBoundariesModified change) {
         this.updateHazardEventsForEventChange();
-        getView().updateEventTimeRangeBoundaries(change.getChangedEventIdSet());
+        getView().updateEventTimeRangeBoundaries(change.getEventIds());
     }
 
     /**
@@ -461,6 +462,6 @@ public class ConsolePresenter extends
     @Handler
     public void sessionEventModified(
             SessionEventsTimeRangeBoundariesModified change) {
-        getView().updateEventTimeRangeBoundaries(change.getChangedEventIdSet());
+        getView().updateEventTimeRangeBoundaries(change.getEventIds());
     }
 }

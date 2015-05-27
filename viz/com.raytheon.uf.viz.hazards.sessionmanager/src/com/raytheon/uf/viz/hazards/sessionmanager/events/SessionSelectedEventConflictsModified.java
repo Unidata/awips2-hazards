@@ -22,13 +22,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * ------------ ---------- ------------ --------------------------
  * May 12, 2014    2925    Chris.Golden Initial creation.
  * Apr 10, 2015    6898    Chris.Cody   Refactored async messaging
+ * May 20, 2015    7624    mduff        Changed notification hierarchy.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class SessionSelectedEventConflictsModified extends
-        SessionEventsModified {
+public class SessionSelectedEventConflictsModified extends SessionNotification {
 
     /**
      * Construct a standard instance.
@@ -37,6 +37,6 @@ public class SessionSelectedEventConflictsModified extends
      *            Originator of the event.
      */
     public SessionSelectedEventConflictsModified(IOriginator originator) {
-        super(false, false, originator);
+        super(originator, false, false);
     }
 }

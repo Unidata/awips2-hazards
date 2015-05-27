@@ -34,6 +34,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * ------------ ---------- ----------- --------------------------
  * Jun 11, 2013 1257       bsteffen    Initial creation
  * Apr 10, 2015 6898       Chris.Cody  Refactored async messaging
+ * May 20, 2015 7624       mduff       Changed notification hierarchy.
  * 
  * </pre>
  * 
@@ -41,20 +42,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * @version 1.0
  */
 
-public class SessionEventRemoved extends SessionEventsModified {
-
-    private IHazardEvent event;
+public class SessionEventRemoved extends SessionEventModified {
 
     public SessionEventRemoved(IHazardEvent event,
             boolean notifyAllowUntilFurtherNoticeSet,
             boolean isLastChangedEventModified, IOriginator originator) {
-        super(notifyAllowUntilFurtherNoticeSet, isLastChangedEventModified,
-                originator);
-        this.event = event;
+        super(event, notifyAllowUntilFurtherNoticeSet,
+                isLastChangedEventModified, originator);
     }
-
-    public IHazardEvent getEvent() {
-        return (this.event);
-    }
-
 }
