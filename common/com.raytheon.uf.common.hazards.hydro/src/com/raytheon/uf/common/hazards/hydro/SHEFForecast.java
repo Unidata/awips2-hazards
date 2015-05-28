@@ -35,6 +35,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * May 28, 2015 7139       Chris.Cody  Add curpp and curpc HydrographPrecip query and processing
  * 
  * </pre>
  * 
@@ -231,4 +232,15 @@ public final class SHEFForecast extends SHEFBase {
     public long getBasisTime() {
         return basisTime;
     }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro;SHEFBase.#getTime()
+     */
+    @Override
+    public long getTime() {
+        return validTime;
+    }
+
 }

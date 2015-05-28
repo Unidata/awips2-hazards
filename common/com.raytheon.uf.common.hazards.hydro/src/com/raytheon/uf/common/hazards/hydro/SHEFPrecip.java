@@ -24,8 +24,8 @@ import com.raytheon.uf.common.status.UFStatus;
 
 /**
  * 
- * Description: Represents a SHEF observation. Hydro meteorological data written
- * to the hydro database are in SHEF format.
+ * Description: Represents a SHEF precipitation (curpc or curpp).
+ * Hydrometeorological data written to the hydro database are in SHEF format.
  * 
  * This class is not meant to be subclassed. This is a Data-Only object.
  * 
@@ -34,21 +34,20 @@ import com.raytheon.uf.common.status.UFStatus;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * May 29, 2015 7139       Chris.Cody  Initial creation: Add SHEF Precipitation (curpc or curpp) query and processing
  * 
  * </pre>
  * 
  * @author Chris.Cody
  * @version 1.0
  */
-public final class SHEFObserved extends SHEFBase {
+public final class SHEFPrecip extends SHEFBase {
     private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(SHEFObserved.class);
+            .getHandler(SHEFPrecip.class);
 
-    // PE Starts with H
-    public static final String TABLE_NAME_HEIGHT = "height";
+    public static final String TABLE_NAME_CURPC = "curpc";
 
-    public static final String TABLE_NAME_DISCHARGE = "discharge";
+    public static final String TABLE_NAME_CURPP = "curpp";
 
     public static final String COLUMN_NAME_STRING = "lid, pe, dur, ts, extremum, obstime,"
             + " value, shef_qual_code, quality_code,"
@@ -85,11 +84,11 @@ public final class SHEFObserved extends SHEFBase {
      */
     private long obsTime;
 
-    public SHEFObserved() {
+    public SHEFPrecip() {
         super();
     }
 
-    public SHEFObserved(Object[] queryResult) {
+    public SHEFPrecip(Object[] queryResult) {
         super();
         if (queryResult != null) {
             int queryResultSize = queryResult.length;
@@ -154,7 +153,7 @@ public final class SHEFObserved extends SHEFBase {
                     break;
                 default:
                     statusHandler
-                            .error("SHEFObserved Constructor array out of sync with number of data fields. Unknown field for value "
+                            .error("SHEFPrecip Constructor array out of sync with number of data fields. Unknown field for value "
                                     + (String) queryValue);
                 }
             }

@@ -55,6 +55,7 @@ import com.raytheon.uf.common.util.Pair;
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
  * May 26, 2015 7634       Chris.Cody  Correct omission of setting Current Observation Index
+ * May 28, 2015 7139       Chris.Cody  Add curpp and curpc HydrographPrecip query and processing
  * </pre>
  * 
  * @author Chris.Cody
@@ -63,6 +64,12 @@ import com.raytheon.uf.common.util.Pair;
 public class RiverForecastManager {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(RiverForecastManager.class);
+
+    public final static String HYDROGRAPH_FORECAST = "FORECAST";
+
+    public final static String HYDROGRAPH_OBSERVED = "OBSERVED";
+
+    public final static String HYDROGRAPH_PRECIP = "PRECIP";
 
     /**
      * The maximum flood category a hazard can obtain.
@@ -697,8 +704,20 @@ public class RiverForecastManager {
         riverForecastPoint.setHydrographObserved(hydrographObserved);
     }
 
+    // TODO HERE CCODY
+    public HydrographObserved getHydrographObserved(String lid,
+            String physicalElement, String typeSource, long obsBeginTime,
+            long obsEndTime) {
+        // obsEndTime is also currentSystemTime
+
+        return floodDAO.queryRiverPointHydrographObserved(lid, physicalElement,
+                typeSource, obsBeginTime, obsEndTime);
+    }
+
     /**
-     * Retrieve Hydrograph Observed data for the given parameters.
+     * Retrieve Hydrograph Precip data for the given parameters.
+     * 
+     * This method requires Physical Element to be set.
      * 
      * @param lid
      *            RiverForecastPoint Identifier
@@ -707,20 +726,19 @@ public class RiverForecastManager {
      * @param typeSource
      *            Type Source for the Physical Element
      * @param obsBeginTime
-     *            Time (in mils) of Observation Start
+     *            Time (in mils) of Precipitation Observation Start
      * @param obsEndTime
-     *            Time (in mils) of Observation End
+     *            Time (in mils) of Precipitation Observation End
+     * @return A full Hydrograph Precip object with SHEF Precip Time Series
+     *         data.
      */
-    public HydrographObserved getHydrographObserved(String lid,
+    public HydrographPrecip getHydrographPrecip(String lid,
             String physicalElement, String typeSource, long obsBeginTime,
             long obsEndTime) {
         // obsEndTime is also currentSystemTime
 
-        HydrographObserved hydrographObserved = floodDAO
-                .queryRiverPointHydrographObserved(lid, physicalElement,
-                        typeSource, obsBeginTime, obsEndTime);
-
-        return (hydrographObserved);
+        return floodDAO.queryRiverPointHydrographPrecip(lid, physicalElement,
+                typeSource, obsBeginTime, obsEndTime);
     }
 
     /**
@@ -773,6 +791,8 @@ public class RiverForecastManager {
     /**
      * Retrieve Hydrograph Forecast data for the given parameters.
      * 
+     * This method requires a Physical Element to be set.
+     * 
      * @param lid
      *            RiverForecastPoint Identifier
      * @param physicalElement
@@ -785,17 +805,16 @@ public class RiverForecastManager {
      *            Time (in mils) of Forecast Basis Begin Time
      * @param useLatestForecast
      *            Flag to use Only the Latest Forecast value when true
+     * @return A full Hydrograph Forecast object with SHEF Forecast Time Series
+     *         data.
      */
     public HydrographForecast getHydrographForecast(String lid,
             String physicalElement, long currentSystemTime, long fcstEndtime,
             long basisBeginTime, boolean useLatestForecast) {
 
-        HydrographForecast hydrographForecast = floodDAO
-                .queryRiverPointHydrographForecast(lid, physicalElement,
-                        currentSystemTime, fcstEndtime, basisBeginTime,
-                        useLatestForecast);
-
-        return (hydrographForecast);
+        return floodDAO.queryRiverPointHydrographForecast(lid, physicalElement,
+                currentSystemTime, fcstEndtime, basisBeginTime,
+                useLatestForecast);
     }
 
     public RiverStationInfo getRiverForecastPointRiverStationInfo(String lid) {
@@ -3048,24 +3067,130 @@ public class RiverForecastManager {
     }
 
     /**
-     * TODO Finish this method
+     * Retrieve a Hydrograph (sub class) containing the requested SHEF Time
+     * Series data.
      * 
-     * <pre>
-     * stageType - “Observed”, “Forecast”, “Precip”, “ObservedFlow”, “ForecastFlow”
-     * startTime, endTime - define the range for the series to be returned.  If None, return the whole series
-     * if physicalElement is None, return the primary physical element for the pointID
-     *      We could add another optional argument -- selectedValue
-     *      “min” -- return the minimum value in the series
-     *      “max” -- return the maximum value in the series
-     *      “latest” -- return the most recent value in the series
-     * </pre>
+     * @param hydrographType
+     *            Type of Hydrograph to query: "Forecast" (HYDROGRAPH_FORECAST),
+     *            "Observed" HYDROGRAPH_OBSERVED, or "Precip" HYDROGRAPH_PRECIP
+     * @param lid
+     *            River Forecast Point identifier
+     * @param physicalElement
+     *            The SHEF physical element code. If this parameter is null; the
+     *            FPInfo.physicalElement value for the given LID will be used.
+     * @param typeSource
+     *            The SHEF typesource code If this parameter is null; Top Rank
+     *            Type Source for the lid and Physical Element value will be
+     *            queried and used. This parameter is ignored for "Forecast"
+     *            Time Series queries.
+     * @param obsBeginTime
+     *            The lower bound of time window to retrieve Time Series data
+     *            for (in mils)
+     * @param obsEndTime
+     *            The upper bound of the time window to retrieve Time Series
+     *            data for (in mils). (Current System Time)
+     * @param basisBeginTime
+     *            Forecast Basis Begin Time (in mils) (only used to query for
+     *            HydrographForecast SHEFForecast data)
+     * @param basisBeginTime
+     *            When True only query for the most recent Forecast data. (only
+     *            used to query for HydrographForecast SHEFForecast data)
+     * @param useLatestForecast
+     *            Flag to use Only the Latest Forecast value when true (only
+     *            used to query for HydrographForecast SHEFForecast data)
+     * @return Hydrograph of the specified type, containing Time Series data for
+     *         the specified parameters
      */
-    public Object getTimeSeries(String lid, String physicalElement,
-            String stageType, long startTime, long endTimestartTime) {
+    public Hydrograph<? extends SHEFBase> getHydrographTimeSeries(
+            String hydrographType, String lid, String physicalElement,
+            String typeSource, long beginTime, long endTime,
+            long basisBeginTime, boolean useLatestForecast) {
 
-        Object returnObject = null;
-        // TODO Finish fleshing out this method.
-        return (returnObject);
+        Hydrograph<? extends SHEFBase> hydrograph = null;
+        if (HYDROGRAPH_FORECAST.compareToIgnoreCase(hydrographType) == 0) {
+            hydrograph = getForecastTimeSeries(lid, physicalElement, beginTime,
+                    endTime, basisBeginTime, useLatestForecast);
+        } else if (HYDROGRAPH_OBSERVED.compareToIgnoreCase(hydrographType) == 0) {
+            hydrograph = getObservedTimeSeries(lid, physicalElement,
+                    typeSource, beginTime, endTime);
+        } else if (HYDROGRAPH_PRECIP.compareToIgnoreCase(hydrographType) == 0) {
+            hydrograph = getPrecipTimeSeries(lid, physicalElement, typeSource,
+                    beginTime, endTime);
+        }
+
+        return (hydrograph);
+    }
+
+    /**
+     * Retrieve Hydrograph Observed data for the given parameters.
+     * 
+     * @param lid
+     *            RiverForecastPoint Identifier
+     * @param physicalElement
+     *            Physical Element identifier
+     * @param fcstValidBeginTime
+     *            The lower bound of time window to retrieve Time Series data
+     *            for (in mils)
+     * @param fcstValidEndTime
+     *            The upper bound of the time window to retrieve Time Series
+     *            data for (in mils).
+     * @param basisBeginTime
+     *            Forecast Basis Begin Time (in mils)
+     * @param useLatestForecast
+     *            Flag to use Only the Latest Forecast value when true
+     * @return A full Hydrograph Forecast object with SHEF Forecast Time Series
+     *         data.
+     */
+    public HydrographForecast getForecastTimeSeries(String lid,
+            String physicalElement, long fcstValidBeginTime,
+            long fcstValidEndTime, long basisBeginTime,
+            boolean useLatestForecast) {
+
+        if (physicalElement == null) {
+            RiverForecastPoint riverForecastPoint = this.floodDAO
+                    .queryRiverForecastPoint(lid);
+            if (riverForecastPoint != null) {
+                physicalElement = riverForecastPoint.getPhysicalElement();
+            }
+        }
+
+        return floodDAO.queryRiverPointHydrographForecast(lid, physicalElement,
+                fcstValidBeginTime, fcstValidEndTime, basisBeginTime,
+                useLatestForecast);
+    }
+
+    public HydrographPrecip getPrecipTimeSeries(String lid,
+            String physicalElement, String typeSource, long obsBeginTime,
+            long obsEndTime) {
+
+        if (physicalElement == null) {
+            RiverForecastPoint riverForecastPoint = this.floodDAO
+                    .queryRiverForecastPoint(lid);
+            if (riverForecastPoint != null) {
+                physicalElement = riverForecastPoint.getPhysicalElement();
+            }
+        }
+
+        return floodDAO.queryRiverPointHydrographPrecip(lid, physicalElement,
+                typeSource, obsBeginTime, obsEndTime);
+
+    }
+
+    public HydrographObserved getObservedTimeSeries(String lid,
+            String physicalElement, String typeSource, long startTime,
+            long endTime) {
+
+        if (physicalElement == null) {
+            RiverForecastPoint riverForecastPoint = this.floodDAO
+                    .queryRiverForecastPoint(lid);
+            if (riverForecastPoint != null) {
+                physicalElement = riverForecastPoint.getPhysicalElement();
+            } else {
+                return (null);
+            }
+        }
+        return (floodDAO.queryRiverPointHydrographObserved(lid,
+                physicalElement, typeSource, startTime, endTime));
     }
 
     /**

@@ -250,4 +250,13 @@ public abstract class SHEFBase {
         return (this.postingTime);
     }
 
+    /**
+     * This is a "Helper" method to allow a single getTime() method to be used
+     * for the time values for SHEF data items that use differently named Time
+     * columns.
+     * 
+     * @return The "correct" time value for the SHEF Hydro Object
+     */
+    public abstract long getTime();
+
 }

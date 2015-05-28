@@ -47,6 +47,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Feb 24, 2015 5960       Manross             Grab flood inundation areas
  * Apr 9,  2015 7091       Hansen              No longer parsing double pipe
  * May 08, 2015 6562       Chris.Cody          Restructure River Forecast Points/Recommender
+ * May 28, 2015 7139       Chris.Cody          Add curpp and curpc HydrographPrecip query and processing
  * </pre>
  * 
  * @author bryon.lawrence
@@ -996,7 +997,7 @@ public class FloodDAO implements IFloodDAO {
 
         SimpleDateFormat dateFormat = RiverHydroConstants.getDateFormat();
         /* Determine the table name to use. */
-        String tableName = this.getTableNameForPhysialElement(physicalElement,
+        String tableName = this.getTableNameForPhysicalElement(physicalElement,
                 false);
 
         if ((typeSource != null) && (typeSource.length() > 0)) {
@@ -1192,6 +1193,79 @@ public class FloodDAO implements IFloodDAO {
      * (non-Javadoc)
      * 
      * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
+     * #queryRiverPointHydrographPrecip()
+     */
+    @Override
+    public HydrographPrecip queryRiverPointHydrographPrecip(String lid,
+            String physicalElement, String typeSource, long obsBeginTime,
+            long obsEndTime) {
+
+        List<SHEFPrecip> shefPrecipList = null;
+        if ((typeSource == null) || (typeSource.length() == 0)) {
+            // This is the same query used for SHEFObserved objects.
+            typeSource = queryBestObservedTypeSource(lid, physicalElement);
+        }
+
+        SimpleDateFormat dateFormat = RiverHydroConstants.getDateFormat();
+        /* Determine the table name to use. */
+        String tableName = this
+                .getPrecipTableNameForPhysicalElement(physicalElement);
+
+        if ((typeSource != null) && (typeSource.length() > 0)) {
+            /*
+             * Get the data for the specified time window and for the determined
+             * PEDTSEP entry. Build the where clause depending upon whether
+             * considering only passed qc data. (This is from existing SHEF
+             * Observed query.)
+             */
+            StringBuilder querySB = new StringBuilder();
+            querySB.append("SELECT ");
+            querySB.append(SHEFPrecip.COLUMN_NAME_STRING);
+            querySB.append(" FROM ");
+            querySB.append(tableName);
+            querySB.append(" WHERE lid = '");
+            querySB.append(lid);
+            querySB.append("' AND pe = '");
+            querySB.append(physicalElement);
+            querySB.append("' AND ts = '");
+            querySB.append(typeSource);
+            querySB.append("' AND obstime >= '");
+            querySB.append(dateFormat.format(new Date(obsBeginTime)));
+            querySB.append("' AND obstime <= '");
+            querySB.append(dateFormat.format(new Date(obsEndTime)));
+            querySB.append("' AND value != ");
+            querySB.append(RiverHydroConstants.MISSING_VALUE_STRING);
+            querySB.append(" AND quality_code >= ");
+            querySB.append(RiverHydroConstants.QUESTIONABLE_BAD_THRESHOLD);
+            querySB.append(" ORDER BY obstime ASC ");
+
+            List<Object[]> queryResults = DatabaseQueryUtil
+                    .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                            querySB.toString(), IHFS, "river precip hydrograph");
+            if ((queryResults != null) && (queryResults.isEmpty() == false)) {
+                shefPrecipList = Lists
+                        .newArrayListWithExpectedSize(queryResults.size());
+                for (Object[] queryResult : queryResults) {
+                    SHEFPrecip shefPrecip = new SHEFPrecip(queryResult);
+                    shefPrecipList.add(shefPrecip);
+                }
+            } else {
+                shefPrecipList = Lists.newArrayListWithExpectedSize(0);
+            }
+        } else {
+            shefPrecipList = Lists.newArrayListWithExpectedSize(0);
+        }
+        HydrographPrecip hydrographPrecip = new HydrographPrecip(lid,
+                physicalElement, typeSource, obsBeginTime, obsEndTime,
+                shefPrecipList);
+
+        return (hydrographPrecip);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
      * #queryRiverPointHydrographForecast()
      */
     @Override
@@ -1289,7 +1363,7 @@ public class FloodDAO implements IFloodDAO {
         /*
          * Set the table name to use.
          */
-        String tableName = this.getTableNameForPhysialElement(physicalElement,
+        String tableName = this.getTableNameForPhysicalElement(physicalElement,
                 true);
 
         StringBuilder querySB = new StringBuilder();
@@ -1389,7 +1463,7 @@ public class FloodDAO implements IFloodDAO {
             long endValidTime, long basisBeginTime) {
 
         List<Long> basisTimeList = null;
-        String tableName = this.getTableNameForPhysialElement(physicalElement,
+        String tableName = this.getTableNameForPhysicalElement(physicalElement,
                 true);
 
         SimpleDateFormat dateFormat = RiverHydroConstants.getDateFormat();
@@ -1770,7 +1844,7 @@ public class FloodDAO implements IFloodDAO {
             /*
              * Set the table name to use.
              */
-            String tableName = getTableNameForPhysialElement(physicalElement,
+            String tableName = getTableNameForPhysicalElement(physicalElement,
                     isForecast);
 
             /*
@@ -2471,7 +2545,7 @@ public class FloodDAO implements IFloodDAO {
      *            not
      * @return Table Name String
      */
-    private String getTableNameForPhysialElement(String pe, boolean isForecast) {
+    private String getTableNameForPhysicalElement(String pe, boolean isForecast) {
         String tableName;
         boolean isHeight = pe.startsWith("h") || pe.startsWith("H");
         // Forecast
@@ -2488,6 +2562,32 @@ public class FloodDAO implements IFloodDAO {
             } else {
                 tableName = SHEFObserved.TABLE_NAME_DISCHARGE; // "discharge";
             }
+        }
+
+        return tableName;
+    }
+
+    /**
+     * Get the correct Precipitation table name for queries base on the Physical
+     * Element value. A value of "PC" will query the curpc table. A value of
+     * "PP" (default) will query the curpp table.
+     * 
+     * @param pe
+     *            The SHEF physical element code
+     * @return Table Name String
+     */
+    private String getPrecipTableNameForPhysicalElement(String pe) {
+        String tableName;
+
+        boolean isAccumulative = true;
+        if ("PC".compareToIgnoreCase(pe) == 0) {
+            isAccumulative = false;
+        }
+        // Precip
+        if (isAccumulative) {
+            tableName = SHEFPrecip.TABLE_NAME_CURPP; // "curpp";
+        } else {
+            tableName = SHEFPrecip.TABLE_NAME_CURPC; // "curpc";
         }
 
         return tableName;

@@ -35,6 +35,8 @@ import java.util.Map;
  * Feb 21, 2015 4959       Dan Schaffer     Improvements to add/remove UGCs
  * Feb 24, 2015 5960       Manross             Grab flood inundation areas
  * May 08, 2015 6562       Chris.Cody  Restructure River Forecast Points/Recommender
+ * May 28, 2015 7139       Chris.Cody  Add curpp and curpc HydrographPrecip query and processing
+ * 
  * </pre>
  * 
  * @author bryon.lawrence
@@ -375,9 +377,9 @@ public interface IFloodDAO {
      * @param obsEndTime
      *            The upper bound of the time window to retrieve observations
      *            for. (Current System Time
-     * @return A HydrographObserved object containing a List of SHEF Observed
-     *         objects corresponding to data from either the IHFS Discharge or
-     *         Height table.
+     * @return A HydrographObserved object. Containing a SHEF Observed object
+     *         list with each object corresponding to one row from the IHFS
+     *         Discharge or Height table.
      */
     public HydrographObserved queryRiverPointHydrographObserved(String lid,
             String physicalElement, String typeSource, long obsBeginTime,
@@ -410,13 +412,36 @@ public interface IFloodDAO {
      * @param useLatestForecast
      *            Use Latest Results flag
      * 
-     * @return A list of HydrographForecast objects. Each object corresponds to
-     *         one row from the IHFS FcstHeight or FcstDischarge tables.
+     * @return A HydrographForecast object. Containing a SHEF Forecast object
+     *         list with each object corresponding to one row from the IHFS
+     *         FcstHeight or FcstDischarge table.
      * 
      */
     public HydrographForecast queryRiverPointHydrographForecast(String lid,
             String physicalElement, long currentSystemTime, long endValidTime,
             long basisBeginTime, boolean useLatestForecast);
+
+    /**
+     * Query for the Precipitation Hydrograph for a river forecast point.
+     * 
+     * @param lid
+     *            River Forecast Point identifier
+     * @param physicalElement
+     *            The SHEF physical element code
+     * @param typeSource
+     *            The SHEF Type Source code
+     * @param obsBeginTime
+     *            The lower bound of time window to retrieve observations for
+     * @param obsEndTime
+     *            The upper bound of the time window to retrieve observations
+     *            for. (Current System Time)
+     * @return A HydrographPrecip object. Containing a SHEF Precip object list
+     *         with each object corresponding to one row from the IHFS curpp or
+     *         curpc table.
+     */
+    public HydrographPrecip queryRiverPointHydrographPrecip(String lid,
+            String physicalElement, String typeSource, long obsBeginTime,
+            long obsEndTime);
 
     /**
      * Get the highest ranked type source given a primary physical element.
