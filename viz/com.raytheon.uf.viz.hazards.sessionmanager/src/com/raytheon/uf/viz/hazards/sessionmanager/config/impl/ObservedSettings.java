@@ -71,6 +71,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  *                                      trigger a settings-loaded notification
  *                                      instead of a settings-modified one.
  * Apr 10, 2015 6898       Chris.Cody   Removed all messaging from data object.
+ * May 28, 2015 8401       Chris.Cody   Correct Hazard Filtering issue
  * </pre>
  * 
  * @author bsteffen
@@ -263,6 +264,9 @@ public class ObservedSettings implements ISettings {
             fieldChanged = true;
         }
         curChanged = setInternalVisibleStatuses(other.getVisibleStatuses());
+        if (curChanged == true) {
+            fieldChanged = true;
+        }
         curChanged = setInternalToolbarTools(other.getToolbarTools());
         if (curChanged == true) {
             fieldChanged = true;
