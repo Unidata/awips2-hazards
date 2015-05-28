@@ -292,6 +292,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      if it was reverted and contained the REPLACED_BY attribute.
  * May 19, 2015    7706    Robert.Blum  Fixed bug when checking for conflicts where it would check hazards
  *                                      that were ended.
+ * May 28, 2015    7709    Chris.Cody   Add Reference name of forecast zone in the conflicting hazards
  * 
  * </pre>
  * 
@@ -3162,6 +3163,7 @@ public class SessionEventManager implements
      *         (counties, zones, etc.) where they conflict (if available).
      * 
      */
+    @SuppressWarnings("unchecked")
     private Map<IHazardEvent, Collection<String>> buildConflictMap(
             IHazardEvent firstEvent, IHazardEvent secondEvent,
             List<IGeometryData> hatchedAreasFirstEvent,
@@ -3170,7 +3172,7 @@ public class SessionEventManager implements
 
         Map<IHazardEvent, Collection<String>> conflictingHazardsMap = new HashMap<>();
 
-        List<String> geometryNames = new ArrayList<>();
+        Set<String> forecastZoneSet = new HashSet<>();
 
         if (!geoMapUtilities.isWarngenHatching(firstEvent)
                 && !geoMapUtilities.isWarngenHatching(secondEvent)) {
@@ -3180,17 +3182,16 @@ public class SessionEventManager implements
             commonHatchedAreas.retainAll(hatchedAreasSecondEvent);
 
             if (!commonHatchedAreas.isEmpty()) {
+                HashMap<String, Serializable> firstHazardAreaMap = (HashMap<String, Serializable>) firstEvent
+                        .getHazardAttribute(HAZARD_AREA);
+                HashMap<String, Serializable> secondHazardAreaMap = (HashMap<String, Serializable>) secondEvent
+                        .getHazardAttribute(HAZARD_AREA);
+                forecastZoneSet.addAll(firstHazardAreaMap.keySet());
+                forecastZoneSet.retainAll(secondHazardAreaMap.keySet());
 
-                for (IGeometryData hatchedArea : commonHatchedAreas) {
-
-                    geometryNames.add(hatchedArea
-                            .getString(firstEventLabelParameter));
-                }
-
-                conflictingHazardsMap.put(secondEvent, geometryNames);
+                conflictingHazardsMap.put(secondEvent, forecastZoneSet);
             }
         } else {
-
             String labelFieldName = null;
             List<IGeometryData> geoWithLabelInfo = null;
 
@@ -3213,22 +3214,26 @@ public class SessionEventManager implements
                         conflictFound = true;
 
                         if (labelFieldName != null) {
-
+                            HashMap<String, Serializable> hazardAreaMap = null;
                             if (geoWithLabelInfo == hatchedAreasFirstEvent) {
-                                geometryNames.add(hatchedArea
-                                        .getString(labelFieldName));
+                                hazardAreaMap = (HashMap<String, Serializable>) firstEvent
+                                        .getHazardAttribute(HAZARD_AREA);
                             } else {
-                                geometryNames.add(hatchedAreaToCheck
-                                        .getString(labelFieldName));
+                                hazardAreaMap = (HashMap<String, Serializable>) secondEvent
+                                        .getHazardAttribute(HAZARD_AREA);
                             }
 
+                            if ((hazardAreaMap != null)
+                                    && (hazardAreaMap.isEmpty() == false)) {
+                                forecastZoneSet.addAll(hazardAreaMap.keySet());
+                            }
                         }
                     }
                 }
             }
 
             if (conflictFound) {
-                conflictingHazardsMap.put(secondEvent, geometryNames);
+                conflictingHazardsMap.put(secondEvent, forecastZoneSet);
             }
 
         }
