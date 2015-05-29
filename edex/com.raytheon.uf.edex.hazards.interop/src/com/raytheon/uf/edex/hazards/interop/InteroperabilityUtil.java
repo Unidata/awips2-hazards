@@ -29,7 +29,6 @@ import java.util.Map;
 import org.apache.commons.lang.StringUtils;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -40,6 +39,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardI
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityRecordManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardsInteroperability;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.IHazardsInteroperabilityRecord;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
 
 /**
  * A utility for common interoperability functions.
@@ -54,6 +54,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.IHazard
  * Apr 22, 2014 3357      bkowal       Implemented ETN comparison to compare hazard events.
  * Dec 18, 2014 #2826     dgilling     Change fields used in interoperability.
  * Feb 22, 2015   6561    mpduff       Use insertTime to find latest events.
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * 
  * </pre>
  * 
@@ -113,12 +114,10 @@ public final class InteroperabilityUtil {
         for (IHazardsInteroperabilityRecord record : records) {
             final String hazardEventID = record.getHazardEventID();
 
-            HazardQueryBuilder builder = new HazardQueryBuilder();
-            builder.addKey(HazardConstants.HAZARD_EVENT_IDENTIFIER,
-                    hazardEventID);
-
             Map<String, HazardHistoryList> hazardEventsMap = manager
-                    .getEventsByFilter(builder.getQuery());
+                    .query(new HazardEventQueryRequest(
+                            HazardConstants.HAZARD_EVENT_IDENTIFIER,
+                            hazardEventID));
             if (hazardEventsMap != null && hazardEventsMap.isEmpty() == false
                     && hazardEventsMap.containsKey(hazardEventID)) {
 
@@ -161,12 +160,10 @@ public final class InteroperabilityUtil {
     public static IHazardEvent associatedExistingHazard(
             IHazardEventManager manager, final String siteID,
             final String phen, final String sig, final String newETNs) {
-        HazardQueryBuilder builder = new HazardQueryBuilder();
-        builder.addKey(HazardConstants.SITE_ID, siteID);
-        builder.addKey(HazardConstants.PHENOMENON, phen);
-        builder.addKey(HazardConstants.SIGNIFICANCE, sig);
         Map<String, HazardHistoryList> events = manager
-                .getEventsByFilter(builder.getQuery());
+                .query(new HazardEventQueryRequest(HazardConstants.SITE_ID,
+                        siteID).and(HazardConstants.PHENOMENON, phen).and(
+                        HazardConstants.SIGNIFICANCE, sig));
         if (events == null || events.isEmpty()) {
             return null;
         }

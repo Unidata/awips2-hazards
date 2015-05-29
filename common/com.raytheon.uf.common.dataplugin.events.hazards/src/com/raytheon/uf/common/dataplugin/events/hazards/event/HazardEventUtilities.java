@@ -36,8 +36,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardEventIdRequest;
-import com.raytheon.uf.common.serialization.comm.RequestRouter;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -64,6 +63,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Feb 10, 2015 6393       Chris.Golden Added method to provide describers, which
  *                                      generate descriptive text from hazard
  *                                      events.
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * </pre>
  * 
  * @author bsteffen
@@ -440,21 +440,8 @@ public class HazardEventUtilities {
             }
         }
         if ("NEW".equals(action) || createNew) {
-            value = generateEventID(site, true);
-        }
-        return value;
-    }
-
-    public static String generateEventID(String site, boolean practice)
-            throws Exception {
-        HazardEventIdRequest request = new HazardEventIdRequest();
-        request.setPractice(practice);
-        request.setSiteId(site);
-        String value = "";
-        try {
-            value = RequestRouter.route(request).toString();
-        } catch (Exception e) {
-            throw new Exception("Unable to make request for hazard event id", e);
+            value = HazardServicesClient.getHazardEventServices(true)
+                    .requestEventId(site);
         }
         return value;
     }

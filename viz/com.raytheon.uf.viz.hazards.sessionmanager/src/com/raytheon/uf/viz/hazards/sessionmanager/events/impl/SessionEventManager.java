@@ -77,12 +77,13 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Significance;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastManager;
@@ -293,6 +294,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * May 19, 2015    7706    Robert.Blum  Fixed bug when checking for conflicts where it would check hazards
  *                                      that were ended.
  * May 28, 2015    7709    Chris.Cody   Add Reference name of forecast zone in the conflicting hazards
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * Jun 02, 2015    7138    Robert.Blum  RVS can now be issued without changing the status/state of the 
  *                                      hazard events.
  * Jun 11, 2015    8191    Robert.Blum  Fixed apply on Rise/Crest/Fall editor
@@ -968,7 +970,8 @@ public class SessionEventManager implements
         if (productGenerationComplete.isIssued()) {
             for (GeneratedProductList generatedProductList : productGenerationComplete
                     .getGeneratedProducts()) {
-                ProductGeneratorEntry pgEntry = pgTable.get(generatedProductList.getProductInfo());
+                ProductGeneratorEntry pgEntry = pgTable
+                        .get(generatedProductList.getProductInfo());
                 if (pgEntry.getChangeHazardStatus() == true) {
                     for (IEvent event : generatedProductList.getEventSet()) {
                         IHazardEvent hazardEvent = (IHazardEvent) event;
@@ -1609,19 +1612,16 @@ public class SessionEventManager implements
     }
 
     private void loadEventsForSettings(ObservedSettings settings) {
-        Map<String, List<Object>> filters = new HashMap<String, List<Object>>();
+        HazardEventQueryRequest queryRequest = new HazardEventQueryRequest();
         Set<String> visibleSites = settings.getVisibleSites();
         if (visibleSites == null || visibleSites.isEmpty()) {
             return;
         }
-        filters.put(HazardConstants.SITE_ID,
-                new ArrayList<Object>(visibleSites));
+
         Set<String> visibleTypes = settings.getVisibleTypes();
         if (visibleTypes == null || visibleTypes.isEmpty()) {
             return;
         }
-        filters.put(HazardConstants.PHEN_SIG, new ArrayList<Object>(
-                visibleTypes));
         Set<String> visibleStatuses = settings.getVisibleStatuses();
         if (visibleStatuses == null || visibleStatuses.isEmpty()) {
             return;
@@ -1630,9 +1630,14 @@ public class SessionEventManager implements
         for (String state : visibleStatuses) {
             statuses.add(HazardStatus.valueOf(state.toUpperCase()));
         }
-        filters.put(HazardConstants.HAZARD_EVENT_STATUS, statuses);
+
+        queryRequest.and(HazardConstants.SITE_ID, visibleSites)
+                .and(HazardConstants.PHEN_SIG, visibleTypes)
+                .and(HazardConstants.HAZARD_EVENT_STATUS, statuses);
+
         Map<String, HazardHistoryList> eventsMap = dbManager
-                .getEventsByFilter(filters);
+                .query(queryRequest);
+
         synchronized (events) {
             for (Entry<String, HazardHistoryList> entry : eventsMap.entrySet()) {
                 HazardHistoryList list = entry.getValue();
@@ -1752,11 +1757,10 @@ public class SessionEventManager implements
 
             } else {
                 try {
-                    oevent.setEventID(
-                            HazardEventUtilities.generateEventID(
-                                    configManager.getSiteID(),
-                                    CAVEMode.getMode() == CAVEMode.PRACTICE),
-                            false, originator);
+                    oevent.setEventID(HazardServicesClient
+                            .getHazardEventServices(
+                                    CAVEMode.getMode() == CAVEMode.PRACTICE)
+                            .requestEventId(configManager.getSiteID()));
                 } catch (Exception e) {
                     statusHandler.error("Unable to set event id", e);
                 }
@@ -2878,7 +2882,7 @@ public class SessionEventManager implements
          * Find the union of the session events and those retrieved from the
          * hazard event manager. Ignore "Ended" events.
          */
-        List<IHazardEvent> eventsToCheck = getEventsToCheckForConflicts(new HazardQueryBuilder());
+        List<IHazardEvent> eventsToCheck = getEventsToCheckForConflicts(new HazardEventQueryRequest());
 
         for (IHazardEvent eventToCheck : eventsToCheck) {
 
@@ -2936,31 +2940,19 @@ public class SessionEventManager implements
                      * Retrieve matching events from the Hazard Event Manager
                      * Also, include those from the session state.
                      */
-                    HazardQueryBuilder hazardQueryBuilder = new HazardQueryBuilder();
+                    HazardEventQueryRequest queryRequest = new HazardEventQueryRequest(
+                            HazardConstants.HAZARD_EVENT_START_TIME, ">",
+                            eventToCompare.getStartTime())
+                            .and(HazardConstants.HAZARD_EVENT_END_TIME, "<",
+                                    eventToCompare.getEndTime())
+                            .and(HazardConstants.PHEN_SIG, hazardConflictList)
+                            .and(HazardConstants.HAZARD_EVENT_STATUS,
+                                    new Object[] { HazardStatus.ISSUED,
+                                            HazardStatus.ENDING,
+                                            HazardStatus.ENDED,
+                                            HazardStatus.PROPOSED });
 
-                    hazardQueryBuilder.addKey(
-                            HazardConstants.HAZARD_EVENT_START_TIME,
-                            eventToCompare.getStartTime());
-                    hazardQueryBuilder.addKey(
-                            HazardConstants.HAZARD_EVENT_END_TIME,
-                            eventToCompare.getEndTime());
-                    for (String conflictPhenSig : hazardConflictList) {
-                        hazardQueryBuilder.addKey(HazardConstants.PHEN_SIG,
-                                conflictPhenSig);
-                    }
-
-                    hazardQueryBuilder.addKey(
-                            HazardConstants.HAZARD_EVENT_STATUS,
-                            HazardStatus.ISSUED);
-                    hazardQueryBuilder.addKey(
-                            HazardConstants.HAZARD_EVENT_STATUS,
-                            HazardStatus.ENDING);
-
-                    hazardQueryBuilder.addKey(
-                            HazardConstants.HAZARD_EVENT_STATUS,
-                            HazardStatus.PROPOSED);
-
-                    List<IHazardEvent> eventsToCheck = getEventsToCheckForConflicts(hazardQueryBuilder);
+                    List<IHazardEvent> eventsToCheck = getEventsToCheckForConflicts(queryRequest);
 
                     /*
                      * Loop over the existing events.
@@ -3048,14 +3040,14 @@ public class SessionEventManager implements
      * @return
      */
     private List<IHazardEvent> getEventsToCheckForConflicts(
-            final HazardQueryBuilder hazardQueryBuilder) {
+            final HazardEventQueryRequest queryRequest) {
 
         /*
          * Retrieve matching events from the Hazard Event Manager Also, include
          * those from the session state.
          */
         Map<String, HazardHistoryList> eventMap = this.dbManager
-                .getEventsByFilter(hazardQueryBuilder.getQuery());
+                .query(queryRequest);
         List<IHazardEvent> eventsToCheck = new ArrayList<IHazardEvent>(
                 getEvents());
         Map<String, IHazardEvent> sessionEventMap = new HashMap<>();
@@ -3844,7 +3836,7 @@ public class SessionEventManager implements
         return events;
     }
 
-    private Geometry addGoosenecksAsNecessary(Geometry productGeometry) {       
+    private Geometry addGoosenecksAsNecessary(Geometry productGeometry) {
         if ((!(productGeometry instanceof GeometryCollection))
                 || (productGeometry.getNumGeometries() == 0)) {
             return productGeometry;

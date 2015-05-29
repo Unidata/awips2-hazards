@@ -3,12 +3,7 @@
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
-  
-     <bean id="gridValidator" class="com.raytheon.uf.edex.hazards.interop.gfe.GridValidator" /> 
-     <bean factory-bean="handlerRegistry" factory-method="register"> 
-            <constructor-arg value="com.raytheon.uf.common.dataplugin.events.hazards.requests.GetHazardsConflictDictRequest" /> 
-            <constructor-arg ref="gridValidator" /> 
-    </bean>
+	<bean id="gridValidator" class="com.raytheon.uf.edex.hazards.interop.gfe.GridValidator" />
 
 	<bean id="getInteroperabilityHandler"
 		class="com.raytheon.uf.edex.hazards.interop.handlers.InteroperabilityRetrieveHandler" />
@@ -25,7 +20,7 @@
 			value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.RecordStorageRequest" />
 		<constructor-arg ref="storeInteroperabilityHandler" />
 	</bean>
-	
+
 	<bean id="getPKInteroperabilityHandler"
 		class="com.raytheon.uf.edex.hazards.interop.handlers.InteroperabilityPKRetrieveHandler" />
 	<bean factory-bean="handlerRegistry" factory-method="register">
@@ -33,14 +28,14 @@
 			value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.RecordRetrievePKRequest" />
 		<constructor-arg ref="getPKInteroperabilityHandler" />
 	</bean>
-		<bean id="purgePracticeInteropHandler"
+	<bean id="purgePracticeInteropHandler"
 		class="com.raytheon.uf.edex.hazards.interop.handlers.PurgePracticeInteropRecordsHandler" />
 	<bean factory-bean="handlerRegistry" factory-method="register">
 		<constructor-arg
 			value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeInteropRecordsRequest" />
 		<constructor-arg ref="purgePracticeInteropHandler" />
 	</bean>
-	
+
 	<bean id="activeTableInteropHandler"
 		class="com.raytheon.uf.edex.hazards.interop.activetable.ActiveTableInteropRetrieveHandler" />
 	<bean factory-bean="handlerRegistry" factory-method="register">
@@ -48,12 +43,12 @@
 			value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.VtecInteroperabilityActiveTableRequest" />
 		<constructor-arg ref="activeTableInteropHandler" />
 	</bean>
-				      	
-    <bean id="purgePracticeWarningHandler"	
-          class="com.raytheon.uf.edex.hazards.database.PurgePracticeWarningHandler" />	
-    <bean factory-bean="handlerRegistry" factory-method="register">	
-          <constructor-arg	
-                value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeWarningRequest" />	
-			            <constructor-arg ref="purgePracticeWarningHandler" />	
-	</bean>	
+
+	<bean id="purgePracticeWarningHandler"
+		class="com.raytheon.uf.edex.hazards.database.PurgePracticeWarningHandler" />
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeWarningRequest" />
+		<constructor-arg ref="purgePracticeWarningHandler" />
+	</bean>
 </beans>

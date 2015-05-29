@@ -21,32 +21,15 @@ package com.raytheon.uf.edex.hazards.interop.gfe;
 
 import java.io.File;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import jep.JepException;
-
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
-import com.raytheon.uf.common.dataplugin.events.hazards.requests.GetHazardsConflictDictRequest;
-import com.raytheon.uf.common.dataplugin.gfe.db.objects.GFERecord;
-import com.raytheon.uf.common.dataplugin.gfe.db.objects.ParmID;
-import com.raytheon.uf.common.dataplugin.gfe.discrete.DiscreteKey;
-import com.raytheon.uf.common.dataplugin.gfe.slice.DiscreteGridSlice;
-import com.raytheon.uf.common.hazards.configuration.ConfigLoader;
-import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
-import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
-import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.localization.IPathManager;
-import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SingleTypeJAXBManager;
-import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.time.TimeRange;
 
 /**
  * Helper class to determine if a hazard even needs to create a grid.
@@ -62,6 +45,7 @@ import com.raytheon.uf.common.time.TimeRange;
  *                                      grid is accessed.
  * Apr 28, 2014 3556       bkowal       Now retrieves the hazard conflict dictionary
  *                                      from static localization.
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access                                      
  * 
  * </pre>
  * 
@@ -69,8 +53,7 @@ import com.raytheon.uf.common.time.TimeRange;
  * @version 1.0
  */
 
-public class GridValidator implements
-        IRequestHandler<GetHazardsConflictDictRequest> {
+public class GridValidator {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(GridValidator.class);
 
@@ -79,55 +62,6 @@ public class GridValidator implements
 
     private static final String HAZARD_EVENT_GRIDS_FILE = "hazardServices"
             + File.separator + "hazardEventGrids.xml";
-
-    private static Map<String, List<String>> hazardsConflictDict;
-
-    /**
-     * Checks to see if hazardEvent conflicts with existing discrete grid
-     * slices.
-     * 
-     * @param phenSig
-     * @param timeRange
-     * @param siteID
-     * @return
-     * @throws Exception
-     * @throws JepException
-     */
-    public static synchronized boolean hasConflicts(Mode mode, String phenSig,
-            TimeRange timeRange, String siteID) {
-        try {
-            if (hazardsConflictDict == null) {
-                populateHazardsConflictDict();
-            }
-
-            final String parmIDFormat = (mode == Mode.OPERATIONAL) ? GridRequestHandler.OPERATIONAL_PARM_ID_FORMAT
-                    : GridRequestHandler.PRACTICE_PARM_ID_FORMAT;
-            ParmID parmID = new ParmID(String.format(parmIDFormat, siteID));
-            List<GFERecord> potentialRecords = GridRequestHandler
-                    .findIntersectedGrid(parmID, timeRange);
-            // test if hazardEvent will conflict with existing grids
-            if (hazardsConflictDict != null
-                    && hazardsConflictDict.get(phenSig) != null) {
-                List<String> hazardsConflictList = hazardsConflictDict
-                        .get(phenSig);
-                for (GFERecord record : potentialRecords) {
-                    DiscreteGridSlice gridSlice = (DiscreteGridSlice) record
-                            .getMessageData();
-                    for (DiscreteKey discreteKey : gridSlice.getKeys()) {
-                        for (String key : discreteKey.getSubKeys()) {
-                            if (hazardsConflictList.contains(key)) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            statusHandler.error(
-                    "Error trying to retrieve intersecting gfe records", e);
-        }
-        return false;
-    }
 
     /**
      * Determines if the HazardEvent should be saved as a grid or if it should
@@ -157,40 +91,5 @@ public class GridValidator implements
         }
         return needsConversion;
 
-    }
-
-    @Override
-    public Map<String, List<String>> handleRequest(
-            GetHazardsConflictDictRequest request) throws Exception {
-        if (hazardsConflictDict == null) {
-            populateHazardsConflictDict();
-        }
-        return hazardsConflictDict;
-    }
-
-    /**
-     * Populates hazardConflictsDict with HazardsConflictDict from
-     * MergeHazards.py
-     */
-    private static void populateHazardsConflictDict() {
-        statusHandler.info("Retrieving the hazard conflict dictionary.");
-
-        hazardsConflictDict = new HashMap<>();
-
-        IPathManager pm = PathManagerFactory.getPathManager();
-        LocalizationFile file = pm
-                .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_TYPES_PY);
-        ConfigLoader<HazardTypes> hazardTypesConfigLoader = new ConfigLoader<HazardTypes>(
-                file, HazardTypes.class);
-        HazardTypes hazardTypes = hazardTypesConfigLoader.getConfig();
-        Iterator<String> hazardTypesIterator = hazardTypes.keySet().iterator();
-        while (hazardTypesIterator.hasNext()) {
-            final String hazardType = hazardTypesIterator.next();
-            HazardTypeEntry entry = hazardTypes.get(hazardType);
-            hazardsConflictDict.put(hazardType, entry.getHazardConflictList());
-        }
-
-        statusHandler
-                .info("Successfully retrieved the hazard conflict dictionary!");
     }
 }

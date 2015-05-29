@@ -43,6 +43,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityRecordManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardsInteroperabilityGFE;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.IHazardsInteroperabilityRecord;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
 import com.raytheon.uf.common.dataplugin.gfe.dataaccess.GFEDataAccessUtil;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.GFERecord;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.GridLocation;
@@ -104,6 +105,7 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  *                                      every grid update notification.
  * Dec 12, 2014 2826       dgilling     Change fields used by interoperability.
  * Jan 19, 2014 4849       rferrel      Log exceptions getting GFERecords to delete.
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * 
  * </pre>
  * 
@@ -140,6 +142,8 @@ public class HazardEventHandler {
 
     private static final Pattern PARM_OPERATIONAL_PATTERN = Pattern
             .compile(PARM_OPERATIONAL_FCST);
+    
+    private GridRequestHandler gridRequestHandler;
 
     /**
      * Constructor.
@@ -147,6 +151,7 @@ public class HazardEventHandler {
     private HazardEventHandler() {
         this.operationalGridParmInfoMap = new HashMap<>();
         this.practiceGridParmInfoMap = new HashMap<>();
+        this.gridRequestHandler = new GridRequestHandler();
     }
 
     /**
@@ -166,7 +171,7 @@ public class HazardEventHandler {
     private void initGridParmInfo(String siteID) {
         if (this.operationalGridParmInfoMap.containsKey(siteID) == false) {
             try {
-                GridParmInfo gridParmInfo = GridRequestHandler
+                GridParmInfo gridParmInfo = this.gridRequestHandler
                         .requestOperationalGridParmInfo(siteID);
                 this.operationalGridParmInfoMap.put(siteID, gridParmInfo);
                 statusHandler.info("HazardEventHandler initialized for "
@@ -178,7 +183,7 @@ public class HazardEventHandler {
         }
         if (this.practiceGridParmInfoMap.containsKey(siteID) == false) {
             try {
-                GridParmInfo gridParmInfo = GridRequestHandler
+                GridParmInfo gridParmInfo = this.gridRequestHandler
                         .requestPracticeGridParmInfo(siteID);
                 this.practiceGridParmInfoMap.put(siteID, gridParmInfo);
                 statusHandler.info("HazardEventHandler initialized for "
@@ -621,8 +626,8 @@ public class HazardEventHandler {
         IHazardEvent hazardEvent = hazardEventManager.createEvent();
 
         try {
-            hazardEvent.setEventID(HazardEventUtilities.generateEventID(siteID,
-                    practice));
+            hazardEvent.setEventID(HazardServicesClient.getHazardEventServices(practice)
+                    .requestEventId(siteID));
         } catch (Exception e) {
             statusHandler.handle(Priority.ERROR,
                     "Hazard ID generation failed.", e);
@@ -809,7 +814,7 @@ public class HazardEventHandler {
         }
 
         // find hazards that intersect with hazardEvent time range
-        List<GFERecord> intersectingRecords = GridRequestHandler
+        List<GFERecord> intersectingRecords = this.gridRequestHandler
                 .findIntersectedGrid(gridParmInfo.getParmID(), timeRange);
 
         // create a new grid slice from the hazard event
@@ -843,7 +848,7 @@ public class HazardEventHandler {
         // store new records
         TimeRange replacementTimeRange = GFERecordUtil
                 .getReplacementTimeRange(newGFERecords);
-        GridRequestHandler.store(newGFERecords, gridParmInfo,
+        this.gridRequestHandler.store(newGFERecords, gridParmInfo,
                 replacementTimeRange, practice);
     }
 
@@ -863,13 +868,13 @@ public class HazardEventHandler {
         ParmID parmID = gridParmInfo.getParmID();
 
         // find hazards that intersect with hazardEvent time range
-        List<GFERecord> intersectingRecords = GridRequestHandler
+        List<GFERecord> intersectingRecords = this.gridRequestHandler
                 .findIntersectedGrid(parmID, timeRange);
 
         Map<TimeRange, List<DiscreteGridSlice>> adjacentMap = new HashMap<TimeRange, List<DiscreteGridSlice>>();
         // find grid slices for adjacent time ranges
         if (intersectingRecords.size() > 1) {
-            List<TimeRange> adjacentTimeRanges = GridRequestHandler
+            List<TimeRange> adjacentTimeRanges = this.gridRequestHandler
                     .requestAdjacentTimeRanges(parmID, timeRange);
             for (TimeRange tr : adjacentTimeRanges) {
                 GFERecord gfeRecord = new GFERecord(parmID, tr);
@@ -895,7 +900,7 @@ public class HazardEventHandler {
 
         // remove grids that are not merged with any other grid
         for (TimeRange removeTR : separatedRecords.timeRangesToRemove) {
-            GridRequestHandler.store(new ArrayList<GFERecord>(), gridParmInfo,
+            this.gridRequestHandler.store(new ArrayList<GFERecord>(), gridParmInfo,
                     removeTR, practice);
         }
 
@@ -904,7 +909,7 @@ public class HazardEventHandler {
                 && !separatedRecords.newRecords.isEmpty()) {
             TimeRange replacementTimeRange = GFERecordUtil
                     .getReplacementTimeRange(separatedRecords.newRecords);
-            GridRequestHandler.store(separatedRecords.newRecords, gridParmInfo,
+            this.gridRequestHandler.store(separatedRecords.newRecords, gridParmInfo,
                     replacementTimeRange, practice);
         }
 

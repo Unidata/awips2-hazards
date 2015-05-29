@@ -73,6 +73,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Feb 19, 2015 5071      Robert.Blum   Added HAZARD_CATEGORIES_LOCALIZATION_DIR
  * Feb 23, 2015 3618      Chris.Golden  Added possible sites to settings.
  * May 18, 2015 8227      Chris.Cody    Remove NullRecommender
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * </pre>
  * 
  * @author mnash
@@ -405,6 +406,12 @@ public final class HazardConstants {
      * End time key in hazard
      */
     public static final String ISSUE_TIME = "issueTime";
+    
+    /**
+     * Insert time key in hazard
+     */
+    
+    public static final String INSERT_TIME = "insertTime";
 
     /**
      * Creation time key in hazard

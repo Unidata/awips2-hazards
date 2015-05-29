@@ -1,0 +1,72 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:jaxws="http://cxf.apache.org/jaxws"
+	xmlns:jaxrs="http://cxf.apache.org/jaxrs"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+    http://www.springframework.org/schema/beans/spring-beans-3.1.xsd   
+    http://cxf.apache.org/jaxws
+    http://cxf.apache.org/schemas/jaxws.xsd
+    http://cxf.apache.org/jaxrs
+    http://cxf.apache.org/schemas/jaxrs.xsd">
+
+	<import resource="classpath:META-INF/cxf/cxf.xml" />
+	<import resource="classpath:META-INF/cxf/cxf-servlet.xml" />
+
+    <bean id="requestRouterRegistry" class="com.raytheon.uf.common.serialization.comm.RequestRouter"
+        factory-method="getRouterRegistry" />
+
+    <bean id="requestRegistryRouter"
+        class="com.raytheon.uf.edex.requestsrv.router.RemoteServerRequestRouter">
+        <constructor-arg value="${HTTP_SERVER}" />
+    </bean>
+
+    <bean id="registerRequestRegistryRouter" factory-bean="requestRouterRegistry"
+        factory-method="register">
+        <constructor-arg value="remote.request.server" />
+        <constructor-arg ref="requestRegistryRouter" />
+    </bean>
+
+	<bean id="remoteGridRequestHandler"
+		class="com.raytheon.uf.edex.hazards.interop.gfe.GridRequestHandler">
+		<constructor-arg value="remote.request.server" />
+	</bean>
+
+	<bean id="HazardEventInteropServicesImpl"
+		class="com.raytheon.uf.edex.hazards.interop.registry.services.HazardEventInteropServices">
+		<property name="practice" value="false" />
+		<property name="gridRequestHandler" ref="remoteGridRequestHandler" />
+	</bean>
+
+	<bean id="PracticeHazardEventInteropServicesImpl"
+		class="com.raytheon.uf.edex.hazards.interop.registry.services.HazardEventInteropServices">
+		<property name="practice" value="true" />
+		<property name="gridRequestHandler" ref="remoteGridRequestHandler" />
+	</bean>
+
+	<!-- SOAP Service definitions -->
+	<jaxws:server id="HazardEventInteropServices" address="/hazardEventInteropServices"
+		bus="cxf">
+		<jaxws:serviceBean>
+			<ref bean="HazardEventInteropServicesImpl" />
+		</jaxws:serviceBean>
+		<jaxws:inInterceptors>
+			<ref bean="authenticationInterceptor" />
+		</jaxws:inInterceptors>
+		<jaxws:outInterceptors>
+			<ref bean="securityOutInterceptor" />
+		</jaxws:outInterceptors>
+	</jaxws:server>
+
+	<jaxws:server id="PracticeHazardEventInteropServices"
+		address="/hazardEventInteropServices/practice" bus="cxf">
+		<jaxws:serviceBean>
+			<ref bean="PracticeHazardEventInteropServicesImpl" />
+		</jaxws:serviceBean>
+		<jaxws:inInterceptors>
+			<ref bean="authenticationInterceptor" />
+		</jaxws:inInterceptors>
+		<jaxws:outInterceptors>
+			<ref bean="securityOutInterceptor" />
+		</jaxws:outInterceptors>
+	</jaxws:server>
+
+</beans>

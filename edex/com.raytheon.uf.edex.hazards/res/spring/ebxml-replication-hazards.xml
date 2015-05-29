@@ -5,7 +5,7 @@
   
 	<bean class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
 		<property name="staticMethod"
-			value="com.raytheon.uf.edex.datadelivery.registry.federation.RegistryFederationManager.addObjectTypesToSubscribeTo" />
+			value="com.raytheon.uf.edex.registry.ebxml.services.rest.RegistryFederationManager.addObjectTypesToSubscribeTo" />
 		<property name="arguments">
 			<list>
 				<value>urn:oasis:names:tc:ebxml-regrep:ObjectType:RegistryObject:com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent</value>

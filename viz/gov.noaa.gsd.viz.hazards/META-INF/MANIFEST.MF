@@ -39,7 +39,9 @@ Require-Bundle: com.raytheon.viz.core,
  com.raytheon.uf.viz.python;bundle-version="1.0.0",
  com.raytheon.viz.hydro;bundle-version="1.14.0",
  com.raytheon.viz.hydrocommon;bundle-version="1.14.1",
- com.raytheon.uf.common.hazards.hydro;bundle-version="1.0.0"
+ com.raytheon.uf.common.hazards.hydro;bundle-version="1.0.0",
+ com.raytheon.uf.common.security;bundle-version="1.14.0",
+ com.raytheon.uf.common.dataplugin.events.hazards;bundle-version="1.0.0"
 Export-Package: gov.noaa.gsd.viz.hazards.console,
  gov.noaa.gsd.viz.hazards.display,
  gov.noaa.gsd.viz.hazards.jsonutilities,

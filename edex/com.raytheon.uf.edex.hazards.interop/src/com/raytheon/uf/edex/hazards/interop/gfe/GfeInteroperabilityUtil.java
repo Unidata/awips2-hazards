@@ -28,7 +28,6 @@ import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants;
@@ -36,6 +35,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardI
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityRecordManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardsInteroperabilityGFE;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.IHazardsInteroperabilityRecord;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
 
 /**
  * Common utility methods utilized by the GFE interoperability classes.
@@ -48,6 +48,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.IHazard
  * ------------ ---------- ----------- --------------------------
  * Apr 08, 2014            bkowal       Initial creation
  * Dec 12, 2014  #2826     dgilling     Change fields used for interoperability.
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * 
  * </pre>
  * 
@@ -92,12 +93,10 @@ public final class GfeInteroperabilityUtil {
         // Retrieve the associated hazard events.
         Map<String, HazardHistoryList> associatedEvents = new HashMap<>();
         for (IHazardsInteroperabilityRecord record : records) {
-            HazardQueryBuilder builder = new HazardQueryBuilder();
-            builder.addKey(HazardConstants.HAZARD_EVENT_IDENTIFIER,
-                    record.getHazardEventID());
-
             Map<String, HazardHistoryList> events = hazardEventManager
-                    .getEventsByFilter(builder.getQuery());
+                    .query(new HazardEventQueryRequest(
+                            HazardConstants.HAZARD_EVENT_IDENTIFIER, record
+                                    .getHazardEventID()));
             if (events.isEmpty() == false) {
                 associatedEvents.putAll(events);
             }

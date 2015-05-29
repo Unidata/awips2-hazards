@@ -64,6 +64,7 @@ import com.raytheon.uf.common.time.TimeRange;
  * Apr 08, 2014 3357       bkowal       No longer attempt to save to the Official
  *                                      DB for practice mode.
  * Jan 19, 2014 4840       rferrel      Log error when exception getting GFE Record.
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * 
  * </pre>
  * 
@@ -72,6 +73,7 @@ import com.raytheon.uf.common.time.TimeRange;
  */
 
 public class GridRequestHandler {
+    
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(GridRequestHandler.class);
 
@@ -84,7 +86,17 @@ public class GridRequestHandler {
 
     public static final String PRACTICE_PARM_ID_FORMAT = PARM_ID_PREFIX_FORMAT
             + "_Prac_" + PARM_ID_SUFFIX_FORMAT;
+    
+    private String requestRoute;
 
+    public GridRequestHandler(){
+        
+    }
+    
+    public GridRequestHandler(String requestRoute){
+        this.requestRoute = requestRoute;
+    }
+    
     /**
      * Retrieves the GridParmInfo for the siteID.
      * 
@@ -93,7 +105,7 @@ public class GridRequestHandler {
      * @throws Exception
      */
     @SuppressWarnings("unchecked")
-    public static GridParmInfo requestGridParmInfo(String siteID,
+    public GridParmInfo requestGridParmInfo(String siteID,
             String parmIDFormat) throws Exception {
         GetGridParmInfoRequest gridParmInfoRequest = new GetGridParmInfoRequest();
         gridParmInfoRequest.setParmIds(Arrays.asList(new ParmID[] { new ParmID(
@@ -111,18 +123,18 @@ public class GridRequestHandler {
         return info;
     }
 
-    public static GridParmInfo requestGridParmInfo(Mode mode, String siteID)
+    public GridParmInfo requestGridParmInfo(Mode mode, String siteID)
             throws Exception {
         return (mode == Mode.PRACTICE) ? requestPracticeGridParmInfo(siteID)
                 : requestOperationalGridParmInfo(siteID);
     }
 
-    public static GridParmInfo requestOperationalGridParmInfo(String siteID)
+    public GridParmInfo requestOperationalGridParmInfo(String siteID)
             throws Exception {
         return requestGridParmInfo(siteID, OPERATIONAL_PARM_ID_FORMAT);
     }
 
-    public static GridParmInfo requestPracticeGridParmInfo(String siteID)
+    public GridParmInfo requestPracticeGridParmInfo(String siteID)
             throws Exception {
         return requestGridParmInfo(siteID, PRACTICE_PARM_ID_FORMAT);
     }
@@ -133,7 +145,7 @@ public class GridRequestHandler {
      * @param timeRange
      * @return
      */
-    public static List<GFERecord> findIntersectedGrid(ParmID parmID,
+    public List<GFERecord> findIntersectedGrid(ParmID parmID,
             TimeRange timeRange) throws Exception {
         List<GFERecord> records = new ArrayList<GFERecord>();
         List<TimeRange> inventoryTimeRanges = getGridInventory(parmID);
@@ -177,7 +189,7 @@ public class GridRequestHandler {
      * @throws Exception
      */
     @SuppressWarnings("unchecked")
-    private static Map<TimeRange, List<GridDataHistory>> getGridHistory(
+    private Map<TimeRange, List<GridDataHistory>> getGridHistory(
             String siteID, ParmID parmID, List<TimeRange> timeRanges)
             throws Exception {
         GetGridHistoryRequest request = new GetGridHistoryRequest();
@@ -196,7 +208,7 @@ public class GridRequestHandler {
      * @throws Exception
      */
     @SuppressWarnings("unchecked")
-    public static List<TimeRange> getGridInventory(ParmID parmID)
+    public List<TimeRange> getGridInventory(ParmID parmID)
             throws Exception {
         GetGridInventoryRequest request = new GetGridInventoryRequest();
         request.setParmIds(Arrays.asList(new ParmID[] { parmID }));
@@ -206,11 +218,15 @@ public class GridRequestHandler {
         return map.get(parmID);
     }
 
-    private static ServerResponse<?> makeRequest(String siteID,
+    private ServerResponse<?> makeRequest(String siteID,
             AbstractGfeRequest request) throws Exception {
         request.setSiteID(siteID);
         request.setWorkstationID(new WsId(null, null, "CAVE"));
-        return (ServerResponse<?>) RequestRouter.route(request);
+        if(requestRoute == null){
+            return (ServerResponse<?>) RequestRouter.route(request);
+        }else{
+            return (ServerResponse<?>) RequestRouter.route(request, requestRoute);    
+        }
     }
 
     /**
@@ -223,7 +239,7 @@ public class GridRequestHandler {
      * @param replacementTimeRange
      * @throws Exception
      */
-    public static void store(List<GFERecord> records,
+    public void store(List<GFERecord> records,
             GridParmInfo gridParmInfo, TimeRange replacementTimeRange,
             boolean practice) throws Exception {
         saveToForecastDB(gridParmInfo, records, replacementTimeRange);
@@ -239,7 +255,7 @@ public class GridRequestHandler {
      * @return
      * @throws Exception
      */
-    private static ServerResponse<?> saveToForecastDB(
+    private ServerResponse<?> saveToForecastDB(
             GridParmInfo gridParmInfo, List<GFERecord> records,
             TimeRange replacementTimeRange) throws Exception {
         ParmID parmID = gridParmInfo.getParmID();
@@ -274,7 +290,7 @@ public class GridRequestHandler {
         return response;
     }
 
-    private static void saveToOfficialDB(GridParmInfo gridParmInfo,
+    private void saveToOfficialDB(GridParmInfo gridParmInfo,
             TimeRange commitTime) throws Exception {
         ParmID parmID = gridParmInfo.getParmID();
         String siteID = parmID.getDbId().getSiteId();
@@ -285,11 +301,10 @@ public class GridRequestHandler {
         makeRequest(siteID, request);
     }
 
-    public static List<TimeRange> requestAdjacentTimeRanges(ParmID parmID,
+    public List<TimeRange> requestAdjacentTimeRanges(ParmID parmID,
             TimeRange timeRange) throws Exception {
         // find adjacent timeRanges
-        List<TimeRange> inventoryTimeRanges = GridRequestHandler
-                .getGridInventory(parmID);
+        List<TimeRange> inventoryTimeRanges = getGridInventory(parmID);
         List<TimeRange> adjacentTimeRanges = new ArrayList<TimeRange>();
         for (TimeRange tr : inventoryTimeRanges) {
             if (tr.isAdjacentTo(timeRange)) {
@@ -298,4 +313,5 @@ public class GridRequestHandler {
         }
         return adjacentTimeRanges;
     }
+    
 }

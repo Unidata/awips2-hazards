@@ -68,7 +68,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.common.dataplugin.events.hazards.requests.HasConflictsRequest;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProduct;
@@ -84,9 +84,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.viz.core.VizApp;
-import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
-import com.raytheon.uf.viz.core.requests.ThriftClient;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorEntry;
@@ -197,6 +195,7 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      product generation confirmation dialog.
  * May 07, 2015 6979       Robert.Blum  Changes for product corrections.
  * May 18, 2015 8227       Chris.Cody   Remove NullRecommender
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * Jun 02, 2015 7138       Robert.Blum  Changes for RVS workflow: Issuing without changing 
  *                                      the state of the hazards and not removing the validation
  *                                      of the selected events before calling ProductGeneration.
@@ -1701,22 +1700,12 @@ public class SessionProductManager implements ISessionProductManager {
         HazardEventManager.Mode mode = (caveMode == CAVEMode.PRACTICE) ? HazardEventManager.Mode.PRACTICE
                 : HazardEventManager.Mode.OPERATIONAL;
 
-        boolean hasConflicts = true;
-        try {
-            // checks if selected events conflicting with existing grids
-            // based on time and phensigs
-            HasConflictsRequest request = new HasConflictsRequest(mode);
-            request.setPhenSig(hazardEvent.getPhenomenon() + "."
-                    + hazardEvent.getSignificance());
-            request.setSiteID(hazardEvent.getSiteID());
-            request.setStartTime(hazardEvent.getStartTime());
-            request.setEndTime(hazardEvent.getEndTime());
-            hasConflicts = (Boolean) ThriftClient.sendRequest(request);
-        } catch (VizException e) {
-            statusHandler
-                    .error("Unable to check if selected event has any grid conflicts.",
-                            e);
-        }
+        boolean hasConflicts = HazardServicesClient.getHazardEventInteropServices(mode).hasConflicts(
+                    hazardEvent.getPhenomenon() + "."
+                            + hazardEvent.getSignificance(),
+                    hazardEvent.getSiteID(), hazardEvent.getStartTime(),
+                    hazardEvent.getEndTime());
+
 
         return hasConflicts;
     }

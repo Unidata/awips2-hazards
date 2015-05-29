@@ -19,13 +19,13 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.datastorage;
 
-import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.datastorage.IEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
 
 /**
  * Any new hazard event manager must implement this interface, which provides
@@ -38,6 +38,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.Hazard
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 8, 2012            mnash     Initial creation
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * 
  * </pre>
  * 
@@ -47,6 +48,15 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.Hazard
 
 public interface IHazardEventManager extends
         IEventManager<IHazardEvent, HazardHistoryList> {
+
+    /**
+     * Executes a query on the registry
+     * 
+     * @param request
+     *            The query request
+     * @return Map of eventID to events
+     */
+    Map<String, HazardHistoryList> query(HazardEventQueryRequest request);
 
     /**
      * Retrieve all hazards with the issuing site that was passed in
@@ -96,16 +106,6 @@ public interface IHazardEventManager extends
      * @return the history of hazards in a list
      */
     HazardHistoryList getByEventID(String eventId);
-
-    /**
-     * To explicitly specify only a few different types of phensigs, you can use
-     * this method, or, conversely, a call using HazardConstants.PHENSIG as the
-     * key can be used as it will be treated specially.
-     * 
-     * @param phensigs
-     * @return
-     */
-    Map<String, HazardHistoryList> getByMultiplePhensigs(List<String> phensigs);
 
     /**
      * Stores a set of events that were grouped together.

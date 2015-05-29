@@ -43,19 +43,17 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 31, 2012            mnash     Initial creation
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * 
  * </pre>
  * 
  * @author mnash
  * @version 1.0
  */
-
 @DynamicSerialize
 public class HazardHistoryList implements List<IHazardEvent> {
     @DynamicSerializeElement
     private List<IHazardEvent> events = new LinkedList<IHazardEvent>();
-
-    private static final long serialVersionUID = 1L;
 
     public IEvent getEventAtTime(Date date) {
         for (int i = 0; i < size(); i++) {

@@ -8,7 +8,7 @@
 		<property name="pluginFQN"
 			value="com.raytheon.uf.common.dataplugin.events.hazards" />
 		<property name="record"
-			value="com.raytheon.uf.common.dataplugin.events.hazards.event.PracticeHazardEvent" />
+			value="com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent" />
 	</bean>
 
 	<bean id="hazardsRegistered" factory-bean="pluginRegistry"

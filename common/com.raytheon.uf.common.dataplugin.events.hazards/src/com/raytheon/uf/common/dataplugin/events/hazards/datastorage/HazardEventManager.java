@@ -19,10 +19,7 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.datastorage;
 
-import java.io.File;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -30,30 +27,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import jep.JepException;
-
 import com.raytheon.uf.common.dataplugin.events.EventSet;
-import com.raytheon.uf.common.dataplugin.events.IValidator;
-import com.raytheon.uf.common.dataplugin.events.ValidationException;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardEventFactory;
-import com.raytheon.uf.common.dataplugin.events.hazards.IHazardEventFactory;
-import com.raytheon.uf.common.dataplugin.events.hazards.PracticeHazardEventFactory;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardDataStorageRequest;
-import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardDataStorageRequest.RequestType;
-import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardRetrieveRequest;
-import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardRetrieveRequestResponse;
-import com.raytheon.uf.common.localization.IPathManager;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
-import com.raytheon.uf.common.localization.LocalizationFile;
-import com.raytheon.uf.common.localization.PathManagerFactory;
-import com.raytheon.uf.common.python.PythonScript;
-import com.raytheon.uf.common.serialization.ExceptionWrapper;
-import com.raytheon.uf.common.serialization.comm.RequestRouter;
-import com.raytheon.uf.common.serialization.comm.response.ServerErrorResponse;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventResponse;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.IHazardEventServices;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -73,47 +55,36 @@ import com.vividsolutions.jts.geom.Geometry;
  * ------------ ---------- ----------- --------------------------
  * Oct 5, 2012            mnash     Initial creation
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * 
  * </pre>
  * 
  * @author mnash
  * @version 1.0
  */
-
 public class HazardEventManager implements IHazardEventManager {
+
     /** The logger */
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(HazardEventManager.class);
 
-    private final boolean practice;
+    /** Data Access Services */
+    private IHazardEventServices hazardDataAccess;
 
-    private final IHazardEventFactory factory;
-
-    // TODO, not currently used but reserved for future use.
-    private final Map<String, List<String>> requiredFields = new HashMap<String, List<String>>();
-
-    // for clarity to declare what mode we should be sending hazards out in
+    /** Enum denoting what mode CAVE is in */
     public static enum Mode {
-        OPERATIONAL {
-            @Override
-            IHazardEventFactory getFactory() {
-                return new HazardEventFactory();
-            }
-        },
-        PRACTICE {
-            @Override
-            IHazardEventFactory getFactory() {
-                return new PracticeHazardEventFactory();
-            }
-        };
-
-        abstract IHazardEventFactory getFactory();
+        OPERATIONAL, PRACTICE
     }
 
+    /**
+     * Creates a new HazardEventManager for the given mode
+     * 
+     * @param mode
+     *            The mode
+     */
     public HazardEventManager(Mode mode) {
-        practice = mode == Mode.PRACTICE ? true : false;
-        factory = mode.getFactory();
-        // requiredFields = getRequiredFields();
+        this.hazardDataAccess = HazardServicesClient
+                .getHazardEventServices(mode);
     }
 
     /**
@@ -121,299 +92,140 @@ public class HazardEventManager implements IHazardEventManager {
      */
     @Override
     public IHazardEvent createEvent() {
-        return factory.getHazardEvent();
+        return new HazardEvent();
     }
 
     @Override
     public IHazardEvent createEvent(IHazardEvent event) {
-        return factory.getHazardEvent(event);
+        return new HazardEvent(event);
     }
 
-    /**
-     * Get the events from the registry/database based on filters given. Filters
-     * will be evaluated by the handler on EDEX
-     */
     @Override
-    public Map<String, HazardHistoryList> getEventsByFilter(
-            Map<String, List<Object>> filters) {
+    public Map<String, HazardHistoryList> query(HazardEventQueryRequest request) {
+        Map<String, HazardHistoryList> events = new HashMap<String, HazardHistoryList>();
         try {
-            HazardRetrieveRequest request = new HazardRetrieveRequest();
-            request.setPractice(practice);
-            request.setFilters(filters);
-            Object responseObject = RequestRouter.route(request);
-            if (responseObject instanceof HazardRetrieveRequestResponse) {
-                HazardRetrieveRequestResponse response = (HazardRetrieveRequestResponse) responseObject;
-                return response.getEvents();
-            } else if (responseObject instanceof ServerErrorResponse) {
-                ServerErrorResponse response = (ServerErrorResponse) responseObject;
-                statusHandler.handle(Priority.ERROR, response.getException()
-                        .getMessage(), ExceptionWrapper
-                        .unwrapThrowable(response.getException()));
+            HazardEventResponse response = hazardDataAccess.retrieve(request);
+            if (response.success()) {
+                events = response.getHistoryMap();
             } else {
-                statusHandler.handle(Priority.PROBLEM,
-                        "Received an unexpected response of type "
-                                + responseObject.getClass());
-                return null;
+                checkResponse(response);
             }
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
         }
-        // return an empty list here to prevent null pointer exceptions
-        return new HashMap<String, HazardHistoryList>();
+        return events;
     }
 
-    /**
-     * This method takes an event and attempts to store it in the
-     * registry/database. First a validation check is made to check that
-     * everything is correctly set in the event.
-     */
+    @Override
+    public Map<String, HazardHistoryList> getEventsByFilter(
+            Map<String, List<Object>> filters) {
+        HazardEventQueryRequest req = new HazardEventQueryRequest();
+        for (Entry<String, List<Object>> entry : filters.entrySet()) {
+            req.and(entry.getKey(), entry.getValue());
+        }
+        return query(req);
+    }
+
     @Override
     public boolean storeEvent(IHazardEvent... event) {
         return storeEvents(Arrays.asList(event));
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.datastorage.IEventManager#
-     * storeEvents(java.util.List)
-     */
     @Override
     public boolean storeEvents(List<IHazardEvent> events) {
         try {
-            List<IHazardEvent> evs = new ArrayList<IHazardEvent>();
-            evs.addAll(events);
-            for (IHazardEvent ev : events) {
-                if (ev instanceof IValidator) {
-                    IValidator validator = (IValidator) ev;
-                    try {
-                        validator.isValid();
-                    } catch (ValidationException e) {
-                        evs.remove(ev);
-                        statusHandler.handle(
-                                Priority.ERROR,
-                                "Event " + ev.getSiteID() + "-"
-                                        + ev.getEventID() + "-"
-                                        + ev.getCreationTime()
-                                        + " is not valid, not storing.", e);
-                    }
-                }
-            }
-            HazardDataStorageRequest request = new HazardDataStorageRequest();
-            request.setEvents(evs.toArray(new IHazardEvent[0]));
-            request.setPractice(practice);
-            request.setType(RequestType.STORE);
-            RequestRouter.route(request);
-            return true;
+            return checkResponse(hazardDataAccess
+                    .storeEventList(makeHazardEventList(events)));
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
         }
         return false;
     }
 
-    /**
-     * This method takes an event and attempts to update it in the
-     * registry/database. First a validation check is made to check that
-     * everything is correctly set in the event.
-     */
     @Override
     public boolean updateEvent(IHazardEvent... event) {
         return updateEvents(Arrays.asList(event));
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.datastorage.IEventManager#
-     * updateEvents(T[])
-     */
     @Override
     public boolean updateEvents(List<IHazardEvent> events) {
         try {
-            List<IHazardEvent> evs = new ArrayList<IHazardEvent>(events);
-            for (IHazardEvent ev : events) {
-                if (ev instanceof IValidator) {
-                    IValidator validator = (IValidator) ev;
-                    try {
-                        validator.isValid();
-                    } catch (ValidationException e) {
-                        evs.remove(ev);
-                        statusHandler.handle(
-                                Priority.ERROR,
-                                "Event " + ev.getSiteID() + "-"
-                                        + ev.getEventID() + "-"
-                                        + ev.getCreationTime()
-                                        + " is not valid, not updating.");
-                    }
-                }
-            }
-            HazardDataStorageRequest request = new HazardDataStorageRequest();
-            request.setEvents(evs.toArray(new IHazardEvent[0]));
-            request.setPractice(practice);
-            request.setType(RequestType.UPDATE);
-            RequestRouter.route(request);
-            return true;
+            return checkResponse(hazardDataAccess
+                    .updateEventList(makeHazardEventList(events)));
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
         }
         return false;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.datastorage.IEventManager#
-     * removeEvent(com.raytheon.uf.common.dataplugin.events.IEvent)
-     */
     @Override
     public boolean removeEvent(IHazardEvent... event) {
         return removeEvents(Arrays.asList(event));
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.datastorage.IEventManager#
-     * removeEvents(T[])
-     */
     @Override
     public boolean removeEvents(List<IHazardEvent> events) {
         try {
-            HazardDataStorageRequest request = new HazardDataStorageRequest();
-            request.setEvents(events.toArray(new IHazardEvent[0]));
-            request.setPractice(practice);
-            request.setType(RequestType.DELETE);
-            RequestRouter.route(request);
-            return true;
+            return checkResponse(hazardDataAccess
+                    .deleteEventList(makeHazardEventList(events)));
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
         }
         return false;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.datastorage.
-     * IHazardEventManager#getBySite(java.lang.String)
-     */
     @Override
     public Map<String, HazardHistoryList> getBySiteID(String site) {
-        HazardQueryBuilder builder = new HazardQueryBuilder();
-        builder.addKey(HazardConstants.SITE_ID, site);
-        return getEventsByFilter(builder.getQuery());
+        return this.query(new HazardEventQueryRequest(HazardConstants.SITE_ID,
+                site));
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.datastorage.
-     * IHazardEventManager#getByPhenomenon(java.lang.String)
-     */
     @Override
     public Map<String, HazardHistoryList> getByPhenomenon(String phenomenon) {
-        HazardQueryBuilder builder = new HazardQueryBuilder();
-        builder.addKey(HazardConstants.PHENOMENON, phenomenon);
-        return getEventsByFilter(builder.getQuery());
+        return this.query(new HazardEventQueryRequest(
+                HazardConstants.PHENOMENON, phenomenon));
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.datastorage.
-     * IHazardEventManager#getBySignificance(java.lang.String)
-     */
     @Override
     public Map<String, HazardHistoryList> getBySignificance(String significance) {
-        HazardQueryBuilder builder = new HazardQueryBuilder();
-        builder.addKey(HazardConstants.SIGNIFICANCE, significance);
-        return getEventsByFilter(builder.getQuery());
+        return this.query(new HazardEventQueryRequest(
+                HazardConstants.SIGNIFICANCE, significance));
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.datastorage.
-     * IHazardEventManager#getByPhensig(java.lang.String, java.lang.String)
-     */
     @Override
     public Map<String, HazardHistoryList> getByPhensig(String phen, String sig) {
-        HazardQueryBuilder builder = new HazardQueryBuilder();
-        builder.addKey(HazardConstants.PHENOMENON, phen);
-        builder.addKey(HazardConstants.SIGNIFICANCE, sig);
-        return getEventsByFilter(builder.getQuery());
+        return this.query(new HazardEventQueryRequest(
+                HazardConstants.PHENOMENON, phen).and(
+                HazardConstants.SIGNIFICANCE, sig));
     }
 
-    @Override
-    public Map<String, HazardHistoryList> getByMultiplePhensigs(
-            List<String> phensigs) {
-        HazardQueryBuilder builder = new HazardQueryBuilder();
-        for (String phensig : phensigs) {
-            builder.addKey(HazardConstants.PHEN_SIG, phensig);
-        }
-        return getEventsByFilter(builder.getQuery());
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.datastorage.
-     * IHazardEventManager#getByEventId(java.lang.String)
-     */
     @Override
     public HazardHistoryList getByEventID(String eventId) {
-        HazardQueryBuilder builder = new HazardQueryBuilder();
-        builder.addKey(HazardConstants.HAZARD_EVENT_IDENTIFIER, eventId);
-        HazardHistoryList list = new HazardHistoryList();
-        Map<String, HazardHistoryList> events = getEventsByFilter(builder
-                .getQuery());
-        list.addAll(events.get(eventId));
-        return list;
+        return this.query(
+                new HazardEventQueryRequest().and(
+                        HazardConstants.HAZARD_EVENT_IDENTIFIER, eventId)).get(
+                eventId);
+
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.datastorage.IEventManager#
-     * getByGeometry(com.vividsolutions.jts.geom.Geometry)
-     */
     @Override
     public Map<String, HazardHistoryList> getByGeometry(Geometry geometry) {
-        HazardQueryBuilder builder = new HazardQueryBuilder();
-        builder.addKey(HazardConstants.GEOMETRY, geometry);
-        return getEventsByFilter(builder.getQuery());
+        return this.query(new HazardEventQueryRequest().and(
+                HazardConstants.GEOMETRY, geometry));
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.common.dataplugin.events.datastorage.IEventManager#getByTime
-     * (java.util.Date, java.util.Date)
-     */
     @Override
     public Map<String, HazardHistoryList> getByTime(Date startTime, Date endTime) {
-        HazardQueryBuilder builder = new HazardQueryBuilder();
-        builder.addKey(HazardConstants.HAZARD_EVENT_START_TIME, startTime);
-        builder.addKey(HazardConstants.HAZARD_EVENT_END_TIME, endTime);
-        return getEventsByFilter(builder.getQuery());
+        return this.query(new HazardEventQueryRequest().and(
+                HazardConstants.HAZARD_EVENT_START_TIME, ">", startTime).and(
+                HazardConstants.HAZARD_EVENT_END_TIME, "<", endTime));
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.datastorage.
-     * IHazardEventManager#getByTimeRange(com.raytheon.uf.common.time.TimeRange)
-     */
     @Override
     public Map<String, HazardHistoryList> getByTimeRange(TimeRange range) {
         return getByTime(range.getStart(), range.getEnd());
     };
 
-    /**
-     * Takes a EventSet<IHazardEvent>, which can be unrelated hazards, and
-     * stores them individually. Just a convenience method.
-     */
     @Override
     public void storeEventSet(EventSet<IHazardEvent> set) {
         Iterator<IHazardEvent> eventIter = set.iterator();
@@ -423,44 +235,47 @@ public class HazardEventManager implements IHazardEventManager {
         }
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.common.dataplugin.events.datastorage.IEventManager#getAll
-     * ()
-     */
     @Override
     public Map<String, HazardHistoryList> getAll() {
-        HazardQueryBuilder builder = new HazardQueryBuilder();
-        return getEventsByFilter(builder.getQuery());
+        return query(new HazardEventQueryRequest());
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.datastorage.
-     * IHazardEventManager#removeAllEvents()
-     */
     @Override
     public boolean removeAllEvents() {
-        // allow for a pass through, we should be throwing an exception here as
-        // removing all events is not a good idea
-        Map<String, HazardHistoryList> list = getAll();
-        List<IHazardEvent> events = new ArrayList<IHazardEvent>();
-        for (Entry<String, HazardHistoryList> entry : list.entrySet()) {
-            events.addAll(entry.getValue().getEvents());
-        }
         try {
-            HazardDataStorageRequest request = new HazardDataStorageRequest();
-            request.setEvents(events.toArray(new IHazardEvent[0]));
-            request.setPractice(practice);
-            request.setType(RequestType.DELETE_ALL);
-            RequestRouter.route(request);
-            return true;
+            return checkResponse(hazardDataAccess.deleteAll());
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
         }
         return false;
+    }
+
+    /**
+     * Converts IHazardEvent objects to HazardEvent objects
+     * 
+     * @param events
+     *            The list of IHazardEvent objects
+     * @return The List of HazardEvent objects
+     */
+    @SuppressWarnings("unchecked")
+    private List<HazardEvent> makeHazardEventList(List<IHazardEvent> events) {
+        return (List<HazardEvent>) (List<?>) events;
+    }
+
+    /**
+     * Checks the response from the web server and logs any errors
+     * 
+     * @param response
+     *            The response to check
+     * @return True if the response indicates success, else false
+     */
+    private boolean checkResponse(HazardEventResponse response) {
+        if (!response.success()) {
+            for (Throwable t : response.getExceptions()) {
+                statusHandler.error(
+                        "Registry web service call encountered an error", t);
+            }
+        }
+        return response.success();
     }
 }

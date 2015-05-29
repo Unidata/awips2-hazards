@@ -8,11 +8,4 @@
 		<constructor-arg type="java.lang.String" value="hazards" />
 	</bean>	
 	
-	<bean id="hazardDataFactory" class="com.raytheon.uf.common.dataplugin.hazards.dataaccess.HazardGeometryFactory" />
-	
-	<bean factory-bean="dataAccessRegistry" factory-method="register" 
-	depends-on="hazardsPluginName, hazardDataFactory">
-		<constructor-arg ref="hazardsPluginName"/>
-		<constructor-arg ref="hazardDataFactory"/>
-	</bean>	
 </beans>

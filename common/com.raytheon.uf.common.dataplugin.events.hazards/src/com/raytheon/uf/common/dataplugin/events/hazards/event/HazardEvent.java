@@ -20,17 +20,14 @@
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
 import java.io.Serializable;
-import java.lang.reflect.Field;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 
-import javax.persistence.Transient;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
@@ -43,8 +40,7 @@ import com.raytheon.uf.common.dataplugin.events.ValidationException;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.slotconverter.HazardAttributeSlotConverter;
 import com.raytheon.uf.common.geospatial.adapter.GeometryAdapter;
 import com.raytheon.uf.common.registry.annotations.RegistryObject;
 import com.raytheon.uf.common.registry.annotations.RegistryObjectVersion;
@@ -54,9 +50,6 @@ import com.raytheon.uf.common.registry.ebxml.slots.DateSlotConverter;
 import com.raytheon.uf.common.registry.ebxml.slots.GeometrySlotConverter;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -78,6 +71,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      the start and end time atomically.
  * Jun 30, 2014 3512       Chris.Golden Added addHazardAttributes() method.
  * Feb 22, 2015 6561       mpduff      Override getInsertTime
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * </pre>
  * 
  * @author mnash
@@ -92,14 +86,17 @@ import com.vividsolutions.jts.geom.Geometry;
 @RegistryObjectVersion(value = 1.0f)
 public class HazardEvent implements IHazardEvent, IValidator {
 
-    private static final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(HazardEvent.class);
-
+    /**
+     * The issuing site ID
+     */
     @DynamicSerializeElement
     @XmlAttribute
     @SlotAttribute(HazardConstants.SITE_ID)
     private String siteID;
 
+    /**
+     * The event ID
+     */
     @DynamicSerializeElement
     @XmlAttribute
     @SlotAttribute(HazardConstants.HAZARD_EVENT_IDENTIFIER)
@@ -108,7 +105,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
     @DynamicSerializeElement
     @XmlAttribute
     @SlotAttribute(HazardConstants.UNIQUE_ID)
-    private String uniqueID;
+    private String uniqueID = UUID.randomUUID().toString();
 
     /**
      * The status of the record at this point in time
@@ -142,29 +139,44 @@ public class HazardEvent implements IHazardEvent, IValidator {
     @SlotAttribute(HazardConstants.HAZARD_EVENT_SUB_TYPE)
     private String subType;
 
+    /**
+     * The start time of the hazard
+     */
     @DynamicSerializeElement
     @XmlElement
     @SlotAttribute(HazardConstants.HAZARD_EVENT_START_TIME)
     @SlotAttributeConverter(DateSlotConverter.class)
     private Date startTime;
 
+    /**
+     * The end time of the hazard
+     */
     @DynamicSerializeElement
     @XmlElement
     @SlotAttribute(HazardConstants.HAZARD_EVENT_END_TIME)
     @SlotAttributeConverter(DateSlotConverter.class)
     private Date endTime;
 
+    /**
+     * The time this hazard was created
+     */
     @DynamicSerializeElement
     @XmlElement
     @SlotAttribute(HazardConstants.CREATION_TIME)
     @SlotAttributeConverter(DateSlotConverter.class)
     private Date creationTime;
 
+    /**
+     * The mode of the hazard
+     */
     @DynamicSerializeElement
     @XmlAttribute
     @SlotAttribute(HazardConstants.HAZARD_MODE)
     private ProductClass hazardMode;
 
+    /**
+     * The geometry coverage of the hazard
+     */
     @DynamicSerializeElement
     @XmlJavaTypeAdapter(value = GeometryAdapter.class)
     @XmlAttribute
@@ -172,24 +184,36 @@ public class HazardEvent implements IHazardEvent, IValidator {
     @SlotAttributeConverter(GeometrySlotConverter.class)
     private Geometry geometry;
 
+    /**
+     * The time this hazard was inserted into the repository
+     */
     @DynamicSerializeElement
     @XmlElement
-    private Set<HazardAttribute> hazardAttributesSerializable;
-
-    @Transient
-    private Map<String, Serializable> hazardAttributes;
+    @SlotAttribute(HazardConstants.INSERT_TIME)
+    private Date insertTime;
 
     /**
-     * It is not recommended to declare a {@link HazardEvent}. The better
-     * approach is to use {@link IHazardEventManager} manager = new
-     * {@link HazardEventManager}; {@link IHazardEventManager#createEvent()}
+     * Additional attributes of the hazard
+     */
+    @DynamicSerializeElement
+    @XmlElement(name = "Attributes")
+    @SlotAttribute("Attributes")
+    @SlotAttributeConverter(HazardAttributeSlotConverter.class)
+    private Set<HazardAttribute> attributes = new HashSet<HazardAttribute>();
+
+    /**
+     * Creates a new HazardEvent
      */
     public HazardEvent() {
-        uniqueID = UUID.randomUUID().toString();
-        hazardAttributesSerializable = new HashSet<HazardAttribute>();
-        hazardAttributes = new HashMap<String, Serializable>();
+
     }
 
+    /**
+     * Creates a copy of the given hazard event
+     * 
+     * @param event
+     *            The hazard event to copy
+     */
     public HazardEvent(IHazardEvent event) {
         this();
         setSiteID(event.getSiteID());
@@ -433,58 +457,17 @@ public class HazardEvent implements IHazardEvent, IValidator {
     }
 
     /**
-     * @return the hazardAttributesSerializable
-     */
-    public Set<HazardAttribute> getHazardAttributesSerializable() {
-        return hazardAttributesSerializable;
-    }
-
-    /**
-     * @param hazardAttributesSerializable
-     *            the hazardAttributesSerializable to set
-     */
-    public void setHazardAttributesSerializable(
-            Set<HazardAttribute> hazardAttributesSerializable) {
-        this.hazardAttributesSerializable = hazardAttributesSerializable;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
-     * getHazardAttributes()
+     * @return the hazardAttributes
      */
     @Override
     public Map<String, Serializable> getHazardAttributes() {
-        if (hazardAttributes == null
-                || hazardAttributes.size() != hazardAttributesSerializable
-                        .size()) {
-            hazardAttributes = new HashMap<String, Serializable>();
-            for (IHazardAttribute attr : hazardAttributesSerializable) {
-                hazardAttributes.put(attr.getKey(), attr.getValue());
-            }
-        }
-        return hazardAttributes;
-    }
+        Map<String, Serializable> attrs = new HashMap<String, Serializable>();
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
-     * setHazardAttributes(java.util.List)
-     */
-    @Override
-    public void setHazardAttributes(Map<String, Serializable> attributes) {
-        if (hazardAttributesSerializable == null
-                || hazardAttributesSerializable.size() != hazardAttributes
-                        .size()) {
-            hazardAttributesSerializable = new HashSet<HazardAttribute>();
-            for (Entry<String, Serializable> entry : attributes.entrySet()) {
-                hazardAttributesSerializable.add(new HazardAttribute(eventID,
-                        entry.getKey(), entry.getValue()));
-            }
+        for (HazardAttribute attribute : attributes) {
+            attrs.put(attribute.getKey(),
+                    (Serializable) attribute.getValueObject());
         }
-        this.hazardAttributes = attributes;
+        return attrs;
     }
 
     /*
@@ -494,16 +477,9 @@ public class HazardEvent implements IHazardEvent, IValidator {
      * addHazardAttribute(java.lang.String, java.io.Serializable)
      */
     @Override
-    public void addHazardAttribute(String key, Serializable value) {
-        HazardAttribute attr = new HazardAttribute(eventID, key, value);
-        try {
-            attr.isValid();
-            hazardAttributes.put(key, value);
-            hazardAttributesSerializable.add(attr);
-        } catch (ValidationException e) {
-            statusHandler.handle(Priority.ERROR, "Unable to validate "
-                    + eventID, e);
-        }
+    public void addHazardAttribute(final String key, final Serializable value) {
+        this.attributes.add(new HazardAttribute(eventID, key, value));
+
     }
 
     @Override
@@ -532,38 +508,12 @@ public class HazardEvent implements IHazardEvent, IValidator {
      */
     @Override
     public void removeHazardAttribute(String key) {
-        Iterator<HazardAttribute> attrIter = hazardAttributesSerializable
-                .iterator();
-        while (attrIter.hasNext()) {
-            IHazardAttribute attr = attrIter.next();
-            if (attr.getKey().equals(key)) {
-                attrIter.remove();
-                break;
-            }
-        }
-        hazardAttributes.remove(key);
+        attributes.remove(key);
     }
 
     @Override
     public boolean isValid() throws ValidationException {
-        // future validation here, read from the necessary file
-        if (true) {
-            return true;
-        }
-        for (Field field : getClass().getDeclaredFields()) {
-            try {
-                if (field.get(this) == null) {
-                    throw new ValidationException("Unable to validate event.  "
-                            + field.getName() + " + is missing or not set.");
-                }
-            } catch (IllegalArgumentException e) {
-                throw new ValidationException("Unable to validate event.  "
-                        + field.getName() + " + is missing or not set.");
-            } catch (IllegalAccessException e) {
-                throw new ValidationException("Unable to validate event.  "
-                        + field.getName() + " + is missing or not set.");
-            }
-        }
+        // TODO: Determine validation strategy
         return true;
     }
 
@@ -580,11 +530,10 @@ public class HazardEvent implements IHazardEvent, IValidator {
                 .append("\n");
         builder.append("End Time : ").append(new Date(endTime.getTime()))
                 .append("\n");
-        if (hazardAttributesSerializable.isEmpty() == false) {
+        if (this.attributes.isEmpty() == false) {
             builder.append("--Attributes--\n");
-            for (IHazardAttribute attr : hazardAttributesSerializable) {
-                builder.append(attr.getKey()).append(":")
-                        .append(attr.getValue()).append("\n");
+            for (HazardAttribute attr : this.attributes) {
+                builder.append(attr.toString());
             }
         }
         return builder.toString();
@@ -599,21 +548,18 @@ public class HazardEvent implements IHazardEvent, IValidator {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
+        result = prime * result
+                + ((creationTime == null) ? 0 : creationTime.hashCode());
         result = prime * result + ((endTime == null) ? 0 : endTime.hashCode());
         result = prime * result + ((eventID == null) ? 0 : eventID.hashCode());
         result = prime * result
                 + ((geometry == null) ? 0 : geometry.hashCode());
-        result = prime
-                * result
-                + ((hazardAttributes == null) ? 0 : hazardAttributes.hashCode());
-        result = prime
-                * result
-                + ((hazardAttributesSerializable == null) ? 0
-                        : hazardAttributesSerializable.hashCode());
+        result = prime * result
+                + ((attributes == null) ? 0 : attributes.hashCode());
         result = prime * result
                 + ((hazardMode == null) ? 0 : hazardMode.hashCode());
         result = prime * result
-                + ((creationTime == null) ? 0 : creationTime.hashCode());
+                + ((insertTime == null) ? 0 : insertTime.hashCode());
         result = prime * result
                 + ((phenomenon == null) ? 0 : phenomenon.hashCode());
         result = prime * result
@@ -645,6 +591,13 @@ public class HazardEvent implements IHazardEvent, IValidator {
             return false;
         }
         HazardEvent other = (HazardEvent) obj;
+        if (creationTime == null) {
+            if (other.creationTime != null) {
+                return false;
+            }
+        } else if (!creationTime.equals(other.creationTime)) {
+            return false;
+        }
         if (endTime == null) {
             if (other.endTime != null) {
                 return false;
@@ -666,22 +619,21 @@ public class HazardEvent implements IHazardEvent, IValidator {
         } else if (!geometry.equals(other.geometry)) {
             return false;
         }
-        if (hazardAttributesSerializable == null) {
-            if (other.hazardAttributesSerializable != null) {
+        if (attributes == null) {
+            if (other.attributes != null) {
                 return false;
             }
-        } else if (!hazardAttributesSerializable
-                .equals(other.hazardAttributesSerializable)) {
+        } else if (!attributes.equals(other.attributes)) {
             return false;
         }
         if (hazardMode != other.hazardMode) {
             return false;
         }
-        if (creationTime == null) {
-            if (other.creationTime != null) {
+        if (insertTime == null) {
+            if (other.insertTime != null) {
                 return false;
             }
-        } else if (!creationTime.equals(other.creationTime)) {
+        } else if (!insertTime.equals(other.insertTime)) {
             return false;
         }
         if (phenomenon == null) {
@@ -734,14 +686,33 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     @Override
     public void setInsertTime(Date date) {
-        // TODO No-op for now. Need to see how this will work with the registry
+        this.insertTime = date;
 
     }
 
     @Override
     public Date getInsertTime() {
-        // TODO No-op for now. Need to see how this will work with the registry
-        return null;
+        return this.insertTime;
+    }
+
+    @Override
+    public void setHazardAttributes(Map<String, Serializable> attributes) {
+        this.attributes.clear();
+        for (Entry<String, Serializable> entry : attributes.entrySet()) {
+            addHazardAttribute(entry.getKey(), entry.getValue());
+        }
+    }
+
+    public Set<HazardAttribute> getAttributes() {
+        return attributes;
+    }
+
+    /**
+     * @param attributes
+     *            the attributes to set
+     */
+    public void setAttributes(Set<HazardAttribute> attributes) {
+        this.attributes = attributes;
     }
 
     /*

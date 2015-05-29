@@ -42,6 +42,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEvent
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.GridParmInfo;
 import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
 import com.raytheon.uf.common.dataplugin.warning.PracticeWarningRecord;
@@ -68,6 +69,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                   GridParmInfo.
  * Apr 08, 2014  3357      bkowal    Updated to use the new interoperability tables.
  * Dec 04, 2014  2826      dgilling  Remove unneeded methods.
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * 
  * </pre>
  * 
@@ -189,7 +191,7 @@ public class GFEHazardsCreator {
 
                     GridParmInfo gridParmInfo = null;
                     try {
-                        gridParmInfo = GridRequestHandler.requestGridParmInfo(
+                        gridParmInfo = new GridRequestHandler().requestGridParmInfo(
                                 mode, rec.getXxxid());
                     } catch (Exception e) {
                         statusHandler.error(
@@ -397,8 +399,8 @@ public class GFEHazardsCreator {
         event.setGeometry(geom);
 
         try {
-            event.setEventID(HazardEventUtilities.generateEventID(
-                    rec.getXxxid(), practice));
+            event.setEventID(HazardServicesClient.getHazardEventServices(practice)
+                    .requestEventId(rec.getXxxid()));
         } catch (Exception e) {
             throw new RuntimeException("Unable to generate hazard event id", e);
         }

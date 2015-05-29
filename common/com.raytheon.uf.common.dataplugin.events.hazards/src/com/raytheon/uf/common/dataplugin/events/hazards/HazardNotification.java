@@ -72,6 +72,27 @@ public class HazardNotification {
         this.practiceMode = (mode == Mode.PRACTICE);
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Event: ");
+        if (event == null) {
+            builder.append(" null ");
+        } else {
+            builder.append(event.getEventID());
+        }
+        builder.append(" Mode: ");
+        builder.append(practiceMode);
+        builder.append(" Type: ");
+        builder.append(type);
+        return builder.toString();
+    }
+
     public Mode getMode() {
         return this.practiceMode ? Mode.PRACTICE : Mode.OPERATIONAL;
     }

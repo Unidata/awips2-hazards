@@ -21,10 +21,10 @@ import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardEventAlert;
@@ -65,7 +65,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                                    and come back much later.
  * 
  * Dec 05, 2014  4124      Chris.Golden Changed to work with parameterized config
-                                        manager.
+ *                                         manager.
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -119,23 +120,18 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
 
     @Override
     public void initializeAlerts() {
-        /**
-         * Start with the basic filter (ie all hazards or just for the settings)
-         */
-        Map<String, List<Object>> filter = hazardFilterStrategy.getFilter();
 
         /**
          * 
          * Tack on a filter to look for issued hazards.
          */
-        HazardQueryBuilder queryBuilder = new HazardQueryBuilder();
-        queryBuilder.addKey(HazardConstants.HAZARD_EVENT_STATUS,
-                HazardStatus.ISSUED);
-        queryBuilder.addKey(HazardConstants.HAZARD_EVENT_STATUS,
-                HazardStatus.ENDING);
-        filter.putAll(queryBuilder.getQuery());
         Collection<HazardHistoryList> hazardHistories = hazardEventManager
-                .getEventsByFilter(filter).values();
+                .query(new HazardEventQueryRequest(
+                        HazardConstants.HAZARD_EVENT_STATUS,
+                        "in",
+                        new Object[] { HazardStatus.ISSUED, HazardStatus.ENDING }))
+                .values();
+
         for (HazardHistoryList hazardHistoryList : hazardHistories) {
             IHazardEvent hazardEvent = hazardHistoryList.get(hazardHistoryList
                     .size() - 1);
