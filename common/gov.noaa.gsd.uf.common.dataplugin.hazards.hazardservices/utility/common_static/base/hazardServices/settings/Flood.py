@@ -53,7 +53,7 @@ Flood = {
         "Event ID",
         "Hazard Type", 
         "Status", 
-        "Time Remaining",
+        "Time Remaining (EXP)",
         "Start Time", 
         "End Time"
     ], 
@@ -155,7 +155,7 @@ Flood = {
             "fieldName": "description", 
             "type": "string"
         },
-        "Time Remaining": {
+        "Time Remaining (EXP)": {
             "sortDir": "none", 
             "fieldName": "alert", 
             "type": "countdown"
