@@ -91,8 +91,8 @@ public class HazardQuery extends AdhocRegistryQuery<HazardEvent> implements
             IRegistryEncoder encoder) throws SerializationException {
         HazardEvent object = (HazardEvent) encoder
                 .decodeObject(registryObjectType);
-        if (geometry != null && object.getGeometry() != null
-                && geometry.intersects(object.getGeometry()) == false) {
+        if (geometry != null && object.getProductGeometry() != null
+                && geometry.intersects(object.getProductGeometry()) == false) {
             return null;
         }
         return object;

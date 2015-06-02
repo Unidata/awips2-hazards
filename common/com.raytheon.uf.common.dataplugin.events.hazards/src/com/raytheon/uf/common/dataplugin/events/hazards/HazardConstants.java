@@ -314,6 +314,14 @@ public final class HazardConstants {
 
     public static final String GEOMETRY = "geometry";
 
+    public static final String VISIBLE_GEOMETRY = "visibleGeometry";
+
+    public static final String HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE = "highResolutionGeometryIsVisible";
+
+    public static final String LOW_RESOLUTION_GEOMETRY_IS_VISIBLE = "lowResolutionGeometryIsVisible";
+
+    public static final String LOW_RESOLUTION_GEOMETRY = "lowResolutionGeometry";
+
     public static final String SYMBOL_NEW_LAT_LON = "newLatLon";
 
     public static final String PHENOMENON = "phenomenon";
@@ -672,7 +680,13 @@ public final class HazardConstants {
 
     public static final String CONTEXT_MENU_HAZARD_INFORMATION_DIALOG = "Hazard Information Dialog";
 
-    public static final String CONTEXT_MENU_SHOW_PRODUCT_GEOMETRY = "Show Product Geometry";
+    public static final String CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS = "Show High Res Geometies For Selected Events";
+
+    public static final String CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS = "Show Low Res Geometries For Selected Events";
+
+    public static final String CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT = "Show High Resolution Geometry For This";
+
+    public static final String CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT = "Show Low Resolution Geometry For This";
 
     public static final String CONTEXT_MENU_ADD_VERTEX = "Add Vertex";
 

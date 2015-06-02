@@ -716,7 +716,7 @@ class Product(ProductTemplate.Product):
         hazardDict['startTime'] = hazardEvent.getStartTime()
         hazardDict['endTime'] = hazardEvent.getEndTime()
         hazardDict['creationTime'] = hazardEvent.getCreationTime()
-        hazardDict['geometry'] = hazardEvent.getGeometry()
+        hazardDict['geometry'] = hazardEvent.getProductGeometry()
         hazardDict['metaData'] = metaData
 
         if hazardEvent.get('pointID'):
@@ -893,7 +893,7 @@ class Product(ProductTemplate.Product):
             # VTEC processing expects siteID4 e.g. KOAX instead of OAX
             hazardEvent.set('siteID4', str(self._fullStationID))
 
-            geometryCollection = hazardEvent.getGeometry()
+            geometryCollection = hazardEvent.getProductGeometry()
             
             for geometry in geometryCollection:
             
@@ -983,7 +983,7 @@ class Product(ProductTemplate.Product):
         return cityList
 
     def _getCityListForPolygon(self, hazardEvent):
-        geometry = hazardEvent.getGeometry()
+        geometry = hazardEvent.getProductGeometry()
         columns = ["name", "warngenlev"]
         try :
             cityGeoms = self._tpc.mapDataQuery("city", columns, geometry)
@@ -1367,7 +1367,7 @@ class Product(ProductTemplate.Product):
             for this segment.
         '''
         # Geometry/UGCs for the CAN hazard
-        geometry = prevHazardEvent.getGeometry().difference(hazardEvent.getGeometry())
+        geometry = prevHazardEvent.getProductGeometry().difference(hazardEvent.getProductGeometry())
         prevUGCs = set(prevAttributes.get('ugcs'))
         currentUGCs = set(attributes.get('ugcs'))
         ugcs = list(prevUGCs.difference(currentUGCs))
@@ -1390,7 +1390,7 @@ class Product(ProductTemplate.Product):
         prevHazardEvent.setHazardAttributes(prevAttributes)
 
         # Update the geometry as well
-        prevHazardEvent.setGeometry(GeometryFactory.createCollection([geometry]))
+        prevHazardEvent.setProductGeometry(GeometryFactory.createCollection([geometry]))
 
         # Call the original method with the updated prevHazardEvent to get the section dictionary.
         return self._createHazardEventDictionary(prevHazardEvent, vtecRecord, metaData)

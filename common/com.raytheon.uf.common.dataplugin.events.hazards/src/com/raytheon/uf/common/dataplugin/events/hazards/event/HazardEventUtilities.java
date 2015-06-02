@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.LOW_RESOLUTION_GEOMETRY;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,6 +38,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEvent
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardEventIdRequest;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
+import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Misc functionality for reformatting attributes for hazard events.
@@ -454,6 +457,16 @@ public class HazardEventUtilities {
             throw new Exception("Unable to make request for hazard event id", e);
         }
         return value;
+    }
+
+    public static Geometry getProductGeometry(IHazardEvent hazardEvent) {
+        return (Geometry) hazardEvent
+                .getHazardAttribute(LOW_RESOLUTION_GEOMETRY);
+    }
+
+    public static void setProductGeometry(IHazardEvent hazardEvent,
+            Geometry geom) {
+        hazardEvent.addHazardAttribute(LOW_RESOLUTION_GEOMETRY, geom);
     }
 
     // Private Static Methods.

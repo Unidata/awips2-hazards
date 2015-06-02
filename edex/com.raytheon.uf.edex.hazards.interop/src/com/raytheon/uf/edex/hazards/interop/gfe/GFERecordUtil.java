@@ -38,8 +38,8 @@ import com.raytheon.uf.common.dataplugin.gfe.discrete.DiscreteKey;
 import com.raytheon.uf.common.dataplugin.gfe.grid.Grid2DBit;
 import com.raytheon.uf.common.dataplugin.gfe.grid.Grid2DByte;
 import com.raytheon.uf.common.dataplugin.gfe.reference.ReferenceData;
-import com.raytheon.uf.common.dataplugin.gfe.reference.ReferenceID;
 import com.raytheon.uf.common.dataplugin.gfe.reference.ReferenceData.CoordinateType;
+import com.raytheon.uf.common.dataplugin.gfe.reference.ReferenceID;
 import com.raytheon.uf.common.dataplugin.gfe.slice.DiscreteGridSlice;
 import com.raytheon.uf.common.dataplugin.gfe.util.GfeUtil;
 import com.raytheon.uf.common.geospatial.MapUtil;
@@ -151,11 +151,11 @@ public class GFERecordUtil {
 
         // create the Grid2DByte
         GridLocation gridLocation = gridParmInfo.getGridLoc();
-        if (isPointSetClosed(hazardEvent.getGeometry().getCoordinates()) == false) {
+        if (isPointSetClosed(hazardEvent.getProductGeometry().getCoordinates()) == false) {
             return null;
         }
-        MultiPolygon polygon = GfeUtil.createPolygon(hazardEvent.getGeometry()
-                .getCoordinates());
+        MultiPolygon polygon = GfeUtil.createPolygon(hazardEvent
+                .getProductGeometry().getCoordinates());
         polygon = (MultiPolygon) JTS.transform(polygon, MapUtil
                 .getTransformFromLatLon(PixelOrientation.CENTER, gridLocation));
         Grid2DBit grid2DBit = GfeUtil.filledBitArray(polygon, gridLocation);

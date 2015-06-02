@@ -23,6 +23,7 @@ import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +34,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -88,6 +91,8 @@ public class SelectionAction extends NonDrawingAction {
 
     private final SpatialPresenter spatialPresenter;
 
+    private final ISessionEventManager<ObservedHazardEvent> eventManager;
+
     /**
      * Defines the type of move operation. SINGLE_POINT -- the user is moving a
      * vertex ALL_POINTS -- the user is moving the entire polygon.
@@ -98,6 +103,9 @@ public class SelectionAction extends NonDrawingAction {
 
     public SelectionAction(SpatialPresenter spatialPresenter) {
         this.spatialPresenter = spatialPresenter;
+        this.eventManager = spatialPresenter.getSessionManager()
+                .getEventManager();
+
     }
 
     @Override
@@ -388,8 +396,9 @@ public class SelectionAction extends NonDrawingAction {
 
                 Geometry modifiedGeometry = buildModifiedGeometry(origShape,
                         coords);
-                getSpatialDisplay().notifyModifiedGeometry(origShape.getID(),
+                eventManager.setModifiedEventGeometry(origShape.getID(),
                         modifiedGeometry, true);
+
             }
         }
 
@@ -526,8 +535,9 @@ public class SelectionAction extends NonDrawingAction {
             IHazardServicesShape eventShape = (IHazardServicesShape) selectedElement;
             Geometry modifiedGeometry = buildModifiedGeometry(eventShape,
                     selectedElement.getPoints());
-            getSpatialDisplay().notifyModifiedGeometry(eventShape.getID(),
+            eventManager.setModifiedEventGeometry(eventShape.getID(),
                     modifiedGeometry, true);
+
         }
 
         private void handleVertexAdditionOrDeletion() {
@@ -944,8 +954,8 @@ public class SelectionAction extends NonDrawingAction {
                     }
                     Geometry modifiedGeometry = buildModifiedGeometry(
                             eventShape, coordsAsList);
-                    getSpatialDisplay().notifyModifiedGeometry(
-                            eventShape.getID(), modifiedGeometry, true);
+                    eventManager.setModifiedEventGeometry(eventShape.getID(),
+                            modifiedGeometry, true);
 
                     movePointIndex = -1;
                     moveType = null;
@@ -964,7 +974,8 @@ public class SelectionAction extends NonDrawingAction {
                     && (moveType == MoveType.SINGLE_POINT)
                     && (movePointIndex >= 0)
                     && (((IHazardServicesShape) selectedElement).isEditable())) {
-                List<Coordinate> coords = selectedElement.getPoints();
+                List<Coordinate> c2 = selectedElement.getPoints();
+                List<Coordinate> coords = new ArrayList<>(c2);
 
                 // For now, make sure there are at least three points left for
                 // paths, or four points for polygons (since the latter need
@@ -981,8 +992,8 @@ public class SelectionAction extends NonDrawingAction {
                     IHazardServicesShape eventShape = (IHazardServicesShape) selectedElement;
                     Geometry modifiedGeometry = buildModifiedGeometry(
                             eventShape, coords);
-                    getSpatialDisplay().notifyModifiedGeometry(
-                            eventShape.getID(), modifiedGeometry, true);
+                    eventManager.setModifiedEventGeometry(eventShape.getID(),
+                            modifiedGeometry, true);
 
                     movePointIndex = -1;
                     moveType = null;

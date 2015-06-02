@@ -19,6 +19,12 @@
  **/
 package gov.noaa.gsd.viz.hazards.contextmenu;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.LOW_RESOLUTION_GEOMETRY_IS_VISIBLE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 
@@ -275,11 +281,17 @@ public class ContextMenuHelper {
     public List<IContributionItem> getSpatialHazardItems() {
 
         Set<String> itemNames = new HashSet<>();
+        if (eventManager.isCurrentEvent()) {
+            addResolutionTogglesForEvent(itemNames,
+                    eventManager.getCurrentEvent(),
+                    CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT,
+                    CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT);
+        }
+
         for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
-            if (event.getHazardType() != null) {
-                itemNames
-                        .add(HazardConstants.CONTEXT_MENU_SHOW_PRODUCT_GEOMETRY);
-            }
+            addResolutionTogglesForEvent(itemNames, event,
+                    CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS,
+                    CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS);
 
             @SuppressWarnings("unchecked")
             List<String> contextMenuEntries = (List<String>) event
@@ -308,6 +320,19 @@ public class ContextMenuHelper {
             items.add(newAction(itemName));
         }
         return items;
+    }
+
+    private void addResolutionTogglesForEvent(Set<String> itemNames,
+            ObservedHazardEvent event, String highResItemName,
+            String lowResItemName) {
+        if (event.getHazardType() != null) {
+            if (event.getHazardAttribute(VISIBLE_GEOMETRY).equals(
+                    LOW_RESOLUTION_GEOMETRY_IS_VISIBLE)) {
+                itemNames.add(highResItemName);
+            } else {
+                itemNames.add(lowResItemName);
+            }
+        }
     }
 
     public IAction createMenu(String menuText,

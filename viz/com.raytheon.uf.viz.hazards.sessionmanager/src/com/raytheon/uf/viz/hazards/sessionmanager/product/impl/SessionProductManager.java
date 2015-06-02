@@ -630,8 +630,7 @@ public class SessionProductManager implements ISessionProductManager {
          * Just terminate ongoing operation and return if there is nothing to
          * do.
          */
-        if (!validateSelectedHazardsForProductGeneration()
-                || !eventManager.buildSelectedHazardProductGeometries()) {
+        if (!validateSelectedHazardsForProductGeneration()) {
             setPreviewOrIssueOngoing(issue, false);
             return false;
         }
@@ -1332,7 +1331,7 @@ public class SessionProductManager implements ISessionProductManager {
     private EventSet<IEvent> buildEventSet(
             ProductGeneratorInformation productGeneratorInformation,
             boolean issue, String locMgrSite) {
-        if (eventManager.buildSelectedHazardProductGeometries() == false) {
+        if (eventManager.setLowResolutionGeometriesVisibleForSelectedEvents() == false) {
             return null;
         }
 
@@ -1410,7 +1409,7 @@ public class SessionProductManager implements ISessionProductManager {
                 event.addHazardAttribute(HazardConstants.GEO_TYPE,
                         HazardConstants.POINT_TYPE);
             } else {
-                geometryCollection = event.getGeometry();
+                geometryCollection = event.getProductGeometry();
 
                 for (int i = 0; i < geometryCollection.getNumGeometries(); ++i) {
                     Geometry geometry = geometryCollection.getGeometryN(i);

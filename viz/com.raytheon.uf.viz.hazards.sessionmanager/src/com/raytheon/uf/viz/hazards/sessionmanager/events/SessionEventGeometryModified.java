@@ -22,7 +22,6 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
-import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * A Notification that will be sent out through the SessionManager to notify all
@@ -49,9 +48,5 @@ public class SessionEventGeometryModified extends SessionEventModified
             ISessionEventManager<ObservedHazardEvent> eventManager,
             ObservedHazardEvent event, IOriginator originator) {
         super(eventManager, event, originator);
-    }
-
-    public Geometry getGeometry() {
-        return getEvent().getGeometry();
     }
 }

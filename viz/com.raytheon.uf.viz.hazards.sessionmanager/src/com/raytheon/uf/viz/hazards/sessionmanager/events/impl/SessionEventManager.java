@@ -28,9 +28,13 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_NONE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUE_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.LOW_RESOLUTION_GEOMETRY;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.LOW_RESOLUTION_GEOMETRY_IS_VISIBLE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PILS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.REPLACED_BY;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
 import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
@@ -120,6 +124,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.geomaps.GeoMapUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IEventApplier;
+import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IQuestionAnswerer;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IRiseCrestFallEditor;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
@@ -132,8 +137,6 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.MultiPolygon;
-import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.TopologyException;
 import com.vividsolutions.jts.operation.valid.IsValidOp;
 import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
@@ -608,6 +611,46 @@ public class SessionEventManager implements
             }
         }
         return events;
+    }
+
+    @Override
+    public void setModifiedEventGeometry(String eventID, Geometry geometry,
+            boolean checkGeometryValidity) {
+        ObservedHazardEvent event = this.getEventById(eventID);
+        setModifiedEventGeometry(event, geometry, checkGeometryValidity);
+    }
+
+    private void setModifiedEventGeometry(ObservedHazardEvent event,
+            Geometry geometry, boolean checkGeometryValidity) {
+        if (event != null) {
+            if (isValidGeometryChange(geometry, event, checkGeometryValidity)) {
+                if (userConfirmationAsNecessary(event)) {
+                    makeHighResolutionVisible(event);
+                    event.setGeometry(geometry);
+                    updateHazardAreas(event);
+                } else {
+                    /*
+                     * If the user says they don't want to overwrite, the
+                     * spatial display can be in an odd state. Force and update
+                     * to clear it out by issuing this notification. TODO - Is
+                     * there a way to handle this more directly in the spatial
+                     * display?
+                     */
+                    hazardEventModified(new SessionEventGeometryModified(this,
+                            event, Originator.OTHER));
+                }
+            }
+        }
+    }
+
+    private boolean userConfirmationAsNecessary(ObservedHazardEvent event) {
+        if (event.getHazardAttribute(VISIBLE_GEOMETRY).equals(
+                LOW_RESOLUTION_GEOMETRY_IS_VISIBLE)) {
+            IQuestionAnswerer answerer = messenger.getQuestionAnswerer();
+            return answerer
+                    .getUserAnswerToQuestion("Are you sure you want to overwrite high resolution geometry");
+        }
+        return true;
     }
 
     @Override
@@ -3225,56 +3268,74 @@ public class SessionEventManager implements
      * 
      * @see
      * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
-     * #buildSelectedHazardProductGeometries()
+     * #selectedEventGeometriesHighResolutionVisible()
      */
     @Override
-    public boolean buildSelectedHazardProductGeometries() {
-        boolean success = true;
+    public void setHighResolutionGeometriesVisibleForSelectedEvents() {
 
-        HazardTypes hazardTypes = configManager.getHazardTypes();
+        for (ObservedHazardEvent selectedEvent : getSelectedEvents()) {
+            makeHighResolutionVisible(selectedEvent);
+        }
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
+     * #setHighResolutionGeometryVisibleForCurrentEvent()
+     */
+    @Override
+    public void setHighResolutionGeometryVisibleForCurrentEvent() {
+        makeHighResolutionVisible(getCurrentEvent());
+
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
+     * #selectedEventGeometriesLowResolutionVisible()
+     */
+    @Override
+    public boolean setLowResolutionGeometriesVisibleForSelectedEvents() {
         Collection<ObservedHazardEvent> selectedEvents = getSelectedEvents();
 
         for (ObservedHazardEvent selectedEvent : selectedEvents) {
-
-            HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
-                    .getHazardType());
-
-            if (canBeClipped(selectedEvent, hazardType)) {
-                Geometry productGeometry;
-                if (geoMapUtilities.isWarngenHatching(selectedEvent)) {
-                    productGeometry = geoMapUtilities.warngenClipping(
-                            selectedEvent, hazardType);
-                    productGeometry = reduceGeometry(productGeometry,
-                            hazardType);
-                    productGeometry = addGoosenecksAsNecessary(productGeometry);
-
-                } else if (geoMapUtilities.isPointBasedHatching(selectedEvent)) {
-                    productGeometry = selectedEvent.getGeometry();
-                } else {
-                    productGeometry = geoMapUtilities
-                            .gfeClipping(selectedEvent);
-                }
-
-                if (productGeometry.isEmpty()) {
-                    StringBuffer warningMessage = new StringBuffer();
-                    warningMessage.append("Event ")
-                            .append(selectedEvent.getEventID()).append(" ");
-                    warningMessage
-                            .append("has no hazard areas inside of the forecast area.\n");
-                    messenger.getWarner().warnUser(
-                            "Product geometry calculation error",
-                            warningMessage.toString());
-                    success = false;
-                    break;
-                }
-
-                selectedEvent.setGeometry(productGeometry);
-
+            Geometry lowResolutionGeometry;
+            try {
+                lowResolutionGeometry = buildLowResolutionEventGeometry(selectedEvent);
+            } catch (HazardGeometryOutsideCWAException e) {
+                warnUserOfGeometryOutsideCWA(selectedEvent);
+                return false;
             }
-
+            setLowResolutionGeometry(selectedEvent, lowResolutionGeometry);
         }
 
-        return success;
+        return true;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
+     * #setLowResolutionGeometryVisibleForCurrentEvent()
+     */
+    @Override
+    public boolean setLowResolutionGeometryVisibleForCurrentEvent() {
+        ObservedHazardEvent hazardEvent = getCurrentEvent();
+        Geometry lowResolutionGeometry;
+        try {
+            lowResolutionGeometry = buildLowResolutionEventGeometry(hazardEvent);
+        } catch (HazardGeometryOutsideCWAException e) {
+            warnUserOfGeometryOutsideCWA(hazardEvent);
+            return false;
+        }
+        setLowResolutionGeometry(hazardEvent, lowResolutionGeometry);
+        return true;
+
     }
 
     /*
@@ -3455,6 +3516,10 @@ public class SessionEventManager implements
                                 "Can only add or remove UGCs for pending point hazards");
                 return;
             }
+            if (!userConfirmationAsNecessary(hazardEvent)) {
+                return;
+            }
+            makeHighResolutionVisible(hazardEvent);
 
             @SuppressWarnings("unchecked")
             Map<String, String> hazardAreas = (Map<String, String>) hazardEvent
@@ -3486,8 +3551,8 @@ public class SessionEventManager implements
             Geometry modifiedHazardGeometry = hazardEventGeometry;
             if (!geoMapUtilities.isPointBasedHatching(hazardEvent)) {
                 GeometryCollection asGeometryCollection = (GeometryCollection) hazardEventGeometry;
-                List<Geometry> geometryAsList = asList(asGeometryCollection);
-                modifiedHazardGeometry = asUnion(geometryAsList);
+                modifiedHazardGeometry = geoMapUtilities
+                        .asUnion(asGeometryCollection);
             }
 
             for (String enclosingUGC : ugcsEnclosingUserSelectedLocation
@@ -3533,6 +3598,74 @@ public class SessionEventManager implements
         }
     }
 
+    private class HazardGeometryOutsideCWAException extends RuntimeException {
+
+        private static final long serialVersionUID = -3178272501617218427L;
+
+    }
+
+    private Geometry buildLowResolutionEventGeometry(
+            ObservedHazardEvent selectedEvent) {
+        HazardTypes hazardTypes = configManager.getHazardTypes();
+
+        HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
+                .getHazardType());
+
+        /*
+         * By default, just set the low res to the high res
+         */
+        Geometry result = selectedEvent.getGeometry();
+
+        if (isLowResComputationNeeded(selectedEvent, hazardType)) {
+            if (geoMapUtilities.isWarngenHatching(selectedEvent)) {
+                result = geoMapUtilities.warngenClipping(selectedEvent,
+                        hazardType);
+                result = reduceGeometry(result, hazardType);
+                if (!result.isEmpty()) {
+                    result = addGoosenecksAsNecessary(result);
+                }
+
+            } else {
+                result = geoMapUtilities.gfeClipping(selectedEvent);
+            }
+
+            if (result.isEmpty()) {
+
+                throw new HazardGeometryOutsideCWAException();
+            }
+            if (!(result instanceof GeometryCollection)) {
+                result = geometryFactory
+                        .createGeometryCollection(new Geometry[] { result });
+            }
+            return result;
+        }
+        return result;
+    }
+
+    private void warnUserOfGeometryOutsideCWA(ObservedHazardEvent selectedEvent) {
+        StringBuffer warningMessage = new StringBuffer();
+        warningMessage.append("Event ").append(selectedEvent.getEventID())
+                .append(" ");
+        warningMessage
+                .append("has no hazard areas inside of the forecast area.\n");
+        messenger.getWarner().warnUser("Product geometry calculation error",
+                warningMessage.toString());
+    }
+
+    private void setLowResolutionGeometry(ObservedHazardEvent selectedEvent,
+            Geometry lowResolutionGeometry) {
+        selectedEvent.addHazardAttribute(VISIBLE_GEOMETRY,
+                LOW_RESOLUTION_GEOMETRY_IS_VISIBLE);
+        selectedEvent.addHazardAttribute(LOW_RESOLUTION_GEOMETRY,
+                lowResolutionGeometry);
+    }
+
+    private void makeHighResolutionVisible(ObservedHazardEvent hazardEvent) {
+        hazardEvent.addHazardAttribute(VISIBLE_GEOMETRY,
+                HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE);
+
+    }
+
     /**
      * Clears the undo/redo stack for the hazard event.
      * 
@@ -3544,9 +3677,10 @@ public class SessionEventManager implements
         event.clearUndoRedo();
     }
 
-    private boolean canBeClipped(ObservedHazardEvent selectedEvent,
-            HazardTypeEntry hazardType) {
+    private boolean isLowResComputationNeeded(
+            ObservedHazardEvent selectedEvent, HazardTypeEntry hazardType) {
         return hazardType != null
+                && !geoMapUtilities.isPointBasedHatching(selectedEvent)
                 && (!HazardStatus.hasEverBeenIssued(selectedEvent.getStatus()) || (HazardStatus
                         .issuedButNotEnded(selectedEvent.getStatus()) && selectedEvent
                         .isModified()));
@@ -3708,31 +3842,6 @@ public class SessionEventManager implements
             events.add(getEventById(eventId));
         }
         return events;
-    }
-
-    private List<Geometry> asList(GeometryCollection geometryCollection) {
-        List<Geometry> result = new ArrayList<>();
-        for (int i = 0; i < geometryCollection.getNumGeometries(); i++) {
-            Geometry g = geometryCollection.getGeometryN(i);
-            result.add(g);
-        }
-        return result;
-    }
-
-    private Geometry asUnion(List<Geometry> geometries) {
-
-        Geometry result = null;
-        for (int i = 0; i < geometries.size(); i++) {
-            Geometry g = geometries.get(i);
-            if (g instanceof Polygon || g instanceof MultiPolygon) {
-                if (result == null) {
-                    result = g;
-                } else {
-                    result = result.union(g);
-                }
-            }
-        }
-        return result;
     }
 
     private Geometry addGoosenecksAsNecessary(Geometry productGeometry) {

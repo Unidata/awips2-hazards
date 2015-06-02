@@ -974,8 +974,25 @@ public final class HazardServicesMessageHandler {
             sessionEventManager
                     .sortEvents(SessionEventManager.SEND_SELECTED_FRONT);
         } else if (label
-                .equals(HazardConstants.CONTEXT_MENU_SHOW_PRODUCT_GEOMETRY)) {
-            sessionEventManager.buildSelectedHazardProductGeometries();
+                .equals(HazardConstants.CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS)) {
+            sessionEventManager
+                    .setHighResolutionGeometriesVisibleForSelectedEvents();
+
+        } else if (label
+                .equals(HazardConstants.CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS)) {
+            sessionEventManager
+                    .setLowResolutionGeometriesVisibleForSelectedEvents();
+
+        } else if (label
+                .equals(HazardConstants.CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT)) {
+            sessionEventManager
+                    .setHighResolutionGeometryVisibleForCurrentEvent();
+
+        } else if (label
+                .equals(HazardConstants.CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT)) {
+            sessionEventManager
+                    .setLowResolutionGeometryVisibleForCurrentEvent();
+
         } else {
             throw new IllegalArgumentException("Unexpected label " + label);
         }
@@ -1315,6 +1332,7 @@ public final class HazardServicesMessageHandler {
             eventInfo.put(HAZARD_EVENT_IDENTIFIER, consoleAction.getId());
             eventInfo.put(HAZARD_EVENT_CHECKED, consoleAction.getChecked());
             updateEventData(eventInfo, true, consoleAction.getOriginator());
+
             break;
         }
 

@@ -162,6 +162,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
+    public Geometry getProductGeometry() {
+        return delegate.getProductGeometry();
+    }
+
+    @Override
     public String getSiteID() {
         return delegate.getSiteID();
     }
@@ -484,6 +489,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     protected void setSubType(String subtype, boolean notify,
             IOriginator originator) {
+
         if (changed(getSubType(), subtype)) {
             if (eventManager.canChangeType(this)) {
                 delegate.setSubType(subtype);
@@ -501,6 +507,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     protected void setHazardType(String phenomenon, String significance,
             String subtype, boolean notify, IOriginator originator) {
+
         /*
          * TODO Handle case when user sets hazard type back to empty. Should the
          * HID even allow that?
@@ -521,6 +528,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     protected void setCreationTime(Date date, boolean notify,
             IOriginator originator) {
+
         if (getCreationTime() == null) {
             delegate.setCreationTime(date);
             if (notify) {
@@ -531,6 +539,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     protected void setEndTime(Date date, boolean notify, IOriginator originator) {
+
         if (changed(getEndTime(), date)) {
             delegate.setEndTime(date);
             if (notify) {
@@ -543,6 +552,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     protected void setStartTime(Date date, boolean notify,
             IOriginator originator) {
+
         if (changed(getStartTime(), date)) {
             delegate.setStartTime(date);
             if (notify) {
@@ -567,13 +577,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     protected void setGeometry(Geometry geom, boolean notify,
             IOriginator originator) {
-        /*
-         * Make sure that geometries are GeometryCollections throughout
-         */
-        if (!(geom instanceof GeometryCollection)) {
-            geom = geometryFactory
-                    .createGeometryCollection(new Geometry[] { geom });
-        }
+        geom = toCollectionAsNecessary(geom);
         if (changed(getGeometry(), geom)) {
             pushToStack("setGeometry", Geometry.class, getGeometry());
             delegate.setGeometry(geom);
@@ -585,6 +589,25 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
             }
 
         }
+
+    }
+
+    private Geometry toCollectionAsNecessary(Geometry geom) {
+        /*
+         * Make sure that geometries are GeometryCollections throughout
+         */
+        if (!(geom instanceof GeometryCollection)) {
+            geom = geometryFactory
+                    .createGeometryCollection(new Geometry[] { geom });
+        }
+        return geom;
+
+    }
+
+    @Override
+    public void setProductGeometry(Geometry geom) {
+        geom = toCollectionAsNecessary(geom);
+        delegate.setProductGeometry(geom);
     }
 
     protected void setHazardMode(ProductClass mode, boolean notify,
@@ -600,6 +623,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     private void setHazardAttributes(Map<String, Serializable> attributes,
             boolean notify, IOriginator originator) {
+
         Set<String> changedKeys = getChangedAttributes(attributes, true);
         if (changedKeys.isEmpty() == false) {
             delegate.setHazardAttributes(attributes);
@@ -673,6 +697,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     protected void addHazardAttributes(Map<String, Serializable> attributes,
             boolean notify, IOriginator originator) {
+
         Set<String> changedKeys = getChangedAttributes(attributes, false);
         if (changedKeys.size() > 0) {
             Map<String, Serializable> modifiedAttributes = new HashMap<>();
@@ -688,6 +713,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     protected void addHazardAttribute(String key, Serializable value,
             boolean notify, IOriginator originator) {
+
         if (changed(value, getHazardAttribute(key))) {
             delegate.removeHazardAttribute(key);
             delegate.addHazardAttribute(key, value);
@@ -701,6 +727,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     protected void removeHazardAttribute(String key, boolean notify,
             IOriginator originator) {
+
         if (getHazardAttribute(key) != null) {
             delegate.removeHazardAttribute(key);
             if (notify) {

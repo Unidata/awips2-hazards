@@ -64,6 +64,10 @@ public interface IHazardEvent extends IEvent {
         }
     };
 
+    public Geometry getGeometry();
+
+    public Geometry getProductGeometry();
+
     public String getSiteID();
 
     public void setSiteID(String site);
@@ -108,6 +112,8 @@ public interface IHazardEvent extends IEvent {
     public void setTimeRange(Date startTime, Date endTime);
 
     public void setGeometry(Geometry geom);
+
+    public void setProductGeometry(Geometry geom);
 
     public ProductClass getHazardMode();
 

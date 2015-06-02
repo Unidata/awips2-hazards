@@ -32,6 +32,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -166,6 +167,9 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
         private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = getSpatialPresenter()
                 .getSessionManager();
+
+        private final ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
+                .getEventManager();
 
         /*
          * (non-Javadoc)
@@ -376,8 +380,9 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
                                 hazardGeometryList.put(eventID,
                                         selectedGeometryCopy);
-                                getSpatialDisplay().notifyModifiedGeometry(
-                                        eventID, selectedGeometry, false);
+                                eventManager.setModifiedEventGeometry(eventID,
+                                        selectedGeometry, false);
+
                             }
 
                             // Let the IHIS layer know that this drawing

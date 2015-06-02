@@ -118,9 +118,9 @@ public class HazardEventHandler {
 
     private boolean initialized;
 
-    private Map<String, GridParmInfo> operationalGridParmInfoMap;
+    private final Map<String, GridParmInfo> operationalGridParmInfoMap;
 
-    private Map<String, GridParmInfo> practiceGridParmInfoMap;
+    private final Map<String, GridParmInfo> practiceGridParmInfoMap;
 
     private static HazardEventHandler instance = new HazardEventHandler();
 
@@ -464,7 +464,7 @@ public class HazardEventHandler {
                         for (IHazardEvent iterateHazardEvent : events) {
                             updateCandidates.add(iterateHazardEvent);
                             Geometry hazardGeometry = iterateHazardEvent
-                                    .getGeometry();
+                                    .getProductGeometry();
                             if (data == null) {
                                 data = GFERecordUtil
                                         .translateHazardPolygonGrid2Bit(
@@ -776,8 +776,9 @@ public class HazardEventHandler {
         HazardsInteroperabilityGFE existingRecord = null;
         if (record != null) {
             existingRecord = (HazardsInteroperabilityGFE) record;
-            Geometry gfeGeometry = GFERecordUtil.translateHazardPolygonToGfe(
-                    gridParmInfo.getGridLoc(), hazardEvent.getGeometry());
+            Geometry gfeGeometry = GFERecordUtil
+                    .translateHazardPolygonToGfe(gridParmInfo.getGridLoc(),
+                            hazardEvent.getProductGeometry());
 
             /* update the geometry of the new record. */
             statusHandler
@@ -789,8 +790,9 @@ public class HazardEventHandler {
                         .updateRecord(existingRecord);
             }
         } else {
-            Geometry gfeGeometry = GFERecordUtil.translateHazardPolygonToGfe(
-                    gridParmInfo.getGridLoc(), hazardEvent.getGeometry());
+            Geometry gfeGeometry = GFERecordUtil
+                    .translateHazardPolygonToGfe(gridParmInfo.getGridLoc(),
+                            hazardEvent.getProductGeometry());
             HazardsInteroperabilityGFE newRecord = this
                     .constructInteroperabilityRecord(hazardEvent.getSiteID(),
                             hazardEvent.getPhenomenon(), hazardEvent

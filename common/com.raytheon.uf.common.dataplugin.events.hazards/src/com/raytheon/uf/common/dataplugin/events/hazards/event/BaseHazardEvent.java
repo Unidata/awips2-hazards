@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
+
 import java.io.Serializable;
 import java.util.Date;
 import java.util.HashMap;
@@ -91,6 +94,7 @@ public class BaseHazardEvent implements IHazardEvent {
      */
     public BaseHazardEvent() {
         attributes = new HashMap<String, Serializable>();
+        attributes.put(VISIBLE_GEOMETRY, HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE);
     }
 
     public BaseHazardEvent(IHazardEvent event) {
@@ -442,5 +446,27 @@ public class BaseHazardEvent implements IHazardEvent {
     public Date getInsertTime() {
         // TODO No-op
         return null;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
+     * getProductGeometry()
+     */
+    @Override
+    public Geometry getProductGeometry() {
+        return HazardEventUtilities.getProductGeometry(this);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
+     * setProductGeometry(com.vividsolutions.jts.geom.Geometry)
+     */
+    @Override
+    public void setProductGeometry(Geometry geom) {
+        HazardEventUtilities.setProductGeometry(this, geom);
     }
 }

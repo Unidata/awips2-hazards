@@ -59,6 +59,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.PrecisionModel;
@@ -463,6 +464,9 @@ public class GeoMapUtilities {
             if (geometry instanceof LineString) {
                 geometries.add(geometry);
             } else {
+                if (geometry instanceof GeometryCollection) {
+                    geometry = asUnion((GeometryCollection) geometry);
+                }
                 polygonUnion = polygonUnion.union(geometry);
             }
 
@@ -481,6 +485,23 @@ public class GeoMapUtilities {
                 .toArray(new Geometry[geometries.size()]);
         GeometryCollection result = geometryFactory
                 .createGeometryCollection(geometriesAsArray);
+        return result;
+    }
+
+    public Geometry asUnion(GeometryCollection gc) {
+
+        List<Geometry> geometryAsList = asList(gc);
+        Geometry result = null;
+        for (int i = 0; i < geometryAsList.size(); i++) {
+            Geometry g = geometryAsList.get(i);
+            if (g instanceof Polygon || g instanceof MultiPolygon) {
+                if (result == null) {
+                    result = g;
+                } else {
+                    result = result.union(g);
+                }
+            }
+        }
         return result;
     }
 
@@ -594,6 +615,15 @@ public class GeoMapUtilities {
         String mapDBtableName = configManager.getHazardTypes()
                 .get(hazardEvent.getHazardType()).getUgcType();
         return mapDBtableName;
+    }
+
+    private List<Geometry> asList(GeometryCollection geometryCollection) {
+        List<Geometry> result = new ArrayList<>();
+        for (int i = 0; i < geometryCollection.getNumGeometries(); i++) {
+            Geometry g = geometryCollection.getGeometryN(i);
+            result.add(g);
+        }
+        return result;
     }
 
     private HazardTypeEntry getHazardTypeEntry(IHazardEvent hazardEvent) {

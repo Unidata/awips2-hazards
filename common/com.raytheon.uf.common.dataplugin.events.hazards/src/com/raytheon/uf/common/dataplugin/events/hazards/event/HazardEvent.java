@@ -743,4 +743,26 @@ public class HazardEvent implements IHazardEvent, IValidator {
         // TODO No-op for now. Need to see how this will work with the registry
         return null;
     }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
+     * getProductGeometry()
+     */
+    @Override
+    public Geometry getProductGeometry() {
+        return HazardEventUtilities.getProductGeometry(this);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
+     * setProductGeometry(com.vividsolutions.jts.geom.Geometry)
+     */
+    @Override
+    public void setProductGeometry(Geometry geom) {
+        HazardEventUtilities.setProductGeometry(this, geom);
+    }
 }

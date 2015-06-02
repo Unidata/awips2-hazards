@@ -1185,24 +1185,6 @@ public class SpatialDisplay extends
     /**
      * TODO This needs to me moved elsewhere - nothing to do with drawing.
      */
-    public void notifyModifiedGeometry(String eventID, Geometry geometry,
-            boolean checkGeometryValidity) {
-        ISessionEventManager<ObservedHazardEvent> sessionEventManager = appBuilder
-                .getSessionManager().getEventManager();
-
-        ObservedHazardEvent hazardEvent = sessionEventManager
-                .getEventById(eventID);
-
-        if (sessionEventManager.isValidGeometryChange(geometry, hazardEvent,
-                checkGeometryValidity)) {
-            hazardEvent.setGeometry(geometry);
-            sessionEventManager.updateHazardAreas(hazardEvent);
-        }
-    }
-
-    /**
-     * TODO This needs to me moved elsewhere - nothing to do with drawing.
-     */
     public void notifyModifiedStormTrack(Map<String, Serializable> parameters) {
         ModifyStormTrackAction action = new ModifyStormTrackAction();
         action.setParameters(parameters);

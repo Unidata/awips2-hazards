@@ -126,6 +126,9 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def getGeometry(self):
         return JUtil.javaObjToPyVal(self.jobj.getGeometry())
     
+    def getProductGeometry(self):
+        return JUtil.javaObjToPyVal(self.jobj.getProductGeometry())
+    
     def setGeometry(self, geometry):
         if geometry is not None :
             self.jobj.setGeometry(JUtil.pyValToJavaObj(geometry))

@@ -38,29 +38,15 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.V
 import gov.noaa.gsd.viz.hazards.display.deprecated.DeprecatedUtilities;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
-import org.codehaus.jackson.annotate.JsonIgnore;
 
-import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryCollection;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.geom.Lineal;
-import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.geom.Polygon;
-import com.vividsolutions.jts.geom.Polygonal;
-import com.vividsolutions.jts.geom.Puntal;
 
 /**
  * Implements many of the fields that are used on JSON events.
@@ -106,8 +92,6 @@ public class DeprecatedEvent {
 
     private String streamName;
 
-    private DeprecatedShape[] shapes;
-
     private String backupSiteID;
 
     private double[][] draggedPoints;
@@ -150,8 +134,6 @@ public class DeprecatedEvent {
 
     private String damName;
 
-    private String geoType;
-
     private Boolean polyModified;
 
     private Long expirationTime;
@@ -163,8 +145,6 @@ public class DeprecatedEvent {
     private String pils;
 
     private String vtecCodes;
-
-    private static GeometryFactory geometryFactory = new GeometryFactory();
 
     public DeprecatedEvent() {
     }
@@ -238,23 +218,6 @@ public class DeprecatedEvent {
 
         draggedPoints = new double[0][];
 
-        Geometry geom = event.getGeometry();
-
-        int numberOfGeometries = geom.getNumGeometries();
-        shapes = new DeprecatedShape[numberOfGeometries];
-
-        for (int i = 0; i < numberOfGeometries; ++i) {
-            shapes[i] = convertGeometry(geom.getGeometryN(i));
-        }
-
-        if (geom instanceof Polygonal) {
-            geoType = HazardConstants.AREA_TYPE;
-        } else if (geom instanceof Lineal) {
-            geoType = HazardConstants.LINE_TYPE;
-        } else if (geom instanceof Puntal) {
-            geoType = HazardConstants.POINT_TYPE;
-        }
-
         polyModified = true;
 
         if (attr.containsKey(EXPIRATION_TIME)) {
@@ -290,25 +253,6 @@ public class DeprecatedEvent {
 
     }
 
-    private DeprecatedShape convertGeometry(Geometry geom) {
-        List<double[]> points = new ArrayList<double[]>();
-        for (Coordinate c : geom.getCoordinates()) {
-            points.add(new double[] { c.x, c.y });
-        }
-        DeprecatedShape shape = new DeprecatedShape();
-        shape.setPoints(points.toArray(new double[0][]));
-        shape.setShapeType(geom instanceof Polygonal ? "polygon"
-                : (geom instanceof Lineal ? "line" : "point"));
-        shape.setLabel(eventID + " ");
-        if (type != null) {
-            shape.setLabel(eventID + " " + type);
-        }
-        shape.setIsSelected(selected);
-        shape.setIsVisible("true");
-        shape.setInclude("true");
-        return shape;
-    }
-
     public String getEventID() {
         return eventID;
     }
@@ -323,14 +267,6 @@ public class DeprecatedEvent {
 
     public void setPointID(String pointID) {
         this.pointID = pointID;
-    }
-
-    public DeprecatedShape[] getShapes() {
-        return shapes;
-    }
-
-    public void setShapes(DeprecatedShape[] shapes) {
-        this.shapes = shapes;
     }
 
     public String getBackupSiteID() {
@@ -501,14 +437,6 @@ public class DeprecatedEvent {
         this.damName = damName;
     }
 
-    public void setGeoType(String geoType) {
-        this.geoType = geoType;
-    }
-
-    public String getGeoType() {
-        return geoType;
-    }
-
     public void setIssueTime(Long issueTime) {
         this.issueTime = issueTime;
     }
@@ -555,55 +483,6 @@ public class DeprecatedEvent {
 
     public void setPolyModified(Boolean polyModified) {
         this.polyModified = polyModified;
-    }
-
-    @JsonIgnore
-    public Geometry getGeometry() {
-        assert (shapes != null && shapes.length != 0);
-        List<Geometry> geometries = Lists.newArrayList();
-        for (DeprecatedShape shape : shapes) {
-            if (shape.getShapeType().equals("point")) {
-                geometries.add(buildPoint(shape));
-            } else if (shape.getShapeType().equals("line")) {
-                geometries.add(buildLine(shape));
-            } else if (shape.getShapeType().equals("polygon")) {
-                geometries.add(buildPolygon(shape));
-            } else {
-                throw new IllegalStateException(
-                        "Cannot get geometry of shape of type \""
-                                + shape.getShapeType() + "\"");
-            }
-        }
-
-        Geometry result = new GeometryCollection(
-                geometries.toArray(new Geometry[geometries.size()]),
-                geometryFactory);
-
-        return result;
-    }
-
-    private Point buildPoint(DeprecatedShape shape) {
-        return geometryFactory.createPoint(new Coordinate(shape.points[0][0],
-                shape.points[0][1]));
-    }
-
-    private LineString buildLine(DeprecatedShape shape) {
-        return geometryFactory
-                .createLineString(translateShapePointsToCoordinates(shape));
-    }
-
-    private Polygon buildPolygon(DeprecatedShape shape) {
-        return geometryFactory.createPolygon(geometryFactory
-                .createLinearRing(translateShapePointsToCoordinates(shape)),
-                null);
-    }
-
-    private Coordinate[] translateShapePointsToCoordinates(DeprecatedShape shape) {
-        List<Coordinate> coords = new ArrayList<Coordinate>(shape.points.length);
-        for (double[] point : shape.points) {
-            coords.add(new Coordinate(point[0], point[1]));
-        }
-        return coords.toArray(new Coordinate[shape.points.length]);
     }
 
     @Override

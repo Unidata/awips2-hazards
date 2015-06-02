@@ -492,17 +492,40 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public void proposeEvents(Collection<E> events, IOriginator originator);
 
     /**
-     * Builds and stores the product representation of the selected hazard
-     * geometries. This includes clipping to the CWA, modifying the polygons to
-     * conform to the hazard areas and simplifying the polygons to conform to
-     * the max 20 point rule.
+     * Makes visible the hazard (high resolution) representation of the selected
+     * hazard geometries.
+     */
+    public void setHighResolutionGeometriesVisibleForSelectedEvents();
+
+    /**
+     * Builds, stores and makes visible the product (low resolution)
+     * representation of the selected hazard geometries. This includes clipping
+     * to the CWA, modifying the polygons to conform to the hazard areas and
+     * simplifying the polygons to conform to the max 20 point rule.
      * 
      * @param
      * @return true - this function successfully clipped the hazard geometries
      *         false - this function failed, probably because a geometry was
      *         outside of the forecast area (cwa or hsa).
      */
-    public boolean buildSelectedHazardProductGeometries();
+    public boolean setLowResolutionGeometriesVisibleForSelectedEvents();
+
+    /**
+     * Makes visible the hazard (high resolution) representation of the selected
+     * hazard geometries.
+     */
+    public void setHighResolutionGeometryVisibleForCurrentEvent();
+
+    /**
+     * Builds, stores and makes visible the product (low resolution)
+     * representation of the current hazard geometry.
+     * 
+     * @param
+     * @return true - this function successfully clipped the hazard geometru
+     *         false - this function failed, probably because the geometry was
+     *         outside of the forecast area.
+     */
+    public boolean setLowResolutionGeometryVisibleForCurrentEvent();
 
     /**
      * Updates the UGC information associated with the selected hazard events.
@@ -582,5 +605,8 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @param hazardEvent
      */
     public void updateHazardAreas(IHazardEvent hazardEvent);
+
+    public void setModifiedEventGeometry(String eventID, Geometry geometry,
+            boolean checkGeometryValidity);
 
 }

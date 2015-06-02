@@ -26,7 +26,6 @@ import org.codehaus.jackson.node.ObjectNode;
 
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
@@ -113,13 +112,6 @@ public class DeprecatedUtilities {
                 jsonEvents[i].setPhen("");
                 jsonEvents[i].setSig("");
                 jsonEvents[i].setSubType("");
-            }
-            TimeRange hetr = new TimeRange(hevent.getStartTime(),
-                    hevent.getEndTime());
-            Date time = new Date(timeManager.getLowerSelectedTimeInMillis());
-            if (time != null && !hetr.contains(time)) {
-                jsonEvents[i]
-                        .setShapes(new gov.noaa.gsd.viz.hazards.jsonutilities.DeprecatedShape[0]);
             }
         }
     }

@@ -8,6 +8,8 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesEditorUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.DotDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
@@ -238,8 +240,8 @@ public class HazardServicesDrawableBuilder {
             drawingAttributes.setAttributes(shapeNum, hazardEvent);
 
             Coordinate[] coordinates = null;
-            Geometry geometry = hazardEvent.getGeometry()
-                    .getGeometryN(shapeNum);
+            Geometry geometry = visibleGeometry(hazardEvent).getGeometryN(
+                    shapeNum);
 
             if (geometry instanceof MultiPolygon) {
                 MultiPolygon mp = (MultiPolygon) geometry;
@@ -362,7 +364,7 @@ public class HazardServicesDrawableBuilder {
                     activeLayer);
         } else {
 
-            for (int shapeNum = 0; shapeNum < hazardEvent.getGeometry()
+            for (int shapeNum = 0; shapeNum < visibleGeometry(hazardEvent)
                     .getNumGeometries(); shapeNum++) {
 
                 AbstractDrawableComponent drawableComponent = addShapeComponent(
@@ -434,9 +436,18 @@ public class HazardServicesDrawableBuilder {
 
     }
 
+    private Geometry visibleGeometry(IHazardEvent hazardEvent) {
+        if (hazardEvent.getHazardAttribute(VISIBLE_GEOMETRY).equals(
+                HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE)) {
+            return hazardEvent.getGeometry();
+        } else {
+            return hazardEvent.getProductGeometry();
+        }
+    }
+
     private List<Coordinate> buildCoordinates(int shapeNum,
             IHazardEvent hazardEvent) {
-        Geometry geometry = hazardEvent.getGeometry().getGeometryN(shapeNum);
+        Geometry geometry = visibleGeometry(hazardEvent).getGeometryN(shapeNum);
 
         return Lists.newArrayList(geometry.getCoordinates());
     }
@@ -452,7 +463,7 @@ public class HazardServicesDrawableBuilder {
         if (selected) {
             radius = 5.0;
         }
-        Coordinate centerPointInWorld = hazardEvent.getGeometry()
+        Coordinate centerPointInWorld = visibleGeometry(hazardEvent)
                 .getGeometryN(shapeNum).getCoordinate();
 
         List<Coordinate> result = drawingAttributes.buildCircleCoordinates(
@@ -631,7 +642,7 @@ public class HazardServicesDrawableBuilder {
             boolean drawHazardArea, int shapeNum) {
         AbstractDrawableComponent drawableComponent;
 
-        Geometry geometry = hazardEvent.getGeometry().getGeometryN(shapeNum);
+        Geometry geometry = visibleGeometry(hazardEvent).getGeometryN(shapeNum);
 
         drawableComponent = addComponentForGeometry(hazardEvent, activeLayer,
                 shapeNum, drawHazardArea, geometry);
@@ -715,7 +726,8 @@ public class HazardServicesDrawableBuilder {
                 }
             }
 
-            if (isWarngenHatching) {
+            if (false) {
+                // if (isWarngenHatching) {
                 for (IGeometryData geometryData : hazardArea) {
                     Geometry geometry = geometryData.getGeometry();
                     if (!geometry.isEmpty()
@@ -775,7 +787,7 @@ public class HazardServicesDrawableBuilder {
                 && drawingAttributes.getString().length > 0) {
 
             AbstractDrawableComponent text = buildText(
-                    hazardEvent.getGeometry(), hazardEvent.getEventID(),
+                    visibleGeometry(hazardEvent), hazardEvent.getEventID(),
                     spatialDisplay.getActiveLayer());
             spatialDisplay.addElement(text);
             drawableComponents.add(text);

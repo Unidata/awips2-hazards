@@ -22,7 +22,6 @@ package com.raytheon.uf.common.dataplugin.events;
 import java.util.Date;
 
 import com.raytheon.uf.common.serialization.ISerializableObject;
-import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Any event should implement this class, as ALL types of events will have a
@@ -47,5 +46,4 @@ public interface IEvent extends ISerializableObject {
 
     public Date getEndTime();
 
-    public Geometry getGeometry();
 }

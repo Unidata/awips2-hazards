@@ -717,4 +717,26 @@ public class PracticeHazardEvent extends PersistableDataObject<String>
         }
         return true;
     }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
+     * getProductGeometry()
+     */
+    @Override
+    public Geometry getProductGeometry() {
+        return HazardEventUtilities.getProductGeometry(this);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
+     * setProductGeometry(com.vividsolutions.jts.geom.Geometry)
+     */
+    @Override
+    public void setProductGeometry(Geometry geom) {
+        HazardEventUtilities.setProductGeometry(this, geom);
+    }
 }
