@@ -174,7 +174,6 @@ import com.vividsolutions.jts.geom.Polygonal;
  * May 05, 2015 7624       mduff        Drawing Optimizations.
  * May 21, 2015 7730       Chris.Cody   Move Add/Delete Vertex to top of Context Menu
  * May 20, 2015 7624       mduff        Fixed the drawing to not delete everything and recreate it, vast performance improvement.
- * May 29, 2015 7624       mduff        Fixed issue with selected polygons.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -217,6 +216,11 @@ public class SpatialDisplay extends
      * Ghost for pgen element.
      */
     private AbstractDrawableComponent ghost = null;
+
+    /**
+     * Variable used to determine if a frame time change needs to be sent to the
+     * IHIS Layer.
+     */
 
     /*
      * Elements selected
@@ -921,12 +925,6 @@ public class SpatialDisplay extends
         drawableComponents.clear();
         drawableComponents.addAll(drawables);
         setObjects(drawableComponents);
-        if (hatchedAreaShadedShape != null) {
-            redrawHatchedAreas = true;
-            hatchedAreaShadedShape.dispose();
-            hatchedAreas.clear();
-        }
-
         issueRefresh();
     }
 

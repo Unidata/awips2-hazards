@@ -87,7 +87,6 @@ import com.vividsolutions.jts.geom.Puntal;
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
  * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen
  * May 05, 2015 7624       mduff        Handle MultiPolygons, added deholer method.
- * May 29, 2015 7624       mduff        Set selected areas.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -711,9 +710,6 @@ public class HazardServicesDrawableBuilder {
                             drawableComponent = buildPolygon(hazardEvent,
                                     geometry, activeLayer);
                             hatchedAreas.add(drawableComponent);
-                            spatialDisplay.setSelectedDE(drawableComponent);
-                            spatialDisplay
-                                    .setSelectedHazardLayer(drawableComponent);
                         }
                     }
                 }
