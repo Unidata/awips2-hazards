@@ -9,8 +9,6 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
-import java.util.Set;
-
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
@@ -26,7 +24,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * ------------ ---------- ------------ --------------------------
  * May 09, 2014    2925    Chris.Golden Initial creation.
  * Apr 10, 2015    6898    Chris.Cody   Refactored async messaging
- * May 20, 2015    7624    mduff        Changed notification hierarchy.
  * </pre>
  * 
  * @author Chris.Golden
@@ -40,8 +37,7 @@ public class SessionSelectedEventsModified extends SessionEventsModified {
      * @param originator
      *            Originator of the event.
      */
-    public SessionSelectedEventsModified(IOriginator originator,
-            Set<String> eventIds) {
-        super(eventIds, false, false, originator);
+    public SessionSelectedEventsModified(IOriginator originator) {
+        super(false, false, originator);
     }
 }

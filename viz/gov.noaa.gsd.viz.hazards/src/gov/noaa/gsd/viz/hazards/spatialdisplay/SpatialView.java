@@ -104,7 +104,6 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Feb 24, 2015 6499       Dan Schaffer      Disable drawing of point hazards
  * Feb 25, 2015 6600       Dan Schaffer      Fixed bug in spatial display centering
  * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
- * May 20, 2015 7624       mduff             Added removeEvent().
  * </pre>
  * 
  * @author Chris.Golden
@@ -1503,10 +1502,5 @@ public class SpatialView implements
         if (addGeometryToSelectedAction != null) {
             addGeometryToSelectedAction.setEnabled(numSelected == 1);
         }
-    }
-
-    @Override
-    public void removeEvent(String eventID) {
-        spatialDisplay.removeEvent(eventID);
     }
 }

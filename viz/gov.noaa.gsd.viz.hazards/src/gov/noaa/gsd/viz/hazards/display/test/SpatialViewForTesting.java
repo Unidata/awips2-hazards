@@ -150,10 +150,4 @@ public class SpatialViewForTesting implements ISpatialView {
         throw new UnsupportedOperationException();
     }
 
-    @Override
-    public void removeEvent(String eventID) {
-        // TODO Auto-generated method stub
-
-    }
-
 }

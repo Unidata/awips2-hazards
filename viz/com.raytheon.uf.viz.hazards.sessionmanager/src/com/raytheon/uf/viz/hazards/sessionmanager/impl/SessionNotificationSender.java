@@ -39,7 +39,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNo
  * ------------ ---------- ----------- --------------------------
  * Jul 10, 2013            bsteffen     Initial creation
  * Apr 10, 2015  6898      Chris.Cody   Refactored async messaging
- * May 20, 2015  7624      mduff        Add notificiation class name to debug message.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -109,11 +109,8 @@ public class SessionNotificationSender implements ISessionNotificationSender {
                 msg += " ID: " + evt.getEvent().getEventID();
             } else if (notification instanceof SessionEventsTimeRangeBoundariesModified) {
                 SessionEventsTimeRangeBoundariesModified evt = (SessionEventsTimeRangeBoundariesModified) notification;
-                msg += " ID: " + evt.getEventIds();
+                msg += " ID: " + evt.getChangedEventIdSet();
             }
-
-            msg += "  " + notification.getClass().getName();
-
             System.out.println(msg);
         }
         if (trackSource == true) {

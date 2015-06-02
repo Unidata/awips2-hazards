@@ -286,7 +286,6 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * Apr 27, 2015 7635       Robert.Blum  Added current config site to list of visible sites for 
  *                                      when settings have not been overridden.
- * May 05, 2015    7624    mduff        Added getEventsById
  * May 14, 2015    7560    mpduff       Trying to get the Time Range to update from Graphical Editor.
  * May 19, 2015    7975    Robert.Blum  Fixed bug that could incorrectly set the hazard status to ended
  *                                      if it was reverted and contained the REPLACED_BY attribute.
@@ -512,18 +511,6 @@ public class SessionEventManager implements
             }
         }
         return null;
-    }
-
-    @Override
-    public List<ObservedHazardEvent> getEventsById(Collection<String> eventIds) {
-        List<ObservedHazardEvent> events = new ArrayList<>();
-        for (ObservedHazardEvent event : getEvents()) {
-            if (eventIds.contains(event.getEventID())) {
-                events.add(event);
-            }
-        }
-
-        return events;
     }
 
     @Override
@@ -1302,11 +1289,9 @@ public class SessionEventManager implements
          */
         if (attributeMap.containsKey(HAZARD_EVENT_SELECTED)
                 && getEvents().contains(event)) {
-            Set<String> eventIds = Sets.newHashSetWithExpectedSize(1);
-            eventIds.add(event.getEventID());
             notificationSender
                     .postNotificationAsync(new SessionSelectedEventsModified(
-                            originator, eventIds));
+                            originator));
             updateConflictingEventsForSelectedEventIdentifiers(event, false);
         }
 

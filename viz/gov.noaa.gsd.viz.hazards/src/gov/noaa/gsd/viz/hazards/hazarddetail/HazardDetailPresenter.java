@@ -65,6 +65,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventScriptExtra
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionLastChangedEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
@@ -160,7 +161,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Apr 10, 2015    6898    Chris.Cody        Removed modelChanged legacy messaging method
  * Apr 15, 2015    3508    Chris.Golden      Added "hazard detail to be wide" flag.
  * May 20, 2015    8192    Chris.Cody        Set HID Durations for new Events on type selection
- * May 20, 2015    7624    mduff             Changed method signatures.
  * </pre>
  * 
  * @author Chris.Golden
@@ -756,8 +756,7 @@ public class HazardDetailPresenter extends
         String identifier = change.getEvent().getEventID();
         specifierManagersForSelectedEvents.remove(identifier);
 
-        handleSessionSelectedEventsChanged(
-                change.getIsLastChangedEventModified(), change.getOriginator());
+        handleSessionSelectedEventsAddedOrModified(change);
     }
 
     /**
@@ -769,8 +768,7 @@ public class HazardDetailPresenter extends
     @Handler
     public void sessionEventAdded(final SessionEventAdded change) {
 
-        handleSessionSelectedEventsChanged(
-                change.getIsLastChangedEventModified(), change.getOriginator());
+        handleSessionSelectedEventsAddedOrModified(change);
     }
 
     /**
@@ -783,13 +781,16 @@ public class HazardDetailPresenter extends
     public void sessionSelectedEventsModified(
             final SessionSelectedEventsModified change) {
 
-        handleSessionSelectedEventsChanged(
-                change.getIsLastChangedEventModified(), change.getOriginator());
+        handleSessionSelectedEventsAddedOrModified(change);
     }
 
-    private void handleSessionSelectedEventsChanged(
-            boolean isLastChangedSessionEvent, IOriginator originator) {
-        if (isLastChangedSessionEvent) {
+    private void handleSessionSelectedEventsAddedOrModified(
+            final SessionEventsModified change) {
+
+        boolean isLastChangedSessionEvent = change
+                .getIsLastChangedEventModified();
+        if (isLastChangedSessionEvent == true) {
+            IOriginator originator = change.getOriginator();
             updateSessionLastChangedEventModified(originator);
         }
 

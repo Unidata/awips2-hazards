@@ -19,12 +19,10 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
 
 /**
  * A Notification that will be sent out through the SessionManager to notify all
@@ -38,7 +36,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * ------------ ---------- ----------- --------------------------
  * Jun 11, 2013 1257       bsteffen    Initial creation
  * Apr 10, 2015 6898       Chris.Cody  Refactored async messaging
- * May 20, 2015 7624       mduff       Changed notification hierarchy.
  * 
  * </pre>
  * 
@@ -46,36 +43,45 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * @version 1.0
  */
 
-public class SessionEventsModified extends SessionNotification {
+public class SessionEventsModified extends OriginatedSessionNotification {
 
-    protected Set<String> eventIds = new HashSet<>();
+    private boolean isAllowingUntilFurtherNoticeSet = false;
 
-    public SessionEventsModified(Set<String> eventIds,
-            boolean isAllowingUntilFurtherNoticeSet,
+    private boolean isLastChangedEventModified = false;
+
+    public SessionEventsModified(boolean isAllowingUntilFurtherNoticeSet,
             boolean isLastChangedEventModified, IOriginator originator) {
-        super(originator, isAllowingUntilFurtherNoticeSet,
-                isLastChangedEventModified);
-        this.eventIds = eventIds;
+        super(originator);
+        this.isAllowingUntilFurtherNoticeSet = isAllowingUntilFurtherNoticeSet;
+        this.isLastChangedEventModified = isLastChangedEventModified;
     }
 
     public SessionEventsModified(IOriginator originator) {
-        super(originator, false, false);
+        super(originator);
+        this.isAllowingUntilFurtherNoticeSet = false;
+        this.isLastChangedEventModified = false;
     }
 
-    public Set<String> getEventIds() {
-        return eventIds;
+    public boolean getIsAllowingUntilFurtherNoticeSet() {
+        return (isAllowingUntilFurtherNoticeSet);
     }
 
-    public void setEventIds(Set<String> eventIds) {
-        this.eventIds = eventIds;
+    public void setIsAllowingUntilFurtherNoticeSet(
+            boolean isAllowingUntilFurtherNoticeSet) {
+        this.isAllowingUntilFurtherNoticeSet = isAllowingUntilFurtherNoticeSet;
     }
 
-    public void addEventId(String eventId) {
-        eventIds.add(eventId);
+    public boolean getIsLastChangedEventModified() {
+        return (isLastChangedEventModified);
+    }
+
+    public void setIsLastChangedEventModified(boolean isLastChangedEventModified) {
+        this.isLastChangedEventModified = isLastChangedEventModified;
     }
 
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
+
     }
 }

@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
@@ -67,7 +68,6 @@ import org.eclipse.ui.PlatformUI;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
@@ -99,8 +99,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
-import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.viz.awipstools.IToolChangedListener;
 import com.raytheon.viz.core.rsc.jts.JTSCompiler;
 import com.raytheon.viz.hydro.perspective.HydroPerspectiveManager;
@@ -173,7 +171,6 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Apr 03, 2015 6815       mduff        Fix memory leak.
  * May 05, 2015 7624       mduff        Drawing Optimizations.
  * May 21, 2015 7730       Chris.Cody   Move Add/Delete Vertex to top of Context Menu
- * May 20, 2015 7624       mduff        Fixed the drawing to not delete everything and recreate it, vast performance improvement.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -306,11 +303,9 @@ public class SpatialDisplay extends
      * A list of drawables representing the annotations associated with hazard
      * hatch areas.
      */
-    private final List<AbstractDrawableComponent> drawableComponents;
+    private final List<AbstractDrawableComponent> hatchedAreaAnnotations;
 
     private IShadedShape hatchedAreaShadedShape;
-
-    private final Map<String, List<AbstractDrawableComponent>> hazardEventMap = new HashMap<>();
 
     /**
      * Constructor.
@@ -355,10 +350,7 @@ public class SpatialDisplay extends
         dataManager = new SpatialDisplayDataManager();
         persistentShapeMap = new HashMap<>();
         hatchedAreas = new ArrayList<>();
-        drawableComponents = new ArrayList<>();
-
-        // Set this to an empty list by default
-        this.setObjects(drawableComponents);
+        hatchedAreaAnnotations = new ArrayList<>();
 
         dataTimes = new ArrayList<>();
 
@@ -727,30 +719,18 @@ public class SpatialDisplay extends
 
     /**
      * Draws the hazard events on the spatial display.
+     * 
      */
     public void drawEvents(Collection<ObservedHazardEvent> events,
             Map<String, Boolean> eventOverlapSelectedTime,
             Map<String, Boolean> forModifyingStormTrack,
             Map<String, Boolean> eventEditability,
             boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed) {
+        clearEvents();
+        selectedHazardLayer = null;
 
-        List<String> keysToDelete = new ArrayList<>();
-        for (ObservedHazardEvent event : events) {
-            keysToDelete.add(event.getEventID());
-        }
-
-        // Delete the keys
-        clearEvents(keysToDelete);
         hatchedAreas.clear();
-        ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = appBuilder
-                .getSessionManager();
-
-        Collection<ObservedHazardEvent> checkedEvents = sessionManager
-                .getEventManager().getCheckedEvents();
-        ISessionTimeManager timeManager = sessionManager.getTimeManager();
-
-        SelectedTime selectedTime = timeManager.getSelectedTime();
-        filterEventsForTime(checkedEvents, selectedTime);
+        hatchedAreaAnnotations.clear();
 
         for (ObservedHazardEvent hazardEvent : events) {
 
@@ -758,59 +738,27 @@ public class SpatialDisplay extends
              * Keep an inventory of which events are selected.
              */
             String eventID = hazardEvent.getEventID();
-            Boolean overlapTime = eventOverlapSelectedTime.get(eventID);
-            if (overlapTime == null) {
-                overlapTime = false;
+            Boolean isSelected = (Boolean) hazardEvent
+                    .getHazardAttribute(HAZARD_EVENT_SELECTED);
+
+            drawableBuilder.buildDrawableComponents(this, hazardEvent,
+                    eventOverlapSelectedTime.get(eventID), getActiveLayer(),
+                    forModifyingStormTrack.get(eventID),
+                    eventEditability.get(eventID), areHatchedAreasDisplayed);
+
+            if (areHatchedAreasDisplayed && isSelected) {
+                redrawHatchedAreas = true;
+                drawableBuilder.buildhazardAreas(this, hazardEvent,
+                        getActiveLayer(), hatchedAreas, hatchedAreaAnnotations);
             }
-            Boolean editable = eventEditability.get(eventID);
-            if (editable == null) {
-                editable = false;
-            }
-            Boolean modifyStormTrack = forModifyingStormTrack.get(eventID);
-            if (modifyStormTrack == null) {
-                modifyStormTrack = false;
-            }
-            List<AbstractDrawableComponent> items = drawableBuilder
-                    .buildDrawableComponents(this, hazardEvent, overlapTime,
-                            getActiveLayer(), modifyStormTrack, editable,
-                            areHatchedAreasDisplayed);
-            if (items instanceof DECollection) {
-                continue;
-            }
-            hazardEventMap.put(hazardEvent.getEventID(), items);
+
         }
 
-        events.addAll(checkedEvents);
-        drawableComponents.clear();
-        for (ObservedHazardEvent event : events) {
-            List<AbstractDrawableComponent> componentList = hazardEventMap
-                    .get(event.getEventID());
-            if (componentList != null) {
-                for (AbstractDrawableComponent adc : componentList) {
-                    if (adc instanceof DECollection) {
-                        DECollection dec = (DECollection) adc;
-                        Iterator<AbstractDrawableComponent> iter = dec
-                                .getComponentIterator();
-                        while (iter.hasNext()) {
-                            drawableComponents.add(iter.next());
-                        }
-                    } else {
-                        drawableComponents.add(adc);
-                    }
-                }
-                boolean isSelected = Boolean.TRUE
-                        .equals(event
-                                .getHazardAttribute(HazardConstants.HAZARD_EVENT_SELECTED));
-                if (areHatchedAreasDisplayed && isSelected) {
-                    redrawHatchedAreas = true;
-                    drawableBuilder.buildhazardAreas(this, event,
-                            getActiveLayer(), hatchedAreas, drawableComponents);
-                }
+        List<AbstractDrawableComponent> drawables = dataManager
+                .getActiveLayer().getDrawables();
 
-            }
-        }
-
-        setObjects(drawableComponents);
+        hatchedAreaAnnotations.addAll(drawables);
+        setObjects(hatchedAreaAnnotations);
         issueRefresh();
     }
 
@@ -916,16 +864,8 @@ public class SpatialDisplay extends
 
         }
 
-        List<String> eventList = new ArrayList<String>(1);
-        eventList.add(eventID);
-        clearEvents(eventList);
-
-        List<AbstractDrawableComponent> drawables = dataManager
-                .getActiveLayer().getDrawables();
-        drawableComponents.clear();
-        drawableComponents.addAll(drawables);
-        setObjects(drawableComponents);
         issueRefresh();
+
     }
 
     /**
@@ -1486,13 +1426,34 @@ public class SpatialDisplay extends
     }
 
     /**
-     * Clear the events from the spatial display. Takes into account events that
+     * Clear all events from the spatial display. Takes into account events that
      * need to be persisted such as a storm track dot.
      */
-    private void clearEvents(List<String> events) {
-        for (String eventId : events) {
-            hazardEventMap.remove(eventId);
+    private void clearEvents() {
+        List<AbstractDrawableComponent> deList = dataManager.getActiveLayer()
+                .getDrawables();
+
+        // Needed to use an array to prevent concurrency issues.
+        AbstractDrawableComponent[] deArray = deList
+                .toArray(new AbstractDrawableComponent[0]);
+
+        for (AbstractDrawableComponent de : deArray) {
+            if (de == null) {
+                break;
+            }
+
+            String eventID = ((IHazardServicesShape) de).getID();
+            List<AbstractDrawableComponent> persistentDrawables = persistentShapeMap
+                    .get(eventID);
+
+            if (persistentDrawables == null
+                    || !persistentDrawables.contains(de)) {
+
+                removeElement(de);
+            }
         }
+
+        issueRefresh();
     }
 
     private void trackPersistentShapes(String id,
@@ -1862,31 +1823,6 @@ public class SpatialDisplay extends
                         .warn("No Hazard Generation Tool associated with configured value "
                                 + gagePointFirstRecommender
                                 + " Discarding request.\n Check value set in StartUpConfig.py script.");
-            }
-        }
-    }
-
-    private void filterEventsForTime(Collection<ObservedHazardEvent> events,
-            SelectedTime selectedTime) {
-        Iterator<ObservedHazardEvent> it = events.iterator();
-        while (it.hasNext()) {
-            IHazardEvent event = it.next();
-
-            /*
-             * Test for unissued storm track operations. These should not be
-             * filtered out by time.
-             */
-            if (event.getStatus() != HazardStatus.PENDING) {
-                if (!(event.getHazardAttribute(HazardConstants.TRACK_POINTS) != null && !HazardStatus
-                        .hasEverBeenIssued(event.getStatus()))) {
-
-                    boolean intersects = selectedTime.intersects(event
-                            .getStartTime().getTime(), event.getEndTime()
-                            .getTime());
-                    if (!intersects) {
-                        it.remove();
-                    }
-                }
             }
         }
     }

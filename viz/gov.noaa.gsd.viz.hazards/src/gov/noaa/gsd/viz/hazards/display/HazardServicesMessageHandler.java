@@ -220,6 +220,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * May 18, 2015  6898       Chris.Cody        Restored set visible types for recommender completion
  * May 20, 2015  8227      Chris.Cody         Remove NullRecommender
  * 
+ *                                            product corrections. 
  * </pre>
  * 
  * @author bryon.lawrence
@@ -490,6 +491,7 @@ public final class HazardServicesMessageHandler {
          * Make sure the updated hazard type is a part of the visible types in
          * the current setting. If not, add it.
          */
+
         ISettings modSettings = configManager.getSettings();
         Set<String> visibleTypes = modSettings.getVisibleTypes();
         int startSize = visibleTypes.size();
@@ -498,8 +500,6 @@ public final class HazardServicesMessageHandler {
             visibleTypes.add(HazardEventUtilities.getHazardType(event));
         }
         if (startSize != visibleTypes.size()) {
-
-            modSettings.setVisibleTypes(visibleTypes);
             configManager.updateCurrentSettings(modSettings, Originator.OTHER);
         }
 
