@@ -32,8 +32,8 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -71,7 +71,6 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
  * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
- * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -82,8 +81,6 @@ public class SelectByAreaDrawingActionGeometryResource extends
     /** for logging */
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(SelectByAreaDrawingActionGeometryResource.class);
-
-    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
     private enum Mode {
         CREATE, ADD_TO_ZONE, REMOVE, NONE
@@ -110,9 +107,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
         zoneDisplay = spatialPresenter.getView().getSelectableGeometryDisplay();
     }
 
-    public SelectByAreaDrawingActionGeometryResource(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager) {
-        this.sessionManager = sessionManager;
+    public SelectByAreaDrawingActionGeometryResource() {
         hazardGeometryList = new HashMap<String, List<Geometry>>();
     }
 
@@ -169,13 +164,8 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
         private Mode mode = Mode.CREATE;
 
-        private final SpatialPresenter spatialPresenter = getSpatialPresenter();
-
-        private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = spatialPresenter
+        private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = getSpatialPresenter()
                 .getSessionManager();
-
-        private final ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
-                .getEventManager();
 
         /*
          * (non-Javadoc)
@@ -332,6 +322,12 @@ public class SelectByAreaDrawingActionGeometryResource extends
                                     ObservedHazardEvent observedHazardEvent = hazardEventBuilder
                                             .addEvent(hazardEvent);
                                     eventID = observedHazardEvent.getEventID();
+                                    SessionEventAdded addAction = new SessionEventAdded(
+                                            sessionManager.getEventManager(),
+                                            observedHazardEvent,
+                                            getSpatialPresenter());
+
+                                    getSpatialPresenter().publish(addAction);
 
                                     if (hazardGeometryList.containsKey(eventID)) {
                                         hazardGeometryList.get(eventID).addAll(
@@ -370,7 +366,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
                                     SpatialDisplayAction action = new SpatialDisplayAction(
                                             SpatialDisplayAction.ActionType.UPDATE_EVENT_METADATA);
                                     action.setToolParameters(geoReferenceDict);
-                                    spatialPresenter.publish(action);
+                                    getSpatialPresenter().publish(action);
                                 } catch (InvalidGeometryException e) {
                                     statusHandler
                                             .warn("Error creating Select-by-Area polygon: "
@@ -380,14 +376,14 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
                                 hazardGeometryList.put(eventID,
                                         selectedGeometryCopy);
-
-                                eventManager.setModifiedEventGeometry(eventID,
-                                        selectedGeometry, false);
+                                getSpatialDisplay().notifyModifiedGeometry(
+                                        eventID, selectedGeometry, false);
                             }
 
                             // Let the IHIS layer know that this drawing
                             // action is complete.
-                            spatialPresenter.getView().drawingActionComplete();
+                            getSpatialPresenter().getView()
+                                    .drawingActionComplete();
 
                         }
                     };
@@ -403,7 +399,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
         @Override
         public boolean handleMouseEnter(Event event) {
-            spatialPresenter.getView().setCursor(
+            getSpatialPresenter().getView().setCursor(
                     SpatialViewCursorTypes.DRAW_CURSOR);
             return handleMouseMove(event.x, event.y);
         }

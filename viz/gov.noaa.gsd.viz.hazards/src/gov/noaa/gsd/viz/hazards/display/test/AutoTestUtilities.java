@@ -9,7 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ATTR_HAZARD_CATEGORY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
@@ -254,7 +253,7 @@ public class AutoTestUtilities {
         Map<String, Serializable> hazardTypeSelection = new HashMap<>();
         hazardTypeSelection.put(HAZARD_EVENT_IDENTIFIER,
                 selectedEvent.getEventID());
-        hazardTypeSelection.put(ATTR_HAZARD_CATEGORY,
+        hazardTypeSelection.put(ISessionEventManager.ATTR_HAZARD_CATEGORY,
                 AutoTestUtilities.HYDROLOGY);
         hazardTypeSelection.put(HAZARD_EVENT_FULL_TYPE, fullType);
         return hazardTypeSelection;

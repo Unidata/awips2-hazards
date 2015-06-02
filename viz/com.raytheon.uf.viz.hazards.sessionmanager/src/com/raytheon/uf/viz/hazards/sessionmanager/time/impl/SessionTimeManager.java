@@ -30,6 +30,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.time.DateUtils;
 
@@ -39,6 +41,8 @@ import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -77,7 +81,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Jan 30, 2015 2331       C. Golden   Added timer that at regular intervals
  *                                     fires off time tick notifications.
  * Mar 30, 2015 7272       mduff       Changes to support Guava upgrade.
- * Apr 10, 2015 6898       Chris.Cody  Refactored async messaging
  * </pre>
  * 
  * @author bsteffen
@@ -250,7 +253,7 @@ public class SessionTimeManager implements ISessionTimeManager {
         }
 
         this.selectedTime = selectedTime;
-        notificationSender.postNotificationAsync(new SelectedTimeChanged(
+        notificationSender.postNotificationAsync(new SelectedTimeChanged(this,
                 originator));
 
         /*
@@ -304,24 +307,19 @@ public class SessionTimeManager implements ISessionTimeManager {
         }
         this.visibleTimeRange = timeRange;
         notificationSender.postNotificationAsync(new VisibleTimeRangeChanged(
-                originator));
+                this, originator));
     }
 
     /**
      * Handle a change in the selected events.
      * 
-     * Caution: This method called by a Message Handler
-     * (HazardServicesMessageHandler
-     * .selectedEventsModified(SessionSelectedEventsModified) that makes calls
-     * which result in another Message (SelectedTimeChanged).
-     * 
-     * @param selectedEventList
-     *            List of Selected Hazard Events from SessionEventManager
+     * @param change
+     *            Change that occurred.
      */
-    public void processSelectedEventsModified(
-            List<ObservedHazardEvent> selectedEventList) {
-
-        SelectedTime newSelectedTime = getSelectedTimeIntersectingEvents(selectedEventList);
+    @Handler(priority = 1)
+    public void selectedEventsModified(SessionSelectedEventsModified change) {
+        SelectedTime newSelectedTime = getSelectedTimeIntersectingEvents(change
+                .getEventManager().getSelectedEvents());
         if (newSelectedTime.equals(selectedTime) == false) {
             setSelectedTime(newSelectedTime, Originator.OTHER);
             ensureVisibleTimeRangeIncludesLowerSelectedTime();
@@ -331,22 +329,15 @@ public class SessionTimeManager implements ISessionTimeManager {
     /**
      * Handle a change in the time range of an event.
      * 
-     * Caution: This method called by a Message Handler
-     * (HazardServicesMessageHandler
-     * .eventTimeRangeModified(SessionEventTimeRangeModified) that makes calls
-     * which result in another Message (SelectedTimeChanged).
-     * 
-     * @param event
-     *            Hazard Event from Message
-     * @param selectedEventList
-     *            List of Selected Hazard Events from SessionEventManager
+     * @param change
+     *            Change that occurred.
      */
-    public void processEventTimeRangeModified(ObservedHazardEvent event,
-            List<ObservedHazardEvent> selectedEventList) {
-
-        if (selectedEventList.contains(event)) {
-            setSelectedTime(
-                    getSelectedTimeIntersectingEvents(selectedEventList),
+    @Handler(priority = 1)
+    public void eventTimeRangeModified(SessionEventTimeRangeModified change) {
+        List<ObservedHazardEvent> events = change.getEventManager()
+                .getSelectedEvents();
+        if (events.contains(change.getEvent())) {
+            setSelectedTime(getSelectedTimeIntersectingEvents(events),
                     Originator.OTHER);
         }
     }
@@ -431,7 +422,7 @@ public class SessionTimeManager implements ISessionTimeManager {
         selectedTime = new SelectedTime(now);
 
         notificationSender.postNotificationAsync(new CurrentTimeChanged(
-                Originator.OTHER));
+                Originator.OTHER, SessionTimeManager.this));
     }
 
     /**

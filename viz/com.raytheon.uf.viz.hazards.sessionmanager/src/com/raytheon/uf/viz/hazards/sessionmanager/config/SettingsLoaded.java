@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
@@ -34,7 +35,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Jun 13, 2013 1257       bsteffen    Initial creation
  * Dec 05, 2014 4124       Chris.Golden Changed to work with parameterized config manager,
  *                                      and to include originator.
- * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * </pre>
  * 
  * @author bsteffen
@@ -43,7 +43,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 public class SettingsLoaded extends SettingsModified {
 
-    public SettingsLoaded(IOriginator originator) {
-        super(originator);
+    public SettingsLoaded(
+            ISessionConfigurationManager<ObservedSettings> manager,
+            IOriginator originator) {
+        super(manager, originator);
     }
+
 }

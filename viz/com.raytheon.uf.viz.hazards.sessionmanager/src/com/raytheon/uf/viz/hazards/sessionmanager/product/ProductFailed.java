@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+
 /**
  * Notification that is sent out when a product generator fails.
  * 
@@ -29,7 +31,6 @@ package com.raytheon.uf.viz.hazards.sessionmanager.product;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 19, 2013 1257       bsteffen    Initial creation
- * Apr 10, 2015 6898       Chris.Cody  Refactored async messaging
  * 
  * </pre>
  * 
@@ -37,14 +38,16 @@ package com.raytheon.uf.viz.hazards.sessionmanager.product;
  * @version 1.0
  */
 
-public class ProductFailed extends ProductModified {
+public class ProductFailed extends ProductModified implements
+        ISessionNotification {
 
     public ProductFailed(ProductGeneratorInformation productGeneratorInformation) {
         super(productGeneratorInformation);
     }
-
+    
     public Throwable getError() {
         return getProductGeneratorInformation().getError();
     }
+    
 
 }

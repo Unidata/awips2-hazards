@@ -9,38 +9,34 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
- * Description: Notification of a change to the map of selected event
- * identifiers to the events with which they conflict.
+ * Description: Notification of a change to an event's status with regard to
+ * whether or not it may allow "until further notice" to be used as its end
+ * time.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
- * May 12, 2014    2925    Chris.Golden Initial creation.
+ * Mar 19, 2014  2925      Chris.Golden Initial creation.
+ * May 12, 2014  2925      Chris.Golden Changed to be derived from the appropriate
+ *                                      superclass.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class SessionSelectedEventConflictsModified extends
-        SessionEventsModified {
+public class SessionEventAllowUntilFurtherNoticeModified extends
+        SessionEventModified implements ISessionNotification {
 
-    /**
-     * Construct a standard instance.
-     * 
-     * @param eventManager
-     *            Event manager.
-     * @param originator
-     *            Originator of the event.
-     */
-    public SessionSelectedEventConflictsModified(
+    public SessionEventAllowUntilFurtherNoticeModified(
             ISessionEventManager<ObservedHazardEvent> eventManager,
-            IOriginator originator) {
-        super(eventManager, originator);
+            ObservedHazardEvent event, IOriginator originator) {
+        super(eventManager, event, originator);
     }
 }

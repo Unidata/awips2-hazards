@@ -22,6 +22,8 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
@@ -35,7 +37,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 11, 2013 1257       bsteffen    Initial creation
- * Apr 10, 2015 6898       Chris.Cody  Refactored async messaging
  * 
  * </pre>
  * 
@@ -43,20 +44,20 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * @version 1.0
  */
 
-public class SessionEventAdded extends SessionEventsModified {
+public class SessionEventAdded extends SessionEventsModified implements
+        ISessionNotification {
 
-    private IHazardEvent event;
+    private final IHazardEvent event;
 
-    public SessionEventAdded(IHazardEvent event,
-            boolean notifyAllowUntilFurtherNoticeSet,
-            boolean isLastChangedEventModified, IOriginator originator) {
-        super(notifyAllowUntilFurtherNoticeSet, isLastChangedEventModified,
-                originator);
+    public SessionEventAdded(
+            ISessionEventManager<ObservedHazardEvent> eventManager,
+            IHazardEvent event, IOriginator originator) {
+        super(eventManager, originator);
         this.event = event;
     }
 
     public IHazardEvent getEvent() {
-        return (this.event);
+        return event;
     }
 
     @Override

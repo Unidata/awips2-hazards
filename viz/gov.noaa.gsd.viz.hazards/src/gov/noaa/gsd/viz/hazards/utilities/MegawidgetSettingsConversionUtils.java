@@ -39,7 +39,6 @@ import java.util.Set;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.math.NumberUtils;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardCategoryAndTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
@@ -71,7 +70,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      Also fixed bugs caused by hazard category and types object
  *                                      sometimes having a list of maps for its children instead of
  *                                      a list of strings.
- * Apr 10, 2015 6898       Chris.Cody   Modified Settings update logic
  * </pre>
  * 
  * @author bkowal
@@ -244,10 +242,9 @@ public class MegawidgetSettingsConversionUtils {
     @SuppressWarnings("unchecked")
     public static ObservedSettings updateSettingsUsingMap(
             ObservedSettings settings, Map<String, Object> settingsMap,
-            ISessionConfigurationManager<ObservedSettings> configManager,
             IOriginator originator) {
 
-        ObservedSettings updatedSettings = new ObservedSettings(settings);
+        ObservedSettings updatedSettings = settings;
 
         // Update the visible types
         updatedSettings.setVisibleTypes((Set<String>) settingsMap
@@ -316,9 +313,9 @@ public class MegawidgetSettingsConversionUtils {
             }
             hazardCategoriesAndTypesList.add(hazardCategoryAndTypes);
         }
-        updatedSettings
-                .setHazardCategoriesAndTypes(hazardCategoriesAndTypesList
-                        .toArray(new HazardCategoryAndTypes[0]));
+        updatedSettings.setHazardCategoriesAndTypes(
+                hazardCategoriesAndTypesList
+                        .toArray(new HazardCategoryAndTypes[0]), originator);
 
         // Update the Columns
         Map<String, Column> updatedColumnsMap = new HashMap<String, Column>();
@@ -422,7 +419,7 @@ public class MegawidgetSettingsConversionUtils {
                     "staticSettingsID").toString());
         }
 
-        configManager.updateCurrentSettings(updatedSettings, originator);
+        settings.apply(updatedSettings, originator);
         return settings;
     }
 

@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
 
@@ -34,7 +35,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNo
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 06, 2014 2819       daniel.s.schaffer@noaa.gov    Initial creation
- * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * 
  * </pre>
  * 
@@ -42,7 +42,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNo
  * @version 1.0
  */
 
-public class SessionModified extends OriginatedSessionNotification {
+public class SessionModified extends OriginatedSessionNotification implements
+        ISessionNotification {
 
     /**
      * @param originator

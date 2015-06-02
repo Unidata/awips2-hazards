@@ -21,7 +21,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import java.util.Map;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
@@ -35,7 +35,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 16, 2014    4753    Chris.Golden Initial creation.
- * Apr 10, 2015 6898       Chris.Cody  Refactored async messaging
  * </pre>
  * 
  * @author Chris.Golden
@@ -46,10 +45,12 @@ public class SessionEventScriptExtraDataAvailable extends SessionEventModified {
 
     private final Map<String, Map<String, Object>> mutableProperties;
 
-    public SessionEventScriptExtraDataAvailable(IHazardEvent event,
+    public SessionEventScriptExtraDataAvailable(
+            ISessionEventManager<ObservedHazardEvent> eventManager,
+            ObservedHazardEvent event,
             Map<String, Map<String, Object>> mutableProperties,
             IOriginator originator) {
-        super(event, originator);
+        super(eventManager, event, originator);
         this.mutableProperties = mutableProperties;
     }
 

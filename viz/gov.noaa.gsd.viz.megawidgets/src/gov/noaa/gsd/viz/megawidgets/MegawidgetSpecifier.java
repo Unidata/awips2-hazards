@@ -339,9 +339,6 @@ public abstract class MegawidgetSpecifier implements ISpecifier {
         Object[] constructorArgValues = { this, parent, creationParams };
         M megawidget = null;
         try {
-            // TODO: Remove this. Leaving for inspection of megawidget code
-            System.out.println("Creating a newInstance via bestConstructor: "
-                    + bestConstructor.toString());
             megawidget = (M) bestConstructor.newInstance(constructorArgValues);
         } catch (Throwable e) {
             if (e instanceof IllegalAccessException) {

@@ -12,15 +12,16 @@ package gov.noaa.gsd.viz.hazards.tools;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 
+import java.util.EnumSet;
 import java.util.List;
 
 import net.engio.mbassy.listener.Handler;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsToolsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
@@ -46,7 +47,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Jan 29, 2015 4375       Dan Schaffer      Console initiation of RVS product generation
  * Jan 30, 2015    3626    Chris.Golden      Added ability to pass event type when
  *                                           running a recommender.
- * Apr 10, 2015    6898    Chris.Cody        Removed modelChanged legacy messaging method
  * </pre>
  * 
  * @author Chris.Golden
@@ -88,25 +88,34 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
     }
 
     /**
-     * Handle Settings Modified (Toolbar) changes. This method also catches
-     * SettingsToolsModified messages.
+     * Receive notification of a model change.
      * 
-     * @param loaded
+     * @param changes
+     *            Set of elements within the model that have changed.
      */
+    @Override
+    @Deprecated
+    public void modelChanged(EnumSet<HazardConstants.Element> changed) {
+        // DO NOTHING HERE, WILL BE REMOVED
+    }
+
+    @Handler
+    public void toolsChanged(SettingsToolsModified modified) {
+        getView().setTools(modified.getSettingsTools());
+    }
+
     @Handler
     public void settingsChanged(SettingsModified loaded) {
-
-        ISessionConfigurationManager<ObservedSettings> configManager = getModel()
-                .getConfigurationManager();
-        ISettings currentSettings = configManager.getSettings();
-
-        getView().setTools(currentSettings.getToolbarTools());
+        getView().setTools(
+                getModel().getConfigurationManager().getSettings()
+                        .getToolbarTools());
     }
 
     /**
      * Show a tool subview that is used to gather parameter values for a tool
      * that is to be executed.
      * 
+
      * @param eventType
      *            The type of the event that this tool is to create; if present,
      *            the tool is being run as a result of a hazard-type-first

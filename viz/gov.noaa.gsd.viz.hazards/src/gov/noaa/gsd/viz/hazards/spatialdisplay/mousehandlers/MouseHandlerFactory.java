@@ -30,7 +30,6 @@ import com.raytheon.uf.viz.core.rsc.IInputHandler;
  *                                             are no longer singletons.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
- * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -111,8 +110,7 @@ public class MouseHandlerFactory {
                 handler = new DragDropAction();
                 break;
             case DRAW_BY_AREA:
-                handler = new SelectByAreaDrawingActionGeometryResource(
-                        presenter.getSessionManager());
+                handler = new SelectByAreaDrawingActionGeometryResource();
                 break;
             default:
                 statusHandler

@@ -631,6 +631,7 @@ public class RiverForecastPoint extends FpInfo {
      * @param includedInRecommendation
      *            whether or not to include this point in hazard recommendation
      */
+    @Override
     public void setIncludedInRecommendation(boolean includedInRecommendation) {
         this.includedInRecommendation = includedInRecommendation;
     }
@@ -639,6 +640,7 @@ public class RiverForecastPoint extends FpInfo {
      * @return whether or not this forecast point should be included in a
      *         recommendation
      */
+    @Override
     public boolean isIncludedInRecommendation() {
         return this.includedInRecommendation;
     }
@@ -857,7 +859,7 @@ public class RiverForecastPoint extends FpInfo {
             shefQualCode = shefObserved.getShefQualCode();
         }
 
-        return (new Pair<Double, String>((Double) observedValue, shefQualCode));
+        return (new Pair<Double, String>(observedValue, shefQualCode));
 
     }
 
@@ -897,7 +899,7 @@ public class RiverForecastPoint extends FpInfo {
             shefQualCode = shefObserved.getShefQualCode();
         }
 
-        return (new Pair<Double, String>((Double) observedValue, shefQualCode));
+        return (new Pair<Double, String>(observedValue, shefQualCode));
     }
 
     /**
@@ -1075,7 +1077,7 @@ public class RiverForecastPoint extends FpInfo {
             shefQualCode = shefObserved.getShefQualCode();
         }
 
-        return (new Pair<Double, String>((Double) observedValue, shefQualCode));
+        return (new Pair<Double, String>(observedValue, shefQualCode));
     }
 
     public long getObservedCurrentTime() {
@@ -1134,7 +1136,7 @@ public class RiverForecastPoint extends FpInfo {
             shefQualCode = shefForecast.getShefQualCode();
         }
 
-        return (new Pair<Double, String>((Double) forecastValue, shefQualCode));
+        return (new Pair<Double, String>(forecastValue, shefQualCode));
 
     }
 

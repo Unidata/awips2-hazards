@@ -164,7 +164,7 @@ public class Settings implements ISettings {
      * @param other
      */
     @Override
-    public SettingsChangeType apply(ISettings other) {
+    public void apply(ISettings other) {
         setSettingsID(other.getSettingsID());
         setVisibleTypes(other.getVisibleTypes());
         setVisibleStatuses(other.getVisibleStatuses());
@@ -182,8 +182,6 @@ public class Settings implements ISettings {
         setAddToSelected(other.getAddToSelected());
         setAddGeometryToSelected(other.getAddGeometryToSelected());
         setPerspectiveIDs(other.getPerspectiveIDs());
-
-        return (SettingsChangeType.NO_CHANGE);
     }
 
     @Override

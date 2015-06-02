@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ATTR_HAZARD_CATEGORY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_FIELD_TYPE_GROUP;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_CATEGORIES_AND_TYPES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_SITES;
@@ -84,7 +83,6 @@ import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.core.jobs.JobPool;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.IEventModifyingScriptJobListener;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -99,15 +97,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings.SettingsChangeType;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Page;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEventExt;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
@@ -186,7 +181,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      can be used to replace a particular hazard event.
  * Mar 25, 2015  7102      Chris.Golden Fixed bug that caused null pointer exceptions when
  *                                      attempting to compile the duration choices lists.
- * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * </pre>
  * 
  * @author bsteffen
@@ -266,8 +260,6 @@ public class SessionConfigurationManager implements
 
     private IPathManager pathManager;
 
-    private ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
-
     private ISessionTimeManager timeManager;
 
     private List<ConfigLoader<Settings>> allSettings;
@@ -315,11 +307,9 @@ public class SessionConfigurationManager implements
 
     }
 
-    public SessionConfigurationManager(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
-            IPathManager pathManager, ISessionTimeManager timeManager,
+    public SessionConfigurationManager(IPathManager pathManager,
+            ISessionTimeManager timeManager,
             ISessionNotificationSender notificationSender) {
-        this.sessionManager = sessionManager;
         this.pathManager = pathManager;
         this.timeManager = timeManager;
         this.notificationSender = notificationSender;
@@ -435,25 +425,13 @@ public class SessionConfigurationManager implements
     @Override
     public void changeSettings(String settingsId, IOriginator originator) {
         for (ConfigLoader<Settings> settingsConfig : allSettings) {
-            ISettings s = settingsConfig.getConfig();
+            Settings s = settingsConfig.getConfig();
             if (s.getSettingsID().equals(settingsId)) {
-                SettingsModified notification = null;
-                SettingsChangeType changeType = SettingsChangeType.NO_CHANGE;
                 if (settings == null) {
-                    settings = new ObservedSettings(s);
-                    notification = new SettingsLoaded(originator);
-                    changeType = SettingsChangeType.LOAD_CHANGE;
+                    settings = new ObservedSettings(this, s);
+                    settingsChanged(new SettingsLoaded(this, originator));
                 } else {
-                    changeType = settings.apply(s);
-                    if (changeType == SettingsChangeType.LOAD_CHANGE) {
-                        notification = new SettingsLoaded(originator);
-                    } else if (changeType == SettingsChangeType.MODIFY_CHANGE) {
-                        notification = new SettingsModified(originator);
-                    }
-                }
-
-                if (notification != null) {
-                    notifySettingsChanged(notification);
+                    settings.apply(s, originator);
                 }
                 break;
             }
@@ -461,67 +439,19 @@ public class SessionConfigurationManager implements
     }
 
     @Override
-    public void updateCurrentSettings(ISettings updateSettings,
-            IOriginator originator) {
-        if (updateSettings != null) {
-            ISettings currentSettings = getSettings();
-            if (currentSettings != null) {
-                SettingsChangeType changeType = currentSettings
-                        .apply(updateSettings);
-                if (changeType == SettingsChangeType.LOAD_CHANGE) {
-                    notifySettingsChanged(new SettingsLoaded(originator));
-                } else if (changeType == SettingsChangeType.MODIFY_CHANGE) {
-                    notifySettingsChanged(new SettingsModified(originator));
-                }
-            } else {
-                // This should never happen.
-                statusHandler
-                        .error("Attempt to update current settings when managed settings are NULL");
-            }
-        }
-    }
-
-    /**
-     * Return a clone copy of the requested Settings instance. Note: Settings
-     * must be changed (saved) before modifications persist.
-     * 
-     * @param settingsID
-     * @return A clone copy of a Settings instance for the given ID
-     */
-    protected ObservedSettings getSettings(String settingsID) {
-        if (settings != null) {
-            if (settings.getSettingsID().equals(settingsID) == true) {
-                return (settings);
-            } else {
-                for (ConfigLoader<Settings> settingsConfig : allSettings) {
-                    Settings s = settingsConfig.getConfig();
-                    if (s.getSettingsID().equals(settingsID)) {
-                        return (new ObservedSettings(s));
-                    }
-                }
-            }
-        }
-        return (null);
-    }
-
-    @Override
-    /** 
-     * Retrieve a clone of the current settings instance.
-     * Note: Settings must be changed (saved) before modifications persist. 
-     * @return A clone copy of the currently set Settings instance
-     */
     public ObservedSettings getSettings() {
         if (settings != null) {
             return settings;
         } else if (!allSettings.isEmpty()) {
-            this.settings = new ObservedSettings(allSettings.get(0).getConfig());
-            notifySettingsChanged(new SettingsLoaded(Originator.OTHER));
+            this.settings = new ObservedSettings(this, allSettings.get(0)
+                    .getConfig());
+            settingsChanged(new SettingsLoaded(this, Originator.OTHER));
         }
         return settings;
     }
 
     @Override
-    public void saveSettings(IOriginator originator) {
+    public void saveSettings() {
         LocalizationFile f = getUserSettings();
         StringBuilder contents = new StringBuilder();
         contents.append(settings.getSettingsID());
@@ -543,25 +473,6 @@ public class SessionConfigurationManager implements
         if (allSettings.contains(settings) == false) {
             allSettings.add(new ConfigLoader<>(f, Settings.class));
         }
-
-        if (originator == null) {
-            originator = Originator.OTHER;
-        }
-        notifySettingsChanged(new SettingsLoaded(originator));
-    }
-
-    @Override
-    public void saveAsSettings(String saveAsSettingsId, IOriginator originator) {
-
-        Settings newSettings = new Settings(getSettings());
-        String name = saveAsSettingsId.replaceAll("\\P{Alnum}", "");
-        newSettings.setSettingsID(name);
-        newSettings.setStaticSettingsID(saveAsSettingsId);
-        newSettings.setDisplayName(saveAsSettingsId);
-
-        ObservedSettings existingSettings = getSettings();
-        existingSettings.apply(newSettings);
-        saveSettings(originator);
     }
 
     /*
@@ -687,10 +598,8 @@ public class SessionConfigurationManager implements
          * TODO: Substitute an actual map of environmental parameters for the
          * empty placeholder.
          */
-
-        ObservedHazardEventExt observedHazardEventExt = getObservedHazardEventExt(hazardEvent);
         IPythonExecutor<ContextSwitchingPythonEval, Map<String, Object>> executor = new MetaDataScriptExecutor(
-                observedHazardEventExt, ENVIRONMENT);
+                hazardEvent, ENVIRONMENT);
         Map<String, Object> result = null;
         try {
             result = coordinator.submitSyncJob(executor);
@@ -830,12 +739,8 @@ public class SessionConfigurationManager implements
         /*
          * Run the event-modifying script asynchronously.
          */
-
-        ObservedHazardEventExt observedHazardEventExt = getObservedHazardEventExt(hazardEvent);
-
         IPythonExecutor<ContextSwitchingPythonEval, ModifiedHazardEvent> executor = new EventModifyingScriptExecutor(
-                observedHazardEventExt, scriptFile, functionName,
-                mutableProperties);
+                hazardEvent, scriptFile, functionName, mutableProperties);
         try {
             IPythonJobListener<ModifiedHazardEvent> pythonJobListener = new IPythonJobListener<ModifiedHazardEvent>() {
 
@@ -1212,7 +1117,8 @@ public class SessionConfigurationManager implements
     @Override
     public String getHazardCategory(IHazardEvent event) {
         if (event.getPhenomenon() == null) {
-            return (String) event.getHazardAttribute(ATTR_HAZARD_CATEGORY);
+            return (String) event
+                    .getHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY);
         }
         for (Entry<String, String[][]> entry : hazardCategories.getConfig()
                 .entrySet()) {
@@ -1238,10 +1144,11 @@ public class SessionConfigurationManager implements
                 }
             }
         }
-        return (String) event.getHazardAttribute(ATTR_HAZARD_CATEGORY);
+        return (String) event
+                .getHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY);
     }
 
-    protected void notifySettingsChanged(SettingsModified notification) {
+    protected void settingsChanged(SettingsModified notification) {
         notificationSender.postNotificationAsync(notification);
     }
 
@@ -1251,43 +1158,6 @@ public class SessionConfigurationManager implements
             return null;
         }
         return type.getHeadline();
-    }
-
-    /**
-     * Create an ObservedHazardEventExt object.
-     * 
-     * Changes for #6898 removed all of the messaging components from what
-     * SHOULD be a DATA ONLY object. HOWEVER, Python RELIES on the messaging
-     * capabilities of ObservedHazardEvent to communicate changes from script
-     * operations BACK into the java code. To mitigate this, an
-     * ObservedHazardEventExt object has been created to WRAP the
-     * ObservedHazardEvent object and restore communications with CAVE: Hazard
-     * Services without re-implementing sending messages for every operation
-     * within CAVE. Note that changes that originate from megawidgets will
-     * perform symmetric changes to the object in the Python script. This will
-     * cause an "echo" message to be sent when widged change "side effects" are
-     * processed.
-     * 
-     * @return ObservedHazardEventExt with Notify on "setZzzz(...) restored
-     */
-
-    private ObservedHazardEventExt getObservedHazardEventExt(
-            IHazardEvent hazardEvent) {
-
-        ObservedHazardEventExt observedHazardEventExt = null;
-
-        if (hazardEvent != null) {
-            SessionEventManager eventManager = null;
-            eventManager = (SessionEventManager) sessionManager
-                    .getEventManager();
-            observedHazardEventExt = new ObservedHazardEventExt(hazardEvent,
-                    eventManager);
-        } else {
-            statusHandler
-                    .error("Null Hazard Event. Unable to create ObservedHazardEventExt (used by Python scripts).\n");
-        }
-
-        return (observedHazardEventExt);
     }
 
     public static Color getColor(String str) {

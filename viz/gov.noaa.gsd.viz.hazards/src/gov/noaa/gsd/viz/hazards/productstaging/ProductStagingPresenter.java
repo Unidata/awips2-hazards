@@ -19,6 +19,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.Sets;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.TimeRange;
@@ -83,7 +85,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInform
  * Nov 18, 2014   4124     Chris.Golden      Adapted to new time manager.
  * Dec 05, 2014   4124     Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
- * Apr 10, 2015 6898       Chris.Cody        Removed modelChanged legacy messaging method
  * </pre>
  * 
  * @author bryon.lawrence
@@ -254,6 +255,14 @@ public class ProductStagingPresenter extends
     }
 
     // Public Methods
+
+    @Override
+    public void modelChanged(EnumSet<HazardConstants.Element> changed) {
+
+        /*
+         * No action.
+         */
+    }
 
     /**
      * Show a subview providing a staging dialog for the currently selected

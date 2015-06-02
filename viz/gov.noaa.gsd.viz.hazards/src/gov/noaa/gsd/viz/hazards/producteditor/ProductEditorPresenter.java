@@ -13,6 +13,7 @@ import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 
+import java.util.EnumSet;
 import java.util.List;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -86,6 +87,19 @@ public class ProductEditorPresenter extends
     }
 
     // Public Methods
+
+    /**
+     * Receive notification of a model change. For the moment, the product
+     * editor dialog doesn't care about model events.
+     * 
+     * @param changes
+     *            Set of elements within the model that have changed.
+     */
+    @Override
+    public void modelChanged(EnumSet<HazardConstants.Element> changed) {
+
+        // No action.
+    }
 
     public final void showProductEditorDetail(
             List<GeneratedProductList> generatedProductsList, String siteId) {

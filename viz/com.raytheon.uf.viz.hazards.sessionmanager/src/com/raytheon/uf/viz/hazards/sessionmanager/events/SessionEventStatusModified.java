@@ -20,7 +20,8 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
@@ -36,17 +37,19 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Jun 11, 2013 1257       bsteffen    Initial creation
  * May 27, 2014 2925       Chris.Golden Changed name to use "status" instead of
  *                                      "state".
- * Apr 10, 2015 6898       Chris.Cody  Refactored async messaging
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 
-public class SessionEventStatusModified extends SessionEventModified {
+public class SessionEventStatusModified extends SessionEventModified implements
+        ISessionNotification {
 
-    public SessionEventStatusModified(IHazardEvent event, IOriginator originator) {
-        super(event, originator);
+    public SessionEventStatusModified(
+            ISessionEventManager<ObservedHazardEvent> eventManager,
+            ObservedHazardEvent event, IOriginator originator) {
+        super(eventManager, event, originator);
     }
 
     public HazardStatus getStatus() {

@@ -9,6 +9,7 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
@@ -23,7 +24,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * May 09, 2014    2925    Chris.Golden Initial creation.
- * Apr 10, 2015    6898    Chris.Cody   Refactored async messaging
  * </pre>
  * 
  * @author Chris.Golden
@@ -34,10 +34,14 @@ public class SessionSelectedEventsModified extends SessionEventsModified {
     /**
      * Construct a standard instance.
      * 
+     * @param eventManager
+     *            Event manager.
      * @param originator
      *            Originator of the event.
      */
-    public SessionSelectedEventsModified(IOriginator originator) {
-        super(false, false, originator);
+    public SessionSelectedEventsModified(
+            ISessionEventManager<ObservedHazardEvent> eventManager,
+            IOriginator originator) {
+        super(eventManager, originator);
     }
 }

@@ -26,7 +26,6 @@
  **/
 package gov.noaa.gsd.viz.hazards.jsonutilities;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ATTR_HAZARD_CATEGORY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CREATION_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ETNS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EXPIRATION_TIME;
@@ -51,6 +50,7 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
@@ -196,7 +196,7 @@ public class DeprecatedEvent {
                 creationTime = ((Date) cTimeAttr).getTime();
             }
         }
-        Object hCatAttr = attr.get(ATTR_HAZARD_CATEGORY);
+        Object hCatAttr = attr.get(ISessionEventManager.ATTR_HAZARD_CATEGORY);
         if (hCatAttr instanceof String) {
             hazardCategory = (String) hCatAttr;
         }

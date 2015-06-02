@@ -17,6 +17,7 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ import net.engio.mbassy.listener.Handler;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Element;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
@@ -266,6 +268,17 @@ public class HazardTypeFirstPresenter extends
          * Get the default category and type.
          */
         resetCategoryAndType();
+    }
+
+    // Public Methods
+
+    @Override
+    @Deprecated
+    public void modelChanged(EnumSet<Element> changed) {
+
+        /*
+         * No action.
+         */
     }
 
     /**

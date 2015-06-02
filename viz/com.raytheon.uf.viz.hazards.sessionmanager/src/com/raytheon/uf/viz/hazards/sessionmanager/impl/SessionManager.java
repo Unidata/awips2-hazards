@@ -99,7 +99,6 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Dec 08, 2014 2826       dgilling    Clear interoperability tables on reset events.
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove polygons from hazards
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
- * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * </pre>
  * 
  * @author bsteffen
@@ -137,7 +136,7 @@ public class SessionManager implements
 
     private final ISessionTimeManager timeManager;
 
-    private final ISessionConfigurationManager<ObservedSettings> sessionConfigurationManager;
+    private final ISessionConfigurationManager<ObservedSettings> configManager;
 
     private final ISessionProductManager productManager;
 
@@ -179,18 +178,17 @@ public class SessionManager implements
         this.eventBus = eventBus;
         sender = new SessionNotificationSender(eventBus);
         timeManager = new SessionTimeManager(sender);
-        sessionConfigurationManager = new SessionConfigurationManager(this,
-                pathManager, timeManager, sender);
+        configManager = new SessionConfigurationManager(pathManager,
+                timeManager, sender);
         eventManager = new SessionEventManager(this, timeManager,
-                sessionConfigurationManager, hazardEventManager, sender,
-                messenger);
+                configManager, hazardEventManager, sender, messenger);
         productManager = new SessionProductManager(this, timeManager,
-                sessionConfigurationManager, eventManager, sender, messenger);
+                configManager, eventManager, sender, messenger);
         alertsManager = new HazardSessionAlertsManager(sender, timeManager);
         alertsManager.addAlertGenerationStrategy(HazardNotification.class,
                 new HazardEventExpirationAlertStrategy(alertsManager,
-                        timeManager, sessionConfigurationManager,
-                        hazardEventManager, new AllHazardsFilterStrategy()));
+                        timeManager, configManager, hazardEventManager,
+                        new AllHazardsFilterStrategy()));
         hazardManager = hazardEventManager;
 
         /**
@@ -200,6 +198,9 @@ public class SessionManager implements
         alertsManager.start();
         recommenderEngine = new CAVERecommenderEngine();
         recommenderEngine.injectEngine(new InteractiveRecommenderEngine());
+        eventBus.subscribe(timeManager);
+        eventBus.subscribe(configManager);
+        eventBus.subscribe(eventManager);
         eventBus.subscribe(productManager);
         eventBus.subscribe(recommenderEngine);
         eventBus.subscribe(alertsManager);
@@ -218,7 +219,7 @@ public class SessionManager implements
 
     @Override
     public ISessionConfigurationManager<ObservedSettings> getConfigurationManager() {
-        return sessionConfigurationManager;
+        return configManager;
     }
 
     @Override
@@ -253,7 +254,7 @@ public class SessionManager implements
 
         timeManager.shutdown();
 
-        sessionConfigurationManager.shutdown();
+        configManager.shutdown();
 
         productManager.shutdown();
 
@@ -298,8 +299,7 @@ public class SessionManager implements
         try {
             IServerRequest clearTableReq = new ClearPracticeVTECTableRequest(
                     SiteMap.getInstance().getSite4LetterId(
-                            sessionConfigurationManager.getSiteID()),
-                    VizApp.getWsId());
+                            configManager.getSiteID()), VizApp.getWsId());
             ThriftClient.sendRequest(clearTableReq);
         } catch (VizException e) {
             statusHandler

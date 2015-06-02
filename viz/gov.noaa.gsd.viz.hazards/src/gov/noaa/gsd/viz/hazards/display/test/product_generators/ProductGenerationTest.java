@@ -55,10 +55,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.requests.ThriftClient;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -73,7 +70,6 @@ import com.vividsolutions.jts.geom.Coordinate;
  * ------------ ---------- ----------- --------------------------
  * Aug 14, 2014  3525       daniel.s.schaffer@noaa.gov      Initial creation
  * Dec 1, 2014    4373      daniel.s.schaffer@noaa.gov      HID Template migration for warngen
- * Apr 10, 2015  6898       Chris.Cody        Refactored async messaging
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -329,21 +325,21 @@ public class ProductGenerationTest extends
             hazardEvent.setStartTime(date);
             date = extractDate(dict, HazardConstants.HAZARD_EVENT_END_TIME);
             hazardEvent.setEndTime(date);
-            String phenomenon = dict
+            String str = dict
                     .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_PHEN);
-            String significance = dict
+            hazardEvent.setPhenomenon(str);
+            str = dict
                     .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_SIG);
-            String subType = dict
+            hazardEvent.setSignificance(str);
+            str = dict
                     .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_SUB_TYPE);
+            hazardEvent.setSubType(str);
             hazardEvent.setSiteID("OAX");
             Dict attributes = dict.getDynamicallyTypedValue("attributes");
             for (Entry<String, Object> entry : attributes.entrySet()) {
                 hazardEvent.addHazardAttribute(entry.getKey(),
                         (Serializable) entry.getValue());
             }
-
-            eventManager.setEventType((ObservedHazardEvent) hazardEvent,
-                    phenomenon, significance, subType, Originator.OTHER);
             return hazardEvent;
         } catch (JsonSyntaxException e) {
             handleSyntaxError(BASE_CONFIG_FILENAME, e);
@@ -397,8 +393,6 @@ public class ProductGenerationTest extends
                             hazardEventOverrides.getDynamicallyTypedValue(key))
                             .toDate();
                     hazardEvent.setStartTime(startTime);
-                    eventManager.hazardEventModified(new SessionEventModified(
-                            hazardEvent, Originator.OTHER));
                     break;
 
                 case HAZARD_EVENT_END_TIME:
@@ -439,10 +433,10 @@ public class ProductGenerationTest extends
                             .hazardStatusFromString(statusAsString);
                     if (status.equals(HazardStatus.ENDING)) {
                         hazardEvent.setStatus(status);
+
                     }
 
-                  
-  break;
+                    break;
 
                 default:
                     Serializable value = hazardEventOverrides

@@ -34,6 +34,7 @@ import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.VizWorkbenchManager;
@@ -61,7 +62,6 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Dec 05, 2014 4124       Chris.Golden       Changed to work with newly parameterized
  *                                            config manager.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
- * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -181,6 +181,11 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                                     .getCoordinates());
                     ObservedHazardEvent observedHazardEvent = hazardEventBuilder
                             .addEvent(hazardEvent);
+                    SessionEventAdded action = new SessionEventAdded(
+                            getSpatialPresenter().getSessionManager()
+                                    .getEventManager(), observedHazardEvent,
+                            getSpatialPresenter());
+                    getSpatialPresenter().publish(action);
                 } catch (InvalidGeometryException e) {
                     statusHandler
                             .handle(Priority.WARN,

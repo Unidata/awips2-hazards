@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.originator;
 
+import gov.noaa.gsd.common.utilities.Utils;
+
+import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
@@ -33,7 +36,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 6, 2014            mnash     Initial creation
- * Apr 10, 2015  6898      Chris.Cody   Removed notificationContext
  * 
  * </pre>
  * 
@@ -41,13 +43,27 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * @version 1.0
  */
 
-public abstract class OriginatedSessionNotification implements
-        ISessionNotification {
+public class OriginatedSessionNotification implements ISessionNotification {
 
     private IOriginator originator;
 
+    private String notificationContext;
+
     public OriginatedSessionNotification(IOriginator originator) {
         this.originator = originator;
+        buildNotificationContext();
+    }
+
+    private static final String ENVIRONMENT_VARIABLE = "HAZARD_SERVICES_AUTO_TESTS_ENABLED";
+
+    /*
+     * TODO. Move this.
+     */
+    private static final boolean automatedTestsEnabled;
+
+    static {
+        automatedTestsEnabled = BooleanUtils.toBoolean(System
+                .getenv(ENVIRONMENT_VARIABLE));
     }
 
     public IOriginator getOriginator() {
@@ -58,10 +74,29 @@ public abstract class OriginatedSessionNotification implements
         this.originator = originator;
     }
 
+    String getNotificationContext() {
+        return notificationContext;
+    }
+
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
 
     }
 
+    private static boolean areAutomatedTestsEnabled() {
+        return automatedTestsEnabled;
+    }
+
+    private void buildNotificationContext() {
+        if (areAutomatedTestsEnabled()) {
+            try {
+                throw new RuntimeException();
+            } catch (RuntimeException e) {
+                notificationContext = Utils.stackTraceAsString(e);
+            }
+        } else {
+            notificationContext = "Not Available";
+        }
+    }
 }

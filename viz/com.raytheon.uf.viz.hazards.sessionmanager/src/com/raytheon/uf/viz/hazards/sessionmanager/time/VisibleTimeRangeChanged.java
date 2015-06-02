@@ -9,6 +9,7 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.time;
 
+import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
 
@@ -33,7 +34,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNo
  */
 public class VisibleTimeRangeChanged extends OriginatedSessionNotification {
 
-    public VisibleTimeRangeChanged(IOriginator originator) {
+    private final ISessionTimeManager timeManager;
+
+    public VisibleTimeRangeChanged(ISessionTimeManager timeManager,
+            IOriginator originator) {
         super(originator);
+        this.timeManager = timeManager;
+    }
+
+    public TimeRange getVisibleTimeRange() {
+        return timeManager.getVisibleTimeRange();
     }
 }

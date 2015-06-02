@@ -9,7 +9,6 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ATTR_ISSUED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 
@@ -24,6 +23,8 @@ import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 
 /**
  * Description: Utilities used by session events code.
@@ -50,9 +51,7 @@ public class SessionEventUtilities {
 
     /**
      * Merge the contents of the newEvent into the oldEvent
-     * <p>
-     * NOTE: This method does NOT send Event Status Messages.
-     * <p>
+     * 
      * TODO. This hopefully can go away once we have the history list. Under
      * that scenario, we can use the copy constructor to just create a new
      * hazard and push it on to the history list.
@@ -91,7 +90,7 @@ public class SessionEventUtilities {
         }
         oldAttr.remove(HAZARD_EVENT_CHECKED);
         oldAttr.remove(HAZARD_EVENT_SELECTED);
-        oldAttr.remove(ATTR_ISSUED);
+        oldAttr.remove(ISessionEventManager.ATTR_ISSUED);
 
         for (String key : oldAttr.keySet()) {
             oldEvent.removeHazardAttribute(key);
@@ -101,7 +100,13 @@ public class SessionEventUtilities {
          * This is relevant when you set the clock back.
          */
         if (isEnded(oldEvent) == false) {
-            oldEvent.setStatus(newEvent.getStatus());
+            if (oldEvent instanceof ObservedHazardEvent) {
+                ObservedHazardEvent obEvent = (ObservedHazardEvent) oldEvent;
+                obEvent.setStatus(newEvent.getStatus(), true, true,
+                        Originator.OTHER);
+            } else {
+                oldEvent.setStatus(newEvent.getStatus());
+            }
         }
     }
 

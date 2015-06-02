@@ -75,10 +75,9 @@ public class DeprecatedUtilities {
      * happened so far. Solve this when we refactor this method away.
      */
     @Deprecated
-    public static void adaptJSONEvent(
-            DeprecatedEvent[] jsonEvents,
+    public static void adaptJSONEvent(DeprecatedEvent[] jsonEvents,
             Collection<? extends IHazardEvent> events,
-            ISessionConfigurationManager<ObservedSettings> sessionConfigurationManager,
+            ISessionConfigurationManager<ObservedSettings> configManager,
             ISessionTimeManager timeManager) {
 
         Iterator<? extends IHazardEvent> it = events.iterator();
@@ -92,7 +91,7 @@ public class DeprecatedUtilities {
              * objects.
              */
             IHazardEvent hevent = it.next();
-            Color color = sessionConfigurationManager.getColor(hevent);
+            Color color = configManager.getColor(hevent);
             String fillColor = (int) (color.getRed() * 255) + " "
                     + (int) (color.getGreen() * 255) + " "
                     + (int) (color.getBlue() * 255);
@@ -100,8 +99,7 @@ public class DeprecatedUtilities {
 
             String type = jsonEvents[i].getType();
             if (type != null) {
-                String headline = sessionConfigurationManager
-                        .getHeadline(hevent);
+                String headline = configManager.getHeadline(hevent);
                 jsonEvents[i].setHeadline(headline);
                 jsonEvents[i].setFullType(type + " (" + headline + ")");
             } else {

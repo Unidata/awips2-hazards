@@ -225,7 +225,7 @@ public class ChangeHazardAreaFunctionalTest extends
 
         modifiedPoint.y = 42.0;
         SessionEventGeometryModified newAction = new SessionEventGeometryModified(
-                event, null);
+                eventManager, event, null);
         stepCompleted();
         step = Steps.READY_FOR_PREVIEW;
         eventBus.publishAsync(newAction);

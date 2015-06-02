@@ -291,7 +291,7 @@ public class ContextMenuHelper {
                     if (contextMenuEntry
                             .equals(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES)) {
 
-                        if (event.canEventAreaBeChanged() == false) {
+                        if (eventManager.canEventAreaBeChanged(event) == false) {
                             continue;
                         }
 
@@ -499,12 +499,10 @@ public class ContextMenuHelper {
     }
 
     private void initiateEndingProcess(ObservedHazardEvent event) {
-        eventManager.setEventStatus(event, HazardStatus.ENDING, true,
-                Originator.OTHER);
+        event.setStatus(HazardStatus.ENDING);
     }
 
     private void revertEndingProcess(ObservedHazardEvent event) {
-        eventManager.setEventStatus(event, HazardStatus.ISSUED, true,
-                Originator.OTHER);
+        event.setStatus(HazardStatus.ISSUED);
     }
 }

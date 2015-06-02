@@ -13,8 +13,8 @@ import gov.noaa.gsd.viz.mvp.IView;
 
 import java.util.List;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 
@@ -50,7 +50,8 @@ public interface ISettingsView<C, E extends Enum<E>> extends IView<C, E> {
      * @param currentSettings
      */
     public void initialize(SettingsPresenter presenter,
-            ISessionConfigurationManager<ObservedSettings> configManager);
+            List<Settings> settings, Field[] fields,
+            ObservedSettings currentSettings);
 
     /**
      * Show the settings detail subview.

@@ -43,7 +43,6 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
@@ -148,9 +147,11 @@ class SettingDialog extends BasicDialog {
                             "Save Setting As", "Enter the new setting name: ",
                             "", validator);
                     if (inputDialog.open() == InputDialog.OK) {
-                        currentSettings.setDisplayName(inputDialog.getValue());
-                        currentSettings.setSettingsID(inputDialog.getValue());
-                        SettingDialog.this.setDialogName(getShell());
+                        currentSettings.setDisplayName(inputDialog.getValue(),
+                                UIOriginator.SETTINGS_DIALOG);
+                        currentSettings.setSettingsID(inputDialog.getValue(),
+                                UIOriginator.SETTINGS_DIALOG);
+                        setDialogName(getShell());
                         fireAction(new StaticSettingsAction(
                                 StaticSettingsAction.ActionType.SAVE_AS,
                                 currentSettings));
@@ -381,11 +382,9 @@ class SettingDialog extends BasicDialog {
      * Respond to the setting being changed.
      */
     private void settingChanged() {
-        ISessionConfigurationManager<ObservedSettings> configManager = presenter
-                .getSessionManager().getConfigurationManager();
         currentSettings = MegawidgetSettingsConversionUtils
                 .updateSettingsUsingMap(currentSettings,
-                        megawidgetManager.getState(), configManager,
+                        megawidgetManager.getState(),
                         UIOriginator.SETTINGS_DIALOG);
         fireAction(new StaticSettingsAction(
                 StaticSettingsAction.ActionType.SETTINGS_MODIFIED,

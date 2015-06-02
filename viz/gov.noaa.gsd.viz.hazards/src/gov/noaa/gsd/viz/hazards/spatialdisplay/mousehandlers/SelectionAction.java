@@ -8,7 +8,6 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.common.utilities.Utils;
-import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
@@ -34,8 +33,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -91,8 +88,6 @@ public class SelectionAction extends NonDrawingAction {
 
     private final SpatialPresenter spatialPresenter;
 
-    private final ISessionEventManager<ObservedHazardEvent> eventManager;
-
     /**
      * Defines the type of move operation. SINGLE_POINT -- the user is moving a
      * vertex ALL_POINTS -- the user is moving the entire polygon.
@@ -103,8 +98,6 @@ public class SelectionAction extends NonDrawingAction {
 
     public SelectionAction(SpatialPresenter spatialPresenter) {
         this.spatialPresenter = spatialPresenter;
-        this.eventManager = spatialPresenter.getSessionManager()
-                .getEventManager();
     }
 
     @Override
@@ -395,8 +388,7 @@ public class SelectionAction extends NonDrawingAction {
 
                 Geometry modifiedGeometry = buildModifiedGeometry(origShape,
                         coords);
-
-                eventManager.setModifiedEventGeometry(origShape.getID(),
+                getSpatialDisplay().notifyModifiedGeometry(origShape.getID(),
                         modifiedGeometry, true);
             }
         }
@@ -521,9 +513,7 @@ public class SelectionAction extends NonDrawingAction {
             newLonLat[1] = newCoord.y;
             modifiedAreaObject.put(HazardConstants.SYMBOL_NEW_LAT_LON,
                     newLonLat);
-            ModifyStormTrackAction action = new ModifyStormTrackAction();
-            action.setParameters(modifiedAreaObject);
-            spatialPresenter.publish(action);
+            getSpatialDisplay().notifyModifiedStormTrack(modifiedAreaObject);
         }
 
         private void handleVertexMove() {
@@ -537,7 +527,7 @@ public class SelectionAction extends NonDrawingAction {
             IHazardServicesShape eventShape = (IHazardServicesShape) selectedElement;
             Geometry modifiedGeometry = buildModifiedGeometry(eventShape,
                     selectedElement.getPoints());
-            eventManager.setModifiedEventGeometry(eventShape.getID(),
+            getSpatialDisplay().notifyModifiedGeometry(eventShape.getID(),
                     modifiedGeometry, true);
         }
 
@@ -955,9 +945,8 @@ public class SelectionAction extends NonDrawingAction {
                     }
                     Geometry modifiedGeometry = buildModifiedGeometry(
                             eventShape, coordsAsList);
-
-                    eventManager.setModifiedEventGeometry(eventShape.getID(),
-                            modifiedGeometry, true);
+                    getSpatialDisplay().notifyModifiedGeometry(
+                            eventShape.getID(), modifiedGeometry, true);
 
                     movePointIndex = -1;
                     moveType = null;
@@ -993,9 +982,8 @@ public class SelectionAction extends NonDrawingAction {
                     IHazardServicesShape eventShape = (IHazardServicesShape) selectedElement;
                     Geometry modifiedGeometry = buildModifiedGeometry(
                             eventShape, coords);
-
-                    eventManager.setModifiedEventGeometry(eventShape.getID(),
-                            modifiedGeometry, true);
+                    getSpatialDisplay().notifyModifiedGeometry(
+                            eventShape.getID(), modifiedGeometry, true);
 
                     movePointIndex = -1;
                     moveType = null;

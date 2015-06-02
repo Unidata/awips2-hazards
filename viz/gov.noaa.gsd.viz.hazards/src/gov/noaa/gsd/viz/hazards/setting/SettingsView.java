@@ -87,7 +87,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  * Jan 09, 2015    5457    Daniel.S.Schaffer Fixed bug in settings deletion.
  * Feb 23, 2015    3618    Chris.Golden      Added ability to close settings dialog
  *                                           from public method.
- * Apr 10, 2015    6898    Chris.Cody        Refactored async messaging
  * </pre>
  * 
  * @author Chris.Golden
@@ -333,8 +332,8 @@ public class SettingsView implements
                                             .updateSettingsUsingMap(
                                                     currentSettings,
                                                     manager.getState(),
-                                                    configManager,
                                                     UIOriginator.SETTINGS_MENU);
+
                                     /*
                                      * Forward the current setting change to the
                                      * presenter.
@@ -396,11 +395,6 @@ public class SettingsView implements
      * Presenter.
      */
     private SettingsPresenter presenter = null;
-
-    /**
-     * Session Configuration Manager.
-     */
-    private ISessionConfigurationManager<ObservedSettings> configManager = null;
 
     /**
      * List of setting names.
@@ -504,15 +498,11 @@ public class SettingsView implements
 
     @Override
     public final void initialize(SettingsPresenter presenter,
-            ISessionConfigurationManager<ObservedSettings> configManager) {
+            List<Settings> settings, Field[] fields,
+            ObservedSettings currentSettings) {
         this.presenter = presenter;
-        this.configManager = configManager;
-        List<Settings> allSettingsList = configManager.getAvailableSettings();
-        ObservedSettings managerCurrentSettings = (ObservedSettings) configManager
-                .getSettings();
-        Field[] fields = configManager.getFilterConfig();
-        setSettings(allSettingsList);
-        setCurrentSettings(managerCurrentSettings);
+        setSettings(settings);
+        setCurrentSettings(currentSettings);
 
         this.filterMapList = new ArrayList<Map<String, Object>>();
         try {
