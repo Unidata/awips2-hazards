@@ -9,6 +9,7 @@
     May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
     May 14, 2015    7376    Robert.Blum Changed to look for only None and not
                                         empty string.
+    Jun 03, 2015    8530    Robert.Blum Added method for initials productPart.
 '''
 
 
@@ -33,7 +34,8 @@ class Format(Legacy_Hydro_Formatter.Format):
             'headlineStatement': self._headlineStatement,
             'narrativeInformation': self._narrativeInformation,
             'floodPointTable': self._floodPointTable,
-                                }
+            'initials': self._initials,
+        }
 
     def execute(self, productDict, editableEntries=None):
         self.productDict = productDict

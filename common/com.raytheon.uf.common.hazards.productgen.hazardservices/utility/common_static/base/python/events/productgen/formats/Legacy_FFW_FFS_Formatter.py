@@ -15,6 +15,7 @@
     May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
     May 14, 2015    7376    Robert.Blum Changed to look for only None and not
                                         empty string.
+    Jun 03, 2015    8530    Robert.Blum Added ProductPart for initials and the additionalComments.
 '''
 
 
@@ -51,6 +52,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             'basisBullet': self._basisBullet,
             'emergencyStatement': self._emergencyStatement,
             'locationsAffected': self._locationsAffected,
+            'additionalComments': self._additionalComments,
             'endingSynopsis': self._endingSynopsis,
             'floodPointHeader': self._floodPointHeader,
             'floodPointHeadline': self._floodPointHeadline,
@@ -64,6 +66,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             'setUp_segment': self._setUp_segment,
             'setUp_section': self._setUp_section,
             'endSegment': self._endSegment,
+            'initials': self._initials,
                                }
 
     def execute(self, productDict, editableEntries=None):
@@ -78,12 +81,13 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     ################# Product Level
     def _easMessage(self, productDict):
-        easMessage = 'Bulletin - EAS activation requested'
+        # ALL CAPS per Mixed Case Text Guidelines
+        easMessage = 'BULLETIN - EAS ACTIVATION REQUESTED'
         vtecRecords = productDict.get('vtecRecords')
         for vtecRecord in vtecRecords:
             if 'sig' in vtecRecord:
                 if vtecRecord['sig'] is 'A':
-                    easMessage = 'Urgent - Immediate broadcast requested'
+                    easMessage = 'URGENT - IMMEDIATE BROADCAST REQUESTED'
                     break
         return easMessage + '\n'
 

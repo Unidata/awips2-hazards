@@ -54,7 +54,9 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Jul 24, 2014 4272       jsanchez    Set the CountyUserData.
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
  * Apr 02, 2015 6544       Robert.Blum  Added tolerance check to determine if portions
- *                         should be calculated.
+ *                                      should be calculated.
+ * Jun 03, 2015 8530       Robert.Blum  Changed feAreaToPartOfStateMap to contain "Northwestern"
+ *                                      instead of "Northwest", etc..
  * 
  * </pre>
  * 
@@ -120,15 +122,15 @@ public class PartsOfGeographicalAreas {
             return;
         }
         feAreaToPartOfStateMap = new HashMap<>();
-        feAreaToPartOfStateMap.put("ne", "Northeast");
+        feAreaToPartOfStateMap.put("ne", "Northeastern");
         feAreaToPartOfStateMap.put("nc", "North Central");
-        feAreaToPartOfStateMap.put("nw", "Northwest");
+        feAreaToPartOfStateMap.put("nw", "Northwestern");
         feAreaToPartOfStateMap.put("wc", "West Central");
         feAreaToPartOfStateMap.put("cc", "Central");
         feAreaToPartOfStateMap.put("ec", "East Central");
-        feAreaToPartOfStateMap.put("se", "Southeast");
+        feAreaToPartOfStateMap.put("se", "Southeastern");
         feAreaToPartOfStateMap.put("sc", "South Central");
-        feAreaToPartOfStateMap.put("sw", "Southwest");
+        feAreaToPartOfStateMap.put("sw", "Southwestern");
         feAreaToPartOfStateMap.put("pa", "the Panhandle of");
         feAreaToPartOfStateMap.put("ee", "Eastern");
         feAreaToPartOfStateMap.put("ww", "Western");

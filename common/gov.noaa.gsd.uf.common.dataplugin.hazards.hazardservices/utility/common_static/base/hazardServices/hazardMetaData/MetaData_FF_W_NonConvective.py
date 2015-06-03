@@ -85,7 +85,7 @@ class MetaData(CommonMetaData.MetaData):
             if self.hazardEvent.get('cause') == 'Dam Failure' and damOrLeveeName:
                 # Ran recommender so already have the Dam/Levee name
                 metaData.insert(6,self.setDamNameLabel(damOrLeveeName))
-            elif hydrologicCause in addDam:
+            elif hydrologicCause in addDam or hydrologicCause == None:
                 # Add the combo box to select the name
                 metaData.insert(6, self.getDamOrLevee(damOrLeveeName))
 

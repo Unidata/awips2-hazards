@@ -8,6 +8,8 @@
     May 07, 2015    6979    EditableEntries are passed in for reuse.
     May 14, 2015    7376    Robert.Blum Changed to look for only None and not
                                         empty string.
+    Jun 03, 2015    8530    Robert.Blum Added method for new initials productPart
+                                        and removed duplicate $$.
 '''
 import FormatTemplate
 
@@ -30,8 +32,9 @@ class Format(Legacy_Hydro_Formatter.Format):
             'productHeader': self._productHeader,
             'wmoHeader': self._wmoHeader,
             'ugcHeader': self._ugcHeader,
-            'narrativeForecastInformation': self._narrativeForecastInformation
-                                }
+            'narrativeForecastInformation': self._narrativeForecastInformation,
+            'initials': self._initials,
+        }
 
     def execute(self, productDict, editableEntries=None):
         self.productDict = productDict
@@ -56,4 +59,4 @@ class Format(Legacy_Hydro_Formatter.Format):
             hazard = sectionDict.get('hazardEvents')[0]
             narrative = hazard.get('narrativeForecastInformation', '')
         self._setVal('narrativeForecastInformation', narrative, sectionDict, 'Narrative Forecast Information')
-        return self._getFormattedText(narrative, endText='\n\n$$\n\n')
+        return self._getFormattedText(narrative, endText='\n\n')

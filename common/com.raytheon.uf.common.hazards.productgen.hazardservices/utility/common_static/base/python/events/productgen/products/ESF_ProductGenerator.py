@@ -38,6 +38,7 @@ class Product(HydroGenerator.Product):
     def _initialize(self):
         super(Product, self)._initialize()
         # This is for the VTEC Engine
+        self._productID = "ESF"
         self._productCategory = "ESF"
         self._areaName = '' 
         # Number of hours past issuance time for expireTime

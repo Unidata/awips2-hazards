@@ -12,6 +12,8 @@
     01/31/2015   4937       Robert.Blum    Removed unneeded code.
     02/26/2015   6599       Robert.Blum    Changed to new style class
     05/27/2015   7748       Robert.Blum    Added Flood History bullet for all FL.* hazards.
+    06/03/2015   8530       Robert.Blum    Added new productPart for initials and additionalComments.
+                                           Also wmoHeader no longer has a CR built in.
 
 '''
 import types, collections
@@ -47,7 +49,9 @@ class HydroProductParts(object):
             'partsList': [
                 'setUp_product',
                 'wmoHeader',
+                'CR',
                 ('segments', segmentParts),
+                'initials',
             ]
             }
 
@@ -95,10 +99,10 @@ class HydroProductParts(object):
                     'setUp_product',
                     # TODO Example doesn't match directive
                     #  Example: Has CR for wmoHeader - pg 26
-                    #  Directive does not - pg 31
-                    #  The CR is needed to pass the WarningDecoder.
+                    # Coded to match WarnGen with no CR
                     'wmoHeader',
                     ('segments', segmentParts),
+                    'initials',
                     ]
                 }
         
@@ -153,6 +157,7 @@ class HydroProductParts(object):
                 'basisBullet',
                 'emergencyStatement',
                 'locationsAffected',
+                'additionalComments',
                 ]
 
     ############################  FFS
@@ -168,9 +173,11 @@ class HydroProductParts(object):
                 'partsList' : [
                     'setUp_product',
                     'wmoHeader',
+                    'CR',
                     'productHeader', 
                     'CR',
                     ('segments', segments),
+                    'initials',
                     ]
                 }
 
@@ -189,7 +196,7 @@ class HydroProductParts(object):
             # There is only one action / vtec record per segment
             action = vtecRecord.get('act')
             section = {
-                'partsList': ['setUp_section', 'locationsAffected'],
+                'partsList': ['setUp_section', 'locationsAffected', 'additionalComments',],
                 }
             sectionParts.append(section)
           
@@ -274,7 +281,7 @@ class HydroProductParts(object):
                 if self._requestEAS(vtecRecord):
                     easActivationRequested = True
        
-        partsList =  ['setUp_product', 'wmoHeader']
+        partsList =  ['setUp_product', 'wmoHeader', 'CR']
         
         if easActivationRequested:
             partsList.append('easMessage')
@@ -286,7 +293,8 @@ class HydroProductParts(object):
 
         partsList += [
                 ('segments', segmentParts),
-                ]         
+                 'initials',
+                ]
         return {
             'partsList': partsList,
             }
@@ -394,8 +402,8 @@ class HydroProductParts(object):
                     'basisAndImpactsStatement',
                     ] 
         if phen == "FA" and sig != "A":  # FA.W and FA.Y
-            partsList.append('locationsAffected')
-           
+            partsList += ['locationsAffected', 'additionalComments']
+
         return partsList
 
     ###########  POINT-based  ################
@@ -424,6 +432,7 @@ class HydroProductParts(object):
         partsList = [
                 'setUp_product',
                 'wmoHeader',
+                'CR',
                 'easMessage',  
                 'productHeader', 
                 'CR',
@@ -446,6 +455,7 @@ class HydroProductParts(object):
                 ('segments', segmentParts),
 #                 'floodPointTable',         #(for entire product -- optional
                 'wrapUp_product',
+                'initials',
                 ]
 
         return {
@@ -526,11 +536,12 @@ class HydroProductParts(object):
     ######################################################
     #  Product Parts for RVS         
     ######################################################
-    def _productParts_RVS(self, productSegments):            
+    def _productParts_RVS(self, productSegments):
         return {
             'partsList': [
                 'setUp_product',
                 'wmoHeader',
+                'CR',
                 'ugcHeader',
                 'productHeader',
                 'CR',
@@ -539,6 +550,7 @@ class HydroProductParts(object):
                 'narrativeInformation',
                 'CR',
                 'floodPointTable',
+                'initials',
             ]
             }
 

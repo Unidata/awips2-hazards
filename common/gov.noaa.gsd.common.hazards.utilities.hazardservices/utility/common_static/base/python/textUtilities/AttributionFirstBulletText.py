@@ -23,6 +23,7 @@
     May 2015       7376    Robert.Blum       Fixed burnscar error.
     May 2015       7959    Robert.Blum       Consolidated the Dam/Levee name into one attribute.
     May 2015       8181    Robert.Blum       Minor changes to listOfCities.
+    Jun 2015       8530    Robert.Blum       Corrected first bullet for FF.W products.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
@@ -56,13 +57,19 @@ class AttributionFirstBulletText(object):
         self.geoType = self.hazardEventDict.get('geoType')
         self.immediateCause = self.hazardEventDict.get('immediateCause')
 
-        self.cityList = []
-        self.cityListFlag = False
-        for hazardEventDict in self.hazardEventDicts:
-            listOfCities = hazardEventDict.get('listOfCities', [])
-            if 'selectListOfCities'in listOfCities:
-                self.cityListFlag = True
-                self.cityList.extend(hazardEventDict.get('cityList', []))
+        # The below list of cities matches the directives but not WarnGen.
+        # Also it uses the "Select for a list of cities" checkbox on the HID.
+        # WarnGen has this same selection but it toggles the 4th bullet.
+        # Commenting this out so the HID checkbox can be repurposed to toggle
+        # the 4th bullet to match WarnGen.
+
+#         self.cityList = []
+#         self.cityListFlag = False
+#         for hazardEventDict in self.hazardEventDicts:
+#             listOfCities = hazardEventDict.get('listOfCities', [])
+#             if 'selectListOfCities'in listOfCities:
+#                 self.cityListFlag = True
+#                 self.cityList.extend(hazardEventDict.get('cityList', []))
 
         self.nwsPhrase = 'The National Weather Service in ' + self.wfoCity + ' has '
 
@@ -231,11 +238,15 @@ class AttributionFirstBulletText(object):
 
     def firstBullet_NEW(self):
         firstBullet = self.hazardName
+        qualifiers = self.qualifiers()
+        forStr = ''
         if self.geoType == 'area':
-            forStr = ' for...'
+            if self.phenSig == 'FF.W':
+                firstBullet += ' for...'
+            else:
+                forStr = ' for...'
         else:
             forStr =  ' for\n'
-        qualifiers = self.qualifiers()
         if qualifiers:
             firstBullet += qualifiers
             forStr = ''
@@ -253,9 +264,13 @@ class AttributionFirstBulletText(object):
         return firstBullet
     
     def firstBullet_EXT(self):
+        forStr = ''
         if self.geoType == 'area':
             firstBullet = self.hazardName
-            forStr = ' for...'
+            if self.phenSig == 'FF.W':
+                firstBullet += ' for...'
+            else:
+                forStr = ' for...'
         else:
             firstBullet = 'The ' + self.hazardName
             forStr =  ' continues for\n'
@@ -268,20 +283,22 @@ class AttributionFirstBulletText(object):
     
     def firstBullet_CON(self):
         firstBullet = ''
+        forStr = ''
         if self.geoType == 'area':
             firstBullet = self.hazardName
-            continueStr = ' continues '
-            forStr = ' for...'
+            if self.phenSig == 'FF.W':
+                firstBullet += ' for...'
+            else:
+                forStr = ' for...'
         else:
             firstBullet = 'The ' + self.hazardName
-            continueStr = ' continues '
             forStr =  ' for\n'
         qualifiers = self.qualifiers(addPreposition=False)
         if qualifiers:
             firstBullet += qualifiers
-        firstBullet += continueStr + forStr + self.areaPhrase
+        firstBullet += ' continues ' + forStr + self.areaPhrase
         return firstBullet
-       
+
     def firstBullet_ROU(self):
         if self.geoType == 'area':
             forStr = ' for...'
@@ -395,10 +412,16 @@ class AttributionFirstBulletText(object):
                 textLine += part + " " + self.tpc.getInformationForUGC(ugc, "fullStateName") + "..."
             areaPhrase += textLine
 
-        if optionalCities and self.cityListFlag and self.cityList and self.phenSig == 'FF.W':
-            cities = '\n  This includes the cities of '
-            cities += self.tpc.getTextListStr(self.cityList) + '.'
-            areaPhrase += cities
+        # The below list of cities matches the directives but not WarnGen.
+        # Also it uses the "Select for a list of cities" checkbox on the HID.
+        # WarnGen has this same selection but it toggles the 4th bullet.
+        # Commenting this out so the HID checkbox can be repurposed to toggle
+        # the 4th bullet to match WarnGen.
+ 
+#         if optionalCities and self.cityListFlag and self.cityList and self.phenSig == 'FF.W':
+#             cities = '\n  This includes the cities of '
+#             cities += self.tpc.getTextListStr(self.cityList) + '.'
+#             areaPhrase += cities
 
         return areaPhrase
 
