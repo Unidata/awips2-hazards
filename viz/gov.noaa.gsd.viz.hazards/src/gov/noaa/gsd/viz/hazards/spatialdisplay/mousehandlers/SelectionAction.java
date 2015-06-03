@@ -508,11 +508,10 @@ public class SelectionAction extends NonDrawingAction {
                     eventID);
             modifiedAreaObject.put(HazardConstants.HAZARD_EVENT_SHAPE_TYPE,
                     HazardConstants.HAZARD_EVENT_SHAPE_TYPE_DOT);
-            double[] newLonLat = new double[2];
-            newLonLat[0] = newCoord.x;
-            newLonLat[1] = newCoord.y;
+            String newLatLonAsString = String.format("[%f,%f]", newCoord.x,
+                    newCoord.y);
             modifiedAreaObject.put(HazardConstants.SYMBOL_NEW_LAT_LON,
-                    newLonLat);
+                    newLatLonAsString);
             getSpatialDisplay().notifyModifiedStormTrack(modifiedAreaObject);
         }
 

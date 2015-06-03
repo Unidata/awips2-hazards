@@ -99,9 +99,7 @@ class Recommender(TrackToolCommon.TrackToolCommon):
         endTime = eventDict["endTime"]
 
         # Get information about new 'dragmeto' point.
-        draggedPoint = spatialInputMap.get("newLatLon")
-        if draggedPoint == None :
-            draggedPoint = spatialInputMap["newLonLat"]
+        draggedPoint = eval(spatialInputMap.get("newLatLon"))
         draggedPointTime = spatialInputMap["pointID"]
         if draggedPointTime < VERIFY_MILLISECONDS :
             draggedPointTime = draggedPointTime * MILLIS_PER_SECOND
