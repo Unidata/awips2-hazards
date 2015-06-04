@@ -29,6 +29,7 @@
    May 14, 2015   7376      Robert.Blum         Adding the required field to the KeyInfo objects also
                                                 returning None instead of a empty string when reading
                                                 from the productText table and there is nothing to return.
+   Jun 05, 2015   8531      Chris.Cody          Changes to conform to WarnGen/RiverPro outputs
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -731,6 +732,8 @@ class TextProductCommon(object):
                         returnVal = choice.get('productString')
                         if returnVal is None:
                             returnVal = choice.get('displayString')
+                        #The replace '  ' with '' is necessary for many triple quoted (''') string constants 
+                        returnVal = returnVal.replace('.  ', '. ')
                         returnVal = returnVal.replace('  ', '')
                         returnVal = returnVal.replace('\n', ' ')
                         returnVal = returnVal.replace('<br/>', '\n')

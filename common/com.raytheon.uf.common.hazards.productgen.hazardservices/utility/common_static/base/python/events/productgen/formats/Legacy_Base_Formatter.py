@@ -25,6 +25,7 @@
     May 21, 2015    7959    Robert.Blum Consolidated the Dam/Levee name into one attribute.
     May 21, 2015    8181    Robert.Blum Adjustments to cityList product part for being required vs optional.
     Jun 03, 2015    8530    Robert.Blum Misc. changes for getting the Product Text closer to the final thing.
+    Jun 05, 2015    8531    Chris.Cody  Changes to conform to WarnGen/RiverPro outputs
 '''
 
 import FormatTemplate
@@ -578,7 +579,7 @@ class Format(FormatTemplate.Formatter):
     def _setUp_section(self, sectionDict):
         self.attributionFirstBullet = AttributionFirstBulletText()
         self.attributionFirstBullet.initialize(
-            sectionDict, self._productID, self._issueTime, self._testMode, self._wfoCity, self._tpc)
+            sectionDict, self._productID, self._issueTime, self._testMode, self._wfoCity, self._tpc, self.timezones)
         return ''
 
     def _vtecRecords(self, sectionDict):

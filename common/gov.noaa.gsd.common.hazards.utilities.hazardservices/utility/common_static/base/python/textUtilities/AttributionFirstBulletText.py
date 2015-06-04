@@ -24,6 +24,7 @@
     May 2015       7959    Robert.Blum       Consolidated the Dam/Levee name into one attribute.
     May 2015       8181    Robert.Blum       Minor changes to listOfCities.
     Jun 2015       8530    Robert.Blum       Corrected first bullet for FF.W products.
+    Jun 05, 2015   8531    Chris.Cody        Changes to conform to WarnGen/RiverPro outputs
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
@@ -181,7 +182,10 @@ class AttributionFirstBulletText(object):
     def attribution_CON(self):
         attribution = '...The ' + self.hazardName 
         if self.phenSig in ['FA.Y', 'FA.W']:
-            timeStr = self.tpc.getFormattedTime(self.endTime, format='%H%M %p %Z', timeZones=self.timeZones)
+            if self.timeZones is not None and len(self.timeZones) > 0:
+                timeStr = self.tpc.getFormattedTime(self.endTime, format='%H%M %p %Z', timeZones=self.timeZones)
+            else:
+                timeStr = self.tpc.getFormattedTime(self.endTime, format='%H%M %p %Z')
             continueStr = ' remains in effect until ' + timeStr
             forStr = ' for...'
             qualifiers = self.qualifiers(addPreposition=False)
