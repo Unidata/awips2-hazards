@@ -35,6 +35,7 @@
     May 26, 2015    7447    Robert.Blum Changes to create accurate dictionaries for EXA/EXB and
                                         resulting segments.
     Jun 02, 2015    7138    Robert.Blum Not calling the VTEC Engine for RVS.
+    Jun 04, 2015    8492    Chris.Cody  Error issuing new FA.A with issued FA.A also selected
 '''
 
 import ProductTemplate
@@ -1305,20 +1306,20 @@ class Product(ProductTemplate.Product):
 
         # Get the previous state of this hazard event
         prevHazardEvent = HazardDataAccess.getHazardEvent(eventID, mode)
-
-        # Get the attributes of both hazardEvents
-        prevAttributes = prevHazardEvent.getHazardAttributes()
-        attributes = hazardEvent.getHazardAttributes()
-
-        if self._CONorEXTofEXA_EXB:
-            return self._createHazardEventDictionary_forCONorEXTofEXA_EXB(hazardEvent, prevHazardEvent, attributes,
-                                                                          prevAttributes, vtecRecord, metaData)
-        elif self._EXA_EXB:
-            return self._createHazardEventDictionary_forEXA_EXB(hazardEvent, prevHazardEvent, attributes,
-                                                                prevAttributes, vtecRecord, metaData)
-        elif self._partialCAN:
-            return self._createHazardEventDictionary_forPartialCancellation(hazardEvent, prevHazardEvent, attributes,
-                                                                            prevAttributes, vtecRecord, metaData)
+        if prevHazardEvent is not None:
+            # Get the attributes of both hazardEvents]
+            prevAttributes = prevHazardEvent.getHazardAttributes()
+            attributes = hazardEvent.getHazardAttributes()
+    
+            if self._CONorEXTofEXA_EXB:
+                return self._createHazardEventDictionary_forCONorEXTofEXA_EXB(hazardEvent, prevHazardEvent, attributes,
+                                                                              prevAttributes, vtecRecord, metaData)
+            elif self._EXA_EXB and prevAttributes is not None:
+                return self._createHazardEventDictionary_forEXA_EXB(hazardEvent, prevHazardEvent, attributes,
+                                                                    prevAttributes, vtecRecord, metaData)
+            elif self._partialCAN:
+                return self._createHazardEventDictionary_forPartialCancellation(hazardEvent, prevHazardEvent, attributes,
+                                                                                prevAttributes, vtecRecord, metaData)
         else:
             return self._createHazardEventDictionary(hazardEvent, vtecRecord, metaData)
 
