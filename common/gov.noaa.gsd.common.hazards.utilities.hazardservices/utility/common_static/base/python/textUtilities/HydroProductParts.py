@@ -173,7 +173,6 @@ class HydroProductParts(object):
                 'partsList' : [
                     'setUp_product',
                     'wmoHeader',
-                    'CR',
                     'productHeader', 
                     'CR',
                     ('segments', segments),

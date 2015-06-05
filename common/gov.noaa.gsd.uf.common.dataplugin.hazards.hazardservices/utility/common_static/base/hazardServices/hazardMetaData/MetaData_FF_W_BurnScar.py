@@ -66,7 +66,7 @@ class MetaData(CommonMetaData.MetaData):
             edit = True
         
         label = {
-            "fieldName": "burnScarText",
+            "fieldName": "burnScarName",
             "fieldType":"Text",
             "values": bsName,
             "valueIfEmpty": "|* Enter Burn Scar or Location *|",

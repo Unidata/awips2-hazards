@@ -26,6 +26,7 @@
     May 21, 2015    8181    Robert.Blum Adjustments to cityList product part for being required vs optional.
     Jun 03, 2015    8530    Robert.Blum Misc. changes for getting the Product Text closer to the final thing.
     Jun 05, 2015    8531    Chris.Cody  Changes to conform to WarnGen/RiverPro outputs
+    Jun 05, 2015    8530    Robert.Blum Additional changes to get Test Message statement correct.
 '''
 
 import FormatTemplate
@@ -190,8 +191,7 @@ class Format(FormatTemplate.Formatter):
             text += '\n'
         text += 'National Weather Service ' + self._wfoCityState + '\n'
         text += self.getIssuanceTimeDate(productDict)
-        # TODO - check if this test statement is needed for other products.
-        if (self._runMode == 'Practice' and self._productCategory == 'FFW_FFS'):
+        if (self._runMode == 'Practice' and self._productID == 'FFW'):
             text += '\n...THIS MESSAGE IS FOR TEST PURPOSES ONLY...\n'
         return text
 
@@ -405,6 +405,10 @@ class Format(FormatTemplate.Formatter):
 
     def _issuanceTimeDate(self, segmentDict):
         text = self.getIssuanceTimeDate(segmentDict)
+        vtecRecords = segmentDict.get('vtecRecords', [])
+        phensig = vtecRecords[0].get('key', '')
+        if (self._runMode == 'Practice' and (phensig in ['FA.W', 'FA.Y'] or self._productID == 'FFS')):
+            text += '\n...THIS MESSAGE IS FOR TEST PURPOSES ONLY...\n'
         return text
 
     def _summaryHeadlines(self, segmentDict, includeTiming=True):

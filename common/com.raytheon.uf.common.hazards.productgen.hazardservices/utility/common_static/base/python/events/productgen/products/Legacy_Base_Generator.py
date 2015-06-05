@@ -36,6 +36,7 @@
                                         resulting segments.
     Jun 02, 2015    7138    Robert.Blum Not calling the VTEC Engine for RVS.
     Jun 04, 2015    8492    Chris.Cody  Error issuing new FA.A with issued FA.A also selected
+    Jun 05, 2015    8530    Robert.Blu  Removing None check as it causes megawidget errors.
 '''
 
 import ProductTemplate
@@ -432,10 +433,9 @@ class Product(ProductTemplate.Product):
         for eventID in eventIDs:
             for key in dialogInputMap:
                 value = dialogInputMap.get(key)
-                if value is not None:
-                    # Some values may be lists e.g. calls to action
-                    value = json.dumps(value)
-                    ProductTextUtil.createOrUpdateProductText(key, '', '', '', [eventID], value)
+                # Some values may be lists e.g. calls to action
+                value = json.dumps(value)
+                ProductTextUtil.createOrUpdateProductText(key, '', '', '', [eventID], value)
         self.flush()
 
     def _addDialogInputMapToDict(self, dialogInputMap, productDict):

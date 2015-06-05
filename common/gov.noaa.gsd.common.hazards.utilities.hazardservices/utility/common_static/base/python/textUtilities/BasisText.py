@@ -15,6 +15,7 @@
     Feb 26, 2015       6599     Robert.Blum            Changed to new style class
     Mar 17, 2015       6958     Robert.Blum            Minor formatting change for FA.Y hazards since
                                                        the basisBullet does not include start time.
+    Jun 05, 2015       8530     Robert.Blum            Changes to conform to WarnGen outputs
     @author Daniel.S.Schaffer@noaa.gov
 '''
 ###############################################################################
@@ -192,10 +193,8 @@ class BasisText(object):
         }
     
         source = identifier.get("source")
-        if source == "dopplerGaugesSource":
+        if source != "satelliteSource":
             source = "dopplerSource"
-        elif source != "satelliteSource":
-            source = "inLocation"
         immediateCauseBulletText = immediateCauseBulletChoices.get(identifier.get("immediateCause"))
         advisoryTypeBulletText = advisoryTypeChoices.get(identifier.get("advisoryType"))
         methodName = "self.get_FA_Y_" + source + "_" + identifier.get("eventType") + "_bulletText"
@@ -211,18 +210,8 @@ class BasisText(object):
     def get_FA_Y_dopplerSource_minorFlooding_bulletText(self, sourceBulletText, immediateCauseBulletText, advisoryTypeBulletText):
         return self.get_FA_Y_dopplerSource_rainEvent_bulletText(sourceBulletText, immediateCauseBulletText, advisoryTypeBulletText)
     
-        # TBD.  Waiting for Evan/Phil to provide help on rapidRiverRises and poorDrainage
-    
-    ############################################################################
-    def get_FA_Y_inLocation_thunderEvent_bulletText(self, sourceBulletText, immediateCauseBulletText, advisoryTypeBulletText):
-        return sourceBulletText + immediateCauseBulletText + "in #floodLocation# due to thunderstorms.  This will cause " + advisoryTypeBulletText + "flooding."
-    
-    def get_FA_Y_inLocation_rainEvent_bulletText(self, sourceBulletText, immediateCauseBulletText, advisoryTypeBulletText):
-        return sourceBulletText + immediateCauseBulletText + "in #floodLocation# that will cause " + advisoryTypeBulletText + "flooding."
-    
-    def get_FA_Y_inLocation_minorFlooding_bulletText(self, sourceBulletText, immediateCauseBulletText, advisoryTypeBulletText):
-        return self.get_FA_Y_inLocation_rainEvent_bulletText(sourceBulletText, immediateCauseBulletText, advisoryTypeBulletText)
-    
+        # TODO.  Waiting for Evan/Phil to provide help on rapidRiverRises and poorDrainage
+
     ############################################################################
     def get_FA_Y_satelliteSource_thunderEvent_bulletText(self, sourceBulletText, immediateCauseBulletText, advisoryTypeBulletText):
         return sourceBulletText + immediateCauseBulletText + "from thunderstorms over #floodLocation# that will cause " + advisoryTypeBulletText + "flooding."
@@ -364,7 +353,9 @@ class BasisText(object):
         elif hazardType == "FF.W.BurnScar":
             # First part is same as Convective
             result = self.get_FF_W_ConvectiveBulletText(identifier, sourceBulletText)
-            
+            # FF.W.BurnScar has no floodLocation...replace with BurnScar?
+            result = result.replace('#floodLocation#', '#burnScarName#')
+
             result += self.get_FF_W_BurnScarBulletText(identifier)
     
         elif hazardType == "FA.W":

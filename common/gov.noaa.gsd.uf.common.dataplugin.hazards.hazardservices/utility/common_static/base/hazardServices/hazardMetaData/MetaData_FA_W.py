@@ -41,6 +41,11 @@ class MetaData(CommonMetaData.MetaData):
 #                                         ("responseType", "None"),
 #                                        ]),
                     ]
+            if hazardEvent is not None:
+                immediateCause = hazardEvent.get("immediateCause")
+                if immediateCause == self.immediateCauseDM()['identifier']:
+                    damOrLeveeName = hazardEvent.get('damOrLeveeName')
+                    metaData.insert(2, self.getDamOrLevee(damOrLeveeName))
         else: # 'issued'
             metaData = [
                     self.getBasisAndImpacts('basisAndImpactsStatement'),
@@ -169,4 +174,3 @@ class MetaData(CommonMetaData.MetaData):
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     propertyChanges = CommonMetaData.applyInterdependencies(triggerIdentifiers, mutableProperties)
     return propertyChanges
-

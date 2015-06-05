@@ -23,6 +23,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getSource(),
                     self.getEventType(),
                     self.getRainAmt(),
+                    self.getListOfCities(False),
                     self.getAdditionalInfo(),
                     self.getCTAs(),   
                     # Preserving CAP defaults for future reference.                 
@@ -97,7 +98,7 @@ class MetaData(CommonMetaData.MetaData):
     def poorDrainage(self):
                 return {"identifier":"poorDrainage",
                         "displayString": "Minor Flooding Of Poor Drainage",
-                        "productString":"minor flooding of poor drainage areas",
+                        "productString": "poor drainage areas",
                  }
         
     def generalMinorFlooding(self):
@@ -193,6 +194,7 @@ class MetaData(CommonMetaData.MetaData):
     def floodLocation(self):
         return {"identifier":"floodLocation",
                 "displayString": "Specify location of flooding:",
+                "productString": "#floodLocation# is the most likely place to experience minor flooding.",
                 "detailFields": [
                         {
                          "fieldType": "Text",
