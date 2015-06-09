@@ -25,6 +25,7 @@
     May 2015       8181    Robert.Blum       Minor changes to listOfCities.
     Jun 2015       8530    Robert.Blum       Corrected first bullet for FF.W products.
     Jun 05, 2015   8531    Chris.Cody        Changes to conform to WarnGen/RiverPro outputs
+    Jun 2015       8530    Robert.Blum       Changes to conform to WarnGen outputs.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
@@ -75,17 +76,7 @@ class AttributionFirstBulletText(object):
         self.nwsPhrase = 'The National Weather Service in ' + self.wfoCity + ' has '
 
         if not areaPhrase:
-            if self.productID in ['FFA', 'FFS'] and self.geoType != 'point':
-                self.areaPhrase = self.tpc.getAreaPhrase(sectionDict.get('ugcs'))
-            elif self.productID == 'FFW':
-                self.areaPhrase = self.getAreaPhraseBullet(optionalCities=True)
-            elif self.phenSig in ['FA.W', 'FA.Y']:
-                self.areaPhrase = self.getAreaPhraseBullet()
-            elif self.phen in 'FL' or self.phenSig == 'HY.S':
-                self.areaPhrase = self.getAreaPhraseForPoints(self.hazardEventDict)
-            else:
-                self.areaPhrase = ''
-            self.areaPhrase.rstrip()
+            self.areaPhrase = self.getAreaPhrase()
 
         # TODO - Rewrite module (mainly qualifiers method) to handle sections
         # that have multiple hazard events. There is no gaurantee that the 
@@ -99,15 +90,23 @@ class AttributionFirstBulletText(object):
         else:
             self.typeOfFlooding = self.immediateCauseMapping(self.immediateCause)
         self.warningType = self.hazardEventDict.get('warningType')
+        self.warningTypeStr = None
+        if self.warningType:
+            self.warningTypeStr = self.tpc.getProductStrings(self.hazardEventDict, self.metaData, 'warningType', self.warningType)
         self.advisoryType = self.hazardEventDict.get('advisoryType_productString')
         self.optionalSpecificType = self.hazardEventDict.get('optionalSpecificType')
-        self.burnScarName = self.hazardEventDict.get('burnScarText')
+        self.optionalSpecificTypeStr = None
+        if self.optionalSpecificType:
+            self.optionalSpecificTypeStr = self.tpc.getProductStrings(self.hazardEventDict, self.metaData, 'optionalSpecificType', self.optionalSpecificType)
+        self.burnScarName = self.hazardEventDict.get('burnScarName')
         self.damOrLeveeName = self.hazardEventDict.get('damOrLeveeName')
         self.riverName = None
         if self.damOrLeveeName:
             damInfo = self._damInfo().get(self.damOrLeveeName)
             if damInfo:
                 self.riverName = damInfo.get('riverName')
+        if not self.riverName:
+            self.riverName = self.hazardEventDict.get('riverName')
         self.streamName = self.hazardEventDict.get('streamName')
 
     # attribution
@@ -133,12 +132,13 @@ class AttributionFirstBulletText(object):
         return attribution
     
     def attribution_CAN(self):
-        attribution = '...The ' + self.hazardName
+        attribution = '...The '
         if self.phenSig in ['FA.W', 'FA.Y']:
-            attribution += self.qualifiers(addPreposition=False)
+            preQualifiers = self.preQualifiers()
+            attribution += preQualifiers + self.hazardName + self.qualifiers(addPreposition=False)
             attribution += ' has been canceled for...' + self.areaPhrase
         else:
-            attribution += ' for ' + self.areaPhrase + ' has been canceled...'
+            attribution += self.hazardName + ' for ' + self.areaPhrase + ' has been canceled...'
         return attribution
     
     def attribution_EXP(self):
@@ -147,13 +147,14 @@ class AttributionFirstBulletText(object):
             expireWords = ' has expired'
         else:
             timeWords = self.tpc.getTimingPhrase(self.vtecRecord, [self.sectionDict], expireTimeCurrent)
-            expireWords = ' will expire ' + timeWords            
-        attribution = '...The ' + self.hazardName
+            expireWords = ' will expire ' + timeWords
+        attribution = '...The '
         if self.phenSig in ['FA.W', 'FA.Y']:
-            attribution += self.qualifiers(addPreposition=False)
+            preQualifiers = self.preQualifiers()
+            attribution += preQualifiers + self.hazardName + self.qualifiers(addPreposition=False)
             attribution += expireWords + ' for ' + self.areaPhrase
         else:
-            attribution += ' for ' + self.areaPhrase + expireWords + '.'
+            attribution += self.hazardName + ' for ' + self.areaPhrase + expireWords + '.'
         return attribution
 
     def attribution_UPG(self):
@@ -180,20 +181,18 @@ class AttributionFirstBulletText(object):
         return attribution
     
     def attribution_CON(self):
-        attribution = '...The ' + self.hazardName 
+        attribution = '...The '
         if self.phenSig in ['FA.Y', 'FA.W']:
             if self.timeZones is not None and len(self.timeZones) > 0:
                 timeStr = self.tpc.getFormattedTime(self.endTime, format='%H%M %p %Z', timeZones=self.timeZones)
             else:
                 timeStr = self.tpc.getFormattedTime(self.endTime, format='%H%M %p %Z')
-            continueStr = ' remains in effect until ' + timeStr
-            forStr = ' for...'
+            preQualifiers = self.preQualifiers()
             qualifiers = self.qualifiers(addPreposition=False)
-            if qualifiers:
-                attribution += qualifiers
-            attribution += continueStr + forStr + self.areaPhrase
+            attribution += preQualifiers + self.hazardName + qualifiers
+            attribution += ' remains in effect until ' + timeStr + ' for...' + self.areaPhrase
         else:
-            attribution += ' remains in effect '
+            attribution += self.hazardName + ' remains in effect '
         return attribution
        
     def attribution_ROU(self):
@@ -241,7 +240,8 @@ class AttributionFirstBulletText(object):
         return firstBullet
 
     def firstBullet_NEW(self):
-        firstBullet = self.hazardName
+        preQualifiers = self.preQualifiers()
+        firstBullet = preQualifiers + self.hazardName
         qualifiers = self.qualifiers()
         forStr = ''
         if self.geoType == 'area':
@@ -268,9 +268,10 @@ class AttributionFirstBulletText(object):
         return firstBullet
     
     def firstBullet_EXT(self):
+        preQualifiers = self.preQualifiers()
         forStr = ''
         if self.geoType == 'area':
-            firstBullet = self.hazardName
+            firstBullet = preQualifiers + self.hazardName
             if self.phenSig == 'FF.W':
                 firstBullet += ' for...'
             else:
@@ -280,7 +281,7 @@ class AttributionFirstBulletText(object):
             forStr =  ' continues for\n'
         qualifiers = self.qualifiers()
         if qualifiers:
-            firstBullet += qualifiers + '\n'
+            firstBullet += qualifiers
             forStr = ''
         firstBullet += forStr + self.areaPhrase
         return firstBullet
@@ -289,7 +290,8 @@ class AttributionFirstBulletText(object):
         firstBullet = ''
         forStr = ''
         if self.geoType == 'area':
-            firstBullet = self.hazardName
+            preQualifiers = self.preQualifiers()
+            firstBullet = preQualifiers + self.hazardName
             if self.phenSig == 'FF.W':
                 firstBullet += ' for...'
             else:
@@ -311,7 +313,14 @@ class AttributionFirstBulletText(object):
         firstBullet = self.hazardName + forStr
         firstBullet += self.areaPhrase
         return firstBullet
-        
+
+    def preQualifiers(self,):
+        qualifiers = ''
+        if self.phenSig == 'FA.Y':
+            if self.advisoryType:
+                qualifiers += self.advisoryType + ' '
+        return qualifiers
+
     def qualifiers(self, addPreposition=True):
         qualifiers = ''
 
@@ -322,50 +331,70 @@ class AttributionFirstBulletText(object):
                     if addPreposition:
                         qualifiers += ' in '
                                 
-        elif self.phenSig in ['FF.W', 'FA.W']:
-            if self.immediateCause in ['ER', 'IC', 'MC', 'UU']:
-                if self.warningType:
-                    warningTypeStr = self.tpc.getProductStrings(self.sectionDict, self.metaData, 'warningType', self.warningType)
-                    if warningTypeStr:
-                        qualifiers += ' for ' + warningTypeStr
-                        if addPreposition:
-                            qualifiers += ' in...'
-            elif self.immediateCause == 'DM' and self.riverName and self.damOrLeveeName:
+        elif self.phenSig == 'FF.W':
+            if self.immediateCause == 'DM' and self.riverName and self.damOrLeveeName:
                 qualifiers += ' for...\nThe ' + self.riverName + ' below ' + self.damOrLeveeName
                 if addPreposition:
                     qualifiers += ' in '
             elif self.subType == 'BurnScar' and self.burnScarName:
-                    qualifiers += self.burnScarName
-                    if addPreposition:
-                        qualifiers += ' in ' 
+                qualifiers += '\n' + self.burnScarName
+                if addPreposition:
+                    qualifiers += ' in ' 
             elif self.typeOfFlooding:
                 qualifiers += '\n' + self.typeOfFlooding
                 if addPreposition:
                     qualifiers += ' in...'
-                                
-        elif self.phenSig == 'FA.Y': 
-            if self.immediateCause in ['ER', 'IC']:
-                if self.advisoryType:
-                    qualifiers += self.advisoryType + ' '
-                if self.optionalSpecificType:
-                    optionalSpecificTypeStr = self.tpc.getProductStrings(self.sectionDict, self.metaData, 'optionalSpecificType', self.optionalSpecificType)
-                    if optionalSpecificTypeStr:
-                        qualifiers+= ' with ' +  optionalSpecificTypeStr
-                        if addPreposition:
-                            qualifiers += ' in...'
-            else:
-                if self.advisoryType:
-                    qualifiers += self.advisoryType + ' '
-                if self.typeOfFlooding:
-                    #TODO ProductUtils.wrapLegacy should handle the below indent
-                    qualifiers += ' with ' + self.typeOfFlooding
+
+        elif self.phenSig == 'FA.W':
+            if self.immediateCause in ['ER', 'IC', 'MC', 'UU']:
+                if self.warningTypeStr:
+                    qualifiers += ' for ' + self.warningTypeStr
                     if addPreposition:
-                        qualifiers += ' in...\n'
-                     
+                        qualifiers += ' in...'
+            elif self.immediateCause == 'DM' and self.riverName and self.damOrLeveeName:
+                qualifiers += ' for...\nThe ' + self.riverName + ' below ' + self.damOrLeveeName
+                if addPreposition:
+                    qualifiers += ' in '
+            elif self.typeOfFlooding:
+                if self.action in ['NEW', 'EXT']:
+                    qualifiers += ' for...\n  ' + self.typeOfFlooding
+                else:
+                    qualifiers += ' for ' + self.typeOfFlooding
+                if addPreposition:
+                    qualifiers += ' in...'
+
+        elif self.phenSig == 'FA.Y': 
+            if self.optionalSpecificTypeStr:
+                qualifiers+= ' with ' +  self.optionalSpecificTypeStr
+            if self.immediateCause not in ['ER', 'IC']:
+                if self.typeOfFlooding:
+                    if self.action in ['NEW', 'EXT']:
+                        qualifiers += ' for...\n  ' + self.typeOfFlooding
+                    else:
+                        qualifiers += ' for ' + self.typeOfFlooding
+                    if addPreposition:
+                        qualifiers += ' in...'
+            else:
+                if addPreposition:
+                    qualifiers += ' in...'
         return qualifiers
 
     # areaPhrase
-    def getAreaPhraseBullet(self, optionalCities=False):
+    def getAreaPhrase(self):
+        if self.geoType != 'point' and ( self.productID in ['FFA', 'FFS'] or 
+        (self.phenSig in ['FA.Y', 'FA.W'] and self.action not in ['NEW', 'EXT'])):
+            areaPhrase = self.tpc.getAreaPhrase(self.sectionDict.get('ugcs'))
+        elif self.productID == 'FFW':
+            areaPhrase = self.getAreaPhraseBullet()
+        elif self.phenSig in ['FA.W', 'FA.Y']:
+            areaPhrase = self.getAreaPhraseBullet()
+        elif self.phen in 'FL' or self.phenSig == 'HY.S':
+            areaPhrase = self.getAreaPhraseForPoints(self.hazardEventDict)
+        else:
+            areaPhrase = ''
+        return areaPhrase.rstrip()
+
+    def getAreaPhraseBullet(self):
         '''
         @return: Plain language list of counties/zones in the hazard(s) appropriate
                  for bullet format products
@@ -382,7 +411,8 @@ class AttributionFirstBulletText(object):
                 currentPortion = portions.get(ugc)
                 if not currentPortion:
                     currentPortion = set()
-                currentPortion.update([ugcPortions.get(ugc)])
+                if ugcPortions.get(ugc):
+                    currentPortion.update([ugcPortions.get(ugc)])
                 portions[ugc] = currentPortion
                 orderedUgcs.append(ugc[:2] + ugcPartsOfState.get(ugc, "") + "|" + ugc)
         orderedUgcs.sort()
@@ -392,9 +422,7 @@ class AttributionFirstBulletText(object):
             ugc = ougc.split("|")[1]
             part = portions.get(ugc, '')
             textLine = '\n'
-            if part == ""  or part == None:
-                textLine += "  "
-            else :
+            if part:
                 size = len(part)
                 counter = 0
                 textLine += "  "
@@ -407,6 +435,8 @@ class AttributionFirstBulletText(object):
                             textLine += ' and '
                     counter += 1
                 textLine += " "
+            else:
+                textLine += "  "
             textLine += self.tpc.getInformationForUGC(ugc) + " "
             textLine += self.tpc.getInformationForUGC(ugc, "typeSingular") + " in "
             part = ugcPartsOfState.get(ugc, "")
@@ -440,17 +470,17 @@ class AttributionFirstBulletText(object):
     # The following tables are temporarily here until we determine the best central place to keep them.        
     def hydrologicCauseMapping(self, hydrologicCause, key):
         mapping = {
-            'dam':          {'immediateCause': 'DM', 'typeOfFlooding':'A dam failure'},
-            'siteImminent': {'immediateCause': 'DM', 'typeOfFlooding':'A dam break'},
-            'siteFailed':   {'immediateCause': 'DM', 'typeOfFlooding':'A dam break'},
-            'levee':        {'immediateCause': 'DM', 'typeOfFlooding':'A levee failure'},
-            'floodgate':    {'immediateCause': 'DR', 'typeOfFlooding':'A dam floodgate release'},
-            'glacier':      {'immediateCause': 'GO', 'typeOfFlooding':'A glacier-dammed lake outburst'},
-            'icejam':       {'immediateCause': 'IJ', 'typeOfFlooding':'An ice jam'},
-            'snowMelt':     {'immediateCause': 'RS', 'typeOfFlooding':'Extremely rapid snowmelt'},
-            'volcano':      {'immediateCause': 'SM', 'typeOfFlooding':'Extremely rapid snowmelt caused by volcanic eruption'},
-            'volcanoLahar': {'immediateCause': 'SM', 'typeOfFlooding':'Volcanic induced debris flow'},
-            'default':      {'immediateCause': 'ER', 'typeOfFlooding':'Excessive rain'}
+            'dam':          {'immediateCause': 'DM', 'typeOfFlooding':'a dam failure'},
+            'siteImminent': {'immediateCause': 'DM', 'typeOfFlooding':'a dam break'},
+            'siteFailed':   {'immediateCause': 'DM', 'typeOfFlooding':'a dam break'},
+            'levee':        {'immediateCause': 'DM', 'typeOfFlooding':'a levee failure'},
+            'floodgate':    {'immediateCause': 'DR', 'typeOfFlooding':'a dam floodgate release'},
+            'glacier':      {'immediateCause': 'GO', 'typeOfFlooding':'a glacier-dammed lake outburst'},
+            'icejam':       {'immediateCause': 'IJ', 'typeOfFlooding':'an ice jam'},
+            'snowMelt':     {'immediateCause': 'RS', 'typeOfFlooding':'extremely rapid snowmelt'},
+            'volcano':      {'immediateCause': 'SM', 'typeOfFlooding':'extremely rapid snowmelt caused by volcanic eruption'},
+            'volcanoLahar': {'immediateCause': 'SM', 'typeOfFlooding':'volcanic induced debris flow'},
+            'default':      {'immediateCause': 'ER', 'typeOfFlooding':'excessive rain'}
             }
         if mapping.has_key(hydrologicCause):
             return mapping[hydrologicCause][key]
