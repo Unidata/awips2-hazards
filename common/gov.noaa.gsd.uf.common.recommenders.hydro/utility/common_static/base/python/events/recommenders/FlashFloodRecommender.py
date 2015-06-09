@@ -1,69 +1,65 @@
-"""
+'''
 Flash flood recommender.
 
 Produces FF.W (Flash Flood Warning) hazard recommendations
 for small basins or aggregates of small basins using
 FFMP preprocessed data sources(QPE, QPF and Guidance).
 
-@since: July 2013
-@author: Bryon Lawrence
-"""
-import datetime
-import EventFactory
-import GeometryFactory
+@since: May 2014
+@author: Matt Nash
+'''
+import datetime, math
+import EventFactory, EventSetFactory, GeometryFactory
 import RecommenderTemplate
-import sys
-import EventSetFactory
+
+#from shapely import geometry
 
 from ufpy.dataaccess import DataAccessLayer
-
+from ufpy.dataaccess.PyGeometryData import PyGeometryData
 from com.raytheon.uf.common.monitor.config import FFMPSourceConfigurationManager
 from com.raytheon.uf.common.monitor.config import FFMPRunConfigurationManager
 
+from com.raytheon.uf.common.dataplugin.ffmp import FFMPBasinData, FFMPBasin, FFMPTemplates
+
+from java.util import Date
+from java.lang import Long, Float
+
+import JUtil
 #
 # Keys to values in the attributes dictionary produced
 # by the flash flood recommender.
 ALL_HUC = 'ALL'
 QPE_SOURCE = 'qpeSource'
 GUID_SOURCE = 'guidSource'
-FORECAST_SOURCE = 'qpfSource'
+TYPE_SOURCE = 'typeSource'
 ACCUMULATION_INTERVAL = 'accumulationInterval'
 
-#
-# Keys required to access FFMP datasets.
-#The following variables need to be overridden at the site level e.g. 'koax'
-SITE_KEY = ''
-DATA_KEY = ''
-
-#The following variables need to be overridden at the site level e.g. 'OAX'
-CWA = ''
-WFO = ''
-
-#
 #  Time and key constants
-FFW_PHENOMENON = 'FF'
-FFW_SIGNIFICANCE = 'W'
-FFW_SUBTYPE = 'Convective'
+FLASH_FLOOD_PHENOMENON = 'FF'
+FLASH_FLOOD_SIGNIFICANCE = 'W'
+FLASH_FLOOD_SUBTYPE = 'Convective'
 POTENTIAL_TYPE = 'POTENTIAL'
+CURRENT_TIME = 'currentTime'
+CURRENT_SITE = 'siteID'
 
-DEFAULT_FFW_DURATION_IN_SECONDS = 10800 # 3 hours.
-SECONDS_PER_HOUR = 3600
+DEFAULT_FFW_DURATION_IN_SECONDS = 6*60*60  # 6 hours.
 
 #
 # Keys for requests to data access layer
 FFMP_KEY = 'ffmp'
 WFO_KEY = 'wfo'
-SITE_REQUEST_KEY = 'siteKey'
-DATA_REQUEST_KEY = 'dataKey'
-HUC_REQUEST_KEY = 'huc'
+SITE_KEY = 'siteKey'
+DATA_KEY = 'dataKey'
+HUC_KEY = 'huc'
 
 #
 # Keys for accessing small basin map.
-PRECIP_VALUE_KEY = 'precipValue'
-GUIDANCE_VALUE_KEY = 'guidanceValue'
+PRECIP_VALUE = 'precipValue'
+GUIDANCE_VALUE = 'guidanceValue'
+COMPARE_VALUE = 'compareValue'
 GEOMETRY_KEY = 'geometry'
 
-
+VALUE_TYPES = ['diff', 'ratio', 'qpe']
 #
 # Supported FFMP QPE, Guidance and Forecast data sources.
 # FFMP configuration may be read for these sources for
@@ -73,98 +69,115 @@ GEOMETRY_KEY = 'geometry'
 # shown to the forecaster in the recommender dialog.
 # See ffmp/FFMPSourceConfig.xml for available FFMP
 # data sources.
-QPESourceDict = {}
-GuidanceSourceList = [{'displayString':'RFCFFG', 'identifier':'RFCFFG'}]
-ForecastSourceList = []
+supportedQPESourceList = ['DHR']
+supportedGuidanceSourceList = ['FFG']
 
+ffgGuidances = ['FFG0124hr', 'FFG0324hr', 'FFG0624hr']
      
 class Recommender(RecommenderTemplate.Recommender):
     
     def __init__(self):
-        # 
-        # Strategies for handling supported QPE, Guidance and
-        # Forecast data sources. When a focal point wants to update
-        # this recommender to support a new QPE/FFG/Forecast source,
-        # new strategy methods can be added to handle these new
-        # datasets, and these dicts can be updated to reflect them.
-        self.QPEStrategies = {}
-        self.GuidanceStrategies = {'RFCFFG':self.getRFCGuidance}
-        
         self.smallBasinMap = {}
-                    
+
     def defineScriptMetadata(self):
         '''
         @return: A dictionary containing information about this
                  tool
         '''
-        metaDict = {}
-        metaDict['toolName'] = 'Flash Flood Recommender'
-        metaDict['author'] = 'GSD'
-        metaDict['version'] = '1.0'
-        metaDict['description'] = 'Uses FFMP data to get current and aggregated data similar to FFMP..'
-        metaDict['eventState'] = 'Potential'
+        metadata = {}
+        metadata['toolName'] = 'Flash Flood Recommender'
+        metadata['author'] = 'GSD'
+        metadata['description'] = '''
+        Runs against choice of qpe, ratio, or diff and produces hazards based on FFMP data.
+        '''
+        metadata['eventState'] = 'Potential'
         
-        return metaDict
+        return metadata
 
     def defineDialog(self, eventSet):
         '''
         Reads the supported QPE, QPF and FFG sources to build the QPE source,
         QPF source, and Guidance source options on the tool dialog.
         
-        @param eventSet: A set of event objects that the user can use to help determine 
-        new objects to return 
         @return: A dialog definition to solicit user input before running tool
-        '''        
-        self.initializeFFMPConfig()
+        '''   
         dialogDict = {'title': 'Flash Flood Recommender'}
         
+        qpeChoices = []
+        qpfChoices = []
+        guidChoices = []
+        
+        qpeDisplayNames = []
+        qpfDisplayNames = []
+        guidDisplayNames = []
+        
+        #
+        # Process supported FFMP QPE sources
+        for choice in supportedQPESourceList:
+            qpeChoices.append(choice)
+            qpeDisplayNames.append(choice)
+             
+        #
+        # Process supported FFMP Guidance sources       
+        for choice in supportedGuidanceSourceList:
+            guidChoices.append(choice)
+            guidDisplayNames.append(choice)
+                    
         valueDict = {}            
-        dialogDict['fields'] = [{
-                              'fieldType':'ComboBox', 
-                              'fieldName':QPE_SOURCE,
-                              'label':'QPE DHR Source',
-                              'choices':QPESourceDict.values()
-                              }]
-        dialogDict['valueDict'] = {
-                                   ACCUMULATION_INTERVAL : 0.25,
-                                   QPE_SOURCE: QPESourceDict.values()[0]['identifier'],
-                                   GUID_SOURCE: GuidanceSourceList[0]['identifier']
-                                   }
-        
+        qpeDict = {}
+        fieldDictList = []
+        qpeDict['fieldType'] = 'ComboBox'
+        qpeDict['fieldName'] = QPE_SOURCE
+        qpeDict['label'] = 'QPE Source:'
+        qpeDict['choices'] = qpeChoices
+        qpeDict['defaultValues'] = qpeChoices[0]
+        valueDict[QPE_SOURCE] = qpeDict['defaultValues']
+        fieldDictList.append(qpeDict)
 
-        if ForecastSourceList:
-            dialogDict['valueDict']['includeQPF'] = 'yes'
-            
-            dialogDict['fields'].append({
-                                  'fieldType':'CheckBoxes',
-                                  'fieldName':'includeQPF',
-                                  'choices':[{'displayString':'Include QPF', 'identifier':'yes'}],
-                                  'defaultValues':'yes'
-                                  })
-            
-            dialogDict['fields'].append({
-                                  'fieldType':'ComboBox',
-                                  'fieldName':FORECAST_SOURCE,
-                                  'label':'QPF Source',
-                                  'choices':ForecastSourceList
-                                  })
-            dialogDict['valueDict'][FORECAST_SOURCE] = ForecastSourceList[0]['identifier']
+        guidDict = {}
+        guidDict['fieldType'] = 'ComboBox'
+        guidDict['fieldName'] = GUID_SOURCE
+        guidDict['label'] = 'Guidance Source:'
+        guidDict['choices'] = guidChoices
+        guidDict['defaultValues'] = guidChoices[0]
+        valueDict[GUID_SOURCE] = guidDict['defaultValues']
+        fieldDictList.append(guidDict)
         
-        dialogDict['fields'].append({
-                              'fieldType':'ComboBox',
-                              'fieldName':GUID_SOURCE,
-                              'label':'Guidance Source:',
-                              'choices':GuidanceSourceList})
+        accumulationIntervalDict = {}
+        accumulationIntervalDict['fieldType'] = 'IntegerSpinner'
+        accumulationIntervalDict['showScale'] = 1
+        accumulationIntervalDict['fieldName'] = ACCUMULATION_INTERVAL
+        accumulationIntervalDict['label'] = 'Accumulation Interval:'
+        accumulationIntervalDict['minValue'] = 1
+        accumulationIntervalDict['maxValue'] = 24
+        accumulationIntervalDict['incrementDelta'] = 1
+        valueDict[ACCUMULATION_INTERVAL] = 1
+        fieldDictList.append(accumulationIntervalDict)
+
+        typeDict = {}
+        typeDict['fieldType'] = 'ComboBox'
+        typeDict['fieldName'] = TYPE_SOURCE
+        typeDict['label'] = 'FFMP Fields:'
+        typeDict['choices'] = VALUE_TYPES
+        typeDict['defaultValues'] = VALUE_TYPES[0]
+        valueDict[TYPE_SOURCE] = typeDict['defaultValues']
+        fieldDictList.append(typeDict)
         
-        dialogDict['fields'].append({
-                              'fieldType':'FractionSpinner',
-                              'precision':2,
-                              'showScale':1,
-                              'fieldName':ACCUMULATION_INTERVAL,
-                              'label':'Accumulation Interval',
-                              'minValue':0.25,
-                              'maxValue':24,
-                              'incrementDelta':0.25})
+        # TODO maybe use side effects here?
+        compareValueDict = {}
+        compareValueDict['fieldType'] = 'FractionSpinner'
+        compareValueDict['showScale'] = 0
+        compareValueDict['fieldName'] = COMPARE_VALUE
+        compareValueDict['label'] = 'Value'
+        compareValueDict['minValue'] = 0
+        compareValueDict['maxValue'] = 24
+        compareValueDict['incrementDelta'] = 1
+        compareValueDict['precision'] = 1
+        valueDict['compareValue'] = 1
+        fieldDictList.append(compareValueDict)
+
+        dialogDict['fields'] = fieldDictList
+        dialogDict['valueDict'] = valueDict
         
         return dialogDict
     
@@ -182,274 +195,273 @@ class Recommender(RecommenderTemplate.Recommender):
         
         @return: A list of potential Flash Flood Hazard events. 
         '''
+        self.currentTime = eventSet.getAttribute(CURRENT_TIME)
+        self.currentSite = eventSet.getAttribute(CURRENT_SITE)
 
-        self.sessionAttributes = eventSet.getAttributes()
-        self.selectedQPESource = QPESourceDict[dialogInputMap.get(QPE_SOURCE)]   
-        self.selectedGuidanceSource = dialogInputMap.get(GUID_SOURCE)
+        self._sourceName = dialogInputMap.get(QPE_SOURCE)   
+        self._guidanceName = dialogInputMap.get(GUID_SOURCE)
+        
         self.accumulationHours = int(dialogInputMap.get(ACCUMULATION_INTERVAL))
-        self.getRecommendation()
+        
+        self.type = dialogInputMap.get(TYPE_SOURCE)  # pull this out of the dialog
+        
+        self.compareValue = dialogInputMap.get(COMPARE_VALUE)
+        self._localize()
+        cont = self.getQPEValues()
+        if cont :
+            self.getGuidanceValues()
        
-        return self.buildEventList()
-        
+        return self.buildEvents(cont)
     
-    def getRecommendation(self):
-        '''
-        Retrieves the QPE and FFG data required for
-        producing FF.W hazard recommendations for the 
-        small basins in the forecast area.
-        '''
-        self.getAccumulatedQPE()
-        self.getGuidanceValues()
- 
-    def getAccumulatedQPE(self):
-        '''
-        Calls the correct QPE processing strategy method based
-        on the user-selected QPE source. 
-        '''
-        self.QPEStrategies[self.selectedQPESource['identifier']]()
-
-    def getGuidanceValues(self):
-        '''
-        Calls the correct FFG processing strategy method based
-        on the user-selected FFG source.
-        '''
-        self.GuidanceStrategies[self.selectedGuidanceSource]()
-        
-           
-    def getAccumulatedDHR(self):
+    def getQPEValues(self):
         '''
         Strategy method for reading and accumulating data
-        from preprocessed FFMP DHR datasets.
+        from preprocessed FFMP QPE datasets.
         '''
-        #
-        # Expiration time of the DHR source in seconds.
-        SOURCE_EXPIRATION = 600   # seconds
-        
-        dataKey = self.selectedQPESource['dataKey']
-        siteKey = self.selectedQPESource['siteKey']
-        #
-        # Retrieve a list of available times for DHR
-        # data
         request = DataAccessLayer.newDataRequest()
         request.setDatatype(FFMP_KEY)
-        request.setParameters(self.selectedQPESource['productName'])
-        request.addIdentifier(WFO_KEY, WFO)
-        request.addIdentifier(SITE_REQUEST_KEY, siteKey)
-        request.addIdentifier(DATA_REQUEST_KEY, dataKey)
-        request.addIdentifier(HUC_REQUEST_KEY, ALL_HUC)
+        request.setParameters(self._sourceName)
+        request.addIdentifier(WFO_KEY, self.currentSite)
+        request.addIdentifier(SITE_KEY, self._siteKey)
+        request.addIdentifier(DATA_KEY, self._dataKey)
+        request.addIdentifier(HUC_KEY, ALL_HUC)
         availableTimes = DataAccessLayer.getAvailableTimes(request)
+        # determine correct times
+        latestTime = 0
+        for time in availableTimes :
+            tm = time.getRefTime().getTime()
+            if tm > latestTime :
+                latestTime = tm
         
-        if availableTimes:
-            #
-            # Determine the start and end times
-            # of the accumulation interval
-            accumulationEndTime = availableTimes[-1].getRefTime().getTime()
-            accumulationStartTime = accumulationEndTime - (self.accumulationHours * SECONDS_PER_HOUR * 1000);
-            
-            dateTimesToAccumulateOver = []
-            
-            for availableTime in availableTimes:
-                 if availableTime.getRefTime().getTime() > accumulationStartTime and \
-                   availableTime.getRefTime().getTime() < accumulationEndTime:
-                    dateTimesToAccumulateOver.append(availableTime)
-                    
-            dateTimesToAccumulateOver.reverse()      
-            
-            #
-            # Loop over the dates to retrieve data for.
-            # Accumulate the data.
-            previousDate = availableTimes[-1]
-            
-            for accumulateDate in dateTimesToAccumulateOver:
-                geometryDataList = DataAccessLayer.getGeometryData(request, [accumulateDate])
-
-                #
-                # Determine multiplicative factor scale factor for
-                # accumulated precipitation.
-                # This logic block is similar to that used in 
-                # FFMPBasin.getAccumValue()
-                factor = 0.0
+        timedelta = latestTime - self.accumulationHours * 60 * 60 * 1000
+        usedTimes = []
+        for time in availableTimes :
+            if time.getRefTime().getTime() > timedelta :
+                usedTimes.append(time)
                 
-                if previousDate.getRefTime().getTime() - accumulateDate.getRefTime().getTime() > SOURCE_EXPIRATION * 1000:
-                    factor = (float(previousDate.getRefTime().getTime() - (previousDate.getRefTime().getTime() - (SOURCE_EXPIRATION * 1000)))/float(SECONDS_PER_HOUR * 1000))
-                else:
-                    factor = (float(previousDate.getRefTime().getTime() - accumulateDate.getRefTime().getTime())/float(SECONDS_PER_HOUR * 1000))
+        basins = []
+        if usedTimes:
+            geometries = DataAccessLayer.getGeometryData(request, usedTimes)
+            for geometry in geometries:
+                self.__storeQpe(geometry.getLocationName(), geometry.getNumber(self._sourceName), geometry)
+            return True
+        return False
                 
-                for geometryData in geometryDataList:
-                    precipitationValue = geometryData.getNumber(self.selectedQPESource['productName'])
-                    precipitationValue = precipitationValue * factor
-                    self.storeQPEValue(geometryData.getLocationName(), precipitationValue, \
-                                       geometryData.getGeometry()) 
-                    
-                previousDate = accumulateDate
-                            
-    
-    def getRFCGuidance(self):
+    def getGuidanceValues(self):
         '''
-        Strategy method for reading, interpolating and storing RFC FFG datasets.
-        This method reads preprocessed FFMP RFCFFG datasets. It determines the RFCFFG
-        dataset whose duration most closely matches the requested accumulation interval.
-        These data are then interpolated for each basin which has a non-zero QPE.
+        Retrieves the guidance values from the correct FFMP source
         '''
-
-        #
-        # Read the available data sets for the specified source. 
         ffmpSourceConfigManager = FFMPSourceConfigurationManager.getInstance()
-        bestGuidanceSource = ffmpSourceConfigManager.getSource(self.selectedQPESource['productName'])
-        if not bestGuidanceSource:
-            raise LookupError('Unable to find the source configuration for FFMP source: ' + self.selectedQPESource['productName'])
-                
-        #
-        # Retrieve a list of available times for this dataset.        
-        bestGuidanceSourceName = bestGuidanceSource.getSourceName()
+        
+        if self._guidanceName == 'FFG':
+            if self.accumulationHours <= 1 :
+                guidanceSource = ffgGuidances[0]
+            elif self.accumulationHours <= 3 :
+                guidanceSource = ffgGuidances[1]
+            else : 
+                guidanceSource = ffgGuidances[2]
+        else :
+            guidanceSource = self._guidanceName       
+            
         request = DataAccessLayer.newDataRequest()
         request.setDatatype(FFMP_KEY)
-        request.setParameters(bestGuidanceSourceName)
-        request.addIdentifier(WFO_KEY, WFO)
-        request.addIdentifier(SITE_REQUEST_KEY, self.selectedQPESource['siteKey'])
-        request.addIdentifier(HUC_REQUEST_KEY, ALL_HUC)
+        request.setParameters(guidanceSource)
+        request.addIdentifier(WFO_KEY, self.currentSite)
+        request.addIdentifier(SITE_KEY, self._siteKey)
+        request.addIdentifier(HUC_KEY, ALL_HUC)
+        
         availableTimes = DataAccessLayer.getAvailableTimes(request)
-
-        if availableTimes:            
-            #
-            # Retrieve the most recent dataset.
-            mostRecentTime = availableTimes[-1]
-
-            #
-            # Retrieve the ffg data for this time.
-            guidanceDataList = DataAccessLayer.getGeometryData(request, [mostRecentTime])
         
-            #
-            # Apply adjustment to totals.
-            if bestGuidanceSource.getDurationHour() == 0:
-                interpFactor = self.accumulationHours
-            else:
-                interpFactor = self.accumulationHours / bestGuidanceSource.getDurationHour()
+        if availableTimes :
+            time = availableTimes[-1]
+            geometries = DataAccessLayer.getGeometryData(request, [time])
             
-            #
-            # Store the guidance data in the small basin map.
-            if guidanceDataList:
-                for guidanceData in guidanceDataList:
-                    basinName = guidanceData.getLocationName()
-                    value = guidanceData.getNumber(bestGuidanceSourceName)
-                    self.storeGuidanceValue(basinName, value * interpFactor)
-
-    def storeGuidanceValue(self, basinName, guidanceValue):
-        '''
-        For use by FFG processing strategy methods. Stores
-        the resultant interpolated FFG value for a basin
-        in the small basin map.
+            for geometry in geometries :
+                if isinstance(guidanceSource, list):
+                    geometry = self._interpolateGuidance(geometry)
+                self.__storeGuidance( geometry.getLocationName(), geometry.getNumber(guidanceSource), geometry.getGeometry())
+            return True
+        return False
         
-        @param basinName:  The name of the basin to store the FFG value
-                           for
-        @param guidanceValue: The interpolated FFG value in inches for
-                              the basin. 
-        '''
-        #
-        # Only store guidance values for basins with QPE
+    def __storeGuidance(self, basinName, value, geom):
         if basinName in self.smallBasinMap:
             basin = self.smallBasinMap[basinName]
-            basin[GUIDANCE_VALUE_KEY] = guidanceValue
-
-    def storeQPEValue(self, basinName, precipValue, geometry):
-        '''
-        For use by QPE processing strategy methods. Stores the resultant
-        estimated precipitation amount for a basin in the small basin
-        map.
+            basin[GUIDANCE_VALUE] = value
+        else :
+            basin = {}
+            basin[GUIDANCE_VALUE] = value
+            basin[GEOMETRY_KEY] = geom
+            self.smallBasinMap[basinName] = basin
         
-        @param basinName:  The name of the basin to store the precip estimate
-                           for
-        @param precipValue: The precipitation estimate in inches for the
-                            basin.
-        @param geometry:   The basin geometry, or any geometry the strategy
-                           method wants to associate with this hazard.
-        '''
-        # 
-        # Don't store precipitation values of 0.
-        if precipValue > 0.0:
-                        
-            if basinName in self.smallBasinMap:
-                basin = self.smallBasinMap[basinName]
-                accumulatedValue = basin[PRECIP_VALUE_KEY]
-                basin[PRECIP_VALUE_KEY] = accumulatedValue + precipValue
+    def __storeQpe(self, basinName, value, geom):
+        if basinName in self.smallBasinMap:
+            basin = self.smallBasinMap[basinName]
+            if basin.has_key(PRECIP_VALUE) is False :
+                basin[PRECIP_VALUE] = value
             else:
-                basin = {}
-                basin[PRECIP_VALUE_KEY] = precipValue
-                basin[GEOMETRY_KEY] = geometry
-                self.smallBasinMap[basinName] = basin
+                basin[PRECIP_VALUE] += value
+        else :
+            basin = {}
+            basin[PRECIP_VALUE] = value
+            basin[GEOMETRY_KEY] = geom
+            self.smallBasinMap[basinName] = basin
+        
+    
+    def _interpolateGuidance(self, geometry):
+        return geometry
                 
-    def buildEventList(self):
+    def buildEvents(self, haveBasins):
         '''
         Builds a list of FF.W hazard events. For each small basin
         with a non-zero estimated precipitation amount, this value
         is compared with the interpolated FFG for that basin. If the
-        ration of precip to FFG is 1 or more, this small basin is
+        ratio of precip to FFG is 1 or more, this small basin is
         flagged as a potential location for flash flooding.
         
         @return: An EventSet of potential flash flood (FF.W) hazard events
         '''
         pythonEventSet = EventSetFactory.createEventSet()
+        if haveBasins :
+            self.counties = set()
+            basins = []
+            for basinName in self.smallBasinMap:
+                basin = self.smallBasinMap[basinName]
+                # need better logic here, based on type, don't need guidance
+                # need to fix storing of values...
+                if basin.has_key(PRECIP_VALUE):
+                    precipValue = basin[PRECIP_VALUE]
+                    guidanceValue = basin[GUIDANCE_VALUE]
+                    
+                    if guidanceValue > 0.0:
+                        if self.type == 'diff' :
+                            value = self._calcDiff(precipValue, guidanceValue)
+                        elif self.type == 'ratio' :
+                            value = self._calcRatio(precipValue, guidanceValue)
+                    if self.type == 'qpe' :
+                        value = self._calcQPE(precipValue)
+                    if value >= self.compareValue:
+                        basinMetadata = self.ffmpTemplates.getBasin(JUtil.pyValToJavaObj(long(basinName)))
+                        county = basinMetadata.getCounty()
+                        if county:
+                            self.counties.add(county)
+                        
+            if self.counties :
+                # Find the county for each basin, put in
+                # set, combine all the county Geometries into a 
+                # single geometry.
+                hazardEvent = EventFactory.createEvent()
+                hazardEvent.setSiteID(self.currentSite)
+                hazardEvent.setHazardStatus(POTENTIAL_TYPE)
+                hazardEvent.setPhenomenon(FLASH_FLOOD_PHENOMENON)
+                hazardEvent.setSignificance(FLASH_FLOOD_SIGNIFICANCE)
+                hazardEvent.setSubType(FLASH_FLOOD_SUBTYPE)
+            
+                countyGeometries = []
+                rawGeometryList = [ ]
+
+                for countyname in self.counties:
+                    req = DataAccessLayer.newDataRequest()
+                    req.setDatatype('maps')
+                    req.addIdentifier('table','mapdata.county')
+                    columns = ['countyname']
+                    req.addIdentifier('locationField', columns[0])
+                    req.setParameters(*columns)
+                    req.addIdentifier('geomField','the_geom')
+                    req.addIdentifier('countyname', countyname)
+                    req.addIdentifier('cwa', self._wfo)
+                    countyGeomList = DataAccessLayer.getGeometryData(req)
+                    if countyGeomList is not None and len(countyGeomList) > 0:
+                        for countyGeom in countyGeomList:
+                            if countyGeom is not None:
+                                rawGeometryList.append(countyGeom.getGeometry())
+                    
+                geoCollection = GeometryFactory.createCollection(rawGeometryList)
+                unionGeometry = GeometryFactory.performCascadedUnion(geoCollection)
+                hazardEvent.setGeometry(unionGeometry)
+                
+                # Convert currentTime from milliseconds to seconds.
+                currentTime = long(self.currentTime) / 1000
+                creationDateTime = datetime.datetime.fromtimestamp(currentTime)
+                startDateTime = creationDateTime
+                endDateTime = datetime.datetime.fromtimestamp((currentTime + DEFAULT_FFW_DURATION_IN_SECONDS))
         
-        for basinName in self.smallBasinMap:
-            basin = self.smallBasinMap[basinName]
-            precipValue = basin[PRECIP_VALUE_KEY]
-            guidanceValue = basin[GUIDANCE_VALUE_KEY]
-            
-            if guidanceValue > 0.0:
-                ratio = precipValue / guidanceValue
-            
-                if ratio >= 1.0:
-                    hazardEvent = EventFactory.createEvent()
-                    hazardEvent.setEventID('')
-                    hazardEvent.setSiteID(self.sessionAttributes.get('siteID'))
-                    hazardEvent.setHazardStatus(POTENTIAL_TYPE)
-                    hazardEvent.setPhenomenon(FFW_PHENOMENON)
-                    hazardEvent.setSignificance(FFW_SIGNIFICANCE)
-                    hazardEvent.setSubType(FFW_SUBTYPE)
-                    geometry = basin[GEOMETRY_KEY]
-                    hazardEvent.setGeometry(GeometryFactory.createCollection([geometry]))
-                    
-                    currentTime = long(self.sessionAttributes['currentTime'])
-                    
-                    #
-                    # Convert currentTime from milliseconds to seconds.
-                    currentTime = currentTime / 1000
-                    creationDateTime = datetime.datetime.fromtimestamp(currentTime)
-                    startDateTime = datetime.datetime.fromtimestamp(currentTime)
-                    endDateTime = datetime.datetime.fromtimestamp((currentTime + DEFAULT_FFW_DURATION_IN_SECONDS))
-            
-                    hazardEvent.setCreationTime(creationDateTime)
-                    hazardEvent.setStartTime(startDateTime)
-                    hazardEvent.setEndTime(endDateTime)
-                    pythonEventSet.add(hazardEvent)
-               
+                hazardEvent.setCreationTime(creationDateTime)
+                hazardEvent.setStartTime(startDateTime)
+                hazardEvent.setEndTime(endDateTime)
+                pythonEventSet.add(hazardEvent)
+            else : 
+                raise Exception("No events returned!")
+        else :
+            raise Exception('No basins available!')
+        
         return pythonEventSet
     
-    def initializeFFMPConfig(self):            
-        # Dynamically populate the QPE sources from the FFMP config
-        runner = FFMPRunConfigurationManager.getInstance().getRunner(CWA)
-        if runner is not None:
-            products = runner.getProducts()
-            if products is not None:
-                for i in range(0,products.size()):
-                    productKey = str(products.get(i).getProductKey())
-                    productName = str(products.get(i).getProductName())
-                    identifier = productKey+'_'+productName
-                    
-                    entry = {'displayString':productKey, 
-                             'identifier':identifier, 
-                             'dataKey':DATA_KEY, 
-                             'siteKey':SITE_KEY, 
-                             'productName':productName}
-                    
-                    if productName == 'DHR':
-                        entry['dataKey'] = productKey
-                        entry['siteKey'] = productKey
-                        
-                    QPESourceDict[identifier] = entry 
-                    
-                    self.QPEStrategies[identifier] = self.getAccumulatedDHR;
+    def _calcDiff(self, qpe, guid):
+        '''
+        Calculates the diff based on the qpe and guidance
+        '''
+        if math.isnan(qpe) :
+            qpe = 0
+        if math.isnan(guid) :
+            guid = 0
+            
+        qpe = round(qpe, 2)
+        guid = round(guid, 2)
         
+        return qpe - guid
         
-    def toString(self):
-        return 'FlashFloodRecommender'
+    def _calcQPE(self, qpe):
+        '''
+        Calculates the qpe by just returning the value sent in
+        '''
+        if math.isnan(qpe) :
+            qpe = 0
+        return qpe
+    
+    def _calcRatio(self, qpe, guid):
+        '''
+        Calculates the ratio based on the qpe and guidance
+        '''
+        if math.isnan(qpe) :
+            qpe = 0
+        if math.isnan(guid) :
+            guid = 1
+        if qpe >= 0 and guid >= 0 :
+            return (qpe / guid) * 100
+        return 0   
+    
+    # TODO might be worth re-looking into this.
+    def _localize(self):
+        runConfigMgr = FFMPRunConfigurationManager.getInstance()
+        domains = runConfigMgr.getDomains()
+        
+        self._wfo = None
+        
+        for i in range(domains.size()) :
+            domain = domains.get(i)
+            if domain.isPrimary():
+                self._domain = domain
+                self._wfo = domain.getCwa()
+                break
+        
+        if not self._wfo :
+            raise LookupError('Unable to determine the primary FFMP CWA.')
+        
+        products = runConfigMgr.getProducts()
+        self._siteKey = None
+        
+        for i in range(products.size()) :
+            product = products.get(i)
+            if product.getProductName() == self._sourceName :
+                self._siteKey = product.getProductKey()
+                break
+        
+        if not self._siteKey :
+             raise LookupError('Unable to find the FFMP site key associated with: ' + self._sourceName + '.')
+             
+        self._dataKey = self._siteKey
+        
+        self.ffmpTemplates= FFMPTemplates.getInstance(self._domain, self._siteKey, FFMPTemplates.MODE.CAVE)
+        
+    def __str__(self):
+        return 'Flash Flood Recommender'
