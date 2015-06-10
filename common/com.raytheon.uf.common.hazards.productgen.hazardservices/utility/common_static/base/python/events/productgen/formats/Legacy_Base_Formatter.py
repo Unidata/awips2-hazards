@@ -27,6 +27,7 @@
     Jun 03, 2015    8530    Robert.Blum Misc. changes for getting the Product Text closer to the final thing.
     Jun 05, 2015    8531    Chris.Cody  Changes to conform to WarnGen/RiverPro outputs
     Jun 05, 2015    8530    Robert.Blum Additional changes to get Test Message statement correct.
+    Jun 10, 2015    8532    Robert.Blum Changes for mixed case.
 '''
 
 import FormatTemplate
@@ -550,6 +551,8 @@ class Format(FormatTemplate.Formatter):
                 # always remove the main vtecRecord from the list
                 hList.remove(vtecRecord)
 
+        # All CAPS per Mixed Case Guidelines
+        headlineStr = headlineStr.upper()
         self._setVal('summaryHeadlines', headlineStr, segmentDict, 'Summary Headlines')
         return self._getFormattedText(headlineStr, endText='\n')
 

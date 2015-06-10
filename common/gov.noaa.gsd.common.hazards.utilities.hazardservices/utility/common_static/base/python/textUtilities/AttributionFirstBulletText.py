@@ -26,6 +26,7 @@
     Jun 2015       8530    Robert.Blum       Corrected first bullet for FF.W products.
     Jun 05, 2015   8531    Chris.Cody        Changes to conform to WarnGen/RiverPro outputs
     Jun 2015       8530    Robert.Blum       Changes to conform to WarnGen outputs.
+    Jun 2015       8532    Robert.Blum       Changes to conform to GFE/WarnGen output.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
@@ -49,6 +50,8 @@ class AttributionFirstBulletText(object):
         self.phenSig = self.vtecRecord.get('phensig')
         self.subType = self.vtecRecord.get('subtype')
         self.action = self.vtecRecord.get('act')
+        if self.action == 'COR':
+            self.action = self.vtecRecord.get('prevAct')
         self.endTime = self.vtecRecord.get('endTime')
         self.hazardName = self.tpc.hazardName(self.vtecRecord.get('hdln'), testMode, False)
 
@@ -136,7 +139,7 @@ class AttributionFirstBulletText(object):
         if self.phenSig in ['FA.W', 'FA.Y']:
             preQualifiers = self.preQualifiers()
             attribution += preQualifiers + self.hazardName + self.qualifiers(addPreposition=False)
-            attribution += ' has been canceled for...' + self.areaPhrase
+            attribution += ' has been canceled for ' + self.areaPhrase + '...'
         else:
             attribution += self.hazardName + ' for ' + self.areaPhrase + ' has been canceled...'
         return attribution
@@ -190,7 +193,10 @@ class AttributionFirstBulletText(object):
             preQualifiers = self.preQualifiers()
             qualifiers = self.qualifiers(addPreposition=False)
             attribution += preQualifiers + self.hazardName + qualifiers
-            attribution += ' remains in effect until ' + timeStr + ' for...' + self.areaPhrase
+            
+            attribution += ' remains in effect until ' + timeStr + ' for ' + self.areaPhrase + '...'
+        elif self.phenSig in ['FF.A', 'FA.A']:
+            attribution = 'The ' + self.hazardName + ' continues for'
         else:
             attribution += self.hazardName + ' remains in effect '
         return attribution
@@ -245,26 +251,32 @@ class AttributionFirstBulletText(object):
         qualifiers = self.qualifiers()
         forStr = ''
         if self.geoType == 'area':
-            if self.phenSig == 'FF.W':
+            if self.phenSig in ['FF.W', 'FA.W', 'FA.Y']:
                 firstBullet += ' for...'
             else:
-                forStr = ' for...'
+                forStr = ' for '
         else:
             forStr =  ' for\n'
         if qualifiers:
             firstBullet += qualifiers
             forStr = ''
         firstBullet += forStr + self.areaPhrase
+        if self.phenSig in ['FF.A', 'FA.A']:
+            firstBullet += '.'
         return firstBullet
 
     def firstBullet_EXB(self):
         firstBullet = self.hazardName + ' to include'
         firstBullet += ' ' + self.areaPhrase
+        if self.phenSig in ['FF.A', 'FA.A']:
+            firstBullet += '.'
         return firstBullet
  
     def firstBullet_EXA(self):
         firstBullet = self.hazardName + ' to include'
         firstBullet += ' ' + self.areaPhrase
+        if self.phenSig in ['FF.A', 'FA.A']:
+            firstBullet += '.'
         return firstBullet
     
     def firstBullet_EXT(self):
@@ -272,10 +284,10 @@ class AttributionFirstBulletText(object):
         forStr = ''
         if self.geoType == 'area':
             firstBullet = preQualifiers + self.hazardName
-            if self.phenSig == 'FF.W':
+            if self.phenSig in ['FF.W', 'FA.W', 'FA.Y']:
                 firstBullet += ' for...'
             else:
-                forStr = ' for...'
+                forStr = ' for '
         else:
             firstBullet = 'The ' + self.hazardName
             forStr =  ' continues for\n'
@@ -284,6 +296,8 @@ class AttributionFirstBulletText(object):
             firstBullet += qualifiers
             forStr = ''
         firstBullet += forStr + self.areaPhrase
+        if self.phenSig in ['FF.A', 'FA.A']:
+            firstBullet += '.'
         return firstBullet
     
     def firstBullet_CON(self):
@@ -291,18 +305,21 @@ class AttributionFirstBulletText(object):
         forStr = ''
         if self.geoType == 'area':
             preQualifiers = self.preQualifiers()
-            firstBullet = preQualifiers + self.hazardName
-            if self.phenSig == 'FF.W':
-                firstBullet += ' for...'
+            if self.phenSig in ['FF.A', 'FA.A']:
+                return self.areaPhrase + '.'
             else:
-                forStr = ' for...'
+                firstBullet = preQualifiers + self.hazardName
+                if self.phenSig == 'FF.W':
+                    firstBullet += ' for...'
+                else:
+                    forStr = ' for '
         else:
             firstBullet = 'The ' + self.hazardName
             forStr =  ' for\n'
         qualifiers = self.qualifiers(addPreposition=False)
         if qualifiers:
             firstBullet += qualifiers
-        firstBullet += ' continues ' + forStr + self.areaPhrase
+        firstBullet += forStr + self.areaPhrase
         return firstBullet
 
     def firstBullet_ROU(self):
@@ -340,7 +357,7 @@ class AttributionFirstBulletText(object):
                 qualifiers += '\n' + self.burnScarName
                 if addPreposition:
                     qualifiers += ' in ' 
-            elif self.typeOfFlooding:
+            elif self.typeOfFlooding and self.immediateCause not in ['ER', 'IC', 'MC', 'UU']:
                 qualifiers += '\n' + self.typeOfFlooding
                 if addPreposition:
                     qualifiers += ' in...'
@@ -375,7 +392,7 @@ class AttributionFirstBulletText(object):
                     if addPreposition:
                         qualifiers += ' in...'
             else:
-                if addPreposition:
+                if qualifiers and addPreposition:
                     qualifiers += ' in...'
         return qualifiers
 
