@@ -78,6 +78,7 @@ import com.raytheon.uf.viz.core.AbstractTimeMatcher;
 import com.raytheon.uf.viz.core.IDisplayPaneContainer;
 import com.raytheon.uf.viz.core.IGraphicsTarget;
 import com.raytheon.uf.viz.core.IGraphicsTarget.PointStyle;
+import com.raytheon.uf.viz.core.datastructure.PerspectiveSpecificProperties;
 import com.raytheon.uf.viz.core.drawables.FillPatterns;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.core.drawables.IShadedShape;
@@ -90,6 +91,7 @@ import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory;
 import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory.ResourceOrder;
 import com.raytheon.uf.viz.core.rsc.tools.AbstractMovableToolLayer;
+import com.raytheon.uf.viz.d2d.core.D2DProperties;
 import com.raytheon.uf.viz.d2d.core.time.D2DTimeMatcher;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -172,6 +174,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Apr 03, 2015 6815       mduff        Fix memory leak.
  * May 05, 2015 7624       mduff        Drawing Optimizations.
  * May 21, 2015 7730       Chris.Cody   Move Add/Delete Vertex to top of Context Menu
+ * Jun 11, 2015 7921       Chris.Cody   Correctly render hazard events in D2D when Map Scale changes *
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -307,6 +310,38 @@ public class SpatialDisplay extends
     private final List<AbstractDrawableComponent> hatchedAreaAnnotations;
 
     private IShadedShape hatchedAreaShadedShape;
+
+    /**
+     * Track Current Map Scale Factor. This is necessary for adjusting to Map
+     * Scale (not zoom) changes.
+     */
+    double mapScaleFactor = 0.0d;
+
+    /**
+     * Default Map Scale Name. Does not match any valid scale name. This is by
+     * design. This is necessary for adjusting to Map Scale (not zoom) changes
+     * for D2D Perspective.
+     */
+    private final String DEFAULT_MAP_SCALE_NAME = "OTHER";
+
+    /**
+     * Track Current Map Scale Name. This is necessary for adjusting to Map
+     * Scale (not zoom) changes for D2D Perspective.
+     */
+    private String mapScale = DEFAULT_MAP_SCALE_NAME;
+
+    /**
+     * Track current Map Zoom Level. Changing Paint Properties Zoom level will
+     * force a redraw of Spatial Display components.
+     */
+    private float zoomLevel = 1.0f;
+
+    /**
+     * Small Zoom Level change factor to force redraw. The intent is for the
+     * drawing methods to recognize a change, but have a change small enough not
+     * to alter the rendered image.
+     */
+    private final float iotaZoomLevelFactor = 0.00001f;
 
     /**
      * Constructor.
@@ -532,6 +567,8 @@ public class SpatialDisplay extends
     @Override
     protected void paintInternal(IGraphicsTarget target,
             PaintProperties paintProps) throws VizException {
+
+        checkForMapRescale(paintProps);
 
         /*
          * Paint shaded shapes for hatched areas
@@ -1596,7 +1633,6 @@ public class SpatialDisplay extends
              */
             if (redrawHatchedAreas) {
                 redrawHatchedAreas = false;
-
                 if (hatchedAreaShadedShape != null) {
                     hatchedAreaShadedShape.dispose();
                 }
@@ -1834,6 +1870,65 @@ public class SpatialDisplay extends
                                 + gagePointFirstRecommender
                                 + " Discarding request.\n Check value set in StartUpConfig.py script.");
             }
+        }
+    }
+
+    /**
+     * Check to see if the last action set the client map to a new scale factor.
+     * 
+     * <pre>
+     * Setting the Map Scale Factor is part of the D2D display and not supported
+     * by the Hydro perspective.<br>
+     * This method invokes the same resizing methods in the drawing components
+     * as a map zoom. This will cause the Spatial Display elements to resize
+     * their Geometry coordinates to the correct pixels on the displayed maps.
+     * 
+     * @param paintProps Display Paint Properties.
+     */
+    private void checkForMapRescale(PaintProperties paintProps) {
+        double newScaleFactor = 0.0d;
+        double canvasX = (double) paintProps.getCanvasBounds().width;
+        double viewX = paintProps.getView().getExtent().getWidth();
+        if (viewX != 0.0d) {
+            newScaleFactor = canvasX / viewX;
+        } else {
+            newScaleFactor = -1.0d;
+        }
+
+        boolean isScaleChange = false;
+        if (newScaleFactor != this.mapScaleFactor) {
+            this.mapScaleFactor = newScaleFactor;
+            isScaleChange = true;
+        } else {
+            // Only do this for D2D
+            String newMapScale = null;
+            PerspectiveSpecificProperties perspectiveProps = paintProps
+                    .getPerspectiveProps();
+            if (perspectiveProps != null) {
+                if (perspectiveProps instanceof D2DProperties) {
+                    D2DProperties d2dPerspectiveProps = (D2DProperties) perspectiveProps;
+                    newMapScale = d2dPerspectiveProps.getScale();
+                }
+            }
+            if (newMapScale == null) {
+                newMapScale = DEFAULT_MAP_SCALE_NAME;
+            }
+
+            if (newMapScale.equals(mapScale) == false) {
+                this.mapScale = newMapScale;
+                isScaleChange = true;
+            } else {
+                this.zoomLevel = paintProps.getZoomLevel();
+            }
+        }
+
+        if (isScaleChange == true) {
+            float curZoomLevel = paintProps.getZoomLevel();
+            if (this.zoomLevel == curZoomLevel) {
+                paintProps
+                        .setZoomLevel(curZoomLevel + this.iotaZoomLevelFactor);
+            }
+            this.redrawHatchedAreas = true;
         }
     }
 }
