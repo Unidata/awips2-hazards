@@ -95,7 +95,6 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
-import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.IEventModifyingScriptJobListener;
@@ -296,6 +295,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * May 28, 2015    7709    Chris.Cody   Add Reference name of forecast zone in the conflicting hazards
  * Jun 02, 2015    7138    Robert.Blum  RVS can now be issued without changing the status/state of the 
  *                                      hazard events.
+ * Jun 11, 2015    8191    Robert.Blum  Fixed apply on Rise/Crest/Fall editor
+ *                                      to correctly update HID/Console times.
  * 
  * </pre>
  * 
@@ -1229,12 +1230,6 @@ public class SessionEventManager implements
             @Override
             public void apply(IHazardEvent event) {
                 updateEventMetadata((ObservedHazardEvent) event);
-                /*
-                 * TODO: Added this line in hopes it would update the start/end
-                 * times, but it doesn't
-                 */
-                updateTimeBoundariesForSingleEvent(event,
-                        TimeUtil.currentTimeMillis());
             }
 
         };
@@ -1245,12 +1240,6 @@ public class SessionEventManager implements
                 event = evt;
             }
             updateEventMetadata((ObservedHazardEvent) event);
-            /*
-             * TODO: Added this line in hopes it would update the start/end
-             * times, but it doesn't
-             */
-            updateTimeBoundariesForSingleEvent(event,
-                    TimeUtil.currentTimeMillis());
         }
     }
 
