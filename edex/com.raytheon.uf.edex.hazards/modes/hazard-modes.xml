@@ -26,7 +26,4 @@
 	<mode name="ingest">
 		<exclude>ebxml.*\.xml</exclude>
 	</mode>
-	<mode name="request">
-		<include>hazard-handlers.xml</include>
-	</mode>
 </edexModes>
