@@ -48,6 +48,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Apr 9,  2015 7091       Hansen              No longer parsing double pipe
  * May 08, 2015 6562       Chris.Cody          Restructure River Forecast Points/Recommender
  * May 28, 2015 7139       Chris.Cody          Add curpp and curpc HydrographPrecip query and processing
+ * Jun 16, 2015 8782       Chris.Cody          Flood DAO does not properly handle Hydro DB Location longitude
  * </pre>
  * 
  * @author bryon.lawrence
@@ -499,12 +500,17 @@ public class FloodDAO implements IFloodDAO {
             RiverForecastPoint riverForecastPoint = null;
             for (Object[] locationQueryResult : locationQueryResultList) {
                 String coordLid = (String) locationQueryResult[0];
-                riverForecastPoint = riverForecastPointMap.get(coordLid);
-                if (riverForecastPoint != null) {
-                    riverForecastPoint
-                            .setLatitude((Double) locationQueryResult[1]);
-                    riverForecastPoint
-                            .setLongitude((Double) locationQueryResult[2]);
+                Double latitude = (Double) locationQueryResult[1];
+                Double longitude = (Double) locationQueryResult[2];
+                if ((latitude != null) && (longitude != null)) {
+                    riverForecastPoint = riverForecastPointMap.get(coordLid);
+                    if (riverForecastPoint != null) {
+                        riverForecastPoint
+                                .setLatitude((Double) locationQueryResult[1]);
+                        double revisedLongitude = convertHydroLongitudesToWesternHemisphere(longitude
+                                .doubleValue());
+                        riverForecastPoint.setLongitude(revisedLongitude);
+                    }
                 }
             }
 
@@ -520,6 +526,28 @@ public class FloodDAO implements IFloodDAO {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * River Forecast Point data (FpInfo) elements
+     * 
+     * This method negates positive values for Location data which stores
+     * Western Hemisphere Longitude values as POSITIVE values.
+     * <p>
+     * This method is Western Hemisphere centric. If the value is already
+     * negative; it will NOT be converted into a positive value.
+     * 
+     * @param hydroLongitude
+     *            a Western Hemisphere Longitute stored as a POSITIVE VALUE
+     * @return a NEGATED Longitude value.
+     */
+    private double convertHydroLongitudesToWesternHemisphere(
+            final double hydroLongitude) {
+        if (hydroLongitude > 0.0d) {
+            return hydroLongitude * -1;
+        } else {
+            return hydroLongitude;
         }
     }
 
@@ -2171,12 +2199,15 @@ public class FloodDAO implements IFloodDAO {
      * @param lidList
      *            River forecast point identifier List
      * @return A list of Object[], each of which contains a latitude and a
-     *         longitude value. Note that Western Hemisphere longitudes are
-     *         positive.
+     *         longitude value. NOTE: WESTERN HEMISPHERE LONGITUDES ARE STORED
+     *         AS POSITIVE VALUES! These values are NOT corrected within this
+     *         method.
      * 
      *         For example:
      * 
-     *         new Object[]{ LID, 42.0072222222222d, 96.2413888888889d }
+     *         new Object[]{ LID, 42.0072222222222d, 96.2413888888889d } This
+     *         refers to a coordinate in the WESTERN HEMISPHERE (Normally a
+     *         Negative (and WEST) longitude.
      */
     protected List<Object[]> queryForecastPointCoordinates(List<String> lidList) {
         /*
