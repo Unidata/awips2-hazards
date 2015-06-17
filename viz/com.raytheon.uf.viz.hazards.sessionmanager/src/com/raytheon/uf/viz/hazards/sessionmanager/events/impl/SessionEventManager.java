@@ -297,6 +297,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      hazard events.
  * Jun 11, 2015    8191    Robert.Blum  Fixed apply on Rise/Crest/Fall editor
  *                                      to correctly update HID/Console times.
+ * Jun 17, 2015    8543   Benjamin.Phillippe Catch error when creating geometry outside of forecast error
  * 
  * </pre>
  * 
@@ -3843,8 +3844,9 @@ public class SessionEventManager implements
         return events;
     }
 
-    private Geometry addGoosenecksAsNecessary(Geometry productGeometry) {
-        if (!(productGeometry instanceof GeometryCollection)) {
+    private Geometry addGoosenecksAsNecessary(Geometry productGeometry) {       
+        if ((!(productGeometry instanceof GeometryCollection))
+                || (productGeometry.getNumGeometries() == 0)) {
             return productGeometry;
         }
         GeometryCollection asMultiPolygon = (GeometryCollection) productGeometry;
