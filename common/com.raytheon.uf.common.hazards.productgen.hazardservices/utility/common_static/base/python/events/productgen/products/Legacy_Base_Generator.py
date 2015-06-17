@@ -36,7 +36,8 @@
                                         resulting segments.
     Jun 02, 2015    7138    Robert.Blum Not calling the VTEC Engine for RVS.
     Jun 04, 2015    8492    Chris.Cody  Error issuing new FA.A with issued FA.A also selected
-    Jun 05, 2015    8530    Robert.Blu  Removing None check as it causes megawidget errors.
+    Jun 05, 2015    8530    Robert.Blum Removing None check as it causes megawidget errors.
+    Jun 17, 2015    7636    Robert.Blum Fixed _prepareLocationsAffected to use WarnGen's locations table.
 '''
 
 import ProductTemplate
@@ -982,11 +983,9 @@ class Product(ProductTemplate.Product):
         self._productSegment.canVtecRecord = canVtecRecord
 
     def _prepareLocationsAffected(self, hazardEvent):
-        # TODO  
-        #  For now we're using the cityList, 
-        #  but we need to re-use the legacy updated 
-        #  WarnGen locations list 
-        return self._getCityList([hazardEvent])
+        locations = SpatialQuery.retrievePoints(hazardEvent['geometry'], 'warngen_loc', constraints={'cwa' : self._siteID},
+                                                sortBy=['warngenlev', 'population'], maxResults=20)
+        return locations
 
     def _getCityList(self, hazardEvents):
         cityList = []
