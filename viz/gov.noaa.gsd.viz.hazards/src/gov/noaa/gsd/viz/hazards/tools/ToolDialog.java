@@ -125,6 +125,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  * Dec 13, 2014   4959     Dan Schaffer Spatial Display cleanup and other bug fixes
  * Jan 30, 2015   3626     Chris.Golden      Added ability to pass event type when
  *                                           running a recommender.
+ * Jun 17, 2015   8389     Benjamin.Phillippe Fixed min/max time visible variables to 
+ *                                            not expect exception when initializing
  * </pre>
  * 
  * @author Chris.Golden
@@ -363,24 +365,27 @@ class ToolDialog extends BasicDialog {
          * megawidgets that might be created.
          */
         long minVisibleTime = 0L;
-        try {
-            minVisibleTime = ((Number) dialogDict
-                    .get(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME)).longValue();
-        } catch (Exception e) {
+        Number minVisibleTimeEntry = (Number) dialogDict
+                .get(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME);
+        if (minVisibleTimeEntry == null) {
             statusHandler.info("ToolDialog.createDialogArea(): Warning: No "
                     + TimeScaleSpecifier.MINIMUM_VISIBLE_TIME
                     + " specified in dialog dictionary.");
             minVisibleTime = TimeUtil.currentTimeMillis();
+        } else {
+            minVisibleTime = minVisibleTimeEntry.longValue();
         }
+
         long maxVisibleTime = 0L;
-        try {
-            maxVisibleTime = ((Number) dialogDict
-                    .get(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME)).longValue();
-        } catch (Exception e) {
+        Number maxVisibleTimeEntry = (Number) dialogDict
+                .get(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME);
+        if (maxVisibleTimeEntry == null) {
             statusHandler.info("ToolDialog.createDialogArea(): Warning: No "
                     + TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME
                     + " specified in dialog dictionary.");
             maxVisibleTime = minVisibleTime + TimeUnit.DAYS.toMillis(1);
+        } else {
+            maxVisibleTime = maxVisibleTimeEntry.longValue();
         }
 
         /*
