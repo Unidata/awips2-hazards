@@ -38,7 +38,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 15, 2014  #696      dgilling     Initial creation
- * 
+ * Jun 17, 2015  #696      Chris.Cody   Change VTEC Menu from "Change VTEC Format" to "Change VTEC Mode"
  * </pre>
  * 
  * @author dgilling
@@ -48,12 +48,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager
 public final class ChangeVtecFormatAction extends Action {
 
     private enum VTECFormatMode {
-        /*
-         * TODO: Remove the NORMAL_NO_VTEC and TEST_NO_VTEC types. Users have
-         * tenatively agreed to remove these options as they probably aren't
-         * needed. Leaving them for now until final approval to remove these
-         * options are granted.
-         */
+
         NORMAL_NO_VTEC("Normal: NoVTEC"), NORMAL_O_VTEC("Normal: O-Vtec"), NORMAL_E_VTEC(
                 "Normal: E-Vtec"), NORMAL_X_VTEC("Normal: X-Vtec"), TEST_NO_VTEC(
                 "Test: NoVTEC"), TEST_T_VTEC("Test: T-Vtec");
@@ -136,7 +131,7 @@ public final class ChangeVtecFormatAction extends Action {
     private boolean testMode;
 
     public ChangeVtecFormatAction(ISessionProductManager productMgr) {
-        super("Change VTEC Format", Action.AS_DROP_DOWN_MENU);
+        super("Change VTEC Mode", Action.AS_DROP_DOWN_MENU);
         ChangeVtecFormatAction.productMgr = productMgr;
         IMenuCreator creator = new VtecMenuCreator();
         setMenuCreator(creator);
