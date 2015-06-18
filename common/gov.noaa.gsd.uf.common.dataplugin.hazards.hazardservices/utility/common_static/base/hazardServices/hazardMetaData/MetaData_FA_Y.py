@@ -43,6 +43,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getSource(),
                     self.getEventType(),
                     self.getRainAmt(),
+                    self.getListOfCities(False),
                     self.getAdditionalInfo(),
                     self.getCTAs(),   
                 ]

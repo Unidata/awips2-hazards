@@ -14,6 +14,7 @@
     05/27/2015   7748       Robert.Blum    Added Flood History bullet for all FL.* hazards.
     06/03/2015   8530       Robert.Blum    Added new productPart for initials and additionalComments.
                                            Also wmoHeader no longer has a CR built in.
+    06/18/2015   8181       Robert.Blum    Removing cityList productPart for FA.Y and FA.W to match WarnGen.
 
 '''
 import types, collections
@@ -324,8 +325,19 @@ class HydroProductParts(object):
             pil = vtecRecord['pil']  # All vtec records in this segment must have the same pil
             phen = vtecRecord['phen']
             sig = vtecRecord['sig']
-        
-        partsList = [
+
+        # Removing citylist for FA.Y and FA.W to match WarnGen
+        if phen == 'FA' and sig in ['W', 'Y']:
+            partsList = [
+                'setUp_segment',
+                'ugcHeader',
+                'vtecRecords',
+                'areaList',
+                'issuanceTimeDate',
+                'CR'
+                ]
+        else:
+            partsList = [
                 'setUp_segment',
                 'ugcHeader',
                 'vtecRecords',
@@ -335,7 +347,7 @@ class HydroProductParts(object):
                 'CR'
                 ]
 
-        if pil == 'FFA':  
+        if pil == 'FFA':
             partsList.append('summaryHeadlines')
             partsList.append('CR')
 
