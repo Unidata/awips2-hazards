@@ -69,6 +69,7 @@ import org.eclipse.ui.PlatformUI;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
@@ -174,7 +175,9 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Apr 03, 2015 6815       mduff        Fix memory leak.
  * May 05, 2015 7624       mduff        Drawing Optimizations.
  * May 21, 2015 7730       Chris.Cody   Move Add/Delete Vertex to top of Context Menu
- * Jun 11, 2015 7921       Chris.Cody   Correctly render hazard events in D2D when Map Scale changes *
+ * Jun 11, 2015 7921       Chris.Cody   Correctly render hazard events in D2D when Map Scale changes 
+ * Jun 17, 2015 6730       Robert.Blum  Fixed invalid geometry (duplicate rings) bug caused by duplicate
+ *                                      ADCs being drawn for one hazard.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -778,6 +781,22 @@ public class SpatialDisplay extends
             String eventID = hazardEvent.getEventID();
             Boolean isSelected = (Boolean) hazardEvent
                     .getHazardAttribute(HAZARD_EVENT_SELECTED);
+
+            /*
+             * Removing the AbstractDrawableComponents for the events here. New
+             * Components that are valid are added below.
+             */
+            List<AbstractDrawableComponent> activeLayerDrawables = this
+                    .getActiveLayer().getDrawables();
+            for (AbstractDrawableComponent adc : new ArrayList<AbstractDrawableComponent>(
+                    activeLayerDrawables)) {
+                String id = this.eventIDForElement(adc);
+                for (IHazardEvent event : events) {
+                    if (event.getEventID().equals(id)) {
+                        this.getActiveLayer().remove(adc);
+                    }
+                }
+            }
 
             drawableBuilder.buildDrawableComponents(this, hazardEvent,
                     eventOverlapSelectedTime.get(eventID), getActiveLayer(),
@@ -1887,7 +1906,7 @@ public class SpatialDisplay extends
      */
     private void checkForMapRescale(PaintProperties paintProps) {
         double newScaleFactor = 0.0d;
-        double canvasX = (double) paintProps.getCanvasBounds().width;
+        double canvasX = paintProps.getCanvasBounds().width;
         double viewX = paintProps.getView().getExtent().getWidth();
         if (viewX != 0.0d) {
             newScaleFactor = canvasX / viewX;

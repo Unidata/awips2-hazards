@@ -300,6 +300,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Jun 11, 2015    8191    Robert.Blum  Fixed apply on Rise/Crest/Fall editor
  *                                      to correctly update HID/Console times.
  * Jun 17, 2015    8543   Benjamin.Phillippe Catch error when creating geometry outside of forecast error
+ * Jun 17, 2015    6730    Robert.Blum  Fixed messages bug that was preventing the display from updating
+ *                                      correctly if the hazardType is not set.
  * 
  * </pre>
  * 
@@ -648,6 +650,12 @@ public class SessionEventManager implements
                     hazardEventModified(new SessionEventGeometryModified(this,
                             event, Originator.OTHER));
                 }
+            }
+            if (event.getHazardType() == null) {
+                // Send Notification of geometry change, this is not done
+                // in updateHazardAreas if type is null.
+                hazardEventModified(new SessionEventGeometryModified(this,
+                        event, Originator.OTHER));
             }
         }
     }
