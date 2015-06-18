@@ -35,6 +35,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
@@ -93,6 +94,9 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * May 15, 2015 7935       Chris.Cody        Fixed NPE caused by immediate HS close after opening
  * May 19, 2015 4781       Robert.Blum       Removed filtering of pending hazards they should always
  *                                           be visible on the spatial display.
+ * Jun 02, 2015 8500       Chris.Cody        Single click does not select HE on Spatial Display
+ * Jun 19, 2015 6760       Robert.Blum       Added SettingsModified handler to update the Spatial
+ *                                           Display when settings are changed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -199,6 +203,17 @@ public class SpatialPresenter extends
 
     @Handler
     public void sessionHatchingToggled(SessionHatchingToggled notification) {
+        updateSpatialDisplay();
+    }
+
+    /**
+     * Handle a change in the selected settings.
+     * 
+     * @param settingsModified
+     *            settingsModified that occurred.
+     */
+    @Handler
+    public void settingsModifiedOccurred(final SettingsModified settingsModified) {
         updateSpatialDisplay();
     }
 
