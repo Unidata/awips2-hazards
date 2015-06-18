@@ -105,6 +105,7 @@ class MetaData(object):
             for choice in choices:
                 if choice.get('identifier') == 'DM':
                     values = 'DM'
+                    self.hazardEvent.set('immediateCause', 'DM')
                     break
 
         return {
