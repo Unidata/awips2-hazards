@@ -23,6 +23,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 09, 2013  1325          daniel.s.schaffer@noaa.gov      Initial creation
+ * Jun 18, 2015  7307      Chris.Cody  Added Hazard End time for requested Time Remaining calculation
  * 
  * </pre>
  * 
@@ -34,6 +35,10 @@ public interface IHazardEventExpirationAlert extends IHazardAlert {
     public Date getHazardExpiration();
 
     public void setHazardExpiration(Date hazardExpiration);
+
+    public Date getHazardEnd();
+
+    public void setHazardEnd(Date hazardEnd);
 
     public Long getMillisBeforeExpiration();
 

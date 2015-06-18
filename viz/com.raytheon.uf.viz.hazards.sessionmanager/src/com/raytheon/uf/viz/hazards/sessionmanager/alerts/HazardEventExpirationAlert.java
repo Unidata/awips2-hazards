@@ -23,6 +23,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventE
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 09, 2013   1325     daniel.s.schaffer@noaa.gov      Initial creation
+ * Jun 18, 2015  7307      Chris.Cody  Added Hazard End time for requested Time Remaining calculation
  * 
  * </pre>
  * 
@@ -35,6 +36,8 @@ public class HazardEventExpirationAlert extends HazardEventAlert implements
     protected final HazardEventExpirationAlertConfigCriterion alertCriterion;
 
     private Date hazardExpiration;
+
+    private Date hazardEnd;
 
     public HazardEventExpirationAlert(String eventID,
             HazardEventExpirationAlertConfigCriterion alertCriterion) {
@@ -66,6 +69,16 @@ public class HazardEventExpirationAlert extends HazardEventAlert implements
     @Override
     public void setHazardExpiration(Date hazardExpiration) {
         this.hazardExpiration = hazardExpiration;
+    }
+
+    @Override
+    public Date getHazardEnd() {
+        return hazardEnd;
+    }
+
+    @Override
+    public void setHazardEnd(Date hazardEnd) {
+        this.hazardEnd = hazardEnd;
     }
 
     @Override

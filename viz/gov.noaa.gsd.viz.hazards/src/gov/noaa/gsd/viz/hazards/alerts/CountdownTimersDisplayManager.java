@@ -38,6 +38,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 22, 2013    1936    Chris.Golden      Initial creation
+ * Jun 18, 2015  7307      Chris.Cody  Added Hazard End time for requested Time Remaining calculation
  * </pre>
  * 
  * @author Chris.Golden
@@ -79,8 +80,8 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
         DAYS(TimeUnit.DAYS.toMillis(1L), TimeUnit.DAYS.toMillis(1L)), HOURS_AND_MINUTES(
                 TimeUnit.HOURS.toMillis(1L), TimeUnit.MINUTES.toMillis(1L)), MINUTES(
                 TimeUnit.MINUTES.toMillis(1L), TimeUnit.MINUTES.toMillis(1L)), SECONDS(
-                0L, TimeUnit.SECONDS.toMillis(1L)), ZERO(Long.MIN_VALUE,
-                Long.MAX_VALUE);
+                1L, TimeUnit.SECONDS.toMillis(1L)), ZERO(0L, TimeUnit.MINUTES
+                .toMillis(1L)), BLANK(Long.MIN_VALUE, Long.MAX_VALUE);
 
         // Private Variables
 
@@ -108,7 +109,7 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
         public static TimeDeltaStringFormat getStringFormatForTimeDelta(
                 long timeDelta) {
             for (TimeDeltaStringFormat value : values()) {
-                if (timeDelta > value.lowerBoundMillis) {
+                if (timeDelta >= value.lowerBoundMillis) {
                     return value;
                 }
             }
@@ -143,6 +144,7 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
                         TimeUnit.MILLISECONDS.toSeconds(timeDelta));
             case ZERO:
                 return "00:00:00";
+            case BLANK:
             default:
                 return NO_TIMER_TEXT;
             }
@@ -361,6 +363,23 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
     }
 
     /**
+     * Get the END time as an epoch time in milliseconds at which the alert
+     * associated with the specified event identifier is to END.
+     * 
+     * @param eventId
+     *            Event identifier for which to fetch the END time.
+     * @return END time when the associated alert is to END, or
+     *         <code>Long.MAX_VALUE</code> if there is no END time.
+     */
+    public final long getAlertEndTimeForEvent(String eventId) {
+        H alert = alertsForEventIdentifiers.get(eventId);
+        if (alert != null) {
+            return alert.getHazardEnd().getTime();
+        }
+        return Long.MAX_VALUE;
+    }
+
+    /**
      * Update the display properties for the countdown timer associated with the
      * specified event identifier, if any.
      * 
@@ -517,8 +536,11 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
     }
 
     /**
-     * Get the time delta, in milliseconds, between the current CAVE time and
-     * the expiration time for the specified alert.
+     * Get the time remaining (in millis) for the Hazard Event for the alert.
+     * 
+     * Check to see if the Hazard Event for the Alert has Ended. If it has not
+     * ended, then get the time delta, in milliseconds, between the current CAVE
+     * time and the expiration time for the specified alert.
      * 
      * @param alert
      *            Alert for which the delta is to be calculated.
@@ -528,8 +550,18 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
      */
     private long getTimeDeltaUntilAlertExpiration(H alert,
             long currentTimeMillis) {
-        return Math.max(0L, alert.getHazardExpiration().getTime()
-                - currentTimeMillis);
+        // Place endTimeMillis on the other side of the minute to compensate for
+        // rounding
+        long endTimeMillis = alert.getHazardEnd().getTime()
+                + TimeUnit.MINUTES.toMillis(1L);
+        if ((endTimeMillis - currentTimeMillis) >= 0) {
+            long delta = alert.getHazardExpiration().getTime()
+                    - currentTimeMillis;
+            if (delta >= 0L) {
+                return (delta);
+            }
+        }
+        return (-1L);
     }
 
     /**

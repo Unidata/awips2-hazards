@@ -41,6 +41,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                                    alerts would appear when 
  *                                                    you leave hazard services 
  *                                                    and come back much later.
+ * Jun 18, 2015  7307      Chris.Cody  Added Hazard End time for requested Time Remaining calculation
  * 
  * </pre>
  * 
@@ -142,6 +143,8 @@ public class HazardEventExpirationAlertFactory {
             IHazardEvent hazardEvent, HazardEventExpirationAlert result) {
         Date hazardExpiration = computeExpirationTime(hazardEvent);
         result.setHazardExpiration(hazardExpiration);
+        Date hazardEnd = computeEndTime(hazardEvent);
+        result.setHazardEnd(hazardEnd);
         Date activationTime = computeActivationTime(alertCriterion, hazardEvent);
         result.setActivationTime(activationTime);
         /**
@@ -158,14 +161,14 @@ public class HazardEventExpirationAlertFactory {
     }
 
     private Date computeExpirationTime(IHazardEvent hazardEvent) {
-        /**
-         * TODO The product generator needs to be modified to store this as a
-         * Date
-         */
         Date hazardExpiration = new Date(
                 (Long) hazardEvent
                         .getHazardAttribute(HazardConstants.EXPIRATION_TIME));
         return hazardExpiration;
+    }
+
+    private Date computeEndTime(IHazardEvent hazardEvent) {
+        return hazardEvent.getEndTime();
     }
 
     private Date computeActivationTime(
