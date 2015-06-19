@@ -61,7 +61,7 @@ class MetaData(CommonMetaData.MetaData):
        
         enabled = False
         edit = False
-        if bsName is None:
+        if self.hazardStatus == 'pending':
             enabled = True
             edit = True
         
