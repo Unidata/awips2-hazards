@@ -30,6 +30,8 @@
                                                 returning None instead of a empty string when reading
                                                 from the productText table and there is nothing to return.
    Jun 05, 2015   8531      Chris.Cody          Changes to conform to WarnGen/RiverPro outputs
+   Jun 19, 2015   6962      Robert.Blum         Changed 1st bullet for Zone hazard types to use the
+                                                county/counties label.
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -915,12 +917,6 @@ class TextProductCommon(object):
         
         '''        
         # including phrase, have to count what we have
-        d = {
-             'INDEPENDENT CITY': ('independent city', 'independent cities'),
-             'PARISH': ('parish', 'parishes'),
-             'COUNTY': ('county', 'counties'),
-             'ZONE':   ('area', 'areas')  
-             }
         icCnt = 0
         parishCnt = 0
         zoneCnt = 0
@@ -936,13 +932,13 @@ class TextProductCommon(object):
                 elif nameType == 'PARISH':
                     parishCnt = parishCnt + 1
         nameTypes = []
-        if zoneCnt == 1:
-            nameTypes.append('area')
-        elif zoneCnt > 1:
-            nameTypes.append('areas')
-        if countyCnt == 1:
+#         if zoneCnt == 1:
+#             nameTypes.append('area')
+#         elif zoneCnt > 1:
+#             nameTypes.append('areas')
+        if countyCnt == 1 or zoneCnt == 1:
             nameTypes.append('county')
-        elif countyCnt > 1:
+        elif countyCnt > 1 or zoneCnt > 1:
             nameTypes.append('counties')
         if icCnt == 1:
             nameTypes.append('independent city')
