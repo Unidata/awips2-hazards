@@ -20,6 +20,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDr
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPolygon;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesText;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionAction;
 import gov.noaa.nws.ncep.ui.pgen.display.AbstractElementContainer;
@@ -39,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -178,6 +180,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Jun 11, 2015 7921       Chris.Cody   Correctly render hazard events in D2D when Map Scale changes 
  * Jun 17, 2015 6730       Robert.Blum  Fixed invalid geometry (duplicate rings) bug caused by duplicate
  *                                      ADCs being drawn for one hazard.
+ * Jun 22, 2015 7203       Chris.Cody   Prevent Event Text Data overlap in a single county
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -813,10 +816,96 @@ public class SpatialDisplay extends
 
         List<AbstractDrawableComponent> drawables = dataManager
                 .getActiveLayer().getDrawables();
-
+        repositionTextComponents(drawables);
         hatchedAreaAnnotations.addAll(drawables);
         setObjects(hatchedAreaAnnotations);
         issueRefresh();
+    }
+
+    /**
+     * Scan through all Spatial Display Drawable components and amalgamate Test
+     * Components that use the SAME Centroid Coorinate.
+     * 
+     * This method is executed just prior to Spatial Display refresh. It looks
+     * through all Drawable Components for HazardServicesText components. For
+     * each set of HazardServicesText components that use the same Centroid
+     * Coordinate: It will take the Text String Arrays from the
+     * HazardServicesText components; place their string arrays into the first
+     * HazardServicesText component; Sort the strings by length (longest first);
+     * and remove the HazardServicesText components containing now duplicate
+     * Text data.
+     * 
+     * @param drawableComponents
+     *            Spatial Display drawable components
+     */
+    protected void repositionTextComponents(
+            List<AbstractDrawableComponent> drawableComponents) {
+
+        Map<Coordinate, List<HazardServicesText>> coordToDrawableMap = new HashMap<>();
+
+        for (AbstractDrawableComponent component : drawableComponents) {
+            if ((component.getPgenType().equals("TEXT") == true)
+                    && (component instanceof HazardServicesText)) {
+                HazardServicesText textComponent = (HazardServicesText) component;
+                Coordinate compCoord = textComponent.getPosition();
+                List<HazardServicesText> componentList = coordToDrawableMap
+                        .get(compCoord);
+                if (componentList == null) {
+                    componentList = new ArrayList<>();
+                    coordToDrawableMap.put(compCoord, componentList);
+                }
+                componentList.add(textComponent);
+            }
+        }
+
+        // Comparator to sort strings longest to shortest.
+        Comparator<String> shortestLastComparator = new Comparator<String>() {
+            public int compare(String o1, String o2) {
+                return Integer.compare(o2.length(), o1.length());
+            }
+        };
+
+        for (Coordinate compCoord : coordToDrawableMap.keySet()) {
+            List<HazardServicesText> componentList = coordToDrawableMap
+                    .get(compCoord);
+            int componentListSize = componentList.size();
+            if (componentListSize > 1) {
+                HazardServicesText firstTextComponent = null;
+                List<String> textStringList = new ArrayList<>();
+                String[] textStringArray = null;
+                for (int i = 0; i < componentListSize; i++) {
+                    HazardServicesText currentTextComponent = componentList
+                            .get(i);
+                    textStringArray = currentTextComponent.getText();
+                    if ((textStringArray != null)
+                            && (textStringArray.length > 0)) {
+                        for (int j = 0; j < textStringArray.length; j++) {
+                            String currentArrayString = textStringArray[j];
+                            if ((currentArrayString != null)
+                                    && (textStringList
+                                            .contains(currentArrayString) == false)) {
+                                textStringList.add(currentArrayString);
+                            }
+                        }
+                    }
+
+                    if (i == 0) {
+                        // Keep only the first Text Component for each
+                        // Coordinate
+                        firstTextComponent = currentTextComponent;
+                    } else {
+                        // Remove other Text Components for for each Coordinate
+                        this.removeElement(currentTextComponent);
+                        drawableComponents.remove(currentTextComponent);
+                    }
+                }
+
+                Collections.sort(textStringList, shortestLastComparator);
+                String[] textSetStringArray = textStringList
+                        .toArray(new String[textStringList.size()]);
+                firstTextComponent.setText(textSetStringArray);
+            }
+        }
     }
 
     public void drawStormTrackDot() {
@@ -1579,7 +1668,6 @@ public class SpatialDisplay extends
         dispEl = new DefaultElementContainer(el, descriptor, target);
 
         Layer layer = dataManager.getActiveLayer();
-
         DisplayProperties dprops = buildDisplayProperties(layer);
         dispEl.draw(target, paintProps, dprops);
         dispEl.dispose();
@@ -1590,6 +1678,7 @@ public class SpatialDisplay extends
         dprops.setLayerMonoColor(layer.isMonoColor());
         dprops.setLayerColor(layer.getColor());
         dprops.setLayerFilled(layer.isFilled());
+
         return dprops;
     }
 
