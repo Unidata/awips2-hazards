@@ -983,7 +983,7 @@ class Product(ProductTemplate.Product):
         self._productSegment.canVtecRecord = canVtecRecord
 
     def _prepareLocationsAffected(self, hazardEvent):
-        locations = SpatialQuery.retrievePoints(hazardEvent['geometry'], 'warngen_loc', constraints={'cwa' : self._siteID},
+        locations = SpatialQuery.retrievePoints(hazardEvent['geometry'], 'warngenloc', constraints={'cwa' : self._siteID},
                                                 sortBy=['warngenlev', 'population'], maxResults=20)
         return locations
 
