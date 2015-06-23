@@ -56,6 +56,7 @@ import com.raytheon.uf.common.util.Pair;
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
  * May 26, 2015 7634       Chris.Cody  Correct omission of setting Current Observation Index
  * May 28, 2015 7139       Chris.Cody  Add curpp and curpc HydrographPrecip query and processing
+ * Jun 23, 2015 8866       Chris.Cody  Initialize RFP index and value fields for SHEF Forecast data
  * </pre>
  * 
  * @author Chris.Cody
@@ -704,7 +705,6 @@ public class RiverForecastManager {
         riverForecastPoint.setHydrographObserved(hydrographObserved);
     }
 
-    // TODO HERE CCODY
     public HydrographObserved getHydrographObserved(String lid,
             String physicalElement, String typeSource, long obsBeginTime,
             long obsEndTime) {
@@ -1203,6 +1203,20 @@ public class RiverForecastManager {
             RiverForecastPoint riverForecastPoint, long currentSystemTime) {
 
         /* initialize all the forecast point stage data */
+        riverForecastPoint
+                .setMaximumForecastIndex(RiverHydroConstants.MISSING_VALUE);
+        riverForecastPoint
+                .setForecastXfCrestIndex(RiverHydroConstants.MISSING_VALUE);
+        riverForecastPoint
+                .setForecastFloodStageDeparture(RiverHydroConstants.MISSING_VALUE);
+        riverForecastPoint
+                .setForecastRiseAboveTime(RiverHydroConstants.MISSING_VALUE);
+        riverForecastPoint
+                .setForecastFallBelowTime(RiverHydroConstants.MISSING_VALUE);
+        riverForecastPoint
+                .setForecastCrestValue(RiverHydroConstants.MISSING_VALUE_DOUBLE);
+        riverForecastPoint
+                .setForecastCrestTime(RiverHydroConstants.MISSING_VALUE);
 
         int maximumForecastIndex = RiverHydroConstants.MISSING_VALUE;
         int shefForecastListSize = -1;
@@ -1749,6 +1763,8 @@ public class RiverForecastManager {
          * if there are both obs and fcst times, use the obs rise above, and the
          * fcst fall below
          */
+        int obsMaxIdx = riverForecastPoint.getObservedMaximumIndex();
+        int fcstMaxIdx = riverForecastPoint.getMaximumForecastIndex();
 
         if (riverForecastPoint.getObservedRiseAboveTime() != RiverHydroConstants.MISSING_VALUE) {
             riverForecastPoint.setRiseAboveTime(riverForecastPoint
@@ -1783,24 +1799,23 @@ public class RiverForecastManager {
         }
 
         /* decide the crest_ts if both obs and fcst times exit */
-        if (riverForecastPoint.getObservedMaximumIndex() != RiverHydroConstants.MISSING_VALUE
-                && riverForecastPoint.getMaximumForecastIndex() != RiverHydroConstants.MISSING_VALUE) {
+        if (obsMaxIdx != RiverHydroConstants.MISSING_VALUE
+                && fcstMaxIdx != RiverHydroConstants.MISSING_VALUE) {
             List<SHEFObserved> shefObservedList = (List<SHEFObserved>) riverForecastPoint
                     .getHydrographObserved().getShefHydroDataList();
             List<SHEFForecast> shefForecastList = (List<SHEFForecast>) riverForecastPoint
                     .getHydrographForecast().getShefHydroDataList();
 
-            if (shefObservedList.get(
-                    riverForecastPoint.getObservedMaximumIndex()).getValue() >= shefForecastList
-                    .get(riverForecastPoint.getMaximumForecastIndex())
-                    .getValue()) {
+            double obsMaxVal = shefObservedList.get(obsMaxIdx).getValue();
+            double fcstMaxVal = shefForecastList.get(fcstMaxIdx).getValue();
+            if (obsMaxVal >= fcstMaxVal) {
                 riverForecastPoint.setCrestTypeSource(ALL_OBSERVED_TYPESOURCE);
             } else {
                 riverForecastPoint.setCrestTypeSource(ALL_FORECAST_TYPESOURCE);
             }
-        } else if (riverForecastPoint.getObservedMaximumIndex() != RiverHydroConstants.MISSING_VALUE) {
+        } else if (obsMaxIdx != RiverHydroConstants.MISSING_VALUE) {
             riverForecastPoint.setCrestTypeSource(ALL_OBSERVED_TYPESOURCE);
-        } else if (riverForecastPoint.getMaximumForecastIndex() != RiverHydroConstants.MISSING_VALUE) {
+        } else if (fcstMaxIdx != RiverHydroConstants.MISSING_VALUE) {
             riverForecastPoint.setCrestTypeSource(ALL_FORECAST_TYPESOURCE);
         } else {
             riverForecastPoint.setCrestTypeSource("");
