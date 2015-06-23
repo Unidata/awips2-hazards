@@ -265,6 +265,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Apr 06, 2015 6602       mduff             If a date is missing return an empty string
  *                                           rather than 0 formatted as Jan 1, 1970.
  * May 05, 2015 6898       Chris.Cody        Pan & Scale Visible and Selected Time
+ * Jun 23, 2015 8566     Benjamin.Phillippe  Fixed extremely rare situation where table data is 
+ *                                           trying to be updated before being populated
  * </pre>
  * 
  * @author Chris.Golden
@@ -5610,6 +5612,11 @@ class TemporalDisplay {
                 // If this event is not found in the table, skip it.
                 int rowIndex = eventIdentifiers.indexOf(eventId);
                 if (rowIndex == -1) {
+                    continue;
+                }
+                
+                // If the table hasn't been populated yet, skip it
+                if(rowIndex >= items.length){
                     continue;
                 }
 
