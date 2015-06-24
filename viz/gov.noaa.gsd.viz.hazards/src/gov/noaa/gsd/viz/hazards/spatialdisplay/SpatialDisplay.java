@@ -181,6 +181,8 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Jun 17, 2015 6730       Robert.Blum  Fixed invalid geometry (duplicate rings) bug caused by duplicate
  *                                      ADCs being drawn for one hazard.
  * Jun 22, 2015 7203       Chris.Cody   Prevent Event Text Data overlap in a single county
+ * Jun 24, 2015 6601       Chris.Cody   Change Create by Hazard Type display text
+ * 
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -908,10 +910,10 @@ public class SpatialDisplay extends
         }
     }
 
-    public void drawStormTrackDot() {
+    public void drawStormTrackDot(String eventType) {
 
         AbstractDrawableComponent shapeComponent = drawableBuilder
-                .buildStormTrackDotComponent(getActiveLayer());
+                .buildStormTrackDotComponent(getActiveLayer(), eventType);
         List<AbstractDrawableComponent> drawableComponents = Lists
                 .newArrayList(shapeComponent);
         addElement(shapeComponent);

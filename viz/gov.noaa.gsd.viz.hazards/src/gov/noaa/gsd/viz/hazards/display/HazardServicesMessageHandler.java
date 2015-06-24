@@ -219,8 +219,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * May 18, 2015  6898       Chris.Cody        Restored set visible types for recommender completion
  * May 20, 2015  8227      Chris.Cody         Remove NullRecommender
  * Jun 02, 2015  7138      Robert.Blum        Changes for RVS workflow.
+ * Jun 24, 2015 6601       Chris.Cody         Change Create by Hazard Type display text
  * 
- *                                            product corrections.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -331,6 +331,8 @@ public final class HazardServicesMessageHandler {
         if (!spatialInput.isEmpty() || !dialogInput.isEmpty()) {
             if (!spatialInput.isEmpty()) {
                 // This will generally need to be asynchronous
+                spatialInput.put(HazardConstants.EVENT_TYPE, eventType);
+
                 processSpatialInput(recommenderName, spatialInput);
             }
 
@@ -382,13 +384,18 @@ public final class HazardServicesMessageHandler {
 
         if (returnType.equals(POINT_RETURN_TYPE)) {
             String label = (String) spatialInput.get(HAZARD_LABEL);
+            String eventType = null;
+            if (spatialInput.containsKey(HazardConstants.EVENT_TYPE) == true) {
+                eventType = (String) spatialInput
+                        .get(HazardConstants.EVENT_TYPE);
+            }
 
             /*
              * Activate the storm tracking mouse handler
              */
             appBuilder.requestMouseHandler(
                     HazardServicesMouseHandlers.STORM_TOOL_DRAG_DOT_DRAWING,
-                    toolName, label);
+                    toolName, label, eventType);
         }
 
     }

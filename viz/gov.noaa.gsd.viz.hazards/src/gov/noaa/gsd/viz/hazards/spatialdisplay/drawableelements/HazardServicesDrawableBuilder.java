@@ -89,6 +89,8 @@ import com.vividsolutions.jts.geom.Puntal;
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
  * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen
  * May 05, 2015 7624       mduff        Handle MultiPolygons, added deholer method.
+ * Jun 24, 2015 6601       Chris.Cody   Change Create by Hazard Type display text
+ * 
  * </pre>
  * 
  * @author bryon.lawrence
@@ -319,11 +321,11 @@ public class HazardServicesDrawableBuilder {
     }
 
     public AbstractDrawableComponent buildStormTrackDotComponent(
-            Layer activeLayer) {
+            Layer activeLayer, String eventType) {
         AbstractDrawableComponent result = null;
         try {
             StormTrackDotDrawingAttributes drawingAttributes = new StormTrackDotDrawingAttributes(
-                    sessionManager);
+                    sessionManager, eventType);
             this.drawingAttributes = drawingAttributes;
             drawingAttributes.setTextPosition(TextPositioner.TOP);
             List<Coordinate> points = drawingAttributes.buildCoordinates();

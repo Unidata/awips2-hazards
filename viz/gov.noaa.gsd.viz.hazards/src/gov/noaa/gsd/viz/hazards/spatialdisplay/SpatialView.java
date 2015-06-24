@@ -104,6 +104,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Feb 24, 2015 6499       Dan Schaffer      Disable drawing of point hazards
  * Feb 25, 2015 6600       Dan Schaffer      Fixed bug in spatial display centering
  * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
+ * Jun 24, 2015 6601       Chris.Cody        Change Create by Hazard Type display text
  * </pre>
  * 
  * @author Chris.Golden
@@ -856,7 +857,12 @@ public class SpatialView implements
             break;
 
         case STORM_TOOL_DRAG_DOT_DRAWING:
-            spatialDisplay.drawStormTrackDot();
+            String hazardType = null;
+            int len = args.length;
+            if (len >= 3) {
+                hazardType = args[2];
+            }
+            spatialDisplay.drawStormTrackDot(hazardType);
             break;
 
         case DRAW_BY_AREA:

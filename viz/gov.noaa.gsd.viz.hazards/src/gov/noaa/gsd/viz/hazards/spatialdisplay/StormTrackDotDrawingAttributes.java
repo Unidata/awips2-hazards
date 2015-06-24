@@ -35,6 +35,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Dec 05, 2014 4124       Chris.Golden        Changed to work with newly parameterized
  *                                             config manager.
+ * Jun 24, 2015 6601       Chris.Cody          Change Create by Hazard Type display text
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -42,14 +43,17 @@ import com.vividsolutions.jts.geom.Coordinate;
 public class StormTrackDotDrawingAttributes extends
         HazardServicesDrawingAttributes {
 
-    private static final String STORM_DOT_LABEL = "Drag Me To Storm";
+    private static final String STORM_DOT_LABEL = "Drag To Hazard Location";
+
+    private String eventType = null;
 
     public static double SIZE_SCALE = 10.5;
 
     public StormTrackDotDrawingAttributes(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager)
-            throws VizException {
+            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
+            String eventType) throws VizException {
         super(sessionManager.getConfigurationManager());
+        this.eventType = eventType;
         closed = true;
     }
 
@@ -84,7 +88,13 @@ public class StormTrackDotDrawingAttributes extends
 
     public void setAttributes() {
         setSelected(true);
-        setString(new String[] { STORM_DOT_LABEL });
+        if ((this.eventType == null) || (this.eventType.isEmpty() == true)) {
+            setString(new String[] { STORM_DOT_LABEL });
+        } else {
+            String tempString = "Drag To " + this.eventType + " Location";
+            setString(new String[] { tempString });
+        }
+
         setSolidLineStyle();
         setLineWidth(1.0f);
         Color fillColor = new Color(255, 0, 0);

@@ -51,7 +51,7 @@ class Recommender(TrackToolCommon.TrackToolCommon):
         @todo: fix comments, further figure out spatial info
         '''
         resultDict = {"outputType":"spatialInfo",
-                      "label":"Drag Me To Storm", "returnType":"Point"}
+                      "label":"Drag To Hazard Location", "returnType":"Point"}
         return resultDict
 
     def indexOfClosest(self, value, values):
