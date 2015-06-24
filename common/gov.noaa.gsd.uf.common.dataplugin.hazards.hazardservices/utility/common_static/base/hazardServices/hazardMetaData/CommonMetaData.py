@@ -477,6 +477,25 @@ class MetaData(object):
         return {"identifier":"selectListOfCities", 
                 "displayString": "Select for a list of cities", 
                 "productString": "Arbitrary arguments used by cities list generator."}
+
+    def getLocationsAffected(self, defaultOn=True):
+        if defaultOn:
+            values = ["selectLocationsAffected"]
+        else:
+            values = []
+        return {
+             "fieldType":"CheckBoxes",
+             "fieldName": "locationsAffectedCheckBox",
+             "showAllNoneButtons" : False,
+             "choices": [self.selectLocationsAffected()],
+             "lines": 1,
+             "values": values,
+            }
+
+    def selectLocationsAffected(self):
+        return {"identifier":"selectLocationsAffected", 
+                "displayString": "Select for locations affected", 
+                "productString": "Arbitrary arguments used by locations affected generator."}
  
     def getAdditionalInfo(self):
             return {

@@ -28,6 +28,7 @@
     Jun 05, 2015    8531    Chris.Cody  Changes to conform to WarnGen/RiverPro outputs
     Jun 05, 2015    8530    Robert.Blum Additional changes to get Test Message statement correct.
     Jun 10, 2015    8532    Robert.Blum Changes for mixed case.
+    Jun 26, 2015    8181    Robert.Blum Changes for cityList/locationsAffected. 
 '''
 
 import FormatTemplate
@@ -334,29 +335,13 @@ class Format(FormatTemplate.Formatter):
                     sig = hazard.get('sig')
                     phensig = phen + '.' + sig
                     listOfCities = hazard.get('listOfCities', [])
-                    # Optional for these phensigs
-                    if phensig in ['FA.A', 'FF.A']:
-                        required = False
-                        # Add the cities if boxed checked in HID
-                        if 'selectListOfCities'in listOfCities:
-                            cityList.update(hazard.get('cityList', []))
-                    else:
-                        required = True
-                        # Required add the cities
+                    # Add the cities if boxed checked in HID
+                    if 'selectListOfCities'in listOfCities:
                         cityList.update(hazard.get('cityList', []))
             if cityList:
                 cityListText = 'Including the cities of '
                 cityListText += self._tpc.getTextListStr(list(cityList))
-        if required is None:
-            # Determine if the saved value is required
-            required = False
-            for vtecRecord in segmentDict.get('vtecRecords', []):
-                phen = vtecRecord.get('phen')
-                sig = vtecRecord.get('sig')
-                phensig = phen + '.' + sig
-                if phensig not in ['FA.A', 'FF.A']:
-                    required = True
-        self._setVal('cityList', cityListText, segmentDict, 'City List', required=required)
+        self._setVal('cityList', cityListText, segmentDict, 'City List', required=False)
         return self._getFormattedText(cityListText, endText='\n')
 
     def _callsToAction(self, segmentDict):
@@ -762,8 +747,8 @@ class Format(FormatTemplate.Formatter):
         hazardEventDict = sectionDict.get('hazardEvents')[0]
 
         # This is a optional bullet check to see if it should be included
-        listOfCities = hazardEventDict.get('listOfCities', [])
-        if 'selectListOfCities'in listOfCities:
+        listOfLocationsAffected = hazardEventDict.get("locationsAffectedCheckBox", [])
+        if "selectLocationsAffected" in listOfLocationsAffected:
 
             # Get saved value from productText table if available
             locationsAffected = self._getVal('locationsAffected', sectionDict)

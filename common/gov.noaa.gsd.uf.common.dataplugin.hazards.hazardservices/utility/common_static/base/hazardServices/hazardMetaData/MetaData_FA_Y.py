@@ -12,6 +12,7 @@ class MetaData(CommonMetaData.MetaData):
             metaData = [
                         self.getImmediateCause(),
                         self.getOptionalSpecificType(),
+                        self.getListOfCities(False),
                         self.getEndingOption(),
                         self.getEndingSynopsis(),
                         ]
@@ -24,6 +25,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getEventType(),
                     self.getRainAmt(),
                     self.getListOfCities(False),
+                    self.getLocationsAffected(False),
                     self.getAdditionalInfo(),
                     self.getCTAs(),   
                     # Preserving CAP defaults for future reference.                 
@@ -44,6 +46,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getEventType(),
                     self.getRainAmt(),
                     self.getListOfCities(False),
+                    self.getLocationsAffected(False),
                     self.getAdditionalInfo(),
                     self.getCTAs(),   
                 ]

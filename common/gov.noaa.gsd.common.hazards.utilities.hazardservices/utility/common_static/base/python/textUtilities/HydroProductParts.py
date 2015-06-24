@@ -15,7 +15,7 @@
     06/03/2015   8530       Robert.Blum    Added new productPart for initials and additionalComments.
                                            Also wmoHeader no longer has a CR built in.
     06/18/2015   8181       Robert.Blum    Removing cityList productPart for FA.Y and FA.W to match WarnGen.
-
+    06/24/2015   8181       Robert.Blum    Changes for cityList/locationsAffected. 
 '''
 import types, collections
 
@@ -326,26 +326,15 @@ class HydroProductParts(object):
             phen = vtecRecord['phen']
             sig = vtecRecord['sig']
 
-        # Removing citylist for FA.Y and FA.W to match WarnGen
-        if phen == 'FA' and sig in ['W', 'Y']:
-            partsList = [
-                'setUp_segment',
-                'ugcHeader',
-                'vtecRecords',
-                'areaList',
-                'issuanceTimeDate',
-                'CR'
-                ]
-        else:
-            partsList = [
-                'setUp_segment',
-                'ugcHeader',
-                'vtecRecords',
-                'areaList',
-                'cityList',
-                'issuanceTimeDate',
-                'CR'
-                ]
+        partsList = [
+            'setUp_segment',
+            'ugcHeader',
+            'vtecRecords',
+            'areaList',
+            'cityList',
+            'issuanceTimeDate',
+            'CR'
+            ]
 
         if pil == 'FFA':
             partsList.append('summaryHeadlines')

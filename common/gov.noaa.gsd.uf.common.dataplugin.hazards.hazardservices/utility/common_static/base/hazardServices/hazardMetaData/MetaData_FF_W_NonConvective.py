@@ -48,7 +48,7 @@ class MetaData(CommonMetaData.MetaData):
                      self.getFloodLocation(),
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
-                     self.getListOfCities(False),
+                     self.getLocationsAffected(False),
                      self.getCTAs(), 
                         ]
         elif status == "issued":
@@ -63,8 +63,9 @@ class MetaData(CommonMetaData.MetaData):
                      self.getFloodLocation(),
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
-                     # TODO this should only be on the HID for EXT and not CON
                      self.getListOfCities(False),
+                     # TODO this should only be on the HID for EXT and not CON
+                     self.getLocationsAffected(False),
                      self.getCTAs(), 
                      # Preserving CAP defaults for future reference.
 #                      self.getCAP_Fields([
@@ -76,6 +77,7 @@ class MetaData(CommonMetaData.MetaData):
                     ]
         else:
             metaData = [
+                    self.getListOfCities(False),
                     self.getEndingSynopsis(),
                     self.getAdditionalInfo(),
                     ]

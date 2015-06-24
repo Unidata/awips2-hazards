@@ -15,6 +15,7 @@ class MetaData(CommonMetaData.MetaData):
                 metaData = [
                             self.getWarningType(),
                             self.getImmediateCause(),
+                            self.getListOfCities(False),
                             self.getEndingOption(),
                             self.getEndingSynopsis(),
                             ]
@@ -28,6 +29,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getEventType(),
                     self.getRainAmt(),
                     self.getListOfCities(False),
+                    self.getLocationsAffected(False),
                     self.getAdditionalInfo(),
                     self.getRiver(),
                     self.getFloodLocation(),
@@ -56,6 +58,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getEventType(),
                     self.getRainAmt(),
                     self.getListOfCities(False),
+                    self.getLocationsAffected(False),
                     self.getAdditionalInfo(),
                     self.getRiver(),
                     self.getFloodLocation(),

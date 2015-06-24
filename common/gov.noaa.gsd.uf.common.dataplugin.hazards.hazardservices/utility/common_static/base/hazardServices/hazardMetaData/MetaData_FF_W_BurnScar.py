@@ -7,6 +7,7 @@ class MetaData(CommonMetaData.MetaData):
         self.initialize(hazardEvent, metaDict)
         if self.hazardStatus == "ending":
             metaData = [
+                        self.getListOfCities(False),
                         self.getEndingOption(),
                         self.getEndingSynopsis()
                         ]
@@ -20,7 +21,7 @@ class MetaData(CommonMetaData.MetaData):
                      self.getDebrisFlowOptions(),
                      self.getRainAmt(),
                      self.getAdditionalInfo(),
-                     self.getListOfCities(False),
+                     self.getLocationsAffected(False),
                      self.getCTAs(), 
                      # Preserving CAP defaults for future reference.
 #                      self.getCAP_Fields([
@@ -41,8 +42,9 @@ class MetaData(CommonMetaData.MetaData):
                      self.getDebrisFlowOptions(),
                      self.getRainAmt(),
                      self.getAdditionalInfo(),
-                     # TODO this should only be on the HID for EXT and not CON
                      self.getListOfCities(False),
+                     # TODO this should only be on the HID for EXT and not CON
+                     self.getLocationsAffected(False),
                      self.getCTAs(), 
             ]
         return {
