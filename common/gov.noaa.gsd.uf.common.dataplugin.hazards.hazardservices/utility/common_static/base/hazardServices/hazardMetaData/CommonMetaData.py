@@ -1458,6 +1458,7 @@ class MetaData(object):
             if searchTypeValue and searchTypeValue == 'All Below Upper Stage/Flow':
                 referenceType = filters['Reference Type']
                 referenceTypeValue = referenceType.get('values')
+                referenceValue = None
                 if referenceTypeValue == 'Max Forecast' :
                     referenceValue = self._riverForecastUtils.getMaximumForecastLevel(self._riverForecastPoint, primaryPE)
                 elif referenceTypeValue == 'Current Observed' :
@@ -1491,10 +1492,14 @@ class MetaData(object):
                                       }
                 
         else:
+            from HazardConstants import MISSING_VALUE
             headerLabel = "Crest to Use"
             selectionLabel = "CrestStg/Flow - CrestDate"
             defCrest, crestList = self._riverForecastUtils.getHistoricalCrest(self._riverForecastPoint, primaryPE, filterValues)
-            
+
+            if defCrest.startswith(str(MISSING_VALUE)):
+                defCrest=""
+                crestList.append("")
             choices = crestList
             value = defCrest
             selectedForecastPoints = {
@@ -1505,7 +1510,6 @@ class MetaData(object):
                     "expandHorizontally": False,
                     "expandVertically": True
             }
-            
         
         groupHeaderLabel  = {
                        

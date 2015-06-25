@@ -15,6 +15,7 @@
     May 05, 2015    7141    Robert.Blum Changes for floodPointTable.
     May 26, 2015    7634    Chris.Cody  Changes for Forecast Bullet Generation
     Jun 25, 2015    8565    Chris.Cody  Impacts Error issuing multiple products from the HID
+    Jun 25, 2015    8313    Benjamin.Phillippe Fixed issued event loading when time is changed
 '''
 from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
 from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
@@ -98,7 +99,9 @@ class Product(Legacy_Base_Generator.Product):
         hazardEventDict['floodStage'] = riverForecastPoint.getFloodStage()
         # Maximum Forecast Stage
         maxForecastIndex = riverForecastPoint.getMaximumForecastIndex()
-        maxShefForecast = self._riverForecastManager.getSHEFForecast(riverForecastPoint, maxForecastIndex)
+        maxShefForecast = None
+        if maxForecastIndex != MISSING_VALUE:
+            maxShefForecast = self._riverForecastManager.getSHEFForecast(riverForecastPoint, maxForecastIndex)
         if maxShefForecast is not None:
             maximumForecastStage = maxShefForecast.getValue()
             maximumForecastTime_ms = maxShefForecast.getValidTime()

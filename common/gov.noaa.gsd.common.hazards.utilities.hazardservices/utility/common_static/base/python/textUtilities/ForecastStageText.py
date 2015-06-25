@@ -19,6 +19,7 @@
     May 19, 2015   6562    Chris.Cody        Implemented "work-around" code. This needs to be changed under a different issue.
     May 26, 2015   7634    Chris.Cody        Correct improper forcast bullet string generation
     Jun 25, 2015   ????    Chris.Cody        Correct for missing first and second Rise Fall Time error
+    Jun 25, 2015    8313   Benjamin.Phillippe Fixed issued event loading when time is changed
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types
@@ -148,6 +149,8 @@ class ForecastStageText(object):
             self.risingFalling = 'remain steady'
             self.trend = 'steady'
 
+        self.firstRiseFallTime = ''
+        self.secondRiseFallTime = ''
         # rise above / fall below flood stage
         if hazard.forecastRiseAboveFloodStageTime_ms and hazard.forecastFallBelowFloodStageTime_ms:
             if hazard.forecastRiseAboveFloodStageTime_ms < hazard.forecastFallBelowFloodStageTime_ms:

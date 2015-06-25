@@ -28,7 +28,8 @@
  ------------ ---------- ----------- --------------------------
  May 08, 2015  6562      Chris.Cody  Initial Creation: Restructure River Forecast Points/Recommender
                                      Legacy functions and constants imported from RiverForecastPoints.py
- May 21, 2015  8112      Chris.Cody  Python reads 0 values from Java methods as None. The return type is lost. 
+ May 21, 2015  8112      Chris.Cody  Python reads 0 values from Java methods as None. The return type is lost.
+ Jun 25, 2015  8313      Benjamin.Phillippe Fixed situation with missing stage date 
 '''
 
 from com.raytheon.uf.common.time import SimulatedTime
@@ -57,7 +58,7 @@ MINOR = 'MINOR'
 MODERATE = 'MODERATE'
 RECORD = 'RECORD'
 
-
+MISSING_STAGE_DATE = MISSING_VALUE, datetime.datetime.fromtimestamp(0)
 MISSING_SHEF_QUALITY_CODE = RiverHydroConstants.MISSING_SHEF_QUALITY_CODE
 PE_H = 'H'
 PE_Q = 'Q'
@@ -360,7 +361,7 @@ class RiverForecastUtils(object):
         # pure boolean test, otherwise index value of 0 (first value in list)
         # will fail to get picked up.
         
-        stageDate = MISSING_VALUE, datetime.datetime.fromtimestamp(0)
+        stageDate = MISSING_STAGE_DATE
         searchType = filters['Search Type']
         if searchType.find("Highest") >= 0 :
             if maxIndex != None :
@@ -371,7 +372,7 @@ class RiverForecastUtils(object):
         elif recentIndex != None : # most recent
             stageDate = listTuple[recentIndex]
         else :
-            stageDate = MISSING_VALUE, datetime.datetime.fromtimestamp(0)
+            stageDate = MISSING_STAGE_DATE
     
         # Sort by descending crest value
         n = len(listTuple)-1
