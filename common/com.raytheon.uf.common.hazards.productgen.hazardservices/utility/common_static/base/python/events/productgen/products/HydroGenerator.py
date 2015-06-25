@@ -14,6 +14,7 @@
     Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
     May 05, 2015    7141    Robert.Blum Changes for floodPointTable.
     May 26, 2015    7634    Chris.Cody  Changes for Forecast Bullet Generation
+    Jun 25, 2015    8565    Chris.Cody  Impacts Error issuing multiple products from the HID
 '''
 from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
 from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
@@ -168,9 +169,12 @@ class Product(Legacy_Base_Generator.Product):
         for key in validVals:
             if key.startswith('impactCheckBox_'):
                 height, impactValue = self._parseImpactKey(key)
-                value = hazardEvent.get(key)
-                textFieldName = 'impactTextField_'+impactValue
-                impacts.append((height, hazardEvent.get(textFieldName)))
+                if height is not None and impactValue is not None:
+                    textFieldName = 'impactTextField_'+impactValue
+                    textFieldValue = hazardEvent.get(textFieldName)
+                    #Ignore impacts lacking a height or text
+                    if textFieldValue is not None:
+                        impacts.append((height, textFieldValue))
         return impacts
 
     def _parseImpactKey(self, key):
