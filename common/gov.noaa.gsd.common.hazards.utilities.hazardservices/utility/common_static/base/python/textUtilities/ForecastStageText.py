@@ -18,6 +18,7 @@
     Apr 2015       7579    Robert.Blum       Updated variable names.
     May 19, 2015   6562    Chris.Cody        Implemented "work-around" code. This needs to be changed under a different issue.
     May 26, 2015   7634    Chris.Cody        Correct improper forcast bullet string generation
+    Jun 25, 2015   ????    Chris.Cody        Correct for missing first and second Rise Fall Time error
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types
@@ -155,6 +156,9 @@ class ForecastStageText(object):
             elif hazard.forecastRiseAboveFloodStageTime_ms > hazard.forecastFallBelowFloodStageTime_ms:
                 self.firstRiseFallTime = ' below flood stage at ' + hazard.forecastFallBelowFloodStageTime_str
                 self.secondRiseFallTime = ', then rise above flood stage at ' + hazard.forecastRiseAboveFloodStageTime_str + ' and continue rising'
+            else: # both missing
+                self.firstRiseFallTime = ''
+                self.secondRiseFallTime = ''
         elif hazard.forecastRiseAboveFloodStageTime_ms and (hazard.forecastFallBelowFloodStageTime_ms is None or hazard.forecastFallBelowFloodStageTime_ms == 0): 
             self.firstRiseFallTime = ' above flood stage at ' + hazard.forecastRiseAboveFloodStageTime_str + ' and continue rising'
             self.secondRiseFallTime = ''
