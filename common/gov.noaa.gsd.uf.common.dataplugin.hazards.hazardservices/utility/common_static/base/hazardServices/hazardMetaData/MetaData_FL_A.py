@@ -12,7 +12,7 @@ class MetaData(CommonMetaData.MetaData):
         self.initialize(hazardEvent, metaDict)
         self._basedOnLookupPE = '{:15s}'.format('YES')
 
-        if self.hazardStatus == "ending":
+        if self.hazardStatus in ["ending", "ended"]:
             metaData = [
                             self.getEndingSynopsis(),
             ]

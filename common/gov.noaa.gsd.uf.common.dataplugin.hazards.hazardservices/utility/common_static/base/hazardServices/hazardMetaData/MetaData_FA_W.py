@@ -8,7 +8,7 @@ class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-        if self.hazardStatus == "ending":
+        if self.hazardStatus in ["ending", "ended"]:
             # FA.W point hazards do not have the endingSynopsis productPart
             # Removing the metaData for it so it does not show up in the HID.
             if hazardEvent.get('geoType', '') == 'area':

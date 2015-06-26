@@ -29,6 +29,8 @@
     Jun 05, 2015    8530    Robert.Blum Additional changes to get Test Message statement correct.
     Jun 10, 2015    8532    Robert.Blum Changes for mixed case.
     Jun 26, 2015    8181    Robert.Blum Changes for cityList/locationsAffected. 
+    Jun 26, 2015    7919    Robert.Blum Changes for EXP where they may not be a summaryHeadline.
+    
 '''
 
 import FormatTemplate
@@ -537,8 +539,10 @@ class Format(FormatTemplate.Formatter):
                 hList.remove(vtecRecord)
 
         # All CAPS per Mixed Case Guidelines
+        if headlineStr == None:
+            headlineStr = ''
         headlineStr = headlineStr.upper()
-        self._setVal('summaryHeadlines', headlineStr, segmentDict, 'Summary Headlines')
+        self._setVal('summaryHeadlines', headlineStr, segmentDict, 'Summary Headlines', required=False)
         return self._getFormattedText(headlineStr, endText='\n')
 
     def _basisAndImpactsStatement_segmentLevel(self, segmentDict):

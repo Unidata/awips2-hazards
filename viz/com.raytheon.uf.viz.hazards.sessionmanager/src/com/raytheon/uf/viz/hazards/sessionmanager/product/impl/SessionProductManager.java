@@ -82,7 +82,6 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
-import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -199,6 +198,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Jun 02, 2015 7138       Robert.Blum  Changes for RVS workflow: Issuing without changing 
  *                                      the state of the hazards and not removing the validation
  *                                      of the selected events before calling ProductGeneration.
+ * Jun 26, 2015 7919       Robert.Blum  Changes to be able to issue Ended hazards for EXPs.
  * </pre>
  * 
  * @author bsteffen
@@ -694,7 +694,7 @@ public class SessionProductManager implements ISessionProductManager {
          * Just terminate ongoing operation and return if there is nothing to
          * do.
          */
-        if (!validateSelectedHazardsForProductGeneration()) {
+        if (!eventManager.setLowResolutionGeometriesVisibleForSelectedEvents()) {
             setPreviewOrIssueOngoing(issue, false);
             return false;
         }
@@ -826,40 +826,6 @@ public class SessionProductManager implements ISessionProductManager {
     @Override
     public void shutdown() {
         productGen.shutdown();
-    }
-
-    /**
-     * Validate the selected events before product generation.
-     * 
-     * @return True if the the selected events are valid for product generation,
-     *         otherwise false.
-     */
-    private boolean validateSelectedHazardsForProductGeneration() {
-
-        Collection<ObservedHazardEvent> selectedEvents = eventManager
-                .getSelectedEvents();
-        Date simulatedTime = SimulatedTime.getSystemTime().getTime();
-        List<String> eventIds = Lists.newArrayList();
-
-        for (IHazardEvent selectedEvent : selectedEvents) {
-
-            /*
-             * Test if the end time of the selected event is in the past.
-             * Products will not be generated for events with end times in the
-             * past.
-             */
-            if (selectedEvent.getEndTime().before(simulatedTime)) {
-                eventIds.add(selectedEvent.getEventID());
-            }
-        }
-
-        if (!eventIds.isEmpty()) {
-            showWarningMessage(eventIds,
-                    (eventIds.size() > 1 ? "have end times "
-                            : "has an end time ") + "before the CAVE time.");
-        }
-
-        return eventIds.isEmpty() ? true : false;
     }
 
     /*
@@ -1700,12 +1666,12 @@ public class SessionProductManager implements ISessionProductManager {
         HazardEventManager.Mode mode = (caveMode == CAVEMode.PRACTICE) ? HazardEventManager.Mode.PRACTICE
                 : HazardEventManager.Mode.OPERATIONAL;
 
-        boolean hasConflicts = HazardServicesClient.getHazardEventInteropServices(mode).hasConflicts(
-                    hazardEvent.getPhenomenon() + "."
-                            + hazardEvent.getSignificance(),
-                    hazardEvent.getSiteID(), hazardEvent.getStartTime(),
-                    hazardEvent.getEndTime());
-
+        boolean hasConflicts = HazardServicesClient
+                .getHazardEventInteropServices(mode).hasConflicts(
+                        hazardEvent.getPhenomenon() + "."
+                                + hazardEvent.getSignificance(),
+                        hazardEvent.getSiteID(), hazardEvent.getStartTime(),
+                        hazardEvent.getEndTime());
 
         return hasConflicts;
     }
@@ -1743,7 +1709,27 @@ public class SessionProductManager implements ISessionProductManager {
                 @Override
                 public void run() {
                     try {
-                        if (result != null) {
+                        if (result != null && result.isEmpty() == false) {
+                            productGeneratorInformation
+                                    .setGeneratedProducts(result);
+                            productGeneratorInformation
+                                    .getGeneratedProducts()
+                                    .getEventSet()
+                                    .addAttribute(HazardConstants.ISSUE_FLAG,
+                                            issue);
+
+                            if (issue) {
+                                for (IGeneratedProduct prod : productGeneratorInformation
+                                        .getGeneratedProducts()) {
+                                    pgiMap.put(prod,
+                                            productGeneratorInformation);
+                                }
+                            } else {
+                                notificationSender
+                                        .postNotification(new ProductGenerated(
+                                                productGeneratorInformation));
+                            }
+                        } else {
                             if (result.isEmpty()) {
                                 Shell shell = PlatformUI.getWorkbench()
                                         .getActiveWorkbenchWindow().getShell();
@@ -1754,35 +1740,16 @@ public class SessionProductManager implements ISessionProductManager {
                                 msgBox.setMessage(generatorName
                                         + " completed. No products generated.");
                                 msgBox.open();
+                                sessionManager.setIssueOngoing(false);
+                                sessionManager.setPreviewOngoing(false);
                             } else {
                                 productGeneratorInformation
-                                        .setGeneratedProducts(result);
-                                productGeneratorInformation
-                                        .getGeneratedProducts()
-                                        .getEventSet()
-                                        .addAttribute(
-                                                HazardConstants.ISSUE_FLAG,
-                                                issue);
-
-                                if (issue) {
-                                    for (IGeneratedProduct prod : productGeneratorInformation
-                                            .getGeneratedProducts()) {
-                                        pgiMap.put(prod,
-                                                productGeneratorInformation);
-                                    }
-                                } else {
-                                    notificationSender
-                                            .postNotification(new ProductGenerated(
-                                                    productGeneratorInformation));
-                                }
+                                        .setError(new Throwable(
+                                                "GeneratedProduct result from generator is null."));
+                                notificationSender
+                                        .postNotification(new ProductFailed(
+                                                productGeneratorInformation));
                             }
-                        } else {
-                            productGeneratorInformation
-                                    .setError(new Throwable(
-                                            "GeneratedProduct result from generator is null."));
-                            notificationSender
-                                    .postNotification(new ProductFailed(
-                                            productGeneratorInformation));
                         }
                     } finally {
                         synchronized (pgiMap) {

@@ -157,6 +157,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Apr 09, 2015    7382    Chris.Golden      Added "show start-end time sliders" flag.
  * Apr 15, 2015    3508    Chris.Golden      Added "hazard detail to be wide" flag.
  * May 20, 2015    8192    Chris.Cody        Set HID Durations for new Events on type selection
+ * Jun 26, 2015    7919    Robert.Blum       Enabled Issue/Preview button for Ended hazards.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1585,7 +1586,6 @@ public class HazardDetailPresenter extends
         ObservedHazardEvent event = getVisibleEvent();
         boolean enable = ((event != null)
                 && (HazardEventUtilities.getHazardType(event) != null)
-                && (event.getStatus() != HazardStatus.ENDED)
                 && (getModel().isPreviewOngoing() == false) && (getModel()
                 .isIssueOngoing() == false));
         getView().getButtonInvoker().setEnabled(Command.PREVIEW, enable);

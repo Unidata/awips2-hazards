@@ -302,7 +302,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Jun 17, 2015    8543   Benjamin.Phillippe Catch error when creating geometry outside of forecast error
  * Jun 17, 2015    6730    Robert.Blum  Fixed messages bug that was preventing the display from updating
  *                                      correctly if the hazardType is not set.
- * 
+ * Jun 26, 2015    7919    Robert.Blum  Changed for issuing EXP when hazard has ended.
  * </pre>
  * 
  * @author bsteffen
@@ -2004,6 +2004,7 @@ public class SessionEventManager implements
      * be added to this method's implementation as necessary if said logic must
      * be run whenever an event is so modified.
      */
+    @SuppressWarnings("unchecked")
     protected void hazardEventStatusModified(
             SessionEventStatusModified notification, boolean persist) {
         if (persist) {
@@ -2021,8 +2022,20 @@ public class SessionEventManager implements
                 needsPersist = true;
                 break;
             case ENDED:
-                event.addHazardAttribute(HAZARD_EVENT_SELECTED, false);
+                List<String> vtecCodes = (List<String>) event
+                        .getHazardAttribute(HazardConstants.VTEC_CODES);
+
+                /*
+                 * Only deselect if canceled.
+                 */
+                if (vtecCodes.contains("CAN")) {
+                    event.addHazardAttribute(
+                            HazardConstants.HAZARD_EVENT_SELECTED, false);
+                }
+                ObservedHazardEvent hazardEvent = event;
+                hazardEvent.setModified(false);
                 needsPersist = true;
+
                 break;
             default:
                 ;// do nothing.
