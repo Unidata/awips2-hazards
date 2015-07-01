@@ -62,6 +62,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Feb 26, 2015 6306       mduff             Pass site id to product editor.
  * Apr 10, 2015 6898       Chris.Cody        Removed modelChanged legacy messaging method
  * May 13, 2015 6899       Robert.Blum       Removed sessionEventsModified handler.
+ * Jul 01, 2015 6726       Robert.Blum       IssueAll button no longer closes the Editor.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -172,7 +173,6 @@ public class ProductEditorPresenter extends
                                 .getGeneratedProductsList());
                         getModel().setIssueOngoing(true);
                         ProductEditorPresenter.this.publish(action);
-                        dismissProductEditor();
                     }
                 });
 

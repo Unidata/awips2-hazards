@@ -103,6 +103,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerationComplete;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerationConfirmation;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingRequired;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
@@ -199,6 +200,8 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      the state of the hazards and not removing the validation
  *                                      of the selected events before calling ProductGeneration.
  * Jun 26, 2015 7919       Robert.Blum  Changes to be able to issue Ended hazards for EXPs.
+ * Jul 01, 2015 6726       Robert.Blum  Changes to be able to return to Product Editor from 
+ *                                      confirmation dialog.
  * </pre>
  * 
  * @author bsteffen
@@ -737,6 +740,9 @@ public class SessionProductManager implements ISessionProductManager {
                     productGeneratorInformation.getDialogSelections(),
                     productFormats, listener);
         }
+
+        // Got confirmation to issue above - close the Product Editor
+        eventBus.publishAsync(new ProductGenerationConfirmation());
 
         return true;
     }/* end generate() method */

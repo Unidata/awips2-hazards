@@ -52,6 +52,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 20, 2015 3795       rferrel     Initial creation
+ * Jul 01, 2015 6726       Robert.Blum Made dialog APPLICATION_MODAL.
  * 
  * </pre>
  * 
@@ -94,7 +95,7 @@ public class ProductGenConfirmationDlg extends CaveSWTDialog {
      */
     protected ProductGenConfirmationDlg(Shell parentShell, String title,
             String modeMessage, String okBtnText, String cancelBtnText) {
-        super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL, CAVE.NONE);
+        super(parentShell, SWT.DIALOG_TRIM | SWT.APPLICATION_MODAL, CAVE.NONE);
 
         setText(title);
 

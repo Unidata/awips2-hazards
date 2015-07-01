@@ -91,6 +91,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerationConfirmation;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingRequired;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
@@ -220,7 +221,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * May 20, 2015  8227      Chris.Cody         Remove NullRecommender
  * Jun 02, 2015  7138      Robert.Blum        Changes for RVS workflow.
  * Jun 24, 2015 6601       Chris.Cody         Change Create by Hazard Type display text
- * 
+ * Jul 01, 2015 6726       Robert.Blum        Changes to be able to return to Product
  * </pre>
  * 
  * @author bryon.lawrence
@@ -1018,7 +1019,6 @@ public final class HazardServicesMessageHandler {
      */
     private void setIssuedState() {
         issueEvents();
-        appBuilder.closeProductEditorView();
     }
 
     /**
@@ -1091,8 +1091,6 @@ public final class HazardServicesMessageHandler {
         default:
             // do nothing
         }
-
-        appBuilder.closeProductEditorView();
     }
 
     /**
@@ -1496,6 +1494,14 @@ public final class HazardServicesMessageHandler {
     public void productStagingRequired(final ProductStagingRequired notification) {
         appBuilder.showProductStagingView(notification.isIssue(),
                 notification.getStagingRequired());
+    }
+
+    @Handler
+    public void productGenerationConfirmation(
+            final ProductGenerationConfirmation productGenerationConfirmation) {
+        // Product Editor needs closed if issuing from it.
+        this.sessionManager.setPreviewOngoing(false);
+        this.appBuilder.closeProductEditorView();
     }
 
     @Handler
