@@ -19,7 +19,7 @@ from ufpy.dataaccess.PyGeometryData import PyGeometryData
 from com.raytheon.uf.common.monitor.config import FFMPSourceConfigurationManager
 from com.raytheon.uf.common.monitor.config import FFMPRunConfigurationManager
 
-from com.raytheon.uf.common.dataplugin.ffmp import FFMPBasinData, FFMPBasin, FFMPTemplates
+from com.raytheon.uf.common.dataplugin.ffmp import FFMPBasinData, FFMPBasin, FFMPTemplates, FFMPTemplates_MODE as FFMPMode
 
 from java.util import Date
 from java.lang import Long, Float
@@ -461,7 +461,7 @@ class Recommender(RecommenderTemplate.Recommender):
              
         self._dataKey = self._siteKey
         
-        self.ffmpTemplates= FFMPTemplates.getInstance(self._domain, self._siteKey, FFMPTemplates.MODE.CAVE)
+        self.ffmpTemplates= FFMPTemplates.getInstance(self._domain, self._siteKey, FFMPMode.CAVE)
         
     def __str__(self):
         return 'Flash Flood Recommender'
