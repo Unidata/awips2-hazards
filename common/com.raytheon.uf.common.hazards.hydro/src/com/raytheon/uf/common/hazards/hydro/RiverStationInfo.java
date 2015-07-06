@@ -35,6 +35,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * Jul 06, 2015 9155       Chris.Cody  RiverStationInfo fields must match RiverStat table Columns
  * </pre>
  * 
  * @author Chris.Cody
@@ -237,7 +238,7 @@ public class RiverStationInfo {
     /**
      * River station (ACTION_FLOW)
      */
-    private String actionFlow;
+    private Double actionFlow;
 
     /**
      * River station (WSTG)
@@ -367,7 +368,7 @@ public class RiverStationInfo {
                     this.vdatum = (String) queryValue;
                     break;
                 case ACTION_FLOW_FIELD_IDX:
-                    this.actionFlow = (String) queryValue;
+                    this.actionFlow = (Double) queryValue;
                     break;
                 case WSTG_FIELD_IDX:
                     this.actionStage = (Double) queryValue;
@@ -574,7 +575,7 @@ public class RiverStationInfo {
     /**
      * Get River station (ACTION_FLOW)
      */
-    public String actionFlow() {
+    public Double actionFlow() {
         return (this.actionFlow);
     }
 
