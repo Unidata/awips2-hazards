@@ -10,6 +10,7 @@
     May 14, 2015    7376    Robert.Blum Changed to look for only None and not
                                         empty string.
     Jun 03, 2015    8530    Robert.Blum Added method for initials productPart.
+    Jul 06, 2015    7747    Robert.Blum Changes for adding framed text when text fields are left blank on HID.
 '''
 
 
@@ -54,7 +55,7 @@ class Format(Legacy_Hydro_Formatter.Format):
         # Get saved value from productText table if available
         statement = self._getVal('headlineStatement', productDict)
         if statement is None:
-            statement = productDict.get('headlineStatement', "NO HEADLINE STATEMENT")
+            statement = self._tpc.getValueOrFramedText('headlineStatement', productDict, 'Enter Headline Statement')
         self._setVal('headlineStatement', statement, productDict, 'Headline Statement')
         return statement
 
@@ -62,6 +63,6 @@ class Format(Legacy_Hydro_Formatter.Format):
         # Get saved value from productText table if available
         narrative = self._getVal('narrativeInformation', productDict)
         if narrative is None:
-            narrative = productDict.get('narrativeInformation', "NO NARRATIVE INFORMATION")
+            narrative = self._tpc.getValueOrFramedText('narrativeInformation', productDict, 'Enter Narrative Information')
         self._setVal('narrativeInformation', narrative, productDict, 'Narrative Information')
         return self._getFormattedText(narrative, endText='\n')

@@ -10,6 +10,7 @@
                                         empty string.
     Jun 03, 2015    8530    Robert.Blum Added method for new initials productPart
                                         and removed duplicate $$.
+    Jul 06, 2015    7747    Robert.Blum Changes for adding framed text when text fields are left blank on HID.
 '''
 import FormatTemplate
 
@@ -57,6 +58,6 @@ class Format(Legacy_Hydro_Formatter.Format):
         if narrative is None:
             # ESF sections will only contain one hazard
             hazard = sectionDict.get('hazardEvents')[0]
-            narrative = hazard.get('narrativeForecastInformation', '')
+            narrative = self._tpc.getValueOrFramedText('narrativeForecastInformation', hazard, 'Enter Narrative Forecast Information')
         self._setVal('narrativeForecastInformation', narrative, sectionDict, 'Narrative Forecast Information')
         return self._getFormattedText(narrative, endText='\n\n')

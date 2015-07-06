@@ -30,6 +30,7 @@
     Jun 10, 2015    8532    Robert.Blum Changes for mixed case.
     Jun 26, 2015    8181    Robert.Blum Changes for cityList/locationsAffected. 
     Jun 26, 2015    7919    Robert.Blum Changes for EXP where they may not be a summaryHeadline.
+    Jul 06, 2015    7747    Robert.Blum Changes for adding framed text when text fields are left blank on HID.
     
 '''
 
@@ -303,7 +304,7 @@ class Format(FormatTemplate.Formatter):
         # Get saved value from productText table if available
         text = self._getVal('initials', productDict)
         if text is None:
-            text = '!**Name/Initials**!'
+            text = '|* Name/Initials *|'
         self._setVal('initials', text, productDict, 'Initials')
         return text
 
@@ -600,7 +601,8 @@ class Format(FormatTemplate.Formatter):
             headline = self._getVal('emergencyHeadline', sectionDict)
             if headline is None:
                 # ALL CAPS per Mixed Case Text Guidelines
-                headline = '...FLASH FLOOD EMERGENCY FOR ' + hazard.get('includeEmergencyLocation').upper() + '...'
+                emergencyLocation = self._tpc.getValueOrFramedText('includeEmergencyLocation', hazard, 'Enter Emergency Location').upper()
+                headline = '...FLASH FLOOD EMERGENCY FOR ' + emergencyLocation + '...'
             self._setVal('emergencyHeadline', headline, sectionDict, 'Emergency Headline')
         return self._getFormattedText(headline, endText='\n\n')
 
@@ -693,7 +695,8 @@ class Format(FormatTemplate.Formatter):
             # Get saved value from productText table if available
             statement = self._getVal('emergencyStatement', sectionDict)
             if statement is None:
-                statement = '  This is a Flash Flood Emergency for ' + hazard.get('includeEmergencyLocation') + '.'
+                emergencyLocation = self._tpc.getValueOrFramedText('includeEmergencyLocation', hazard, 'Enter Emergency Location').upper()
+                statement = '  This is a Flash Flood Emergency for ' + emergencyLocation + '.'
             self._setVal('emergencyStatement', statement, sectionDict, 'Emergency Statement')
         return self._getFormattedText(statement, endText='\n\n')
 

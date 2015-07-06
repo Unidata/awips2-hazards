@@ -53,6 +53,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
@@ -202,6 +203,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Jun 26, 2015 7919       Robert.Blum  Changes to be able to issue Ended hazards for EXPs.
  * Jul 01, 2015 6726       Robert.Blum  Changes to be able to return to Product Editor from 
  *                                      confirmation dialog.
+ * Jul 06, 2015 7747       Robert.Blum  Start of product validation, can not issue with framed text.
  * </pre>
  * 
  * @author bsteffen
@@ -740,9 +742,6 @@ public class SessionProductManager implements ISessionProductManager {
                     productGeneratorInformation.getDialogSelections(),
                     productFormats, listener);
         }
-
-        // Got confirmation to issue above - close the Product Editor
-        eventBus.publishAsync(new ProductGenerationConfirmation());
 
         return true;
     }/* end generate() method */
@@ -1853,36 +1852,45 @@ public class SessionProductManager implements ISessionProductManager {
 
                             @Override
                             public void run() {
-                                Set<ProductGeneratorInformation> pgiSet = new HashSet<>();
-                                /*
-                                 * This assumes productGeneratorInformation
-                                 * should be issued with the highest order
-                                 * dissemination.
-                                 */
-                                for (IGeneratedProduct key : orderGeneratedProducts(new ArrayList<>(
-                                        pgiMap.keySet()))) {
-                                    ProductGeneratorInformation productGeneratorInformation = pgiMap
-                                            .get(key);
-                                    if (!pgiSet
-                                            .contains(productGeneratorInformation)) {
+                                if (pgiMap.keySet() != null
+                                        && pgiMap.keySet().isEmpty() == false) {
+                                    if (validateProducts()) {
+                                        Set<ProductGeneratorInformation> pgiSet = new HashSet<>();
+
                                         /*
-                                         * FIXME??? We've had sequencing issues
-                                         * with these next 2 lines of code in
-                                         * the past. We need the affected
-                                         * IHazardEvents to always finish
-                                         * storage before calling issue()
-                                         * otherwise server-side
-                                         * interoperability code will not be
-                                         * able to tie the decoded
-                                         * ActiveTableRecords to an IHazardEvent
-                                         * and will instead create an
-                                         * unnecessary duplicate event.
+                                         * This assumes
+                                         * productGeneratorInformation should be
+                                         * issued with the highest order
+                                         * dissemination.
                                          */
-                                        notificationSender
-                                                .postNotification(new ProductGenerated(
-                                                        productGeneratorInformation));
-                                        issue(productGeneratorInformation);
-                                        pgiSet.add(productGeneratorInformation);
+                                        for (IGeneratedProduct key : orderGeneratedProducts(new ArrayList<>(
+                                                pgiMap.keySet()))) {
+                                            ProductGeneratorInformation productGeneratorInformation = pgiMap
+                                                    .get(key);
+                                            if (!pgiSet
+                                                    .contains(productGeneratorInformation)) {
+                                                /*
+                                                 * FIXME??? We've had sequencing
+                                                 * issues with these next 2
+                                                 * lines of code in the past. We
+                                                 * need the affected
+                                                 * IHazardEvents to always
+                                                 * finish storage before calling
+                                                 * issue() otherwise server-side
+                                                 * interoperability code will
+                                                 * not be able to tie the
+                                                 * decoded ActiveTableRecords to
+                                                 * an IHazardEvent and will
+                                                 * instead create an unnecessary
+                                                 * duplicate event.
+                                                 */
+                                                notificationSender
+                                                        .postNotification(new ProductGenerated(
+                                                                productGeneratorInformation));
+                                                issue(productGeneratorInformation);
+                                                pgiSet.add(productGeneratorInformation);
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -1893,6 +1901,64 @@ public class SessionProductManager implements ISessionProductManager {
                 job.schedule();
             }
         }
+    }
+
+    /**
+     * Validates the generated products before dissemination.
+     * 
+     * @return passValidation
+     */
+    private boolean validateProducts() {
+        boolean passValidation = true;
+        StringBuilder sb = new StringBuilder();
+        // Validate each generated product
+        for (IGeneratedProduct prod : pgiMap.keySet()) {
+            pgiMap.get(prod).getGeneratedProducts();
+            // Validate each format of the product
+            boolean productHasFramedText = false;
+            for (String format : prod.getEntries().keySet()) {
+                List<String> framedText = ProductValidationUtil
+                        .checkForFramedText((String) prod.getEntries()
+                                .get(format).get(0));
+                if (framedText.isEmpty() == false) {
+                    passValidation = false;
+                    productHasFramedText = true;
+                    sb.append(prod.getProductID()).append(" - ");
+                    // Get the eventIDs for the label
+                    String prefix = "";
+                    for (IEvent event :prod.getEventSet()) {
+                        IHazardEvent hazardEvent = (IHazardEvent) event;
+                        sb.append(prefix);
+                        sb.append(hazardEvent.getEventID());
+                        prefix = "/";
+                    }
+                    sb.append(" - ").append(format)
+                            .append(":\n");
+                    for (String error : framedText) {
+                        sb.append(error).append("\n");
+                    }
+                }
+            }
+            if (productHasFramedText) {
+                sb.append("\n");
+            }
+        }
+        if (passValidation) {
+            // Close Product Editor
+            eventBus.publishAsync(new ProductGenerationConfirmation());
+        } else {
+            // Display pop up of errors or framed text
+            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                    .getShell();
+            MessageBox msgBox = new MessageBox(shell, SWT.ICON_ERROR);
+            msgBox.setText("Validation Error");
+            sb.append("No products were issued.");
+            msgBox.setMessage("Product(s) did not validate, you must modify the following regions to issue the product:\n\n"
+                    + sb.toString());
+            msgBox.open();
+            sessionManager.setIssueOngoing(false);
+        }
+        return passValidation;
     }
 
     /**

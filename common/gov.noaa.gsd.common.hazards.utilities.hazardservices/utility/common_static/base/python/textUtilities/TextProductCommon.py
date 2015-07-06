@@ -32,6 +32,8 @@
    Jun 05, 2015   8531      Chris.Cody          Changes to conform to WarnGen/RiverPro outputs
    Jun 19, 2015   6962      Robert.Blum         Changed 1st bullet for Zone hazard types to use the
                                                 county/counties label.
+   Jul 06, 2015   7747      Robert.Blum         Inserting framed text when value is not in the dictionary or the 
+                                                value is a empty string (from the HID).
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -595,7 +597,13 @@ class TextProductCommon(object):
 
         textToUse = '* ' + label + textToUse
         return textToUse
-        
+
+    def getValueOrFramedText(self, key, dictionary, framedText):
+        value = dictionary.get(key, None)
+        if value is None or value == '':
+            return self.frame(framedText)
+        return value
+
     def frame(self, text):
         return '|* ' + text + ' *|'
 
@@ -753,6 +761,8 @@ class TextProductCommon(object):
         for hashTag in hashTags:
             eventValue = hazardEvent.get(hashTag)
             if eventValue is not None:
+                if eventValue == '':
+                    eventValue = self.getValueOrFramedText(hashTag, hazardEvent, hashTag)
                 replaceVal = eventValue
             else:
                 replaceVal = self.frame(hashTag)
