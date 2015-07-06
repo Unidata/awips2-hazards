@@ -24,8 +24,10 @@ import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 import com.raytheon.uf.common.activetable.request.ClearPracticeVTECTableRequest;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -59,6 +61,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionAutoCheckConflictsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionHatchingToggled;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -99,6 +102,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Dec 08, 2014 2826       dgilling    Clear interoperability tables on reset events.
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove polygons from hazards
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
+ * Jul 06, 2015 6930       Chris.Cody   Send notification for handleRecommenderResult
  * </pre>
  * 
  * @author bsteffen
@@ -413,14 +417,37 @@ public class SessionManager implements
 
     @Override
     public void handleRecommenderResult(EventSet<IEvent> eventList) {
-        for (IEvent event : eventList) {
-            if (event instanceof IHazardEvent) {
-                IHazardEvent hevent = (IHazardEvent) event;
-                Map<String, String> ugcHatchingAlgorithms = eventManager
-                        .buildInitialHazardAreas(hevent);
-                hevent.addHazardAttribute(HAZARD_AREA,
-                        (Serializable) ugcHatchingAlgorithms);
-                hevent = eventManager.addEvent(hevent, Originator.OTHER);
+        if (eventList != null) {
+            String eventID = null;
+            Set<String> eventIdSet = new HashSet<>(eventList.size());
+            for (IEvent event : eventList) {
+                if (event instanceof IHazardEvent) {
+                    IHazardEvent hevent = (IHazardEvent) event;
+                    eventID = hevent.getEventID();
+                    if ((eventID != null) && (eventID.isEmpty() == false)) {
+                        IHazardEvent existingEvent = eventManager
+                                .getEventById(eventID);
+                        if (existingEvent != null) {
+                            eventIdSet.add(eventID);
+                        }
+                    }
+                    Map<String, String> ugcHatchingAlgorithms = eventManager
+                            .buildInitialHazardAreas(hevent);
+                    hevent.addHazardAttribute(HAZARD_AREA,
+                            (Serializable) ugcHatchingAlgorithms);
+                    eventManager.addEvent(hevent, Originator.OTHER);
+                }
+            }
+
+            /*
+             * The addEvent method will not fire a notification for existing
+             * events. The ModifyStormTrackTool (Recommender) may need to have
+             * the event geometry redrawn.
+             */
+            if (eventIdSet.size() > 0) {
+                SessionEventsModified notification = new SessionEventsModified(
+                        eventManager, Originator.OTHER);
+                this.sender.postNotificationAsync(notification);
             }
         }
     }

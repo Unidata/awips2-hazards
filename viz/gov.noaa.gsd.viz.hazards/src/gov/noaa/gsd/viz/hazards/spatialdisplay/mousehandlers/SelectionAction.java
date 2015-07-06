@@ -79,6 +79,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * May 20, 2015 6730       mduff        Fix to not zoom on middle mouse button click to remove vertex.
  * Jun 02, 2015 8500       Chris.Cody   Single click does not select HE on Spatial Display
+ * Jul 06, 2015 6930       Chris.Cody   Change containing object for SYMBOL_NEW_LAT_LON
  * </pre>
  * 
  * @author Bryon.Lawrence
