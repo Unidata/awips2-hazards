@@ -303,6 +303,9 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Jun 17, 2015    6730    Robert.Blum  Fixed messages bug that was preventing the display from updating
  *                                      correctly if the hazardType is not set.
  * Jun 26, 2015    7919    Robert.Blum  Changed for issuing EXP when hazard has ended.
+ * Jul 06, 2015    7514    Robert.Blum  Retaining the start/end time when automatically replacing hazards. Note -
+ *                                      the endTime may not be exact, it will be the duration that is the closest
+ *                                      to the previous endTime.
  * </pre>
  * 
  * @author bsteffen
@@ -785,17 +788,78 @@ public class SessionEventManager implements
          * since this could lead to the wrong interval being used for the new
          * event type if "until further notice" is subsequently turned off.
          */
-        event.setEndTime(new Date(event.getStartTime().getTime()
-                + configManager.getDefaultDuration(event)), Originator.OTHER);
-        event.removeHazardAttribute(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
+        if (event.getHazardAttribute(HazardConstants.REPLACES) == null) {
+            event.setEndTime(new Date(event.getStartTime().getTime()
+                    + configManager.getDefaultDuration(event)),
+                    Originator.OTHER);
+            event.removeHazardAttribute(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
+        }
 
         /*
          * Update the time boundaries and the duration choices for the event.
          */
-        updateTimeBoundariesForEvents(event, false);
+        if (event.getHazardAttribute(HazardConstants.REPLACES) == null) {
+            updateTimeBoundariesForEvents(event, false);
+        }
         updateDurationChoicesForEvent(event, false);
 
+        /*
+         * When replacing a Watch with a Warning, convert the endTime to the
+         * nearest available duration for the Warning.
+         */
+        if (event.getHazardAttribute(HazardConstants.REPLACES) != null) {
+            convertEndTimeToDuration(event);
+        }
+
+        hazardEventModified(new SessionEventTimeRangeModified(this, event,
+                Originator.OTHER));
+
         return (originator != Originator.OTHER);
+    }
+
+    public void convertEndTimeToDuration(IHazardEvent event) {
+        long startTime = event.getStartTime().getTime();
+        long endTime = event.getEndTime().getTime();
+        long minDifference = Long.MAX_VALUE;
+        if (configManager.getDurationChoices(event).isEmpty() == false) {
+            Map<String, Long> deltasForDurations = null;
+            try {
+                deltasForDurations = durationChoiceValidator
+                        .convertToAvailableMapForProperty(configManager
+                                .getDurationChoices(event));
+            } catch (MegawidgetPropertyException e) {
+                statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(),
+                        e);
+                /*
+                 * Use the default duration, otherwise endTime may be locked on
+                 * HID.
+                 */
+                event.setTimeRange(new Date(startTime), new Date(startTime
+                        + configManager.getDefaultDuration(event)));
+                return;
+            }
+            for (String duration : deltasForDurations.keySet()) {
+                long newEndTime = startTime + deltasForDurations.get(duration);
+                long difference;
+                if (newEndTime < endTime) {
+                    difference = endTime - newEndTime;
+                    if (difference < minDifference) {
+                        minDifference = difference;
+                    }
+                } else if (endTime < newEndTime) {
+                    difference = newEndTime - endTime;
+                    if (difference < minDifference) {
+                        minDifference = difference;
+                    }
+                } else {
+                    // Same endTimes
+                    minDifference = 0L;
+                    break;
+                }
+            }
+            event.setTimeRange(new Date(startTime), new Date(endTime
+                    + minDifference));
+        }
     }
 
     @Override
