@@ -11,8 +11,7 @@ FFMP preprocessed data sources(QPE, QPF and Guidance).
 import datetime, math
 import EventFactory, EventSetFactory, GeometryFactory
 import RecommenderTemplate
-
-#from shapely import geometry
+import logging, UFStatusHandler
 
 from ufpy.dataaccess import DataAccessLayer
 from ufpy.dataaccess.PyGeometryData import PyGeometryData
@@ -78,6 +77,11 @@ class Recommender(RecommenderTemplate.Recommender):
     
     def __init__(self):
         self.smallBasinMap = {}
+        self.logger = logging.getLogger('FlashFloodRecommender')
+        self.logger.addHandler(UFStatusHandler.UFStatusHandler(
+            'gov.noaa.gsd.common.utilities', 'FlashFloodRecommender', level=logging.INFO))
+        self.logger.setLevel(logging.INFO)
+        
 
     def defineScriptMetadata(self):
         '''
@@ -390,9 +394,9 @@ class Recommender(RecommenderTemplate.Recommender):
                 hazardEvent.setEndTime(endDateTime)
                 pythonEventSet.add(hazardEvent)
             else : 
-                raise Exception("No events returned!")
+                self.logger.info("No events returned for Flash Flood Recommender.")
         else :
-            raise Exception('No basins available!')
+            self.logger.info("No basins available for Flash Flood Recommender.")
         
         return pythonEventSet
     
@@ -445,6 +449,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 break
         
         if not self._wfo :
+            self.logger.info("FFMP Run Configuration Manager unable to get WFO from available Domains..")
             raise LookupError('Unable to determine the primary FFMP CWA.')
         
         products = runConfigMgr.getProducts()
