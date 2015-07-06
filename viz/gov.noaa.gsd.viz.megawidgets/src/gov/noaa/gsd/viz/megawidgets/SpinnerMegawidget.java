@@ -82,6 +82,9 @@ import com.google.common.collect.ImmutableSet;
  *                                           the megawidget, but are instead
  *                                           passed up to any ancestor that is a
  *                                           scrolled composite.
+ * Jul 06, 2015   8413     mduff             Removed code to setLeftDecorationWidth.  This code
+ *                                           does not properly handle widgets that are in multiple
+ *                                           columns.
  * </pre>
  * 
  * @author Chris.Golden
@@ -473,9 +476,14 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
 
     @Override
     public void setLeftDecorationWidth(int width) {
-        if (label != null) {
-            helper.setWidgetsWidth(width, label);
-        }
+        /*
+         * TODO RM 8413 - Turning this off since it does not handle megawidgets
+         * in different columns correctly. It is cutting off widgets in the
+         * right column. Will revisit this when more time is available.
+         */
+        // if (label != null) {
+        // helper.setWidgetsWidth(width, label);
+        // }
     }
 
     @Override
