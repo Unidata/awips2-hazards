@@ -204,6 +204,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Jul 01, 2015 6726       Robert.Blum  Changes to be able to return to Product Editor from 
  *                                      confirmation dialog.
  * Jul 06, 2015 7747       Robert.Blum  Start of product validation, can not issue with framed text.
+ * Jul 07, 2015 8966       Robert.Blum  Added null check for issueTime.
  * </pre>
  * 
  * @author bsteffen
@@ -814,7 +815,11 @@ public class SessionProductManager implements ISessionProductManager {
             }
         }
 
-        disseminate(productGeneratorInformation);
+        try {
+            disseminate(productGeneratorInformation);
+        } catch (Exception e) {
+            statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
+        }
     }
 
     @Override
@@ -823,7 +828,12 @@ public class SessionProductManager implements ISessionProductManager {
         StringBuilder sb = new StringBuilder();
         buildProductGenLabel(productGeneratorInformation, sb);
         if (areYouSure(sb.toString())) {
-            disseminate(productGeneratorInformation);
+            try {
+                disseminate(productGeneratorInformation);
+            } catch (Exception e) {
+                statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(),
+                        e);
+            }
             sessionManager.setIssueOngoing(false);
         }
     }
@@ -1593,7 +1603,8 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     private void disseminate(
-            ProductGeneratorInformation productGeneratorInformation) {
+            ProductGeneratorInformation productGeneratorInformation)
+            throws Exception {
         /*
          * Disseminate the products for operational mode before writing to
          * database
@@ -1606,7 +1617,7 @@ public class SessionProductManager implements ISessionProductManager {
         ArrayList<Integer> eventIDs = null;
         String productInfo = productGeneratorInformation.getGeneratedProducts()
                 .getProductInfo();
-        Date issueTime = null;
+        Date issueTimeDate = null;
 
         /*
          * For each product store an entry in the productData table.
@@ -1624,12 +1635,19 @@ public class SessionProductManager implements ISessionProductManager {
                     Map<String, Serializable> attributes = hazardEvent
                             .getHazardAttributes();
                     // Issue time should be the same for all the events
-                    issueTime = new Date((Long) attributes.get("issueTime"));
+                    Long issueTime = (Long) attributes
+                            .get(HazardConstants.ISSUE_TIME);
+                    if (issueTime == null) {
+                        throw new Exception(
+                                "Hazard event must contain an issue time after product generation.");
+                    } else {
+                        issueTimeDate = new Date(issueTime);
+                    }
                 }
             }
 
             ProductDataUtil.createOrUpdateProductData(caveModeStr, productInfo,
-                    eventIDs, issueTime, product.getData(),
+                    eventIDs, issueTimeDate, product.getData(),
                     product.getEditableEntries());
         }
 

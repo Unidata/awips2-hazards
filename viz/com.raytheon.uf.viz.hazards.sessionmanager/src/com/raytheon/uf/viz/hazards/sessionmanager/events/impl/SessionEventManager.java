@@ -306,6 +306,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Jul 06, 2015    7514    Robert.Blum  Retaining the start/end time when automatically replacing hazards. Note -
  *                                      the endTime may not be exact, it will be the duration that is the closest
  *                                      to the previous endTime.
+ * Jul 07, 2015    8966    Robert.Blum  Fixed start/end time from being incorrectly adjusted based on issue time.
  * </pre>
  * 
  * @author bsteffen
@@ -1077,12 +1078,22 @@ public class SessionEventManager implements
                         if (oEvent.getStatus().equals(HazardStatus.ISSUED)
                                 || wasPreIssued) {
                             updateSavedTimesForEventIfIssued(oEvent, false);
-
-                            updateTimeRangeBoundariesOfJustIssuedEvent(
-                                    oEvent,
-                                    (Long) hazardEvent
-                                            .getHazardAttribute(HazardConstants.ISSUE_TIME));
-                            updateDurationChoicesForEvent(oEvent, false);
+                            /*
+                             * Do not update the TimeRange for events that have
+                             * already been issued once. This causes the
+                             * startTime to get set to the new issueTime. Then
+                             * then endTime is changed to match the change to
+                             * the startTime. This causes the VTECEngine to
+                             * generate EXT instead of CONs since the endTime of
+                             * the hazards have changed.
+                             */
+                            if (wasPreIssued) {
+                                updateTimeRangeBoundariesOfJustIssuedEvent(
+                                        oEvent,
+                                        (Long) hazardEvent
+                                                .getHazardAttribute(HazardConstants.ISSUE_TIME));
+                                updateDurationChoicesForEvent(oEvent, false);
+                            }
                         }
                     }
                 }
