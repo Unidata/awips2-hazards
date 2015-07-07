@@ -182,7 +182,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  *                                      ADCs being drawn for one hazard.
  * Jun 22, 2015 7203       Chris.Cody   Prevent Event Text Data overlap in a single county
  * Jun 24, 2015 6601       Chris.Cody   Change Create by Hazard Type display text
- * 
+ * Jul 07, 2015 7921       Chris.Cody   Re-scale hatching areas and handle bar points
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1710,13 +1710,47 @@ public class SpatialDisplay extends
             if ((selectedHazardLayer instanceof IHazardServicesShape)
                     && ((IHazardServicesShape) selectedHazardLayer)
                             .isEditable()) {
-
+                rebuildHandleBarPoints(selectedHazardLayer);
                 if (!handleBarPoints.isEmpty()) {
-
                     target.drawPoints(handleBarPoints, handleBarColor.getRGB(),
                             PointStyle.DISC, HANDLEBAR_MAGNIFICATION);
                 }
             }
+        }
+    }
+
+    private void rebuildHandleBarPoints(AbstractDrawableComponent comp) {
+        if (comp == null) {
+            return;
+        }
+
+        List<double[]> newHandleBarPoints = new ArrayList<>();
+        for (Coordinate point : comp.getPoints()) {
+            double[] pixelPoint = descriptor.worldToPixel(new double[] {
+                    point.x, point.y });
+            newHandleBarPoints.add(pixelPoint);
+        }
+        boolean isDifferent = false;
+        int existingHandleBarPointsSize = handleBarPoints.size();
+        int newHandleBarPointsSize = newHandleBarPoints.size();
+        if (existingHandleBarPointsSize == newHandleBarPointsSize) {
+            for (int i = 0; ((isDifferent == false) && (i < existingHandleBarPointsSize)); i++) {
+                double[] existingHandleBarPointAry = handleBarPoints.get(i);
+                double[] newHandleBarPointAry = newHandleBarPoints.get(i);
+                int lenPointAry = newHandleBarPointAry.length;
+                for (int j = 0; ((isDifferent == false) && (j < lenPointAry)); j++) {
+                    if (existingHandleBarPointAry[j] != newHandleBarPointAry[j]) {
+                        isDifferent = true;
+                    }
+                }
+            }
+        } else {
+            isDifferent = true;
+        }
+
+        if (isDifferent == true) {
+            handleBarPoints.clear();
+            handleBarPoints.addAll(newHandleBarPoints);
         }
     }
 
