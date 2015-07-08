@@ -36,6 +36,8 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.P
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.REPLACED_BY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
+import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
+import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
@@ -307,6 +309,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      the endTime may not be exact, it will be the duration that is the closest
  *                                      to the previous endTime.
  * Jul 07, 2015    8966    Robert.Blum  Fixed start/end time from being incorrectly adjusted based on issue time.
+ * Jul 08, 2015    8529    Robert.Blum  Removing invalid attributes when the event type is changed.
  * </pre>
  * 
  * @author bsteffen
@@ -697,7 +700,6 @@ public class SessionEventManager implements
     public boolean setEventType(ObservedHazardEvent event, String phenomenon,
             String significance, String subType, IOriginator originator) {
         ObservedHazardEvent oldEvent = null;
-
         /*
          * If the event cannot change type, create a new event with the new
          * type.
@@ -797,6 +799,15 @@ public class SessionEventManager implements
         }
 
         /*
+         * Validate the attributes, removing invalid ones (i.e. those that do
+         * not belong with this hazard type).
+         */
+        HazardEventMetadata metadata = configManager.getMetadataForHazardEvent(event);
+        validateHazardAttributes(
+                getMegawidgetSpecifiers(event).getSpecifiers(), metadata
+                        .getMegawidgetSpecifierManager().getSpecifiers(), event);
+
+        /*
          * Update the time boundaries and the duration choices for the event.
          */
         if (event.getHazardAttribute(HazardConstants.REPLACES) == null) {
@@ -816,6 +827,76 @@ public class SessionEventManager implements
                 Originator.OTHER));
 
         return (originator != Originator.OTHER);
+    }
+
+    /**
+     * Validates the hazard's attributes when the event type is changed. It
+     * compares the the Specifiers from the new and old MegawidgetManagers and
+     * removes any identifiers that are invalid.
+     * 
+     * @param prevSpecifiers
+     *            Specifiers from previous MegawidgetManager
+     * @param specifiers
+     *            Specifiers from the new MegawidgetManager
+     * @param event
+     *            Event that changed type
+     */
+    public void validateHazardAttributes(List<ISpecifier> prevSpecifiers,
+            List<ISpecifier> specifiers, ObservedHazardEvent event) {
+        for (ISpecifier prevSpecifier : prevSpecifiers) {
+            boolean matchFound = false;
+            if (prevSpecifier instanceof GroupSpecifier) {
+                GroupSpecifier groupSpecifier = (GroupSpecifier) prevSpecifier;
+                List<IControlSpecifier> controlSpecifiers = groupSpecifier
+                        .getChildMegawidgetSpecifiers();
+                List<ISpecifier> newList = new ArrayList<ISpecifier>(
+                        controlSpecifiers.size());
+                for (IControlSpecifier controlSpecifier : controlSpecifiers) {
+                    newList.add(controlSpecifier);
+                }
+                validateHazardAttributes(newList, specifiers, event);
+            } else {
+                matchFound = checkSpecifier(prevSpecifier, specifiers);
+                if (matchFound == false) {
+                    event.removeHazardAttribute(prevSpecifier.getIdentifier());
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks if the supplied specifier is in the list of newSpecifiers.
+     * 
+     * @param specifier
+     *            Specifier to look for
+     * @param newSpecifiers
+     *            Specifiers to check
+     * @return Returns true if the specifier was found, otherwise false
+     */
+    public boolean checkSpecifier(ISpecifier specifier, List<ISpecifier> newSpecifiers) {
+        boolean matchFound = false;
+        for (ISpecifier newSpecifier : newSpecifiers) {
+            if (newSpecifier instanceof GroupSpecifier) {
+                GroupSpecifier groupSpecifier = (GroupSpecifier) newSpecifier;
+                List<IControlSpecifier> controlSpecifiers = groupSpecifier
+                        .getChildMegawidgetSpecifiers();
+                List<ISpecifier> newList = new ArrayList<ISpecifier>(
+                        controlSpecifiers.size());
+                for (IControlSpecifier controlSpecifier : controlSpecifiers) {
+                    newList.add(controlSpecifier);
+                }
+                matchFound = checkSpecifier(specifier, newList);
+            } else {
+                if (specifier.getIdentifier().equals(
+                        newSpecifier.getIdentifier())) {
+                    matchFound = true;
+                }
+            }
+            if (matchFound) {
+                break;
+            }
+        }
+        return matchFound;
     }
 
     public void convertEndTimeToDuration(IHazardEvent event) {
