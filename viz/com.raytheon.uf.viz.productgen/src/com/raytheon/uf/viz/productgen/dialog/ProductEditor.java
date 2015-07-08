@@ -39,10 +39,14 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.PlatformUI;
 
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.ITextProduct;
@@ -52,6 +56,7 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.impl.ProductValidationUtil;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -83,6 +88,10 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * May 13, 2015 6899       Robert.Blum  Removed showSelectedEventsModifiedDialog().
  * May 14, 2015 7376       Robert.Blum  Added method to update the state of the issueAll button.
  * 07/08/2015   9063       Benjamin.Phillippe Fixed product name collision in dataEditorMap
+ * Jul 07, 2015 7747       Robert.Blum  Moving product validation code to the product editor. It was
+ *                                      found that the previous location could case the active table
+ *                                      to incorrectly update when products failed validation, since
+ *                                      the validation was done after the product generation.
  * </pre>
  * 
  * @author jsanchez
@@ -396,7 +405,66 @@ public class ProductEditor extends CaveSWTDialog {
                 }
             }
         }
-        invokeIssue(isCorrectable);
+
+        // Validate that there is no framed text
+        if (validateEditableFields()) {
+            invokeIssue(isCorrectable);
+        }
+    }
+
+    /**
+     * Validates the editable fields to ensue all framed text has been removed.
+     * 
+     * @return passValidation
+     */
+    private boolean validateEditableFields() {
+        boolean passValidation = true;
+        StringBuilder sb = new StringBuilder();
+
+        for (GeneratedProductList prodList : generatedProductListStorage) {
+            for (IGeneratedProduct prod: prodList) {
+                ProductDataEditor editor = this.editorManager
+                        .getProductDataEditor(prod);
+                EditableKeys keys = editor.editableKeys;
+                List<String> productErrors = new ArrayList<String>();
+                for (Entry<KeyInfo, EditableKeyInfo> entry : keys.getEditableKeyEntries()) {
+                    List<String> framedText = ProductValidationUtil
+                            .checkForFramedText((String) entry.getValue().getValue());
+                    if (framedText.isEmpty() == false) {
+                        passValidation = false;
+                        productErrors.addAll(framedText);
+                    }
+                }
+                if (productErrors.isEmpty() == false) {
+                    sb.append(prod.getProductID()).append(" - ");
+                    // Get the eventIDs for the label
+                    String prefix = "";
+                    for (IEvent event : prod.getEventSet()) {
+                        IHazardEvent hazardEvent = (IHazardEvent) event;
+                        sb.append(prefix);
+                        sb.append(hazardEvent.getEventID());
+                        prefix = "/";
+                    }
+                    sb.append(":\n");
+                    for (String error : productErrors) {
+                        sb.append(error).append("\n");
+                    }
+                    sb.append("\n");
+                }
+            }
+        }
+        if (passValidation == false) {
+            // Display pop up of framed text
+            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                    .getShell();
+            MessageBox msgBox = new MessageBox(shell, SWT.ICON_ERROR);
+            msgBox.setText("Validation Error");
+            sb.append("No products were issued.");
+            msgBox.setMessage("Product(s) did not validate, you must modify the following regions to issue the product:\n\n"
+                    + sb.toString());
+            msgBox.open();
+        }
+        return passValidation;
     }
 
     /**

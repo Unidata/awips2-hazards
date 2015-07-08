@@ -57,6 +57,7 @@ Export-Package: com.raytheon.uf.viz.hazards.sessionmanager,
  com.raytheon.uf.viz.hazards.sessionmanager.modifiable,
  com.raytheon.uf.viz.hazards.sessionmanager.originator,
  com.raytheon.uf.viz.hazards.sessionmanager.product,
+ com.raytheon.uf.viz.hazards.sessionmanager.product.impl,
  com.raytheon.uf.viz.hazards.sessionmanager.time,
  com.raytheon.uf.viz.hazards.sessionmanager.undoable
 Eclipse-BuddyPolicy: ext, global
