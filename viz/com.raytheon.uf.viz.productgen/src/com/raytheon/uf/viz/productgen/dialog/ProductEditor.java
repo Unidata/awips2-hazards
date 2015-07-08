@@ -82,6 +82,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * May 06, 2015 6979       Robert.Blum  Additional changes for product Corrections.
  * May 13, 2015 6899       Robert.Blum  Removed showSelectedEventsModifiedDialog().
  * May 14, 2015 7376       Robert.Blum  Added method to update the state of the issueAll button.
+ * 07/08/2015   9063       Benjamin.Phillippe Fixed product name collision in dataEditorMap
  * </pre>
  * 
  * @author jsanchez
@@ -289,7 +290,7 @@ public class ProductEditor extends CaveSWTDialog {
                  * Creates the DataEditor Manager and Data editor for this
                  * product
                  */
-                editorManager.addProductDataEditor(product.getProductID(),
+                editorManager.addProductDataEditor(product,
                         new ProductDataEditor(this, productTab, product,
                                 editorAndFormatsTabFolder, SWT.VERTICAL));
                 /*
@@ -310,8 +311,7 @@ public class ProductEditor extends CaveSWTDialog {
                         if (product instanceof ITextProduct) {
 
                             // Add the text Viewer to the editor manager
-                            editorManager.addFormattedTextViewer(product
-                                    .getProductID(), new FormattedTextViewer(
+                            editorManager.addFormattedTextViewer(product, new FormattedTextViewer(
                                     this, productTab, product,
                                     editorAndFormatsTabFolder,
                                     SWT.VERTICAL, entry.getKey(),
@@ -529,12 +529,11 @@ public class ProductEditor extends CaveSWTDialog {
                                              * change from regenerate call and need updated.
                                              */
                                             editorManager.getProductDataEditor(
-                                                    product.getProductID())
+                                                    product)
                                                     .updateValues(product);
                                         }
                                         editorManager
-                                                .updateFormattedTextViewers(product
-                                                        .getProductID());
+                                                .updateFormattedTextViewers(product);
                                     }
                                 }
                             }

@@ -24,6 +24,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+
 /**
  * 
  * Class used by the Product Editor for managing and manipulating data editors.
@@ -36,6 +39,7 @@ import java.util.Map;
  * ------------ ---------- ------------ --------------------------
  * 01/15/2015   5109       bphillip     Initial creation
  * 04/16/2015   7579       Robert.Blum  Updates for amended Product Editor.
+ * 07/08/2015   9063       Benjamin.Phillippe Fixed product name collision in dataEditorMap 
  * 
  * </pre>
  * 
@@ -63,10 +67,10 @@ class DataEditorManager {
      * @param dataEditor
      *            The product data editor to add
      */
-    protected void addProductDataEditor(String productID,
+    protected void addProductDataEditor(IGeneratedProduct product,
             ProductDataEditor dataEditor) {
         dataEditor.initialize();
-        getProductEditorContainer(productID).dataEditor = dataEditor;
+        getProductEditorContainer(product).dataEditor = dataEditor;
     }
 
     /**
@@ -77,10 +81,10 @@ class DataEditorManager {
      * @param formatViewer
      *            The viewer to add
      */
-    public void addFormattedTextViewer(String productID,
+    public void addFormattedTextViewer(IGeneratedProduct product,
             FormattedTextViewer formattedTextViewer) {
         formattedTextViewer.initialize();
-        getProductEditorContainer(productID).textViewerMap.put(
+        getProductEditorContainer(product).textViewerMap.put(
                 formattedTextViewer.getText(), formattedTextViewer);
     }
 
@@ -91,22 +95,10 @@ class DataEditorManager {
      */
     protected List<AbstractDataEditor> getAllEditors() {
         List<AbstractDataEditor> dataEditors = new ArrayList<AbstractDataEditor>();
-        for (String productID : dataEditorMap.keySet()) {
-            dataEditors.addAll(getAllEditors(productID));
+        for (ProductEditorContainer container : dataEditorMap.values()) {
+            dataEditors.addAll(container.getAllEditors());
         }
         return dataEditors;
-    }
-
-    /**
-     * Gets the data editors associated with a product ID
-     * 
-     * @param productID
-     *            The product ID of the product for which to get the data
-     *            editors
-     * @return Array of data editors assiciated with the give product
-     */
-    protected List<AbstractDataEditor> getAllEditors(String productID) {
-        return getProductEditorContainer(productID).getAllEditors();
     }
 
     /**
@@ -117,8 +109,8 @@ class DataEditorManager {
      *            for
      * @return The ProductDataEditor for the specified product
      */
-    protected ProductDataEditor getProductDataEditor(String productID) {
-        return getProductEditorContainer(productID).dataEditor;
+    protected ProductDataEditor getProductDataEditor(IGeneratedProduct product) {
+        return getProductEditorContainer(product).dataEditor;
     }
 
     /**
@@ -128,9 +120,10 @@ class DataEditorManager {
      *            The product ID
      * @return All formatted text viewers associated with the given product ID
      */
-    protected List<FormattedTextViewer> getFormattedTextViewers(String productID) {
+    protected List<FormattedTextViewer> getFormattedTextViewers(
+            IGeneratedProduct product) {
         return new ArrayList<FormattedTextViewer>(
-                getProductEditorContainer(productID).textViewerMap.values());
+                getProductEditorContainer(product).textViewerMap.values());
     }
 
     /**
@@ -139,8 +132,8 @@ class DataEditorManager {
      * @param productId
      *            The product ID of the product to update
      */
-    protected void updateFormattedTextViewers(String productId) {
-        List<FormattedTextViewer> dataViewers = getFormattedTextViewers(productId);
+    protected void updateFormattedTextViewers(IGeneratedProduct product) {
+        List<FormattedTextViewer> dataViewers = getFormattedTextViewers(product);
         for (FormattedTextViewer dataViewer : dataViewers) {
             dataViewer.refresh();
         }
@@ -154,13 +147,30 @@ class DataEditorManager {
      *            The product ID
      * @return Container holding the editors for a given product ID
      */
-    private ProductEditorContainer getProductEditorContainer(String productID) {
-        ProductEditorContainer container = dataEditorMap.get(productID);
+    private ProductEditorContainer getProductEditorContainer(
+            IGeneratedProduct product) {
+        String key = getProductKey(product);
+        ProductEditorContainer container = dataEditorMap.get(key);
         if (container == null) {
             container = new ProductEditorContainer();
-            dataEditorMap.put(productID, container);
+            dataEditorMap.put(key, container);
         }
         return container;
+    }
+
+    /**
+     * Private method to get a unique key from the product to prevent collisions
+     * in the data editor map
+     * 
+     * @param product
+     *            The product to get the key for
+     * @return The product key
+     */
+    private String getProductKey(IGeneratedProduct product) {
+        IHazardEvent event = (IHazardEvent) product.getEventSet().iterator()
+                .next();
+        return event.getEventID() + " " + event.getPhenomenon() + "."
+                + event.getSignificance();
     }
 
     /**
