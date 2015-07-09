@@ -30,6 +30,7 @@
                                      Legacy functions and constants imported from RiverForecastPoints.py
  May 21, 2015  8112      Chris.Cody  Python reads 0 values from Java methods as None. The return type is lost.
  Jun 25, 2015  8313      Benjamin.Phillippe Fixed situation with missing stage date 
+ Jul 09, 2015  9359      Chris.Cody  Correct problem with currentDate being unset
 '''
 
 from com.raytheon.uf.common.time import SimulatedTime
@@ -237,6 +238,7 @@ class RiverForecastUtils(object):
             floodStage = None
     
         ### Note: currentDate is only used with 'Crests'
+        currentDate = 0
         if referenceType == 'Max Forecast' :
             referenceValue = riverForecastPoint.getMaximumForecastValue()
             currentDate = riverForecastPoint.getMaximumForecastTime()
@@ -252,6 +254,7 @@ class RiverForecastUtils(object):
                 maxObs = float(0.0)
             if maxFcst > maxObs :
                 referenceValue = maxFcst
+                currentDate = riverForecastPoint.getMaximumForecastTime()
             else:
                 referenceValue = maxObs
                 currentDate = riverForecastPoint.getObservedCurrentTime()

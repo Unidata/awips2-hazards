@@ -81,6 +81,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Jan 30, 2015 2331       C. Golden   Added timer that at regular intervals
  *                                     fires off time tick notifications.
  * Mar 30, 2015 7272       mduff       Changes to support Guava upgrade.
+ * Jul 09, 2015 9359       Chris.Cody  Correct for an error when event begin time is
+ *                                     after the end of the visible time window and 
+ *                                     event end time is UNTIL FURTHER NOTICE
  * </pre>
  * 
  * @author bsteffen
@@ -444,7 +447,9 @@ public class SessionTimeManager implements ISessionTimeManager {
          * the visible time values. If an event has an end time of
          * "Until further Notice"
          * HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS, then set its
-         * end time to the current upper bound of the visible time range.
+         * end time to the current upper bound of the visible time range. Note
+         * the "adjustment" of the time is for display purposes only. It must
+         * not impact the event start and end date time values.
          */
 
         Range<Long> sigmaEventRange = null;
@@ -454,7 +459,10 @@ public class SessionTimeManager implements ISessionTimeManager {
             long eventEndTime = 0;
             if ((event.getEndTime() == null)
                     || (event.getEndTime().getTime() == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)) {
-                eventEndTime = this.visibleTimeRange.getEnd().getTime();
+                // Event runs UNTIL FURTHER NOTICE. Use the start time and keep
+                // the same visible time range
+                eventEndTime = event.getStartTime().getTime()
+                        + visibleTimeRange.getDuration();
             } else {
                 eventEndTime = event.getEndTime().getTime();
             }
