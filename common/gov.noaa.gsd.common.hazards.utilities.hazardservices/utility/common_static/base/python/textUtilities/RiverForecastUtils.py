@@ -31,6 +31,7 @@
  May 21, 2015  8112      Chris.Cody  Python reads 0 values from Java methods as None. The return type is lost.
  Jun 25, 2015  8313      Benjamin.Phillippe Fixed situation with missing stage date 
  Jul 09, 2015  9359      Chris.Cody  Correct problem with currentDate being unset
+ Jul 14, 2015  9425      Chris.Cody  Correct python issue with objects in Java List
 '''
 
 from com.raytheon.uf.common.time import SimulatedTime
@@ -631,9 +632,11 @@ class RiverForecastUtils(object):
         if pointID is not None and riverForecastGroup is not None:
             riverForecastPointList = riverForecastGroup.getForecastPointList()
             if riverForecastPointList is not None:
-                for riverForecastPoint in riverForecastPointList:
+                pyRiverForecastPointList = JUtil.javaObjToPyVal(riverForecastPointList) 
+                for riverForecastPoint in pyRiverForecastPointList:
                     riverForecastPointID = riverForecastPoint.getLid()
                     if pointID == riverForecastPointID:
                         return riverForecastPoint
         return None
+
 
