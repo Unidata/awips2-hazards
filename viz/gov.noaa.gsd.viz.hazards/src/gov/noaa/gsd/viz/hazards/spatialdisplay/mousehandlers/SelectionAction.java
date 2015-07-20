@@ -80,6 +80,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * May 20, 2015 6730       mduff        Fix to not zoom on middle mouse button click to remove vertex.
  * Jun 02, 2015 8500       Chris.Cody   Single click does not select HE on Spatial Display
  * Jul 06, 2015 6930       Chris.Cody   Change containing object for SYMBOL_NEW_LAT_LON
+ * Jul 17, 2015 8890       Chris.Cody   Vertices appearing incorrectly on display
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -646,6 +647,8 @@ public class SelectionAction extends NonDrawingAction {
                     && (selectedComponent != getSpatialDisplay()
                             .getSelectedHazardLayer()) && !(selectedComponent instanceof HazardServicesSymbol))) {
                 allowPanning = true;
+                // Shapes have vertices
+                this.isVertexMove = true;
             }
 
             if (!allowPanning || moveType == MoveType.ALL_POINTS) {

@@ -90,6 +90,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen
  * May 05, 2015 7624       mduff        Handle MultiPolygons, added deholer method.
  * Jun 24, 2015 6601       Chris.Cody   Change Create by Hazard Type display text
+ * Jul 17, 2015 8890       Chris.Cody   Vertices appearing incorrectly on display
  * 
  * </pre>
  * 
