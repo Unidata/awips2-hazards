@@ -18,21 +18,19 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplayResourceData;
 
-import java.util.List;
-
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.jface.preference.IPreferenceStore;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
+import com.raytheon.uf.viz.core.drawables.ResourcePair;
 import com.raytheon.uf.viz.core.exception.VizException;
-import com.raytheon.uf.viz.core.rsc.AbstractVizResource;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
-import com.raytheon.uf.viz.core.rsc.ResourceList;
-import com.raytheon.viz.ui.tools.map.AbstractMapTool;
+import com.raytheon.uf.viz.core.rsc.tools.GenericToolsResourceData;
+import com.raytheon.uf.viz.core.rsc.tools.action.AbstractGenericToolAction;
+import com.raytheon.viz.ui.input.EditableManager;
 
 /**
  * Action handler for the Hazards button displayed on the CAVE toolbar.
@@ -44,46 +42,26 @@ import com.raytheon.viz.ui.tools.map.AbstractMapTool;
  * June 2011               Bryon.Lawrence    Initial creation
  * Jul 08, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
+ * Jul 21, 2015 2921      Robert.Blum        Changes for multi panel displays.
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
-public class HazardServicesAction extends AbstractMapTool {
-
-    // Private Static Constants
-
-    /**
-     * Logging mechanism.
-     */
-    private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(HazardServicesAction.class);
+public class HazardServicesAction extends
+        AbstractGenericToolAction<SpatialDisplay> {
 
     // Public Methods
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.viz.ui.tools.AbstractTool#runTool()
+     */
     @Override
     public Object execute(ExecutionEvent event) throws ExecutionException {
-        super.execute(event);
         loadRegistryPreferences();
-        ResourceList rscList = editor.getActiveDisplayPane().getDescriptor()
-                .getResourceList();
-        List<AbstractVizResource<?, ?>> existingToolLayers = rscList
-                .getResourcesByType(SpatialDisplay.class);
-        if (existingToolLayers.isEmpty()) {
-            try {
-                IDescriptor desc = editor.getActiveDisplayPane()
-                        .getDescriptor();
-                SpatialDisplayResourceData spatialDisplayResourceData = new SpatialDisplayResourceData();
-                spatialDisplayResourceData
-                        .construct(new LoadProperties(), desc);
-            } catch (VizException e1) {
-                statusHandler.error("Error creating spatial display", e1);
-            }
-        } else {
-            ((SpatialDisplay) existingToolLayers.get(0)).getAppBuilder()
-                    .ensureViewsVisible();
-        }
+        super.execute(event);
         return null;
-
     }
 
     /**
@@ -97,5 +75,38 @@ public class HazardServicesAction extends AbstractMapTool {
                 store.getString(TRUST_STORE_LOCATION),
                 store.getString(TRUST_STORE_PASSWORD),
                 store.getString(ENCRYPTION_KEY));
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.viz.awipstools.ui.action.MapToolAction#getResourceData()
+     */
+    @Override
+    protected GenericToolsResourceData<SpatialDisplay> getResourceData() {
+        return new GenericToolsResourceData<SpatialDisplay>("Hazard Services",
+                SpatialDisplay.class);
+    }
+
+    @Override
+    protected SpatialDisplay getResource(LoadProperties loadProperties,
+            IDescriptor descriptor) throws VizException {
+
+        for (IDisplayPane pane : getSelectedPanes()) {
+            for (ResourcePair rp : pane.getDescriptor().getResourceList()) {
+                if (rp.getResource() instanceof SpatialDisplay) {
+                    EditableManager.makeEditable(rp.getResource(), true);
+                    SpatialDisplay spatialDisplay = (SpatialDisplay) rp
+                            .getResource();
+                    return spatialDisplay;
+                }
+            }
+        }
+
+        SpatialDisplayResourceData spatialDisplayResourceData = new SpatialDisplayResourceData();
+        SpatialDisplay spatialDisplay = spatialDisplayResourceData.construct(
+                new LoadProperties(), descriptor);
+        return spatialDisplay;
     }
 }

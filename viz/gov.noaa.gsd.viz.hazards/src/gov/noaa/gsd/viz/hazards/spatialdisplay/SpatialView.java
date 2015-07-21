@@ -17,6 +17,7 @@ import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
 
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
@@ -105,6 +106,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Feb 25, 2015 6600       Dan Schaffer      Fixed bug in spatial display centering
  * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
  * Jun 24, 2015 6601       Chris.Cody        Change Create by Hazard Type display text
+ * Jul 21, 2015 2921       Robert.Blum       Changes for multi panel displays.
  * </pre>
  * 
  * @author Chris.Golden
@@ -306,13 +308,15 @@ public class SpatialView implements
                 AbstractEditor abstractEditor = EditorUtil
                         .getActiveEditorAs(AbstractEditor.class);
                 if (abstractEditor != null) {
-                    IDisplayPane displayPane = abstractEditor
-                            .getActiveDisplayPane();
-                    if (displayPane != null) {
-                        ResourceList resourceList = displayPane.getDescriptor()
-                                .getResourceList();
-                        resourceList.addPostAddListener(this.addListener);
-                        resourceList.addPostRemoveListener(this.removeListener);
+                    for (IDisplayPane displayPane : abstractEditor
+                            .getDisplayPanes()) {
+                        if (displayPane != null) {
+                            ResourceList resourceList = displayPane
+                                    .getDescriptor().getResourceList();
+                            resourceList.addPostAddListener(this.addListener);
+                            resourceList
+                                    .addPostRemoveListener(this.removeListener);
+                        }
                     }
                 }
             }
@@ -330,9 +334,8 @@ public class SpatialView implements
             AbstractEditor abstractEditor = EditorUtil
                     .getActiveEditorAs(AbstractEditor.class);
             if (abstractEditor != null) {
-                IDisplayPane displayPane = abstractEditor
-                        .getActiveDisplayPane();
-                if (displayPane != null) {
+                for (IDisplayPane displayPane : Arrays.asList(abstractEditor
+                        .getDisplayPanes())) {
                     ResourceList resourceList = displayPane.getDescriptor()
                             .getResourceList();
                     resourceList.removePostAddListener(addListener);
@@ -444,28 +447,32 @@ public class SpatialView implements
             AbstractEditor abstractEditor = EditorUtil
                     .getActiveEditorAs(AbstractEditor.class);
             if (abstractEditor != null) {
-                IDisplayPane displayPane = abstractEditor
-                        .getActiveDisplayPane();
-                if (displayPane != null) {
+                for (IDisplayPane displayPane : Arrays.asList(abstractEditor.getDisplayPanes())) {
                     descriptor = displayPane.getDescriptor();
-                }
-            }
-            if ((descriptor != null) && (descriptor instanceof IMapDescriptor)) {
-                IMapDescriptor mapDescriptor = (IMapDescriptor) descriptor;
-                ResourceList resourceList = mapDescriptor.getResourceList();
-                for (ResourcePair pair : resourceList) {
-                    if (pair.getResource() instanceof DbMapResource) {
+                    if ((descriptor != null)
+                            && (descriptor instanceof IMapDescriptor)) {
+                        IMapDescriptor mapDescriptor = (IMapDescriptor) descriptor;
+                        ResourceList resourceList = mapDescriptor
+                                .getResourceList();
+                        for (ResourcePair pair : resourceList) {
+                            if (pair.getResource() instanceof DbMapResource) {
 
-                        // For now, just take the first one.
-                        String tableName = ((DbMapResource) pair.getResource())
-                                .getResourceData().getTable();
+                                // For now, just take the first one.
+                                String tableName = ((DbMapResource) pair
+                                        .getResource()).getResourceData()
+                                        .getTable();
 
-                        // Make sure that this is an acceptable
-                        // overlay table.
-                        if (ACCEPTABLE_MAP_OVERLAYS.contains(tableName)) {
-                            enable = true;
-                            break;
+                                // Make sure that this is an acceptable
+                                // overlay table.
+                                if (ACCEPTABLE_MAP_OVERLAYS.contains(tableName)) {
+                                    enable = true;
+                                    break;
+                                }
+                            }
                         }
+                    }
+                    if (enable) {
+                        break;
                     }
                 }
             }
@@ -607,8 +614,7 @@ public class SpatialView implements
         AbstractEditor abstractEditor = EditorUtil
                 .getActiveEditorAs(AbstractEditor.class);
         if (abstractEditor != null) {
-            IDisplayPane displayPane = abstractEditor.getActiveDisplayPane();
-            if (displayPane != null) {
+            for (IDisplayPane displayPane : Arrays.asList(abstractEditor.getDisplayPanes())) {
                 displayPane.getBounds();
                 displayPane.getRenderableDisplay().getView();
                 idesc = displayPane.getDescriptor();
@@ -646,15 +652,29 @@ public class SpatialView implements
 
         setMouseHandler(null);
 
-        if (spatialDisplay != null) {
-            if (spatialDisplay.getDescriptor() != null) {
-                spatialDisplay.getDescriptor().removeFrameChangedListener(this);
+        // Unload from all panes
+        AbstractEditor abstractEditor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        if (abstractEditor != null) {
+            for (IDisplayPane displayPane : Arrays.asList(abstractEditor
+                    .getDisplayPanes())) {
+                displayPane.getDescriptor().removeFrameChangedListener(this);
+                for (ResourcePair rp : displayPane.getDescriptor()
+                        .getResourceList()) {
+                    if (rp.getResource() instanceof SpatialDisplay) {
+                        SpatialDisplay display = (SpatialDisplay) rp
+                                .getResource();
+                        display.getDescriptor()
+                                .removeFrameChangedListener(this);
+                        display.setAllowDisposeMessage(false);
+                        display.unload();
+                        displayPane.getDescriptor().getResourceList()
+                                .remove(rp);
+                    }
+                }
             }
-            spatialDisplay.setAllowDisposeMessage(false);
-            spatialDisplay.unload();
-            spatialDisplay = null;
         }
-
+        spatialDisplay = null;
         removeGeometryDisplay();
     }
 
@@ -702,16 +722,17 @@ public class SpatialView implements
                 .getActiveEditorAs(AbstractEditor.class);
 
         if (abstractEditor != null && !perspectiveID.equals("GFE")) {
-            IDisplayPane pane = abstractEditor.getActiveDisplayPane();
-            IRenderableDisplay display = pane.getRenderableDisplay();
-            if (!hullWithinDisplay(hull, display)) {
-                double zoom = display.getZoom();
-                display.getExtent().reset();
-                display.recenter(centerAsArray);
-                display.zoom(zoom);
+            for (IDisplayPane pane : Arrays.asList(abstractEditor
+                    .getDisplayPanes())) {
+                IRenderableDisplay display = pane.getRenderableDisplay();
+                if (!hullWithinDisplay(hull, display)) {
+                    double zoom = display.getZoom();
+                    display.getExtent().reset();
+                    display.recenter(centerAsArray);
+                    display.zoom(zoom);
+                }
             }
         }
-
     }
 
     /*
@@ -1072,34 +1093,32 @@ public class SpatialView implements
         AbstractEditor abstractEditor = EditorUtil
                 .getActiveEditorAs(AbstractEditor.class);
         if (abstractEditor != null) {
-            IDescriptor idesc = abstractEditor.getActiveDisplayPane()
-                    .getDescriptor();
+            for (IDisplayPane displayPane : Arrays.asList(abstractEditor
+                    .getDisplayPanes())) {
+                IDescriptor idesc = displayPane.getDescriptor();
 
-            if (idesc instanceof IMapDescriptor) {
-                IMapDescriptor desc = (IMapDescriptor) idesc;
+                if (idesc instanceof IMapDescriptor) {
+                    IMapDescriptor desc = (IMapDescriptor) idesc;
 
-                // This is ugly, but remove all instances of IHISDbMapResource
-                // resources from the list.
-                ResourceList rescList = desc.getResourceList();
+                    // This is ugly, but remove all instances of
+                    // IHISDbMapResource
+                    // resources from the list.
+                    ResourceList rescList = desc.getResourceList();
 
-                for (ResourcePair pair : rescList) {
-                    if (pair.getResource() instanceof SelectByAreaDbMapResource) {
-                        rescList.removeRsc(pair.getResource());
-                    }
-                }
-
-                if (selectableGeometryDisplay != null) {
-
-                    rescList = desc.getResourceList();
-
-                    if (rescList.containsRsc(selectableGeometryDisplay)) {
-                        rescList.removeRsc(selectableGeometryDisplay);
+                    for (ResourcePair pair : rescList) {
+                        if (pair.getResource() instanceof SelectByAreaDbMapResource) {
+                            rescList.removeRsc(pair.getResource());
+                        }
                     }
 
-                    desc.getResourceList().add(selectableGeometryDisplay);
-
+                    if (selectableGeometryDisplay != null) {
+                        rescList = desc.getResourceList();
+                        if (rescList.containsRsc(selectableGeometryDisplay)) {
+                            rescList.removeRsc(selectableGeometryDisplay);
+                        }
+                        desc.getResourceList().add(selectableGeometryDisplay);
+                    }
                 }
-
             }
         }
     }
@@ -1450,25 +1469,23 @@ public class SpatialView implements
             AbstractEditor abstractEditor = EditorUtil
                     .getActiveEditorAs(AbstractEditor.class);
             if (abstractEditor != null) {
-                IDescriptor idesc = abstractEditor.getActiveDisplayPane()
-                        .getDescriptor();
-                IMapDescriptor desc = null;
+                for (IDisplayPane displayPane : Arrays.asList(abstractEditor.getDisplayPanes())) {
+                    IDescriptor idesc = displayPane.getDescriptor();
+                    IMapDescriptor desc = null;
+                    if (idesc instanceof IMapDescriptor) {
+                        desc = (IMapDescriptor) idesc;
 
-                if (idesc instanceof IMapDescriptor) {
-                    desc = (IMapDescriptor) idesc;
-
-                    try {
-                        desc.getResourceList().removeRsc(
-                                selectableGeometryDisplay);
-                    } catch (Exception e) {
-                        // ignore
+                        try {
+                            desc.getResourceList().removeRsc(
+                                    selectableGeometryDisplay);
+                        } catch (Exception e) {
+                            // ignore
+                        }
                     }
                 }
-
                 selectableGeometryDisplay = null;
             }
         }
-
     }
 
     /**
@@ -1480,24 +1497,28 @@ public class SpatialView implements
     private boolean isGeometryDisplayResourceLoaded() {
         AbstractEditor abstractEditor = EditorUtil
                 .getActiveEditorAs(AbstractEditor.class);
+        boolean isLoaded = false;
         if (abstractEditor != null) {
-            IDescriptor idesc = abstractEditor.getActiveDisplayPane()
-                    .getDescriptor();
+            IDescriptor idesc = null;
             IMapDescriptor desc = null;
+            for (IDisplayPane displayPane : Arrays.asList(abstractEditor
+                    .getDisplayPanes())) {
+                idesc = displayPane.getDescriptor();
 
-            if (selectableGeometryDisplay != null) {
-                if (idesc instanceof IMapDescriptor) {
-                    desc = (IMapDescriptor) idesc;
-
-                    ResourceList rescList = desc.getResourceList();
-
-                    return rescList.containsRsc(selectableGeometryDisplay);
+                if (selectableGeometryDisplay != null) {
+                    if (idesc instanceof IMapDescriptor) {
+                        desc = (IMapDescriptor) idesc;
+                        ResourceList rescList = desc.getResourceList();
+                        isLoaded = rescList
+                                .containsRsc(selectableGeometryDisplay);
+                        if (isLoaded) {
+                            break;
+                        }
+                    }
                 }
             }
         }
-
-        return false;
-
+        return isLoaded;
     }
 
     /**
@@ -1508,14 +1529,16 @@ public class SpatialView implements
             AbstractEditor abstractEditor = EditorUtil
                     .getActiveEditorAs(AbstractEditor.class);
             if (abstractEditor != null) {
-                IDescriptor idesc = abstractEditor.getActiveDisplayPane()
-                        .getDescriptor();
-                IMapDescriptor desc = null;
+                for (IDisplayPane displayPane : Arrays.asList(abstractEditor
+                        .getDisplayPanes())) {
+                    IDescriptor idesc = displayPane.getDescriptor();
+                    IMapDescriptor desc = null;
 
-                if (idesc instanceof IMapDescriptor) {
-                    desc = (IMapDescriptor) idesc;
-                    ResourceList rescList = desc.getResourceList();
-                    rescList.removeRsc(selectableGeometryDisplay);
+                    if (idesc instanceof IMapDescriptor) {
+                        desc = (IMapDescriptor) idesc;
+                        ResourceList rescList = desc.getResourceList();
+                        rescList.removeRsc(selectableGeometryDisplay);
+                    }
                 }
             }
         }

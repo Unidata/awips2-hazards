@@ -97,6 +97,7 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Jun 02, 2015 8500       Chris.Cody        Single click does not select HE on Spatial Display
  * Jun 19, 2015 6760       Robert.Blum       Added SettingsModified handler to update the Spatial
  *                                           Display when settings are changed.
+ * Jul 21, 2015 2921       Robert.Blum       Added null check to spatialDisplay to prevent null pointer.
  * </pre>
  * 
  * @author Chris.Golden
@@ -242,7 +243,7 @@ public class SpatialPresenter extends
          * perspectives.
          */
         ISpatialView<?, ?> spatialView = getView();
-        if (spatialView == null) {
+        if (spatialView == null || spatialView.getSpatialDisplay() == null) {
             return;
         }
         ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = getModel();
