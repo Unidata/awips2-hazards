@@ -31,6 +31,7 @@
     Jun 26, 2015    8181    Robert.Blum Changes for cityList/locationsAffected. 
     Jun 26, 2015    7919    Robert.Blum Changes for EXP where they may not be a summaryHeadline.
     Jul 06, 2015    7747    Robert.Blum Changes for adding framed text when text fields are left blank on HID.
+    Jul 21, 2015    9640    Robert.Blum Fixed hazard name in summaryHeadlines.
     
 '''
 
@@ -444,7 +445,7 @@ class Format(FormatTemplate.Formatter):
                     continue
 
                 # assemble the vtecRecord type
-                hazStr = vtecRecord['hdln']
+                hazStr = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
 
                 #determine the actionWords
                 actionWords = self._tpc.actionControlWord(vtecRecord, self._issueTime)

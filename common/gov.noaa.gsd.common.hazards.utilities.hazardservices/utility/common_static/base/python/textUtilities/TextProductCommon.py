@@ -34,6 +34,7 @@
                                                 county/counties label.
    Jul 06, 2015   7747      Robert.Blum         Inserting framed text when value is not in the dictionary or the 
                                                 value is a empty string (from the HID).
+   Jul 21, 2015   9640      Robert.Blum         Correcting hazards names.
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -2582,10 +2583,16 @@ class TextProductCommon(object):
     # utility for attribution, takes hazard description ['hdln'] field and
     # adds TEST if appropriate in test mode, adds 'A' or 'AN' as appropriate
     # if desired. 
-    def hazardName(self, name, testMode, addA=False):
+    def hazardName(self, name, testMode, addA=False, removePrefix=True):
  
         if len(name) == 0:
             return name
+
+        name = name.title()
+        # Remove Areal or River from the name
+        if removePrefix:
+            if name.upper().startswith("RIVER ") or name.upper().startswith("AREAL "):
+                name = name[6:]
 
         # test mode
         if testMode:
