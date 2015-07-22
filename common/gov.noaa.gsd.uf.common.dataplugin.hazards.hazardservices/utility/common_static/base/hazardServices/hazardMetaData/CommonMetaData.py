@@ -55,7 +55,7 @@ class MetaData(object):
         self._riverForecastUtils = None
         self._riverForecastManager = None
         self._riverForecastPoint = None
-        
+
     def editableWhenNew(self):
         return self.hazardStatus == "pending"
     
@@ -1328,7 +1328,7 @@ class MetaData(object):
                         "label": "",
                         "minValue": low,
                         "maxValue": 0,
-                        "values": low+1,
+                        "values": low+2,
                         "expandHorizontally": False,
                         "showScale": True
                     },
@@ -1338,7 +1338,7 @@ class MetaData(object):
                         "label": "",
                         "minValue": 0,
                         "maxValue": hi,
-                        "values": hi-1,
+                        "values": hi-2,
                         "expandHorizontally": False,
                         "showScale": True
                     },
@@ -1454,6 +1454,8 @@ class MetaData(object):
         
         impactsTextField = None
         if parm == "impacts":
+            # Reset the attribute
+            self.hazardEvent.removeHazardAttribute('impactCheckBoxes')
             headerLabel = "Impacts to Use"
             selectionLabel = "ImpactStg/Flow - Start - End - Tendency"
             
@@ -1505,11 +1507,10 @@ class MetaData(object):
                                       "fieldType":"CheckBoxes",
                                       "fieldName": "impactCheckBoxes",
                                       "label": "Impacts",
-                                      "choices": impactChoices,
+                                      "choices": self._sortImpactsChoices(impactChoices, values),
                                       "values" : checkedValues,
-                                      "extraData" : { "origList" : values },
+                                      "extraData" : { "origList" : checkedValues },
                                       }
-                
         else:
             from HazardConstants import MISSING_VALUE
             headerLabel = "Crest to Use"
@@ -1589,6 +1590,29 @@ class MetaData(object):
             values.append(id)
         return choices, values
 
+    def _sortImpactsChoices(self, choices, values):
+        # Sort the choices so they are in order on the HID
+        floatValues = []
+        floatMap = {}
+        for value in values:
+            # Split out the float value
+            strings = value.split('-')
+            strings = strings[0].split('_')
+            floatValue = float(strings[1])
+            floatValues.append(floatValue)
+            floatMap[floatValue] = value
+
+        # Sort the list of floats
+        floatValues.sort()
+        sortedImpactChoices = []
+        for floatValue in floatValues:
+            # Get the corresponding Identifier
+            impactIdentifier = floatMap.get(floatValue)
+            for impact in choices:
+                if impact.get('identifier') == impactIdentifier:
+                    sortedImpactChoices.append(impact)
+                    break
+        return sortedImpactChoices
 
     def _setupSearchParameterFilters(self, parm):
         filters = {}
