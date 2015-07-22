@@ -310,6 +310,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      to the previous endTime.
  * Jul 07, 2015    8966    Robert.Blum  Fixed start/end time from being incorrectly adjusted based on issue time.
  * Jul 08, 2015    8529    Robert.Blum  Removing invalid attributes when the event type is changed.
+ * Jul 22, 2015    9490    Robert.Blum  Fixed Add/Remove county from polygon via right click for WarnGen hazards.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -3736,6 +3738,8 @@ public class SessionEventManager implements
                 if (geoMapUtilities.isWarngenHatching(hazardEvent)) {
                     warngenHatchingAddRemove(hazardAreas, locationAsGeometry,
                             modifiedHazardGeometry, enclosingUGC, hazardArea);
+                    // hazardAreas updated, now update the modified geometry
+                    modifiedHazardGeometry = modifiedHazardGeometry.difference(enclosingUgcGeometry);
                     if (!(hazardAreas.values().contains(HAZARD_AREA_ALL) || hazardAreas
                             .values().contains(HAZARD_AREA_INTERSECTION))) {
                         statusHandler.warn(EMPTY_GEOMETRY_ERROR);
