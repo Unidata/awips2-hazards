@@ -25,6 +25,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * June 2011               Bryon.Lawrence      Initial creation
  * Apr 1, 2014  3581       bkowal      Relocate to common hazards hydro
  * May 08, 2015 6562       Chris.Cody  Restructure River Forecast Points/Recommender
+ * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
  * 
  * </pre>
  * 
@@ -138,7 +139,7 @@ public class RiverForecastGroup {
                     this.groupName = (String) queryValue;
                     break;
                 case ORDINAL_FIELD_IDX:
-                    this.ordinal = (Integer) queryValue;
+                    this.ordinal = ((Number) queryValue).intValue();
                     break;
                 case REC_ALL_INCLUDED_FIELD_IDX:
                     if ("Y".equals((String) queryValue)) {

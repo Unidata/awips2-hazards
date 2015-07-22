@@ -34,6 +34,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
  * </pre>
  * 
  * @author Chris.Cody
@@ -322,19 +323,19 @@ public class FpInfo {
                     this.stream = (String) queryValue;
                     break;
                 case BF_FIELD_IDX:
-                    this.bankFull = (Double) queryValue;
+                    this.bankFull = ((Number) queryValue).doubleValue();
                     break;
                 case WSTG_FIELD_IDX:
-                    this.actionStage = (Double) queryValue;
+                    this.actionStage = ((Number) queryValue).doubleValue();
                     break;
                 case FS_FIELD_IDX:
-                    this.floodStage = (Double) queryValue;
+                    this.floodStage = ((Number) queryValue).doubleValue();
                     break;
                 case FQ_FIELD_IDX:
-                    this.floodFlow = (Double) queryValue;
+                    this.floodFlow = ((Number) queryValue).doubleValue();
                     break;
                 case ACTION_FLOW_FIELD_IDX:
-                    this.actionFlow = (Double) queryValue;
+                    this.actionFlow = ((Number) queryValue).doubleValue();
                     break;
                 case PE_FIELD_IDX:
                     this.physicalElement = (String) queryValue;
@@ -356,10 +357,10 @@ public class FpInfo {
                     this.groupId = (String) queryValue;
                     break;
                 case ORDINAL_FIELD_IDX:
-                    this.ordinal = (Integer) queryValue;
+                    this.ordinal = ((Number) queryValue).intValue();
                     break;
                 case CHG_THRESHOLD_FIELD_IDX:
-                    this.changeThreshold = (Double) queryValue;
+                    this.changeThreshold = ((Number) queryValue).doubleValue();
                     break;
                 case REC_TYPE_FIELD_IDX:
                     /*
@@ -373,40 +374,40 @@ public class FpInfo {
                     this.recommendationType = (String) queryValue;
                     break;
                 case BACK_HRS_FIELD_IDX:
-                    int tempBackHrs = (Integer) queryValue;
+                    int tempBackHrs = ((Number) queryValue).intValue();
                     if (tempBackHrs > 0) {
                         this.backHrs = tempBackHrs;
                     }
                     break;
                 case FORWARD_HRS_FIELD_IDX:
-                    int tempForwardHrs = (Integer) queryValue;
+                    int tempForwardHrs = ((Number) queryValue).intValue();
                     if (tempForwardHrs > 0) {
                         this.forwardHrs = tempForwardHrs;
                     }
                     break;
                 case ADJUST_END_HRS_FIELD_IDX:
-                    double tempAdjustHrs = (Double) queryValue;
+                    double tempAdjustHrs = ((Number) queryValue).doubleValue();
                     if (tempAdjustHrs > 0.0) {
                         this.adjustEndHrs = tempAdjustHrs;
                     }
                     break;
                 case MINOR_STAGE_FIELD_IDX:
-                    this.minorStage = (Double) queryValue;
+                    this.minorStage = ((Number) queryValue).doubleValue();
                     break;
                 case MODERATE_STAGE_FIELD_IDX:
-                    this.moderateStage = (Double) queryValue;
+                    this.moderateStage = ((Number) queryValue).doubleValue();
                     break;
                 case MAJOR_STAGE_FIELD_IDX:
-                    this.majorStage = (Double) queryValue;
+                    this.majorStage = ((Number) queryValue).doubleValue();
                     break;
                 case MINOR_FLOW_FIELD_IDX:
-                    this.minorFlow = (Double) queryValue;
+                    this.minorFlow = ((Number) queryValue).doubleValue();
                     break;
                 case MODERATE_FLOW_FIELD_IDX:
-                    this.moderateFlow = (Double) queryValue;
+                    this.moderateFlow = ((Number) queryValue).doubleValue();
                     break;
                 case MAJOR_FLOW:
-                    this.majorFlow = (Double) queryValue;
+                    this.majorFlow = ((Number) queryValue).doubleValue();
                     break;
                 default:
                     statusHandler

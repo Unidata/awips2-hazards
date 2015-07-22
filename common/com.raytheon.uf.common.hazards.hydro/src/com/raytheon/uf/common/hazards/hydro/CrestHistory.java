@@ -35,6 +35,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
  * </pre>
  * 
  * @author Chris.Cody
@@ -137,19 +138,19 @@ public class CrestHistory {
                     break;
                 case Q_FIELD_IDX:
                     if (queryValue != null) {
-                        this.q = (Integer) queryValue;
+                        this.q = ((Number) queryValue).intValue();
                     }
                     break;
                 case STAGE_FIELD_IDX:
                     if (queryValue != null) {
-                        this.stage = (Double) queryValue;
+                        this.stage = ((Number) queryValue).doubleValue();
                     }
                     break;
                 case DATCRST_FIELD_IDX:
                     if (queryValue instanceof Date) {
                         this.datcrst = ((java.sql.Date) queryValue).getTime();
                     } else {
-                        this.datcrst = (Long) queryValue;
+                        this.datcrst = ((Number) queryValue).longValue();
                     }
                     break;
                 case PRELIM_FIELD_IDX:

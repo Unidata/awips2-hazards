@@ -13,6 +13,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
  * </pre>
  * 
  * @author Chris.Cody
@@ -114,7 +115,7 @@ public class IngestFilterInfo {
                 }
                 switch (i) {
                 case TS_RANK:
-                    this.tsRank = (Integer) queryValue;
+                    this.tsRank = ((Number) queryValue).intValue();
                     break;
                 case TS_IDX:
                     this.typeSource = (String) queryValue;
@@ -126,7 +127,7 @@ public class IngestFilterInfo {
                     this.physicalElement = (String) queryValue;
                     break;
                 case DUR_IDX:
-                    this.duration = (Integer) queryValue;
+                    this.duration = ((Number) queryValue).intValue();
                     break;
                 case EXTREMUM_IDX:
                     String extremumString = (String) queryValue;

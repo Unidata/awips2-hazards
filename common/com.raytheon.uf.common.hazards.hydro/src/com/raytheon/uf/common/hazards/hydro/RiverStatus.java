@@ -33,6 +33,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
  * </pre>
  * 
  * @author Chris.Cody
@@ -136,7 +137,7 @@ public class RiverStatus {
                     this.physicalElement = (String) queryValue;
                     break;
                 case DUR_IDX:
-                    this.duration = (Integer) queryValue;
+                    this.duration = ((Number) queryValue).intValue();
                     break;
                 case TS_IDX:
                     this.typeSource = (String) queryValue;
@@ -148,7 +149,7 @@ public class RiverStatus {
                     }
                     break;
                 case PROBABILITY_IDX:
-                    Float probFloat = (Float) queryValue;
+                    Float probFloat = ((Number) queryValue).floatValue();
                     if (probFloat != null) {
                         this.probability = probFloat.doubleValue();
                     }
@@ -166,7 +167,7 @@ public class RiverStatus {
                     }
                     break;
                 case VALUE_IDX:
-                    this.value = (Double) queryValue;
+                    this.value = ((Number) queryValue).doubleValue();
                     break;
                 default:
                     statusHandler

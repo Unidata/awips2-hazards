@@ -33,6 +33,7 @@ import com.raytheon.uf.common.util.Pair;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
  * </pre>
  * 
  * @author Chris.Cody
@@ -141,7 +142,7 @@ public class FloodStmtData {
                     this.lid = (String) queryValue;
                     break;
                 case IMPACT_VALUE_FIELD_IDX:
-                    this.impactValue = (Double) queryValue;
+                    this.impactValue = ((Number) queryValue).doubleValue();
                     break;
                 case STATEMENT_FIELD_IDX:
                     this.statement = (String) queryValue;

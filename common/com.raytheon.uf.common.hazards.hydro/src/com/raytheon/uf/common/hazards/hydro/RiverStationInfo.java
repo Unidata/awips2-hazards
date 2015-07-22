@@ -36,6 +36,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
  * Jul 06, 2015 9155       Chris.Cody  RiverStationInfo fields must match RiverStat table Columns
+ * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
  * </pre>
  * 
  * @author Chris.Cody
@@ -301,25 +302,25 @@ public class RiverStationInfo {
                     this.primary_pe = (String) queryValue;
                     break;
                 case BF_FIELD_IDX:
-                    this.bankFull = (Double) queryValue;
+                    this.bankFull = ((Number) queryValue).doubleValue();
                     break;
                 case CB_FIELD_IDX:
-                    this.cb = (Double) queryValue;
+                    this.cb = ((Number) queryValue).doubleValue();
                     break;
                 case DA_FIELD_IDX:
-                    this.da = (Double) queryValue;
+                    this.da = ((Number) queryValue).doubleValue();
                     break;
                 case RESPONSE_TIME_FIELD_IDX:
-                    this.responseTime = (Double) queryValue;
+                    this.responseTime = ((Number) queryValue).doubleValue();
                     break;
                 case THRESHOLD_RUNNOFF_FIELD_IDX:
-                    this.thresholdRunnoff = (Double) queryValue;
+                    this.thresholdRunnoff = ((Number) queryValue).doubleValue();
                     break;
                 case FQ_FIELD_IDX:
-                    this.floodFlow = (Double) queryValue;
+                    this.floodFlow = ((Number) queryValue).doubleValue();
                     break;
                 case FS_FIELD_IDX:
-                    this.floodStage = (Double) queryValue;
+                    this.floodStage = ((Number) queryValue).doubleValue();
                     break;
                 case GSNO_FIELD_IDX:
                     this.gsno = (String) queryValue;
@@ -328,10 +329,10 @@ public class RiverStationInfo {
                     this.level = (String) queryValue;
                     break;
                 case MILE_FIELD_IDX:
-                    this.mile = (Double) queryValue;
+                    this.mile = ((Number) queryValue).doubleValue();
                     break;
                 case POOL_FIELD_IDX:
-                    this.pool = (Double) queryValue;
+                    this.pool = ((Number) queryValue).doubleValue();
                     break;
                 case POR_FIELD_IDX:
                     this.por = (String) queryValue;
@@ -340,10 +341,10 @@ public class RiverStationInfo {
                     this.rated = (String) queryValue;
                     break;
                 case LAT_FIELD_IDX:
-                    this.lat = (Double) queryValue;
+                    this.lat = ((Number) queryValue).doubleValue();
                     break;
                 case LON_FIELD_IDX:
-                    this.lon = (Double) queryValue;
+                    this.lon = ((Number) queryValue).doubleValue();
                     break;
                 case REMARK_FIELD_IDX:
                     this.remark = (String) queryValue;
@@ -368,13 +369,13 @@ public class RiverStationInfo {
                     this.vdatum = (String) queryValue;
                     break;
                 case ACTION_FLOW_FIELD_IDX:
-                    this.actionFlow = (Double) queryValue;
+                    this.actionFlow = ((Number) queryValue).doubleValue();
                     break;
                 case WSTG_FIELD_IDX:
-                    this.actionStage = (Double) queryValue;
+                    this.actionStage = ((Number) queryValue).doubleValue();
                     break;
                 case ZD_FIELD_IDX:
-                    this.zd = (Double) queryValue;
+                    this.zd = ((Number) queryValue).doubleValue();
                     break;
                 case RATEDAT_FIELD_IDX:
                     sqlDate = (java.sql.Date) queryValue;
@@ -384,7 +385,7 @@ public class RiverStationInfo {
                     this.usgsRateNum = (String) queryValue;
                     break;
                 case UHGDUR_FIELD_IDX:
-                    this.uhgdur = (Integer) queryValue;
+                    this.uhgdur = ((Number) queryValue).intValue();
                     break;
                 case USE_LATEST_FCST_FIELD_IDX:
                     if ("T".equals((String) queryValue)) {
