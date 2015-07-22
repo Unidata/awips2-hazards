@@ -13,6 +13,7 @@ class MetaData(CommonMetaData.MetaData):
                         ]
         elif self.hazardStatus == 'pending':
            metaData = [
+                     self.getListOfCities(False),
                      self.getInclude(),
                      self.setBurnScarNameLabel(hazardEvent),
                      self.getImmediateCause(),
@@ -33,6 +34,7 @@ class MetaData(CommonMetaData.MetaData):
                     ]
         else: # issued
            metaData = [
+                     self.getListOfCities(False),
                      self.getBasisAndImpacts('basisAndImpactsStatement_segmentLevel'), 
                      self.getInclude(),
                      self.setBurnScarNameLabel(hazardEvent),
@@ -42,7 +44,6 @@ class MetaData(CommonMetaData.MetaData):
                      self.getDebrisFlowOptions(),
                      self.getRainAmt(),
                      self.getAdditionalInfo(),
-                     self.getListOfCities(False),
                      # TODO this should only be on the HID for EXT and not CON
                      self.getLocationsAffected(False),
                      self.getCTAs(), 

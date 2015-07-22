@@ -13,9 +13,9 @@ class MetaData(CommonMetaData.MetaData):
             # Removing the metaData for it so it does not show up in the HID.
             if hazardEvent.get('geoType', '') == 'area':
                 metaData = [
+                            self.getListOfCities(False),
                             self.getWarningType(),
                             self.getImmediateCause(),
-                            self.getListOfCities(False),
                             self.getEndingOption(),
                             self.getEndingSynopsis(),
                             ]
@@ -23,12 +23,12 @@ class MetaData(CommonMetaData.MetaData):
                 metaData = []
         elif self.hazardStatus == 'pending':
             metaData = [
+                    self.getListOfCities(False),
                     self.getWarningType(),
                     self.getImmediateCause(),
                     self.getSource(),
                     self.getEventType(),
                     self.getRainAmt(),
-                    self.getListOfCities(False),
                     self.getLocationsAffected(False),
                     self.getAdditionalInfo(),
                     self.getRiver(),
@@ -51,13 +51,13 @@ class MetaData(CommonMetaData.MetaData):
                     metaData.insert(2, self.getDamOrLevee(damOrLeveeName))
         else: # 'issued'
             metaData = [
+                    self.getListOfCities(False),
                     self.getBasisAndImpacts('basisAndImpactsStatement'),
                     self.getWarningType(),
                     self.getImmediateCause(),
                     self.getSource(),
                     self.getEventType(),
                     self.getRainAmt(),
-                    self.getListOfCities(False),
                     self.getLocationsAffected(False),
                     self.getAdditionalInfo(),
                     self.getRiver(),

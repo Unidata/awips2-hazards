@@ -38,6 +38,7 @@ class MetaData(CommonMetaData.MetaData):
                 
         if status == 'pending':
             metaData = [
+                     self.getListOfCities(False),
                      self.getInclude(),
                      self.getFloodSeverity(),
                      self.getHydrologicCause(),
@@ -53,6 +54,7 @@ class MetaData(CommonMetaData.MetaData):
                         ]
         elif status == "issued":
             metaData = [
+                     self.getListOfCities(False),
                      self.getBasisAndImpacts('basisAndImpactsStatement_segmentLevel'), 
                      self.getFloodSeverity(),
                      self.getHydrologicCause(editable=False),
@@ -63,7 +65,6 @@ class MetaData(CommonMetaData.MetaData):
                      self.getFloodLocation(),
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
-                     self.getListOfCities(False),
                      # TODO this should only be on the HID for EXT and not CON
                      self.getLocationsAffected(False),
                      self.getCTAs(), 

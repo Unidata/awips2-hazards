@@ -10,21 +10,21 @@ class MetaData(CommonMetaData.MetaData):
         self.initialize(hazardEvent, metaDict)
         if self.hazardStatus in ["ending", "ended"]:
             metaData = [
+                        self.getListOfCities(False),
                         self.getImmediateCause(),
                         self.getOptionalSpecificType(),
-                        self.getListOfCities(False),
                         self.getEndingOption(),
                         self.getEndingSynopsis(),
                         ]
         elif self.hazardStatus == 'pending':
             metaData = [
+                    self.getListOfCities(False),
                     self.getAdvisoryType(),
                     self.getImmediateCause(),
                     self.getOptionalSpecificType(),
                     self.getSource(),
                     self.getEventType(),
                     self.getRainAmt(),
-                    self.getListOfCities(False),
                     self.getLocationsAffected(False),
                     self.getAdditionalInfo(),
                     self.getCTAs(),   
@@ -38,6 +38,7 @@ class MetaData(CommonMetaData.MetaData):
                     ]
         else: # 'issued'
             metaData = [
+                    self.getListOfCities(False),
                     self.getBasisAndImpacts('basisAndImpactsStatement'),
                     self.getAdvisoryType(),
                     self.getImmediateCause(),
@@ -45,10 +46,9 @@ class MetaData(CommonMetaData.MetaData):
                     self.getSource(),
                     self.getEventType(),
                     self.getRainAmt(),
-                    self.getListOfCities(False),
                     self.getLocationsAffected(False),
                     self.getAdditionalInfo(),
-                    self.getCTAs(),   
+                    self.getCTAs(),
                 ]
         return {
                 METADATA_KEY: metaData

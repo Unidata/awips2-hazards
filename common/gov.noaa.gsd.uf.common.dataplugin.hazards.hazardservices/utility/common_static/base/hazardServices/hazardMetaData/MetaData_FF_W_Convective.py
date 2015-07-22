@@ -16,6 +16,7 @@ class MetaData(CommonMetaData.MetaData):
                     ]
         elif self.hazardStatus == 'pending':
             metaData = [
+                    self.getListOfCities(False),
                     self.getInclude(),
                     self.getImmediateCause(),
                     self.getSource(),
@@ -35,6 +36,7 @@ class MetaData(CommonMetaData.MetaData):
                     ]
         else: # issued
             metaData = [
+                    self.getListOfCities(False),
                     self.getBasisAndImpacts('basisAndImpactsStatement_segmentLevel'), 
                     self.getInclude(),
                     self.getImmediateCause(),
@@ -43,7 +45,6 @@ class MetaData(CommonMetaData.MetaData):
                     self.getRainAmt(),
                     self.getAdditionalInfo(),
                     self.getFloodLocation(),
-                    self.getListOfCities(False),
                     # TODO this should only be on the HID for EXT and not CON
                     self.getLocationsAffected(False),
                     self.getCTAs(),   

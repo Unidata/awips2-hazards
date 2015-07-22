@@ -15,7 +15,8 @@
     06/03/2015   8530       Robert.Blum    Added new productPart for initials and additionalComments.
                                            Also wmoHeader no longer has a CR built in.
     06/18/2015   8181       Robert.Blum    Removing cityList productPart for FA.Y and FA.W to match WarnGen.
-    06/24/2015   8181       Robert.Blum    Changes for cityList/locationsAffected. 
+    06/24/2015   8181       Robert.Blum    Changes for cityList/locationsAffected.
+    07/22/2015   9645       Robert.Blum    Adding cityList to FF.W products to be consistent across products.
 '''
 import types, collections
 
@@ -129,6 +130,7 @@ class HydroProductParts(object):
                     'setUp_segment',
                     'ugcHeader',
                     'vtecRecords',
+                    'cityList',
                     'CR',
                     ]
         if easActivationRequested:
