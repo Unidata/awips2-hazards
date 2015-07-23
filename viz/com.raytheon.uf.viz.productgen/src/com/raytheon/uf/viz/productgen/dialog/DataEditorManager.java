@@ -24,6 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 
@@ -40,6 +42,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * 01/15/2015   5109       bphillip     Initial creation
  * 04/16/2015   7579       Robert.Blum  Updates for amended Product Editor.
  * 07/08/2015   9063       Benjamin.Phillippe Fixed product name collision in dataEditorMap 
+ * 07/23/2015   9625       Robert.Blum  Adjusted productID collision issue for RVS.
  * 
  * </pre>
  * 
@@ -167,10 +170,20 @@ class DataEditorManager {
      * @return The product key
      */
     private String getProductKey(IGeneratedProduct product) {
-        IHazardEvent event = (IHazardEvent) product.getEventSet().iterator()
-                .next();
-        return event.getEventID() + " " + event.getPhenomenon() + "."
-                + event.getSignificance();
+        EventSet<IEvent> eventSet = product.getEventSet();
+        if (eventSet.isEmpty() == false) {
+            IHazardEvent event = (IHazardEvent) eventSet.iterator().next();
+            return event.getEventID() + " " + event.getPhenomenon() + "."
+                    + event.getSignificance();
+        } else {
+            /*
+             * RVS workaround since the eventSet is empty. There will only be
+             * one RVS in the product editor at a time so the productID
+             * conflicts will not occur.
+             */
+            return product.getProductID();
+        }
+
     }
 
     /**

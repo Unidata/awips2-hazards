@@ -175,6 +175,7 @@ class Product(HydroGenerator.Product):
 
         expireTime = self._tpc.getExpireTime(self._issueTime, self._purgeHours, [], fixedExpire=True)
         productDict['expireTime'] = expireTime
+        productDict['issueTime'] = self._issueTime
 
     def _createAndAddSegmentsToDictionary(self, productDict, productSegmentGroup):
         pass

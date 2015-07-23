@@ -60,6 +60,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * ------------ ---------- ----------- --------------------------
  * Apr 16, 2014            jsanchez     Initial creation
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Jul 23, 2015 9625       Robert.Blum  Adjusted createText() to handle RVS.
  * 
  * </pre>
  * 
@@ -241,14 +242,14 @@ public class ReviewAction extends Action {
             String productID = first.getProductGeneratorName().replace(
                     "_ProductGenerator", "");
             StringBuilder sb = new StringBuilder();
+            sb.append(productID);
+            sb.append(" - ");
+
+            String prefix = "";
             for (Integer eventID : first.getEventIDs()) {
-                if (sb.length() == 0) {
-                    sb.append(productID);
-                    sb.append(" - ");
-                } else {
-                    sb.append(",");
-                }
+                sb.append(prefix);
                 sb.append(eventID);
+                prefix = ",";
             }
 
             return sb.toString();

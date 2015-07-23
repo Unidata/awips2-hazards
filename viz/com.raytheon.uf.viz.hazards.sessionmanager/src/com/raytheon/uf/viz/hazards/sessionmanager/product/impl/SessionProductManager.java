@@ -208,6 +208,7 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      found that the previous location could case the active table
  *                                      to incorrectly update when products failed validation, since
  *                                      the validation was done after the product generation.
+ * Jul 23, 2015 9625       Robert.Blum  Fixed issueTime when writing to the productData table for RVS.
  * </pre>
  * 
  * @author bsteffen
@@ -1631,27 +1632,36 @@ public class SessionProductManager implements ISessionProductManager {
         for (IGeneratedProduct product : productGeneratorInformation
                 .getGeneratedProducts()) {
             eventIDs = new ArrayList<>();
-            Iterator<IEvent> iterator = product.getEventSet().iterator();
-            while (iterator.hasNext()) {
-                IEvent event = iterator.next();
-                if (event instanceof IHazardEvent) {
-                    IHazardEvent hazardEvent = (IHazardEvent) event;
-                    String eventID = hazardEvent.getEventID();
-                    eventIDs.add(new Integer(eventID));
-                    Map<String, Serializable> attributes = hazardEvent
-                            .getHazardAttributes();
-                    // Issue time should be the same for all the events
-                    Long issueTime = (Long) attributes
-                            .get(HazardConstants.ISSUE_TIME);
-                    if (issueTime == null) {
-                        throw new Exception(
-                                "Hazard event must contain an issue time after product generation.");
-                    } else {
-                        issueTimeDate = new Date(issueTime);
+            Long issueTime = null;
+            if (product.getEventSet().isEmpty() == false) {
+                Iterator<IEvent> iterator = product.getEventSet().iterator();
+                while (iterator.hasNext()) {
+                    IEvent event = iterator.next();
+                    if (event instanceof IHazardEvent) {
+                        IHazardEvent hazardEvent = (IHazardEvent) event;
+                        String eventID = hazardEvent.getEventID();
+                        eventIDs.add(new Integer(eventID));
+                        Map<String, Serializable> attributes = hazardEvent
+                                .getHazardAttributes();
+                        // Issue time should be the same for all the events
+                        issueTime = (Long) attributes
+                                .get(HazardConstants.ISSUE_TIME);
+                        if (issueTime == null) {
+                            throw new Exception(
+                                    "Hazard event must contain an issue time after product generation.");
+                        }
                     }
+                }
+            } else {
+                issueTime = (Long) product.getData().get(
+                        HazardConstants.ISSUE_TIME);
+                if (issueTime == null) {
+                    throw new Exception(
+                            "Product must contain an issue time after product generation.");
                 }
             }
 
+            issueTimeDate = new Date(issueTime);
             ProductDataUtil.createOrUpdateProductData(caveModeStr, productInfo,
                     eventIDs, issueTimeDate, product.getData(),
                     product.getEditableEntries());
