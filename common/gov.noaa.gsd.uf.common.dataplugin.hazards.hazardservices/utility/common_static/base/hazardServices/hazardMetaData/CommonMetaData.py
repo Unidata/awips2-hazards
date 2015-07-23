@@ -1711,6 +1711,11 @@ class MetaData(object):
             damList.append(ids)
         return damList
 
+    def includeFloodPointTable(self):
+        return {"identifier":"selectFloodPointTable", 
+                "displayString": "Select for flood point table"
+        }
+
 def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
     
     returnDict = {}

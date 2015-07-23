@@ -12,7 +12,8 @@ class MetaData(CommonMetaData.MetaData):
         pointDetails = [self.getPointID(),
                         self.getImmediateCause(),
                         self.getFloodSeverity(),
-                        self.getFloodRecord()
+                        self.getFloodRecord(),
+                        self.getInclude(),
                         ]
         pointDetails.extend(self.getRiseCrestFall())
         pointDetails.extend([ self.getRainAmt() ])
@@ -83,7 +84,12 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaWarningInEffect(),
             self.ctaReportFlooding(),
             ]
-        
+
+    def includeChoices(self):
+        return [
+            self.includeFloodPointTable(),
+            ]
+
 # Interdependency script entry point.
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
   return CommonMetaData.applyFLInterdependencies(triggerIdentifiers, mutableProperties)

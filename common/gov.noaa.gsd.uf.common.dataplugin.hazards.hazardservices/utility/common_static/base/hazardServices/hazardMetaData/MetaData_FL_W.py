@@ -11,13 +11,15 @@ class MetaData(CommonMetaData.MetaData):
 
         if self.hazardStatus in ["ending", "ended"]:
             metaData = [
+                        self.getInclude(),
                         self.getEndingSynopsis(),
                         ]
         else:
             pointDetails = [self.getPointID(),
                             self.getImmediateCause(),
                             self.getFloodSeverity(),
-                            self.getFloodRecord()
+                            self.getFloodRecord(),
+                            self.getInclude(),
                             ]
             pointDetails.extend(self.getRiseCrestFall())
          
@@ -86,7 +88,12 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaWarningInEffect(),
             self.ctaReportFlooding(),
             ]
-    
+
+    def includeChoices(self):
+        return [
+            self.includeFloodPointTable(),
+            ]
+
 # # Interdependency script entry point.
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     return CommonMetaData.applyFLInterdependencies(triggerIdentifiers, mutableProperties)

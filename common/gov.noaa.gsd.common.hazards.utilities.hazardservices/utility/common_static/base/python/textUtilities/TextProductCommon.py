@@ -35,6 +35,7 @@
    Jul 06, 2015   7747      Robert.Blum         Inserting framed text when value is not in the dictionary or the 
                                                 value is a empty string (from the HID).
    Jul 21, 2015   9640      Robert.Blum         Correcting hazards names.
+   Jul 23, 2015   9643      Robert.Blum         Added roundFloat() method.
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -1857,6 +1858,24 @@ class TextProductCommon(object):
         if discard >= timedelta(minutes=roundMinute/2):
             dt += timedelta(minutes=roundMinute)
         return dt
+
+    def roundFloat(self, value, precision='2', returnString=True):
+        '''
+            Rounding method to be used for all float values in the product.
+            This will ensure that the precision is consistent throughout.
+            
+            @param value: Value to be rounded
+            @param precision: Precision to be rounded to.
+            @param returnString: Flag indicating whether a string or float
+                                 should be returned.
+        '''
+        if isinstance(value, float) == False:
+            value = float(value)
+        if returnString:
+            value = format(value, '.' + precision + 'f')
+        else:
+            value = round(value, precision)
+        return value
 
     def timingWordTableEXPLICIT(self, issueTime, eventTime, timezone,
       timeType='startTime'):

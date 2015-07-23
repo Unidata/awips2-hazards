@@ -16,6 +16,8 @@
     May 26, 2015    7634    Chris.Cody  Changes for Forecast Bullet Generation
     Jun 25, 2015    8565    Chris.Cody  Impacts Error issuing multiple products from the HID
     Jun 25, 2015    8313    Benjamin.Phillippe Fixed issued event loading when time is changed
+    Jul 23, 2015    9643   Robert.Blum  All rounding is now done in one common place so that it can 
+                                        be easily overridden by sites.
 '''
 from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
 from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
@@ -185,8 +187,8 @@ class Product(Legacy_Base_Generator.Product):
         if len(parts) > 1:
             impactValue = parts[1]
             height = impactValue.rsplit('-')[0]
-            # Round height to 2 decimal point - result is a string
-            height = format(float(height), '.2f')
+            # Round height - result is a string
+            height = self._tpc.roundFloat(height, returnString=True)
         else:
             impactValue = ''
             height = ''

@@ -20,6 +20,8 @@
     May 26, 2015   7634    Chris.Cody        Correct improper forcast bullet string generation
     Jun 25, 2015   ????    Chris.Cody        Correct for missing first and second Rise Fall Time error
     Jun 25, 2015    8313   Benjamin.Phillippe Fixed issued event loading when time is changed
+    Jul 23, 2015    9643   Robert.Blum       All rounding is now done in one common place so that it can 
+                                             be easily overridden by sites.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types
@@ -104,17 +106,17 @@ class ForecastStageText(object):
 
         # String variables for the rounded stage values
         if hazard.forecastCrestStage:
-            forecastCrestStage = format(hazard.forecastCrestStage, '.2f')
+            forecastCrestStage = self.tpc.roundFloat(hazard.forecastCrestStage, returnString=True)
         else:
             forecastCrestStage = None
             
         if hazard.maximumForecastStage:
-            maximumForecastStage = format(hazard.maximumForecastStage, '.2f')
+            maximumForecastStage = self.tpc.roundFloat(hazard.maximumForecastStage, returnString=True)
         else:
             maximumForecastStage = None
             
         if hazard.specValue and hazard.specValue != MISSING_VALUE_STRING:
-            specValue = format(hazard.specValue, '.2f')
+            specValue = self.tpc.roundFloat(hazard.specValue, returnString=True)
         else:
             specValue = None
             
