@@ -1454,8 +1454,6 @@ class MetaData(object):
         
         impactsTextField = None
         if parm == "impacts":
-            # Reset the attribute
-            self.hazardEvent.removeHazardAttribute('impactCheckBoxes')
             headerLabel = "Impacts to Use"
             selectionLabel = "ImpactStg/Flow - Start - End - Tendency"
             
@@ -1468,6 +1466,10 @@ class MetaData(object):
             characterizations, descriptions = self._riverForecastUtils.getImpacts(plist, primaryPE, self._riverForecastPoint, filterValues)
             charDescDict = dict(zip(characterizations, descriptions))
             impactChoices, values = self._makeImpactsChoices(charDescDict)
+            
+            if len(impactChoices) == 0:
+                # Reset the attribute
+                self.hazardEvent.removeHazardAttribute('impactCheckBoxes')
 
             # default to having all the values checked
             checkedValues = values
