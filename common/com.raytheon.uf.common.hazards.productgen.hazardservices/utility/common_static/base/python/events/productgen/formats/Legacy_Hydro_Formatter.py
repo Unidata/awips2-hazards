@@ -30,6 +30,8 @@
                                         the HID. Also retrieving saved user edited tables from 
                                         productText table. Plus moved all rounding to one common
                                         place so that it can be easily overridden by sites.
+    Jul 27, 2015    9637    Robert.Blum Adjustment of && due to adding polygonText product part 
+                                        for FL.* hazards.
 '''
 import datetime
 import collections
@@ -304,7 +306,7 @@ class Format(Legacy_Base_Formatter.Format):
 
         endText = ''
         if text:
-            endText = '\n\n&&\n'
+            endText = '\n\n'
         return self._getFormattedText(text.rstrip(), startText='\n&&\n\n', endText=endText)
 
     ###################### Utility methods

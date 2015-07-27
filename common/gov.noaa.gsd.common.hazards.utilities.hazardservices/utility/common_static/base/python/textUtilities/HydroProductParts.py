@@ -17,6 +17,7 @@
     06/18/2015   8181       Robert.Blum    Removing cityList productPart for FA.Y and FA.W to match WarnGen.
     06/24/2015   8181       Robert.Blum    Changes for cityList/locationsAffected.
     07/22/2015   9645       Robert.Blum    Adding cityList to FF.W products to be consistent across products.
+    07/27/2015   9637       Robert.Blum    Added polygonText to FL.* hazards.
 '''
 import types, collections
 
@@ -488,6 +489,7 @@ class HydroProductParts(object):
                                 
                     ('sections', sectionParts),
                     'floodPointTable',   #(for segment -- optional)
+                    'polygonText',
                     'endSegment',
                     ]
                 }

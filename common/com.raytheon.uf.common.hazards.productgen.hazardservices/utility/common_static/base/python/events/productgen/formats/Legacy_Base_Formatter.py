@@ -32,10 +32,12 @@
     Jun 26, 2015    7919    Robert.Blum Changes for EXP where they may not be a summaryHeadline.
     Jul 06, 2015    7747    Robert.Blum Changes for adding framed text when text fields are left blank on HID.
     Jul 21, 2015    9640    Robert.Blum Fixed hazard name in summaryHeadlines.
+    Jul 27, 2015    9637    Robert.Blum Changes to _polygonText() for point hazards.
     
 '''
 
 import FormatTemplate
+import HazardConstants
 import datetime
 from collections import OrderedDict
 import types, re, sys, copy, os
@@ -359,21 +361,31 @@ class Format(FormatTemplate.Formatter):
         return self._getFormattedText(callsToAction, startText='Precautionary/Preparedness actions...\n\n', endText='\n\n&&\n\n')
 
     def _polygonText(self, segmentDict):
-        polyStr = 'LAT...LON'
+        isPointBasedHazard = False
+        polyStr = ''
 
         polygonPointLists = []
         for section in segmentDict.get('sections', []):
             for hazard in section.get('hazardEvents', []):
+                if hazard.get('geoType') == 'point':
+                    isPointBasedHazard = True;
                 for geometry in hazard.get('geometry'):
-                    subGeoType = geometry.type
-                    if subGeoType is not None and subGeoType is not 'LineString':
+                    if geometry.geom_type == HazardConstants.SHAPELY_POLYGON:
                         polygonPointLists.append(list(geometry.exterior.coords))
-                    else:
+                    elif geometry.geom_type == HazardConstants.SHAPELY_POINT or geometry.geom_type == HazardConstants.SHAPELY_LINE:
                         polygonPointLists.append(list(geometry.coords))
+                    else:
+                        for geo in geometry:
+                            polygonPointLists.append(list(geo.exterior.coords))
+        
+        if isPointBasedHazard == False:
+            # Point Based Hazard
+            polyStr = '&&\n'
+        polyStr += 'LAT...LON'
 
+        # 4 points per line
+        pointsOnLine = 0
         for polygon in polygonPointLists:
-            # 4 points per line
-            pointsOnLine = 0
             for lon,lat in polygon:
                 if pointsOnLine == 4:
                     polyStr += '\n' 
@@ -389,7 +401,7 @@ class Format(FormatTemplate.Formatter):
                 lat = int(100 * lat + 0.5)
                 polyStr += ' ' + str(lat) + ' ' + str(lon)
                 pointsOnLine += 1
-        if (self._runMode == 'Practice'):
+        if (self._runMode == 'Practice' and isPointBasedHazard == False):
             polyStr = 'This is a test message. Do not take action based on this message. \n\n' + polyStr
         return polyStr + '\n'
 
