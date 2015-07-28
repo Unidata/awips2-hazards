@@ -1,19 +1,19 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: Hydro
-Bundle-SymbolicName: com.raytheon.uf.common.hazards.hydro
+Bundle-Name: Ihfs
+Bundle-SymbolicName: com.raytheon.uf.common.hazards.ihfs
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: RAYTHEON
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
-Export-Package: com.raytheon.uf.common.hazards.hydro
+Export-Package: com.raytheon.uf.common.hazards.ihfs,
+ com.raytheon.uf.common.hazards.ihfs.data,
+ com.raytheon.uf.common.hazards.ihfs.table,
+ com.raytheon.uf.common.hazards.ihfs.helper
 Require-Bundle: com.raytheon.uf.common.status;bundle-version="1.12.1174",
  com.raytheon.uf.common.time;bundle-version="1.12.1174",
- org.geotools;bundle-version="10.5.0",
- com.raytheon.uf.common.dataplugin.shef;bundle-version="1.12.1174",
  com.raytheon.uf.common.dataplugin;bundle-version="1.12.1174",
- com.google.guava;bundle-version="11.0.2",
  com.raytheon.uf.common.dataaccess;bundle-version="1.14.0",
  com.raytheon.uf.common.ohd;bundle-version="1.12.1174",
- com.raytheon.uf.common.dataplugin.events.hazards;bundle-version="1.0.0",
  com.raytheon.uf.common.util;bundle-version="1.14.1",
+ com.raytheon.uf.common.status;bundle-version="1.15.0",
  org.apache.commons.lang;bundle-version="2.3.0"

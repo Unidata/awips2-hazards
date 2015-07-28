@@ -8,6 +8,7 @@ Require-Bundle: com.google.guava;bundle-version="1.0.0",
  com.raytheon.uf.common.dataplugin.events.hazards;bundle-version="1.0.0",
  com.raytheon.uf.common.dataplugin.events;bundle-version="1.0.0",
  com.raytheon.uf.common.dataaccess;bundle-version="1.14.0",
+ com.raytheon.uf.common.hazards.ihfs;bundle-version="1.0.0",
  com.raytheon.uf.common.hazards.hydro;bundle-version="1.0.0"
 Bundle-ActivationPolicy: lazy
 Eclipse-BuddyPolicy: ext, global
