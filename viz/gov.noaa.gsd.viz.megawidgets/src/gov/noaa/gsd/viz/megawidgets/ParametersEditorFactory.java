@@ -83,6 +83,7 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
  *                                           the Product Editor.
  * May 07, 2015    6979    Robert.Blum       Additional changes for LabelMegaWidgets,
  *                                           they are now stateful.
+ * Jul 28, 2015    9687    Robert.Blum       Displaying label based on new KeyInfo flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -662,6 +663,7 @@ public class ParametersEditorFactory {
              */
             String key = parameter.getKey();
             String label = parameter.getLabel();
+            KeyInfo keyinfo = (KeyInfo) parameter;
 
             Object value = valuesForParameters.get(parameter);
             valuesForKeys.put(key, value);
@@ -675,7 +677,7 @@ public class ParametersEditorFactory {
              */
             Map<String, Object> baseSpecifier;
             Class<?> parameterClass = value.getClass();
-            if (((KeyInfo) parameter).isEditable()) {
+            if (keyinfo.isEditable()) {
                 /*
                  * Editable so make it a TextMegawidget.
                  */
@@ -709,7 +711,7 @@ public class ParametersEditorFactory {
             Map<String, Object> specifier = new HashMap<>(baseSpecifier);
             specifier.put(IStatefulSpecifier.MEGAWIDGET_IDENTIFIER, key);
 
-            if (label.isEmpty() == false) {
+            if (label.isEmpty() == false && keyinfo.getDisplayLabel()) {
                 specifier.put(IStatefulSpecifier.MEGAWIDGET_LABEL, label + ":");
             }
 

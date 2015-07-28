@@ -47,6 +47,7 @@ import com.raytheon.uf.common.util.Pair;
  * 03/11/2015   6889       bphillip     Modifications to allow more than one undo action in the Product Editor
  * 04/16/2015   7579       Robert.Blum  This class now uses the formated EditableEntries instead of the raw data.
  * 05/07/2015   6979       Robert.Blum  Changes to use new EditableEntryMap object.
+ * 07/28/2015   9687       Robert.Blum  Added replaceKey() method.
  * 
  * </pre>
  * 
@@ -216,6 +217,16 @@ class EditableKeys {
     public Pair<KeyInfo, EditableKeyInfo> getEntry(KeyInfo key) {
         return new Pair<KeyInfo, EditableKeyInfo>(key,
                 editableKeyInfoMap.get(key));
+    }
+
+    /**
+     * Replaces a key in the editableKeyInfoMap while maintaining the same value.
+     * 
+     * @param newkey The new key to add to the map.
+     * @param oldkey The old key to replace in the map.
+     */
+    public void replaceKey(KeyInfo newKey, KeyInfo oldKey) {
+        editableKeyInfoMap.put(newKey, editableKeyInfoMap.remove(oldKey));
     }
 
     /**

@@ -39,6 +39,9 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * 04/20/2015   7579       Robert.Blum  Initial creation
+ * 07/28/2015   9687       Robert.Blum  Removed the viewerPane composite since 
+ *                                      it is no longer needed due to changes in
+ *                                      the parent class.
  * 
  * </pre>
  * 
@@ -49,9 +52,6 @@ public class FormattedTextViewer extends AbstractDataEditor {
 
     /** The name of the formatter used to format the data */
     private final String format;
-
-    /** The composite which holds the viewer */
-    private Composite viewerPane;
 
     /** The generated product associated with this data editor */
     private IGeneratedProduct product;
@@ -89,19 +89,16 @@ public class FormattedTextViewer extends AbstractDataEditor {
         this.product = product;
         this.format = format;
         this.formatIndex = formatIndex;
-
-        // Initialize the composite which will hold the text viewer
-        viewerPane = new Composite(parent, SWT.NONE);
     }
 
     @Override
     protected void initializeSubclass() {
-        ProductEditorUtil.setLayoutInfo(viewerPane, 1, false, SWT.FILL,
+        ProductEditorUtil.setLayoutInfo(editorPane, 1, false, SWT.FILL,
                 SWT.FILL, true, true);
-        setControl(viewerPane);
+        setControl(editorPane);
 
         // Create a new StyledText object containing the formatted text
-        this.styledText = new StyledText(viewerPane, SWT.H_SCROLL
+        this.styledText = new StyledText(editorPane, SWT.H_SCROLL
                 | SWT.V_SCROLL);
 
         String formattedText = (String) product.getEntries().get(format)
@@ -190,5 +187,15 @@ public class FormattedTextViewer extends AbstractDataEditor {
     @Override
     protected int getUndosRemaining() {
         return 0;
+    }
+
+    @Override
+    protected void updateButtonState() {
+        // Do nothing - no buttons to update
+    }
+
+    @Override
+    protected void createEditorButtons(Composite editorPane) {
+        // Do nothing - no buttons to create
     }
 }

@@ -36,6 +36,7 @@
                                                 value is a empty string (from the HID).
    Jul 21, 2015   9640      Robert.Blum         Correcting hazards names.
    Jul 23, 2015   9643      Robert.Blum         Added roundFloat() method.
+   Jul 28, 2015   9687      Robert.Blum         Updates for new KeyInfo field displayLabel.
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -292,7 +293,7 @@ class TextProductCommon(object):
 
     def setVal(self, dictionary, key, value, editable=False, eventIDs=None, segment=None,
                   label=None, productCategory=None, productID=None, displayable=False,
-                  required=True, useKeyAsLabel=False):
+                  required=True, displayLabel=True, useKeyAsLabel=False):
         '''
         Utility method to add a value to a dictionary. It will create the KeyInfo key
         if editable or displayable are set to true. Otherwise it adds the value to 
@@ -300,12 +301,14 @@ class TextProductCommon(object):
         '''
         if editable:
             userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, True, 
-                                    label=label, eventIDInLabel=True, required=required)
+                                    label=label, eventIDInLabel=True, required=required,
+                                    displayLabel=displayLabel)
         elif displayable:
             if useKeyAsLabel: label = key
             if label is None: label = ''
             userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, editable=False,
-                                    displayable=True, label=label, eventIDInLabel=True, required=required)
+                                    displayable=True, label=label, eventIDInLabel=True, required=required,
+                                    displayLabel=displayLabel)
         else:
             userEditedKey = key
 

@@ -29,6 +29,7 @@ import gov.noaa.gsd.viz.megawidgets.ParametersEditorFactory;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +39,13 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
@@ -78,6 +85,9 @@ import com.raytheon.uf.common.util.Pair;
  * 5/14/2015    7376       Robert.Blum  Changed requiredFieldsCompleted() to looked at the value
  *                                      instead of modifiedValue. Updating issueAll button when
  *                                      changes are made.
+ * 07/28/2015   9687       Robert.Blum  Added Save/Undo buttons from parent class, since they are
+ *                                      unique for this subclass. Also Added new button to toggle
+ *                                      the labels on the megawidget fields.
  * </pre>
  * 
  * @author jsanchez
@@ -92,6 +102,33 @@ public class ProductDataEditor extends AbstractDataEditor {
 
     /** Label used for the tab */
     private static final String TAB_LABEL = "Hazard Data Editor";
+
+    /** Label for the Save button on the editor tab */
+    private static final String SAVE_BUTTON_LABEL = "Save";
+
+    /** Label for the Undo button on the editor tab */
+    private static final String UNDO_BUTTON_LABEL = "Undo";
+
+    /** Label for the Undo button on the editor tab */
+    private static final String TOGGLE_LABELS_BUTTON_LABEL = "Toggle Labels";
+
+    /* Number of buttons */
+    private final int BUTTON_COUNT = 3;
+
+    /** The toggle button widget */
+    private Button toggleLabelsButton;
+
+    /** The save button widget */
+    private Button saveButton;
+
+    /** The undo button widget */
+    private Button undoButton;
+
+    /** The scrolled composite for the megawidgets **/
+    private ScrolledComposite scrollerComposite;
+
+    /** The parent composite for the megawidgets **/
+    private Composite parentComposite;
 
     /**
      * The MegawidgetManager responsible for generating the GUI components for
@@ -142,13 +179,33 @@ public class ProductDataEditor extends AbstractDataEditor {
         }
 
         // Create the scroller composite and the layouts
-        ScrolledComposite scrollerComposite = new ScrolledComposite(editorPane,
+        scrollerComposite = new ScrolledComposite(editorPane,
                 SWT.BORDER | SWT.V_SCROLL);
         ProductEditorUtil.setLayoutInfo(scrollerComposite, 1, false, SWT.FILL,
                 SWT.FILL, true, true, 500, 300);
-        Composite parentComposite = new Composite(scrollerComposite, SWT.BORDER);
+        parentComposite = new Composite(scrollerComposite, SWT.BORDER);
         ProductEditorUtil.setLayoutInfo(parentComposite, 1, false, SWT.FILL,
                 SWT.FILL, true, true);
+
+        // Create the Megawidgets
+        createMegawidgets();
+
+        scrollerComposite.setExpandHorizontal(true);
+        scrollerComposite.setExpandVertical(true);
+        scrollerComposite.setContent(parentComposite);
+        scrollerComposite.setMinSize(parentComposite.computeSize(SWT.DEFAULT,
+                SWT.DEFAULT));
+        scrollerComposite.layout();
+    }
+
+    private void createMegawidgets() {
+        /* Dispose of any megawidget controls that may exist */
+        Control[] controls = parentComposite.getChildren();
+        if (controls.length != 0) {
+            for (int i = 0; i < controls.length; i++) {
+                controls[i].dispose();
+            }
+        }
 
         /*
          * Create the data structures necessary to pass to the megawidgets
@@ -250,13 +307,105 @@ public class ProductDataEditor extends AbstractDataEditor {
         } catch (MegawidgetException e) {
             handler.error("Error creating megawidgets: " + e, e);
         }
+    }
 
-        scrollerComposite.setExpandHorizontal(true);
-        scrollerComposite.setExpandVertical(true);
-        scrollerComposite.setContent(parentComposite);
-        scrollerComposite.setMinSize(parentComposite.computeSize(SWT.DEFAULT,
-                SWT.DEFAULT));
-        scrollerComposite.layout();
+    /**
+     * Creates the Save, Undo, and toggle buttons
+     * 
+     * @param editorPane
+     *            The parent composite
+     */
+    @Override
+    protected void createEditorButtons(Composite editorPane) {
+
+        // Initialize the composite to hold the buttons for the editor
+        editorButtonPane = new Composite(editorPane, SWT.NONE);
+        GridLayout buttonCompLayout = new GridLayout(getButtonCount(), false);
+        buttonCompLayout.horizontalSpacing = HORIZONTAL_BUTTON_SPACING;
+        GridData buttonCompData = new GridData(SWT.CENTER, SWT.CENTER, true,
+                false);
+        editorButtonPane.setLayout(buttonCompLayout);
+        editorButtonPane.setLayoutData(buttonCompData);
+        
+        /*
+         * Create the buttons for the editor tab
+         */
+        saveButton = new Button(editorButtonPane, SWT.PUSH);
+        undoButton = new Button(editorButtonPane, SWT.PUSH);
+        toggleLabelsButton = new Button(editorButtonPane, SWT.CHECK);
+
+        /*
+         * Configure Save button
+         */
+        saveButton.setText(SAVE_BUTTON_LABEL);
+        ProductEditorUtil.setButtonGridData(saveButton);
+        saveButton.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                saveModifiedValues();
+                updateTabLabel();
+            }
+        });
+
+        // Editor save button always enabled.
+        saveButton.setEnabled(true);
+
+        /*
+         * Configure Undo button
+         */
+        undoButton.setText(UNDO_BUTTON_LABEL);
+        ProductEditorUtil.setButtonGridData(undoButton);
+        undoButton.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                undoModification();
+                updateButtonState();
+                updateTabLabel();
+            }
+        });
+
+        // Editor Undo button is always enabled.
+        undoButton.setEnabled(true);
+
+        /*
+         * Configure toggle button
+         */
+        toggleLabelsButton.setText(TOGGLE_LABELS_BUTTON_LABEL);
+        ProductEditorUtil.setButtonGridData(toggleLabelsButton);
+        toggleLabelsButton.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                toggleLabels();
+            }
+        });
+
+        // Editor toggle button always enabled and checked by default.
+        toggleLabelsButton.setEnabled(true);
+        toggleLabelsButton.setSelection(true);
+    }
+
+    
+    /**
+     * Toggles the labels on the text fields contained in the Product Editor.
+     */
+    private void toggleLabels() {
+        /*
+         * Set the displayLabel flag on each KeyInfo object according to the button state.
+         */
+        Map<KeyInfo, KeyInfo> keyInfoMap = new LinkedHashMap<KeyInfo, KeyInfo>();
+        for (KeyInfo oldKey : editableKeys.getKeyInfos()) {
+            KeyInfo newKey = oldKey;
+            newKey.setDisplayLabel(toggleLabelsButton.getSelection());
+            keyInfoMap.put(oldKey, newKey);
+        }
+
+        /* update the keys in the editableKeys map */
+        for(KeyInfo oldKey : keyInfoMap.keySet()) {
+            editableKeys.replaceKey(keyInfoMap.get(oldKey), oldKey);
+        }
+
+        // re-create the megawidgets with or without the labels
+        createMegawidgets();
     }
 
     /**
@@ -453,5 +602,30 @@ public class ProductDataEditor extends AbstractDataEditor {
             }
         }
         return value;
+    }
+
+    /**
+     * Retrieves the number of buttons present on the editor GUI. The default
+     * value is 3.
+     * 
+     * @return The number of buttons present on the button composite
+     */
+    @Override
+    protected int getButtonCount() {
+        return BUTTON_COUNT;
+    }
+
+    /**
+     * Updates the text on the undo button.
+     */
+    @Override
+    protected void updateButtonState() {
+        // Update the undo button with how many undo actions are available
+        if (undosRemaining()) {
+            undoButton.setText(UNDO_BUTTON_LABEL + "(" + getUndosRemaining()
+                    + ")");
+        } else {
+            undoButton.setText(UNDO_BUTTON_LABEL);
+        }
     }
 }

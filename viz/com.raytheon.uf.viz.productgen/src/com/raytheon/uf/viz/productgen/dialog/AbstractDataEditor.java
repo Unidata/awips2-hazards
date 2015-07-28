@@ -22,11 +22,6 @@ package com.raytheon.uf.viz.productgen.dialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
-import org.eclipse.swt.events.SelectionAdapter;
-import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
@@ -56,6 +51,8 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  *                                      product, so saving is now done automatically.
  * 05/04/2015   6979       Robert.Blum  Adding Save button back as well as making the save and
  *                                      undo buttons always enabled.
+ * 07/28/2015   9687       Robert.Blum  Moved buttons to ProductDataEditor since they were not
+ *                                      common to all subclasses.
  * 
  * </pre>
  * 
@@ -64,29 +61,17 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  */
 public abstract class AbstractDataEditor extends CTabItem {
 
-    /** Label for the Save button on the editor tab */
-    private static final String SAVE_BUTTON_LABEL = "Save";
-
-    /** Label for the Undo button on the editor tab */
-    private static final String UNDO_BUTTON_LABEL = "Undo";
-
     /** The number of buttons on the GUI */
-    private static final int BUTTON_COUNT = 2;
+    private static final int BUTTON_COUNT = 0;
 
     /** Horizontal spacing between Save and Undo buttons */
-    private static final int HORIZONTAL_BUTTON_SPACING = 65;
+    protected static final int HORIZONTAL_BUTTON_SPACING = 65;
 
     /** The composite which holds the editor */
     protected Composite editorPane;
 
     /** The composite which holds the buttons */
     protected Composite editorButtonPane;
-
-    /** The save button widget */
-    protected Button saveButton;
-
-    /** The undo button widget */
-    protected Button undoButton;
 
     /** The parent product editor instance to which this data editor belongs */
     protected ProductEditor productEditor;
@@ -190,6 +175,12 @@ public abstract class AbstractDataEditor extends CTabItem {
     protected abstract int getUndosRemaining();
 
     /**
+     * Updates the text on the buttons.
+     */
+    protected abstract void updateButtonState();
+
+
+    /**
      * Initializes the GUI components for this data editor. Delegates to the
      * initializeSubclass method so the subclass may add any GUI contributes
      * first. Then adds and disables the buttons to the data editor
@@ -200,76 +191,8 @@ public abstract class AbstractDataEditor extends CTabItem {
         initializeSubclass();
 
         // Put the buttons on the bottom of the data editor
-        createEditorButtons(editorPane);
-    }
-
-    /**
-     * Creates the Save and Undo buttons
-     * 
-     * @param editorPane
-     *            The parent composite
-     */
-    protected void createEditorButtons(Composite editorPane) {
-
-        // Initialize the composite to hold the buttons for the editor
-        editorButtonPane = new Composite(editorPane, SWT.NONE);
-        GridLayout buttonCompLayout = new GridLayout(getButtonCount(), false);
-        buttonCompLayout.horizontalSpacing = HORIZONTAL_BUTTON_SPACING;
-        GridData buttonCompData = new GridData(SWT.CENTER, SWT.CENTER, true,
-                false);
-        editorButtonPane.setLayout(buttonCompLayout);
-        editorButtonPane.setLayoutData(buttonCompData);
-        /*
-         * Create the buttons for the editor tab
-         */
-
-        saveButton = new Button(editorButtonPane, SWT.PUSH);
-        undoButton = new Button(editorButtonPane, SWT.PUSH);
-
-        /*
-         * Configure Save button
-         */
-        saveButton.setText(SAVE_BUTTON_LABEL);
-        ProductEditorUtil.setButtonGridData(saveButton);
-        saveButton.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                saveModifiedValues();
-                updateTabLabel();
-            }
-        });
-
-        // Editor save button always enabled.
-        saveButton.setEnabled(true);
-
-        /*
-         * Configure Undo button
-         */
-        undoButton.setText(UNDO_BUTTON_LABEL);
-        ProductEditorUtil.setButtonGridData(undoButton);
-        undoButton.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                undoModification();
-                updateButtonState();
-                updateTabLabel();
-            }
-        });
-
-        // Editor Undo button is always enabled.
-        undoButton.setEnabled(true);
-    }
-
-    /**
-     * Updates the text on the undo button.
-     */
-    protected void updateButtonState() {
-        // Update the undo button with how many undo actions are available
-        if (undosRemaining()) {
-            undoButton.setText(UNDO_BUTTON_LABEL + "(" + getUndosRemaining()
-                    + ")");
-        } else {
-            undoButton.setText(UNDO_BUTTON_LABEL);
+        if (this.getButtonCount() > 0) {
+            createEditorButtons(editorPane);
         }
     }
 
@@ -298,8 +221,18 @@ public abstract class AbstractDataEditor extends CTabItem {
     }
 
     /**
+     * Creates common AbstractDataEditor buttons
+     * 
+     * @param editorPane
+     *            The parent composite
+     */
+    protected void createEditorButtons(Composite editorPane) {
+        // Do Nothing - no common buttons between all AbstractDataEditors
+    }
+
+    /**
      * Retrieves the number of buttons present on the editor GUI. The default
-     * value is 2 (Save Button and Undo Button).
+     * value is 0.
      * 
      * @return The number of buttons present on the button composite
      */

@@ -33,6 +33,7 @@
     Jul 06, 2015    7747    Robert.Blum Changes for adding framed text when text fields are left blank on HID.
     Jul 21, 2015    9640    Robert.Blum Fixed hazard name in summaryHeadlines.
     Jul 27, 2015    9637    Robert.Blum Changes to _polygonText() for point hazards.
+    Jul 28, 2015    9687    Robert.Blum Changes for new KeyInfo field - displayLabel.
     
 '''
 
@@ -1029,7 +1030,8 @@ class Format(FormatTemplate.Formatter):
         return self._tpc.getFormattedTime(
                 time_ms, format, stripLeading=stripLeading, timeZones=timeZones)
 
-    def _setVal(self, key, value, dictionary, label=None, editable=True, displayable=True, required=True):
+    def _setVal(self, key, value, dictionary, label=None, editable=True, displayable=True, required=True,
+                displayLabel=True):
         '''
         Helper method to call _setVal() in TextProductCommon. This method automatically
         sets the productCategory=self._productCategory, productID='', and editable=True
@@ -1038,7 +1040,7 @@ class Format(FormatTemplate.Formatter):
         eventIDs, ugcList = self._tpc.parameterSetupForKeyInfo(dictionary)
         self._tpc.setVal(self._editableParts, key, value, editable=editable, eventIDs=eventIDs,
                          segment=ugcList, label=label, displayable=displayable, required=required,
-                         productCategory=self._productCategory, productID='')
+                         displayLabel=displayLabel, productCategory=self._productCategory, productID='')
 
     def _getVal(self, key, dictionary):
         '''

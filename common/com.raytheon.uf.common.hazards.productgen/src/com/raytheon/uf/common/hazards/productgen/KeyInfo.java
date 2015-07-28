@@ -46,6 +46,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Apr 1, 2014            jsanchez     Initial creation
  * Apr 10, 2014  2336     Chris.Golden Added implementation of IParameterInfo.
  * Apr 23, 2014  3519     jsanchez     Made this class serializable and added the required field.
+ * Jul 28, 2015  9687     Robert.Blum  Added displayLabel field.
  * </pre>
  * 
  * @author jsanchez
@@ -81,6 +82,9 @@ public class KeyInfo implements IParameterInfo, ISerializableObject,
 
     @DynamicSerializeElement
     private boolean required;
+
+    @DynamicSerializeElement
+    private boolean displayLabel;
 
     private int index;
 
@@ -164,6 +168,14 @@ public class KeyInfo implements IParameterInfo, ISerializableObject,
 
     public void setRequired(boolean required) {
         this.required = required;
+    }
+
+    public boolean getDisplayLabel() {
+        return displayLabel;
+    }
+
+    public void setDisplayLabel(boolean displayLabel) {
+        this.displayLabel = displayLabel;
     }
 
     @Override
