@@ -231,6 +231,7 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           by (if issued).
  * Apr 09, 2015   7382     Chris.Golden      Added "show start-end time sliders" flag.
  * Apr 15, 2015   3508     Chris.Golden      Added "hazard detail to be wide" flag.
+ * Jul 28, 2015   9353     Robert.Blum       Removing Issue button.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1665,8 +1666,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 PREVIEW_BUTTON_TOOLTIP_TEXT);
         createButton(buttonBar, Command.PROPOSE, PROPOSE_BUTTON_TEXT,
                 PROPOSE_BUTTON_TOOLTIP_TEXT);
-        createButton(buttonBar, Command.ISSUE, ISSUE_BUTTON_TEXT,
-                ISSUE_BUTTON_TOOLTIP_TEXT);
+        /*
+         * TODO: RM 3851 - Make this configurable using flag in startupconfig.py
+         */
+//        createButton(buttonBar, Command.ISSUE, ISSUE_BUTTON_TEXT,
+//                ISSUE_BUTTON_TOOLTIP_TEXT);
     }
 
     @Override
