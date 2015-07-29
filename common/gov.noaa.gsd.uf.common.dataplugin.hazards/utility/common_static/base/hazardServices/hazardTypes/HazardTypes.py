@@ -1,6 +1,11 @@
 # Notes:  booleans should not be prefixed with "is", i.e. iswarngenHatching.  
 #         Otherwise the deserialization will fail.
-#         expirationTime is a tuple (beforeMinutes, afterMinutes)
+#
+#         expirationTime is a tuple (beforeMinutes, afterMinutes).  
+#                        This is set according to VTEC policy, so cannot be changed.
+#                        If a hazard event is issued within the (beforeMinutes, afterMinutes)
+#                        window around the hazard end time, then a VTEC EXP will be 
+#                        automatically generated.  
 #         hazardConflictList is a list of hazard types which conflict with the
 #                            given hazard type.
 #         ugcType represents the area type that a hazard geometry will
@@ -121,6 +126,7 @@ HazardTypes = {
     'AQ.Y' : {'headline': 'AIR QUALITY ALERT',
               '_override_lock_': OVERRIDE_LOCK,
               'combinableSegments': True,
+              'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
               'expirationTime': (-30, 30),
@@ -410,6 +416,7 @@ HazardTypes = {
     'FA.A' : {'headline': 'AREAL FLOOD WATCH',
               '_override_lock_': OVERRIDE_LOCK,
               'combinableSegments': True,
+              'includeAll': True,
               'allowAreaChange': True,
               'allowTimeChange': True,
               'expirationTime': (-30, 30),

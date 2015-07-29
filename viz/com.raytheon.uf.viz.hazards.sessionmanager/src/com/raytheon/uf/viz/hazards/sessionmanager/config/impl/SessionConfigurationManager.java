@@ -532,7 +532,16 @@ public class SessionConfigurationManager implements
     public List<Settings> getAvailableSettings() {
         List<Settings> result = new ArrayList<Settings>(allSettings.size());
         for (ConfigLoader<Settings> settings : allSettings) {
-            result.add(settings.getConfig());
+            Settings setting = settings.getConfig();
+            /*
+             * Ensure that display name is not empty before including the
+             * setting.
+             */
+            if ((setting.getDisplayName() == null)
+                    || setting.getDisplayName().isEmpty()) {
+                continue;
+            }
+            result.add(setting);
         }
         return result;
     }

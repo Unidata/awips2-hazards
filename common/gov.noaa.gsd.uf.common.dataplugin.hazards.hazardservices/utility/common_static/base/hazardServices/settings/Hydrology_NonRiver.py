@@ -1,8 +1,7 @@
-Flood = {
-    "settingsID" : "Flood",
-    "perspectiveIDs" : ["com.raytheon.viz.hydro.HydroPerspective",
-                        "com.raytheon.viz.mpe.ui.MPEPerspective"],
-    "displayName": "Canned Flood", 
+Hydrology_NonRiver = {
+    "settingsID" : "Hydrology_NonRiver",
+    "perspectiveIDs" : [],
+    "displayName": "Hydrology - Non River", 
     "visibleTypes": [
         "FF.A", 
         "FF.W.Convective", 
@@ -11,30 +10,32 @@ Flood = {
         "FA.Y", 
         "FA.A", 
         "FA.W", 
-        "FL.Y", 
-        "FL.A", 
-        "FL.W",
-        "HY.O",
-        "HY.S"
+        #"FL.Y", 
+        #"FL.A", 
+        #"FL.W",
+        #"HY.O",
+        #"HY.S"
     ], 
     "hazardCategoriesAndTypes": [
         {
-            "displayString": "Hydrology", 
-            "children": [
-                "FF.A", 
-                "FF.W.Convective", 
-                "FF.W.NonConvective",
-                 "FF.W.BurnScar",
-                "FA.Y", 
-                "FA.A", 
-                "FA.W", 
-                "FL.Y", 
-                "FL.A", 
-                "FL.W"
-            ]
+        "displayString": "Hydrology", 
+        "children": [
+        "FF.A", 
+        "FF.W.Convective", 
+        "FF.W.NonConvective", 
+        "FF.W.BurnScar",
+        "FA.Y", 
+        "FA.A", 
+        "FA.W", 
+        #"FL.Y", 
+        #"FL.A", 
+        #"FL.W",
+        #"HY.O",
+        #"HY.S"
+        ]
         }
     ], 
-    "hazardsFilter" : "Flood",     
+    #"hazardsFilter" : "Hydrology_NonRiver",     
     "defaultTimeDisplayDuration": 172800000, 
     "defaultCategory" : "Hydrology",
     "mapCenter": {
@@ -53,9 +54,8 @@ Flood = {
         "Event ID",
         "Hazard Type", 
         "Status", 
-        "Time Remaining (EXP)",
         "Start Time", 
-        "End Time"
+        "End Time",
     ], 
     "visibleStatuses": [
         "potential",
@@ -155,25 +155,10 @@ Flood = {
             "fieldName": "description", 
             "type": "string"
         },
-        "Time Remaining (EXP)": {
+        "Time to Expiration": {
             "sortDir": "none", 
             "fieldName": "alert", 
             "type": "countdown"
-        },
-        "Point ID": {
-            "sortDir": "none", 
-            "fieldName": "pointID", 
-            "type": "string"
-        },
-        "River Mile": {
-            "sortDir": "none", 
-            "fieldName": "riverMile", 
-            "type": "number"
-        },
-        "Stream": {
-            "sortDir": "none", 
-            "fieldName": "streamName", 
-            "type": "string"
         },
     }, 
     "toolbarTools": [
@@ -189,12 +174,12 @@ Flood = {
             "toolType": "RECOMMENDER",
             "visible":True,
         }, 
-        {
-            "toolName": "RiverFloodRecommender", 
-            "displayName": "River Flood Recommender",
-            "toolType": "RECOMMENDER",
-            "visible":True,
-        },
+#         {
+#             "toolName": "RiverFloodRecommender", 
+#             "displayName": "River Flood Recommender",
+#             "toolType": "RECOMMENDER",
+#             "visible":True,
+#         },
         {
             "toolName": "FlashFloodRecommender", 
             "displayName": "Flash Flood Recommender",
@@ -212,11 +197,11 @@ Flood = {
             "toolType": "RECOMMENDER",
             "visible":False,
         },
-        {
-            "toolName": "RVS_ProductGenerator", 
-            "displayName": "Generate RVS",
-            "toolType": "NON_HAZARD_PRODUCT_GENERATOR",
-            "visible":True,
-        }
+#         {
+#             "toolName": "RVS_ProductGenerator", 
+#             "displayName": "Generate RVS",
+#             "toolType": "NON_HAZARD_PRODUCT_GENERATOR",
+#             "visible":True,
+#         }
     ]
 }

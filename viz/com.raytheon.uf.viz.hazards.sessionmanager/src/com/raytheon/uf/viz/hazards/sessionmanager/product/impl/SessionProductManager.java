@@ -209,6 +209,9 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      to incorrectly update when products failed validation, since
  *                                      the validation was done after the product generation.
  * Jul 23, 2015 9625       Robert.Blum  Fixed issueTime when writing to the productData table for RVS.
+ * Jul 28, 2015 9737       Chris.Golden Fixed bug that caused a switch to a different setting to still show and
+ *                                      generate products for events that should have been hidden by the new
+ *                                      setting's filters.
  * </pre>
  * 
  * @author bsteffen
@@ -359,7 +362,8 @@ public class SessionProductManager implements ISessionProductManager {
             Set<IHazardEvent> productEvents = new HashSet<>();
             Set<IHazardEvent> possibleProductEvents = new HashSet<>();
 
-            for (ObservedHazardEvent e : eventManager.getEvents()) {
+            for (ObservedHazardEvent e : eventManager
+                    .getEventsForCurrentSettings()) {
                 if (e.getPhenomenon() == null || e.getSignificance() == null) {
                     continue;
                 }
@@ -420,7 +424,8 @@ public class SessionProductManager implements ISessionProductManager {
             Set<IHazardEvent> productEvents = new HashSet<>();
             Set<IHazardEvent> possibleProductEvents = new HashSet<>();
 
-            for (ObservedHazardEvent e : eventManager.getEvents()) {
+            for (ObservedHazardEvent e : eventManager
+                    .getEventsForCurrentSettings()) {
                 if (e.getPhenomenon() == null || e.getSignificance() == null) {
                     continue;
                 }
@@ -579,7 +584,8 @@ public class SessionProductManager implements ISessionProductManager {
 
             String[][] allowedHazards = entry.getValue().getAllowedHazards();
 
-            for (ObservedHazardEvent e : eventManager.getEvents()) {
+            for (ObservedHazardEvent e : eventManager
+                    .getEventsForCurrentSettings()) {
 
                 if (e.getPhenomenon() == null || e.getSignificance() == null) {
                     continue;
@@ -594,7 +600,7 @@ public class SessionProductManager implements ISessionProductManager {
             }
         }
 
-        for (ObservedHazardEvent e : eventManager.getEvents()) {
+        for (ObservedHazardEvent e : eventManager.getEventsForCurrentSettings()) {
             String key = HazardEventUtilities.getHazardType(e);
             boolean found = false;
             for (String supported : supportedHazards) {
@@ -770,12 +776,13 @@ public class SessionProductManager implements ISessionProductManager {
         if (pgEntry.getChangeHazardStatus() == true) {
 
             /*
-             * Need to look at all events in the SessionManager because some
-             * events for which products were generated may not have been
+             * Need to look at all visible events in the SessionManager because
+             * some events for which products were generated may not have been
              * selected. For example, two FA.A's, one selected, one not, and the
              * user adds the second one via the product staging dialog.
              */
-            for (ObservedHazardEvent sessionEvent : eventManager.getEvents()) {
+            for (ObservedHazardEvent sessionEvent : eventManager
+                    .getEventsForCurrentSettings()) {
 
                 /*
                  * Update Hazard Events with product information returned from

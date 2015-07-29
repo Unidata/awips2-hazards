@@ -1,49 +1,63 @@
-TOR = {
-    "settingsID" : "TOR",
-    "perspectiveIDs" : ["com.raytheon.uf.viz.d2d.ui.perspectives.D2D5Pane"],
-    "displayName": "", 
-    "hidHazardCategories": [
-        "Short Fused"
-    ], 
+Hydrology_River = {
+    "settingsID" : "Hydrology_River",
+    "perspectiveIDs" : [],
+    "displayName": "Hydrology - River", 
     "visibleTypes": [
-        "TO.W", 
-        "SV.W", 
-        "EW.W"
+#         "FF.A", 
+#         "FF.W.Convective", 
+#         "FF.W.NonConvective", 
+#         "FF.W.BurnScar",
+#         "FA.Y", 
+#         "FA.A", 
+#         "FA.W", 
+        "FL.Y", 
+        "FL.A", 
+        "FL.W",
+        "HY.O",
+        "HY.S"
     ], 
     "hazardCategoriesAndTypes": [
         {
-            "displayString": "Convective", 
-            "children": [
-                "TO.W", 
-                "SV.W", 
-                "EW.W"
-            ]
+        "displayString": "Hydrology", 
+        "children": [
+#         "FF.A", 
+#         "FF.W.Convective", 
+#         "FF.W.NonConvective", 
+#         "FF.W.BurnScar",
+#         "FA.Y", 
+#         "FA.A", 
+#         "FA.W", 
+        "FL.Y", 
+        "FL.A", 
+        "FL.W",
+        "HY.O",
+        "HY.S"
+        ]
         }
     ], 
-    "defaultTimeDisplayDuration": 14400000, 
-    "maxDuration": 90, 
-    "durationIncrement": 1, 
+    #"hazardsFilter" : "Hydrology_River",     
+    "defaultTimeDisplayDuration": 172800000, 
+    "defaultCategory" : "Hydrology",
     "mapCenter": {
         "lat": 41.06, 
         "lon": -95.91, 
         "zoom": 7
     }, 
-    "defaultSiteID": "OAX", 
-    "defaultCategory": "Convective", 
     #The following variable needs to be overridden at the site level e.g. 
     #    Example:  "possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
-    "possibleSites": [],
+    "possibleSites": [ ],
     #The following variable needs to be overridden at the site level
     #    Example:  "visibleSites":  ["BOU", "OAX"]
     "visibleSites": [], 
-    "defaultDuration": 1800000, 
+    "defaultDuration": 28800000, 
     "visibleColumns": [
         "Event ID",
         "Hazard Type", 
-        "Status",
-        "Time Remaining",
+        "Status", 
+        "Stream",
+        "Point ID",
         "Start Time", 
-        "End Time"
+        "End Time",
     ], 
     "visibleStatuses": [
         "potential",
@@ -52,7 +66,7 @@ TOR = {
         "issued",
         "ending",
         "ended"
-    ],  
+    ], 
     "columns": {
         "Event ID": {
             "type": "string", 
@@ -61,14 +75,15 @@ TOR = {
         }, 
         "Hazard Type": {
             "type": "string", 
-            "fieldName": "type", 
-            "sortPriority": 1,
+            "fieldName": "type",
+            #"sortPriority": 1,
             "sortDir": "ascending",
             "hintTextFieldName": "headline",
             "displayEmptyAs": "Undefined"
+            
         }, 
         "Status": {
-            "sortPriority": 2,
+            #"sortPriority": 2,
             "sortDir": "ascending",
             "width": 61, 
             "fieldName": "status",
@@ -109,13 +124,13 @@ TOR = {
             "width": 122, 
             "fieldName": "creationTime",
             "type": "date"
-        }, 
+        },
         "Issue Time": {
             "sortDir": "none",
             "width": 122,
             "fieldName": "issueTime",
             "type": "date"
-        },
+        }, 
         "Site ID": {
             "type": "string", 
             "fieldName": "siteID", 
@@ -146,19 +161,66 @@ TOR = {
             "sortDir": "none", 
             "fieldName": "alert", 
             "type": "countdown"
-        }
+        },
+        "Point ID": {
+            "sortDir": "none", 
+            "fieldName": "pointID", 
+            "type": "string"
+        },
+        "River Mile": {
+            "sortPriority": 2,
+            "sortDir": "ascending",
+            "fieldName": "riverMile", 
+            "type": "number"
+        },
+        "Stream": {
+            "sortPriority": 1,
+            "sortDir": "ascending",
+            "fieldName": "streamName", 
+            "type": "string"
+        },
     }, 
     "toolbarTools": [
+#         {
+#             "toolName": "DamBreakFloodRecommender", 
+#             "displayName": "Dam/Levee Break Flood Recommender",
+#             "toolType": "RECOMMENDER",
+#             "visible":True,
+#         }, 
+#         {
+#             "toolName": "BurnScarFloodRecommender", 
+#             "displayName": "Burn Scar Flood Recommender",
+#             "toolType": "RECOMMENDER",
+#             "visible":True,
+#         }, 
         {
-            "toolName": "StormTrackTool", 
-            "displayName": "Storm Track",
+            "toolName": "RiverFloodRecommender", 
+            "displayName": "River Flood Recommender",
             "toolType": "RECOMMENDER",
             "visible":True,
         },
+#         {
+#             "toolName": "FlashFloodRecommender", 
+#             "displayName": "Flash Flood Recommender",
+#             "toolType": "RECOMMENDER",
+#             "visible":True,
+#         },
+#         {
+#             "toolName": "StormTrackTool", 
+#             "displayName": "Storm Track",
+#             "toolType": "RECOMMENDER",
+#             "visible":True,
+#         },
+#         {
+#             "toolName": "ModifyStormTrackTool", 
+#             "toolType": "RECOMMENDER",
+#             "visible":False,
+#         },
         {
-            "toolName": "ModifyStormTrackTool", 
-            "toolType": "RECOMMENDER",
-            "visible":False,
-        },
-    ] 
+            "toolName": "RVS_ProductGenerator", 
+            "displayName": "Generate RVS",
+            "toolType": "NON_HAZARD_PRODUCT_GENERATOR",
+            "visible":True,
+        }
+    ]
 }

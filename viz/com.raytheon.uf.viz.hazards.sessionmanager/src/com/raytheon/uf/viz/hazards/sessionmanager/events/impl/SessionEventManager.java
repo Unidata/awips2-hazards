@@ -311,7 +311,9 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Jul 07, 2015    8966    Robert.Blum  Fixed start/end time from being incorrectly adjusted based on issue time.
  * Jul 08, 2015    8529    Robert.Blum  Removing invalid attributes when the event type is changed.
  * Jul 22, 2015    9490    Robert.Blum  Fixed Add/Remove county from polygon via right click for WarnGen hazards.
- * 
+ * Jul 28, 2015    9737    Chris.Golden Fixed bug that caused a switch to a different setting to still show and
+ *                                      generate products for events that should have been hidden by the new
+ *                                      setting's filters.
  * </pre>
  * 
  * @author bsteffen
@@ -804,7 +806,8 @@ public class SessionEventManager implements
          * Validate the attributes, removing invalid ones (i.e. those that do
          * not belong with this hazard type).
          */
-        HazardEventMetadata metadata = configManager.getMetadataForHazardEvent(event);
+        HazardEventMetadata metadata = configManager
+                .getMetadataForHazardEvent(event);
         validateHazardAttributes(
                 getMegawidgetSpecifiers(event).getSpecifiers(), metadata
                         .getMegawidgetSpecifierManager().getSpecifiers(), event);
@@ -875,7 +878,8 @@ public class SessionEventManager implements
      *            Specifiers to check
      * @return Returns true if the specifier was found, otherwise false
      */
-    public boolean checkSpecifier(ISpecifier specifier, List<ISpecifier> newSpecifiers) {
+    public boolean checkSpecifier(ISpecifier specifier,
+            List<ISpecifier> newSpecifiers) {
         boolean matchFound = false;
         for (ISpecifier newSpecifier : newSpecifiers) {
             if (newSpecifier instanceof GroupSpecifier) {
@@ -1824,6 +1828,27 @@ public class SessionEventManager implements
                 scheduleExpirationTask(event);
             }
         }
+
+        /*
+         * Compile the list of events that are now selected, and get their
+         * identifiers, and ensure they are not in the list of modified events.
+         * Then send these off as a notification of selection change.
+         */
+        List<ObservedHazardEvent> selectedEvents = getSelectedEvents();
+        Set<String> eventIds = new HashSet<>(selectedEvents.size(), 1.0f);
+        for (ObservedHazardEvent event : selectedEvents) {
+            eventIds.add(event.getEventID());
+        }
+        Iterator<String> iter = eventModifications.iterator();
+        while (iter.hasNext()) {
+            String identifier = iter.next();
+            if (eventIds.contains(identifier) == false) {
+                iter.remove();
+            }
+        }
+        notificationSender
+                .postNotificationAsync(new SessionSelectedEventsModified(this,
+                        Originator.OTHER));
     }
 
     @Override
@@ -3739,7 +3764,8 @@ public class SessionEventManager implements
                     warngenHatchingAddRemove(hazardAreas, locationAsGeometry,
                             modifiedHazardGeometry, enclosingUGC, hazardArea);
                     // hazardAreas updated, now update the modified geometry
-                    modifiedHazardGeometry = modifiedHazardGeometry.difference(enclosingUgcGeometry);
+                    modifiedHazardGeometry = modifiedHazardGeometry
+                            .difference(enclosingUgcGeometry);
                     if (!(hazardAreas.values().contains(HAZARD_AREA_ALL) || hazardAreas
                             .values().contains(HAZARD_AREA_INTERSECTION))) {
                         statusHandler.warn(EMPTY_GEOMETRY_ERROR);

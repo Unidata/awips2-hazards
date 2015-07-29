@@ -1,7 +1,7 @@
 WSW = {
     "settingsID": "WSW",
     "perspectiveIDs": ["com.raytheon.viz.ui.GFEPerspective"], 
-    "displayName": "Canned WSW", 
+    "displayName": "", 
     "hidHazardCategories": [
         "Winter Weather"
     ], 
@@ -38,9 +38,8 @@ WSW = {
         "Event ID",
         "Hazard Type", 
         "Status",
-        "Time Remaining",
         "Start Time", 
-        "End Time"
+        "End Time",
     ], 
     "visibleStatuses": [
         "potential",
@@ -139,7 +138,7 @@ WSW = {
             "fieldName": "description", 
             "type": "string"
         },
-        "Time Remaining": {
+        "Time to Expiration": {
             "sortDir": "none", 
             "fieldName": "alert", 
             "type": "countdown"
