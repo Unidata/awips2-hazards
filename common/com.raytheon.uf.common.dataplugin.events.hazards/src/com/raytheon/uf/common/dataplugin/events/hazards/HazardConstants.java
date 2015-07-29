@@ -74,6 +74,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Feb 23, 2015 3618      Chris.Golden  Added possible sites to settings.
  * May 18, 2015 8227      Chris.Cody    Remove NullRecommender
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
+ * Jul 29, 2015 9306    Chris.Cody      Add HazardSatus.ELAPSED status
  * </pre>
  * 
  * @author mnash
@@ -85,7 +86,7 @@ public final class HazardConstants {
     // part of the hazard lifecycle that the user will see
     public enum HazardStatus {
         PENDING("pending"), POTENTIAL("potential"), PROPOSED("proposed"), ISSUED(
-                "issued"), ENDING("ending"), ENDED("ended");
+                "issued"), ELAPSED("elapsed"), ENDING("ending"), ENDED("ended");
         private final String value;
 
         private HazardStatus(String value) {
@@ -406,11 +407,11 @@ public final class HazardConstants {
      * End time key in hazard
      */
     public static final String ISSUE_TIME = "issueTime";
-    
+
     /**
      * Insert time key in hazard
      */
-    
+
     public static final String INSERT_TIME = "insertTime";
 
     /**

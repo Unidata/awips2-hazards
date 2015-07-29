@@ -64,6 +64,7 @@ Hydrology_River = {
         "proposed",
         "pending",
         "issued",
+        "elapsed",
         "ending",
         "ended"
     ], 

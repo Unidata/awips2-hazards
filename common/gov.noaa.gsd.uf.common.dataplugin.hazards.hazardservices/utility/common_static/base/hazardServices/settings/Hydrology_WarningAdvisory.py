@@ -64,6 +64,7 @@ Hydrology_WarningAdvisory = {
         "proposed",
         "pending",
         "issued",
+        "elapsed",
         "ending",
         "ended"
     ], 

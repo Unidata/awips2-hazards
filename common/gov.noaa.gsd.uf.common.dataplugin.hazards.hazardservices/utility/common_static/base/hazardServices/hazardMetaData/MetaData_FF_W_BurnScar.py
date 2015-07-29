@@ -5,7 +5,7 @@ class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-        if self.hazardStatus in ["ending", "ended"]:
+        if self.hazardStatus in ["elapsed", "ending", "ended"]:
             metaData = [
                         self.getListOfCities(False),
                         self.getEndingOption(),

@@ -158,6 +158,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Apr 15, 2015    3508    Chris.Golden      Added "hazard detail to be wide" flag.
  * May 20, 2015    8192    Chris.Cody        Set HID Durations for new Events on type selection
  * Jun 26, 2015    7919    Robert.Blum       Enabled Issue/Preview button for Ended hazards.
+ * Jul 29, 2015    9306    Chris.Cody        Add processing for HazardSatus.ELAPSED
  * </pre>
  * 
  * @author Chris.Golden
@@ -1446,6 +1447,7 @@ public class HazardDetailPresenter extends
             getView().getTypeChanger().setChoices(event.getEventID(), types,
                     descriptions, selectedType);
             break;
+        case ELAPSED:
         case ENDING:
         case ENDED:
             getView().getTypeChanger().setChoices(event.getEventID(),
@@ -1466,7 +1468,8 @@ public class HazardDetailPresenter extends
         HazardStatus status = event.getStatus();
         getView().getTypeChanger().setEditable(
                 event.getEventID(),
-                (status != HazardStatus.ENDING)
+                (status != HazardStatus.ELAPSED)
+                        && (status != HazardStatus.ENDING)
                         && (status != HazardStatus.ENDED));
     }
 

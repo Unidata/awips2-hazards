@@ -62,6 +62,7 @@ Hydrology_NonRiver = {
         "proposed",
         "pending",
         "issued",
+        "elapsed",
         "ending",
         "ended"
     ], 

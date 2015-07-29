@@ -67,6 +67,7 @@ Hydrology_All = {
         "proposed",
         "pending",
         "issued",
+        "elapsed",
         "ending",
         "ended"
     ],

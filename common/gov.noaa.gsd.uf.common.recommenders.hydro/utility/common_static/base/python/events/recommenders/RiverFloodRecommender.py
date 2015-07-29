@@ -25,6 +25,7 @@ recommender framework
     May 14, 2015    7974     Robert.Blum         Added hours label to cutoff time.
     May 18, 2015    6562     Chris.Cody          Restructure River Forecast Points/Recommender
     May 26, 2015    7634     Chris.Cody          Changes for Forecast Bullet Generation
+    Jul 29, 2015    9306     Chris.Cody          Add processing for HazardSatus.ELAPSED
     
 @since: November 2012
 @author: GSD Hazard Services Team
@@ -243,7 +244,7 @@ class Recommender(RecommenderTemplate.Recommender):
             for currentEvent in currentEvents:
                 if currentEvent.get(POINT_ID) == recommendedEvent.get(POINT_ID):
                     # If ended, then simply add the new recommended one
-                    if currentEvent.getStatus() == 'ENDED':
+                    if currentEvent.getStatus() == 'ELAPSED' or currentEvent.getStatus() == 'ENDED':
                         continue 
                     elif currentEvent.getHazardType() != recommendedEvent.getHazardType():
                         # Handle transitions to new hazard type

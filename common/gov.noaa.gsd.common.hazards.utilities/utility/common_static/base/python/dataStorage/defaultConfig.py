@@ -15,6 +15,10 @@ statuses = [
                      },
 
                      {
+                      "displayString": "elapsed", 
+                     },
+            
+                     {
                       "displayString": "ending", 
                      },
 

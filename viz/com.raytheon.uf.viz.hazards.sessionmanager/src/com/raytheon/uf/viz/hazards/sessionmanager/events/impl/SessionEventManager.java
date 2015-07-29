@@ -314,6 +314,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Jul 28, 2015    9737    Chris.Golden Fixed bug that caused a switch to a different setting to still show and
  *                                      generate products for events that should have been hidden by the new
  *                                      setting's filters.
+ * Jul 29, 2015    9306    Chris.Cody   Add processing for HazardSatus.ELAPSED
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -1084,11 +1086,11 @@ public class SessionEventManager implements
      * @param change
      *            Change that occurred.
      */
-
     @Handler(priority = 1)
     public void hazardStatusChanged(SessionEventStatusModified change) {
         ObservedHazardEvent event = change.getEvent();
-        if ((event.getStatus() == HazardStatus.ENDING)
+        if ((event.getStatus() == HazardStatus.ELAPSED)
+                || (event.getStatus() == HazardStatus.ENDING)
                 || (event.getStatus() == HazardStatus.ENDED)) {
             if (event.getStatus() == HazardStatus.ENDING) {
                 eventIdentifiersWithEndingStatus.add(event.getEventID());
@@ -2204,6 +2206,9 @@ public class SessionEventManager implements
             case PROPOSED:
                 needsPersist = true;
                 break;
+            case ELAPSED:
+                needsPersist = true;
+                break;
             case ENDED:
                 List<String> vtecCodes = (List<String>) event
                         .getHazardAttribute(HazardConstants.VTEC_CODES);
@@ -2265,7 +2270,7 @@ public class SessionEventManager implements
                 TimerTask task = new TimerTask() {
                     @Override
                     public void run() {
-                        event.setStatus(HazardStatus.ENDED, true, true,
+                        event.setStatus(HazardStatus.ELAPSED, true, true,
                                 Originator.OTHER);
                         expirationTasks.remove(eventId);
                     }
@@ -2541,6 +2546,7 @@ public class SessionEventManager implements
             endTimeRange = getEndTimeRangeForIssuedEvent(event, newStartTime,
                     newEndTime);
             break;
+        case ELAPSED:
         case ENDING:
         case ENDED:
             endTimeRange = getEndTimeRangeForEndingEvent(newEndTime);
@@ -2571,16 +2577,15 @@ public class SessionEventManager implements
     private boolean setEventTimeRangeBoundaries(IHazardEvent event,
             Range<Long> startTimeRange, Range<Long> endTimeRange) {
         boolean changed = false;
+        String eventID = event.getEventID();
         if (startTimeRange.equals(startTimeBoundariesForEventIdentifiers
-                .get(event.getEventID())) == false) {
-            startTimeBoundariesForEventIdentifiers.put(event.getEventID(),
-                    startTimeRange);
+                .get(eventID)) == false) {
+            startTimeBoundariesForEventIdentifiers.put(eventID, startTimeRange);
             changed = true;
         }
-        if (endTimeRange.equals(endTimeBoundariesForEventIdentifiers.get(event
-                .getEventID())) == false) {
-            endTimeBoundariesForEventIdentifiers.put(event.getEventID(),
-                    endTimeRange);
+        if (endTimeRange.equals(endTimeBoundariesForEventIdentifiers
+                .get(eventID)) == false) {
+            endTimeBoundariesForEventIdentifiers.put(eventID, endTimeRange);
             changed = true;
         }
         return changed;
@@ -3152,6 +3157,7 @@ public class SessionEventManager implements
                             .and(HazardConstants.PHEN_SIG, hazardConflictList)
                             .and(HazardConstants.HAZARD_EVENT_STATUS,
                                     new Object[] { HazardStatus.ISSUED,
+                                            HazardStatus.ELAPSED,
                                             HazardStatus.ENDING,
                                             HazardStatus.ENDED,
                                             HazardStatus.PROPOSED });
