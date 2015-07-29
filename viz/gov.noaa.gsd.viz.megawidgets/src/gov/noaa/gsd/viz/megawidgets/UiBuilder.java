@@ -98,6 +98,8 @@ import com.google.common.collect.Lists;
  *                                           to consume mouse wheel events, will
  *                                           result in the same scrolling
  *                                           behavior as real ones.
+ * Jul 28, 2015    9633    Robert.Blum       Added buildScrolledComposite method that
+ *                                           is used by product editor to fix scroll issue.
  * </pre>
  * 
  * @author Chris.Golden
@@ -967,6 +969,110 @@ public class UiBuilder {
                 .get(IResizer.RESIZE_LISTENER);
         paramMap.put(IResizer.RESIZE_LISTENER, new ScrolledResizeListener(
                 megawidget, scrolledComposite, resizeListener));
+
+        /*
+         * Ensure that the native widget's response to a mouse wheel event is
+         * suppressed, and that instead, scrolling as a result of a mouse wheel
+         * is performed synthetically. This is done so that synthetic mouse
+         * wheel events may be sent to the scrolled composite by descendant
+         * widgets that want to pass their mouse wheel events onto the
+         * scrollable container in which they reside.
+         * 
+         * TODO: MouseHorizontalWheel events do not appear to be generated on
+         * the target platform, but if they are, it would be desirable to do the
+         * same for them.
+         */
+        scrolledComposite.addListener(SWT.MouseVerticalWheel, new Listener() {
+            @Override
+            public void handleEvent(Event event) {
+                event.doit = false;
+            }
+        });
+        scrolledComposite.addMouseWheelListener(new MouseWheelListener() {
+            @Override
+            public void mouseScrolled(MouseEvent e) {
+                Point origin = scrolledComposite.getOrigin();
+                origin.y += MOUSE_WHEEL_SCROLL_INCREMENT
+                        * (e.count < 0 ? 1 : -1);
+                int maxOrigin = scrolledComposite.getContent().getBounds().height
+                        - scrolledComposite.getClientArea().height;
+                if (origin.y < 0) {
+                    origin.y = 0;
+                } else if (origin.y > maxOrigin) {
+                    origin.y = maxOrigin;
+                }
+                scrolledComposite.setOrigin(origin);
+            }
+        });
+
+        /*
+         * Return the result.
+         */
+        return scrolledComposite;
+    }
+
+    /**
+     * Build a scrolled composite containing a child composite in which to
+     * lay out megawidget components. The child composite is not assigned a layout.
+     * The resulting scrolled composite handles size changes it experiences by 
+     * recalculating its page increments.
+     * 
+     * @param parent
+     *            Parent composite.
+     * @return New scrolled composite.
+     */
+    public static ScrolledComposite buildScrolledComposite(Composite parent) {
+        /*
+         * Create the scrolled composite and its child. Note that the scrolled
+         * composite's computeSize() method is overridden to ensure that the
+         * width and height each have the scrollbars' widths subtracted from
+         * them. This is because the base scrolled composite class always adds
+         * the widths of the scrollbars to what it is requesting in both
+         * dimensions.
+         */
+        final ScrolledComposite scrolledComposite = new ScrolledComposite(
+                parent, SWT.H_SCROLL | SWT.V_SCROLL) {
+            @Override
+            public Point computeSize(int wHint, int hHint, boolean changed) {
+                Point size = super.computeSize(wHint, hHint, changed);
+                Rectangle trimSize = computeTrim(0, 0, 0, 0);
+                size.x -= trimSize.width;
+                size.y -= trimSize.height;
+                return size;
+            }
+        };
+        Composite composite = new Composite(scrolledComposite, SWT.NONE);
+        scrolledComposite.setContent(composite);
+        scrolledComposite.setExpandHorizontal(true);
+        scrolledComposite.setExpandVertical(true);
+        scrolledComposite.getHorizontalBar().setIncrement(
+                SCROLLBAR_BUTTON_INCREMENT);
+        scrolledComposite.getVerticalBar().setIncrement(
+                SCROLLBAR_BUTTON_INCREMENT);
+
+        /*
+         * Ensure that the scrolled composite responds to being resized by
+         * updating its page increments.
+         */
+        scrolledComposite.addControlListener(new ControlAdapter() {
+            @Override
+            public void controlResized(ControlEvent e) {
+
+                /*
+                 * Schedule a resize of the page increment to happen after the
+                 * laying out of the panels is complete. The latter must be done
+                 * asynchronously to ensure the laying out is done before it
+                 * proceeds, otherwise it gets the wrong information from the
+                 * scrollbars.
+                 */
+                Display.getDefault().asyncExec(new Runnable() {
+                    @Override
+                    public void run() {
+                        updateScrollPageIncrement(scrolledComposite);
+                    }
+                });
+            }
+        });
 
         /*
          * Ensure that the native widget's response to a mouse wheel event is

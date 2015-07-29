@@ -25,6 +25,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 import gov.noaa.gsd.viz.megawidgets.ParametersEditorFactory;
+import gov.noaa.gsd.viz.megawidgets.UiBuilder;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -88,6 +89,7 @@ import com.raytheon.uf.common.util.Pair;
  * 07/28/2015   9687       Robert.Blum  Added Save/Undo buttons from parent class, since they are
  *                                      unique for this subclass. Also Added new button to toggle
  *                                      the labels on the megawidget fields.
+ * 07/28/2015   9633       Robert.Blum  Fixed middle mouse scroll issue on product editor.
  * </pre>
  * 
  * @author jsanchez
@@ -179,8 +181,7 @@ public class ProductDataEditor extends AbstractDataEditor {
         }
 
         // Create the scroller composite and the layouts
-        scrollerComposite = new ScrolledComposite(editorPane,
-                SWT.BORDER | SWT.V_SCROLL);
+        scrollerComposite = UiBuilder.buildScrolledComposite(editorPane);
         ProductEditorUtil.setLayoutInfo(scrollerComposite, 1, false, SWT.FILL,
                 SWT.FILL, true, true, 500, 300);
         parentComposite = new Composite(scrollerComposite, SWT.BORDER);
