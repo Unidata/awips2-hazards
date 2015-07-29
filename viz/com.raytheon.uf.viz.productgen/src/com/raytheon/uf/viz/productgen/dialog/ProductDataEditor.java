@@ -90,6 +90,8 @@ import com.raytheon.uf.common.util.Pair;
  *                                      unique for this subclass. Also Added new button to toggle
  *                                      the labels on the megawidget fields.
  * 07/28/2015   9633       Robert.Blum  Fixed middle mouse scroll issue on product editor.
+ * 07/29/2015   9686       Robert.Blum  Adjustments to remove dead space at the bottom of the vertical
+ *                                      scrollbar when labels are removed from the product editor.
  * </pre>
  * 
  * @author jsanchez
@@ -188,15 +190,11 @@ public class ProductDataEditor extends AbstractDataEditor {
         ProductEditorUtil.setLayoutInfo(parentComposite, 1, false, SWT.FILL,
                 SWT.FILL, true, true);
 
-        // Create the Megawidgets
-        createMegawidgets();
-
         scrollerComposite.setExpandHorizontal(true);
         scrollerComposite.setExpandVertical(true);
-        scrollerComposite.setContent(parentComposite);
-        scrollerComposite.setMinSize(parentComposite.computeSize(SWT.DEFAULT,
-                SWT.DEFAULT));
-        scrollerComposite.layout();
+
+        // Create the Megawidgets
+        createMegawidgets();
     }
 
     private void createMegawidgets() {
@@ -308,6 +306,11 @@ public class ProductDataEditor extends AbstractDataEditor {
         } catch (MegawidgetException e) {
             handler.error("Error creating megawidgets: " + e, e);
         }
+        
+        scrollerComposite.setContent(parentComposite);
+        scrollerComposite.setMinSize(parentComposite.computeSize(SWT.DEFAULT,
+                SWT.DEFAULT));
+        scrollerComposite.layout();
     }
 
     /**

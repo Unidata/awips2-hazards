@@ -84,6 +84,8 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
  * May 07, 2015    6979    Robert.Blum       Additional changes for LabelMegaWidgets,
  *                                           they are now stateful.
  * Jul 28, 2015    9687    Robert.Blum       Displaying label based on new KeyInfo flag.
+ * Jul 29, 2015    9686    Robert.Blum       Sizing text fields based on amount of text
+ *                                           they contain.
  * </pre>
  * 
  * @author Chris.Golden
@@ -134,10 +136,9 @@ public class ParametersEditorFactory {
          */
         Map<String, Object> defaults = new HashMap<>();
         defaults.put(TextSpecifier.MEGAWIDGET_TYPE, "Text");
-        defaults.put(TextSpecifier.MEGAWIDGET_SPACING, 5);
+        defaults.put(TextSpecifier.MEGAWIDGET_SPACING, 1);
         defaults.put(TextSpecifier.EXPAND_HORIZONTALLY, true);
         defaults.put(TextSpecifier.MEGAWIDGET_SEND_EVERY_STATE_CHANGE, false);
-        defaults.put(TextSpecifier.MEGAWIDGET_VISIBLE_LINES, 5);
         defaults.put(TextSpecifier.SPELLCHECK_ENABLED, true);
         map.put(TextSpecifier.class, defaults);
 
@@ -683,10 +684,29 @@ public class ParametersEditorFactory {
                  */
                 baseSpecifier = DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS
                         .get(TextSpecifier.class);
-                if (baseSpecifier == null) {
-                    throw new MegawidgetException(key, null, null,
-                            "no default parameters for TextSpecifier");
+
+                /* Set the number of visible lines based on the amount of text */
+                String str = (String) value;
+                int numChars = str.length();
+                int charsPerLine = 75;
+                int numLines = numChars / charsPerLine + (numChars % charsPerLine == 0 ? 0 : 1);
+
+                if (numLines <= 4) {
+                    numLines = numLines * 2;
+                } else {
+                    // Max number of lines
+                    numLines = 8;
                 }
+
+                /*
+                 * If the text field is set to one line, the field will be positioned next to
+                 * the label instead of below the label. This is unwanted, so verify that each
+                 * field is at least 2 lines long.
+                 */
+                if (numLines < 2) {
+                    numLines = 2;
+                }
+                baseSpecifier.put(TextSpecifier.MEGAWIDGET_VISIBLE_LINES, numLines);
             } else {
                 /*
                  * Non-Editable so make it a LabelMegawidget.

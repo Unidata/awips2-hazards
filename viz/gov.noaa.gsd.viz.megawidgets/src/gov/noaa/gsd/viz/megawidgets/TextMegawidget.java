@@ -94,6 +94,12 @@ import com.raytheon.uf.viz.spellchecker.text.SpellCheckTextViewer;
  * Apr 10, 2015   6935     Chris.Golden      Added optional prompt text that if
  *                                           provided is displayed when the text
  *                                           field is empty.
+ * Jul 29, 2015   9686     Robert.Blum       Changed the composite to not expand
+ *                                           vertically. This was needed in the Product
+ *                                           Editor, so when the labels are removed the
+ *                                           text fields don't expand to take the extra
+ *                                           space. Allowing more fields to be viewed
+ *                                           without scrolling.
  * </pre>
  * 
  * @author Chris.Golden
@@ -209,7 +215,7 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
                         parent,
                         (multiLine ? 1 : 2),
                         SWT.NONE,
-                        (multiLine ? UiBuilder.CompositeType.MULTI_ROW_VERTICALLY_EXPANDING
+                        (multiLine ? UiBuilder.CompositeType.MULTI_ROW_VERTICALLY_CONSTRAINED
                                 : UiBuilder.CompositeType.SINGLE_ROW),
                         specifier);
         label = UiBuilder.buildLabel(panel, specifier);
