@@ -57,7 +57,6 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.impl.ProductValidationUtil;
-import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
  * 
@@ -98,7 +97,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * @version 1.0
  */
 
-public class ProductEditor extends CaveSWTDialog {
+public class ProductEditor extends AbstractProductDialog {
 
     /** The status handler */
     private static final IUFStatusHandler handler = UFStatus
@@ -129,12 +128,6 @@ public class ProductEditor extends CaveSWTDialog {
     private static final String DISMISS_DIALOG_MESSAGE = "Are you sure you want to 'Dismiss'?"
             + " Your product(s) will NOT be issued and your edits have not been saved.";
 
-    /** Horizontal spacing between Issue All and Dismiss buttons */
-    private static final int HORIZONTAL_BUTTON_SPACING = 65;
-
-    /** List of generated product lists from the product generators */
-    private final List<GeneratedProductList> generatedProductListStorage;
-
     /**
      * List of previously generated products. This is used for correctable
      * products
@@ -162,12 +155,6 @@ public class ProductEditor extends CaveSWTDialog {
     /** The total number of products that are able to be issued */
     protected int issuableProducts;
 
-    /** Top level tab folder holding the products currently displayed */
-    private CTabFolder productFolder;
-
-    /** Data structure used to manage the data editors */
-    private final DataEditorManager editorManager = new DataEditorManager();
-
     /**
      * Creates a new ProductEditor on the given shell with the provided
      * generated product lists
@@ -180,8 +167,8 @@ public class ProductEditor extends CaveSWTDialog {
     public ProductEditor(Shell parentShell,
             List<GeneratedProductList> generatedProductListStorage,
             String siteId) {
-        super(parentShell, SWT.RESIZE, CAVE.PERSPECTIVE_INDEPENDENT);
-        this.generatedProductListStorage = generatedProductListStorage;
+        super(parentShell, SWT.RESIZE, CAVE.PERSPECTIVE_INDEPENDENT,
+                generatedProductListStorage);
         this.productGeneration = new ProductGeneration(siteId);
 
         /*
@@ -196,49 +183,8 @@ public class ProductEditor extends CaveSWTDialog {
         }
     }
 
-    /**
-     * Initializes the GUI component of the ProductEditor. The product editor is
-     * initialized as follows:
-     * <p>
-     * <li>Configure the size and layout of the shell</li>
-     * <li>Build the product tabs</li>
-     * <li>Create the Issue All and Undo Buttons</li>
-     * <p>
-     * 
-     * @param shell
-     *            The shell on which to initialize the components
-     */
     @Override
-    protected void initializeComponents(Shell shell) {
-
-        initializeShell(shell);
-
-        /*
-         * Create and configure the top level composite that will contain the
-         * product tabs as well as the Issue All and Dismiss buttons
-         */
-        Composite topComposite = new Composite(shell, SWT.NONE);
-        ProductEditorUtil.setLayoutInfo(topComposite, 1, false, SWT.FILL,
-                SWT.FILL, true, true);
-
-        // Create the product tabs
-        createProductTabs(topComposite, generatedProductListStorage);
-
-        // Create the buttons
-        createButtons(topComposite);
-
-    }
-
-    /**
-     * Configures the shell
-     * 
-     * @param shell
-     *            The shell instance to configure
-     */
-    private void initializeShell(Shell shell) {
-        shell.setMinimumSize(600, 800);
-        shell.setLayout(new GridLayout(1, false));
-        shell.setLayoutData(new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false));
+    protected void initializeShellForSubClass(Shell shell) {
         shell.addListener(SWT.Close, shellCloseListener);
     }
 
@@ -251,7 +197,8 @@ public class ProductEditor extends CaveSWTDialog {
      * @param generatedProductListStorage
      *            The generated products used to generate the product tabs
      */
-    private void createProductTabs(Composite parent,
+    @Override
+    protected void createProductTabs(Composite parent,
             List<GeneratedProductList> generatedProductListStorage) {
 
         /*
@@ -320,11 +267,11 @@ public class ProductEditor extends CaveSWTDialog {
                         if (product instanceof ITextProduct) {
 
                             // Add the text Viewer to the editor manager
-                            editorManager.addFormattedTextViewer(product, new FormattedTextViewer(
-                                    this, productTab, product,
-                                    editorAndFormatsTabFolder,
-                                    SWT.VERTICAL, entry.getKey(),
-                                    formattedTextIndex));
+                            editorManager.addFormattedTextViewer(product,
+                                    new FormattedTextViewer(this, productTab,
+                                            product, editorAndFormatsTabFolder,
+                                            SWT.VERTICAL, entry.getKey(),
+                                            formattedTextIndex));
                         } else {
                             throw new IllegalArgumentException(
                                     "Cannot create formatted text tab for format ["
@@ -341,13 +288,8 @@ public class ProductEditor extends CaveSWTDialog {
         productFolder.setSelection(0);
     }
 
-    /**
-     * Creates the Issue All and Dismiss buttons
-     * 
-     * @param parent
-     *            The parent composite to create buttons on
-     */
-    private void createButtons(Composite parent) {
+    @Override
+    protected void createButtons(Composite parent) {
         Composite buttonComp = new Composite(parent, SWT.NONE);
         GridLayout layout = new GridLayout(2, false);
         layout.horizontalSpacing = HORIZONTAL_BUTTON_SPACING;
@@ -375,7 +317,7 @@ public class ProductEditor extends CaveSWTDialog {
         /*
          * Update the state of the issueAll button
          */
-        updateIssueAllButton();
+        updateButtons();
 
         /*
          * Adds the selection listener to this button
@@ -422,14 +364,16 @@ public class ProductEditor extends CaveSWTDialog {
         StringBuilder sb = new StringBuilder();
 
         for (GeneratedProductList prodList : generatedProductListStorage) {
-            for (IGeneratedProduct prod: prodList) {
+            for (IGeneratedProduct prod : prodList) {
                 ProductDataEditor editor = this.editorManager
                         .getProductDataEditor(prod);
                 EditableKeys keys = editor.editableKeys;
                 List<String> productErrors = new ArrayList<String>();
-                for (Entry<KeyInfo, EditableKeyInfo> entry : keys.getEditableKeyEntries()) {
+                for (Entry<KeyInfo, EditableKeyInfo> entry : keys
+                        .getEditableKeyEntries()) {
                     List<String> framedText = ProductValidationUtil
-                            .checkForFramedText((String) entry.getValue().getValue());
+                            .checkForFramedText((String) entry.getValue()
+                                    .getValue());
                     if (framedText.isEmpty() == false) {
                         passValidation = false;
                         productErrors.addAll(framedText);
@@ -544,6 +488,7 @@ public class ProductEditor extends CaveSWTDialog {
      * @param keyInfo
      * 
      */
+    @Override
     protected void regenerate(KeyInfo keyInfo) {
 
         progressBar.setVisible(true);
@@ -592,13 +537,15 @@ public class ProductEditor extends CaveSWTDialog {
                                     product.setData(updatedProduct.getData());
                                     if (isDisposed() == false) {
                                         if (isCorrectable) {
-                                            /* Update the editor tab only for corrections.
-                                             * The productHeader and VTEC Strings will 
-                                             * change from regenerate call and need updated.
+                                            /*
+                                             * Update the editor tab only for
+                                             * corrections. The productHeader
+                                             * and VTEC Strings will change from
+                                             * regenerate call and need updated.
                                              */
                                             editorManager.getProductDataEditor(
-                                                    product)
-                                                    .updateValues(product);
+                                                    product).updateValues(
+                                                    product);
                                         }
                                         editorManager
                                                 .updateFormattedTextViewers(product);
@@ -613,7 +560,7 @@ public class ProductEditor extends CaveSWTDialog {
                             /*
                              * Update the state of the issueAll button
                              */
-                            updateIssueAllButton();
+                            updateButtons();
                         }
                     } finally {
                         if (isDisposed() == false) {
@@ -632,15 +579,6 @@ public class ProductEditor extends CaveSWTDialog {
         }
 
     };
-
-    /**
-     * Gets the GeneratedProductList associated with this ProductEditor
-     * 
-     * @return The GeneratedProductList associated with this ProductEditor
-     */
-    public List<GeneratedProductList> getGeneratedProductListStorage() {
-        return this.generatedProductListStorage;
-    }
 
     /**
      * Sets the GeneratedProductList object
@@ -662,7 +600,8 @@ public class ProductEditor extends CaveSWTDialog {
      * Updates the state of the issueAll button based on whether any
      * requiredFields are not completed.
      */
-    public void updateIssueAllButton() {
+    @Override
+    public void updateButtons() {
         boolean setEnabled = true;
         for (AbstractDataEditor editor : editorManager.getAllEditors()) {
             if (!editor.requiredFieldsCompleted()) {

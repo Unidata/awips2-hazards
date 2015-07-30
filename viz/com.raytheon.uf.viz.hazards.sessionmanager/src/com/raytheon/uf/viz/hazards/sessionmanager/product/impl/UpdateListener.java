@@ -38,6 +38,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInform
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 17, 2014  1480      jsanchez     Initial creation
+ * Jul 30, 2015  9681      Robert.Blum Changes to work with viewOnly
+ *                                     products.
  * 
  * </pre>
  * 
@@ -46,26 +48,38 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInform
  */
 
 public class UpdateListener implements IPythonJobListener<GeneratedProductList> {
+
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(UpdateListener.class);
 
     private final ISessionNotificationSender notificationSender;
 
-    private ProductGeneratorInformation productGeneratorInformation;
+    private final ProductGeneratorInformation productGeneratorInformation;
 
-    public UpdateListener(ProductGeneratorInformation productGeneratorInformation,
+    private final boolean correctable;
+
+    private final boolean viewOnly;
+
+    public UpdateListener(
+            ProductGeneratorInformation productGeneratorInformation,
             ISessionNotificationSender notificationSender) {
         this.productGeneratorInformation = productGeneratorInformation;
         this.notificationSender = notificationSender;
+        this.correctable = productGeneratorInformation.getGeneratedProducts()
+                .isCorrectable();
+        this.viewOnly = productGeneratorInformation.getGeneratedProducts()
+                .isViewOnly();
     }
 
     @Override
     public void jobFinished(GeneratedProductList generatedProductList) {
-        generatedProductList.setCorrectable(true);
-        generatedProductList.setEventSet(productGeneratorInformation.getGeneratedProducts()
-                .getEventSet());
+        generatedProductList.setCorrectable(correctable);
+        generatedProductList.setViewOnly(viewOnly);
+        generatedProductList.setEventSet(productGeneratorInformation
+                .getGeneratedProducts().getEventSet());
         productGeneratorInformation.setGeneratedProducts(generatedProductList);
-        notificationSender.postNotification(new ProductGenerated(productGeneratorInformation));
+        notificationSender.postNotification(new ProductGenerated(
+                productGeneratorInformation));
     }
 
     @Override

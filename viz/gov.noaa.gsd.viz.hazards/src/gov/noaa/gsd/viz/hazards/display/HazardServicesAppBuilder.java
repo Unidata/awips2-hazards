@@ -126,7 +126,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager.StagingRequired;
+import com.raytheon.uf.viz.productgen.dialog.ProductViewer;
 import com.raytheon.viz.ui.EditorUtil;
+import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
 /**
@@ -216,6 +218,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Feb 28, 2015 3847       mduff               Added rise/crest/fall editor
  * Apr 10, 2015  6898      Chris.Cody          Refactored async messaging
  * May 14, 2015  7560      mpduff              Added Apply callback
+ * Jul 30, 2015 9681       Robert.Blum         Added new method to display the product viewer.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -1069,6 +1072,23 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         this.productEditorPresenter.showProductEditorDetail(
                 generatedProductsList, this.sessionManager
                         .getConfigurationManager().getSiteID());
+    }
+
+    /**
+     * Opens the Product Viewer to allow a view only way of reviewing issued
+     * products.
+     */
+    public void showProductViewer(
+            List<GeneratedProductList> generatedProductsList) {
+        final ProductViewer productViewer = new ProductViewer(
+                VizWorkbenchManager.getInstance().getCurrentWindow().getShell(),
+                generatedProductsList);
+        VizApp.runSync(new Runnable() {
+            @Override
+            public void run() {
+                productViewer.open();
+            }
+        });
     }
 
     /**

@@ -222,6 +222,9 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Jun 02, 2015  7138      Robert.Blum        Changes for RVS workflow.
  * Jun 24, 2015 6601       Chris.Cody         Change Create by Hazard Type display text
  * Jul 01, 2015 6726       Robert.Blum        Changes to be able to return to Product
+ *                                            Editor from confirmation dialog.
+ * Jul 30, 2015 9681       Robert.Blum        Changes for new Product Viewer and generating
+ *                                            view only products.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -531,8 +534,25 @@ public final class HazardServicesMessageHandler {
     public void handleProductGenerationCompletion(
             IProductGenerationComplete productGenerationComplete) {
         if (productGenerationComplete.isIssued() == false) {
-            appBuilder.showProductEditorView(productGenerationComplete
-                    .getGeneratedProducts());
+
+            /*
+             * Check to see if the Product(s) should be displayed in the editor
+             * or the viewer.
+             */
+            boolean viewOnly = false;
+            List<GeneratedProductList> list = productGenerationComplete
+                    .getGeneratedProducts();
+            if (list.isEmpty() == false) {
+                GeneratedProductList productList = list.get(0);
+                viewOnly = productList.isViewOnly();
+            }
+            if (viewOnly) {
+                appBuilder.showProductViewer(productGenerationComplete
+                        .getGeneratedProducts());
+            } else {
+                appBuilder.showProductEditorView(productGenerationComplete
+                        .getGeneratedProducts());
+            }
         }
     }
 
@@ -891,10 +911,6 @@ public final class HazardServicesMessageHandler {
      */
     private void preview() {
         sessionManager.generate(false);
-    }
-
-    public void generateReviewableProduct(List<ProductData> productData) {
-        sessionProductManager.generateReviewableProduct(productData);
     }
 
     /**
@@ -1457,7 +1473,16 @@ public final class HazardServicesMessageHandler {
                     .getParameters();
             ArrayList<ProductData> productData = (ArrayList<ProductData>) parameters
                     .get(ReviewAction.PRODUCT_DATA_PARAM);
-            generateReviewableProduct(productData);
+            sessionProductManager.generateProductFromProductData(productData,
+                    true, false);
+            break;
+        case VIEW:
+            Map<String, Serializable> params = hazardDetailAction
+                    .getParameters();
+            ArrayList<ProductData> viewableProductData = (ArrayList<ProductData>) params
+                    .get(ReviewAction.PRODUCT_DATA_PARAM);
+            sessionProductManager.generateProductFromProductData(
+                    viewableProductData, false, true);
             break;
         default:
             throw new IllegalArgumentException("Unsupported actionType "

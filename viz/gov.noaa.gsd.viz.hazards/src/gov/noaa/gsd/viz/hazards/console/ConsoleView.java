@@ -15,6 +15,7 @@ import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.product.ReviewAction;
+import gov.noaa.gsd.viz.hazards.product.ViewProductAction;
 import gov.noaa.gsd.viz.hazards.servicebackup.ChangeSiteAction;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
@@ -90,6 +91,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                           changed to use time range boundaries for
  *                                           the events.
  * May 05, 2015 6898       Chris.Cody        Pan & Scale Visible and Selected Time
+ * Jul 30, 2015 9681       Robert.Blum       Added new ViewProductsAction to the console.
  * </pre>
  * 
  * @author Chris.Golden
@@ -729,10 +731,12 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             showHatchedAreaAction.setChecked(true);
 
             Action reviewAction = new ReviewAction(presenter);
+            Action viewProductsAction = new ViewProductAction(presenter);
+
             List<Action> actions = Lists.newArrayList(resetEventsCommandAction,
                     sep, checkHazardConflictsAction,
                     autoCheckHazardConflictsAction, showHatchedAreaAction, sep,
-                    reviewAction);
+                    reviewAction, viewProductsAction);
             if (CAVEMode.PRACTICE.equals(CAVEMode.getMode())) {
                 Action changeVtecFormat = new ChangeVtecFormatAction(presenter
                         .getSessionManager().getProductManager());

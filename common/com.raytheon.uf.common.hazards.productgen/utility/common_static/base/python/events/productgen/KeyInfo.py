@@ -35,6 +35,7 @@
 #    05/07/15        6979          Robert.Blum     Changed default value for eventIDInLabel.
 #    05/14/15        7376          Robert.Blum     Moved required * to the beginning of the label.
 #    07/28/15        9687          Robert.Blum     Added new displayLabel field.
+#    07/28/15        9681          Robert.Blum     Removed the * from the label, handle in the product editor.
 import JUtil
 from com.raytheon.uf.common.hazards.productgen import KeyInfo as JavaKeyInfo
 
@@ -71,10 +72,6 @@ class KeyInfo(JUtil.JavaWrapperClass):
 
         self.required = required
         self.displayLabel = displayLabel
-        # This should be refactored after the ParametersEditorFactory
-        # can receive a KeyInfo class.
-        if label and required:
-            self.label = '*' + self.label
         self.index = index
 
     def getName(self):

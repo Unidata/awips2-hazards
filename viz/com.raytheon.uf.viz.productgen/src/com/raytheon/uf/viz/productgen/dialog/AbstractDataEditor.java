@@ -53,6 +53,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  *                                      undo buttons always enabled.
  * 07/28/2015   9687       Robert.Blum  Moved buttons to ProductDataEditor since they were not
  *                                      common to all subclasses.
+ * 07/30/2015   9681       Robert.Blum  Changed to use new abstract product dialog class.
  * 
  * </pre>
  * 
@@ -73,8 +74,8 @@ public abstract class AbstractDataEditor extends CTabItem {
     /** The composite which holds the buttons */
     protected Composite editorButtonPane;
 
-    /** The parent product editor instance to which this data editor belongs */
-    protected ProductEditor productEditor;
+    /** The parent product dialog instance to which this data editor belongs */
+    protected AbstractProductDialog productDialog;
 
     /** The generated product associated with this data editor */
     protected IGeneratedProduct product;
@@ -97,11 +98,11 @@ public abstract class AbstractDataEditor extends CTabItem {
      * @param style
      *            Style hints
      */
-    protected AbstractDataEditor(ProductEditor productEditor,
+    protected AbstractDataEditor(AbstractProductDialog productDialog,
             CTabItem productTab,
             IGeneratedProduct product, CTabFolder parent, int style) {
         super(parent, style);
-        this.productEditor = productEditor;
+        this.productDialog = productDialog;
         this.productTab = productTab;
         this.product = product;
 

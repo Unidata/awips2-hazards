@@ -38,6 +38,7 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
  * Feb 07, 2014  2890      bkowal      Fix serializable warning.
  * Apr 23, 2014  1480      jsanchez    Added isCorrection attribute.
  * Jun  3, 2014  1480      jsanchez    Added a copy constructor.
+ * Jul 30, 2015  9681      Robert.Blum Added isViewOnly attribute.
  * </pre>
  * 
  * @author jsanchez
@@ -54,6 +55,8 @@ public class GeneratedProductList extends ArrayList<IGeneratedProduct> {
 
     private boolean isCorrectable;
 
+    private boolean isViewOnly;
+
     public GeneratedProductList() {
 
     }
@@ -66,6 +69,7 @@ public class GeneratedProductList extends ArrayList<IGeneratedProduct> {
     public GeneratedProductList(GeneratedProductList generatedProductList) {
         this.productInfo = generatedProductList.getProductInfo();
         this.isCorrectable = generatedProductList.isCorrectable();
+        this.isViewOnly = generatedProductList.isViewOnly;
         this.eventSet = generatedProductList.getEventSet();
         for (IGeneratedProduct generatedProduct : generatedProductList) {
             add(new GeneratedProduct(generatedProduct));
@@ -94,5 +98,13 @@ public class GeneratedProductList extends ArrayList<IGeneratedProduct> {
 
     public void setCorrectable(boolean isCorrectable) {
         this.isCorrectable = isCorrectable;
+    }
+
+    public boolean isViewOnly() {
+        return isViewOnly;
+    }
+
+    public void setViewOnly(boolean isViewOnly) {
+        this.isViewOnly = isViewOnly;
     }
 }

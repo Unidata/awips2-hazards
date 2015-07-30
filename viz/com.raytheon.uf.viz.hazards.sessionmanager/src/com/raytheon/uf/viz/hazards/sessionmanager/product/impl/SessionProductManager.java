@@ -212,6 +212,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Jul 28, 2015 9737       Chris.Golden Fixed bug that caused a switch to a different setting to still show and
  *                                      generate products for events that should have been hidden by the new
  *                                      setting's filters.
+ * Jul 30, 2015 9681       Robert.Blum  Changes for generating products for the product viewer.
  * </pre>
  * 
  * @author bsteffen
@@ -619,7 +620,9 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     @Override
-    public void generateReviewableProduct(List<ProductData> allProductData) {
+    public void generateProductFromProductData(
+            List<ProductData> allProductData, boolean correctable,
+            boolean viewOnly) {
         ProductGeneratorInformation productGeneratorInformation = new ProductGeneratorInformation();
         synchronized (productGenerationAuditManager) {
             final String productGenerationTrackingID = UUID.randomUUID()
@@ -677,12 +680,15 @@ public class SessionProductManager implements ISessionProductManager {
             }
             // Set the eventSet for productList and GeneratorInformation
             generatedProductList.setEventSet(genProductListEventSet);
-            productGeneratorInformation
-                    .setProductEvents(prodGenInfoHazardEvents);
+            generatedProductList.setCorrectable(correctable);
+            generatedProductList.setViewOnly(viewOnly);
 
             productGeneratorInformation
+                    .setProductEvents(prodGenInfoHazardEvents);
+            productGeneratorInformation
                     .setGeneratedProducts(generatedProductList);
-            generateProductReview(productGeneratorInformation);
+
+            generateProduct(productGeneratorInformation);
         }
 
     }
@@ -849,6 +855,9 @@ public class SessionProductManager implements ISessionProductManager {
                         e);
             }
             sessionManager.setIssueOngoing(false);
+
+            // Got confirmation to issue above - close the Product Editor
+            eventBus.publishAsync(new ProductGenerationConfirmation());
         }
     }
 
@@ -879,11 +888,13 @@ public class SessionProductManager implements ISessionProductManager {
      * @param productGeneratorInformation
      *            Information about the product to be generated.
      */
-    private void generateProductReview(
+    private void generateProduct(
             ProductGeneratorInformation productGeneratorInformation) {
-        sessionManager.setPreviewOngoing(true);
+        if (productGeneratorInformation.getGeneratedProducts().isCorrectable()) {
+            sessionManager.setPreviewOngoing(true);
+        }
         String[] productFormats = productGeneratorInformation
-                .getProductFormats().getPreviewFormats().toArray(new String[0]);
+                .getProductFormats().getIssueFormats().toArray(new String[0]);
         UpdateListener listener = new UpdateListener(
                 productGeneratorInformation, notificationSender);
 

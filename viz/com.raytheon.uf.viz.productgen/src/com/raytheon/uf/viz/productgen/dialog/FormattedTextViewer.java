@@ -42,6 +42,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * 07/28/2015   9687       Robert.Blum  Removed the viewerPane composite since 
  *                                      it is no longer needed due to changes in
  *                                      the parent class.
+ * 07/30/2015   9681       Robert.Blum  Changed to use new abstract product dialog class.
  * 
  * </pre>
  * 
@@ -54,7 +55,7 @@ public class FormattedTextViewer extends AbstractDataEditor {
     private final String format;
 
     /** The generated product associated with this data editor */
-    private IGeneratedProduct product;
+    private final IGeneratedProduct product;
 
     /**
      * The index into the list of formatted texts for the format in the
@@ -82,10 +83,10 @@ public class FormattedTextViewer extends AbstractDataEditor {
      *            The background color of the text area containing the formatted
      *            text
      */
-    protected FormattedTextViewer(ProductEditor productEditor,
+    protected FormattedTextViewer(AbstractProductDialog productDialog,
             CTabItem productTab, IGeneratedProduct product, CTabFolder parent,
             int style, String format, int formatIndex) {
-        super(productEditor, productTab, product, parent, style);
+        super(productDialog, productTab, product, parent, style);
         this.product = product;
         this.format = format;
         this.formatIndex = formatIndex;

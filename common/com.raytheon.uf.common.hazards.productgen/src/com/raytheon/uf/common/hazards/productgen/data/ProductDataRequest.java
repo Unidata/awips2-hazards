@@ -34,7 +34,8 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 11, 2014            jsanchez     Initial creation
+ * Apr 11, 2014            jsanchez    Initial creation
+ * Jul 30, 2015 9681       Robert.Blum Added new ProductRequestType.
  * 
  * </pre>
  * 
@@ -55,7 +56,7 @@ public class ProductDataRequest implements IServerRequest {
     private Date currentTime;
 
     public static enum ProductRequestType {
-        CREATE, DELETE, UPDATE, RETRIEVE, SAVE_OR_UPDATE, RETRIEVE_CORRECTABLE;
+        CREATE, DELETE, UPDATE, RETRIEVE, SAVE_OR_UPDATE, RETRIEVE_CORRECTABLE, RETRIEVE_VIEWABLE;
     }
 
     /**

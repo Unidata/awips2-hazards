@@ -44,6 +44,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * Apr 11, 2014            jsanchez     Initial creation
  * Mar 30, 2015    6929    Robert.Blum  Changed startTime to issueTime.
  * May 07, 2015    6979    Robert.Blum  Changes for product corrections.
+ * Jul 30, 2015    9681    Robert.Blum  Added new method to retrieve all
+ *                                      viewable productData.
  * 
  * </pre>
  * 
@@ -188,6 +190,23 @@ public class ProductDataUtil {
                     response.getExceptions());
         }
         return response;
+    }
+
+    /**
+     * Sends a request to EDEX that retrieves data that is viewable.
+     * 
+     * @param mode
+     * @param currentTime
+     * @return
+     */
+    public static List<ProductData> retrieveViewableProductData(String mode, Date currentTime) {
+        ProductDataResponse response = sendRequest(mode, null, null, null,
+                null, null, ProductRequestType.RETRIEVE_VIEWABLE,
+                currentTime);
+        if (response != null && response.getData() != null) {
+            return response.getData();
+        }
+        return new ArrayList<ProductData>();
     }
 
     /**

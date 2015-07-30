@@ -50,6 +50,7 @@ import com.raytheon.uf.common.hazards.productgen.data.ProductData;
  *                                      used internally by this class.
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * Jun 02, 2015 7138       Robert.Blum  Changes for issuing RVS products.
+ * Jul 30, 2015 9681       Robert.Blum  Changes for viewOnly products.
  * </pre>
  * 
  * @author bsteffen
@@ -101,15 +102,23 @@ public interface ISessionProductManager {
             ProductGeneratorInformation productGeneratorInformation);
 
     /**
-     * Create a text version that can be brought up in the product editor after
-     * the product is issued. The product can be brought up to be reviewed and
-     * even corrected and re-issued.
+     * Create a text version that can be brought up in the product editor/viewer
+     * after the product is issued. The product can be brought up to be
+     * corrected and re-issued in the product editor or brought up as view only
+     * in the product viewer.
      * 
      * @param productData
      *            Hibernate representation for the storage of product data to
-     *            retrieve for correction or review.
+     *            retrieve for review.
+     * @param correctable
+     *            Flag indicating whether or not the products are being generated
+     *            for a product correction.
+     * @param viewOnly
+     *            Flag indicating whether or not the products are being generated
+     *            to be displayed as viewOnly in the product viewer.
      */
-    public void generateReviewableProduct(List<ProductData> productData);
+    public void generateProductFromProductData(List<ProductData> productData,
+            boolean correctable, boolean viewOnly);
 
     /**
      * Generate products from Hazard Event

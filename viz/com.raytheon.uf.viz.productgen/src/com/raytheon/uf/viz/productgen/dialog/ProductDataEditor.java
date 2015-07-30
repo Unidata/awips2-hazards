@@ -92,6 +92,8 @@ import com.raytheon.uf.common.util.Pair;
  * 07/28/2015   9633       Robert.Blum  Fixed middle mouse scroll issue on product editor.
  * 07/29/2015   9686       Robert.Blum  Adjustments to remove dead space at the bottom of the vertical
  *                                      scrollbar when labels are removed from the product editor.
+ * 07/30/2015   9681       Robert.Blum  Changed to use new abstract product dialog class.
+ * 
  * </pre>
  * 
  * @author jsanchez
@@ -143,13 +145,13 @@ public class ProductDataEditor extends AbstractDataEditor {
     /**
      * The history of modifications made to editable data.
      */
-    private LinkedList<Pair<KeyInfo, EditableKeyInfo>> modificationHistory = new LinkedList<Pair<KeyInfo, EditableKeyInfo>>();
+    private final LinkedList<Pair<KeyInfo, EditableKeyInfo>> modificationHistory = new LinkedList<Pair<KeyInfo, EditableKeyInfo>>();
 
     /**
      * Creates a new ProductDataEditor
      * 
-     * @param productEditor
-     *            The parent product editor creating this
+     * @param productDialog
+     *            The parent product dialog creating this
      * @param product
      *            The generated product associated with this editor
      * @param parent
@@ -157,10 +159,10 @@ public class ProductDataEditor extends AbstractDataEditor {
      * @param style
      *            SWT style flags
      */
-    protected ProductDataEditor(ProductEditor productEditor,
-            CTabItem productTab,
-            IGeneratedProduct product, CTabFolder parent, int style) {
-        super(productEditor, productTab, product, parent, style);
+    protected ProductDataEditor(AbstractProductDialog productDialog,
+            CTabItem productTab, IGeneratedProduct product, CTabFolder parent,
+            int style) {
+        super(productDialog, productTab, product, parent, style);
     }
 
     /**
@@ -169,6 +171,7 @@ public class ProductDataEditor extends AbstractDataEditor {
      * @param parent
      *            The parent composite to create the GUI components
      */
+    @Override
     protected void initializeSubclass() {
 
         // Determine the editable keys present in this product
@@ -234,8 +237,9 @@ public class ProductDataEditor extends AbstractDataEditor {
                             EditableKeyInfo editableKeyInfo = editableKeys
                                     .getEditableKeyInfo(keyInfo);
                             // Add a new entry in the undo queue
-                            modificationHistory.add(new Pair<KeyInfo, EditableKeyInfo>(
-                                    keyInfo, editableKeyInfo));
+                            modificationHistory
+                                    .add(new Pair<KeyInfo, EditableKeyInfo>(
+                                            keyInfo, editableKeyInfo));
 
                             Serializable newValue = (Serializable) value;
 
@@ -246,17 +250,18 @@ public class ProductDataEditor extends AbstractDataEditor {
                             // Update the editable key value
                             editableKeyInfo.updateValue(newValue);
 
-                            // Update the enabled state of the save and undo buttons
+                            // Update the enabled state of the save and undo
+                            // buttons
                             updateButtonState();
 
                             // Update the tab label
                             updateTabLabel();
 
                             // Regenerate with the updated data
-                            productEditor.regenerate(keyInfo);
+                            productDialog.regenerate(keyInfo);
 
                             // Update IssueAll button state
-                            productEditor.updateIssueAllButton();
+                            productDialog.updateButtons();
                         }
 
                         @Override
@@ -306,7 +311,7 @@ public class ProductDataEditor extends AbstractDataEditor {
         } catch (MegawidgetException e) {
             handler.error("Error creating megawidgets: " + e, e);
         }
-        
+
         scrollerComposite.setContent(parentComposite);
         scrollerComposite.setMinSize(parentComposite.computeSize(SWT.DEFAULT,
                 SWT.DEFAULT));
@@ -330,7 +335,7 @@ public class ProductDataEditor extends AbstractDataEditor {
                 false);
         editorButtonPane.setLayout(buttonCompLayout);
         editorButtonPane.setLayoutData(buttonCompData);
-        
+
         /*
          * Create the buttons for the editor tab
          */
@@ -383,18 +388,30 @@ public class ProductDataEditor extends AbstractDataEditor {
             }
         });
 
-        // Editor toggle button always enabled and checked by default.
+        // Editor toggle button always enabled.
         toggleLabelsButton.setEnabled(true);
-        toggleLabelsButton.setSelection(true);
+
+        /*
+         * Set the checked state based on the KeyInfo displayLabel states. If
+         * any keyInfo is set to display its label, have the box checked.
+         */
+        boolean selection = false;
+        for (KeyInfo keyInfo : editableKeys.getKeyInfos()) {
+            if (keyInfo.getDisplayLabel()) {
+                selection = true;
+                break;
+            }
+        }
+        toggleLabelsButton.setSelection(selection);
     }
 
-    
     /**
      * Toggles the labels on the text fields contained in the Product Editor.
      */
     private void toggleLabels() {
         /*
-         * Set the displayLabel flag on each KeyInfo object according to the button state.
+         * Set the displayLabel flag on each KeyInfo object according to the
+         * button state.
          */
         Map<KeyInfo, KeyInfo> keyInfoMap = new LinkedHashMap<KeyInfo, KeyInfo>();
         for (KeyInfo oldKey : editableKeys.getKeyInfos()) {
@@ -404,7 +421,7 @@ public class ProductDataEditor extends AbstractDataEditor {
         }
 
         /* update the keys in the editableKeys map */
-        for(KeyInfo oldKey : keyInfoMap.keySet()) {
+        for (KeyInfo oldKey : keyInfoMap.keySet()) {
             editableKeys.replaceKey(keyInfoMap.get(oldKey), oldKey);
         }
 
@@ -459,14 +476,15 @@ public class ProductDataEditor extends AbstractDataEditor {
                     .getEditableKeyInfo(key);
             if (editableKeyInfo.isModified()) {
                 editableKeyInfo.revertToOriginalValue();
-                updateKeyInfoValue(editableKeyInfo, key,editableKeyInfo.getOriginalValue());
+                updateKeyInfoValue(editableKeyInfo, key,
+                        editableKeyInfo.getOriginalValue());
                 // updates the values displayed in the GUI
                 state.put(key.toString(), editableKeyInfo.getOriginalValue());
             }
 
         }
         // regenerate with updated data
-        productEditor.regenerate(null);
+        productDialog.regenerate(null);
         try {
             manager.setState(state);
         } catch (MegawidgetStateException exception) {
@@ -481,38 +499,40 @@ public class ProductDataEditor extends AbstractDataEditor {
             String undoText = "No modifications to undo.";
             Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                     .getShell();
-            MessageBox messageBox = new MessageBox(shell, SWT.OK | SWT.ICON_INFORMATION);
+            MessageBox messageBox = new MessageBox(shell, SWT.OK
+                    | SWT.ICON_INFORMATION);
             messageBox.setText("Unable to undo");
             messageBox.setMessage(undoText);
             messageBox.open();
             handler.info(undoText);
         } else {
             Map<String, Object> state = manager.getState();
-            
+
             // Gets the previous state information
-            Pair<KeyInfo, EditableKeyInfo> keyInfoPair = modificationHistory.removeLast();
-            
+            Pair<KeyInfo, EditableKeyInfo> keyInfoPair = modificationHistory
+                    .removeLast();
+
             // Retrieve the key info object
             KeyInfo keyInfo = keyInfoPair.getFirst();
-            
+
             // Retrieve the editable key info object
             EditableKeyInfo editableKeyInfo = keyInfoPair.getSecond();
 
             // Update the current value with the previous value
             updateKeyInfoValue(editableKeyInfo, keyInfo,
                     editableKeyInfo.getLastValue());
-            
+
             // Revert the editable key info object to the previous state
             editableKeyInfo.revertToLastValue();
-            
+
             // updates the values displayed in the GUI
             state.put(keyInfo.toString(), editableKeyInfo.getValue());
 
             // Regenerate with the updated data
-            productEditor.regenerate(null);
+            productDialog.regenerate(null);
 
             // Update IssueAll button state
-            productEditor.updateIssueAllButton();
+            productDialog.updateButtons();
             try {
                 manager.setState(state);
             } catch (MegawidgetStateException exception) {
@@ -537,6 +557,7 @@ public class ProductDataEditor extends AbstractDataEditor {
         // no op
     }
 
+    @Override
     public boolean isDataEditable() {
         return !editableKeys.isEmpty();
     }
@@ -546,6 +567,7 @@ public class ProductDataEditor extends AbstractDataEditor {
      * completed.
      */
 
+    @Override
     public boolean requiredFieldsCompleted() {
         for (KeyInfo keyInfo : editableKeys.getKeyInfos()) {
             Serializable value = editableKeys.getValue(keyInfo);

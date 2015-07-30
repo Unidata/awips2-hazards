@@ -34,6 +34,7 @@
     Jul 21, 2015    9640    Robert.Blum Fixed hazard name in summaryHeadlines.
     Jul 27, 2015    9637    Robert.Blum Changes to _polygonText() for point hazards.
     Jul 28, 2015    9687    Robert.Blum Changes for new KeyInfo field - displayLabel.
+    Jul 30, 2015    9681    Robert.Blum Fixed incorrect if statement in polygonText.
     
 '''
 
@@ -379,7 +380,7 @@ class Format(FormatTemplate.Formatter):
                         for geo in geometry:
                             polygonPointLists.append(list(geo.exterior.coords))
         
-        if isPointBasedHazard == False:
+        if isPointBasedHazard:
             # Point Based Hazard
             polyStr = '&&\n'
         polyStr += 'LAT...LON'

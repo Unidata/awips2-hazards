@@ -51,6 +51,7 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * Apr 15, 2014            jsanchez     Initial creation
  * Jan 15, 2014 4193       rferrel      Log request
  * Mar 30, 2015 6929       Robert.Blum  Changed startTime to issueTime.
+ * Jul 30, 2015 9681       Robert.Blum  Updates for new ProductRequestType.
  * 
  * </pre>
  * 
@@ -160,6 +161,14 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
             criteria.add(Restrictions.gt(ISSUE_TIME_COLUMN, calendar.getTime()));
             data = criteria.list();
 
+            response = new ProductDataResponse();
+            response.setData(data);
+            break;
+        case RETRIEVE_VIEWABLE:
+            criteria = dao.getSessionFactory().openSession()
+                    .createCriteria(ProductData.class);
+
+            data = criteria.list();
             response = new ProductDataResponse();
             response.setData(data);
             break;
