@@ -128,8 +128,6 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                           by (if issued).
  * Apr 09, 2015   7382     Chris.Golden      Added "show start-end time sliders" flag.
  * Apr 15, 2015   3508     Chris.Golden      Added "hazard detail to be wide" flag.
- * Jul 09, 2015   3250     Robert.Blum       Removed showing view during instantiation.
- *                                           Presenter is in charge of making it visible.
  * </pre>
  * 
  * @author Chris.Golden
@@ -574,6 +572,12 @@ public class HazardDetailView extends
         if (usePreviousSizeAndPosition == false) {
             preferenceStore.setValue(usePreviousSizeAndPositionKey, true);
         }
+
+        /*
+         * Show the view part.
+         */
+        showViewPart();
+
 
         /*
          * Execute further manipulation of the view part immediately, or delay
