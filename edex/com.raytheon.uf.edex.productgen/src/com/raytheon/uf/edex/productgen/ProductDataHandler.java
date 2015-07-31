@@ -19,9 +19,11 @@
  **/
 package com.raytheon.uf.edex.productgen;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
 
 import org.hibernate.Criteria;
 import org.hibernate.criterion.Restrictions;
@@ -52,6 +54,7 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * Jan 15, 2014 4193       rferrel      Log request
  * Mar 30, 2015 6929       Robert.Blum  Changed startTime to issueTime.
  * Jul 30, 2015 9681       Robert.Blum  Updates for new ProductRequestType.
+ * Jul 31, 2015 9682       Robert.Blum  Filtering out products that should not be corrected.
  * 
  * </pre>
  * 
@@ -66,9 +69,15 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
 
     private static final String ISSUE_TIME_COLUMN = "issueTime";
 
+    private static final String RVS_GENERATOR_NAME = "RVS_ProductGenerator";
+
+    private static final String ESF_GENERATOR_NAME = "ESF_ProductGenerator";
+
+    private static final String FLW_FLS_GENERATOR_NAME = "FLW_FLS_ProductGenerator";
+
     private static final int VALID_CORRECTION_DELTA = 10;
 
-    private CoreDao dao;
+    private final CoreDao dao;
 
     public ProductDataHandler() {
         dao = new CoreDao(DaoConfig.DEFAULT);
@@ -150,17 +159,38 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
             criteria = dao.getSessionFactory().openSession()
                     .createCriteria(ProductData.class);
 
-            Calendar calendar = Calendar.getInstance();
-            calendar.setTime(request.getCurrentTime());
-            calendar.add(Calendar.MINUTE, -VALID_CORRECTION_DELTA);
-
             /*
              * This only queries for rows that has the current time within 10
              * minutes after the issue time.
              */
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(request.getCurrentTime());
+            calendar.add(Calendar.MINUTE, -VALID_CORRECTION_DELTA);
             criteria.add(Restrictions.gt(ISSUE_TIME_COLUMN, calendar.getTime()));
+
+            /*
+             * Filter out products that should not be able to be corrected (RVS,
+             * HY.O).
+             */
+            criteria.add(Restrictions.ne("id.productGeneratorName",
+                    RVS_GENERATOR_NAME));
+            criteria.add(Restrictions.ne("id.productGeneratorName",
+                    ESF_GENERATOR_NAME));
             data = criteria.list();
 
+            /*
+             * Filter out remaining products that should not be able to be
+             * corrected, but can not be filtered by generator name (HY.S).
+             */
+            for (ProductData productData : new ArrayList<ProductData>(data)) {
+                if (productData.getProductGeneratorName().equals(
+                        FLW_FLS_GENERATOR_NAME)) {
+                    boolean remove = checkForHYS(productData);
+                    if (remove) {
+                        data.remove(productData);
+                    }
+                }
+            }
             response = new ProductDataResponse();
             response.setData(data);
             break;
@@ -201,5 +231,48 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
         if (toRemove.isEmpty() == false) {
             dao.deleteAll(toRemove);
         }
+    }
+
+    /*
+     * Determines if the given productData is for a HY.S product that was issued
+     * by itself.
+     */
+    private boolean checkForHYS(ProductData data) {
+        boolean removeProductData = true;
+        Map<String, Serializable> productDictionary = data.getData();
+
+        /*
+         * Pull the segments out of the dictionary and look at the VTEC Records
+         * to determine if the product was a HY.S that was issued by itself.
+         */
+        if (productDictionary.containsKey("segments")) {
+            Serializable segments = productDictionary.get("segments");
+            if (segments instanceof List) {
+                List<Map<String, Serializable>> segmentList = (List<Map<String, Serializable>>) segments;
+                for (Map<String, Serializable> segmentDictionary : segmentList) {
+                    if (segmentDictionary.containsKey("vtecRecords")) {
+                        Serializable vtecRecords = segmentDictionary
+                                .get("vtecRecords");
+                        if (vtecRecords instanceof List) {
+                            List<Map<String, Serializable>> vtecRecordsList = (List<Map<String, Serializable>>) vtecRecords;
+                            for (Map<String, Serializable> vtecRecordDictionary : vtecRecordsList) {
+                                if (vtecRecordDictionary.containsKey("phensig")) {
+                                    if (vtecRecordDictionary.get("phensig")
+                                            .equals("HY.S") == false) {
+                                        // Not a HY.S - do not remove
+                                        removeProductData = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (removeProductData == false) {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return removeProductData;
     }
 }
