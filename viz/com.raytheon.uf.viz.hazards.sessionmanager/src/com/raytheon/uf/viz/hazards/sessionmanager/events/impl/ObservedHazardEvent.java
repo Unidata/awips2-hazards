@@ -100,6 +100,9 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Feb 22, 2015   6561     mpduff       Override get and get/setInsertTime
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
+ * Jul 31, 2015 7458       Robert.Blum  Added new userName and workstation methods.
+ * </pre>
+ * 
  * @author bsteffen
  * @version 1.0
  */
@@ -209,6 +212,16 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     @Override
     public ProductClass getHazardMode() {
         return delegate.getHazardMode();
+    }
+
+    @Override
+    public String getUserName() {
+        return delegate.getUserName();
+    }
+
+    @Override
+    public String getWorkStation() {
+        return delegate.getWorkStation();
     }
 
     @Override
@@ -331,6 +344,16 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
+    public void setUserName(String userName) {
+        setUserName(userName, true, Originator.OTHER);
+    }
+
+    @Override
+    public void setWorkStation(String workStation) {
+        setWorkStation(workStation, true, Originator.OTHER);
+    }
+
+    @Override
     public void setHazardAttributes(Map<String, Serializable> attributes) {
         setHazardAttributes(attributes, true, Originator.OTHER);
     }
@@ -403,6 +426,14 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     public void setHazardMode(ProductClass productClass, IOriginator originator) {
         setHazardMode(productClass, true, originator);
+    }
+
+    public void setUserName(String userName, IOriginator originator) {
+        setUserName(userName, true, originator);
+    }
+
+    public void setWorkStation(String workStation, IOriginator originator) {
+        setWorkStation(workStation, true, originator);
     }
 
     public void addHazardAttribute(String key, Serializable value,
@@ -614,6 +645,28 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
             IOriginator originator) {
         if (changed(getHazardMode(), mode)) {
             delegate.setHazardMode(mode);
+            if (notify) {
+                eventManager.hazardEventModified(new SessionEventModified(
+                        eventManager, this, originator));
+            }
+        }
+    }
+
+    protected void setUserName(String userName, boolean notify,
+            IOriginator originator) {
+        if (changed(getUserName(), userName)) {
+            delegate.setUserName(userName);
+            if (notify) {
+                eventManager.hazardEventModified(new SessionEventModified(
+                        eventManager, this, originator));
+            }
+        }
+    }
+
+    protected void setWorkStation(String workStation, boolean notify,
+            IOriginator originator) {
+        if (changed(getWorkStation(), workStation)) {
+            delegate.setWorkStation(workStation);
             if (notify) {
                 eventManager.hazardEventModified(new SessionEventModified(
                         eventManager, this, originator));

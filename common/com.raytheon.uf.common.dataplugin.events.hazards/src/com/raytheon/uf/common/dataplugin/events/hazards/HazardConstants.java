@@ -75,6 +75,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * May 18, 2015 8227      Chris.Cody    Remove NullRecommender
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * Jul 29, 2015 9306    Chris.Cody      Add HazardSatus.ELAPSED status
+ * Jul 31, 2015 7458      Robert.Blum   Added new USER_NAME and WORKSTATION constants.
  * </pre>
  * 
  * @author mnash
@@ -608,6 +609,10 @@ public final class HazardConstants {
     public static final String FIELD_TYPE = "fieldType";
 
     public static final String EXPAND_HORIZONTALLY = "expandHorizontally";
+
+    public static final String USER_NAME = "userName";
+
+    public static final String WORKSTATION = "workStation";
 
     /*
      * The following are related to hazard event metadata and recommender

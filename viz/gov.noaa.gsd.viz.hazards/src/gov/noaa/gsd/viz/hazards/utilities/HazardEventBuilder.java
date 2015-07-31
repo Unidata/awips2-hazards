@@ -11,8 +11,11 @@ package gov.noaa.gsd.viz.hazards.utilities;
 
 import java.util.List;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
@@ -36,6 +39,8 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  * Dec 05, 2014 4124       Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
  * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
+ * Jul 31, 2015 7458       Robert.Blum  Setting userName and workstation fields on events 
+ *                                      that are newly created.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -125,6 +130,11 @@ public class HazardEventBuilder {
 
     public ObservedHazardEvent addEvent(IHazardEvent event,
             IOriginator originator) {
+        // Update user/workstation base on who created the event
+        event.addHazardAttribute(HazardConstants.USER_NAME, LocalizationManager
+                .getInstance().getCurrentUser());
+        event.addHazardAttribute(HazardConstants.WORKSTATION,
+                VizApp.getHostName());
         return sessionManager.getEventManager().addEvent(event, originator);
     }
 

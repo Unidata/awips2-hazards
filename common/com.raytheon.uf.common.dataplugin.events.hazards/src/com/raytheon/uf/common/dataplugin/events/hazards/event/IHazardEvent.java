@@ -47,6 +47,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Jun 30, 2014 3512       Chris.Golden Added addHazardAttributes() method.
  * Feb 22, 2015 6561       mpduff      Added getter/setter for insert time, changed 
  *                                     SORT_BY_PERSIST_TIME to use insert time
+ * Jul 31, 2015 7458       Robert.Blum Added new userName and workstation methods.
  * </pre>
  * 
  * @author mnash
@@ -108,6 +109,14 @@ public interface IHazardEvent extends IEvent {
     public void setInsertTime(Date date);
 
     public Date getInsertTime();
+
+    public void setUserName(String userName);
+
+    public String getUserName();
+
+    public void setWorkStation(String workStation);
+
+    public String getWorkStation();
 
     public void setTimeRange(Date startTime, Date endTime);
 

@@ -70,6 +70,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  *                                     different type (Lineal, Puntal, Polygonal).
  * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
  * Feb 16, 2014 2161       Chris.Golden Added support for end time "until further notice" flag.
+ * Jul 31, 2015 7458       Robert.Blum  Added userName and workstation fields.
  * </pre>
  * 
  * @author bsteffen
@@ -146,6 +147,10 @@ public class DeprecatedEvent {
 
     private String vtecCodes;
 
+    private String userName;
+
+    private String workStation;
+
     public DeprecatedEvent() {
     }
 
@@ -156,6 +161,8 @@ public class DeprecatedEvent {
         pointID = (String) event.getHazardAttribute(HazardConstants.POINTID);
         streamName = (String) event
                 .getHazardAttribute(HazardConstants.STREAM_NAME);
+        setUserName(event.getUserName());
+        setWorkStation(event.getWorkStation());
         startTime = event.getStartTime().getTime();
         endTime = event.getEndTime().getTime();
         endTimeUntilFurtherNotice = (Boolean) attr
@@ -503,6 +510,22 @@ public class DeprecatedEvent {
      */
     public void setStreamName(String streamName) {
         this.streamName = streamName;
+    }
+
+    public String getWorkStation() {
+        return workStation;
+    }
+
+    public void setWorkStation(String workStation) {
+        this.workStation = workStation;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
     }
 
 }

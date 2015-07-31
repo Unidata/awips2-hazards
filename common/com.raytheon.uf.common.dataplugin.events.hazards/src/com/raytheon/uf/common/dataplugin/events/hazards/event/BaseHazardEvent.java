@@ -55,6 +55,7 @@ import com.vividsolutions.jts.io.WKTReader;
  *                                      the start and end time atomically.
  * Jun 30, 2014 3512       Chris.Golden Added addHazardAttributes() method.
  * Feb 22, 2015 6561       mpduff      Override getInsertTime and update toString
+ * Jul 31, 2015 7458       Robert.Blum Added new userName and workstation fields.
  * </pre>
  * 
  * @author mnash
@@ -87,6 +88,10 @@ public class BaseHazardEvent implements IHazardEvent {
 
     private ProductClass hazardMode;
 
+    private String userName;
+
+    private String workStation;
+
     private Map<String, Serializable> attributes;
 
     /**
@@ -110,6 +115,8 @@ public class BaseHazardEvent implements IHazardEvent {
         setSubType(event.getSubType());
         setStatus(event.getStatus());
         setHazardMode(event.getHazardMode());
+        setWorkStation(event.getWorkStation());
+        setUserName(event.getUserName());
         if (event.getHazardAttributes() != null) {
             getHazardAttributes().putAll(event.getHazardAttributes());
         }
@@ -448,25 +455,33 @@ public class BaseHazardEvent implements IHazardEvent {
         return null;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
-     * getProductGeometry()
-     */
     @Override
     public Geometry getProductGeometry() {
         return HazardEventUtilities.getProductGeometry(this);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
-     * setProductGeometry(com.vividsolutions.jts.geom.Geometry)
-     */
     @Override
     public void setProductGeometry(Geometry geom) {
         HazardEventUtilities.setProductGeometry(this, geom);
+    }
+
+    @Override
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    @Override
+    public String getUserName() {
+        return userName;
+    }
+
+    @Override
+    public void setWorkStation(String workStation) {
+        this.workStation = workStation;
+    }
+
+    @Override
+    public String getWorkStation() {
+        return workStation;
     }
 }

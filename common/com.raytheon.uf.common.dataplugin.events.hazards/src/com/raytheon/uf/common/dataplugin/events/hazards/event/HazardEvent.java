@@ -72,6 +72,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Jun 30, 2014 3512       Chris.Golden Added addHazardAttributes() method.
  * Feb 22, 2015 6561       mpduff      Override getInsertTime
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
+ * Jul 31, 2015 7458      Robert.Blum   Added new userName and workstation fields.
  * </pre>
  * 
  * @author mnash
@@ -193,6 +194,24 @@ public class HazardEvent implements IHazardEvent, IValidator {
     private Date insertTime;
 
     /**
+     * The user name of the person who created the hazard or the last person
+     * that issue the hazard.
+     */
+    @DynamicSerializeElement
+    @XmlElement
+    @SlotAttribute(HazardConstants.USER_NAME)
+    private String userName;
+
+    /**
+     * The workstation of the person who created the hazard or the last person
+     * that issue the hazard.
+     */
+    @DynamicSerializeElement
+    @XmlElement
+    @SlotAttribute(HazardConstants.WORKSTATION)
+    private String workStation;
+
+    /**
      * Additional attributes of the hazard
      */
     @DynamicSerializeElement
@@ -227,6 +246,8 @@ public class HazardEvent implements IHazardEvent, IValidator {
         setSubType(event.getSubType());
         setStatus(event.getStatus());
         setHazardMode(event.getHazardMode());
+        setWorkStation(event.getWorkStation());
+        setUserName(event.getUserName());
         if (event.getHazardAttributes() != null) {
             setHazardAttributes(new HashMap<String, Serializable>(
                     event.getHazardAttributes()));
@@ -715,25 +736,33 @@ public class HazardEvent implements IHazardEvent, IValidator {
         this.attributes = attributes;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
-     * getProductGeometry()
-     */
     @Override
     public Geometry getProductGeometry() {
         return HazardEventUtilities.getProductGeometry(this);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
-     * setProductGeometry(com.vividsolutions.jts.geom.Geometry)
-     */
     @Override
     public void setProductGeometry(Geometry geom) {
         HazardEventUtilities.setProductGeometry(this, geom);
+    }
+
+    @Override
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    @Override
+    public String getUserName() {
+        return userName;
+    }
+
+    @Override
+    public void setWorkStation(String workStation) {
+        this.workStation = workStation;
+    }
+
+    @Override
+    public String getWorkStation() {
+        return workStation;
     }
 }

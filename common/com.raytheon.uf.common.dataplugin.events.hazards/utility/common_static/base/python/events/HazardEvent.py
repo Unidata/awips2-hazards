@@ -32,6 +32,7 @@
 #    12/05/13        2527          bkowal         Removed obsolete conversion methods
 #    05/13/15        8161          mduff          Changes for Jep upgrade.
 #    05/26/15        8112          Chris.Cody     Add get handling for 0 values
+#    07/31/15        7458          Robert.Blum    Added username and workstation.
 # 
 #
 
@@ -122,7 +123,19 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def setStartTime(self, startTime):
         dt = Date(long(self._getMillis(startTime)))
         self.jobj.setStartTime(dt)
+
+    def getUserName(self):
+        return self.jobj.getUserName()
     
+    def setUserName(self, userName):
+        self.jobj.setUserName(userName)
+
+    def getWorkStation(self):
+        return self.jobj.getWorkStation()
+    
+    def setWorkStation(self, workStation):
+        self.jobj.setWorkStation(workStation)
+
     def getGeometry(self):
         return JUtil.javaObjToPyVal(self.jobj.getGeometry())
     
@@ -211,6 +224,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         self.setPhenomenon(javaClass.getPhenomenon())
         self.setSignificance(javaClass.getSignificance())
         self.setSubType(javaClass.getSubType())
+        self.setUserName(javaClass.getUserName())
+        self.setWorkStation(javaClass.getWorkStation())
         if javaClass.getCreationTime() is not None:
             self.setCreationTime(datetime.datetime.fromtimestamp(javaClass.getCreationTime().getTime() / 1000.0))
         else :
@@ -257,6 +272,10 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             return self.getHazardMode()
         elif lowerKey == 'eventid':
             return self.getEventID()
+        elif lowerKey == 'username':
+            return self.getUserName()
+        elif lowerKey == 'workstation':
+            return self.getWorkStation()
         elif lowerKey == 'attributes':
             return self.getHazardAttributes()
         else :
@@ -284,6 +303,10 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             self.setGeometry(value)
         elif lowerKey == 'mode' or lowerKey == 'hazardmode':
             self.setHazardMode(value)
+        elif lowerKey == 'username':
+            return self.setUserName(value)
+        elif lowerKey == 'workstation':
+            return self.setWorkStation(value)
         elif lowerKey == 'attributes':
             self.setHazardAttributes(value)         
     

@@ -50,6 +50,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.exception.VizException;
+import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.core.requests.ThriftClient;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
@@ -103,6 +104,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove polygons from hazards
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Jul 06, 2015 6930       Chris.Cody   Send notification for handleRecommenderResult
+ * Jul 31, 2015 7458       Robert.Blum  Setting userName and workstation fields on events that are
+ *                                      created by a recommender.
  * </pre>
  * 
  * @author bsteffen
@@ -435,6 +438,9 @@ public class SessionManager implements
                             .buildInitialHazardAreas(hevent);
                     hevent.addHazardAttribute(HAZARD_AREA,
                             (Serializable) ugcHatchingAlgorithms);
+                    hevent.setUserName(LocalizationManager.getInstance()
+                            .getCurrentUser());
+                    hevent.setWorkStation(VizApp.getHostName());
                     eventManager.addEvent(hevent, Originator.OTHER);
                 }
             }

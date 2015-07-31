@@ -180,6 +180,16 @@ Hydrology_WarningAdvisory = {
             "fieldName": "streamName", 
             "type": "string"
         },
+        "Workstation": {
+            "sortDir": "none",
+            "fieldName": "workStation", 
+            "type": "string"
+        },
+        "User Name": {
+            "sortDir": "none",
+            "fieldName": "userName", 
+            "type": "string"
+        },
     }, 
     "toolbarTools": [
         {

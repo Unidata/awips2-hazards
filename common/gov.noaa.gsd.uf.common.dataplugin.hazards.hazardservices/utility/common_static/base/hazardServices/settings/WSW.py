@@ -143,8 +143,18 @@ WSW = {
             "sortDir": "none", 
             "fieldName": "alert", 
             "type": "countdown"
-        }
-    },          
+        },
+        "Workstation": {
+            "sortDir": "none",
+            "fieldName": "workStation", 
+            "type": "string"
+        },
+        "User Name": {
+            "sortDir": "none",
+            "fieldName": "userName", 
+            "type": "string"
+        },
+    },
     "toolbarTools": [
     ] 
 }

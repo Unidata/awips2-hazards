@@ -213,6 +213,8 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      generate products for events that should have been hidden by the new
  *                                      setting's filters.
  * Jul 30, 2015 9681       Robert.Blum  Changes for generating products for the product viewer.
+ * Jul 31, 2015 7458       Robert.Blum  Updating userName and workstation fields on events that are
+ *                                      being issued.
  * </pre>
  * 
  * @author bsteffen
@@ -819,6 +821,14 @@ public class SessionProductManager implements ISessionProductManager {
                          */
                         sessionEvent
                                 .removeHazardAttribute(HazardConstants.REPLACES);
+
+                        /*
+                         * Update the userName and workstation. Should be set to
+                         * the last person who issued the product/hazard.
+                         */
+                        sessionEvent.setUserName(LocalizationManager
+                                .getInstance().getCurrentUser());
+                        sessionEvent.setWorkStation(VizApp.getHostName());
 
                         if (updatedEvent.getStatus().equals(HazardStatus.ENDED)) {
                             eventManager.endEvent(sessionEvent,
