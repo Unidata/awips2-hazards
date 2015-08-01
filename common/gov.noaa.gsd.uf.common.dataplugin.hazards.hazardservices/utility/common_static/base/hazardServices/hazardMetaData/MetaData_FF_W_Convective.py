@@ -13,6 +13,7 @@ class MetaData(CommonMetaData.MetaData):
                             self.getListOfCities(False),
                             self.getEndingOption(),
                             self.getEndingSynopsis(), 
+                            self.getAdditionalInfo(),
                     ]
         elif self.hazardStatus == 'pending':
             metaData = [
@@ -93,11 +94,16 @@ class MetaData(CommonMetaData.MetaData):
                 }
 
     def additionalInfoChoices(self):
-        return [ 
-            self.listOfDrainages(),
-            self.additionalRain(),
-            ]
-            
+        if self.hazardStatus in ["elapsed", "ending", "ended"]:
+            return [ 
+                self.listOfDrainages(),
+                ]
+        else:
+            return [ 
+                self.listOfDrainages(),
+                self.additionalRain(),
+                ]
+
     def immediateCauseChoices(self):
         return [
                 self.immediateCauseER(),

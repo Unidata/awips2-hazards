@@ -9,7 +9,8 @@ class MetaData(CommonMetaData.MetaData):
             metaData = [
                         self.getListOfCities(False),
                         self.getEndingOption(),
-                        self.getEndingSynopsis()
+                        self.getEndingSynopsis(),
+                        self.getAdditionalInfo(),
                         ]
         elif self.hazardStatus == 'pending':
            metaData = [
@@ -173,11 +174,16 @@ class MetaData(CommonMetaData.MetaData):
 		}
  
     def additionalInfoChoices(self):
-        return [ 
-            self.additionalRain(),
-            self.listOfDrainages(),
-            ]
-            
+        if self.hazardStatus in ["elapsed", "ending", "ended"]:
+            return [ 
+                self.listOfDrainages(),
+                ]
+        else:
+            return [ 
+                self.listOfDrainages(),
+                self.additionalRain(),
+                ]
+
     def getCTA_Choices(self):
         return [
             self.ctaFlashFloodWarningMeans(),

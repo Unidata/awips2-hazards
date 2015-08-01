@@ -321,10 +321,15 @@ class MetaData(CommonMetaData.MetaData):
         return result
 
     def additionalInfoChoices(self):
-        return [ 
-            self.listOfDrainages(),
-            self.floodMoving(),
-            ]
+        if self.hazardStatus in ["elapsed", "ending", "ended"]:
+            return [ 
+                self.listOfDrainages(),
+                ]
+        else:
+            return [ 
+                self.listOfDrainages(),
+                self.floodMoving(),
+                ]
 
     # DAM OR LEVEE and SCENARIO -- damOrLevee  scenario
     #
