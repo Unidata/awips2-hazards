@@ -115,7 +115,7 @@ class MetaData(object):
             "values": values,
             "expandHorizontally": False,
             "choices": choices,
-            "editable" : self.editableWhenNew(),
+            "editable" : True,
              "refreshMetadata": True,
                 }
         
