@@ -35,6 +35,7 @@
     Jul 27, 2015    9637    Robert.Blum Changes to _polygonText() for point hazards.
     Jul 28, 2015    9687    Robert.Blum Changes for new KeyInfo field - displayLabel.
     Jul 30, 2015    9681    Robert.Blum Fixed incorrect if statement in polygonText.
+    Aug 01, 2015    9634    Robert.Blum Changing MND Header to all caps.
     
 '''
 
@@ -196,14 +197,14 @@ class Format(FormatTemplate.Formatter):
         if self.productDict.get('correction', False):
             text += '...CORRECTED'
         if (self._runMode == 'Practice'):
-            text = 'Test...' + text + '...Test \n'
+            text = 'TEST...' + text + '...TEST \n'
         else:
             text += '\n'
-        text += 'National Weather Service ' + self._wfoCityState + '\n'
+        text += 'NATIONAL WEATHER SERVICE ' + self._wfoCityState + '\n'
         text += self.getIssuanceTimeDate(productDict)
         if (self._runMode == 'Practice' and self._productID == 'FFW'):
             text += '\n...THIS MESSAGE IS FOR TEST PURPOSES ONLY...\n'
-        return text
+        return text.upper()
 
     def _easMessage(self, productDict):
         # ALL CAPS per Mixed Case Text Guidelines
