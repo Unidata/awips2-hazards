@@ -133,12 +133,6 @@ WSW = {
             "fieldName": "pils", 
             "sortDir": "none"
         }, 
-        "Description": {
-            "sortDir": "none", 
-            "width": 100, 
-            "fieldName": "description", 
-            "type": "string"
-        },
         "Time to Expiration": {
             "sortDir": "none", 
             "fieldName": "alert", 
