@@ -613,48 +613,30 @@ class Format(FormatTemplate.Formatter):
         hazard = sectionDict.get('hazardEvents')[0]
         includeChoices = hazard.get('include')
         if includeChoices and 'ffwEmergency' in includeChoices:
-            # Get saved value from productText table if available
-            headline = self._getVal('emergencyHeadline', sectionDict)
-            if headline is None:
-                # ALL CAPS per Mixed Case Text Guidelines
-                emergencyLocation = self._tpc.getValueOrFramedText('includeEmergencyLocation', hazard, 'Enter Emergency Location').upper()
-                headline = '...FLASH FLOOD EMERGENCY FOR ' + emergencyLocation + '...'
-            self._setVal('emergencyHeadline', headline, sectionDict, 'Emergency Headline')
+            # ALL CAPS per Mixed Case Text Guidelines
+            emergencyLocation = self._tpc.getValueOrFramedText('includeEmergencyLocation', hazard, 'Enter Emergency Location').upper()
+            headline = '...FLASH FLOOD EMERGENCY FOR ' + emergencyLocation + '...'
         return self._getFormattedText(headline, endText='\n\n')
 
     def _attribution(self, sectionDict):
-        # Get saved value from productText table if available
-        attribution = self._getVal('attribution', sectionDict)
-        if attribution is None:
-            attribution = self.attributionFirstBullet.getAttributionText()
-        self._setVal('attribution', attribution, sectionDict, 'Attribution')
+        attribution = self.attributionFirstBullet.getAttributionText()
         return self._getFormattedText(attribution, endText='\n\n')
 
     def _attribution_point(self, sectionDict):
-        # Get saved value from productText table if available
-        attribution = self._getVal('attribution_point', sectionDict)
-        if attribution is None:
-            attribution = self.attributionFirstBullet.getAttributionText()
-        self._setVal('attribution_point', attribution, sectionDict, 'Attribution')
+        attribution = self.attributionFirstBullet.getAttributionText()
         return self._getFormattedText(attribution, endText='\n\n')
 
     def _firstBullet(self, sectionDict):
-        # Get saved value from productText table if available
-        firstBullet = self._getVal('firstBullet', sectionDict)
-        if firstBullet is None:
-            firstBullet = self.attributionFirstBullet.getFirstBulletText()
-        self._setVal('firstBullet', firstBullet, sectionDict, 'First Bullet')
+        firstBullet = self.attributionFirstBullet.getFirstBulletText()
+
         startText = '* '
         if (self._runMode == 'Practice'):
             startText += "This is a test message.  "
         return self._getFormattedText(firstBullet, startText=startText, endText='\n\n')
 
     def _firstBullet_point(self, sectionDict):
-        # Get saved value from productText table if available
-        firstBullet = self._getVal('firstBullet_point', sectionDict)
-        if firstBullet is None:
-            firstBullet = self.attributionFirstBullet.getFirstBulletText()
-        self._setVal('firstBullet_point', firstBullet, sectionDict, 'First Bullet')
+        firstBullet = self.attributionFirstBullet.getFirstBulletText()
+
         startText = ''
         if sectionDict.get('vtecRecord').get('act') == 'NEW':
             startText = '* '
@@ -669,33 +651,28 @@ class Format(FormatTemplate.Formatter):
         '''
         # Get the endTime from the first hazard
         hazard = sectionDict.get('hazardEvents', None)[0]
+        bulletText = 'Until '
+        endTime = hazard.get('endTime')
+        expireTime = self._tpc.round(endTime, roundMinutes)
 
-        # Get saved value from productText table if available
-        bulletText = self._getVal('timeBullet', sectionDict)
-        if bulletText is None:
-            bulletText = 'Until '
-            endTime = hazard.get('endTime')
-            expireTime = self._tpc.round(endTime, roundMinutes)
+        # Determine how far into the future the expire time is.
+        issueTime = datetime.datetime.fromtimestamp(float(self._issueTime)/1000)
+        tdelta = endTime - issueTime
 
-            # Determine how far into the future the expire time is.
-            issueTime = datetime.datetime.fromtimestamp(float(self._issueTime)/1000)
-            tdelta = endTime - issueTime
+        if (tdelta.days == 6 and endTime.date().weekday() == issueTime.date().weekday()) or \
+            tdelta.days > 6:
+            format = '%l%M %p %Z %a %b %d'
+        elif issueTime.day != endTime.day:
+            format = '%l%M %p %Z %a'
+        else:
+            format = '%l%M %p %Z'
 
-            if (tdelta.days == 6 and endTime.date().weekday() == issueTime.date().weekday()) or \
-                tdelta.days > 6:
-                format = '%l%M %p %Z %a %b %d'
-            elif issueTime.day != endTime.day:
-                format = '%l%M %p %Z %a'
-            else:
-                format = '%l%M %p %Z'
-
-            timeStr = ''
-            for tz in self.timezones:
-                if len(timeStr) > 0:
-                    timeStr += '/'
-                timeStr += self._tpc.formatDatetime(expireTime, format, tz).strip()
-            bulletText += timeStr
-        self._setVal('timeBullet', bulletText, sectionDict, 'Time Bullet')
+        timeStr = ''
+        for tz in self.timezones:
+            if len(timeStr) > 0:
+                timeStr += '/'
+            timeStr += self._tpc.formatDatetime(expireTime, format, tz).strip()
+        bulletText += timeStr
 
         startText = '* '
         if (self._runMode == 'Practice' and hazard.get('geoType') != 'point'):
@@ -708,12 +685,8 @@ class Format(FormatTemplate.Formatter):
         hazard = sectionDict.get('hazardEvents')[0]
         includeChoices = hazard.get('include')
         if includeChoices and 'ffwEmergency' in includeChoices:
-            # Get saved value from productText table if available
-            statement = self._getVal('emergencyStatement', sectionDict)
-            if statement is None:
-                emergencyLocation = self._tpc.getValueOrFramedText('includeEmergencyLocation', hazard, 'Enter Emergency Location').upper()
-                statement = '  This is a Flash Flood Emergency for ' + emergencyLocation + '.'
-            self._setVal('emergencyStatement', statement, sectionDict, 'Emergency Statement')
+            emergencyLocation = self._tpc.getValueOrFramedText('includeEmergencyLocation', hazard, 'Enter Emergency Location').upper()
+            statement = '  This is a Flash Flood Emergency for ' + emergencyLocation + '.'
         return self._getFormattedText(statement, endText='\n\n')
 
     def _impactsBullet(self, sectionDict):
