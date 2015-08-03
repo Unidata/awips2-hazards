@@ -37,6 +37,7 @@
    Jul 21, 2015   9640      Robert.Blum         Correcting hazards names.
    Jul 23, 2015   9643      Robert.Blum         Added roundFloat() method.
    Jul 28, 2015   9687      Robert.Blum         Updates for new KeyInfo field displayLabel.
+   Aug 03, 2015   9920      Robert.Blum         Fixed duplicate alias sql error.
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -229,11 +230,15 @@ class TextProductCommon(object):
                     req.addIdentifier("inLocation", "true")
                     req.addIdentifier("locationField", matchColumn)
                     req.setLocationNames(queryMatch)
+                    # Can not have locationField added as parameter
+                    columns.remove(matchColumn)
                 else :
                     # Even if not filtering on attribute values, you must
                     # add this to the query or the attribute values will get
                     # out of sync with the attribute keys in what comes back
                     req.addIdentifier("locationField", columns[0])
+                    # Can not have locationField added as parameter
+                    columns.remove(columns[0])
                 if geom is not None :
                     req.setEnvelope(geom.envelope)
                 req.setParameters(*columns)

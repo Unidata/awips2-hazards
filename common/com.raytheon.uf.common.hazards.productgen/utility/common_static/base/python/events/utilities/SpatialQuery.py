@@ -9,6 +9,7 @@ from ufpy.dataaccess import DataAccessLayer
     Apr 07, 2015    6690    Robert.Blum Fixed bug and added parameter to allow 
                                         the query to be more flexible.
     Jun 17, 2015    7636    Robert.Blum Added maxResults.
+    Aug 03, 2015    9920    Robert.Blum Fixed duplicate alias sql error.
     
     @version 1.0
 '''
@@ -30,7 +31,11 @@ def retrievePoints(geometryCollection, tablename, constraints=None, sortBy=None,
     
     if sortBy and type(sortBy) is list:
         params.update(sortBy)
-        
+    
+    # Remove the location field from the params if it was added
+    if locationField in params:
+        params.remove(locationField)
+    
     req = DataAccessLayer.newDataRequest('maps', parameters=list(params))
     req.addIdentifier('table','mapdata.' + tablename)
     req.addIdentifier('geomField','the_geom')

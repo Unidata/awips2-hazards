@@ -15,6 +15,7 @@ like burn scar areas.
  Date         Ticket#    Engineer    Description
  ------------ ---------- ----------- --------------------------
  Feb 03, 2015            kmanross     Initial development
+ Aug 03, 2015   9920     Robert.Blum Fixed duplicate alias sql error.
 
 """
 
@@ -55,16 +56,13 @@ class MapsDatabaseAccessor(object):
         columns = [
                    "name",
                    ]
-
-        ### Important to set addIdentifier("locationField", "name") !!!
-        req.addIdentifier("locationField", columns[0])
         req.setParameters(*columns)
-        
+
         retGeoms = DataAccessLayer.getGeometryData(req)
         
         nameList = []
         for retGeom in retGeoms :
-            nameList.append(retGeom.getString('name'))
+            nameList.append(retGeom.getLocationName())
             
         return nameList
 
@@ -81,9 +79,6 @@ class MapsDatabaseAccessor(object):
         columns = [
                    "name",
                    ]
-
-        ### Important to set addIdentifier("locationField", "name") !!!
-        req.addIdentifier("locationField", columns[0])
         req.setParameters(*columns)
         
         retGeoms = DataAccessLayer.getGeometryData(req)
@@ -94,7 +89,7 @@ class MapsDatabaseAccessor(object):
             formattedPoly = [list(c) for c in poly['exterior_coords']]
             
             try:
-                id = retGeom.getString('name')
+                id = retGeom.getLocationName()
                 if id:
                    retDict[id] = formattedPoly
                 
@@ -103,11 +98,10 @@ class MapsDatabaseAccessor(object):
             
         return retDict
 
-    
     def getDamInundationMetadata(self, damName):
         damInundationMetadata = DamMetaData.damInundationMetadata
         return damInundationMetadata.get(damName)
-    
+
     def getAllDamInundationMetadata(self):
         return DamMetaData.damInundationMetadata
     
