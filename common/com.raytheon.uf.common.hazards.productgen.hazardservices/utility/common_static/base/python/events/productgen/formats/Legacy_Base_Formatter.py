@@ -36,6 +36,7 @@
     Jul 28, 2015    9687    Robert.Blum Changes for new KeyInfo field - displayLabel.
     Jul 30, 2015    9681    Robert.Blum Fixed incorrect if statement in polygonText.
     Aug 01, 2015    9634    Robert.Blum Changing MND Header to all caps.
+    Aug 03, 2015    9632    Robert.Blum Initials are now auto filled.
     
 '''
 
@@ -52,6 +53,7 @@ from TextProductCommon import TextProductCommon
 import ProductTextUtil
 from BasisText import BasisText
 from AttributionFirstBulletText import AttributionFirstBulletText
+import ForecasterInitials
 
 from abc import *
 
@@ -307,12 +309,11 @@ class Format(FormatTemplate.Formatter):
         return self._getFormattedText(text, endText='\n\n')
 
     def _initials(self, productDict):
-        # Get saved value from productText table if available
-        text = self._getVal('initials', productDict)
-        if text is None:
-            text = '|* Name/Initials *|'
-        self._setVal('initials', text, productDict, 'Initials')
-        return text
+        initials = ForecasterInitials.getForecasterIdentification()
+        if initials is None or initials == '':
+             initials = '|* Name/Initials *|'
+        self._setVal('initials', initials, productDict, 'Initials')
+        return initials
 
     ################# Segment Level
 
