@@ -11,7 +11,6 @@ package gov.noaa.gsd.viz.hazards.utilities;
 
 import java.util.List;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.VizApp;
@@ -131,10 +130,8 @@ public class HazardEventBuilder {
     public ObservedHazardEvent addEvent(IHazardEvent event,
             IOriginator originator) {
         // Update user/workstation base on who created the event
-        event.addHazardAttribute(HazardConstants.USER_NAME, LocalizationManager
-                .getInstance().getCurrentUser());
-        event.addHazardAttribute(HazardConstants.WORKSTATION,
-                VizApp.getHostName());
+        event.setUserName(LocalizationManager.getInstance().getCurrentUser());
+        event.setWorkStation(VizApp.getHostName());
         return sessionManager.getEventManager().addEvent(event, originator);
     }
 
