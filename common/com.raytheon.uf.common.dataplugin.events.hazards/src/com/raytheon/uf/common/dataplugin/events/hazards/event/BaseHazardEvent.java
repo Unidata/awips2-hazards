@@ -56,6 +56,7 @@ import com.vividsolutions.jts.io.WKTReader;
  * Jun 30, 2014 3512       Chris.Golden Added addHazardAttributes() method.
  * Feb 22, 2015 6561       mpduff      Override getInsertTime and update toString
  * Jul 31, 2015 7458       Robert.Blum Added new userName and workstation fields.
+ * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * </pre>
  * 
  * @author mnash
@@ -166,6 +167,18 @@ public class BaseHazardEvent implements IHazardEvent {
     @Override
     public void setEventID(String uuid) {
         this.eventId = uuid;
+    }
+
+    /**
+     * Return a filtered Event Id String
+     * 
+     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil
+     * 
+     * @return the eventID using filtering from HazardServicesEventIdUtil
+     */
+    @Override
+    public String getDisplayEventID() {
+        return (HazardServicesEventIdUtil.getDisplayId(getEventID()));
     }
 
     @Override

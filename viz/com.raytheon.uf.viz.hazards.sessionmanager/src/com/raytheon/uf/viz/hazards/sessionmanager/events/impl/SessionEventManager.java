@@ -82,10 +82,10 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Signific
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastManager;
@@ -315,6 +315,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      generate products for events that should have been hidden by the new
  *                                      setting's filters.
  * Jul 29, 2015    9306    Chris.Cody   Add processing for HazardSatus.ELAPSED
+ * Aug 03, 2015    8836    Chris.Cody   Changes for a configurable Event Id
  * 
  * </pre>
  * 
@@ -1950,10 +1951,7 @@ public class SessionEventManager implements
 
             } else {
                 try {
-                    oevent.setEventID(HazardServicesClient
-                            .getHazardEventServices(
-                                    CAVEMode.getMode() == CAVEMode.PRACTICE)
-                            .requestEventId(configManager.getSiteID()));
+                    oevent.setEventID(HazardServicesEventIdUtil.getNewEventID());
                 } catch (Exception e) {
                     statusHandler.error("Unable to set event id", e);
                 }

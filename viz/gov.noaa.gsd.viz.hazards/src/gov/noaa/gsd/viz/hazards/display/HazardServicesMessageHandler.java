@@ -62,6 +62,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
@@ -225,6 +226,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            Editor from confirmation dialog.
  * Jul 30, 2015 9681       Robert.Blum        Changes for new Product Viewer and generating
  *                                            view only products.
+ * Aug 03, 2015 8836       Chris.Cody         Update Event Display type when settings change
  * </pre>
  * 
  * @author bryon.lawrence
@@ -1219,6 +1221,7 @@ public final class HazardServicesMessageHandler {
     @Handler
     @Deprecated
     public void settingsModified(final SettingsModified notification) {
+        reloadHazardServicesEventId();
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.CURRENT_SETTINGS));
     }
@@ -1754,5 +1757,26 @@ public final class HazardServicesMessageHandler {
         }
 
         return userSelection;
+    }
+
+    /**
+     * Update Hazard Event Id Display Type on Settings change.
+     * 
+     * This method should be run before refreshiing Console and Spatial
+     * displays.
+     * 
+     */
+    private void reloadHazardServicesEventId() {
+        ISettings currentSettings = sessionManager.getConfigurationManager()
+                .getSettings();
+        String eventIdDisplayTypeString = currentSettings
+                .getEventIdDisplayType();
+
+        if ((eventIdDisplayTypeString != null)
+                && (eventIdDisplayTypeString.isEmpty() == false)) {
+            HazardServicesEventIdUtil
+                    .setIdDisplayType(HazardServicesEventIdUtil.IdDisplayType
+                            .valueOf(eventIdDisplayTypeString));
+        }
     }
 }

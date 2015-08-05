@@ -93,7 +93,7 @@ import com.raytheon.uf.common.util.Pair;
  * 07/29/2015   9686       Robert.Blum  Adjustments to remove dead space at the bottom of the vertical
  *                                      scrollbar when labels are removed from the product editor.
  * 07/30/2015   9681       Robert.Blum  Changed to use new abstract product dialog class.
- * 
+ * 08/26/2015   8836       Chris.Cody   Changes for Unique (alpha-numeric) Event ID values
  * </pre>
  * 
  * @author jsanchez
@@ -594,7 +594,7 @@ public class ProductDataEditor extends AbstractDataEditor {
                 ProductTextUtil.createOrUpdateProductText(keyInfo.getName(),
                         keyInfo.getProductCategory(), keyInfo.getProductID(),
                         keyInfo.getSegment(),
-                        new ArrayList<Integer>(keyInfo.getEventIDs()), value);
+                        new ArrayList<String>(keyInfo.getEventIDs()), value);
             }
         }
 

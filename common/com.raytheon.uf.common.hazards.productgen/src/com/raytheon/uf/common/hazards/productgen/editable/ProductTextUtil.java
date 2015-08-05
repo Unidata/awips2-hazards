@@ -39,6 +39,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Aug 26, 2013            mnash     Initial creation
  * Apr  7, 2014 2917       jsanchez  Changed the methods to accept eventIDs as a List<Integer>
+ * Aug 03, 2015 8836       Chris.Cody Changes for a configurable Event Id
  * 
  * </pre>
  * 
@@ -64,7 +65,7 @@ public class ProductTextUtil {
      */
     public static ProductTextResponse createProductText(String key,
             String productCategory, String productID, String segment,
-            ArrayList<Integer> eventIDs, Serializable value) {
+            ArrayList<String> eventIDs, Serializable value) {
         ProductTextResponse response = sendRequest(key, productCategory,
                 productID, segment, eventIDs, value, ProductRequestType.CREATE);
         if (response.getExceptions() != null) {
@@ -87,7 +88,7 @@ public class ProductTextUtil {
      */
     public static ProductTextResponse updateProductText(String key,
             String productCategory, String productID, String segment,
-            ArrayList<Integer> eventIDs, Serializable value) {
+            ArrayList<String> eventIDs, Serializable value) {
         ProductTextResponse response = sendRequest(key, productCategory,
                 productID, segment, eventIDs, value, ProductRequestType.UPDATE);
         if (response.getExceptions() != null) {
@@ -111,7 +112,7 @@ public class ProductTextUtil {
      */
     public static ProductTextResponse deleteProductText(String key,
             String productCategory, String productID, String segment,
-            ArrayList<Integer> eventIDs) {
+            ArrayList<String> eventIDs) {
         ProductTextResponse response = sendRequest(key, productCategory,
                 productID, segment, eventIDs, null, ProductRequestType.DELETE);
         if (response.getExceptions() != null) {
@@ -136,7 +137,7 @@ public class ProductTextUtil {
      */
     public static List<ProductText> retrieveProductText(String key,
             String productCategory, String productID, String segment,
-            ArrayList<Integer> eventIDs) {
+            ArrayList<String> eventIDs) {
         ProductTextResponse response = sendRequest(key, productCategory,
                 productID, segment, eventIDs, null, ProductRequestType.RETRIEVE);
         if (response != null && response.getText() != null) {
@@ -158,7 +159,7 @@ public class ProductTextUtil {
      */
     public static ProductTextResponse createOrUpdateProductText(String key,
             String productCategory, String productID, String segment,
-            ArrayList<Integer> eventIDs, Serializable value) {
+            ArrayList<String> eventIDs, Serializable value) {
         ProductTextResponse response = sendRequest(key, productCategory,
                 productID, segment, eventIDs, value,
                 ProductRequestType.SAVE_OR_UPDATE);
@@ -183,7 +184,7 @@ public class ProductTextUtil {
      */
     private static ProductTextResponse sendRequest(String key,
             String productCategory, String productID, String segment,
-            ArrayList<Integer> eventIDs, Serializable value,
+            ArrayList<String> eventIDs, Serializable value,
             ProductRequestType type) {
         ProductText text = new ProductText(key, productCategory, productID,
                 segment, eventIDs, value);

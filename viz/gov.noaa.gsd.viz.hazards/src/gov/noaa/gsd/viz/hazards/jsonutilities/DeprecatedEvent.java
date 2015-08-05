@@ -71,6 +71,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
  * Feb 16, 2014 2161       Chris.Golden Added support for end time "until further notice" flag.
  * Jul 31, 2015 7458       Robert.Blum  Added userName and workstation fields.
+ * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * </pre>
  * 
  * @author bsteffen
@@ -88,6 +89,8 @@ public class DeprecatedEvent {
 
     // TODO int
     private String eventID;
+
+    private String displayEventID;
 
     private String pointID;
 
@@ -158,6 +161,7 @@ public class DeprecatedEvent {
         Map<String, Serializable> attr = event.getHazardAttributes();
 
         eventID = event.getEventID();
+        displayEventID = event.getDisplayEventID();
         pointID = (String) event.getHazardAttribute(HazardConstants.POINTID);
         streamName = (String) event
                 .getHazardAttribute(HazardConstants.STREAM_NAME);
@@ -262,6 +266,10 @@ public class DeprecatedEvent {
 
     public String getEventID() {
         return eventID;
+    }
+
+    public String getDisplayEventID() {
+        return displayEventID;
     }
 
     public void setEventID(String eventID) {

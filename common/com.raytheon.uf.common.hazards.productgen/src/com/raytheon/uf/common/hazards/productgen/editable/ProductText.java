@@ -43,6 +43,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Aug 2, 2013            mnash     Initial creation
  * Jun 18, 2014 3519      jsanchez  Made eventID an array list.
+ * Aug 03, 2015 8836      Chris.Cody Changes for a configurable Event Id
  * 
  * </pre>
  * 
@@ -75,7 +76,7 @@ public class ProductText extends PersistableDataObject implements Serializable {
      * Constructor to construct the necessary elements.
      */
     public ProductText(String key, String productCategory, String productID,
-            String segment, ArrayList<Integer> eventIDs, Serializable value) {
+            String segment, ArrayList<String> eventIDs, Serializable value) {
         id = new CustomTextId(key, productCategory, productID, segment,
                 eventIDs);
         this.value = value;
@@ -108,7 +109,7 @@ public class ProductText extends PersistableDataObject implements Serializable {
         return this.getId().getSegment();
     }
 
-    public ArrayList<Integer> getEventIDs() {
+    public ArrayList<String> getEventIDs() {
         return this.getId().getEventIDs();
     }
 

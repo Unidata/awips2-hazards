@@ -50,6 +50,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Feb 15, 2015 2271       Dan Schaffer Incur recommender/product generator init costs immediately
  * Feb 23, 2015 3618       Chris.Golden Added possible sites to settings.
  * May 18, 2015 8227       Chris.Cody   Remove NullRecommender
+ * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * </pre>
  * 
  * @author bsteffen
@@ -150,6 +151,26 @@ public class Settings implements ISettings {
      */
     private Set<String> perspectiveIDs;
 
+    /**
+     * <pre>
+     * Mode for displaying a Hazard Event ID:.
+     * ALWAYS_FULL    Always returns the full ID (default) 
+     * FULL_ON_DIFF   Always return the full id if there is any difference 
+     *                between the current settings for: appId, siteId or year.
+     * PROG_ON_DIFF   Build a progressively larger Display Id based on the largest
+     *                difference between the Current Settings and the given Event Id.
+     *                Different App = Full ID             "ZZ-SSS-YYYY-999999"
+     *                Different Site = Site Level ID:     "SSS-YYYY-999999"
+     *                (Same App)
+     *                Different Year = Year Level ID:     "YYYY-999999"
+     *                (Same App and Site)
+     *                Same App, Site and Year: Serial ID: "999999"
+     * ALWAYS_SITE    Always display the Site Id and Serial Id "SSS-999999"
+     * ONLY_SERIAL    Only displays the Serial ID despite other differences.
+     * 
+     */
+    private String eventIdDisplayType;
+
     public Settings() {
 
     }
@@ -182,6 +203,7 @@ public class Settings implements ISettings {
         setAddToSelected(other.getAddToSelected());
         setAddGeometryToSelected(other.getAddGeometryToSelected());
         setPerspectiveIDs(other.getPerspectiveIDs());
+        setEventIdDisplayType(other.getEventIdDisplayType());
     }
 
     @Override
@@ -352,6 +374,16 @@ public class Settings implements ISettings {
     @Override
     public void setPerspectiveIDs(Set<String> perspectiveIDs) {
         this.perspectiveIDs = perspectiveIDs;
+    }
+
+    @Override
+    public String getEventIdDisplayType() {
+        return (this.eventIdDisplayType);
+    }
+
+    @Override
+    public void setEventIdDisplayType(String eventIdDisplayType) {
+        this.eventIdDisplayType = eventIdDisplayType;
     }
 
     @Override

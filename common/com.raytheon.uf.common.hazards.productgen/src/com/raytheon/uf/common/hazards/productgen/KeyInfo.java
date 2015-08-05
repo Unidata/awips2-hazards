@@ -47,6 +47,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Apr 10, 2014  2336     Chris.Golden Added implementation of IParameterInfo.
  * Apr 23, 2014  3519     jsanchez     Made this class serializable and added the required field.
  * Jul 28, 2015  9687     Robert.Blum  Added displayLabel field.
+ * Aug 03, 2015  8836     Chris.Cody   Changes for a configurable Event Id
  * </pre>
  * 
  * @author jsanchez
@@ -66,7 +67,7 @@ public class KeyInfo implements IParameterInfo, ISerializableObject,
     private String productID;
 
     @DynamicSerializeElement
-    private List<Integer> eventIDs;
+    private List<String> eventIDs;
 
     @DynamicSerializeElement
     private String segment;
@@ -116,11 +117,11 @@ public class KeyInfo implements IParameterInfo, ISerializableObject,
         this.productID = productID;
     }
 
-    public List<Integer> getEventIDs() {
+    public List<String> getEventIDs() {
         return eventIDs;
     }
 
-    public void setEventIDs(List<Integer> eventIDs) {
+    public void setEventIDs(List<String> eventIDs) {
         this.eventIDs = eventIDs;
     }
 
@@ -240,7 +241,7 @@ public class KeyInfo implements IParameterInfo, ISerializableObject,
     public static KeyInfo createBasicKeyInfo(String name) {
         KeyInfo info = new KeyInfo();
         info.setName(name);
-        info.setEventIDs(new ArrayList<Integer>());
+        info.setEventIDs(new ArrayList<String>());
         return info;
     }
 

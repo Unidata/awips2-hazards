@@ -33,6 +33,7 @@
 #    05/13/15        8161          mduff          Changes for Jep upgrade.
 #    05/26/15        8112          Chris.Cody     Add get handling for 0 values
 #    07/31/15        7458          Robert.Blum    Added username and workstation.
+#    08/03/15        8836          Chris.Cody     Changes for a configurable Event Id
 # 
 #
 
@@ -63,7 +64,11 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     
     def setEventID(self, eventId):
         self.jobj.setEventID(eventId)
+
+    def getDisplayEventID(self):
+        return self.jobj.getDisplayEventID()
     
+
     def getStatus(self):
         return self.getHazardStatus()
     

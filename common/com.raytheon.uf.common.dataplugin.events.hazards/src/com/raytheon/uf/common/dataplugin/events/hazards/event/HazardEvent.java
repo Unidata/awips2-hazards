@@ -73,6 +73,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Feb 22, 2015 6561       mpduff      Override getInsertTime
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * Jul 31, 2015 7458      Robert.Blum   Added new userName and workstation fields.
+ * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * </pre>
  * 
  * @author mnash
@@ -235,9 +236,9 @@ public class HazardEvent implements IHazardEvent, IValidator {
      */
     public HazardEvent(IHazardEvent event) {
         this();
+        setEventID(event.getEventID());
         setSiteID(event.getSiteID());
         setEndTime(event.getEndTime());
-        setEventID(event.getEventID());
         setStartTime(event.getStartTime());
         setCreationTime(event.getCreationTime());
         setGeometry(event.getGeometry());
@@ -286,6 +287,18 @@ public class HazardEvent implements IHazardEvent, IValidator {
     @Override
     public void setEventID(String eventId) {
         this.eventID = eventId;
+    }
+
+    /**
+     * Return a filtered Event Id String
+     * 
+     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil
+     * 
+     * @return the eventID using filtering from HazardServicesEventIdUtil
+     */
+    @Override
+    public String getDisplayEventID() {
+        return (HazardServicesEventIdUtil.getDisplayId(getEventID()));
     }
 
     /**
@@ -612,6 +625,11 @@ public class HazardEvent implements IHazardEvent, IValidator {
             return false;
         }
         HazardEvent other = (HazardEvent) obj;
+        if (uniqueID == null) {
+            if (other.uniqueID != null)
+                return false;
+        } else if (!uniqueID.equals(other.uniqueID))
+            return false;
         if (creationTime == null) {
             if (other.creationTime != null) {
                 return false;
@@ -694,14 +712,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
             }
         } else if (!subType.equals(other.subType)) {
             return false;
-        }
-        if (uniqueID == null) {
-            if (other.uniqueID != null) {
-                return false;
-            }
-        } else if (!uniqueID.equals(other.uniqueID)) {
-            return false;
-        }
+	}
         return true;
     }
 

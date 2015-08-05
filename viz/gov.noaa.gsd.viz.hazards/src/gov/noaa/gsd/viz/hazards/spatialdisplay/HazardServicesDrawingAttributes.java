@@ -49,6 +49,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             config manager.
  * Feb 03, 2015    3865    Chris.Cody          Check for valid Active Editor class
  * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
+ * Aug 03, 2015 8836       Chris.Cody          Changes for a configurable Event Id
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -172,7 +173,7 @@ public abstract class HazardServicesDrawingAttributes extends Line {
         String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
 
         StringBuilder sb = new StringBuilder();
-        sb.append(hazardEvent.getEventID());
+        sb.append(hazardEvent.getDisplayEventID());
 
         if (hazardType != null) {
             sb.append(" " + hazardType);

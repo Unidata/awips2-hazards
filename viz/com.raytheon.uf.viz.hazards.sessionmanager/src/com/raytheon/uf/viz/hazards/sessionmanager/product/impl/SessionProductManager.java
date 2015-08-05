@@ -2045,7 +2045,7 @@ public class SessionProductManager implements ISessionProductManager {
         if (productGeneratorInformation.getProductEvents() != null) {
             for (IHazardEvent hazardEvent : productGeneratorInformation
                     .getProductEvents()) {
-                sb.append(hazardEvent.getEventID()).append(" ")
+                sb.append(hazardEvent.getDisplayEventID()).append(" ")
                         .append(hazardEvent.getPhenomenon()).append(".")
                         .append(hazardEvent.getSignificance()).append("\n");
             }

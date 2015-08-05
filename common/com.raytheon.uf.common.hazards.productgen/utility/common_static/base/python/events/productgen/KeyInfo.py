@@ -36,8 +36,11 @@
 #    05/14/15        7376          Robert.Blum     Moved required * to the beginning of the label.
 #    07/28/15        9687          Robert.Blum     Added new displayLabel field.
 #    07/28/15        9681          Robert.Blum     Removed the * from the label, handle in the product editor.
+#    08/06/15        8836          Chris.Cody      Changes for a configurable Event Id
 import JUtil
 from com.raytheon.uf.common.hazards.productgen import KeyInfo as JavaKeyInfo
+from com.raytheon.uf.common.dataplugin.events.hazards.event import HazardServicesEventIdUtil
+from com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil import IdDisplayType
 
 class KeyInfo(JUtil.JavaWrapperClass):
 
@@ -63,12 +66,14 @@ class KeyInfo(JUtil.JavaWrapperClass):
             if eventIDs:
                 firstEvent = True
                 for eventID in eventIDs:
+                    eventIDString = HazardServicesEventIdUtil.getDisplayId(eventID, IdDisplayType.ALWAYS_SITE)
                     if firstEvent:
                         # 1st eventID added to label
-                        self.label += ' - ' + str(eventID)
+                        
+                        self.label += ' - ' + str(eventIDString)
                         firstEvent = False
                     else:
-                        self.label += '/' + str(eventID)
+                        self.label += '/' + str(eventIDString)
 
         self.required = required
         self.displayLabel = displayLabel

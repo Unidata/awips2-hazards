@@ -48,6 +48,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Feb 22, 2015 6561       mpduff      Added getter/setter for insert time, changed 
  *                                     SORT_BY_PERSIST_TIME to use insert time
  * Jul 31, 2015 7458       Robert.Blum Added new userName and workstation methods.
+ * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * </pre>
  * 
  * @author mnash
@@ -76,6 +77,8 @@ public interface IHazardEvent extends IEvent {
     public String getEventID();
 
     public void setEventID(String eventId);
+
+    public String getDisplayEventID();
 
     public HazardStatus getStatus();
 

@@ -77,6 +77,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                      instead of a settings-modified one.
  * Apr 10, 2015 6898       Chris.Cody   Removed all messaging from data object.
  * May 28, 2015 8401       Chris.Cody   Correct Hazard Filtering issue
+ * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * </pre>
  * 
  * @author bsteffen
@@ -265,6 +266,11 @@ public class ObservedSettings implements ISettings {
     }
 
     @Override
+    public String getEventIdDisplayType() {
+        return delegate.getEventIdDisplayType();
+    }
+
+    @Override
     public Tool getTool(String toolName) {
         return delegate.getTool(toolName);
     }
@@ -356,6 +362,11 @@ public class ObservedSettings implements ISettings {
     }
 
     @Override
+    public void setEventIdDisplayType(String eventIdDisplayType) {
+        setEventIdDisplayType(eventIdDisplayType, true, Originator.OTHER);
+    }
+
+    @Override
     public void setPerspectiveIDs(Set<String> perspectiveIDs) {
         setPerspectiveIDs(perspectiveIDs, true, Originator.OTHER);
     }
@@ -386,6 +397,7 @@ public class ObservedSettings implements ISettings {
         setAddToSelected(other.getAddToSelected(), false, originator);
         setAddGeometryToSelected(other.getAddGeometryToSelected(), false,
                 originator);
+        setEventIdDisplayType(other.getEventIdDisplayType(), false, originator);
         if (idChanged) {
             settingsChangedIdentifier(true, originator);
         } else {
@@ -478,6 +490,10 @@ public class ObservedSettings implements ISettings {
             setAddToSelected(update.getAddToSelected(), false, null);
             notify = true;
         }
+        if (!changed(getEventIdDisplayType(), persisted.getEventIdDisplayType())) {
+            setEventIdDisplayType(update.getEventIdDisplayType(), false, null);
+            notify = true;
+        }
         if (notify) {
             if (idChanged) {
                 settingsChangedIdentifier(true, Originator.OTHER);
@@ -557,6 +573,11 @@ public class ObservedSettings implements ISettings {
     public void setAddGeometryToSelected(Boolean addGeometryToSelected,
             IOriginator originator) {
         setAddGeometryToSelected(addGeometryToSelected, true, originator);
+    }
+
+    public void setEventIdDisplayType(String eventIdDisplayType,
+            IOriginator originator) {
+        setEventIdDisplayType(eventIdDisplayType, true, originator);
     }
 
     public void setPerspectiveIDs(Set<String> perspectiveIDs,
@@ -689,6 +710,14 @@ public class ObservedSettings implements ISettings {
             boolean notify, IOriginator originator) {
         if (changed(addGeometryToSelected, getAddGeometryToSelected())) {
             delegate.setAddGeometryToSelected(addGeometryToSelected);
+            settingsChanged(notify, originator);
+        }
+    }
+
+    protected void setEventIdDisplayType(String eventIdDisplayType,
+            boolean notify, IOriginator originator) {
+        if (changed(eventIdDisplayType, getEventIdDisplayType())) {
+            delegate.setEventIdDisplayType(eventIdDisplayType);
             settingsChanged(notify, originator);
         }
     }

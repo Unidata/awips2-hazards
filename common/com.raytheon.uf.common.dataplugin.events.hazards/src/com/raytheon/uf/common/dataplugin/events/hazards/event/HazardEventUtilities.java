@@ -36,7 +36,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -64,6 +63,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      generate descriptive text from hazard
  *                                      events.
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
+ * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * </pre>
  * 
  * @author bsteffen
@@ -162,7 +162,7 @@ public class HazardEventUtilities {
 
         @Override
         public String getDescription(IHazardEvent event) {
-            return event.getEventID();
+            return event.getDisplayEventID();
         }
     };
 
@@ -440,8 +440,7 @@ public class HazardEventUtilities {
             }
         }
         if ("NEW".equals(action) || createNew) {
-            value = HazardServicesClient.getHazardEventServices(true)
-                    .requestEventId(site);
+            value = HazardServicesEventIdUtil.getNewEventID();
         }
         return value;
     }

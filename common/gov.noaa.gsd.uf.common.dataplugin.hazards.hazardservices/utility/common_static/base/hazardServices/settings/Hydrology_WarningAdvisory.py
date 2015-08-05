@@ -71,7 +71,7 @@ Hydrology_WarningAdvisory = {
     "columns": {
         "Event ID": {
             "type": "string", 
-            "fieldName": "eventID", 
+            "fieldName": "displayEventID", 
             "sortDir": "none"
         }, 
         "Hazard Type": {
@@ -227,5 +227,7 @@ Hydrology_WarningAdvisory = {
             "toolType": "NON_HAZARD_PRODUCT_GENERATOR",
             "visible":True,
         }
-    ]
+    ],
+    # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
+    "eventIdDisplayType" : "ALWAYS_FULL"
 }

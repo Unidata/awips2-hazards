@@ -37,6 +37,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -101,6 +102,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Feb 22, 2015   6561     mpduff       Override get and get/setInsertTime
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
  * Jul 31, 2015 7458       Robert.Blum  Added new userName and workstation methods.
+ * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * </pre>
  * 
  * @author bsteffen
@@ -177,6 +179,18 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     @Override
     public String getEventID() {
         return delegate.getEventID();
+    }
+
+    /**
+     * Return a filtered Event Id String
+     * 
+     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil
+     * 
+     * @return the eventID using filtering from HazardServicesEventIdUtil
+     */
+    @Override
+    public String getDisplayEventID() {
+        return (HazardServicesEventIdUtil.getDisplayId(getEventID()));
     }
 
     @Override

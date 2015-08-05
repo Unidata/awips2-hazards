@@ -91,6 +91,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.impl.ProductValidation
  *                                      found that the previous location could case the active table
  *                                      to incorrectly update when products failed validation, since
  *                                      the validation was done after the product generation.
+ * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * </pre>
  * 
  * @author jsanchez
@@ -386,7 +387,7 @@ public class ProductEditor extends AbstractProductDialog {
                     for (IEvent event : prod.getEventSet()) {
                         IHazardEvent hazardEvent = (IHazardEvent) event;
                         sb.append(prefix);
-                        sb.append(hazardEvent.getEventID());
+                        sb.append(hazardEvent.getDisplayEventID());
                         prefix = "/";
                     }
                     sb.append(":\n");

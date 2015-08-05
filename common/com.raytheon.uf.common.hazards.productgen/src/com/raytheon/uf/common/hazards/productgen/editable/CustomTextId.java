@@ -43,6 +43,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Aug 26, 2013            mnash     Initial creation
  * Apr 23, 2014 3519       jsanchez  Changed eventID to ArrayList
+ * Aug 03, 2015 8836       Chris.Cody  Changes for a configurable Event Id
  * 
  * </pre>
  * 
@@ -72,7 +73,7 @@ public class CustomTextId implements ISerializableObject, Serializable {
 
     @Column
     @DynamicSerializeElement
-    private ArrayList<Integer> eventIDs;
+    private ArrayList<String> eventIDs;
 
     /**
      * Default constructor for serialization
@@ -81,7 +82,7 @@ public class CustomTextId implements ISerializableObject, Serializable {
     }
 
     public CustomTextId(String key, String productCategory, String productID,
-            String segment, ArrayList<Integer> eventIDs) {
+            String segment, ArrayList<String> eventIDs) {
         this.key = key;
         this.productCategory = productCategory;
         this.productID = productID;
@@ -152,7 +153,7 @@ public class CustomTextId implements ISerializableObject, Serializable {
     /**
      * @return the eventIDs
      */
-    public ArrayList<Integer> getEventIDs() {
+    public ArrayList<String> getEventIDs() {
         return eventIDs;
     }
 
@@ -160,7 +161,7 @@ public class CustomTextId implements ISerializableObject, Serializable {
      * @param eventID
      *            the eventID to set
      */
-    public void setEventIDs(ArrayList<Integer> eventIDs) {
+    public void setEventIDs(ArrayList<String> eventIDs) {
         this.eventIDs = eventIDs;
     }
 

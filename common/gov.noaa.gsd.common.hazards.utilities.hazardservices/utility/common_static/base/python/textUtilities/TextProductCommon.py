@@ -38,7 +38,7 @@
    Jul 23, 2015   9643      Robert.Blum         Added roundFloat() method.
    Jul 28, 2015   9687      Robert.Blum         Updates for new KeyInfo field displayLabel.
    Aug 03, 2015   9920      Robert.Blum         Fixed duplicate alias sql error.
-
+   Aug 03, 2015   8836     Chris.Cody           Changes for a configurable Event Id
     @author Tracy.L.Hansen@noaa.gov
 '''
 
@@ -349,7 +349,7 @@ class TextProductCommon(object):
             eventIDs.update(set(dictionary.get('eventIDs', [])))
         tmpEventIDs = []
         for eventID in eventIDs:
-            tmpEventIDs.append(int(eventID))
+            tmpEventIDs.append(eventID)
 
         ugcs = list(ugcs)
         ugcs.sort()

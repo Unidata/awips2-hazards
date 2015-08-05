@@ -34,9 +34,11 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeInteropRecordsRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeWarningRequest;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
@@ -106,6 +108,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Jul 06, 2015 6930       Chris.Cody   Send notification for handleRecommenderResult
  * Jul 31, 2015 7458       Robert.Blum  Setting userName and workstation fields on events that are
  *                                      created by a recommender.
+ * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * </pre>
  * 
  * @author bsteffen
@@ -197,6 +200,12 @@ public class SessionManager implements
                         timeManager, configManager, hazardEventManager,
                         new AllHazardsFilterStrategy()));
         hazardManager = hazardEventManager;
+
+        try {
+            setupEventIdDisplay();
+        } catch (HazardEventServiceException hese) {
+            statusHandler.error(hese.getMessage(), hese);
+        }
 
         /**
          * TODO Where should a call be made to remove the NotificationJob
@@ -512,4 +521,18 @@ public class SessionManager implements
             statusHandler.error("Error during product generation", e);
         }
     }
+
+    private void setupEventIdDisplay() throws HazardEventServiceException {
+
+        boolean isPracticeMode = (CAVEMode.getMode() == CAVEMode.PRACTICE);
+
+        LocalizationManager lm = LocalizationManager.getInstance();
+        String siteId = null;
+        if (lm != null) {
+            siteId = lm.getCurrentSite();
+        }
+
+        HazardServicesEventIdUtil.setupHazardEventId(isPracticeMode, siteId);
+    }
+
 }

@@ -39,11 +39,11 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityRecordManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardsInteroperabilityGFE;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.IHazardsInteroperabilityRecord;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
 import com.raytheon.uf.common.dataplugin.gfe.dataaccess.GFEDataAccessUtil;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.GFERecord;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.GridLocation;
@@ -106,6 +106,7 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  * Dec 12, 2014 2826       dgilling     Change fields used by interoperability.
  * Jan 19, 2014 4849       rferrel      Log exceptions getting GFERecords to delete.
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
+ * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * 
  * </pre>
  * 
@@ -142,7 +143,7 @@ public class HazardEventHandler {
 
     private static final Pattern PARM_OPERATIONAL_PATTERN = Pattern
             .compile(PARM_OPERATIONAL_FCST);
-    
+
     private GridRequestHandler gridRequestHandler;
 
     /**
@@ -626,8 +627,8 @@ public class HazardEventHandler {
         IHazardEvent hazardEvent = hazardEventManager.createEvent();
 
         try {
-            hazardEvent.setEventID(HazardServicesClient.getHazardEventServices(practice)
-                    .requestEventId(siteID));
+            hazardEvent.setEventID(HazardServicesEventIdUtil
+                    .getNewEventID());
         } catch (Exception e) {
             statusHandler.handle(Priority.ERROR,
                     "Hazard ID generation failed.", e);
@@ -900,8 +901,8 @@ public class HazardEventHandler {
 
         // remove grids that are not merged with any other grid
         for (TimeRange removeTR : separatedRecords.timeRangesToRemove) {
-            this.gridRequestHandler.store(new ArrayList<GFERecord>(), gridParmInfo,
-                    removeTR, practice);
+            this.gridRequestHandler.store(new ArrayList<GFERecord>(),
+                    gridParmInfo, removeTR, practice);
         }
 
         // store the new grids
@@ -909,8 +910,8 @@ public class HazardEventHandler {
                 && !separatedRecords.newRecords.isEmpty()) {
             TimeRange replacementTimeRange = GFERecordUtil
                     .getReplacementTimeRange(separatedRecords.newRecords);
-            this.gridRequestHandler.store(separatedRecords.newRecords, gridParmInfo,
-                    replacementTimeRange, practice);
+            this.gridRequestHandler.store(separatedRecords.newRecords,
+                    gridParmInfo, replacementTimeRange, practice);
         }
 
         /*

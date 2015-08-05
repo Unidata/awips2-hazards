@@ -25,6 +25,7 @@ import java.util.Set;
  * Dec 05, 2014    4124    Chris.Golden Initial creation.
  * Jan 29, 2015    4375    Dan Schaffer Console initiation of RVS product generation
  * Feb 23, 2015    3618    Chris.Golden Added possible sites to settings.
+ * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * </pre>
  * 
  * @author Chris.Golden
@@ -109,4 +110,7 @@ public interface ISettings {
 
     public void setPerspectiveIDs(Set<String> perspectiveIDs);
 
+    public String getEventIdDisplayType();
+
+    public void setEventIdDisplayType(String eventIdDisplayType);
 }
