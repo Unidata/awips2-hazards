@@ -912,7 +912,7 @@ HazardTypes = {
               'expirationTime': (-30, 30),
               'hazardConflictList': [],  # ['FL.W', 'FL.Y', 'FL.A'],
               'ugcType': 'zone',
-              'ugcLabel': 'zone',
+              'ugcLabel': 'name',
               'replacedBy': ['FL.A', 'FL.Y', 'FL.W'],
               'pointBased': True,
               'hazardClipArea' : 'cwa',
