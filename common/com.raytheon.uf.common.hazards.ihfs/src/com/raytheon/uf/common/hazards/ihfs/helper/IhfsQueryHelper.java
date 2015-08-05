@@ -169,7 +169,7 @@ public class IhfsQueryHelper {
 
         List<QueryPredicateComponent> queryPredicateComponentList = buildQueryPredicateList(queryPredicateHelperList);
         SimpleIhfsQuery simpleQuery = new SimpleIhfsQuery(queryTable,
-                queryColumnNameList, queryPredicateComponentList, null, null);
+                selectColumnNameList, queryPredicateComponentList, null, null);
 
         return (simpleQuery);
     }

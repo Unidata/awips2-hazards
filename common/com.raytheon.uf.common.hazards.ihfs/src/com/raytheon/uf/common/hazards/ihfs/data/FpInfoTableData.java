@@ -143,6 +143,8 @@ public class FpInfoTableData extends AbstractTableData {
                 return (getBf());
             case "WSTG":
                 return (getWstg());
+            case "FS":
+                return (getFs());
             case "FQ":
                 return (getFq());
             case "ACTION_FLOW":
