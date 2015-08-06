@@ -316,7 +316,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      setting's filters.
  * Jul 29, 2015    9306    Chris.Cody   Add processing for HazardSatus.ELAPSED
  * Aug 03, 2015    8836    Chris.Cody   Changes for a configurable Event Id
- * 
+ * Aug 17, 2015    9968    Chris.Cody   Changes for processing ENDED/ELAPSED/EXPIRED events
  * </pre>
  * 
  * @author bsteffen
@@ -1771,6 +1771,8 @@ public class SessionEventManager implements
                 it.remove();
             } else if (!siteIDs.contains(event.getSiteID())) {
                 it.remove();
+            } else if (SessionEventUtilities.isPastExpirationTime(event)) {
+                it.remove();
             } else {
                 String key = HazardEventUtilities.getHazardType(event);
                 /*
@@ -1821,7 +1823,8 @@ public class SessionEventManager implements
                 }
                 event = addEvent(event, false, Originator.OTHER);
                 for (IHazardEvent histEvent : list) {
-                    if (HazardStatus.issuedButNotEnded(histEvent.getStatus())) {
+                    if (HazardStatus.issuedButNotEndedOrElapsed(histEvent
+                            .getStatus())) {
                         event.addHazardAttribute(ATTR_ISSUED, true);
                         break;
                     }
@@ -1993,6 +1996,9 @@ public class SessionEventManager implements
         if (SessionEventUtilities.isEnded(oevent)) {
             oevent.setStatus(HazardStatus.ENDED);
         }
+        if (SessionEventUtilities.isElapsed(oevent)) {
+            oevent.setStatus(HazardStatus.ELAPSED);
+        }
         String sig = oevent.getSignificance();
         if (sig != null) {
             try {
@@ -2041,8 +2047,8 @@ public class SessionEventManager implements
         oevent.addHazardAttribute(HAZARD_EVENT_CHECKED, false, false,
                 originator);
         oevent.addHazardAttribute(ATTR_ISSUED,
-                HazardStatus.issuedButNotEnded(oevent.getStatus()), false,
-                originator);
+                HazardStatus.issuedButNotEndedOrElapsed(oevent.getStatus()),
+                false, originator);
 
         if (localEvent) {
             oevent.addHazardAttribute(HAZARD_EVENT_SELECTED, true, false);
@@ -2258,7 +2264,7 @@ public class SessionEventManager implements
      */
     private void scheduleExpirationTask(final ObservedHazardEvent event) {
         if (eventExpirationTimer != null) {
-            if (HazardStatus.issuedButNotEnded(event.getStatus())) {
+            if (HazardStatus.issuedButNotEndedOrElapsed(event.getStatus())) {
                 final String eventId = event.getEventID();
                 TimerTask existingTask = expirationTasks.get(eventId);
                 if (existingTask != null) {
@@ -2666,6 +2672,7 @@ public class SessionEventManager implements
             endTimeRange = getEndTimeRangeForIssuedEvent(event, startTime,
                     endTime);
             break;
+        case ELAPSED:
         case ENDING:
         case ENDED:
             startTimeRange = Range.closed(startTime, startTime);
@@ -2815,12 +2822,24 @@ public class SessionEventManager implements
          */
         Set<String> identifiersWithChangedBoundaries = new HashSet<>();
         if (singleEvent == null) {
+            Set<String> identifiersWithExpiredTimes = new HashSet<>();
             for (ObservedHazardEvent thisEvent : events) {
                 if (updateTimeBoundariesForSingleEvent(thisEvent,
                         startOfCurrentMinute)) {
                     identifiersWithChangedBoundaries
                             .add(thisEvent.getEventID());
                 }
+                if (SessionEventUtilities.isPastExpirationTime(thisEvent) == true) {
+                    thisEvent.addHazardAttribute(
+                            HazardConstants.HAZARD_EVENT_SELECTED, false,
+                            Originator.OTHER);
+                    identifiersWithExpiredTimes.add(thisEvent.getEventID());
+                }
+            }
+
+            if ((identifiersWithChangedBoundaries.isEmpty() == true)
+                    && (identifiersWithExpiredTimes.isEmpty() == false)) {
+                postTimeRangeBoundariesModifiedNotification(identifiersWithExpiredTimes);
             }
         } else {
             if (removed) {
@@ -3560,7 +3579,8 @@ public class SessionEventManager implements
 
     @Override
     public boolean canEventAreaBeChanged(ObservedHazardEvent hazardEvent) {
-        return hazardEvent.getStatus() != HazardStatus.ENDED;
+        return ((hazardEvent.getStatus() != HazardStatus.ELAPSED) && (hazardEvent
+                .getStatus() != HazardStatus.ENDED));
     }
 
     @Override

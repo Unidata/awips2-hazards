@@ -67,6 +67,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Dec 05, 2014  4124      Chris.Golden Changed to work with parameterized config
  *                                         manager.
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
+ * Aug 06, 2015 9968      Chris.Cody    Changes for processing ENDED/ELAPSED events
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -151,11 +152,13 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
                 && hazardNotification.isPracticeMode() == false) {
             return;
         }
+
         switch (hazardNotification.getType()) {
 
         case STORE:
             IHazardEvent hazardEvent = hazardNotification.getEvent();
-            if (HazardStatus.issuedButNotEnded(hazardEvent.getStatus())) {
+            HazardStatus status = hazardEvent.getStatus();
+            if (HazardStatus.issuedButNotEndedOrElapsed(status)) {
                 if (!alertedEvents.containsKey(hazardEvent.getEventID())) {
                     generateAlertsForIssuedHazardEvent(hazardEvent);
                 } else {
@@ -176,16 +179,17 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
                     }
 
                 }
-            } else if (hazardEvent.getStatus().equals(HazardStatus.ENDED)) {
+            } else if ((status.equals(HazardStatus.ENDED))
+                    || (status.equals(HazardStatus.ELAPSED))) {
                 updatesAlertsForDeletedHazard(hazardNotification.getEvent());
             }
 
-            else if (hazardEvent.getStatus().equals(HazardStatus.PROPOSED)) {
+            else if (status.equals(HazardStatus.PROPOSED)) {
                 /*
                  * Nothing to do here
                  */
 
-            } else if (hazardEvent.getStatus().equals(HazardStatus.PENDING)
+            } else if (status.equals(HazardStatus.PENDING)
                     && hazardEvent.getHazardAttributes().containsKey(
                             HazardConstants.GFE_INTEROPERABILITY)) {
                 /*

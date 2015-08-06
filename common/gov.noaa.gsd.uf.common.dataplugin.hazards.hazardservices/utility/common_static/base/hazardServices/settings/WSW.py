@@ -46,7 +46,6 @@ WSW = {
         "proposed",
         "pending",
         "issued",
-        "elapsed",
         "ending",
         "ended"
     ],  

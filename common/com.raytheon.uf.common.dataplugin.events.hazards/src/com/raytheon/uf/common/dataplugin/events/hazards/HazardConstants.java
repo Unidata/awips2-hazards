@@ -76,6 +76,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * Jul 29, 2015 9306    Chris.Cody      Add HazardSatus.ELAPSED status
  * Jul 31, 2015 7458      Robert.Blum   Added new USER_NAME and WORKSTATION constants.
+ * Aug 06, 2015 9968      Chris.Cody    Added Ended/Elapsed time status checking
  * </pre>
  * 
  * @author mnash
@@ -99,10 +100,11 @@ public final class HazardConstants {
         }
 
         public static boolean hasEverBeenIssued(HazardStatus status) {
-            return issuedButNotEnded(status) || status == ENDED;
+            return issuedButNotEndedOrElapsed(status) || status == ELAPSED
+                    || status == ENDED;
         }
 
-        public static boolean issuedButNotEnded(HazardStatus status) {
+        public static boolean issuedButNotEndedOrElapsed(HazardStatus status) {
             return status == ISSUED || status == ENDING;
         }
     }

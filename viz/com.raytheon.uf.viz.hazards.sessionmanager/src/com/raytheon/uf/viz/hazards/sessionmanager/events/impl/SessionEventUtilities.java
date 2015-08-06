@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import com.google.common.collect.Maps;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.SimulatedTime;
@@ -41,6 +42,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                     the old event. Moved logic to remove 
  *                                     "replaces" information from event.
  * Nov 14, 2013  1472      bkowal      Renamed hazard subtype to subType
+ * Aug 17, 2015  9968      Chris.Cody  Changes for processing ENDED/ELAPSED/EXPIRED events
  * 
  * </pre>
  * 
@@ -118,12 +120,64 @@ public class SessionEventUtilities {
      * @return
      */
     public static boolean isEnded(IHazardEvent event) {
+        if (event.getStatus() == HazardStatus.ENDED) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Determine if the {@link IHazardEvent} has been ENDED or has ELAPSED based
+     * on the time that is being used.
+     * 
+     * @param event
+     * @return true if the event was set to ELAPSED, set to ENDED or if the
+     *         current time is later than the End time (ELAPSED).
+     */
+    public static boolean isEndedOrElapsed(IHazardEvent event) {
         Date currTime = SimulatedTime.getSystemTime().getTime();
-        if (event.getStatus() == HazardStatus.ENDED
-                || (HazardStatus.issuedButNotEnded(event.getStatus()) && (event
+        HazardStatus status = event.getStatus();
+        if ((status == HazardStatus.ENDED)
+                || (status == HazardStatus.ELAPSED)
+                || (HazardStatus.issuedButNotEndedOrElapsed(status) && (event
                         .getEndTime().before(currTime)))) {
             return true;
         }
         return false;
     }
+
+    /**
+     * Determine if the {@link IHazardEvent} has ELAPSED based on the time that
+     * is being used.
+     * 
+     * @param event
+     * @return true if the event was set to ELAPSED, or if the current time is
+     *         later than the End time (ELAPSED).
+     */
+    public static boolean isElapsed(IHazardEvent event) {
+        Date currTime = SimulatedTime.getSystemTime().getTime();
+        HazardStatus status = event.getStatus();
+        if ((status == HazardStatus.ELAPSED)
+                || (HazardStatus.issuedButNotEndedOrElapsed(status) && (event
+                        .getEndTime().before(currTime)))) {
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean isPastExpirationTime(IHazardEvent event) {
+        long currTimeLong = SimulatedTime.getSystemTime().getMillis();
+
+        Long expirationTimeLong = (Long) event
+                .getHazardAttribute(HazardConstants.EXPIRATION_TIME);
+        if ((expirationTimeLong != null) && (expirationTimeLong < currTimeLong)) {
+            long expirationTime = expirationTimeLong.longValue();
+            if (expirationTime < currTimeLong) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 }

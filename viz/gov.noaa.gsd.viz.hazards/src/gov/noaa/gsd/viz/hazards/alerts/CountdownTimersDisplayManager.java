@@ -39,6 +39,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
  * ------------ ---------- ----------- --------------------------
  * Aug 22, 2013    1936    Chris.Golden      Initial creation
  * Jun 18, 2015  7307      Chris.Cody  Added Hazard End time for requested Time Remaining calculation
+ * Aug 06, 2015  9968      Chris.Cody  Minor change to continue count down until Expiration Time
  * </pre>
  * 
  * @author Chris.Golden
@@ -552,11 +553,10 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
             long currentTimeMillis) {
         // Place endTimeMillis on the other side of the minute to compensate for
         // rounding
-        long endTimeMillis = alert.getHazardEnd().getTime()
+        long expireTimeMillis = alert.getHazardExpiration().getTime()
                 + TimeUnit.MINUTES.toMillis(1L);
-        if ((endTimeMillis - currentTimeMillis) >= 0) {
-            long delta = alert.getHazardExpiration().getTime()
-                    - currentTimeMillis;
+        if ((expireTimeMillis - currentTimeMillis) >= 0) {
+            long delta = expireTimeMillis - currentTimeMillis;
             if (delta >= 0L) {
                 return (delta);
             }
