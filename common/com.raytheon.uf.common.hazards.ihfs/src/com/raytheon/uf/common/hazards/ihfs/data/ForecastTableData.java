@@ -35,6 +35,7 @@ import com.raytheon.uf.common.hazards.ihfs.table.AbstractQueryTable;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 11, 2015 9670       Chris.Cody  Changes from Timestamp to Date
  * 
  * </pre>
  * 
@@ -82,7 +83,7 @@ public abstract class ForecastTableData extends IhfsTableData {
     public void setColumnByName(String columnName, Serializable columnValue)
             throws IhfsDatabaseException {
 
-        java.sql.Timestamp timestamp = null;
+        java.util.Date timestampDate = null;
         if (columnName != null) {
             int idx = columnName.indexOf(".");
             if (idx > 0) {
@@ -102,15 +103,15 @@ public abstract class ForecastTableData extends IhfsTableData {
                 setProbability(getFloatColumnValue(columnValue));
                 break;
             case "VALIDTIME":
-                timestamp = (java.sql.Timestamp) columnValue;
-                if (timestamp != null) {
-                    setValidTime(timestamp.getTime());
+                timestampDate = (java.util.Date) columnValue;
+                if (timestampDate != null) {
+                    setValidTime(timestampDate.getTime());
                 }
                 break;
             case "BASISTIME":
-                timestamp = (java.sql.Timestamp) columnValue;
-                if (timestamp != null) {
-                    setBasisTime(timestamp.getTime());
+                timestampDate = (java.util.Date) columnValue;
+                if (timestampDate != null) {
+                    setBasisTime(timestampDate.getTime());
                 }
                 break;
             default:

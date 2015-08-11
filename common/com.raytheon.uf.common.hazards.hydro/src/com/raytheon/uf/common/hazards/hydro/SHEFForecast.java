@@ -110,7 +110,7 @@ public final class SHEFForecast extends SHEFBase {
         if (queryResult != null) {
             int queryResultSize = queryResult.length;
             Object queryValue = null;
-            java.sql.Timestamp timestamp = null;
+            java.util.Date timestampDate = null;
             for (int i = 0; i < queryResultSize; i++) {
                 queryValue = queryResult[i];
                 if (queryValue == null) {
@@ -142,15 +142,15 @@ public final class SHEFForecast extends SHEFBase {
                     }
                     break;
                 case VALIDTIME_IDX:
-                    timestamp = (java.sql.Timestamp) queryValue;
-                    if (timestamp != null) {
-                        this.validTime = timestamp.getTime();
+                    timestampDate = (java.util.Date) queryValue;
+                    if (timestampDate != null) {
+                        this.validTime = timestampDate.getTime();
                     }
                     break;
                 case BASISTIME_IDX:
-                    timestamp = (java.sql.Timestamp) queryValue;
-                    if (timestamp != null) {
-                        this.basisTime = timestamp.getTime();
+                    timestampDate = (java.util.Date) queryValue;
+                    if (timestampDate != null) {
+                        this.basisTime = timestampDate.getTime();
                     }
                     break;
                 case VALUE_IDX:
@@ -169,15 +169,16 @@ public final class SHEFForecast extends SHEFBase {
                     this.productId = (String) queryValue;
                     break;
                 case PRODUCTTIME_FIELD_IDX:
-                    timestamp = (java.sql.Timestamp) queryValue;
-                    if (timestamp != null) {
-                        this.productTime = timestamp.getTime();
+                    timestampDate = (java.util.Date) queryValue;
+                    if (timestampDate != null) {
+                        this.validTime = timestampDate.getTime();
+                        this.productTime = timestampDate.getTime();
                     }
                     break;
                 case POSTINGTIME_FIELD_IDX:
-                    timestamp = (java.sql.Timestamp) queryValue;
-                    if (timestamp != null) {
-                        this.postingTime = timestamp.getTime();
+                    timestampDate = (java.util.Date) queryValue;
+                    if (timestampDate != null) {
+                        this.postingTime = timestampDate.getTime();
                     }
                     break;
                 default:

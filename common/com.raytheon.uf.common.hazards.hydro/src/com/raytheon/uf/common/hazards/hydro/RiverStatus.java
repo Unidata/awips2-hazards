@@ -123,7 +123,7 @@ public class RiverStatus {
         if (queryResult != null) {
             int queryResultSize = queryResult.length;
             Object queryValue = null;
-            java.sql.Timestamp timestamp = null;
+            java.util.Date timestampDate = null;
             for (int i = 0; i < queryResultSize; i++) {
                 queryValue = queryResult[i];
                 if (queryValue == null) {
@@ -155,15 +155,15 @@ public class RiverStatus {
                     }
                     break;
                 case VALIDTIME_IDX:
-                    timestamp = (java.sql.Timestamp) queryValue;
-                    if (timestamp != null) {
-                        this.validTime = timestamp.getTime();
+                    timestampDate = (java.util.Date) queryValue;
+                    if (timestampDate != null) {
+                        this.validTime = timestampDate.getTime();
                     }
                     break;
                 case BASISTIME_IDX:
-                    timestamp = (java.sql.Timestamp) queryValue;
-                    if (timestamp != null) {
-                        this.basisTime = timestamp.getTime();
+                    timestampDate = (java.util.Date) queryValue;
+                    if (timestampDate != null) {
+                        this.basisTime = timestampDate.getTime();
                     }
                     break;
                 case VALUE_IDX:

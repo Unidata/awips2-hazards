@@ -34,6 +34,7 @@ import com.raytheon.uf.common.hazards.ihfs.table.AbstractQueryTable;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 11, 2015 9670       Chris.Cody  Changes from Timestamp to Date
  * 
  * </pre>
  * 
@@ -73,7 +74,7 @@ public abstract class ObservedTableData extends IhfsTableData {
     public void setColumnByName(String columnName, Serializable columnValue)
             throws IhfsDatabaseException {
 
-        java.sql.Timestamp timestamp = null;
+        java.util.Date timestampDate = null;
         if (columnName != null) {
             int idx = columnName.indexOf(".");
             if (idx > 0) {
@@ -90,9 +91,9 @@ public abstract class ObservedTableData extends IhfsTableData {
             }
             switch (columnName) {
             case "OBSTIME":
-                timestamp = (java.sql.Timestamp) columnValue;
-                if (timestamp != null) {
-                    setObsTime(timestamp.getTime());
+                timestampDate = (java.util.Date) columnValue;
+                if (timestampDate != null) {
+                    setObsTime(timestampDate.getTime());
                 }
                 break;
             default:

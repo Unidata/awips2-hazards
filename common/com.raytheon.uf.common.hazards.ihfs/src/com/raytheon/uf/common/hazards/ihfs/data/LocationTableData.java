@@ -34,6 +34,7 @@ import com.raytheon.uf.common.hazards.ihfs.table.LocationQueryTable;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 11, 2015 9670       Chris.Cody  Changes from Timestamp to Date
  * 
  * </pre>
  * 
@@ -204,7 +205,7 @@ public class LocationTableData extends AbstractTableData {
                 columnName = IhfsUtil.parseTableName(columnName);
             }
 
-            java.sql.Timestamp timestamp = null;
+            java.util.Date timestampDate = null;
             switch (columnName) {
             case "LID":
                 setLid((String) columnValue);
@@ -243,9 +244,9 @@ public class LocationTableData extends AbstractTableData {
                 setLremark((String) columnValue);
                 break;
             case "LREVISE":
-                timestamp = (java.sql.Timestamp) columnValue;
-                if (timestamp != null) {
-                    setLrevise(timestamp.getTime());
+                timestampDate = (java.util.Date) columnValue;
+                if (timestampDate != null) {
+                    setLrevise(timestampDate.getTime());
                 }
                 break;
             case "NAME":
@@ -261,9 +262,9 @@ public class LocationTableData extends AbstractTableData {
                 setRfc((String) columnValue);
                 break;
             case "SBD":
-                timestamp = (java.sql.Timestamp) columnValue;
-                if (timestamp != null) {
-                    setSbd(timestamp.getTime());
+                timestampDate = (java.util.Date) columnValue;
+                if (timestampDate != null) {
+                    setSbd(timestampDate.getTime());
                 }
                 break;
             case "SN":

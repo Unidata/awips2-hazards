@@ -34,6 +34,7 @@ import com.raytheon.uf.common.hazards.ihfs.table.CrestQueryTable;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 11, 2015 9670       Chris.Cody  Changes from Timestamp to Date
  * 
  * </pre>
  * 
@@ -138,9 +139,9 @@ public class CrestTableData extends AbstractTableData {
                 setLid((String) columnValue);
                 break;
             case "DATCRST":
-                java.sql.Timestamp timestamp = (java.sql.Timestamp) columnValue;
-                if (timestamp != null) {
-                    setDatCrst(timestamp.getTime());
+                java.util.Date timestampDate = (java.util.Date) columnValue;
+                if (timestampDate != null) {
+                    setDatCrst(timestampDate.getTime());
                 }
                 break;
             case "CREMARK":

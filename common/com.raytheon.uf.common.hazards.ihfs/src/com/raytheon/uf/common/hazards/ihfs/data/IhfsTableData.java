@@ -34,6 +34,7 @@ import com.raytheon.uf.common.hazards.ihfs.table.AbstractQueryTable;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 11, 2015 9670       Chris.Cody  Changes from Timestamp to Date
  * 
  * </pre>
  * 
@@ -118,7 +119,7 @@ public abstract class IhfsTableData extends AbstractTableData {
     public void setColumnByName(String columnName, Serializable columnValue)
             throws IhfsDatabaseException {
 
-        java.sql.Timestamp timestamp = null;
+        java.util.Date timestampDate = null;
         if (columnName != null) {
             int idx = columnName.indexOf(".");
             if (idx > 0) {
@@ -165,15 +166,15 @@ public abstract class IhfsTableData extends AbstractTableData {
                 setProductId((String) columnValue);
                 break;
             case "PRODUCTTIME":
-                timestamp = (java.sql.Timestamp) columnValue;
-                if (timestamp != null) {
-                    setProductTime(timestamp.getTime());
+                timestampDate = (java.util.Date) columnValue;
+                if (timestampDate != null) {
+                    setProductTime(timestampDate.getTime());
                 }
                 break;
             case "POSTINGTIME":
-                timestamp = (java.sql.Timestamp) columnValue;
-                if (timestamp != null) {
-                    setPostingTime(timestamp.getTime());
+                timestampDate = (java.util.Date) columnValue;
+                if (timestampDate != null) {
+                    setPostingTime(timestampDate.getTime());
                 }
                 break;
             default:

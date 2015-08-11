@@ -34,6 +34,7 @@ import com.raytheon.uf.common.hazards.ihfs.table.RiverStatQueryTable;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 11, 2015 9670       Chris.Cody  Changes from Timestamp to Date
  * 
  * </pre>
  * 
@@ -290,9 +291,9 @@ public class RiverStatTableData extends AbstractTableData {
                 setZd(getDoubleColumnValue(columnValue));
                 break;
             case "RATEDAT":
-                java.sql.Timestamp timestamp = (java.sql.Timestamp) columnValue;
-                if (timestamp != null) {
-                    setRatedAt(timestamp.getTime());
+                java.util.Date timestampDate = (java.util.Date) columnValue;
+                if (timestampDate != null) {
+                    setRatedAt(timestampDate.getTime());
                 }
                 break;
             case "USGS_RATENUM":
