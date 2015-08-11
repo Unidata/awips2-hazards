@@ -38,6 +38,7 @@
     Jun 04, 2015    8492    Chris.Cody  Error issuing new FA.A with issued FA.A also selected
     Jun 05, 2015    8530    Robert.Blum Removing None check as it causes megawidget errors.
     Jun 17, 2015    7636    Robert.Blum Fixed _prepareLocationsAffected to use WarnGen's locations table.
+    Aug 11, 2015    9920    Robert.Blum Additional fix for cityList query errors.
 '''
 
 import ProductTemplate
@@ -1011,10 +1012,10 @@ class Product(ProductTemplate.Product):
         namesOther = []
         for cityGeom in cityGeoms :
             try:
-                name = cityGeom.getString(columns[0])
+                name = cityGeom.getLocationName()
                 if not name:
                     continue
-                levData = str(cityGeom.getString(columns[1]))
+                levData = str(cityGeom.getString('warngenlev'))
                 if levData == "1" or levData == "2" :
                       names12.append(name)
                 else :
