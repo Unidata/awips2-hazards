@@ -706,7 +706,7 @@ public class RiverForecastPoint extends FpInfo {
     }
 
     /**
-     * Set the maximum observed forecast value
+     * Get the maximum observed forecast value
      * 
      * @return maximumObservedForecastValue
      */

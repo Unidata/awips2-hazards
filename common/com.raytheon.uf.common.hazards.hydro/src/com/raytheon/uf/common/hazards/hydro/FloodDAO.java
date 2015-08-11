@@ -104,6 +104,7 @@ public class FloodDAO implements IFloodDAO {
      * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
      * #queryHydrologicServiceAreaIdList()
      */
+    @Override
     public List<String> queryHydrologicServiceAreaIdList() {
 
         List<String> hsaIdList = null;
@@ -372,6 +373,7 @@ public class FloodDAO implements IFloodDAO {
      * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
      * #queryRiverForecastPoint()
      */
+    @Override
     public RiverForecastPoint queryRiverForecastPoint(String lid) {
         RiverForecastPoint riverForecastPoint = null;
 
@@ -406,6 +408,7 @@ public class FloodDAO implements IFloodDAO {
      * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
      * #queryRiverForecastPointList()
      */
+    @Override
     public List<RiverForecastPoint> queryRiverForecastPointList(
             List<String> lidList, List<String> hsaList,
             List<String> groupIdList, List<String> physicalElementList) {
@@ -904,6 +907,7 @@ public class FloodDAO implements IFloodDAO {
      * @see com.raytheon.uf.common.hazards.hydro.IFloodDAO
      * #queryStateAbbreviationToNameMap()
      */
+    @Override
     public Map<String, String> queryStateAbbreviationToNameMap() {
 
         Map<String, String> stateAbbrToNameMap = null;
@@ -2557,7 +2561,7 @@ public class FloodDAO implements IFloodDAO {
                 "IHFS RiverStat table");
         if ((queryResults != null) && (queryResults.isEmpty() == false)) {
             for (Object[] result : queryResults) {
-                String lid = (String) (String) result[0];
+                String lid = (String) result[0];
                 String primaryPE = (String) result[1];
                 lidToPrimaryPEMap.put(lid, primaryPE);
             }

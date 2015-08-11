@@ -26,7 +26,9 @@ recommender framework
     May 18, 2015    6562     Chris.Cody          Restructure River Forecast Points/Recommender
     May 26, 2015    7634     Chris.Cody          Changes for Forecast Bullet Generation
     Jul 29, 2015    9306     Chris.Cody          Add processing for HazardSatus.ELAPSED
-    
+    Aug 11, 2015    9448     Robert.Blum         Changed to look at both observed and forecast
+                                                 data when computing Warning/Watch/Advisory.
+
 @since: November 2012
 @author: GSD Hazard Services Team
 '''
@@ -290,7 +292,7 @@ class Recommender(RecommenderTemplate.Recommender):
             hazardEvent.setSignificance("Y")
         else:
             hazardEvent.setPhenomenon("HY")
-            hazardEvent.setSignificance("S")                        
+            hazardEvent.setSignificance("S")
 
     def filterHazards(self,hazardEvents, dMap):
         filterType = dMap.get('forecastType')
@@ -376,50 +378,51 @@ class Recommender(RecommenderTemplate.Recommender):
     def flush(self):
         import os
         os.sys.__stdout__.flush()
-        
-        
+
     #####################
     #  OVERRIDES
     #####################
-         
+
     def _getWarningThreshold(self):
         return 24 
 
     def isWatch(self, riverForecastPoint, warningThreshEpoch):
-        
-        maxFcstStage = riverForecastPoint.getMaximumForecastValue()
+        observedLevel = riverForecastPoint.getObservedCurrentValue()
+        maxForecast = riverForecastPoint.getMaximumForecastValue()
         floodStage = riverForecastPoint.getFloodStage()
-        fcstRiseAboveFloodStageTime = riverForecastPoint.getForecastRiseAboveTime()
-        if fcstRiseAboveFloodStageTime:
-            fcstRiseAboveFloodStageTime = fcstRiseAboveFloodStageTime / 1000
-        
-        if (maxFcstStage >= floodStage) and (fcstRiseAboveFloodStageTime > warningThreshEpoch):
+        aboveFloodStageTime = riverForecastPoint.getForecastRiseAboveTime()
+        if aboveFloodStageTime != MISSING_VALUE:
+            aboveFloodStageTime = aboveFloodStageTime / 1000
+
+        if (maxForecast >= floodStage) and (aboveFloodStageTime > warningThreshEpoch) and \
+           (observedLevel < floodStage):
             return True
         else:
             return False
-        
+
     def isWarning(self, riverForecastPoint, warningThreshEpoch):
+        observedLevel = riverForecastPoint.getObservedCurrentValue()
+        maxForecast = riverForecastPoint.getMaximumForecastValue()
+        floodStage = riverForecastPoint.getFloodStage()
+        aboveFloodStageTime = riverForecastPoint.getForecastRiseAboveTime()
+        if aboveFloodStageTime != MISSING_VALUE:
+            aboveFloodStageTime = aboveFloodStageTime / 1000
 
-        maxFcstStage = riverForecastPoint.getMaximumForecastValue()
-        floodStage =  riverForecastPoint.getFloodStage()
-        fcstRiseAboveFloodStageTime = riverForecastPoint.getForecastRiseAboveTime()
-        if fcstRiseAboveFloodStageTime:
-            fcstRiseAboveFloodStageTime = fcstRiseAboveFloodStageTime / 1000
-        
-        if (maxFcstStage >= floodStage) and (fcstRiseAboveFloodStageTime <= warningThreshEpoch):
+        if ((maxForecast >= floodStage) and (aboveFloodStageTime <= warningThreshEpoch)) or \
+            (observedLevel >= floodStage):
             return True
         else:
             return False
-            
-    def isAdvisory(self, riverForecastPoint):
 
-        pointID = riverForecastPoint.getLid()
+    def isAdvisory(self, riverForecastPoint):
+        observedLevel = riverForecastPoint.getObservedCurrentValue()
+        maxForecast = riverForecastPoint.getMaximumForecastValue()
+        floodStage =  riverForecastPoint.getFloodStage()
         actionStage = riverForecastPoint.getActionStage()
-        maxFcstStage = riverForecastPoint.getMaximumForecastValue()
-        obsStage = riverForecastPoint.getObservedCurrentValue()
-        
-        if (obsStage >= actionStage) or (maxFcstStage >= actionStage):
+
+        referenceValue=max(observedLevel, maxForecast)
+        if (referenceValue >= actionStage and referenceValue < floodStage):
             return True
         else:
-            return False    
+            return False
 

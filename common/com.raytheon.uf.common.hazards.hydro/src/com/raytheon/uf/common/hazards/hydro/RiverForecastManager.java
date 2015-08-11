@@ -119,7 +119,7 @@ public class RiverForecastManager {
     /**
      * The flood recommender data accessor object.
      */
-    private IFloodDAO floodDAO;
+    private final IFloodDAO floodDAO;
 
     /**
      * Default constructor
@@ -464,67 +464,54 @@ public class RiverForecastManager {
      */
     protected void getRiverForecastPointSubData(
             RiverForecastPoint riverForecastPoint) {
-        // TODO Make these configurable?
-        boolean doHydrographForecastQuery = true;
-        boolean doHydrographObservedQuery = true;
 
         long currentSystemTime = getSystemTime().getTime();
 
         // Not optional if any other computation is needed
         getRiverForecastCrestHistory(riverForecastPoint);
 
-        if (doHydrographForecastQuery == true) {
-            // Query and Compute Hydrograph Forecast Values
-            // This map avoids re-querying the SHEF Forecast Basis Time List
-            Map<Integer, List<Long>> hydrographForecastBasisTimeListMap = Maps
-                    .newHashMap();
-            getRiverForecastPointHydrographForecast(riverForecastPoint,
-                    currentSystemTime, hydrographForecastBasisTimeListMap);
-        }
+        // Query and Compute Hydrograph Forecast Values
+        // This map avoids re-querying the SHEF Forecast Basis Time List
+        Map<Integer, List<Long>> hydrographForecastBasisTimeListMap = Maps
+                .newHashMap();
+        getRiverForecastPointHydrographForecast(riverForecastPoint,
+                currentSystemTime, hydrographForecastBasisTimeListMap);
 
-        if (doHydrographObservedQuery == true) {
-            // Query and Compute Hydrograph Observed Values
-            getHydrographObservedData(riverForecastPoint, currentSystemTime);
-            getRiverForecastPointCurrentObservation(riverForecastPoint,
-                    currentSystemTime);
-            computeHydrographObservedInfo(riverForecastPoint, currentSystemTime);
-        }
+        // Query and Compute Hydrograph Observed Values
+        getHydrographObservedData(riverForecastPoint, currentSystemTime);
+        getRiverForecastPointCurrentObservation(riverForecastPoint,
+                currentSystemTime);
+        computeHydrographObservedInfo(riverForecastPoint, currentSystemTime);
 
-        if ((doHydrographForecastQuery == true)
-                && (doHydrographObservedQuery == true)) {
+        /* find the times that the stage crested or passed thru flood stage */
+        computeSpecialStages(riverForecastPoint, HydroDataType.OBS_DATA);
 
-            /* find the times that the stage crested or passed thru flood stage */
-            computeSpecialStages(riverForecastPoint, HydroDataType.OBS_DATA);
+        /*
+         * find the times that the stage crested or passed thru a flood stage
+         */
+        computeSpecialStages(riverForecastPoint, HydroDataType.FCST_DATA);
 
-            /*
-             * find the times that the stage crested or passed thru a flood
-             * stage
-             */
-            computeSpecialStages(riverForecastPoint, HydroDataType.FCST_DATA);
+        // Special Stages for BOTH Observed and Forecast must be computed
+        // prior to calling computeHydrographRiseFall
+        computeHydrographRiseFall(riverForecastPoint);
 
-            // Special Stages for BOTH Observed and Forecast must be computed
-            // prior to calling computeHydrographRiseFall
-            computeHydrographRiseFall(riverForecastPoint);
+        /*
+         * Recompute the obs and forecast point mofo info. Always recompute the
+         * prev info in the event that the previous info changes independent of
+         * new time series data loaded in.
+         */
+        computeForecastPointMofo(riverForecastPoint);
 
-            /*
-             * Recompute the obs and forecast point mofo info. Always recompute
-             * the prev info in the event that the previous info changes
-             * independent of new time series data loaded in.
-             */
-            computeForecastPointMofo(riverForecastPoint);
+        /*
+         * get the info on the trend data, which uses observed and forecast data
+         */
+        computeTrendData(riverForecastPoint);
 
-            /*
-             * get the info on the trend data, which uses observed and forecast
-             * data
-             */
-            computeTrendData(riverForecastPoint);
-
-            /*
-             * Set the load time for the next possible pass into this function.
-             */
-            riverForecastPoint.setFullTimeSeriesLoadedTime(new Date(
-                    currentSystemTime));
-        }
+        /*
+         * Set the load time for the next possible pass into this function.
+         */
+        riverForecastPoint.setFullTimeSeriesLoadedTime(new Date(
+                currentSystemTime));
     }
 
     // This is how the old implementation relied on its data
@@ -1424,8 +1411,8 @@ public class RiverForecastManager {
                 .getShefHydroDataList();
         int shefObservedListSize = shefObservedList.size();
 
-        if (((obsOrFcst == HydroDataType.OBS_DATA) && (shefForecastListSize == 0))
-                || ((obsOrFcst == HydroDataType.FCST_DATA) && (shefObservedListSize == 0))) {
+        if (((obsOrFcst == HydroDataType.OBS_DATA) && (shefObservedListSize == 0))
+                || ((obsOrFcst == HydroDataType.FCST_DATA) && (shefForecastListSize == 0))) {
             return;
         }
 
@@ -1571,11 +1558,11 @@ public class RiverForecastManager {
                             && prevTrend == HydroGraphTrend.RISE) {
                         curTrend = HydroGraphTrend.RISE;
 
-                        if (sustainedCrestIndex == (int) RiverHydroConstants.MISSING_VALUE) {
+                        if (sustainedCrestIndex == RiverHydroConstants.MISSING_VALUE) {
                             sustainedCrestIndex = i - 1;
                         }
                     } else if (curTrend == HydroGraphTrend.RISE) {
-                        sustainedCrestIndex = (int) RiverHydroConstants.MISSING_VALUE;
+                        sustainedCrestIndex = RiverHydroConstants.MISSING_VALUE;
                     }
 
                     /*
@@ -1585,7 +1572,7 @@ public class RiverForecastManager {
 
                     if (prevTrend == HydroGraphTrend.RISE
                             && curTrend == HydroGraphTrend.FALL) {
-                        if (sustainedCrestIndex == (int) RiverHydroConstants.MISSING_VALUE) {
+                        if (sustainedCrestIndex == RiverHydroConstants.MISSING_VALUE) {
                             crestIndex = i - 1;
                         } else {
                             crestIndex = sustainedCrestIndex;
@@ -1715,18 +1702,18 @@ public class RiverForecastManager {
             stage = temp_value[numVals - 1];
 
             if (stage > floodLevel) {
-                fallBelowTime = (long) RiverHydroConstants.MISSING_VALUE;
+                fallBelowTime = RiverHydroConstants.MISSING_VALUE;
             }
         }
 
         /* load the pass-thru time values */
 
         if (obsOrFcst == HydroDataType.OBS_DATA) {
-            if (fallBelowTime != (long) RiverHydroConstants.MISSING_VALUE) {
+            if (fallBelowTime != RiverHydroConstants.MISSING_VALUE) {
                 riverForecastPoint.setObservedFallBelowTime(fallBelowTime);
             }
 
-            if (riseAboveTime != (long) RiverHydroConstants.MISSING_VALUE) {
+            if (riseAboveTime != RiverHydroConstants.MISSING_VALUE) {
                 riverForecastPoint.setObservedRiseAboveTime(riseAboveTime);
             }
 
@@ -1735,11 +1722,11 @@ public class RiverForecastManager {
                         .setObservedFallBelowTime(RiverHydroConstants.MISSING_VALUE);
             }
         } else {
-            if (fallBelowTime != (long) RiverHydroConstants.MISSING_VALUE) {
+            if (fallBelowTime != RiverHydroConstants.MISSING_VALUE) {
                 riverForecastPoint.setForecastFallBelowTime(fallBelowTime);
             }
 
-            if (riseAboveTime != (long) RiverHydroConstants.MISSING_VALUE) {
+            if (riseAboveTime != RiverHydroConstants.MISSING_VALUE) {
                 riverForecastPoint.setForecastRiseAboveTime(riseAboveTime);
             }
 
@@ -1801,9 +1788,9 @@ public class RiverForecastManager {
         /* decide the crest_ts if both obs and fcst times exit */
         if (obsMaxIdx != RiverHydroConstants.MISSING_VALUE
                 && fcstMaxIdx != RiverHydroConstants.MISSING_VALUE) {
-            List<SHEFObserved> shefObservedList = (List<SHEFObserved>) riverForecastPoint
+            List<SHEFObserved> shefObservedList = riverForecastPoint
                     .getHydrographObserved().getShefHydroDataList();
-            List<SHEFForecast> shefForecastList = (List<SHEFForecast>) riverForecastPoint
+            List<SHEFForecast> shefForecastList = riverForecastPoint
                     .getHydrographForecast().getShefHydroDataList();
 
             double obsMaxVal = shefObservedList.get(obsMaxIdx).getValue();
@@ -1997,8 +1984,8 @@ public class RiverForecastManager {
         int maxCurObsCategory = HydroFloodCategories.NULL_CATEGORY.getRank();
         int maxLatestFcstCategory = HydroFloodCategories.NULL_CATEGORY
                 .getRank();
-        long maxCurObsTime = (long) RiverHydroConstants.MISSING_VALUE;
-        long maxLatestFcstTime = (long) RiverHydroConstants.MISSING_VALUE;
+        long maxCurObsTime = RiverHydroConstants.MISSING_VALUE;
+        long maxLatestFcstTime = RiverHydroConstants.MISSING_VALUE;
 
         /* get the info for each of the forecast groups */
 
@@ -2099,7 +2086,7 @@ public class RiverForecastManager {
 
         maxCurObsCategory = maxLatestFcstCategory = HydroFloodCategories.NULL_CATEGORY
                 .getRank();
-        maxCurObsTime = maxLatestFcstTime = (long) RiverHydroConstants.MISSING_VALUE;
+        maxCurObsTime = maxLatestFcstTime = RiverHydroConstants.MISSING_VALUE;
 
         for (RiverForecastPoint forecastPoint : riverForecastPointList) {
 
@@ -2647,7 +2634,7 @@ public class RiverForecastManager {
                         int q = crestHistory.getQ();
                         if (q != 0) {
                             floodCategoryArray[HydroFloodCategories.RECORD_FLOOD_CATEGORY
-                                    .getRank()] = (double) q;
+                                    .getRank()] = q;
                             break;
                         }
                     }
