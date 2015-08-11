@@ -62,9 +62,9 @@ import com.raytheon.uf.common.security.encryption.AESEncryptor;
  */
 public class HazardServicesPreferencePage extends FieldEditorPreferencePage
         implements IWorkbenchPreferencePage {
-    
+
     /** The preference store */
-    private IPreferenceStore store = HazardServicesActivator.getDefault()
+    private final IPreferenceStore store = HazardServicesActivator.getDefault()
             .getPreferenceStore();
 
     /** Field holding the address of the registry */
@@ -129,12 +129,12 @@ public class HazardServicesPreferencePage extends FieldEditorPreferencePage
 
     @Override
     public boolean performOk() {
+        boolean result = false;
         final String encryptionKey = encryptionKeyField.getStringValue();
         passwordField.setEncryptionKey(encryptionKey);
         trustStorePasswordField.setEncryptionKey(encryptionKey);
-        boolean retVal = super.performOk();
-
         try {
+            result = super.performOk();
             HazardServicesClient.init(store.getString(REGISTRY_LOCATION),
                     store.getString(USER_NAME), store.getString(PASSWORD),
                     store.getString(TRUST_STORE_LOCATION),
@@ -154,10 +154,10 @@ public class HazardServicesPreferencePage extends FieldEditorPreferencePage
             warning.setText("Registry Connection Error");
             warning.setMessage(e.getLocalizedMessage());
             warning.open();
-            retVal = false;
+            result = false;
         }
 
-        return retVal;
+        return result;
     }
 
     private class EncryptedStringFieldEditor extends StringFieldEditor {
@@ -169,6 +169,7 @@ public class HazardServicesPreferencePage extends FieldEditorPreferencePage
             super(name, labelText, parent);
         }
 
+        @Override
         protected void doStore() {
             try {
                 getPreferenceStore().setValue(
@@ -181,6 +182,7 @@ public class HazardServicesPreferencePage extends FieldEditorPreferencePage
             }
         }
 
+        @Override
         protected void doLoad() {
             try {
                 String value = new AESEncryptor().decrypt(getPreferenceStore()
