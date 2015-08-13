@@ -41,6 +41,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 11, 2014            jsanchez     Initial creation
+ * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * 
  * </pre>
  * 
@@ -61,14 +62,14 @@ public class CustomDataId implements ISerializableObject, Serializable {
 
     @Column
     @DynamicSerializeElement
-    private ArrayList<Integer> eventIDs;
+    private ArrayList<String> eventIDs;
 
     public CustomDataId() {
 
     }
 
     public CustomDataId(String mode, String productGeneratorName,
-            ArrayList<Integer> eventIDs) {
+            ArrayList<String> eventIDs) {
         this.mode = mode;
         this.productGeneratorName = productGeneratorName;
         this.eventIDs = eventIDs;
@@ -90,11 +91,11 @@ public class CustomDataId implements ISerializableObject, Serializable {
         this.productGeneratorName = productGeneratorName;
     }
 
-    public ArrayList<Integer> getEventIDs() {
+    public ArrayList<String> getEventIDs() {
         return eventIDs;
     }
 
-    public void setEventIDs(ArrayList<Integer> eventIDs) {
+    public void setEventIDs(ArrayList<String> eventIDs) {
         this.eventIDs = eventIDs;
     }
 

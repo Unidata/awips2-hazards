@@ -70,6 +70,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Apr 08, 2014  3357      bkowal    Updated to use the new interoperability tables.
  * Dec 04, 2014  2826      dgilling  Remove unneeded methods.
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
+ * Aug 13, 2015 8836       Chris.Cody  Changes for a configurable Event Id
  * 
  * </pre>
  * 
@@ -191,8 +192,8 @@ public class GFEHazardsCreator {
 
                     GridParmInfo gridParmInfo = null;
                     try {
-                        gridParmInfo = new GridRequestHandler().requestGridParmInfo(
-                                mode, rec.getXxxid());
+                        gridParmInfo = new GridRequestHandler()
+                                .requestGridParmInfo(mode, rec.getXxxid());
                     } catch (Exception e) {
                         statusHandler.error(
                                 "Failed to retrieve Grid Parm Info for site: "
@@ -399,6 +400,8 @@ public class GFEHazardsCreator {
         event.setGeometry(geom);
 
         try {
+            // This is here for interoperability, but it does not conform to a
+            // HS Event ID
             event.setEventID(HazardServicesClient.getHazardEventServices(practice)
                     .requestEventId(rec.getXxxid()));
         } catch (Exception e) {

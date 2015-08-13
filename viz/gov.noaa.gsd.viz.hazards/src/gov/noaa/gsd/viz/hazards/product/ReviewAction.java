@@ -61,6 +61,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Apr 16, 2014            jsanchez     Initial creation
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Jul 23, 2015 9625       Robert.Blum  Adjusted createText() to handle RVS.
+ * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * 
  * </pre>
  * 
@@ -78,7 +79,7 @@ public class ReviewAction extends Action {
     private static class ReviewKey {
         String productGeneratorName;
 
-        ArrayList<Integer> eventIDs;
+        ArrayList<String> eventIDs;
 
         @Override
         public int hashCode() {
@@ -246,7 +247,7 @@ public class ReviewAction extends Action {
             sb.append(" - ");
 
             String prefix = "";
-            for (Integer eventID : first.getEventIDs()) {
+            for (String eventID : first.getEventIDs()) {
                 sb.append(prefix);
                 sb.append(eventID);
                 prefix = ",";

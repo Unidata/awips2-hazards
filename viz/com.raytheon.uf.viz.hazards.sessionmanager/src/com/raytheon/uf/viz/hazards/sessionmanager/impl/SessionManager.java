@@ -109,6 +109,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Jul 31, 2015 7458       Robert.Blum  Setting userName and workstation fields on events that are
  *                                      created by a recommender.
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Aug 13, 2015 8836       Chris.Cody   Additional Changes for Hazard Event Id and Registry changes
  * </pre>
  * 
  * @author bsteffen

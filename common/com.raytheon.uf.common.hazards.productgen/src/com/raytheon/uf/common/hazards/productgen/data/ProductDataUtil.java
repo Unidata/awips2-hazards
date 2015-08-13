@@ -46,6 +46,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * May 07, 2015    6979    Robert.Blum  Changes for product corrections.
  * Jul 30, 2015    9681    Robert.Blum  Added new method to retrieve all
  *                                      viewable productData.
+ * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * 
  * </pre>
  * 
@@ -70,7 +71,7 @@ public class ProductDataUtil {
      * @return
      */
     public static ProductDataResponse createProductData(String mode,
-            String productGeneratorName, ArrayList<Integer> eventIDs,
+            String productGeneratorName, ArrayList<String> eventIDs,
             Date issueTime, Map<String, Serializable> data,
             List<EditableEntryMap> editableEntries) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
@@ -96,7 +97,7 @@ public class ProductDataUtil {
      * @return
      */
     public static ProductDataResponse updateProductData(String mode,
-            String productGeneratorName, ArrayList<Integer> eventIDs,
+            String productGeneratorName, ArrayList<String> eventIDs,
             Date issueTime, Map<String, Serializable> data,
             List<EditableEntryMap> editableEntries) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
@@ -119,7 +120,7 @@ public class ProductDataUtil {
      * @return
      */
     public static ProductDataResponse deleteProductData(String mode,
-            String productGeneratorName, ArrayList<Integer> eventIDs) {
+            String productGeneratorName, ArrayList<String> eventIDs) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
                 eventIDs, null, null, null, ProductRequestType.DELETE, null);
         if (response.getExceptions() != null) {
@@ -139,7 +140,7 @@ public class ProductDataUtil {
      * @return
      */
     public static List<ProductData> retrieveProductData(String mode,
-            String productGeneratorName, ArrayList<Integer> eventIDs) {
+            String productGeneratorName, ArrayList<String> eventIDs) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
                 eventIDs, null, null, null, ProductRequestType.RETRIEVE, null);
         if (response != null && response.getData() != null) {
@@ -178,13 +179,12 @@ public class ProductDataUtil {
      * @return
      */
     public static ProductDataResponse createOrUpdateProductData(String mode,
-            String productGeneratorName, ArrayList<Integer> eventIDs,
+            String productGeneratorName, ArrayList<String> eventIDs,
             Date issueTime, Map<String, Serializable> data,
             List<EditableEntryMap> editableEntries) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
                 eventIDs, issueTime, data, editableEntries,
-                ProductRequestType.SAVE_OR_UPDATE,
-                null);
+                ProductRequestType.SAVE_OR_UPDATE, null);
         if (response.getExceptions() != null) {
             handler.error("Unable to store product data",
                     response.getExceptions());
@@ -199,10 +199,10 @@ public class ProductDataUtil {
      * @param currentTime
      * @return
      */
-    public static List<ProductData> retrieveViewableProductData(String mode, Date currentTime) {
+    public static List<ProductData> retrieveViewableProductData(String mode,
+            Date currentTime) {
         ProductDataResponse response = sendRequest(mode, null, null, null,
-                null, null, ProductRequestType.RETRIEVE_VIEWABLE,
-                currentTime);
+                null, null, ProductRequestType.RETRIEVE_VIEWABLE, currentTime);
         if (response != null && response.getData() != null) {
             return response.getData();
         }
@@ -224,10 +224,10 @@ public class ProductDataUtil {
      * @return
      */
     private static ProductDataResponse sendRequest(String mode,
-            String productGeneratorName, ArrayList<Integer> eventIDs,
+            String productGeneratorName, ArrayList<String> eventIDs,
             Date issueTime, Map<String, Serializable> data,
-            List<EditableEntryMap> editableEntries,
-            ProductRequestType type, Date currentTime) {
+            List<EditableEntryMap> editableEntries, ProductRequestType type,
+            Date currentTime) {
         ProductData productData = new ProductData(mode, productGeneratorName,
                 eventIDs, issueTime, (HashMap<String, Serializable>) data,
                 (ArrayList<EditableEntryMap>) editableEntries);

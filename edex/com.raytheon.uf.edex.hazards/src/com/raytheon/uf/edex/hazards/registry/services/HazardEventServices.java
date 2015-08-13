@@ -66,7 +66,7 @@ import com.raytheon.uf.edex.registry.ebxml.util.EbxmlObjectUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * 
+ * Aug 13, 2015 8836      Chris.Cody    Changes for a configurable Event Id
  * </pre>
  * 
  * @author bphillip
@@ -245,7 +245,7 @@ public class HazardEventServices implements IHazardEventServices {
         }
         return checkResponse("UPDATE", "Updated " + events.size()
                 + " HazardEvents.", response);
-    }
+   }
 
     @Override
     @WebMethod(operationName = "retrieveByParams")
@@ -305,24 +305,47 @@ public class HazardEventServices implements IHazardEventServices {
                 // we don't find the site in the cluster_task table, but we have
                 // some in the hazards table, we want to make sure we start from
                 // that value
+                // Hazard Event Id values are a STRING in the form:
+                // HZ-SSS-YYYY-000000
+                // Take the LAST segment of the id and parse that
+                // value into an Integer.
+                // (this value should also be incremented.)
+                Integer highestValue = Integer.valueOf(0);
                 for (HazardEvent event : events) {
-                    Integer currentEventId = Integer.parseInt(event
-                            .getEventID());
-                    if (currentEventId > eventId) {
-                        eventId = currentEventId;
+                    String currentEventIdString = event.getEventID();
+                    String serialId = null;
+                    int lastDashIdx = currentEventIdString.lastIndexOf("-");
+                    if (lastDashIdx > 0) {
+                        serialId = currentEventIdString
+                                .substring(lastDashIdx + 1);
+                    } else {
+                        // Possibly an OLD Id value?
+                        serialId = currentEventIdString;
+                    }
+                    try {
+                        Integer curSerialIdInt = Integer.parseInt(serialId);
+                        if (curSerialIdInt.intValue() > highestValue.intValue()) {
+                            highestValue = curSerialIdInt;
+                        }
+                    } catch (NumberFormatException nfe) {
+                        this.statusHandler
+                                .info("Unknown stored Hazard Event Id "
+                                        + currentEventIdString
+                                        + " unable to parse serial ID.");
                     }
                 }
+                eventId = highestValue + 1;
             }
         } else {
             eventId = Integer.parseInt(task.getExtraInfo()) + 1;
         }
-        ClusterLockUtils.updateExtraInfo(lockName, siteID,
-                String.valueOf(eventId));
+        String serialEventIdString = String.valueOf(eventId);
+        ClusterLockUtils.updateExtraInfo(lockName, siteID, serialEventIdString);
         ClusterLockUtils.unlock(task, false);
-        statusHandler.info("Returning Event ID of [" + eventId + "] for Site ["
-                + siteID + "] in ["
+        statusHandler.info("Returning Event ID of [" + serialEventIdString
+                + "] for Site [" + siteID + "] in ["
                 + (practice ? "Practice] Mode" : "Operational] Mode"));
-        return String.valueOf(eventId);
+        return (serialEventIdString);
     }
 
     /*

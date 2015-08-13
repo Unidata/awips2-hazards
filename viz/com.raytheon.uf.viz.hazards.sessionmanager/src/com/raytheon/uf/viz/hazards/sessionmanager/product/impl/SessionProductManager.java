@@ -215,6 +215,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Jul 30, 2015 9681       Robert.Blum  Changes for generating products for the product viewer.
  * Jul 31, 2015 7458       Robert.Blum  Updating userName and workstation fields on events that are
  *                                      being issued.
+ * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * </pre>
  * 
  * @author bsteffen
@@ -663,10 +664,10 @@ public class SessionProductManager implements ISessionProductManager {
                         .getConfigurationManager().getProductGeneratorTable()
                         .getProductFormats(productGeneratorName));
 
-                for (Integer eventID : productData.getEventIDs()) {
+                for (String eventID : productData.getEventIDs()) {
                     // Get the hazardEvents
-                    HazardHistoryList historyList = manager.getByEventID(String
-                            .valueOf(eventID));
+                    HazardHistoryList historyList = manager
+                            .getByEventID(eventID);
                     if (historyList != null && historyList.isEmpty() == false) {
                         IHazardEvent hazardEvent = historyList.get(historyList
                                 .size() - 1);
@@ -1649,7 +1650,7 @@ public class SessionProductManager implements ISessionProductManager {
         }
 
         // Setup the primary keys for the productData Table
-        ArrayList<Integer> eventIDs = null;
+        ArrayList<String> eventIDs = null;
         String productInfo = productGeneratorInformation.getGeneratedProducts()
                 .getProductInfo();
         Date issueTimeDate = null;
@@ -1668,7 +1669,7 @@ public class SessionProductManager implements ISessionProductManager {
                     if (event instanceof IHazardEvent) {
                         IHazardEvent hazardEvent = (IHazardEvent) event;
                         String eventID = hazardEvent.getEventID();
-                        eventIDs.add(new Integer(eventID));
+                        eventIDs.add(eventID);
                         Map<String, Serializable> attributes = hazardEvent
                                 .getHazardAttributes();
                         // Issue time should be the same for all the events

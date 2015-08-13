@@ -39,6 +39,8 @@
     Jun 05, 2015    8530    Robert.Blum Removing None check as it causes megawidget errors.
     Jun 17, 2015    7636    Robert.Blum Fixed _prepareLocationsAffected to use WarnGen's locations table.
     Aug 11, 2015    9920    Robert.Blum Additional fix for cityList query errors.
+    Aug 13, 2015    8836    Chris.Cody  Changes for a configurable Event Id
+    
 '''
 
 import ProductTemplate
@@ -278,8 +280,16 @@ class Product(ProductTemplate.Product):
             for eventID in actionDict:
                 if eventID not in inputEventIDs:
                     # Automatic Cancellation -- need to retrieve hazard event.
-                    hazardEvent = HazardDataAccess.getHazardEvent(str(eventID), mode)
-                    inputHazardEvents.add(hazardEvent)
+                    hazardEvent = HazardDataAccess.getHazardEvent(eventID, mode)
+                    if hazardEvent is not None:
+                        #8836 Chris.Cody THIS IS A STOP GAP MEASURE (Interoperability)
+                        #There is a problem in:
+                        #    com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager.reset(SessionManager.java:327)
+                        # This appears to leave behind an ID (which is picked up by actionDict[eventID] )
+                        # The HazardDataAccess.getHazardEvent(eventID,mode) call returns a None
+                        # for a previously valid eventID.
+                        # This "fix" keeps the code from having errors but does not address this discrepency.
+                        inputHazardEvents.add(hazardEvent)
                     canceledEventIDs.append(eventID)
                 eventActions = actionDict.get(eventID, [])
                 if 'CAN' in eventActions:
@@ -1110,14 +1120,23 @@ class Product(ProductTemplate.Product):
             if not found:
                 # Must retrieve this hazard event for automatic cancellation
                 mode = self._sessionDict.get('hazardMode','PRACTICE').upper()
-                hazardEvent = HazardDataAccess.getHazardEvent(str(eventID), mode)
-                # Initialize the product-specific information
-                hazardEvent.removeHazardAttribute('expirationTime');
-                hazardEvent.removeHazardAttribute('vtecCodes');
-                hazardEvent.removeHazardAttribute('etns');
-                hazardEvent.removeHazardAttribute('pils');
-                hazardEvents.append(hazardEvent)  
-                hazardEventList.append(hazardEvent)
+                hazardEvent = HazardDataAccess.getHazardEvent(eventID, mode)
+                if hazardEvent is not None:
+                    #8836 Chris.Cody THIS IS A STOP GAP MEASURE (Interoperability)
+                    #There is a problem in:
+                    #    com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager.reset(SessionManager.java:327)
+                    # This appears to leave behind an ID (which is picked up by actionDict[eventID] )
+                    # The HazardDataAccess.getHazardEvent(eventID,mode) call returns a None
+                    # for a previously valid eventID.
+                    # This "fix" keeps the code from having errors but does not address this discrepency.
+                    
+                    # Initialize the product-specific information
+                    hazardEvent.removeHazardAttribute('expirationTime');
+                    hazardEvent.removeHazardAttribute('vtecCodes');
+                    hazardEvent.removeHazardAttribute('etns');
+                    hazardEvent.removeHazardAttribute('pils');
+                    hazardEvents.append(hazardEvent)  
+                    hazardEventList.append(hazardEvent)
         return hazardEvents
 
     def getSegmentMetaData(self, segment) :
@@ -1232,13 +1251,13 @@ class Product(ProductTemplate.Product):
             to this segment.
         '''
         # Get the eventIDs and UGC from the KeyInfo object
-        eventIDInts = JUtil.javaObjToPyVal(keyInfo.getEventIDs())
+        eventIDStrings = JUtil.javaObjToPyVal(keyInfo.getEventIDs())
         ugcString = JUtil.javaObjToPyVal(keyInfo.getSegment())
 
         # Convert eventIds to strings
         eventIDs = set()
-        for eventID in eventIDInts:
-            eventIDs.add(str(eventID))
+        for eventID in eventIDStrings:
+            eventIDs.add(eventID)
 
         # Make a set out of the ugc string
         ugcs = ugcString.split(',')

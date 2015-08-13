@@ -251,7 +251,7 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
         productEventSet = set()
         for eventID in eventIDs:
             for event in eventSet:
-                if event.getEventID() == str(eventID):
+                if event.getEventID() == eventID:
                     productEventSet.add(event)
                     break
         javaEventSet = EventSet()

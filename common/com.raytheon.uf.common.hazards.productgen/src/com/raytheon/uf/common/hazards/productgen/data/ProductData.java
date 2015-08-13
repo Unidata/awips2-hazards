@@ -47,6 +47,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Apr 11, 2014            jsanchez     Initial creation
  * Mar 30, 2015    6929    Robert.Blum  Changed startTime to issueTime.
  * May 07, 2015    6979    Robert.Blum  Added editableEntries.
+ * Aug 13, 2015    8836    Chris.Cody   Changes for a configurable Event Id
  * 
  * </pre>
  * 
@@ -83,7 +84,7 @@ public class ProductData extends PersistableDataObject<String> implements
     }
 
     public ProductData(String mode, String productGeneratorName,
-            ArrayList<Integer> eventIDs, Date issueTime,
+            ArrayList<String> eventIDs, Date issueTime,
             HashMap<String, Serializable> data,
             ArrayList<EditableEntryMap> editableEntries) {
         id = new CustomDataId(mode, productGeneratorName, eventIDs);
@@ -108,7 +109,7 @@ public class ProductData extends PersistableDataObject<String> implements
         this.issueTime = issueTime;
     }
 
-    public ArrayList<Integer> getEventIDs() {
+    public ArrayList<String> getEventIDs() {
         return id.getEventIDs();
     }
 
@@ -128,7 +129,7 @@ public class ProductData extends PersistableDataObject<String> implements
         this.id.setProductGeneratorName(productGeneratorName);
     }
 
-    public void setEventIDs(ArrayList<Integer> eventIDs) {
+    public void setEventIDs(ArrayList<String> eventIDs) {
         this.id.setEventIDs(eventIDs);
     }
 

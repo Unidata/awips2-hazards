@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vteccause;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vtecevent;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vtecrecord;
@@ -21,6 +22,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * July 9, 2012            Bryon.Lawrence    Initial creation
  * May 1, 2014  3581       bkowal       Relocate to common hazards hydro
  * May 08, 2015 6562       Chris.Cody  Restructure River Forecast Points/Recommender
+ * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -306,7 +308,9 @@ public class HydroEvent {
                             previousEventEndtime);
 
                     if (active && (activeETN == null)) {
-                        activeETN = eventID;
+                        // This is not a true ETN
+                        activeETN = HazardServicesEventIdUtil
+                                .getSerialIdFromFullId(eventID);
                         break;
                     }
                 }
@@ -348,8 +352,13 @@ public class HydroEvent {
                     boolean active = checkIfEventActive(systemTime,
                             previousEventEndtime);
 
-                    if (eventCreationTime >= mostRecentCreationTime && !active
-                            && eventID != activeETN) {
+                    // This is not a true ETN
+                    String eventNumericSuffix = HazardServicesEventIdUtil
+                            .getSerialIdFromFullId(eventID);
+
+                    if ((eventCreationTime >= mostRecentCreationTime)
+                            && (!active)
+                            && (eventNumericSuffix.equals(activeETN) == false)) {
                         mostRecentCreationTime = eventCreationTime;
                         previousInactiveEvent = dict;
                     }
@@ -381,8 +390,11 @@ public class HydroEvent {
             this.vtecInfo.setVtecphenom(null);
             this.vtecInfo.setVtecsignif(null);
 
+            // This is not a true ETN
             String eventID = (String) eventDict.get("eventID");
-            this.vtecInfo.setEtn(Short.parseShort(eventID));
+            String eventIdNumericSuffix = HazardServicesEventIdUtil
+                    .getSerialIdFromFullId(eventID);
+            this.vtecInfo.setEtn(Short.parseShort(eventIdNumericSuffix));
 
             /*
              * There is no expiration time... yet.

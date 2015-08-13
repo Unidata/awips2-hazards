@@ -55,6 +55,7 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * Mar 30, 2015 6929       Robert.Blum  Changed startTime to issueTime.
  * Jul 30, 2015 9681       Robert.Blum  Updates for new ProductRequestType.
  * Jul 31, 2015 9682       Robert.Blum  Filtering out products that should not be corrected.
+ * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * 
  * </pre>
  * 
@@ -92,7 +93,7 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
         List<ProductData> data = null;
         if (handler.isPriorityEnabled(Priority.INFO)) {
 
-            List<Integer> eventIDs = pData.getEventIDs();
+            List<String> eventIDs = pData.getEventIDs();
             handler.info("ProductGeneratorName: "
                     + pData.getProductGeneratorName() + ", mode: "
                     + pData.getMode() + ", type: " + request.getType()
@@ -220,7 +221,7 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
         List<ProductData> data = criteria.list();
         List<ProductData> toRemove = new ArrayList<ProductData>();
         for (ProductData pd : data) {
-            for (Integer eventID : pData.getEventIDs()) {
+            for (String eventID : pData.getEventIDs()) {
                 if (pd.getEventIDs().contains(eventID)) {
                     toRemove.add(pd);
                     break;

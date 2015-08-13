@@ -59,6 +59,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 29, 2015 9681       Robert.Blum Initial creation
+ * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * 
  * </pre>
  * 
@@ -144,14 +145,14 @@ public class ProductViewerSelectionDlg extends CaveSWTDialog {
             item.setText(0, productID);
 
             // Set the event ids column data
-            String eventIDs = "";
+            StringBuilder sb = new StringBuilder();
             String prefix = "";
-            for (Integer eventID : tempData.getEventIDs()) {
-                eventIDs = eventIDs + prefix;
-                eventIDs = eventIDs + eventID;
+            for (String eventID : tempData.getEventIDs()) {
+                sb.append(prefix);
+                sb.append(eventID);
                 prefix = ",";
             }
-            item.setText(1, eventIDs);
+            item.setText(1, sb.toString());
 
             // Set the issue time column data
             item.setText(2, dateFormat.format(tempData.getIssueTime()));
