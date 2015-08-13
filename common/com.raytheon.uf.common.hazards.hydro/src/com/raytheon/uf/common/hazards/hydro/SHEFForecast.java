@@ -19,13 +19,16 @@
  **/
 package com.raytheon.uf.common.hazards.hydro;
 
+import java.util.Date;
+
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.util.StringUtil;
 
 /**
  * 
- * Description: Represents a SHEF observation. Hydrometeorological data written
- * to the hydro database are in SHEF format.
+ * Description: Represents a SHEF forecast. Hydrometeorological data written to
+ * the hydro database are in SHEF format.
  * 
  * This class is not meant to be subclassed. This is a Data-Only object.
  * 
@@ -37,6 +40,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
  * May 28, 2015 7139       Chris.Cody  Add curpp and curpc HydrographPrecip query and processing
  * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
+ * Aug 13, 2015 9670       mpduff      Fix bug where validtime is incorrectly set.
  * 
  * </pre>
  * 
@@ -44,7 +48,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * @version 1.0
  */
 public final class SHEFForecast extends SHEFBase {
-    private static final transient IUFStatusHandler statusHandler = UFStatus
+    private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(SHEFForecast.class);
 
     // PE Starts with H
@@ -87,17 +91,17 @@ public final class SHEFForecast extends SHEFBase {
     private final int POSTINGTIME_FIELD_IDX = 14;
 
     /**
-     * Probability of observation (PROBABILITY) (Forecast only)
+     * Probability of value (PROBABILITY) (Forecast only)
      */
     private double probability;
 
     /**
-     * valid time of observation (VALIDTIME) (Forecast only)
+     * valid time of value (VALIDTIME) (Forecast only)
      */
     private long validTime;
 
     /**
-     * basis time of observation (BASISTIME) (Forecast only)
+     * basis time of model run (BASISTIME) (Forecast only)
      */
     private long basisTime;
 
@@ -171,7 +175,6 @@ public final class SHEFForecast extends SHEFBase {
                 case PRODUCTTIME_FIELD_IDX:
                     timestampDate = (java.util.Date) queryValue;
                     if (timestampDate != null) {
-                        this.validTime = timestampDate.getTime();
                         this.productTime = timestampDate.getTime();
                     }
                     break;
@@ -235,14 +238,18 @@ public final class SHEFForecast extends SHEFBase {
         return basisTime;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.hazards.hydro;SHEFBase.#getTime()
-     */
     @Override
     public long getTime() {
         return validTime;
     }
 
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("LID: ").append(this.lid).append(StringUtil.NEWLINE);
+        sb.append("ValidTime: ").append(new Date(this.validTime).toString())
+                .append(StringUtil.NEWLINE);
+        sb.append("Value: ").append(this.value).append(StringUtil.NEWLINE);
+        return sb.toString();
+    }
 }

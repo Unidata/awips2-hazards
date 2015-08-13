@@ -19,8 +19,11 @@
  **/
 package com.raytheon.uf.common.hazards.hydro;
 
+import java.util.Date;
+
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.util.StringUtil;
 
 /**
  * 
@@ -36,6 +39,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
  * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
+ * Aug 13, 2015 9670       mpduff      Added toSting().
  * 
  * </pre>
  * 
@@ -43,7 +47,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * @version 1.0
  */
 public final class SHEFObserved extends SHEFBase {
-    private static final transient IUFStatusHandler statusHandler = UFStatus
+    private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(SHEFObserved.class);
 
     // PE Starts with H
@@ -166,6 +170,7 @@ public final class SHEFObserved extends SHEFBase {
      * @param typeSource
      *            the typeSource to set
      */
+    @Override
     public void setTypeSource(String typeSource) {
         this.typeSource = typeSource;
     }
@@ -173,6 +178,7 @@ public final class SHEFObserved extends SHEFBase {
     /**
      * @return the set typeSource
      */
+    @Override
     public String getTypeSource() {
         return (this.typeSource);
     }
@@ -202,4 +208,13 @@ public final class SHEFObserved extends SHEFBase {
         return obsTime;
     }
 
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("LID: ").append(this.lid).append(StringUtil.NEWLINE);
+        sb.append("ObsTime: ").append(new Date(this.obsTime).toString())
+                .append(StringUtil.NEWLINE);
+        sb.append("Value: ").append(this.value).append(StringUtil.NEWLINE);
+        return sb.toString();
+    }
 }
