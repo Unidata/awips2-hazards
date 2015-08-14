@@ -29,6 +29,7 @@ package com.raytheon.uf.common.hazards.ihfs;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 14, 2015 9988       Chris.Cody  Add Aggregate query functions
  * 
  * </pre>
  * 
@@ -166,6 +167,38 @@ public class TableColumnData {
      */
     public boolean isKey() {
         return (this.isKey);
+    }
+
+    /**
+     * Get the Class object for the Table Column.
+     * 
+     * This does not return an Instance or Value of the column. Only the Class
+     * of the Column Type is returned.
+     * 
+     * @return Class object of Column Data Type
+     */
+    Class<? extends Object> getClassForColumn() throws IhfsDatabaseException {
+        if (columnType != null) {
+            switch (columnType) {
+            case STRING_TYPE:
+                return (String.class);
+            case INTEGER_TYPE:
+                return (Integer.class);
+            case LONG_TYPE:
+                return (Long.class);
+            case FLOAT_TYPE:
+                return (Float.class);
+            case DOUBLE_TYPE:
+                return (Double.class);
+            case TIMESTAMP_TYPE:
+            case DATE_TYPE:
+                return (java.util.Date.class);
+            default:
+            }
+        }
+        throw (new IhfsDatabaseException("Specification for Table: "
+                + this.tableName + " Column: " + this.columnName
+                + " of column Type: " + this.columnType + " is invalid."));
     }
 
 }

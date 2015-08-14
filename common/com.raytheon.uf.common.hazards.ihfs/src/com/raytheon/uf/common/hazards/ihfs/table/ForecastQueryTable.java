@@ -35,6 +35,7 @@ import com.raytheon.uf.common.hazards.ihfs.data.AbstractTableData;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 14, 2015 9988       Chris.Cody  Base Database Code changes for Dates
  * 
  * </pre>
  * 
@@ -69,11 +70,11 @@ public abstract class ForecastQueryTable extends AbstractQueryTable {
                 "PROBABILITY", TableColumnData.FLOAT_TYPE,
                 TableColumnData.FLOAT_LEN, 5, true));
         tableColumnDataMap.put("VALIDTIME", new TableColumnData(tableName,
-                "VALIDTIME", TableColumnData.TIMESTAMP_TYPE,
-                TableColumnData.TIMESTAMP_LEN, 6, true));
+                "VALIDTIME", TableColumnData.DATE_TYPE,
+                TableColumnData.DATE_LEN, 6, true));
         tableColumnDataMap.put("BASISTIME", new TableColumnData(tableName,
-                "BASISTIME", TableColumnData.TIMESTAMP_TYPE,
-                TableColumnData.TIMESTAMP_LEN, 7, true));
+                "BASISTIME", TableColumnData.DATE_TYPE,
+                TableColumnData.DATE_LEN, 7, true));
         tableColumnDataMap.put("VALUE", new TableColumnData(tableName, "VALUE",
                 TableColumnData.DOUBLE_TYPE, TableColumnData.DOUBLE_LEN, 6,
                 false));
@@ -88,11 +89,11 @@ public abstract class ForecastQueryTable extends AbstractQueryTable {
         tableColumnDataMap.put("PRODUCT_ID", new TableColumnData(tableName,
                 "PRODUCT_ID", TableColumnData.STRING_TYPE, 10, 10, false));
         tableColumnDataMap.put("PRODUCTTIME", new TableColumnData(tableName,
-                "PRODUCTTIME", TableColumnData.TIMESTAMP_TYPE,
-                TableColumnData.TIMESTAMP_LEN, 11, false));
+                "PRODUCTTIME", TableColumnData.DATE_TYPE,
+                TableColumnData.DATE_LEN, 11, false));
         tableColumnDataMap.put("POSTINGTIME", new TableColumnData(tableName,
-                "POSTINGTIME", TableColumnData.TIMESTAMP_TYPE,
-                TableColumnData.TIMESTAMP_LEN, 12, false));
+                "POSTINGTIME", TableColumnData.DATE_TYPE,
+                TableColumnData.DATE_LEN, 12, false));
     }
 
 }

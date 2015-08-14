@@ -42,6 +42,7 @@ import com.raytheon.uf.common.hazards.ihfs.table.HeightQueryTable;
 import com.raytheon.uf.common.hazards.ihfs.table.HsaQueryTable;
 import com.raytheon.uf.common.hazards.ihfs.table.IceQueryTable;
 import com.raytheon.uf.common.hazards.ihfs.table.LakeQueryTable;
+import com.raytheon.uf.common.hazards.ihfs.table.LatestObsValueQueryTable;
 import com.raytheon.uf.common.hazards.ihfs.table.LocAreaQueryTable;
 import com.raytheon.uf.common.hazards.ihfs.table.LocationQueryTable;
 import com.raytheon.uf.common.hazards.ihfs.table.MoistureQueryTable;
@@ -69,6 +70,7 @@ import com.raytheon.uf.common.hazards.ihfs.table.ZoneNumQueryTable;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 14, 2015 9988       Chris.Cody  Add LATESTVALUEOBS Table
  * 
  * </pre>
  * 
@@ -126,6 +128,8 @@ public final class IhfsQueryTableFactory {
                 return (IceQueryTable.getInstance());
             case LakeQueryTable.LakeTableName:
                 return (LakeQueryTable.getInstance());
+            case LatestObsValueQueryTable.LatestObsValueTableName:
+                return (LatestObsValueQueryTable.getInstance());
             case LocAreaQueryTable.LocAreaTableName:
                 return (LocAreaQueryTable.getInstance());
             case LocationQueryTable.LocationTableName:

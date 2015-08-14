@@ -37,6 +37,7 @@ import com.raytheon.uf.common.hazards.ihfs.data.FpInfoTableData;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 14, 2015 9988       Chris.Cody  Base Database Code changes for Dates
  * 
  * </pre>
  * 
@@ -144,28 +145,6 @@ public class FpInfoQueryTable extends AbstractQueryTable {
         tableColumnDataMap.put("MAJOR_FLOW", new TableColumnData(tableName,
                 "MAJOR_FLOW", TableColumnData.DOUBLE_TYPE,
                 TableColumnData.DOUBLE_LEN, 29, false));
-        tableColumnDataMap.put("DATCRST", new TableColumnData(tableName,
-                "DATCRST", TableColumnData.DATE_TYPE, 0, 1, true));
-        tableColumnDataMap.put("CREMARK", new TableColumnData(tableName,
-                "CREMARK", TableColumnData.STRING_TYPE, 80, 2, true));
-        tableColumnDataMap.put("HW", new TableColumnData(tableName, "HW",
-                TableColumnData.STRING_TYPE, 1, 3, false));
-        tableColumnDataMap.put("JAM", new TableColumnData(tableName, "JAM",
-                TableColumnData.STRING_TYPE, 1, 4, false));
-        tableColumnDataMap.put("OLDDATUM", new TableColumnData(tableName,
-                "OLDDATUM", TableColumnData.STRING_TYPE, 1, 5, false));
-        tableColumnDataMap.put("Q", new TableColumnData(tableName, "Q",
-                TableColumnData.INTEGER_TYPE, TableColumnData.INTEGER_LEN, 6,
-                false));
-        tableColumnDataMap.put("STAGE", new TableColumnData(tableName, "STAGE",
-                TableColumnData.DOUBLE_TYPE, TableColumnData.DOUBLE_LEN, 7,
-                false));
-        tableColumnDataMap.put("SUPPRESS", new TableColumnData(tableName,
-                "SUPPRESS", TableColumnData.STRING_TYPE, 1, 8, false));
-        tableColumnDataMap.put("TIMCRST", new TableColumnData(tableName,
-                "TIMCRST", TableColumnData.STRING_TYPE, 5, 9, false));
-        tableColumnDataMap.put("PRELIM", new TableColumnData(tableName,
-                "PRELIM", TableColumnData.STRING_TYPE, 1, 10, false));
     }
 
     public static synchronized final FpInfoQueryTable getInstance() {

@@ -23,12 +23,16 @@ package com.raytheon.uf.common.hazards.ihfs;
  * This enum (enumeration) defines the set of predicate operators that are
  * recognized.
  * 
+ * NOTE: Do not use valueOf(...) method. Enum cannot be =, >, <, >=, <=, etc.
+ * Use getEnum(...) instead.
+ * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 14, 2015 9988       Chris.Cody  Modify Operator (enum) parsing
  * 
  * </pre>
  * 
@@ -58,4 +62,45 @@ public enum PredicateOperator {
         return (this.operator);
     }
 
+    public static PredicateOperator getEnum(String operatorString) {
+        if (operatorString != null) {
+            operatorString = operatorString.trim();
+            switch (operatorString) {
+            case "=":
+                return (EQUAL);
+            case ">":
+                return (GREATER_THAN);
+            case "<":
+                return (LESS_THAN);
+            case "=>":
+            case ">=":
+                return (GREATER_OR_EQUAL);
+            case "=<":
+            case "<=":
+                return (LESS_OR_EQUAL);
+            case "<>":
+            case "!=":
+                return (NOT_EQUAL);
+            case "in":
+            case "In":
+            case "IN":
+                return (IN);
+            case "not in":
+            case "Not In":
+            case "NOT IN":
+                return (NOT_IN);
+            case "like":
+            case "Like":
+            case "LIKE":
+                return (LIKE);
+            case "not like":
+            case "Not Like":
+            case "NOT LIKE":
+                return (LIKE);
+            default:
+            }
+        }
+
+        return (null);
+    }
 }

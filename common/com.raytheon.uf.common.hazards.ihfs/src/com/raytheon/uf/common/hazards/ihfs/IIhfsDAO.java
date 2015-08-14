@@ -35,6 +35,7 @@ import com.raytheon.uf.common.hazards.ihfs.data.AbstractTableData;
  * Date         Ticket#    Engineer            Description
  * ------------ ---------- -----------         --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 14, 2015 9988       Chris.Cody  Add Aggregate query functions
  * </pre>
  * 
  * @author Chris.Cody
@@ -52,4 +53,14 @@ public interface IIhfsDAO {
      */
     public List<? extends AbstractTableData> queryIhfsData(
             SimpleIhfsQuery simpleIhfsQuery) throws IhfsDatabaseException;
+
+    /**
+     * Execute an Aggregate Function IHFS (Hydro) Query
+     * 
+     * @param simpleAggIhfsQuery
+     *            Aggregate Function Object query to execute.
+     * @return Aggregate Function result value
+     */
+    public Object queryAggregateIhfsData(SimpleAggIhfsQuery simpleAggIhfsQuery)
+            throws IhfsDatabaseException;
 }

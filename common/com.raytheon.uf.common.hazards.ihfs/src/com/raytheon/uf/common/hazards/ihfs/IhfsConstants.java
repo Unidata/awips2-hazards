@@ -31,6 +31,7 @@ import java.util.TimeZone;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 14, 2015 9988       Chris.Cody  Add Aggregate query functions
  * 
  * </pre>
  * 
@@ -62,6 +63,18 @@ public class IhfsConstants {
     public final static String NULL_VALUE = "<NULL>";
 
     public final static String NULL_SQL_STRING = "null";
+
+    public final static String ASC = "ASC";
+
+    public final static String DESC = "DESC";
+
+    public final static String MIN = "MIN";
+
+    public final static String MAX = "MAX";
+
+    public final static String COUNT = "COUNT";
+
+    public final static String SUM = "SUM";
 
     public final static String MISSING_DATA_STRING = "-9999";
 

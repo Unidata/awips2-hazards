@@ -41,6 +41,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer            Description
  * ------------ ---------- -----------         --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 14, 2015 9988       Chris.Cody  Add Aggregate query functions
  * </pre>
  * 
  * @author Chris.Cody
@@ -105,14 +106,20 @@ public class IhfsDAO implements IIhfsDAO {
                     .getSelectColumnList();
             Class<? extends AbstractTableData> returnObjClass = simpleIhfsQuery
                     .getReturnObjClass();
-
-            String infoString = "Query From "
-                    + simpleIhfsQuery.getQueryTableNameList().toString();
-
+            boolean isFirst = true;
+            StringBuilder sb = new StringBuilder();
+            sb.append("Query From ");
+            for (String tableName : simpleIhfsQuery.getQueryTableNameList()) {
+                if (isFirst == false) {
+                    sb.append(", ");
+                } else {
+                    isFirst = false;
+                }
+                sb.append(tableName);
+            }
             List<Object[]> queryResultList = DatabaseQueryUtil
                     .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
-                            sqlStatement, IHFS_DATABASE_NAME, infoString);
-
+                            sqlStatement, IHFS_DATABASE_NAME, sb.toString());
             if ((queryResultList != null)
                     && (queryResultList.isEmpty() == false)) {
                 AbstractTableData returnDataObject = null;
@@ -127,6 +134,78 @@ public class IhfsDAO implements IIhfsDAO {
             throw (new IhfsDatabaseException("Unexpected query error.", ex));
         }
         return (returnDataList);
+    }
+
+    /**
+     * Execute an Aggregate Function IHFS (Hydro) Query
+     * 
+     * @param simpleAggIhfsQuery
+     *            Aggregate Function Object query to execute.
+     * @return Aggregate Function result value
+     */
+    @Override
+    public Object queryAggregateIhfsData(SimpleAggIhfsQuery simpleAggIhfsQuery)
+            throws IhfsDatabaseException {
+
+        Object returnValue = null;
+        try {
+            String sqlStatement = simpleAggIhfsQuery.buildSqlStatement();
+
+            Class returnClass = simpleAggIhfsQuery.getReturnObjClass();
+            List<QueryTableInterface> queryTableList = simpleAggIhfsQuery
+                    .getQueryTableList();
+
+            boolean isFirst = true;
+            StringBuilder colListSB = new StringBuilder();
+            for (QueryTableInterface tableData : queryTableList) {
+                if (isFirst == false) {
+                    colListSB.append(", ");
+                } else {
+                    isFirst = false;
+                }
+                colListSB.append(tableData.getTableName());
+            }
+
+            String infoString = ""
+                    + simpleAggIhfsQuery.getAggregateFunctionName()
+                    + "Aggragate Function Query From " + colListSB.toString();
+
+            Object queryResult = DatabaseQueryUtil.executeDatabaseQuery(
+                    QUERY_MODE.MODE_SQLQUERY, sqlStatement, IHFS_DATABASE_NAME,
+                    infoString);
+            if (queryResult instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<Object> queryResultList = (List<Object>) queryResult;
+                if (queryResultList.isEmpty() == false) {
+                    Object returnObject = queryResultList.get(0);
+                    if (returnObject instanceof Object[]) {
+                        Object[] returnObjectArray = (Object[]) returnObject;
+                        if (returnObjectArray.length > 0) {
+                            returnValue = returnClass
+                                    .cast(returnObjectArray[0]);
+                        } else {
+                            returnValue = new Long(
+                                    IhfsConstants.MISSING_DATA_LONG);
+                        }
+                    } else {
+                        returnValue = returnClass.cast(returnObject);
+                    }
+                } else {
+                    returnValue = new Long(IhfsConstants.MISSING_DATA_LONG);
+                }
+            } else {
+                returnValue = returnClass.cast(queryResult);
+            }
+
+            // Dates are handled as Long integer Unix timestamps
+            // (assumed to be UTC [GMT])
+            if (returnValue instanceof java.util.Date) {
+                returnValue = new Long(((java.util.Date) returnValue).getTime());
+            }
+        } catch (Exception ex) {
+            throw (new IhfsDatabaseException("Aggregate Query error.", ex));
+        }
+        return (returnValue);
     }
 
     /**

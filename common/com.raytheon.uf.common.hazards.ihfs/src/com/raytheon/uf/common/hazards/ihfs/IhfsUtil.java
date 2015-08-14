@@ -37,6 +37,7 @@ import java.util.TimeZone;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 14, 2015 9988       Chris.Cody  Modify Date handling
  * 
  * </pre>
  * 
@@ -200,23 +201,8 @@ public class IhfsUtil {
                     return (false);
                 }
             }
-        } else if (columnType.equals(TableColumnData.DATE_TYPE)) {
-            if ((value instanceof Date) || (value instanceof Calendar)
-                    || (value instanceof Long)) {
-                return (true);
-            }
-            if (value instanceof String) {
-                try {
-                    String tempValue = (String) value;
-                    tempValue = tempValue.trim();
-                    DateFormat df = DateFormat.getDateInstance();
-                    df.parse(tempValue);
-                    return (true);
-                } catch (ParseException nfe) {
-                    return (false);
-                }
-            }
-        } else if (columnType.equals(TableColumnData.TIMESTAMP_TYPE)) {
+        } else if ((columnType.equals(TableColumnData.DATE_TYPE))
+                || (columnType.equals(TableColumnData.TIMESTAMP_TYPE))) {
             if ((value instanceof Date) || (value instanceof Calendar)
                     || (value instanceof Long)) {
                 return (true);

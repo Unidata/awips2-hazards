@@ -35,6 +35,7 @@ import com.raytheon.uf.common.hazards.ihfs.table.AbstractQueryTable;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 28, 2015 8839       Chris.Cody  Initial Creation
+ * Aug 14, 2015 9988       Chris.Cody  Modified Operator Enum handling
  * 
  * </pre>
  * 
@@ -221,7 +222,8 @@ public class SimplePredicateComponent extends QueryPredicateComponent {
         if (operatorString != null) {
             try {
                 this.predicateOperator = PredicateOperator
-                        .valueOf(operatorString);
+                        .getEnum(operatorString);
+
             } catch (Exception ex) {
                 this.predicateOperator = null;
                 String msg = "Unable to retrieve valid predicate Operator from input string <"

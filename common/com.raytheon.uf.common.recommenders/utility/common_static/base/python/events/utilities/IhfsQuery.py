@@ -1,4 +1,4 @@
-# #
+# 
 # This software was developed and / or modified by Raytheon Company,
 # pursuant to Contract DG133W-05-CQ-1067 with the US Government.
 #
@@ -28,6 +28,7 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    Jul 28, 2015    8839          Chris.Cody     Initial version
+#    Aug 14, 2015    9988          Chris.Cody     Refine queries and add Aggregate query
 #
 #
 
@@ -42,6 +43,9 @@ from com.raytheon.uf.common.hazards.ihfs.helper import QueryPredicateHelper
 
 class IhfsQuery(object):
     
+    #
+    # IHFS Observed Table Names supported by this Python class
+    #
     IHFS_TABLE_DICT = {
                        # pressure, procvalue, rawpc, and rawpp are handlers
                        'A' : 'Agricultural',
@@ -65,6 +69,9 @@ class IhfsQuery(object):
                        'X' : 'Weather',
                        'Y' : 'Yunique' }
                        
+    #
+    # IHFS Forecast Table Names supported by this Python class
+    #
     IHFS_FORECAST_TABLE_DICT = {
                        'H' : 'Fcstheight',
                        'P' : 'Fcstprecip',
@@ -80,25 +87,45 @@ class IhfsQuery(object):
     IHFS_RAWPC = 'RAWPC'                          # 'Rawpc'
     IHFS_FCSTOTHER = 'FCSTOTHER'                  # 'Fcstother'
     IHFS_INVALID = 'INVALID'
+    IHFS_OBSERVED_TYPE = 'OBSERVED'
+    IHFS_FORECAST_TYPE = 'FORECAST'
+    IHFS_OTHER_TYPE = 'OTHER'
     
     def __init__(self):
         pass
 
+    #
+    # getHydroQueryType(tableName)
+    #
+    # Get the Type of Hydro (IHFS) Query for the given Table Name.
+    #
+    # @param tableName IHFS Table Name
+    # @return "FORECAST" or "OBSERVED" based on tableName input
+    #
     def getHydroQueryType(self, tableName):
-        queryType = 'OTHER'
+        queryType = self.IHFS_OTHER_TYPE
+        
         for value in self.IHFS_FORECAST_TABLE_DICT.itervalues():
             if value == tableName:
-                queryType = 'FORECAST'
+                queryType = self.IHFS_FORECAST_TYPE
                 break
         
-        if queryType == 'OTHER':
+        if queryType == self.IHFS_OTHER_TYPE:
             for value in self.IHFS_TABLE_DICT.itervalues():
                 if value == tableName:
-                    queryType = 'OBSERVED'
+                    queryType = self.IHFS_OBSERVED_TYPE
                     break
         return queryType
     
 
+    #
+    # getIhfsShefTableName(pe, ts)
+    #
+    # Get the IHFS (Hydro) Table name for the given pe, ts combination
+    #
+    # @param pe  Physical Element
+    # @param ts  Type Source
+    #
     def getIhfsShefTableName(self, pe, ts):
         
         tableName = self.IHFS_PROCVALUE
@@ -166,6 +193,14 @@ class IhfsQuery(object):
         return tableName;
 
 
+    #
+    # translateIhfsJavaToPy(javaDataList)
+    # 
+    # Translate a (Java) List of Java Objects into a python list of dictionary of label:value objects
+    #
+    # @param javaDataList (Java) List of Java Objects (queried from IHFS)
+    # @retyrn Python list of dictionary label:value objects where label is a TABLE.COLUMN name reference.
+    #  
     def translateIhfsJavaToPy(self, javaDataList):
         pyReturnList = None        
 
@@ -179,17 +214,13 @@ class IhfsQuery(object):
                 
         return pyReturnList
     
-                
-    # buildAndExecuteShefQuery(self, pe, ts, dur, extremum, startTime, endTime, basisTime=None)
-    # Where:
-    #    pe        : Physical Element (Also used to determine which SHEF table to query)
-    #    ts        : Type Source (Also used to determine which SHEF table to query)
-    #    dur       : Duration
-    #    extremum  : Extremum 
-    #    startTime : Starting Date Time  (Observed: OPSTIME, Forecast: VALIDTIME)
-    #    endTime   : Ending Date Time  (Observed: OPSTIME, Forecast: VALIDTIME)
-    #    basisTime : Basis Time (Valid only for Forecast data queries)
-    # addresses existing, and known needs for querying the IHFS database for SHEF data. 
+    #            
+    # buildAndExecuteShefQuery(pe, ts, dur, extremum, startTime, endTime, basisTime=None)
+    #
+    # Primary External Interface function.
+    # Query for IHFS (Hydro) Shef (Observed and Forecast) data for the given parameters.
+    # Return a Python list of dictionary label:value objects.
+    #
     # The queried SHEF tables are:
     # Observed: 
     #     Agricultural, Evaporation, Fishcount, Ground, Height, Ice, Lake, Moisture, Gatedam, 
@@ -197,13 +228,24 @@ class IhfsQuery(object):
     # Forecast: 
     #     Fcstheight, Fcstprecip, Fcstdischarge, and Fcsttemperature.
     #
-    #
     # The parameters are parsed into an SQL statement using an equals ('=') for all parameters, 
     # except for startTime and endTime which use greater than or equal to ('>=') and less than ('<') respectively.
     # 
     # The returned data is parsed from a Java List of Java data objects into a Python List of
     # Label:Value Dictionary elements.
     # Basis time will also use an equals ('=') operator.
+    #
+    # @param pe  Physical Element (Also used to determine which SHEF table to query)
+    # @param ts  Type Source (Also used to determine which SHEF table to query)
+    # @param dur  Duration (integer duration)
+    # @param extremum  Extremum 
+    # @param startTime  Starting Date Time  (Observed: OPSTIME, Forecast: VALIDTIME)
+    #                    String in the form "YYYY-mm-DD HH:MM:SS" 
+    # @param endTime  Ending Date Time  (Observed: OPSTIME, Forecast: VALIDTIME)
+    #                    String in the form "YYYY-mm-DD HH:MM:SS" 
+    # @param basisTime  Basis Time (Valid only for Forecast data queries)
+    #                    String in the form "YYYY-mm-DD HH:MM:SS" 
+    # @return Python list of dictionary label:value objects for the query
     #
     def buildAndExecuteShefQuery(self, pe, ts, dur, extremum, startTime, endTime, basisTime=None):
         
@@ -236,22 +278,21 @@ class IhfsQuery(object):
             tableAndColumnName = ihfsTableName + '.' + columnName
             queryHelperPredicate = ihfsQueryHelper.createQueryPredicateHelper('AND', tableAndColumnName, '=', extremum)
             queryHelperPredicateList.add(queryHelperPredicate)
-
         
         queryType = self.getHydroQueryType(ihfsTableName)
         if queryType == 'OBSERVED':
             columnName = 'OBSTIME'
             tableAndColumnName = ihfsTableName + '.' + columnName
-            queryHelperPredicate = ihfsQueryHelper.createQueryPredicateHelper('AND', tableAndColumnName, '>=', timeStart)
+            queryHelperPredicate = ihfsQueryHelper.createQueryPredicateHelper('AND', tableAndColumnName, '>=', startTime)
             queryHelperPredicateList.add(queryHelperPredicate)
-            queryHelperPredicate = ihfsQueryHelper.createQueryPredicateHelper('AND', tableAndColumnName, '<', timeStart)
+            queryHelperPredicate = ihfsQueryHelper.createQueryPredicateHelper('AND', tableAndColumnName, '<', endTime)
             queryHelperPredicateList.add(queryHelperPredicate)
         if queryType == 'FORECAST':
             columnName = 'VALIDTIME'
             tableAndColumnName = ihfsTableName + '.' + columnName
-            queryHelperPredicate = ihfsQueryHelper.createQueryPredicateHelper('AND', tableAndColumnName, '>=', timeStart)
+            queryHelperPredicate = ihfsQueryHelper.createQueryPredicateHelper('AND', tableAndColumnName, '>=', startTime)
             queryHelperPredicateList.add(queryHelperPredicate)
-            queryHelperPredicate = ihfsQueryHelper.createQueryPredicateHelper('AND', tableAndColumnName, '<', timeStart)
+            queryHelperPredicate = ihfsQueryHelper.createQueryPredicateHelper('AND', tableAndColumnName, '<', endTime)
             queryHelperPredicateList.add(queryHelperPredicate)
 
             if basisTime is not None:
@@ -263,27 +304,17 @@ class IhfsQuery(object):
         if queryType == 'OTHER':
             return []
                 
-        javaReturnList = ihfsQueryHelper.buildAndExecuteSingleTableQuery(ihfsTableName, None, queryHelperPredicateList)
+        javaReturnList = ihfsQueryHelper.buildAndExecuteSingleTableQuery(ihfsTableName, None, queryHelperPredicateList, None, None)
         
         pyReturnList = translateIhfsJavaToPy(javaReturnList)
 
         return pyReturnList
-            
-    # The function:
-    #    buildAndExecuteIhfsQuery(self, tableName, selectTableColumnList, queryPredicateTupleList)
-    # is used to compile and execute more complex and flexible queries.
-    # Where:
-    #    tableName      : Name of IHFS Table (all caps)
-    #    selectTableColumnList    : List of IHFS Table.Column strings (all caps) to include in the query output.
-    #                    A  Python value of None will cause all fields from the queried table to be included
-    #    queryPredicateTupleList : A list of Query Predicate Tuples (conjunction, Table.Column, operator, value)
-    #    conjunction     : 'AND' or 'OR' (this is ignored for the first tuple in the List)
-    #    Table.Column    : <Table Name>.<Column Name> for the predicate
-    #    operator        : A Valid Operator [ =, <>, <, <=, >, >=, IN (   ), ]
-    #    value           : Value for the predicate. This can be a literal value '2015-07-11 00:00:00' 
-    #                    (a valid date time string)
-    #                    Or it can reference another <Table Name>.<Column Name>.
+
+    # 
+    # buildAndExecuteIhfsQuery(tableName, selectTableColumnList, queryPredicateTupleList)
     #
+    # This function is used to compile and execute more complex and flexible queries for IHFS Data.
+    # 
     # For example: to create the query string:
     #    SELECT
     #    FPINFO.LID, FPINFO.NAME, FPINFO.COUNTY, ...., FPINFO.MAJOR_FLOW 
@@ -293,7 +324,8 @@ class IhfsQuery(object):
     #    FPINFO.COUNTY = COUNTIES.COUNTY
     #    AND COUNTIES.WFO = 'OAX'
     # The following python script code  can be used:
-    #    selectColumnList = None   #A None for this parameter includes all columns in the result.
+    #    selectColumnList = None   
+    #             A None for this parameter includes all columns in the result.
     #    fpInfoTableName = 'FPINFO'
     #    countiesTableName = 'COUNTIES'
     #    queryPredicateTupleList = []
@@ -304,17 +336,30 @@ class IhfsQuery(object):
     #    pyIhfsDataList = ihfsQuery.buildAndExecuteIhfsQuery(fpInfoTableName, selectColumnList, queryPredicateTupleList)
     #    pyIhfsDataList is a Python List [] of Dictionary { } objects of Label:Value pairs for each queries column
     #
-    def buildAndExecuteIhfsQuery(self, tableName, selectTableColumnList, queryPredicateTupleList):
+    # @param tableName Name of IHFS Table (all caps)
+    # @param selectTableColumnList List of IHFS Table.Column strings (all caps) to include in the query output
+    #                              A  Python value of None will cause all fields from the queried table to be included
+    # @param queryPredicateTupleList  A list of Query Predicate Tuples (conjunction, Table.Column, operator, value)
+    #                     conjunction     : 'AND' or 'OR' (this is ignored for the first tuple in the List)
+    #                     Table.Column    : <Table Name>.<Column Name> for the predicate
+    #                     operator        : A Valid Operator [ =, <>, <, <=, >, >=, IN (   ), ]
+    #                     value           : Value for the predicate. This can be a literal value '2015-07-11 00:00:00' 
+    #                                       (i.e. a valid date time string)
+    #                                       Or it can reference another <Table Name>.<Column Name>.
+    # @param orderByList  A List of "Order By" directives (e.g. "FPINFO.LID DESC") [Optional]
+    # @param groupByList  A List of Group By directives (List of <Table>.<ColumnName> strings [Optional]
+    # @return Python list of dictionary label:value objects for the query
+    #
+    def buildAndExecuteIhfsQuery(self, tableName, selectTableColumnList, queryPredicateTupleList, orderByList=None, groupByList=None):
         
         ihfsQueryHelper = IhfsQueryHelper.getInstance()
-
         tableName = tableName.upper()
         javaSelectColumnList = None
         if selectTableColumnList is not None:
             javaSelectColumnList = ArrayList()
             for selectTableColumn in selectTableColumnList:
                 selectTableColumn = selectTableColumn.upper()
-                if selectTableColumn.startsWith(tableName):
+                if selectTableColumn.startswith(tableName):
                     javaSelectColumnList.add(selectTableColumn)
                 else:
                     javaSelectColumnList.add(tableName + "." + selectTableColumn)
@@ -326,12 +371,96 @@ class IhfsQuery(object):
             else:
                 javaQueryPredicate = ihfsQueryHelper.createQueryPredicateHelper(conjunction, tableColumnName, operator, predicateValue)
             queryHelperPredicateList.add(javaQueryPredicate)
-             
-        javaReturnList = ihfsQueryHelper.buildAndExecuteSingleTableQuery(tableName, javaSelectColumnList, queryHelperPredicateList)
+        
+        javaOrderByList = None
+        if orderByList is not None:
+            javaOrderByList = ArrayList()
+            for orderBy in orderByList:
+                javaOrderByList.add(orderBy)
+                
+        javaGroupByList = None
+        if groupByList is not None:
+            javaGroupByList = ArrayList()
+            for groupBy in groupByList:
+                javaGroupByList.add(groupBy)
+                
+        javaReturnList = ihfsQueryHelper.buildAndExecuteSingleTableQuery(tableName, javaSelectColumnList, queryHelperPredicateList, javaOrderByList, groupByList)
         
         if javaReturnList is not None:
             pyReturnList = self.translateIhfsJavaToPy(javaReturnList)
-        else :
+        else:
             pyReturnList = []
             
         return pyReturnList
+
+    # 
+    # buildAndExecuteIhfsAggregateQuery(tableName, aggregateFunction, aggregateColumn, queryPredicateTupleList)
+    #
+    # This function is used to compile and execute more complex and flexible queries for IHFS Data.
+    # 
+    # For example: to create the query string:
+    #    SELECT MAX(OBSTIME) 
+    #    FROM
+    #    LATESTOBSVALUE
+    #    WHERE
+    #        PE = 'HG'
+    # The following python script code  can be used:
+    #    tableName = 'LATESTOBSVALUE'
+    #    aggregateFunction = 'MAX'
+    #    aggregateColumn = tableName + 'OBSTIME'
+    #    queryPredicateTupleList = []
+    #    queryPredicateTupleList.append( ("AND", tableName +'.PE', '=', 'HG'))
+    #    
+    #    ihfsQuery = IhfsQuery()
+    #    pyIhfsData = ihfsQuery.buildAndExecuteIhfsAggregateQuery(tableName, aggregateFunction, aggregateColumn, queryPredicateTupleList)
+    #    pyIhfsDataList is a single value (it may be an Integer, Long, Double, Float or String depending on the column tyoe)
+    #
+    # @param tableName Name of IHFS Table (all caps)
+    # @param aggregateFunction  Aggregate function ('MIN', 'MAX', 'COUNT', 'SUM'
+    # @param aggregateColumn <Table>.<Column> for the Aggregate function
+    #                              A  Python value of None will cause all fields from the queried table to be included
+    # @param queryPredicateTupleList  A list of Query Predicate Tuples (conjunction, Table.Column, operator, value)
+    #                     conjunction     : 'AND' or 'OR' (this is ignored for the first tuple in the List)
+    #                     Table.Column    : <Table Name>.<Column Name> for the predicate
+    #                     operator        : A Valid Operator [ =, <>, <, <=, >, >=, IN (   ), ]
+    #                     value           : Value for the predicate. This can be a literal value '2015-07-11 00:00:00' 
+    #                                       (i.e. a valid date time string)
+    #                                       Or it can reference another <Table Name>.<Column Name>.
+    # @return Aggregate Function Value
+    #
+    def buildAndExecuteIhfsAggregateQuery(self, tableName, aggregateFunction, aggregateColumn, queryPredicateTupleList):
+        ihfsQueryHelper = IhfsQueryHelper.getInstance()
+
+        tableName = tableName.upper()
+        javaSelectColumn = None
+        
+        if aggregateFunction is None:
+            return -1
+        else:
+            aggregateFunction = aggregateFunction.upper()
+            if aggregateFunction != "MIN" and aggregateFunction != "MAX" and \
+                aggregateFunction != "COUNT":
+                return -1
+            
+        if aggregateColumn is not None:
+                aggregateColumn = aggregateColumn.upper()
+                if aggregateColumn.startswith(tableName):
+                    javaSelectColumn = aggregateColumn
+                else:
+                    javaSelectColumn = tableName + "." + aggregateColumn
+    
+        queryHelperPredicateList = ArrayList();
+        for conjunction, tableColumnName, operator, predicateValue in queryPredicateTupleList:
+            if isinstance(predicateValue, list):
+                javaQueryPredicate = ihfsQueryHelper.createQueryPredicateInHelper(conjunction, tableColumnName, operator, javaList)
+            else:
+                javaQueryPredicate = ihfsQueryHelper.createQueryPredicateHelper(conjunction, tableColumnName, operator, predicateValue)
+            queryHelperPredicateList.add(javaQueryPredicate)
+             
+        javaReturn = ihfsQueryHelper.buildAndExecuteAggregateQuery(tableName, aggregateFunction, aggregateColumn, queryHelperPredicateList)
+        pyValue = JUtil.javaObjToPyVal(javaReturn)
+        
+        return pyValue
+
+        
+    
