@@ -16,6 +16,8 @@ like burn scar areas.
  ------------ ---------- ----------- --------------------------
  Feb 03, 2015            kmanross     Initial development
  Aug 03, 2015   9920     Robert.Blum Fixed duplicate alias sql error.
+ Aug 14, 2015   9920     Robert.Blum Additional changes to stay in sync with ufcore.
+                                     Parameters are no longer required on mapdata requests.
 
 """
 
@@ -56,10 +58,11 @@ class MapsDatabaseAccessor(object):
         columns = [
                    "name",
                    ]
-        req.setParameters(*columns)
 
+        ### Important to set addIdentifier("locationField", "name") !!!
+        req.addIdentifier("locationField", columns[0])
         retGeoms = DataAccessLayer.getGeometryData(req)
-        
+
         nameList = []
         for retGeom in retGeoms :
             nameList.append(retGeom.getLocationName())
@@ -79,10 +82,11 @@ class MapsDatabaseAccessor(object):
         columns = [
                    "name",
                    ]
-        req.setParameters(*columns)
-        
+
+        ### Important to set addIdentifier("locationField", "name") !!!
+        req.addIdentifier("locationField", columns[0])
         retGeoms = DataAccessLayer.getGeometryData(req)
-        
+
         retDict = {}
         for retGeom in retGeoms :
             poly = self._extract_poly_coords(retGeom.getGeometry())

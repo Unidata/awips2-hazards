@@ -96,6 +96,7 @@ import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
  * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen
  * May 05, 2015 7624       mduff        Removed multiple geometry point reductions.
+ * Aug 14, 2015 9920       Robert.Blum  Parameters are no longer required on mapdata requests.
  * </pre>
  * 
  * @author blawrenc
@@ -281,12 +282,6 @@ public class GeoMapUtilities {
         if (parameterList.size() > 0) {
             mapDataRequest.setParameters(parameterList
                     .toArray(new String[parameterList.size()]));
-        } else {
-            /*
-             * TODO: Talk to Raytheon about how to avoid supplying a parameter.
-             * A Null Pointer Exception results if no parameters are supplied.
-             */
-            mapDataRequest.setParameters("gid");
         }
 
         IGeometryData[] geometryData = DataAccessLayer
