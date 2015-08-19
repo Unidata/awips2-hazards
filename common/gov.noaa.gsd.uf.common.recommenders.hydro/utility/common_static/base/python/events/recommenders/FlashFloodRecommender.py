@@ -151,7 +151,7 @@ class Recommender(RecommenderTemplate.Recommender):
         accumulationIntervalDict['fieldType'] = 'IntegerSpinner'
         accumulationIntervalDict['showScale'] = 1
         accumulationIntervalDict['fieldName'] = ACCUMULATION_INTERVAL
-        accumulationIntervalDict['label'] = 'Accumulation Interval:'
+        accumulationIntervalDict['label'] = 'Accumulation Interval (hr):'
         accumulationIntervalDict['minValue'] = 1
         accumulationIntervalDict['maxValue'] = 24
         accumulationIntervalDict['incrementDelta'] = 1
@@ -172,7 +172,7 @@ class Recommender(RecommenderTemplate.Recommender):
         compareValueDict['fieldType'] = 'FractionSpinner'
         compareValueDict['showScale'] = 0
         compareValueDict['fieldName'] = COMPARE_VALUE
-        compareValueDict['label'] = 'Value'
+        compareValueDict['label'] = 'Value (inches):'
         compareValueDict['minValue'] = 0
         compareValueDict['maxValue'] = 24
         compareValueDict['incrementDelta'] = 1
