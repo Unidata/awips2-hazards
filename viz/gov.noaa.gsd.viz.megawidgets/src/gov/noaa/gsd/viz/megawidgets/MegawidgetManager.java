@@ -145,6 +145,8 @@ import com.google.common.collect.Maps;
  *                                           (scroll position, etc.).
  * Apr 07, 2015    7271     Chris.Golden     Added interdependency-only stateful
  *                                           megawidgets.
+ * Jul 23, 2015    4245     Chris.Golden     Added notifications of visible time range
+ *                                           changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -350,6 +352,23 @@ public class MegawidgetManager {
             if (managerListener != null) {
                 managerListener.sizeChanged(MegawidgetManager.this, megawidget
                         .getSpecifier().getIdentifier());
+            }
+        }
+    };
+
+    /**
+     * Visible time range listener.
+     */
+    private final IVisibleTimeRangeListener visibleTimeRangeListener = new IVisibleTimeRangeListener() {
+
+        @Override
+        public void visibleTimeRangeChanged(
+                IVisibleTimeRangeChanger megawidget, long lower, long upper) {
+            if (managerListener != null) {
+                managerListener
+                        .visibleTimeRangeChanged(MegawidgetManager.this,
+                                megawidget.getSpecifier().getIdentifier(),
+                                lower, upper);
             }
         }
     };
@@ -1138,10 +1157,15 @@ public class MegawidgetManager {
         megawidgetCreationParams.put(IStateful.STATE_CHANGE_LISTENER,
                 stateChangeListener);
         megawidgetCreationParams.put(IResizer.RESIZE_LISTENER, resizeListener);
-        megawidgetCreationParams.put(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
+        megawidgetCreationParams.put(
+                MultiTimeMegawidgetSpecifier.MINIMUM_VISIBLE_TIME,
                 minVisibleTime);
-        megawidgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
+        megawidgetCreationParams.put(
+                MultiTimeMegawidgetSpecifier.MAXIMUM_VISIBLE_TIME,
                 maxVisibleTime);
+        megawidgetCreationParams.put(
+                MultiTimeMegawidget.VISIBLE_TIME_RANGE_LISTENER,
+                visibleTimeRangeListener);
         megawidgetCreationParams.put(
                 TimeMegawidgetSpecifier.CURRENT_TIME_PROVIDER,
                 specifierManager.getCurrentTimeProvider());

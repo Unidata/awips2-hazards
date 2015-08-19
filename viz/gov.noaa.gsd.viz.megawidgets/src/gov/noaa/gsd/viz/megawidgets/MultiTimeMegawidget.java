@@ -11,10 +11,17 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.megawidgets.validators.BoundedMultiLongValidator;
+import gov.noaa.gsd.viz.widgets.DayHatchMarkGroup;
+import gov.noaa.gsd.viz.widgets.IHatchMarkGroup;
 import gov.noaa.gsd.viz.widgets.IMultiValueLinearControlListener;
+import gov.noaa.gsd.viz.widgets.IMultiValueTooltipTextProvider;
 import gov.noaa.gsd.viz.widgets.ISnapValueCalculator;
+import gov.noaa.gsd.viz.widgets.IVisibleValueZoomCalculator;
 import gov.noaa.gsd.viz.widgets.MultiValueLinearControl;
+import gov.noaa.gsd.viz.widgets.MultiValueLinearControl.ChangeSource;
+import gov.noaa.gsd.viz.widgets.MultiValueRuler;
 import gov.noaa.gsd.viz.widgets.MultiValueScale;
+import gov.noaa.gsd.viz.widgets.TimeHatchMarkGroup;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,6 +33,12 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.DisposeEvent;
+import org.eclipse.swt.events.DisposeListener;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.graphics.Resource;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
@@ -34,6 +47,7 @@ import org.eclipse.swt.widgets.Label;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 /**
@@ -61,6 +75,7 @@ import com.google.common.collect.Sets;
  *                                      to any ancestor that is a scrolled
  *                                      composite.
  * Apr 09, 2015   7382     Chris.Golden Changed to make the scale bar optional.
+ * Jul 23, 2015   4245     Chris.Golden Added time ruler above scale widget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -68,7 +83,8 @@ import com.google.common.collect.Sets;
  * @see MultiTimeMegawidgetSpecifier
  */
 public abstract class MultiTimeMegawidget extends
-        ExplicitCommitStatefulMegawidget implements IParent<IControl>, IControl {
+        ExplicitCommitStatefulMegawidget implements IParent<IControl>,
+        IControl, IVisibleTimeRangeChanger {
 
     // Protected Static Constants
 
@@ -89,11 +105,37 @@ public abstract class MultiTimeMegawidget extends
     };
 
     /**
+     * Number of milliseconds in a minute.
+     */
+    protected static final long MINUTE_INTERVAL = TimeUnit.MINUTES.toMillis(1);
+
+    /**
+     * Number of milliseconds in an hour.
+     */
+    protected static final long HOUR_INTERVAL = TimeUnit.HOURS.toMillis(1);
+
+    /**
+     * Number of milliseconds in a day.
+     */
+    protected static final long DAY_INTERVAL = TimeUnit.DAYS.toMillis(1);
+
+    /**
+     * Minimum visible time range as an epoch time delta in milliseconds.
+     */
+    protected static final long MIN_VISIBLE_TIME_RANGE = 2L * HOUR_INTERVAL;
+
+    /**
+     * Maximum visible time range as an epoch time delta in milliseconds.
+     */
+    protected static final long MAX_VISIBLE_TIME_RANGE = 8L * DAY_INTERVAL;
+
+    /**
      * Snap value calculator, used to generate snap-to values for the scale
      * widget.
      */
     protected static final ISnapValueCalculator SNAP_VALUE_CALCULATOR = new ISnapValueCalculator() {
-        private final long INTERVAL = TimeUnit.MINUTES.toMillis(1L);
+
+        private final long INTERVAL = MINUTE_INTERVAL;
 
         private final long HALF_INTERVAL = INTERVAL / 2L;
 
@@ -164,6 +206,38 @@ public abstract class MultiTimeMegawidget extends
     private static final int SCALE_VERTICAL_PADDING_BOTTOM = 6;
 
     // Private Classes
+
+    /**
+     * Listener for the multi-value ruler.
+     */
+    private class MultiValueRulerListener implements
+            IMultiValueLinearControlListener {
+
+        @Override
+        public void visibleValueRangeChanged(MultiValueLinearControl widget,
+                long lowerValue, long upperValue, ChangeSource source) {
+            if (source != ChangeSource.METHOD_INVOCATION) {
+                scale.setVisibleValueRange(lowerValue, upperValue);
+                if (visibleTimeRangeListener != null) {
+                    visibleTimeRangeListener.visibleTimeRangeChanged(
+                            MultiTimeMegawidget.this, lowerValue, upperValue);
+                }
+            }
+        }
+
+        @Override
+        public void constrainedThumbValuesChanged(
+                MultiValueLinearControl widget, long[] values,
+                ChangeSource source) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void freeThumbValuesChanged(MultiValueLinearControl widget,
+                long[] values, ChangeSource source) {
+            throw new UnsupportedOperationException();
+        }
+    }
 
     /**
      * Listener for the multi-value scale.
@@ -296,6 +370,11 @@ public abstract class MultiTimeMegawidget extends
     // Private Variables
 
     /**
+     * Visible time range change listener.
+     */
+    private final IVisibleTimeRangeListener visibleTimeRangeListener;
+
+    /**
      * Current time provider.
      */
     private final ICurrentTimeProvider currentTimeProvider;
@@ -334,6 +413,11 @@ public abstract class MultiTimeMegawidget extends
      * Mapping of state identifier keys to time components as values.
      */
     private ImmutableMap<String, ITimeComponent> timeComponentsForIds;
+
+    /**
+     * Time ruler component.
+     */
+    private MultiValueRuler ruler;
 
     /**
      * Multi-thumbed scale component.
@@ -383,6 +467,8 @@ public abstract class MultiTimeMegawidget extends
     protected MultiTimeMegawidget(MultiTimeMegawidgetSpecifier specifier,
             Map<String, Object> paramMap) throws MegawidgetException {
         super(specifier, paramMap);
+        visibleTimeRangeListener = (IVisibleTimeRangeListener) paramMap
+                .get(VISIBLE_TIME_RANGE_LISTENER);
         helper = new ControlComponentHelper(specifier);
         stateValidator = specifier.getStateValidator();
         statesForIds = new HashMap<>();
@@ -757,6 +843,7 @@ public abstract class MultiTimeMegawidget extends
      *            Upper end of the visible time range.
      */
     public void setVisibleTimeRange(long lower, long upper) {
+        ruler.setVisibleValueRange(lower, upper);
         scale.setVisibleValueRange(lower, upper);
     }
 
@@ -994,6 +1081,17 @@ public abstract class MultiTimeMegawidget extends
         }
 
         /*
+         * Create the time ruler component.
+         */
+        createRulerComponent(specifier, panel, paramMap);
+
+        /*
+         * Bind the ruler component's visible range change events to propagate
+         * to the scale and to result in a notification.
+         */
+        ruler.addMultiValueLinearControlListener(new MultiValueRulerListener());
+
+        /*
          * Create the multi-thumbed scale component.
          */
         createMultiValueScaleComponent(specifier, panel, paramMap,
@@ -1023,6 +1121,7 @@ public abstract class MultiTimeMegawidget extends
         for (ITimeComponent timeComponent : timeComponentsForIds.values()) {
             timeComponent.setEnabled(enable);
         }
+        ruler.setEnabled(enable);
         scale.setEnabled(enable);
         for (IControl child : getChildren()) {
             child.setEnabled(enable);
@@ -1493,6 +1592,162 @@ public abstract class MultiTimeMegawidget extends
     }
 
     /**
+     * Create the ruler component.
+     * 
+     * @param specifier
+     *            Megawidget specifier.
+     * @param parent
+     *            Parent composite of any widgets to be created.
+     * @param paramMap
+     *            Hash table mapping megawidget creation time parameter
+     *            identifiers to values.
+     */
+    private void createRulerComponent(MultiTimeMegawidgetSpecifier specifier,
+            Composite parent, Map<String, Object> paramMap) {
+
+        /*
+         * Create the colors for the time ruler hatch marks, and record them as
+         * allocated resources so that they can be disposed of properly.
+         */
+        List<Color> colors = Lists.newArrayList(new Color(Display.getCurrent(),
+                128, 0, 0), new Color(Display.getCurrent(), 0, 0, 128),
+                new Color(Display.getCurrent(), 0, 128, 0),
+                new Color(Display.getCurrent(), 0, 128, 0),
+                new Color(Display.getCurrent(), 131, 120, 103));
+        final List<Resource> resources = new ArrayList<>(colors.size() + 1);
+        for (Color color : colors) {
+            resources.add(color);
+        }
+
+        /*
+         * Create the time ruler's hatch mark groups.
+         */
+        List<IHatchMarkGroup> hatchMarkGroups = new ArrayList<>();
+        hatchMarkGroups.add(new DayHatchMarkGroup());
+        hatchMarkGroups.add(new TimeHatchMarkGroup(6L * HOUR_INTERVAL, 0.25f,
+                colors.get(0), null));
+        hatchMarkGroups.add(new TimeHatchMarkGroup(HOUR_INTERVAL, 0.18f, colors
+                .get(1), null));
+        hatchMarkGroups.add(new TimeHatchMarkGroup(30L * MINUTE_INTERVAL,
+                0.11f, colors.get(2), null));
+        hatchMarkGroups.add(new TimeHatchMarkGroup(10L * MINUTE_INTERVAL,
+                0.05f, colors.get(3), null));
+
+        /*
+         * Create the ruler and configure it. The actual widget is an instance
+         * of an anonymous subclass; the latter is needed because background and
+         * foreground color changes must be ignored, since the ModeListener
+         * objects may try to change the colors when the CAVE mode changes,
+         * which in this case is undesirable.
+         */
+        ruler = new MultiValueRuler(parent,
+                stateValidator.getLowestAllowableValue(),
+                stateValidator.getHighestAllowableValue(), hatchMarkGroups) {
+            @Override
+            public void setBackground(Color background) {
+
+                /*
+                 * No action.
+                 */
+            }
+
+            @Override
+            public void setForeground(Color foreground) {
+
+                /*
+                 * No action.
+                 */
+            }
+        };
+
+        /*
+         * Create the font to be used for smaller labels in the ruler, and
+         * record it for later disposal.
+         */
+        FontData fontData = ruler.getFont().getFontData()[0];
+        Font minuteFont = new Font(Display.getCurrent(), fontData.getName(),
+                (fontData.getHeight() * 7) / 10, fontData.getStyle());
+        resources.add(minuteFont);
+        for (int j = 1; j < hatchMarkGroups.size(); j++) {
+            ((TimeHatchMarkGroup) hatchMarkGroups.get(j))
+                    .setMinuteFont(minuteFont);
+        }
+
+        /*
+         * Ensure that zoom calculations are done correctly by limiting them,
+         * and configure colors, size, etc.
+         */
+        ruler.setVisibleValueZoomCalculator(new IVisibleValueZoomCalculator() {
+            @Override
+            public long getVisibleValueRangeForZoom(MultiValueRuler ruler,
+                    boolean zoomIn, int amplitude) {
+                long range;
+                if (zoomIn) {
+                    range = (getVisibleTimeDelta() * 2L) / 3L;
+                    if (range < MIN_VISIBLE_TIME_RANGE) {
+                        return 0L;
+                    }
+                } else {
+                    range = (getVisibleTimeDelta() * 3L) / 2L;
+                    if (range > MAX_VISIBLE_TIME_RANGE) {
+                        return 0L;
+                    }
+                }
+                return range;
+            }
+        });
+        ruler.setBorderColor(colors.get(4));
+        ruler.setHeightMultiplier(2.95f);
+        ruler.setSnapValueCalculator(SNAP_VALUE_CALCULATOR);
+        ruler.setViewportDraggable(true);
+        ruler.setTooltipTextProvider(new IMultiValueTooltipTextProvider() {
+
+            @Override
+            public String[] getTooltipTextForValue(
+                    MultiValueLinearControl widget, long value) {
+                return null;
+            }
+
+            @Override
+            public String[] getTooltipTextForConstrainedThumb(
+                    MultiValueLinearControl widget, int index, long value) {
+                return null;
+            }
+
+            @Override
+            public String[] getTooltipTextForFreeThumb(
+                    MultiValueLinearControl widget, int index, long value) {
+                return null;
+            }
+        });
+
+        /*
+         * Ensure that the SWT colors and fonts are disposed of when the ruler
+         * is.
+         */
+        ruler.addDisposeListener(new DisposeListener() {
+            @Override
+            public void widgetDisposed(DisposeEvent e) {
+                for (Resource resource : resources) {
+                    resource.dispose();
+                }
+            }
+        });
+        ruler.setInsets(SCALE_HORIZONTAL_PADDING, SCALE_VERTICAL_PADDING_TOP,
+                SCALE_HORIZONTAL_PADDING, 0);
+        ruler.setVisibleValueRange((Long) paramMap
+                .get(MultiTimeMegawidgetSpecifier.MINIMUM_VISIBLE_TIME),
+                (Long) paramMap
+                        .get(MultiTimeMegawidgetSpecifier.MAXIMUM_VISIBLE_TIME));
+        ruler.setEnabled(specifier.isEnabled());
+        GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        gridData.horizontalSpan = 2;
+        gridData.verticalIndent = specifier.getSpacing();
+        gridData.exclude = (specifier.isShowScale() == false);
+        ruler.setLayoutData(gridData);
+    }
+
+    /**
      * Create the multi-value scale component.
      * 
      * @param specifier
@@ -1524,8 +1779,8 @@ public abstract class MultiTimeMegawidget extends
                 stateValidator.getLowestAllowableValue(),
                 stateValidator.getHighestAllowableValue());
         scale.setSnapValueCalculator(SNAP_VALUE_CALCULATOR);
-        scale.setInsets(SCALE_HORIZONTAL_PADDING, SCALE_VERTICAL_PADDING_TOP,
-                SCALE_HORIZONTAL_PADDING, SCALE_VERTICAL_PADDING_BOTTOM);
+        scale.setInsets(SCALE_HORIZONTAL_PADDING, 0, SCALE_HORIZONTAL_PADDING,
+                SCALE_VERTICAL_PADDING_BOTTOM);
         scale.setComponentDimensions(SCALE_THUMB_WIDTH, SCALE_THUMB_HEIGHT,
                 SCALE_TRACK_THICKNESS);
         scale.setVisibleValueRange((Long) paramMap
@@ -1549,9 +1804,17 @@ public abstract class MultiTimeMegawidget extends
         UiBuilder.ensureMouseWheelEventsPassedUpToAncestor(scale);
         GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
         gridData.horizontalSpan = 2;
-        gridData.verticalIndent = specifier.getSpacing();
         gridData.exclude = (specifier.isShowScale() == false);
         scale.setLayoutData(gridData);
+    }
+
+    /**
+     * Get the visible time delta.
+     * 
+     * @return Visible time delta.
+     */
+    private long getVisibleTimeDelta() {
+        return ruler.getUpperVisibleValue() + 1L - ruler.getLowerVisibleValue();
     }
 
     /**

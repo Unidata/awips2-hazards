@@ -28,6 +28,8 @@ import gov.noaa.gsd.viz.megawidgets.ISingleLineSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
 import gov.noaa.gsd.viz.megawidgets.IStateChangeListener;
 import gov.noaa.gsd.viz.megawidgets.IStateful;
+import gov.noaa.gsd.viz.megawidgets.IVisibleTimeRangeChanger;
+import gov.noaa.gsd.viz.megawidgets.IVisibleTimeRangeListener;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifier;
@@ -232,6 +234,9 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Apr 09, 2015   7382     Chris.Golden      Added "show start-end time sliders" flag.
  * Apr 15, 2015   3508     Chris.Golden      Added "hazard detail to be wide" flag.
  * Jul 28, 2015   9353     Robert.Blum       Removing Issue button.
+ * Jul 23, 2015   4245     Chris.Golden      Added ability to change visible time range
+ *                                           from within this view part via the time
+ *                                           range/scale megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -845,6 +850,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     };
 
     /**
+     * Visible time range state change handler. The identifier is ignored.
+     */
+    private IStateChangeHandler<String, TimeRange> visibleTimeRangeChangeHandler;
+
+    /**
      * Visible time range state changer. The identifier is ignored.
      */
     private final IStateChanger<String, TimeRange> visibleTimeRangeChanger = new IStateChanger<String, TimeRange>() {
@@ -883,8 +893,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         @Override
         public void setStateChangeHandler(
                 IStateChangeHandler<String, TimeRange> handler) {
-            throw new UnsupportedOperationException(
-                    "cannot set state change handler for visible time range");
+            visibleTimeRangeChangeHandler = handler;
         }
     };
 
@@ -1428,6 +1437,19 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
     };
 
+    /**
+     * Basic visible time range change listener, used for the start/end time
+     * megawidgets.
+     */
+    private final IVisibleTimeRangeListener basicVisibleTimeRangeListener = new IVisibleTimeRangeListener() {
+
+        @Override
+        public void visibleTimeRangeChanged(
+                IVisibleTimeRangeChanger megawidget, long lower, long upper) {
+            setVisibleTimeRange(lower, upper);
+        }
+    };
+
     // Public Methods
 
     @Override
@@ -1474,6 +1496,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         for (Resource resource : resources) {
             resource.dispose();
         }
+        visibleTimeRangeChangeHandler = null;
         tabChangeHandler = null;
         categoryChangeHandler = null;
         typeChangeHandler = null;
@@ -1764,6 +1787,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         megawidgetCreationParams.put(
                 TimeMegawidgetSpecifier.CURRENT_TIME_PROVIDER,
                 currentTimeProvider);
+        megawidgetCreationParams.put(
+                IVisibleTimeRangeChanger.VISIBLE_TIME_RANGE_LISTENER,
+                basicVisibleTimeRangeListener);
 
         /*
          * Create the time scale and time range panels, holding their respective
@@ -2579,6 +2605,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                 }
 
                                 @Override
+                                public void visibleTimeRangeChanged(
+                                        MegawidgetManager manager,
+                                        String identifier, long lower,
+                                        long upper) {
+                                    setVisibleTimeRange(lower, upper);
+                                }
+
+                                @Override
                                 public void sideEffectMutablePropertyChangeErrorOccurred(
                                         MegawidgetManager manager,
                                         MegawidgetPropertyException exception) {
@@ -2587,7 +2621,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                                     + "while attempting to apply megawidget interdependencies: "
                                                     + exception, exception);
                                 }
-
                             }, minimumVisibleTime, maximumVisibleTime);
                 } catch (Exception e) {
                     statusHandler.error(
@@ -2676,6 +2709,24 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         recordDisplaySettingsAndExtraDataForEvent(eventIdentifier,
                 megawidgetManager);
         megawidgetManager.getParent().dispose();
+    }
+
+    /**
+     * Set the visible time range to that specified.
+     * 
+     * @param lower
+     *            Lower bound of new visible time range.
+     * @param upper
+     *            Upper bound of new visible time range.
+     */
+    private void setVisibleTimeRange(long lower, long upper) {
+        minimumVisibleTime = lower;
+        maximumVisibleTime = upper;
+        visibleTimeRangeChanged();
+        if (visibleTimeRangeChangeHandler != null) {
+            visibleTimeRangeChangeHandler.stateChanged(null, new TimeRange(
+                    lower, upper));
+        }
     }
 
     /**

@@ -108,7 +108,9 @@ import com.raytheon.uf.common.status.UFStatus;
  * Oct 20, 2014   4818     Chris G.    Removed scrolled composite from step 2 of
  *                                     the dialog, since scrolling is now handled
  *                                     by the megawidgets.
- * Dec 15, 2014   4211     Tracy H.    Added better explanation      
+ * Dec 15, 2014   4211     Tracy H.    Added better explanation
+ * Jul 23, 2015   4245     Chris G.    Updated to work with new version of megawidget
+ *                                     manager listener.
  * </pre>
  * 
  * @author shouming.wei
@@ -641,6 +643,17 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
                                  * No action; size changes of any children
                                  * should be handled by scrollable wrapper
                                  * megawidget.
+                                 */
+                            }
+
+                            @Override
+                            public void visibleTimeRangeChanged(
+                                    MegawidgetManager manager,
+                                    String identifier, long lower, long upper) {
+                                /*
+                                 * No action; the visible time range of any
+                                 * megawidget in the product staging dialog is
+                                 * not tied to the visible time range elsewhere.
                                  */
                             }
 

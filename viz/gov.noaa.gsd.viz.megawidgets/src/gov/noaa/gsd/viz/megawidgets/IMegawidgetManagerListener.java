@@ -26,6 +26,8 @@ import java.util.Map;
  *                                      IManagerResizeListener, with new
  *                                      methods added, in order to simplify
  *                                      megawidget manager usage.
+ * Jul 23, 2015    4245    Chris.Golden Added notifications of visible time
+ *                                      range changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -85,6 +87,22 @@ public interface IMegawidgetManagerListener {
      *            Identifier of the megawidget that precipitated the change.
      */
     public void sizeChanged(MegawidgetManager manager, String identifier);
+
+    /**
+     * Receive notification that a megawidget manager's time-associated
+     * megawidget has experienced a visible time range change.
+     * 
+     * @param manager
+     *            Megawidget manager whose megawidget experienced the change.
+     * @param identifier
+     *            Identifier of the megawidget that precipitated the change.
+     * @param lower
+     *            Lower bound of the new visible time range.
+     * @param upper
+     *            Upper bound of the new visible time range.
+     */
+    public void visibleTimeRangeChanged(MegawidgetManager manager,
+            String identifier, long lower, long upper);
 
     /**
      * Respond to an error occurring as a result of a mutable property change

@@ -22,6 +22,8 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jul 08, 2014    3512    Chris.Golden Initial creation.
+ * Jul 23, 2015    4245    Chris.Golden Added notifications of visible time
+ *                                      range changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -57,6 +59,15 @@ public class MegawidgetManagerAdapter implements IMegawidgetManagerListener {
 
     @Override
     public void sizeChanged(MegawidgetManager manager, String identifier) {
+
+        /*
+         * No action.
+         */
+    }
+
+    @Override
+    public void visibleTimeRangeChanged(MegawidgetManager manager,
+            String identifier, long lower, long upper) {
 
         /*
          * No action.

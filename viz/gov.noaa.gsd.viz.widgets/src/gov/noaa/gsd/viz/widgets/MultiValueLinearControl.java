@@ -140,6 +140,10 @@ import org.eclipse.swt.widgets.Composite;
  * Feb 03, 2015    2331    Chris.Golden      Fixed bug that disallowed
  *                                           zero-length value boundary
  *                                           ranges.
+ * Jul 23, 2015    4245    Chris.Golden      Fixed bug that caused an
+ *                                           exception if a control was
+ *                                           created without giving it a
+ *                                           tooltip text provider.
  * </pre>
  * 
  * @author Chris.Golden
@@ -472,7 +476,8 @@ public abstract class MultiValueLinearControl extends Canvas {
      * string (not <code>null</code>) when invoked. If the provider is <code>
      * null</code>, this will be as well.
      */
-    private CustomToolTip tooltip;
+    private CustomToolTip tooltip = new CustomToolTip(getShell(),
+            PopupDialog.HOVER_SHELLSTYLE);
 
     /**
      * Flag indicating whether the constrained thumbs are to be drawn above or
@@ -768,13 +773,6 @@ public abstract class MultiValueLinearControl extends Canvas {
     public final void setTooltipTextProvider(
             IMultiValueTooltipTextProvider provider) {
         tooltipTextProvider = provider;
-        if ((provider == null) && (tooltip != null)) {
-            tooltip.dispose();
-            tooltip = null;
-        } else if ((provider != null) && (tooltip == null)) {
-            tooltip = new CustomToolTip(getShell(),
-                    PopupDialog.HOVER_SHELLSTYLE);
-        }
     }
 
     /**

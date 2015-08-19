@@ -159,6 +159,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * May 20, 2015    8192    Chris.Cody        Set HID Durations for new Events on type selection
  * Jun 26, 2015    7919    Robert.Blum       Enabled Issue/Preview button for Ended hazards.
  * Jul 29, 2015    9306    Chris.Cody        Add processing for HazardSatus.ELAPSED
+ * Aug 19, 2015    4245    Chris.Golden      Added ability to change visible time range from
+ *                                           within the associated view.
  * </pre>
  * 
  * @author Chris.Golden
@@ -424,6 +426,23 @@ public class HazardDetailPresenter extends
         @Override
         public void statesChanged(Map<String, String> valuesForIdentifiers) {
             handleUnsupportedOperationAttempt("visible event");
+        }
+    };
+
+    /**
+     * Visible time range change handler. The identifier is ignored.
+     */
+    private final IStateChangeHandler<String, TimeRange> visibleTimeRangeChangeHandler = new IStateChangeHandler<String, TimeRange>() {
+
+        @Override
+        public void stateChanged(String identifier, TimeRange value) {
+            getModel().getTimeManager().setVisibleTimeRange(value,
+                    UIOriginator.HAZARD_INFORMATION_DIALOG);
+        }
+
+        @Override
+        public void statesChanged(Map<String, TimeRange> valuesForIdentifiers) {
+            handleUnsupportedOperationAttempt("visible time range");
         }
     };
 
@@ -1119,6 +1138,8 @@ public class HazardDetailPresenter extends
          */
         getView().getButtonInvoker().setCommandInvocationHandler(
                 buttonInvocationHandler);
+        getView().getVisibleTimeRangeChanger().setStateChangeHandler(
+                visibleTimeRangeChangeHandler);
         getView().getCategoryChanger().setStateChangeHandler(
                 categoryChangeHandler);
         getView().getTypeChanger().setStateChangeHandler(typeChangeHandler);

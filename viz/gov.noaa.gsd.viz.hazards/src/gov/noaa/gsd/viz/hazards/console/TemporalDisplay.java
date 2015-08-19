@@ -267,6 +267,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * May 05, 2015 6898       Chris.Cody        Pan & Scale Visible and Selected Time
  * Jun 23, 2015 8566     Benjamin.Phillippe  Fixed extremely rare situation where table data is 
  *                                           trying to be updated before being populated
+ * Jul 23, 2015 4245       Chris.Golden      Simplified time zooming.
  * </pre>
  * 
  * @author Chris.Golden
@@ -811,14 +812,6 @@ class TemporalDisplay {
      * milliseconds.
      */
     private long visibleTimeRange;
-
-    /**
-     * Flag indicating whether the zoom level of the time line is currently odd
-     * or not. (Zoom levels are designated "even" and "odd" as shorthand for the
-     * different zoom factors that are applied to them when zooming in or out
-     * from a particular level.)
-     */
-    private boolean zoomLevelIsOdd = false;
 
     /**
      * List of identifiers of hazard events used to populate the table.
@@ -4501,9 +4494,6 @@ class TemporalDisplay {
      */
     private void zoomVisibleTimeRange(long newVisibleTimeRange) {
 
-        // Invert the zoom level flag.
-        zoomLevelIsOdd = !zoomLevelIsOdd;
-
         // If the zoom resulted in a visible time range change, record
         // the new range and its boundaries.
         if (ruler.zoomVisibleValueRange(newVisibleTimeRange)) {
@@ -4593,8 +4583,7 @@ class TemporalDisplay {
      *         out.
      */
     private long getZoomedOutRange() {
-        return (visibleTimeRange * (zoomLevelIsOdd ? 3L : 4L))
-                / (zoomLevelIsOdd ? 2L : 3L);
+        return (visibleTimeRange * 3L) / 2L;
     }
 
     /**
@@ -4605,8 +4594,7 @@ class TemporalDisplay {
      *         in.
      */
     private long getZoomedInRange() {
-        return (visibleTimeRange * (zoomLevelIsOdd ? 3L : 2L))
-                / (zoomLevelIsOdd ? 4L : 3L);
+        return (visibleTimeRange * 2L) / 3L;
     }
 
     /**
@@ -5614,9 +5602,9 @@ class TemporalDisplay {
                 if (rowIndex == -1) {
                     continue;
                 }
-                
+
                 // If the table hasn't been populated yet, skip it
-                if(rowIndex >= items.length){
+                if (rowIndex >= items.length) {
                     continue;
                 }
 
