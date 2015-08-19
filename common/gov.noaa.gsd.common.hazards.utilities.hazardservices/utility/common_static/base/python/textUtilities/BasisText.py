@@ -16,6 +16,7 @@
     Mar 17, 2015       6958     Robert.Blum            Minor formatting change for FA.Y hazards since
                                                        the basisBullet does not include start time.
     Jun 05, 2015       8530     Robert.Blum            Changes to conform to WarnGen outputs
+    Aug 19, 2015       10224    Robert.Blum            Adjusted rainSoFar to handle more user error cases.
     @author Daniel.S.Schaffer@noaa.gov
 '''
 ###############################################################################
@@ -334,8 +335,14 @@ class BasisText(object):
             rainLower = "{:2.1f}".format(rainSoFarLowerBound)
             rainUpper = "{:2.1f}".format(rainSoFarUpperBound)
             rainText = " inches of rain have fallen. "
-            if rainLower == 0.0 or rainLower == rainUpper:
-                result = "Up to " + rainUpper + rainText
+            if rainSoFarLowerBound == 0.0 and rainSoFarUpperBound == 0.0:
+                return result
+            elif rainSoFarLowerBound == 0.0 or rainSoFarLowerBound == rainSoFarUpperBound:
+                result = " Up to " + rainUpper + rainText
+            elif rainSoFarUpperBound == 0.0:
+                result = " Up to " + rainLower + rainText
+            elif rainSoFarUpperBound < rainSoFarLowerBound:
+                result = " Between " + rainUpper + " and " + rainLower + rainText
             else:
                 result = " Between " + rainLower + " and " + rainUpper + rainText
         return result

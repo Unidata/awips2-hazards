@@ -40,6 +40,7 @@
     Jun 17, 2015    7636    Robert.Blum Fixed _prepareLocationsAffected to use WarnGen's locations table.
     Aug 11, 2015    9920    Robert.Blum Additional fix for cityList query errors.
     Aug 13, 2015    8836    Chris.Cody  Changes for a configurable Event Id
+    Aug 19, 2015    10224   Robert.Blum Adjusted additionalRainFalll to handle more user error cases.
     
 '''
 
@@ -1056,6 +1057,9 @@ class Product(ProductTemplate.Product):
                 elif identifier == 'floodMoving':
                     additionalInfoText = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier,
                                     formatMethod=self.floodTimeStr, formatHashTags=['additionalInfoFloodMovingTime'])
+                elif identifier == 'addtlRain':
+                    additionalInfoText = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier)
+                    additionalInfoText = self.checkAddtlRainStatement(additionalInfoText, event )
                 else:
                     additionalInfoText = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier)
 
@@ -1063,6 +1067,24 @@ class Product(ProductTemplate.Product):
                 if additionalInfoText:
                     additionalInfo.append(additionalInfoText)
         return additionalInfo
+
+    def checkAddtlRainStatement(self, addtlRainString, hazardEvent):
+        lowerVal = hazardEvent.get('additionalRainLowerBound')
+        upperVal = hazardEvent.get('additionalRainUpperBound')
+
+        if lowerVal == 0.0 and upperVal == 0.0:
+            return ''
+        elif lowerVal == 0.0:
+            return "Additional rainfall amounts up to " + str(upperVal) + " inches are possible in the warned area."
+        elif upperVal == 0.0:
+            return "Additional rainfall amounts up to " + str(lowerVal) + " inches are possible in the warned area."
+        elif upperVal == lowerVal:
+            return "Additional rainfall amounts up to " + str(upperVal) + " inches are possible in the warned area."
+        elif upperVal < lowerVal:
+            # Swap the numbers.
+            return 'Additional rainfall amounts of ' + str(upperVal) + ' to ' + str(lowerVal)+' inches are possible in the warned area.'
+        # Return the string as is
+        return addtlRainString
 
     def floodTimeStr(self, creationTime, hashTag, flood_time_ms):
         floodTime = datetime.datetime.fromtimestamp(flood_time_ms/1000)
