@@ -37,6 +37,8 @@ import com.google.common.collect.Sets;
  * ------------ ---------- ------------ --------------------------
  * Jan 26, 2015   2331     Chris.Golden Initial creation (refactored out of
  *                                      BoundedMultiLongValidator).
+ * Aug 12, 2015   4123     Chris.Golden Altered to be more flexible, in
+ *                                      order to support range megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -76,6 +78,12 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
     private final String minimumIntervalKey;
 
     /**
+     * Key in map from {@link #getParameters()} for the increment delta
+     * parameter; if <code>null</code>, no increment delta is to be used.
+     */
+    private final String incrementDeltaKey;
+
+    /**
      * Type of state.
      */
     private final Class<T> comparableClass;
@@ -94,6 +102,11 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
      * Minimum interval allowed between adjacent values.
      */
     private T minimumInterval;
+
+    /**
+     * Increment delta; if <code>null</code>, no increment delta applies.
+     */
+    private T incrementDelta;
 
     /**
      * Flag indicating whether or not only the first state identifier can have
@@ -127,6 +140,10 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
      *            Key in <code>parameters</code> for the minimum interval
      *            parameter; if <code>null</code>, no minimum interval may be
      *            specified and it is assumed to be 0.
+     * @param incrementDeltaKey
+     *            Key in <code>parameters</code> for the increment delta
+     *            parameter; if <code>null</code>, no increment delta is to be
+     *            used.
      * @param individualBoundsOnlyForFirstIdentifier
      *            Flag indicating whether or not only the first state identifier
      *            can have its own allowable boundaries.
@@ -141,7 +158,7 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
      */
     public BoundedMultiNumberValidator(Map<String, Object> parameters,
             String minimumValuesKey, String maximumValuesKey,
-            String minimumIntervalKey,
+            String minimumIntervalKey, String incrementDeltaKey,
             boolean individualBoundsOnlyForFirstIdentifier,
             Class<T> comparableClass, T lowest, T highest)
             throws MegawidgetSpecificationException {
@@ -149,6 +166,7 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
         this.minimumValuesKey = minimumValuesKey;
         this.maximumValuesKey = maximumValuesKey;
         this.minimumIntervalKey = minimumIntervalKey;
+        this.incrementDeltaKey = incrementDeltaKey;
         this.comparableClass = comparableClass;
         this.lowest = lowest;
         this.highest = highest;
@@ -173,6 +191,7 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
         minimumValuesKey = other.minimumValuesKey;
         maximumValuesKey = other.maximumValuesKey;
         minimumIntervalKey = other.minimumIntervalKey;
+        incrementDeltaKey = other.incrementDeltaKey;
         comparableClass = other.comparableClass;
         lowest = other.lowest;
         highest = other.highest;
@@ -185,6 +204,7 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
                     new RangeValidatorHelper<T>(entry.getValue()));
         }
         minimumInterval = other.minimumInterval;
+        incrementDelta = other.incrementDelta;
     }
 
     // Public Methods
@@ -243,7 +263,7 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
     public void setMinimumValue(String identifier, Object minimum)
             throws MegawidgetPropertyException {
         if ((individualBoundsOnlyForFirstIdentifier == false)
-                || identifier.equals(getIdentifiers().get(0))) {
+                || identifier.equals(getStateIdentifiers().get(0))) {
             helpersForStateIdentifiers.get(identifier).setMinimumValue(minimum);
         }
     }
@@ -262,7 +282,7 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
     public void setMaximumValue(String identifier, Object maximum)
             throws MegawidgetPropertyException {
         if ((individualBoundsOnlyForFirstIdentifier == false)
-                || identifier.equals(getIdentifiers().get(0))) {
+                || identifier.equals(getStateIdentifiers().get(0))) {
             helpersForStateIdentifiers.get(identifier).setMaximumValue(maximum);
         }
     }
@@ -284,7 +304,7 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
     public void setRange(String identifier, Object minimum, Object maximum)
             throws MegawidgetPropertyException {
         if ((individualBoundsOnlyForFirstIdentifier == false)
-                || identifier.equals(getIdentifiers().get(0))) {
+                || identifier.equals(getStateIdentifiers().get(0))) {
             helpersForStateIdentifiers.get(identifier).setRange(minimum,
                     maximum);
         }
@@ -296,8 +316,8 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
      * @return Map of state identifiers to their minimum values.
      */
     public Map<String, T> getMinimumValues() {
-        Map<String, T> map = new HashMap<>(getIdentifiers().size(), 1.0f);
-        for (String identifier : getIdentifiers()) {
+        Map<String, T> map = new HashMap<>(getStateIdentifiers().size(), 1.0f);
+        for (String identifier : getStateIdentifiers()) {
             map.put(identifier, helpersForStateIdentifiers.get(identifier)
                     .getMinimumValue());
         }
@@ -310,8 +330,8 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
      * @return Map of state identifiers to their maximum values.
      */
     public Map<String, T> getMaximumValues() {
-        Map<String, T> map = new HashMap<>(getIdentifiers().size(), 1.0f);
-        for (String identifier : getIdentifiers()) {
+        Map<String, T> map = new HashMap<>(getStateIdentifiers().size(), 1.0f);
+        for (String identifier : getStateIdentifiers()) {
             map.put(identifier, helpersForStateIdentifiers.get(identifier)
                     .getMaximumValue());
         }
@@ -333,7 +353,7 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
                 minimumValuesKey, values, "minimum");
         Map<String, T> oldMinimumValues = getMinimumValues(valuesForIdentifiers
                 .keySet());
-        String firstIdentifier = getIdentifiers().get(0);
+        String firstIdentifier = getStateIdentifiers().get(0);
         try {
             for (Map.Entry<String, Object> entry : valuesForIdentifiers
                     .entrySet()) {
@@ -365,7 +385,7 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
                 maximumValuesKey, values, "maximum");
         Map<String, T> oldMaximumValues = getMaximumValues(valuesForIdentifiers
                 .keySet());
-        String firstIdentifier = getIdentifiers().get(0);
+        String firstIdentifier = getStateIdentifiers().get(0);
         try {
             for (Map.Entry<String, Object> entry : valuesForIdentifiers
                     .entrySet()) {
@@ -404,7 +424,7 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
                 .keySet());
         Map<String, T> oldMaximumValues = getMaximumValues(maximumValuesForIdentifiers
                 .keySet());
-        String firstIdentifier = getIdentifiers().get(0);
+        String firstIdentifier = getStateIdentifiers().get(0);
         try {
             Set<String> identifiers = Sets.union(
                     minimumValuesForIdentifiers.keySet(),
@@ -435,6 +455,38 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
         return minimumInterval;
     }
 
+    /**
+     * Get the increment delta.
+     * 
+     * @return Increment delta, or <code>null</code> if no such delta applies.
+     */
+    public final T getIncrementDelta() {
+        return incrementDelta;
+    }
+
+    /**
+     * Set the increment delta to that specified. Note that if
+     * <code>incrementDeltaKey</code> was specified as <code>null</code> during
+     * {@link #BoundedMultiNumberValidator(Map, String, String, String, String, boolean, Class, Number, Number)
+     * construction}, this method does nothing.
+     * 
+     * @param incrementDelta
+     *            Object to be used as the new increment delta.
+     * @throws MegawidgetPropertyException
+     *             If the new value is not valid.
+     */
+    public void setIncrementDelta(Object incrementDelta)
+            throws MegawidgetPropertyException {
+        if (incrementDeltaKey != null) {
+            try {
+                this.incrementDelta = getIncrementDelta(incrementDeltaKey,
+                        incrementDelta);
+            } catch (MegawidgetException e) {
+                throw new MegawidgetPropertyException(incrementDeltaKey, e);
+            }
+        }
+    }
+
     @Override
     public T convertToStateValue(String identifier, Object object)
             throws MegawidgetException {
@@ -445,8 +497,8 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
                 helper.getMinimumValue());
         if ((value.compareTo(helper.getMinimumValue()) < 0)
                 || (value.compareTo(helper.getMaximumValue()) > 0)) {
-            throw new MegawidgetStateException(getIdentifiers().get(
-                    getIdentifiers().size() - 1), getType(), value,
+            throw new MegawidgetStateException(getStateIdentifiers().get(
+                    getStateIdentifiers().size() - 1), getType(), value,
                     "out of bounds");
         }
         return value;
@@ -467,11 +519,11 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
         if ((objectsForIdentifiers == null) || objectsForIdentifiers.isEmpty()) {
             Map<String, T> defaultMap = new HashMap<>();
             T range = subtract(highest, lowest);
-            T interval = divide(range,
-                    convertToNumber(getIdentifiers().size() + 1));
+            T interval = divide(range, convertToNumber(getStateIdentifiers()
+                    .size() + 1));
             T value = interval;
-            for (int j = 0; j < getIdentifiers().size(); j++) {
-                String identifier = getIdentifiers().get(j);
+            for (int j = 0; j < getStateIdentifiers().size(); j++) {
+                String identifier = getStateIdentifiers().get(j);
                 RangeValidatorHelper<T> helper = helpersForStateIdentifiers
                         .get(identifier);
                 T thisValue = value;
@@ -502,8 +554,8 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
         Map<String, T> valuesForIdentifiers = new HashMap<>(
                 objectsForIdentifiers.size(), 1.0f);
         T lastValue = null;
-        for (int j = 0; j < getIdentifiers().size(); j++) {
-            String identifier = getIdentifiers().get(j);
+        for (int j = 0; j < getStateIdentifiers().size(); j++) {
+            String identifier = getStateIdentifiers().get(j);
             T value = ConversionUtilities
                     .getStateDynamicallyTypedObjectFromObject(identifier,
                             getType(), objectsForIdentifiers.get(identifier),
@@ -524,6 +576,50 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
         }
         return valuesForIdentifiers;
     }
+
+    /**
+     * Add the specified values together and return the result.
+     * 
+     * @param first
+     *            First value.
+     * @param second
+     *            Second value.
+     * @return Result of the addition of the two values.
+     */
+    public abstract T add(T first, T second);
+
+    /**
+     * Subtract the second value from the first and return the result.
+     * 
+     * @param minuend
+     *            Value from which to subtract.
+     * @param subtrahend
+     *            Value to be subtracted.
+     * @return Result of the subtraction of the second value from the first.
+     */
+    public abstract T subtract(T minuend, T subtrahend);
+
+    /**
+     * Multiply the specified values together and return the result.
+     * 
+     * @param first
+     *            First value.
+     * @param second
+     *            Second value.
+     * @return Result of the multiplication of the two values.
+     */
+    public abstract T multiply(T first, T second);
+
+    /**
+     * Divide the first value by the second and return the result.
+     * 
+     * @param dividend
+     *            Value to be divided.
+     * @param divisor
+     *            Value by which to divide.
+     * @return Result of the division of the first value by the second.
+     */
+    public abstract T divide(T dividend, T divisor);
 
     // Protected Methods
 
@@ -547,11 +643,11 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
          * for any state identifiers after the first one.
          */
         RangeValidatorHelper<T> defaultHelper = (individualBoundsOnlyForFirstIdentifier
-                && (getIdentifiers().size() > 1) ? new RangeValidatorHelper<T>(
+                && (getStateIdentifiers().size() > 1) ? new RangeValidatorHelper<T>(
                 getType(), getMegawidgetIdentifier(), parameters, null, null,
                 comparableClass, lowest, highest) : null);
         boolean useDefaultHelper = false;
-        for (String identifier : getIdentifiers()) {
+        for (String identifier : getStateIdentifiers()) {
             helpersForStateIdentifiers.put(identifier,
                     (useDefaultHelper ? defaultHelper
                             : new RangeValidatorHelper<T>(getType(),
@@ -568,6 +664,34 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
         } else {
             minimumInterval = getSmallestAllowableInterval();
         }
+        if (incrementDeltaKey != null) {
+            try {
+                incrementDelta = getIncrementDelta(incrementDeltaKey,
+                        parameters);
+            } catch (MegawidgetException e) {
+                throw new MegawidgetSpecificationException(incrementDeltaKey, e);
+            }
+        }
+    }
+
+    /**
+     * Get the range validator for the specified state identifier.
+     * 
+     * @param identifier
+     *            State identifier.
+     * @return Range validator.
+     */
+    protected final RangeValidatorHelper<T> getRangeValidator(String identifier) {
+        return helpersForStateIdentifiers.get(identifier);
+    }
+
+    /**
+     * Get the parameters for the specifier.
+     * 
+     * @return Parameters for the specifier.
+     */
+    protected final Map<String, Object> getParameters() {
+        return parameters;
     }
 
     /**
@@ -579,48 +703,17 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
     protected abstract T getSmallestAllowableInterval();
 
     /**
-     * Add the specified values together and return the result.
+     * Get the increment delta from the specified object.
      * 
-     * @param first
-     *            First value.
-     * @param second
-     *            Second value.
-     * @return Result of the addition of the two values.
+     * @param incrementDeltaKey
+     *            Key for the increment delta mutable property.
+     * @param incrementDelta
+     *            New increment delta.
+     * @throws MegawidgetSpecificationException
+     *             If the specified increment delta is invalid.
      */
-    protected abstract T add(T first, T second);
-
-    /**
-     * Subtract the second value from the first and return the result.
-     * 
-     * @param minuend
-     *            Value from which to subtract.
-     * @param subtrahend
-     *            Value to be subtracted.
-     * @return Result of the subtraction of the second value from the first.
-     */
-    protected abstract T subtract(T minuend, T subtrahend);
-
-    /**
-     * Multiply the specified values together and return the result.
-     * 
-     * @param first
-     *            First value.
-     * @param second
-     *            Second value.
-     * @return Result of the multiplication of the two values.
-     */
-    protected abstract T multiply(T first, T second);
-
-    /**
-     * Divide the first value by the second and return the result.
-     * 
-     * @param dividend
-     *            Value to be divided.
-     * @param divisor
-     *            Value by which to divide.
-     * @return Result of the division of the first value by the second.
-     */
-    protected abstract T divide(T dividend, T divisor);
+    protected abstract T getIncrementDelta(String incrementDeltaKey,
+            Object incrementDelta) throws MegawidgetException;
 
     /**
      * Convert the specified integer to the appropriate type of number.
@@ -705,9 +798,9 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
             } else if (comparableClass.isAssignableFrom(value.getClass()) == false) {
                 throw new Exception();
             } else {
-                Map<String, Object> map = new HashMap<>(
-                        getIdentifiers().size(), 1.0f);
-                for (String identifier : getIdentifiers()) {
+                Map<String, Object> map = new HashMap<>(getStateIdentifiers()
+                        .size(), 1.0f);
+                for (String identifier : getStateIdentifiers()) {
                     map.put(identifier, value);
                 }
                 return map;
@@ -733,9 +826,9 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
      */
     private void ensureBoundariesAreNotContradictory(String propertyName)
             throws MegawidgetPropertyException {
-        String previousIdentifier = getIdentifiers().get(0);
-        for (int j = 1; j < getIdentifiers().size(); j++) {
-            String identifier = getIdentifiers().get(j);
+        String previousIdentifier = getStateIdentifiers().get(0);
+        for (int j = 1; j < getStateIdentifiers().size(); j++) {
+            String identifier = getStateIdentifiers().get(j);
             if (helpersForStateIdentifiers
                     .get(previousIdentifier)
                     .getMinimumValue()
@@ -772,7 +865,7 @@ public abstract class BoundedMultiNumberValidator<T extends Number & Comparable<
                         getMegawidgetIdentifier(), getType(),
                         parameters.get(key), key, comparableClass,
                         getSmallestAllowableInterval());
-        if (minimumInterval.compareTo(getSmallestAllowableInterval()) < 0L) {
+        if (minimumInterval.compareTo(getSmallestAllowableInterval()) < 0) {
             throw new MegawidgetSpecificationException(
                     getMegawidgetIdentifier(), getType(), key,
                     parameters.get(key), "must be greater than or equal to "

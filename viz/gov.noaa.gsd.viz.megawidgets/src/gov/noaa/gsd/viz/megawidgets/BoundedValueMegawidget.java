@@ -34,6 +34,11 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new
  *                                           validator package, updated
  *                                           Javadoc and other comments.
+ * Aug 03, 2015   4123     Chris.Golden      Fixed bug introduced by
+ *                                           sloppy copy-pasting that
+ *                                           caused incorrect behavior
+ *                                           when setting the maximum
+ *                                           value.
  * </pre>
  * 
  * @author Chris.Golden
@@ -298,8 +303,8 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
          * and synchronize the widgets to the new state.
          */
         if ((state == null)
-                || (state.compareTo(stateValidator.getMinimumValue()) < 0)) {
-            state = stateValidator.getMinimumValue();
+                || (state.compareTo(stateValidator.getMaximumValue()) > 0)) {
+            state = stateValidator.getMaximumValue();
             synchronizeComponentWidgetsToState();
         }
     }

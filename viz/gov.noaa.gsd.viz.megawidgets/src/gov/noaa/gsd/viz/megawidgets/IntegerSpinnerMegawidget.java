@@ -28,6 +28,8 @@ import org.eclipse.swt.widgets.Composite;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Aug 12, 2015    4123    Chris.Golden      Changed to share code with new
+ *                                           range megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -51,29 +53,14 @@ public class IntegerSpinnerMegawidget extends SpinnerMegawidget<Integer> {
      */
     protected IntegerSpinnerMegawidget(IntegerSpinnerSpecifier specifier,
             Composite parent, Map<String, Object> paramMap) {
-        super(specifier, parent, paramMap);
+        super(specifier, parent, new IntegerSpinnerAndScaleComponentHelper(
+                specifier, specifier.getStateIdentifiers(), parent), paramMap);
     }
 
     // Protected Methods
 
     @Override
-    protected int getSpinnerPrecision() {
+    protected int getPrecision() {
         return 0;
-    }
-
-    @Override
-    protected int getDigitsForValue(Integer value) {
-        return ((int) Math.floor(Math.log10(Math.abs(value))))
-                + (value < 0 ? 1 : 0) + 1;
-    }
-
-    @Override
-    protected int convertValueToSpinner(Integer value) {
-        return value;
-    }
-
-    @Override
-    protected Integer convertSpinnerToValue(int value) {
-        return value;
     }
 }

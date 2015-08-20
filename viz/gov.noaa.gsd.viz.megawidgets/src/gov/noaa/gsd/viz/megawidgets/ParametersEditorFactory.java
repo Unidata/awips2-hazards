@@ -152,7 +152,8 @@ public class ParametersEditorFactory {
                 Integer.MIN_VALUE);
         defaults.put(IntegerSpinnerSpecifier.MEGAWIDGET_MAX_VALUE,
                 Integer.MAX_VALUE);
-        defaults.put(IntegerSpinnerSpecifier.MEGAWIDGET_INCREMENT_DELTA, 10);
+        defaults.put(IntegerSpinnerSpecifier.MEGAWIDGET_PAGE_INCREMENT_DELTA,
+                10);
         defaults.put(
                 IntegerSpinnerSpecifier.MEGAWIDGET_SEND_EVERY_STATE_CHANGE,
                 false);
@@ -170,7 +171,8 @@ public class ParametersEditorFactory {
                 MIN_FRACTION_VALUE);
         defaults.put(FractionSpinnerSpecifier.MEGAWIDGET_MAX_VALUE,
                 MAX_FRACTION_VALUE);
-        defaults.put(FractionSpinnerSpecifier.MEGAWIDGET_INCREMENT_DELTA, 1);
+        defaults.put(FractionSpinnerSpecifier.MEGAWIDGET_PAGE_INCREMENT_DELTA,
+                1);
         defaults.put(FractionSpinnerSpecifier.MEGAWIDGET_DECIMAL_PRECISION, 2);
         defaults.put(
                 FractionSpinnerSpecifier.MEGAWIDGET_SEND_EVERY_STATE_CHANGE,

@@ -38,6 +38,7 @@ import java.util.Map;
  *                                      optional parameter by setting it by
  *                                      default to the minimum possible
  *                                      value it can have.
+ * Aug 12, 2015   4123     Chris.Golden Changed poorly-named method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -260,7 +261,7 @@ public class BoundedFractionValidator extends BoundedNumberValidator<Double> {
     }
 
     @Override
-    protected Double setIncrementDelta(String incrementDeltaKey,
+    protected Double getIncrementDelta(String incrementDeltaKey,
             Object incrementDelta) throws MegawidgetException {
         Double newDelta = ConversionUtilities
                 .getSpecifierDoubleObjectFromObject(getIdentifier(), getType(),

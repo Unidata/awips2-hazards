@@ -111,6 +111,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * Dec 15, 2014   4211     Tracy H.    Added better explanation
  * Jul 23, 2015   4245     Chris G.    Updated to work with new version of megawidget
  *                                     manager listener.
+ * Aug 12, 2015   4123     Chris.G.    Changed to work with latest version of
+ *                                     megawidget manager listener.
  * </pre>
  * 
  * @author shouming.wei
@@ -194,7 +196,7 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
 
         @Override
         public void megawidgetStatesChanged(IStateful megawidget,
-                Map<String, Object> statesForIdentifiers) {
+                Map<String, ?> statesForIdentifiers) {
             throw new UnsupportedOperationException(
                     "cannot change multiple states simultaneously");
         }
@@ -628,10 +630,11 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
                             @Override
                             public void stateElementsChanged(
                                     MegawidgetManager manager,
-                                    Map<String, Object> statesForIdentifiers) {
+                                    Map<String, ?> statesForIdentifiers) {
                                 if (productMetadataChangeHandler != null) {
                                     productMetadataChangeHandler.statesChanged(
-                                            productName, statesForIdentifiers);
+                                            productName, new HashMap<>(
+                                                    statesForIdentifiers));
                                 }
                             }
 

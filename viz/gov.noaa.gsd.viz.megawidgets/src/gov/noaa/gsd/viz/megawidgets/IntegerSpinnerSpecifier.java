@@ -54,7 +54,7 @@ public class IntegerSpinnerSpecifier extends SpinnerSpecifier<Integer> {
             throws MegawidgetSpecificationException {
         super(parameters, new BoundedIntegerValidator(parameters,
                 MEGAWIDGET_MIN_VALUE, MEGAWIDGET_MAX_VALUE,
-                MEGAWIDGET_INCREMENT_DELTA, Integer.MIN_VALUE,
+                MEGAWIDGET_PAGE_INCREMENT_DELTA, Integer.MIN_VALUE,
                 Integer.MAX_VALUE));
     }
 }

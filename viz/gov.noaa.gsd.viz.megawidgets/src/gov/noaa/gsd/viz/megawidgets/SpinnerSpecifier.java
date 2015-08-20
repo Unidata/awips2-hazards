@@ -15,7 +15,8 @@ import gov.noaa.gsd.viz.megawidgets.validators.BoundedNumberValidator;
 import java.util.Map;
 
 /**
- * Spinner specifier, for manipulating numbers.
+ * Spinner specifier, for manipulating numbers. The generic parameter
+ * <code>T</code> provides the type of the numbers being manipulated.
  * 
  * <pre>
  * 
@@ -64,7 +65,7 @@ public abstract class SpinnerSpecifier<T extends Number & Comparable<T>>
      * pressed. If not specified, it is assumed to be the minimum value that
      * would cause a change in value.
      */
-    public static final String MEGAWIDGET_INCREMENT_DELTA = "incrementDelta";
+    public static final String MEGAWIDGET_PAGE_INCREMENT_DELTA = "incrementDelta";
 
     // Private Variables
 

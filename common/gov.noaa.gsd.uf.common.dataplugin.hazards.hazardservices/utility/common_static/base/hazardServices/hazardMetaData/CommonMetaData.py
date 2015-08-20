@@ -361,28 +361,22 @@ class MetaData(object):
         return  {"identifier":"rainKnown", "displayString":"",
                  "detailFields": [
                        {
-                        "fieldType": "Label",
-                        "fieldName": "rainAmtPrefix",
-                        "label": "Between"
-                       },
-                       {
-                        "fieldType": "FractionSpinner",
-                        "fieldName": "rainSoFarLowerBound",
-                        "minValue": 0,
-                        "maxValue": 99,
-                        "incrementDelta": 1,
-                        "precision": 1
-                       },
-                       {
-                        "fieldType": "Label",
-                        "fieldName": "rainAmtAnd",
-                        "label": "and"
-                       },
-                       {
-                        "fieldType": "FractionSpinner",
-                        "fieldName": "rainSoFarUpperBound",
-                        "minValue": 0,
-                        "maxValue": 99,
+                        "fieldType": "FractionRange",
+                        "fieldName": "rainSoFarLowerBound:rainSoFarUpperBound",
+                        "label": "Between",
+                        "betweenLabel": "and",
+                        "minValue": {
+                                     "rainSoFarLowerBound": 0,
+                                     "rainSoFarUpperBound": 0
+                                    },
+                        "maxValue": {
+                                     "rainSoFarLowerBound": 99,
+                                     "rainSoFarUpperBound": 99
+                                    },
+                        "values": {
+                                   "rainSoFarLowerBound": 0,
+                                   "rainSoFarUpperBound": 0
+                                  },
                         "incrementDelta": 1,
                         "precision": 1
                        },
@@ -518,28 +512,22 @@ class MetaData(object):
                     warned area.''',
                  "detailFields": [
                             {
-                            "fieldType": "Label",
-                            "fieldName": "additionalRainPrefix",
-                            "label": "of"
-                            },
-                            {
-                             "fieldType": "FractionSpinner",
-                             "fieldName": "additionalRainLowerBound",
-                             "minValue": 0,
-                             "maxValue": 99,
-                             "incrementDelta": 1,
-                             "precision": 1
-                            },
-                            {
-                            "fieldType": "Label",
-                            "fieldName": "additionalRainTo",
-                            "label": "to"
-                            },
-                            {
-                             "fieldType": "FractionSpinner",
-                             "fieldName": "additionalRainUpperBound",
-                             "minValue": 0,
-                             "maxValue": 99,
+                             "fieldType": "FractionRange",
+                             "fieldName": "additionalRainLowerBound:additionalRainUpperBound",
+                             "label": "of",
+                             "betweenLabel": "to",
+                             "minValue": {
+                                          "additionalRainLowerBound": 0,
+                                          "additionalRainUpperBound": 0
+                                         },
+                             "maxValue": {
+                                          "additionalRainLowerBound": 99,
+                                          "additionalRainUpperBound": 99
+                                         },
+                             "values": {
+                                        "additionalRainLowerBound": 0,
+                                        "additionalRainUpperBound": 0
+                                       },
                              "incrementDelta": 1,
                              "precision": 1
                             },
@@ -1140,12 +1128,7 @@ class MetaData(object):
         ### Group to hold all widgets
         searchFields = {
             "fieldName": parm + "Compare",
-            "fieldType":"Group",
-            "label": parm.capitalize() + " Search Parameters:",
-            "leftMargin": 10,
-            "rightMargin": 10,
-            "topMargin": 10,
-            "bottomMargin": 10,
+            "fieldType":"Composite",
             "expandHorizontally": False,
             "expandVertically": False,
             "fields": [refStageFlow,stgWindow,searchType,apply]
@@ -1254,7 +1237,7 @@ class MetaData(object):
         refStageFlow = {
                             "fieldType": "ComboBox",
                             "fieldName": parm + "ReferenceStageFlow",
-                            "label": "Reference Stage Flow",
+                            "label": "Reference Stage Flow:",
                             "choices": choices,
                             "values":  choices[0],
                             "expandHorizontally": False 
@@ -1266,11 +1249,12 @@ class MetaData(object):
         lookback = {
                         "fieldType": "IntegerSpinner",
                         "fieldName": parm + "YearLookbackSpinner",
-                        "label": "Year Lookback",
+                        "label": "Year Lookback:",
                         "minValue": -150,
                         "maxValue": -1,
                         "values": -50,
-                        "expandHorizontally": False,
+                        "spacing": 5,
+                        "expandHorizontally": True,
                         "showScale": True
                     } 
         return lookback
@@ -1280,7 +1264,7 @@ class MetaData(object):
                     "fieldType": "Button",
                     "fieldName": parm + "ApplyButton",
                     "label": "Apply Parameters",
-                    "spacing": 5,
+                    "spacing": 10,
                     "refreshMetadata": True
                 }
         return apply
@@ -1303,9 +1287,10 @@ class MetaData(object):
         return {
                "fieldType": "ComboBox",
                "fieldName": parm + "SearchType",
-               "label": "Search Type",
+               "label": "Search Type:",
                "choices": choices,
                "values": values,
+               "spacing": 5,
                "expandHorizontally": False 
             }
         
@@ -1314,64 +1299,72 @@ class MetaData(object):
         return {
             "fieldName": parm + "stageWindowGroup",
             "fieldType":"Group",
+            "spacing": 5,
             "leftMargin": 5,
             "rightMargin": 5,
             "topMargin": 5,
             "bottomMargin": 5,
-            "numColumns": 2,
             "expandHorizontally": False,
             "expandVertically": False,
             "fields": [
                     {
-                        "fieldType": "IntegerSpinner",
-                        "fieldName": parm + "StageWindowSpinnerLow",
+                        "fieldType": "IntegerRange",
+                        "fieldName": parm + "StageWindowSpinnerLow:" + parm + "StageWindowSpinnerHi",
                         "label": "",
-                        "minValue": low,
-                        "maxValue": 0,
-                        "values": low+2,
-                        "expandHorizontally": False,
-                        "showScale": True
-                    },
-                    {
-                        "fieldType": "IntegerSpinner",
-                        "fieldName": parm + "StageWindowSpinnerHi",
-                        "label": "",
-                        "minValue": 0,
-                        "maxValue": hi,
-                        "values": hi-2,
-                        "expandHorizontally": False,
+                        "minValue": {
+                                     parm + "StageWindowSpinnerLow": low,
+                                     parm + "StageWindowSpinnerHi": low + 1
+                                    },
+                        "maxValue": {
+                                     parm + "StageWindowSpinnerLow": hi - 1,
+                                     parm + "StageWindowSpinnerHi": hi
+                                    },
+                        "values": {
+                                     parm + "StageWindowSpinnerLow": low + 2,
+                                     parm + "StageWindowSpinnerHi": hi - 2
+                                    },
+                        "minimumInterval": 1,
+                        "expandHorizontally": True,
                         "showScale": True
                     },
                     {
                         "fieldType": "IntegerSpinner",
                         "fieldName": parm + "maxDepthBelowFloodStage",
-                        "label": "Maximum Depth Below Flood Stage",
+                        "label": "Maximum Depth Below Flood Stage:",
                         "minValue": -10, 
                         "maxValue": 0,
                         "values": -3,
-                        "width": 2,
-                        "expandHorizontally": False,
+                        "expandHorizontally": True,
                         "showScale": True
                     },
                     {
-                        "fieldType": "IntegerSpinner",
-                        "fieldName": parm + "FlowWindow1",
-                        "label": "Flow Window (%):   (0-100)",
-                        "minValue": 0,
-                        "maxValue": 100,
-                        "values": 10,
-                        "expandHorizontally": False,
-                        "showScale": False
-                    },
-                    {
-                        "fieldType": "IntegerSpinner",
-                        "fieldName": parm + "FlowWindow2",
-                        "label": "(>=0)",
-                        "minValue": 0,
-                        "maxValue": 100,
-                        "values": 10,
-                        "expandHorizontally": False,
-                        "showScale": False
+                        "fieldName": parm + "flowWindowComposite",
+                        "fieldType":"Composite",
+                        "expandHorizontally": True,
+                        "expandVertically": False,
+                        "numColumns": 2,
+                        "fields": [
+                                   {
+                                    "fieldType": "IntegerSpinner",
+                                    "fieldName": parm + "FlowWindow1",
+                                    "label": "Flow Window (%):   (0-100)",
+                                    "minValue": 0,
+                                    "maxValue": 100,
+                                    "values": 10,
+                                    "expandHorizontally": True,
+                                    "showScale": False
+                                    },
+                                   {
+                                    "fieldType": "IntegerSpinner",
+                                    "fieldName": parm + "FlowWindow2",
+                                    "label": "(>=0)",
+                                    "minValue": 0,
+                                    "maxValue": 100,
+                                    "values": 10,
+                                    "expandHorizontally": True,
+                                    "showScale": False
+                                    }
+                        ]
                     },
                     {
                         "fieldType": "IntegerSpinner",
@@ -1380,8 +1373,7 @@ class MetaData(object):
                         "minValue": 0,
                         "maxValue": 100,
                         "values": 10,
-                        "width": 2,
-                        "expandHorizontally": False,
+                        "expandHorizontally": True,
                         "showScale": False
                     }
             ]
@@ -1621,10 +1613,24 @@ class MetaData(object):
         filters['Reference Type'] = self.getRefStgFlow(parm)
         filters['Search Type'] = self.getSearchType(parm)
         
+        # Build a dictionary mapping parameter identifiers to their
+        # values. For each field, subdivide the fieldName into
+        # strings delimited by ":" since fields may have multiple
+        # identifiers, one per parameter, separated by colons, and
+        # for any such subdivided ones, associate the values
+        # with only the value that goes with that identifier.
         stageWindowFields = self.getStageWindow(parm)['fields']
+        stageWindowFieldsFlattened = []
+        self._flattenFieldsList(stageWindowFields, stageWindowFieldsFlattened)
         swfDict = {}
-        for k in  stageWindowFields:
-            swfDict[k['fieldName']] = k
+        for k in stageWindowFieldsFlattened:
+            for identifier in k['fieldName'].split(":"):
+                if identifier != k['fieldName']:
+                    singleParameter = k.copy()
+                    singleParameter['values'] = k['values'][identifier]
+                else:
+                    singleParameter = k
+                swfDict[identifier] = singleParameter
         
         filters['Stage Window Lower'] = swfDict[parm+"StageWindowSpinnerLow"]
         filters['Stage Window Upper'] = swfDict[parm+"StageWindowSpinnerHi"]
@@ -1639,6 +1645,12 @@ class MetaData(object):
 
         return filters
         
+    def _flattenFieldsList(self, fieldsList, flattenedFieldsList):
+        for k in fieldsList:
+            flattenedFieldsList.append(k)
+            if "fields" in k:
+                self._flattenFieldsList(k["fields"], flattenedFieldsList)
+    
     def _updateSearchParmsWithHazardEvent(self, hazardEvent, parm, filters):
         
         filters['Reference Type']['values'] = hazardEvent.get(parm+"ReferenceStageFlow")

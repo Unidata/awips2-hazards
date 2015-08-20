@@ -25,6 +25,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Apr 23, 2014   2925     Chris.Golden Initial creation.
+ * Aug 12, 2015   4123     Chris.Golden Changed poorly-named method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -102,7 +103,7 @@ public abstract class BoundedNumberValidator<T extends Number & Comparable<T>>
     /**
      * Get the increment delta.
      * 
-     * @return increment delta.
+     * @return Increment delta.
      */
     public final T getIncrementDelta() {
         return incrementDelta;
@@ -119,7 +120,7 @@ public abstract class BoundedNumberValidator<T extends Number & Comparable<T>>
     public void setIncrementDelta(Object incrementDelta)
             throws MegawidgetPropertyException {
         try {
-            this.incrementDelta = setIncrementDelta(incrementDeltaKey,
+            this.incrementDelta = getIncrementDelta(incrementDeltaKey,
                     incrementDelta);
         } catch (MegawidgetException e) {
             throw new MegawidgetPropertyException(incrementDeltaKey, e);
@@ -132,7 +133,7 @@ public abstract class BoundedNumberValidator<T extends Number & Comparable<T>>
     protected void doInitialize() throws MegawidgetSpecificationException {
         super.doInitialize();
         try {
-            incrementDelta = setIncrementDelta(incrementDeltaKey,
+            incrementDelta = getIncrementDelta(incrementDeltaKey,
                     getParameters().get(incrementDeltaKey));
         } catch (MegawidgetException e) {
             throw new MegawidgetSpecificationException(incrementDeltaKey, e);
@@ -149,6 +150,6 @@ public abstract class BoundedNumberValidator<T extends Number & Comparable<T>>
      * @throws MegawidgetSpecificationException
      *             If the specified increment delta is invalid.
      */
-    protected abstract T setIncrementDelta(String incrementDeltaKey,
+    protected abstract T getIncrementDelta(String incrementDeltaKey,
             Object incrementDelta) throws MegawidgetException;
 }

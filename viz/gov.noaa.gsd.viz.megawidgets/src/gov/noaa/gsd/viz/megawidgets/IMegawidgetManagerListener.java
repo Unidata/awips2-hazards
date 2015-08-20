@@ -28,6 +28,8 @@ import java.util.Map;
  *                                      megawidget manager usage.
  * Jul 23, 2015    4245    Chris.Golden Added notifications of visible time
  *                                      range changes.
+ * Aug 12, 2015    4123    Chris.Golden Changed to work with latest version
+ *                                      of megawidget manager listener.
  * </pre>
  * 
  * @author Chris.Golden
@@ -75,7 +77,7 @@ public interface IMegawidgetManagerListener {
      *            Map pairing state identifiers with their new values.
      */
     public void stateElementsChanged(MegawidgetManager manager,
-            Map<String, Object> statesForIdentifiers);
+            Map<String, ?> statesForIdentifiers);
 
     /**
      * Receive notification that a megawidget manager has experienced a size

@@ -237,6 +237,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Jul 23, 2015   4245     Chris.Golden      Added ability to change visible time range
  *                                           from within this view part via the time
  *                                           range/scale megawidgets.
+ * Aug 12, 2015   4123     Chris.Golden      Changed to work with new megawidget manager
+ *                                           listener.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1408,7 +1410,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         @Override
         public void megawidgetStatesChanged(IStateful megawidget,
-                Map<String, Object> statesForIdentifiers) {
+                Map<String, ?> statesForIdentifiers) {
             if (megawidget instanceof MultiTimeMegawidget) {
                 MultiTimeMegawidget otherTimeMegawidget = timeMegawidgets
                         .get(megawidget == timeRangeMegawidget ? 0 : 1);
@@ -1692,8 +1694,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         /*
          * TODO: RM 3851 - Make this configurable using flag in startupconfig.py
          */
-//        createButton(buttonBar, Command.ISSUE, ISSUE_BUTTON_TEXT,
-//                ISSUE_BUTTON_TOOLTIP_TEXT);
+        // createButton(buttonBar, Command.ISSUE, ISSUE_BUTTON_TEXT,
+        // ISSUE_BUTTON_TOOLTIP_TEXT);
     }
 
     @Override
@@ -2577,11 +2579,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                 @Override
                                 public void stateElementsChanged(
                                         MegawidgetManager manager,
-                                        Map<String, Object> statesForIdentifiers) {
+                                        Map<String, ?> statesForIdentifiers) {
                                     if (metadataChangeHandler != null) {
                                         Map<String, Serializable> map = new HashMap<>(
                                                 statesForIdentifiers.size());
-                                        for (Map.Entry<String, Object> entry : statesForIdentifiers
+                                        for (Map.Entry<String, ?> entry : statesForIdentifiers
                                                 .entrySet()) {
                                             map.put(entry.getKey(),
                                                     (Serializable) entry

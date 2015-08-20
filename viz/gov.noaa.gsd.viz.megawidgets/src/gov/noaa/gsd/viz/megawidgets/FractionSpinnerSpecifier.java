@@ -63,7 +63,7 @@ public class FractionSpinnerSpecifier extends SpinnerSpecifier<Double> {
             throws MegawidgetSpecificationException {
         super(parameters, new BoundedFractionValidator(parameters,
                 MEGAWIDGET_MIN_VALUE, MEGAWIDGET_MAX_VALUE,
-                MEGAWIDGET_INCREMENT_DELTA, MEGAWIDGET_DECIMAL_PRECISION,
+                MEGAWIDGET_PAGE_INCREMENT_DELTA, MEGAWIDGET_DECIMAL_PRECISION,
                 -Double.MAX_VALUE, Double.MAX_VALUE));
     }
 

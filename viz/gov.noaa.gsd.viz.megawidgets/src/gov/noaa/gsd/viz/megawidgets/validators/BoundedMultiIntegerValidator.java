@@ -19,7 +19,7 @@ import java.util.Map;
 
 /**
  * Description: Validator used to ensure that potential state values are
- * {@link Long} instances, are within fixed boundaries, and are in ascending
+ * {@link Integer} instances, are within fixed boundaries, and are in ascending
  * order for multiple-state {@link IStateful} and {@link IStatefulSpecifier}
  * objects.
  * 
@@ -28,21 +28,14 @@ import java.util.Map;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
- * Apr 23, 2014   2925     Chris.Golden Initial creation.
- * Jun 27, 2014   3512     Chris.Golden Made minimum interval parameter
- *                                      optional.
- * Jan 28, 2015   2331     Chris.Golden Made subclass of new class called
- *                                      BoundedMultiNumberValidator, which
- *                                      took much of this class's abilities
- *                                      and genericized it.
- * Aug 12, 2015   4123     Chris.Golden Changed to work with altered superclass.
+ * Aug 06, 2015    4123    Chris.Golden Initial creation.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class BoundedMultiLongValidator extends
-        BoundedMultiNumberValidator<Long> {
+public class BoundedMultiIntegerValidator extends
+        BoundedMultiNumberValidator<Integer> {
 
     // Public Constructors
 
@@ -79,14 +72,14 @@ public class BoundedMultiLongValidator extends
      *            Highest allowable value; the maximum value may not be higher
      *            than this.
      */
-    public BoundedMultiLongValidator(Map<String, Object> parameters,
+    public BoundedMultiIntegerValidator(Map<String, Object> parameters,
             String minimumValuesKey, String maximumValuesKey,
             String minimumIntervalKey, String incrementDeltaKey,
-            boolean individualBoundsOnlyForFirstIdentifier, Long lowest,
-            Long highest) throws MegawidgetSpecificationException {
+            boolean individualBoundsOnlyForFirstIdentifier, Integer lowest,
+            Integer highest) throws MegawidgetSpecificationException {
         super(parameters, minimumValuesKey, maximumValuesKey,
                 minimumIntervalKey, incrementDeltaKey,
-                individualBoundsOnlyForFirstIdentifier, Long.class, lowest,
+                individualBoundsOnlyForFirstIdentifier, Integer.class, lowest,
                 highest);
     }
 
@@ -101,7 +94,7 @@ public class BoundedMultiLongValidator extends
      * @throws IllegalArgumentException
      *             If <code>other</code> has not yet been initialized.
      */
-    protected BoundedMultiLongValidator(BoundedMultiLongValidator other) {
+    protected BoundedMultiIntegerValidator(BoundedMultiIntegerValidator other) {
         super(other);
     }
 
@@ -110,27 +103,27 @@ public class BoundedMultiLongValidator extends
     @SuppressWarnings("unchecked")
     @Override
     public <V extends StateValidator> V copyOf() {
-        return (V) new BoundedMultiLongValidator(this);
+        return (V) new BoundedMultiIntegerValidator(this);
     }
 
     @Override
-    public Long add(Long first, Long second) {
+    public Integer add(Integer first, Integer second) {
         return first + second;
     }
 
     @Override
-    public Long subtract(Long minuend, Long subtrahend) {
+    public Integer subtract(Integer minuend, Integer subtrahend) {
         return minuend - subtrahend;
     }
 
     @Override
-    public Long multiply(Long first, Long second) {
+    public Integer multiply(Integer first, Integer second) {
         return first * second;
     }
 
     @Override
-    public Long divide(Long dividend, Long divisor) {
-        if (divisor == 0L) {
+    public Integer divide(Integer dividend, Integer divisor) {
+        if (divisor == 0) {
             throw new ArithmeticException("divide by zero");
         }
         return dividend / divisor;
@@ -139,17 +132,18 @@ public class BoundedMultiLongValidator extends
     // Protected Methods
 
     @Override
-    protected Long getSmallestAllowableInterval() {
-        return 0L;
+    protected Integer getSmallestAllowableInterval() {
+        return 0;
     }
 
     @Override
-    protected Long getIncrementDelta(String incrementDeltaKey,
+    protected Integer getIncrementDelta(String incrementDeltaKey,
             Object incrementDelta) throws MegawidgetException {
-        Long newDelta = ConversionUtilities.getSpecifierLongObjectFromObject(
-                getIdentifier(), getType(),
-                getParameters().get(incrementDeltaKey), incrementDeltaKey, 1L);
-        if (newDelta < 1L) {
+        Integer newDelta = ConversionUtilities
+                .getSpecifierIntegerObjectFromObject(getIdentifier(),
+                        getType(), getParameters().get(incrementDeltaKey),
+                        incrementDeltaKey, 1);
+        if (newDelta < 1) {
             throw new MegawidgetException(getIdentifier(), getType(),
                     incrementDelta, "must be positive number");
         }
@@ -157,7 +151,7 @@ public class BoundedMultiLongValidator extends
     }
 
     @Override
-    protected Long convertToNumber(int value) {
-        return new Long(value);
+    protected Integer convertToNumber(int value) {
+        return new Integer(value);
     }
 }

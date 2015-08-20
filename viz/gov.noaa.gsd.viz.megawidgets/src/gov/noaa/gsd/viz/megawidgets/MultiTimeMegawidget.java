@@ -76,6 +76,8 @@ import com.google.common.collect.Sets;
  *                                      composite.
  * Apr 09, 2015   7382     Chris.Golden Changed to make the scale bar optional.
  * Jul 23, 2015   4245     Chris.Golden Added time ruler above scale widget.
+ * Aug 04, 2015   4123     Chris.Golden Changed to work with new signature of
+ *                                      UiBuilder method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -175,33 +177,12 @@ public abstract class MultiTimeMegawidget extends
                     MultiTimeMegawidgetSpecifier.MAXIMUM_ALLOWABLE_TIME);
 
     /**
-     * Width in pixels of the time scale thumbs.
-     */
-    private static final int SCALE_THUMB_WIDTH = 13;
-
-    /**
-     * Height in pixels of the time scale thumbs.
-     */
-    private static final int SCALE_THUMB_HEIGHT = 21;
-
-    /**
-     * Thickness in pixels of the time scale tracks.
-     */
-    private static final int SCALE_TRACK_THICKNESS = 11;
-
-    /**
-     * Width of horizontal padding in pixels to the left and right of the scale
-     * widget.
-     */
-    private static final int SCALE_HORIZONTAL_PADDING = 7;
-
-    /**
-     * Height of vertical padding in pixels above and below the scale widget.
+     * Height of vertical padding in pixels above multi-value scales.
      */
     private static final int SCALE_VERTICAL_PADDING_TOP = 1;
 
     /**
-     * Height of vertical padding in pixels above and below the scale widget.
+     * Height of vertical padding in pixels below multi-value scales.
      */
     private static final int SCALE_VERTICAL_PADDING_BOTTOM = 6;
 
@@ -1733,8 +1714,8 @@ public abstract class MultiTimeMegawidget extends
                 }
             }
         });
-        ruler.setInsets(SCALE_HORIZONTAL_PADDING, SCALE_VERTICAL_PADDING_TOP,
-                SCALE_HORIZONTAL_PADDING, 0);
+        UiBuilder.setMultiValueRulerVisualComponentDimensions(ruler,
+                SCALE_VERTICAL_PADDING_TOP, 0);
         ruler.setVisibleValueRange((Long) paramMap
                 .get(MultiTimeMegawidgetSpecifier.MINIMUM_VISIBLE_TIME),
                 (Long) paramMap
@@ -1779,10 +1760,8 @@ public abstract class MultiTimeMegawidget extends
                 stateValidator.getLowestAllowableValue(),
                 stateValidator.getHighestAllowableValue());
         scale.setSnapValueCalculator(SNAP_VALUE_CALCULATOR);
-        scale.setInsets(SCALE_HORIZONTAL_PADDING, 0, SCALE_HORIZONTAL_PADDING,
-                SCALE_VERTICAL_PADDING_BOTTOM);
-        scale.setComponentDimensions(SCALE_THUMB_WIDTH, SCALE_THUMB_HEIGHT,
-                SCALE_TRACK_THICKNESS);
+        UiBuilder.setMultiValueScaleVisualComponentDimensions(scale,
+                SCALE_VERTICAL_PADDING_TOP, SCALE_VERTICAL_PADDING_BOTTOM);
         scale.setVisibleValueRange((Long) paramMap
                 .get(MultiTimeMegawidgetSpecifier.MINIMUM_VISIBLE_TIME),
                 (Long) paramMap

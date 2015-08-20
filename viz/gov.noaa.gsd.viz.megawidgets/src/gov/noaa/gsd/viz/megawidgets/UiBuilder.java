@@ -11,6 +11,8 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.viz.megawidgets.displaysettings.IMultiPageScrollSettings;
 import gov.noaa.gsd.viz.megawidgets.displaysettings.ISinglePageScrollSettings;
+import gov.noaa.gsd.viz.widgets.MultiValueRuler;
+import gov.noaa.gsd.viz.widgets.MultiValueScale;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -100,6 +102,8 @@ import com.google.common.collect.Lists;
  *                                           behavior as real ones.
  * Jul 28, 2015    9633    Robert.Blum       Added buildScrolledComposite method that
  *                                           is used by product editor to fix scroll issue.
+ * Aug 12, 2015    4123    Chris.Golden      Added code to configure a multi-value
+ *                                           scale with appropriate sizing and padding.
  * </pre>
  * 
  * @author Chris.Golden
@@ -136,6 +140,27 @@ public class UiBuilder {
      * Number of pixels by which to scroll with each mouse wheel rotation.
      */
     private static final int MOUSE_WHEEL_SCROLL_INCREMENT = 20;
+
+    /**
+     * Width in pixels of multi-value scale thumbs.
+     */
+    private static final int SCALE_THUMB_WIDTH = 13;
+
+    /**
+     * Height in pixels of multi-value scale thumbs.
+     */
+    private static final int SCALE_THUMB_HEIGHT = 21;
+
+    /**
+     * Thickness in pixels of the multi-value scale tracks.
+     */
+    private static final int SCALE_TRACK_THICKNESS = 11;
+
+    /**
+     * Width of horizontal padding in pixels to the left and right of
+     * multi-value widgets.
+     */
+    private static final int MULTI_VALUE_WIDGET_HORIZONTAL_PADDING = 7;
 
     // Public Enumerated Types
 
@@ -876,6 +901,41 @@ public class UiBuilder {
         return indicesArray;
     }
 
+    /**
+     * Configure the specified multi-value ruler's insets to be standard.
+     * 
+     * @param ruler
+     *            Multi-value ruler to be configured.
+     * @param topPadding
+     *            Padding in pixels to be used above the scale.
+     * @param bottomPadding
+     *            Padding in pixels to be used below the scale.
+     */
+    public static void setMultiValueRulerVisualComponentDimensions(
+            MultiValueRuler ruler, int topPadding, int bottomPadding) {
+        ruler.setInsets(MULTI_VALUE_WIDGET_HORIZONTAL_PADDING, topPadding,
+                MULTI_VALUE_WIDGET_HORIZONTAL_PADDING, bottomPadding);
+    }
+
+    /**
+     * Configure the specified multi-value scale's thumb's (or thumbs')
+     * dimensions to standard ones.
+     * 
+     * @param scale
+     *            Multi-value scale to be configured.
+     * @param topPadding
+     *            Padding in pixels to be used above the scale.
+     * @param bottomPadding
+     *            Padding in pixels to be used below the scale.
+     */
+    public static void setMultiValueScaleVisualComponentDimensions(
+            MultiValueScale scale, int topPadding, int bottomPadding) {
+        scale.setInsets(MULTI_VALUE_WIDGET_HORIZONTAL_PADDING, topPadding,
+                MULTI_VALUE_WIDGET_HORIZONTAL_PADDING, bottomPadding);
+        scale.setComponentDimensions(SCALE_THUMB_WIDTH, SCALE_THUMB_HEIGHT,
+                SCALE_TRACK_THICKNESS);
+    }
+
     // Private Static Methods
 
     /**
@@ -1012,9 +1072,9 @@ public class UiBuilder {
     }
 
     /**
-     * Build a scrolled composite containing a child composite in which to
-     * lay out megawidget components. The child composite is not assigned a layout.
-     * The resulting scrolled composite handles size changes it experiences by 
+     * Build a scrolled composite containing a child composite in which to lay
+     * out megawidget components. The child composite is not assigned a layout.
+     * The resulting scrolled composite handles size changes it experiences by
      * recalculating its page increments.
      * 
      * @param parent

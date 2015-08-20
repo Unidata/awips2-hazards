@@ -31,6 +31,9 @@ import java.util.Map;
  * Jun 30, 2014    3512    Chris.Golden      Changed to include new method that
  *                                           allows notification of multiple
  *                                           simultaneous state changes.
+ * Aug 12, 2015    4123    Chris.Golden      Changed to increase flexibility of
+ *                                           member method in terms of the
+ *                                           parameters accepted.
  * </pre>
  * 
  * @author Chris.Golden
@@ -68,5 +71,5 @@ public interface IStateChangeListener {
      *            megawidget.
      */
     public void megawidgetStatesChanged(IStateful megawidget,
-            Map<String, Object> statesForIdentifiers);
+            Map<String, ?> statesForIdentifiers);
 }

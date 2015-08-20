@@ -70,7 +70,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  * Aug 27, 2014   3768     Robert.Blum     Added ability to select recommenders as 
  *                                         part of the settings dialog.
  * Dec 05, 2014   4124     Chris.Golden    Changed to work with ObservedSettings.
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Dec 13, 2014   4959     Dan Schaffer    Spatial Display cleanup and other bug
+ *                                         fixes.
+ * Aug 12, 2015   4123     Chris.Golden    Changed to work with latest version of
+ *                                         megawidget manager listener.
  * </pre>
  * 
  * @author Chris.Golden
@@ -334,7 +337,7 @@ class SettingDialog extends BasicDialog {
                         @Override
                         public void stateElementsChanged(
                                 MegawidgetManager manager,
-                                Map<String, Object> statesForIdentifiers) {
+                                Map<String, ?> statesForIdentifiers) {
                             settingChanged();
                         }
                     }, 0L, 0L, currentTimeProvider);

@@ -9,33 +9,27 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import gov.noaa.gsd.viz.megawidgets.validators.BoundedFractionValidator;
-
 import java.util.Map;
 
 import org.eclipse.swt.widgets.Composite;
 
 /**
- * Fraction spinner megawidget, allowing the manipulation of a double value.
+ * Integer range megawidget, allowing the manipulation of lower and upper
+ * boundaries consisting of integer values.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 23, 2013   2168     Chris.Golden      Initial creation.
- * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
- *                                           package, updated Javadoc and other
- *                                           comments.
- * Aug 12, 2015   4123     Chris.Golden      Changed to allow sharing of code
- *                                           with new range megawidgets.
+ * Aug 08, 2015    4123    Chris.Golden Initial creation.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
- * @see FractionSpinnerSpecifier
+ * @see IntegerRangeSpecifier
  */
-public class FractionSpinnerMegawidget extends SpinnerMegawidget<Double> {
+public class IntegerRangeMegawidget extends RangeMegawidget<Integer> {
 
     // Protected Constructors
 
@@ -50,9 +44,9 @@ public class FractionSpinnerMegawidget extends SpinnerMegawidget<Double> {
      *            Hash table mapping megawidget creation time parameter
      *            identifiers to values.
      */
-    protected FractionSpinnerMegawidget(FractionSpinnerSpecifier specifier,
+    protected IntegerRangeMegawidget(IntegerRangeSpecifier specifier,
             Composite parent, Map<String, Object> paramMap) {
-        super(specifier, parent, new DoubleSpinnerAndScaleComponentHelper(
+        super(specifier, parent, new IntegerSpinnerAndScaleComponentHelper(
                 specifier, specifier.getStateIdentifiers(), parent), paramMap);
     }
 
@@ -60,6 +54,6 @@ public class FractionSpinnerMegawidget extends SpinnerMegawidget<Double> {
 
     @Override
     protected int getPrecision() {
-        return ((BoundedFractionValidator) getStateValidator()).getPrecision();
+        return 0;
     }
 }

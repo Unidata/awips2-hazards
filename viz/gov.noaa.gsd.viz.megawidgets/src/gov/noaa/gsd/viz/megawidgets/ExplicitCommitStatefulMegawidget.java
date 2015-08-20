@@ -29,6 +29,8 @@ import java.util.Map;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Aug 12, 2015   4123     Chris.Golden      Changed to work with latest version
+ *                                           of megawidget manager listener.
  * </pre>
  * 
  * @author Chris.Golden
@@ -198,7 +200,7 @@ public abstract class ExplicitCommitStatefulMegawidget extends
     }
 
     @Override
-    protected void setStates(Map<String, Object> states)
+    protected void setStates(Map<String, ?> states)
             throws MegawidgetPropertyException {
 
         /*

@@ -55,6 +55,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jan 21, 2015    3626    Chris.Golden Initial creation.
+ * Aug 12, 2015    4123    Chris.Golden Changed to work with new megawidget manager
+ *                                      listener.
  * </pre>
  * 
  * @author Chris.Golden
@@ -197,7 +199,7 @@ public class HazardTypeFirstDialog extends BasicDialog implements
 
         @Override
         public void megawidgetStatesChanged(IStateful megawidget,
-                Map<String, Object> statesForIdentifiers) {
+                Map<String, ?> statesForIdentifiers) {
             throw new UnsupportedOperationException(
                     "cannot change multiple states simultaneously");
         }

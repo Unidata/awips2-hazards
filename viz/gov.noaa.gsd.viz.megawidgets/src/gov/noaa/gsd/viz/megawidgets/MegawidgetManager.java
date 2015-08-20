@@ -147,6 +147,8 @@ import com.google.common.collect.Maps;
  *                                           megawidgets.
  * Jul 23, 2015    4245     Chris.Golden     Added notifications of visible time range
  *                                           changes.
+ * Aug 12, 2015    4123    Chris.Golden      Changed to work with latest version
+ *                                           of megawidget manager listener.
  * </pre>
  * 
  * @author Chris.Golden
@@ -306,24 +308,23 @@ public class MegawidgetManager {
 
         @Override
         public void megawidgetStatesChanged(IStateful megawidget,
-                Map<String, Object> statesForIdentifiers) {
+                Map<String, ?> statesForIdentifiers) {
 
             /*
              * Process the changed states within this manager.
              */
-            for (Map.Entry<String, Object> entry : statesForIdentifiers
-                    .entrySet()) {
+            for (Map.Entry<String, ?> entry : statesForIdentifiers.entrySet()) {
 
                 /*
                  * Do any preprocessing of the state required by a subclass.
                  */
-                entry.setValue(convertMegawidgetStateToStateElement(
-                        entry.getKey(), entry.getValue()));
+                Object value = convertMegawidgetStateToStateElement(
+                        entry.getKey(), entry.getValue());
 
                 /*
                  * Remember the new state.
                  */
-                commitStateElementChange(entry.getKey(), entry.getValue());
+                commitStateElementChange(entry.getKey(), value);
             }
 
             /*
@@ -1590,7 +1591,7 @@ public class MegawidgetManager {
      *            values.
      */
     private void notifyListenerOfStateChanges(
-            Map<String, Object> statesForIdentifiers) {
+            Map<String, ?> statesForIdentifiers) {
         if (managerListener != null) {
             statesForIdentifiers = (interdependencyOnlyStateIdentifiers
                     .isEmpty() ? statesForIdentifiers : Maps.filterKeys(
@@ -1600,7 +1601,7 @@ public class MegawidgetManager {
                 return;
             }
             if (statesForIdentifiers.size() == 1) {
-                Map.Entry<String, Object> singleEntry = statesForIdentifiers
+                Map.Entry<String, ?> singleEntry = statesForIdentifiers
                         .entrySet().iterator().next();
                 managerListener.stateElementChanged(this, singleEntry.getKey(),
                         singleEntry.getValue());

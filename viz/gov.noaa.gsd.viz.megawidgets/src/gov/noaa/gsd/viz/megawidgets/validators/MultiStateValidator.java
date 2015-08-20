@@ -33,6 +33,8 @@ import com.google.common.collect.ImmutableList;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Apr 23, 2014   2925     Chris.Golden Initial creation.
+ * Aug 12, 2015   4123     Chris.Golden Added method to fetch associated
+ *                                      megawidget identifier.
  * </pre>
  * 
  * @author Chris.Golden
@@ -108,11 +110,20 @@ public abstract class MultiStateValidator<T> extends StateValidator {
     }
 
     /**
+     * Get the overall identifier.
+     * 
+     * @return Identifier.
+     */
+    public final String getIdentifier() {
+        return Joiner.on(":").join(identifiers);
+    }
+
+    /**
      * Get the state identifiers.
      * 
      * @return State identifiers.
      */
-    public final ImmutableList<String> getIdentifiers() {
+    public final ImmutableList<String> getStateIdentifiers() {
         return identifiers;
     }
 

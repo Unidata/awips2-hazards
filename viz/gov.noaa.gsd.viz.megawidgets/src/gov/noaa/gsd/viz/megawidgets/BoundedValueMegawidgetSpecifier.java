@@ -15,10 +15,11 @@ import java.util.Map;
 
 /**
  * Bounded value megawidget specifier, a base class for specifiers that create
- * megawidgets allowing the selection of a single value bounded within a given
- * range. The latter is always associated with a single state identifier, so the
- * megawidget identifiers for these specifiers must not consist of
- * colon-separated substrings.
+ * megawidgets allowing the selection of a one or more values bounded within a
+ * given range. The values are always associated with a single state identifier,
+ * so the megawidget identifiers for these specifiers must not consist of
+ * colon-separated substrings. The generic parameter <code>T</code> provides the
+ * type of the values being manipulated.
  * 
  * <pre>
  * 

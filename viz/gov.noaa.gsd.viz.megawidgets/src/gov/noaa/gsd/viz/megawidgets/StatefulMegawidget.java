@@ -44,6 +44,8 @@ import com.google.common.collect.ImmutableSet;
  *                                           state changes.
  * Oct 22, 2014   5050     Chris.Golden      Minor change: Fixed building of
  *                                           MUTABLE_PROPERTY_NAMES.
+ * Aug 12, 2015   4123     Chris.Golden      Changed to work with latest version
+ *                                           of megawidget manager listener.
  * </pre>
  * 
  * @author Chris.Golden
@@ -340,7 +342,7 @@ public abstract class StatefulMegawidget extends Megawidget implements
      *             If at least one identifier specifies a nonexistent state, or
      *             if at least one value is invalid.
      */
-    protected void setStates(Map<String, Object> states)
+    protected void setStates(Map<String, ?> states)
             throws MegawidgetPropertyException {
 
         /*
@@ -400,7 +402,7 @@ public abstract class StatefulMegawidget extends Megawidget implements
      *            Map of zero or more state identifiers to their new state
      *            values.
      */
-    protected final void notifyListener(Map<String, Object> statesForIdentifiers) {
+    protected final void notifyListener(Map<String, ?> statesForIdentifiers) {
 
         /*
          * If one or more values changed and notification is appropriate, send
@@ -408,8 +410,8 @@ public abstract class StatefulMegawidget extends Megawidget implements
          */
         if (statesForIdentifiers.isEmpty() == false) {
             if (statesForIdentifiers.size() == 1) {
-                Map.Entry<String, Object> entry = statesForIdentifiers
-                        .entrySet().iterator().next();
+                Map.Entry<String, ?> entry = statesForIdentifiers.entrySet()
+                        .iterator().next();
                 notifyListener(entry.getKey(), entry.getValue());
             } else {
                 if (isSettingState == false) {

@@ -194,7 +194,7 @@ public class MultiTimeMegawidgetSpecifier extends TimeMegawidgetSpecifier
             String minimumIntervalKey) throws MegawidgetSpecificationException {
         super(parameters, new BoundedMultiLongValidator(parameters,
                 MINIMUM_ALLOWABLE_TIME, MAXIMUM_ALLOWABLE_TIME,
-                minimumIntervalKey, (minimumIntervalKey == null),
+                minimumIntervalKey, null, (minimumIntervalKey == null),
                 MINIMUM_ALLOWABLE_VALUE, MAXIMUM_ALLOWABLE_VALUE),
                 ControlSpecifierOptionsManager.BooleanSource.TRUE);
 

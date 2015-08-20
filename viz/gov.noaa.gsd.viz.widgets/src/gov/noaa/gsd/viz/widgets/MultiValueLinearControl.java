@@ -144,6 +144,13 @@ import org.eclipse.swt.widgets.Composite;
  *                                           exception if a control was
  *                                           created without giving it a
  *                                           tooltip text provider.
+ * Aug 12, 2015    4123    Chris.Golden      Fixed bug with translation
+ *                                           between distance along visual
+ *                                           representation and value, which
+ *                                           was undetected until now due to
+ *                                           the fact that the widget had
+ *                                           never been used with a small
+ *                                           range of possible values before.
  * </pre>
  * 
  * @author Chris.Golden
@@ -2448,7 +2455,7 @@ public abstract class MultiValueLinearControl extends Canvas {
             x = leftInset + lastWidth - 1;
         }
         return Math.round(((double) (x - leftInset))
-                * ((double) (upperVisibleValue + 1L - lowerVisibleValue))
+                * ((double) (upperVisibleValue - lowerVisibleValue))
                 / (lastWidth - 1.0))
                 + lowerVisibleValue;
     }
@@ -2468,7 +2475,7 @@ public abstract class MultiValueLinearControl extends Canvas {
         }
         long result = Math
                 .round(((value - lowerVisibleValue) * (lastWidth - 1.0))
-                        / (upperVisibleValue + 1L - lowerVisibleValue))
+                        / (upperVisibleValue - lowerVisibleValue))
                 + leftInset;
         if (result < Integer.MIN_VALUE) {
             return Integer.MIN_VALUE;
@@ -2492,7 +2499,7 @@ public abstract class MultiValueLinearControl extends Canvas {
             return 0L;
         }
         return Math.round(((double) width)
-                * ((double) (upperVisibleValue + 1L - lowerVisibleValue))
+                * ((double) (upperVisibleValue - lowerVisibleValue))
                 / lastWidth);
     }
 
@@ -2506,7 +2513,7 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     protected final int mapValueDeltaToPixelWidth(long delta) {
         long result = Math.round(((double) delta) * ((double) lastWidth)
-                / (upperVisibleValue + 1L - lowerVisibleValue));
+                / (upperVisibleValue - lowerVisibleValue));
         if (result < Integer.MIN_VALUE) {
             return Integer.MIN_VALUE;
         } else if (result > Integer.MAX_VALUE) {

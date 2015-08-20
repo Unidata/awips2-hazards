@@ -24,6 +24,8 @@ import java.util.Map;
  * Jul 08, 2014    3512    Chris.Golden Initial creation.
  * Jul 23, 2015    4245    Chris.Golden Added notifications of visible time
  *                                      range changes.
+ * Aug 12, 2015    4123    Chris.Golden Changed to work with latest version
+ *                                      of megawidget manager listener.
  * </pre>
  * 
  * @author Chris.Golden
@@ -50,7 +52,7 @@ public class MegawidgetManagerAdapter implements IMegawidgetManagerListener {
 
     @Override
     public void stateElementsChanged(MegawidgetManager manager,
-            Map<String, Object> statesForIdentifiers) {
+            Map<String, ?> statesForIdentifiers) {
 
         /*
          * No action.

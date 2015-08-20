@@ -24,6 +24,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Apr 23, 2014   2925     Chris.Golden Initial creation.
+ * Aug 12, 2015   4123     Chris.Golden Changed poorly-named method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -87,7 +88,7 @@ public class BoundedIntegerValidator extends BoundedNumberValidator<Integer> {
     // Protected Methods
 
     @Override
-    protected Integer setIncrementDelta(String incrementDeltaKey,
+    protected Integer getIncrementDelta(String incrementDeltaKey,
             Object incrementDelta) throws MegawidgetException {
         Integer newDelta = ConversionUtilities
                 .getSpecifierIntegerObjectFromObject(getIdentifier(),

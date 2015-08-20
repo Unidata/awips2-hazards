@@ -56,6 +56,8 @@ import org.eclipse.swt.widgets.Event;
  *                                           megawidget of a state change.
  * Oct 10, 2014    4042    Chris.Golden      Changed to work with subcommands
  *                                           received by notification listeners.
+ * Aug 12, 2015    4123    Chris.Golden      Changed to work with latest version
+ *                                           of megawidget manager listener.
  * </pre>
  * 
  * @author Chris.Golden
@@ -225,7 +227,7 @@ public class BoundedChoicesDetailChildrenManager implements
 
     @Override
     public void megawidgetStatesChanged(IStateful megawidget,
-            Map<String, Object> statesForIdentifiers) {
+            Map<String, ?> statesForIdentifiers) {
 
         /*
          * Fire off a selection event for the choice button associated with this
