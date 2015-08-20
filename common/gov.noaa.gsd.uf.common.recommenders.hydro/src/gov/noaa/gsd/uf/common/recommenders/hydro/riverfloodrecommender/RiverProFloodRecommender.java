@@ -55,6 +55,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Apr 09, 2015 7271       Kevin.Manross     Ensured generated FL.Y hazard events
  *                                           have riseAbove/crest/fallBelow values.
  * May 08, 2015 6562       Chris.Cody        Restructure River Forecast Points/Recommender
+ * Aug 20, 2015 9387       Robert.Blum       Fixed UFN where the endTime would get incorrectly set after
+ *                                           it was correctly set.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -184,9 +186,6 @@ public class RiverProFloodRecommender {
             hazardAttributes.put(HazardConstants.CURRENT_STAGE_TIME,
                     currentStageTime);
 
-            buildRiseCrestFallAttributes(riverForecastPoint, hazardAttributes,
-                    riverHazard);
-
             if (riverForecastPoint.isIncludedInRecommendation()) {
                 buildFloodAttributes(riverForecastPoint, hazardAttributes);
 
@@ -194,6 +193,9 @@ public class RiverProFloodRecommender {
                 buildNonFloodAttributes(riverForecastPoint, hazardAttributes,
                         riverHazard);
             }
+
+            buildRiseCrestFallAttributes(riverForecastPoint, hazardAttributes,
+                    riverHazard);
 
             riverHazard.setCreationTime(TimeUtil.newCalendar().getTime());
 
