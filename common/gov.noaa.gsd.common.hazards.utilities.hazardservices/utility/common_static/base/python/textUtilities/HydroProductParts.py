@@ -18,6 +18,7 @@
     06/24/2015   8181       Robert.Blum    Changes for cityList/locationsAffected.
     07/22/2015   9645       Robert.Blum    Adding cityList to FF.W products to be consistent across products.
     07/27/2015   9637       Robert.Blum    Added polygonText to FL.* hazards.
+    08/20/2015   9519       Robert.Blum    Removed locationsAffected when for CANs and EXPs.
 '''
 import types, collections
 
@@ -199,7 +200,7 @@ class HydroProductParts(object):
             # There is only one action / vtec record per segment
             action = vtecRecord.get('act')
             section = {
-                'partsList': ['setUp_section', 'locationsAffected', 'additionalComments',],
+                'partsList': self._areaSectionPartsList_FFS(vtecRecord),
                 }
             sectionParts.append(section)
           
@@ -238,6 +239,20 @@ class HydroProductParts(object):
                     ] + parts +
                     ['endSegment']
                 }
+
+    def _areaSectionPartsList_FFS(self, areaRecord):
+        action = areaRecord.get('act')
+        if action in ['CAN', 'EXP']:
+            return [
+                    'setUp_section',
+                    'additionalComments',
+                    ]
+        else:
+            return [
+                    'setUp_section',
+                    'locationsAffected',
+                    'additionalComments',
+                    ]
 
     def _pointSectionPartsList_FFS(self, pointRecord):
         return  [
@@ -405,7 +420,9 @@ class HydroProductParts(object):
                     'basisAndImpactsStatement',
                     ] 
         if phen == "FA" and sig != "A":  # FA.W and FA.Y
-            partsList += ['locationsAffected', 'additionalComments']
+            if action != 'CAN' and action != 'EXP':
+                partsList.append('locationsAffected')
+            partsList.append('additionalComments')
 
         return partsList
 
