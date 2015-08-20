@@ -39,6 +39,9 @@
    Jul 28, 2015   9687      Robert.Blum         Updates for new KeyInfo field displayLabel.
    Aug 03, 2015   9920      Robert.Blum         Fixed duplicate alias sql error.
    Aug 03, 2015   8836     Chris.Cody           Changes for a configurable Event Id
+   Aug 20, 2015   9713      Robert.Blum         Removed formatting that was causing issues with Text String
+                                                that contained numbers.
+
     @author Tracy.L.Hansen@noaa.gov
 '''
 
@@ -61,7 +64,6 @@ import json
 import traceback
 
 import re
-float_match = re.compile(r'[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?$').match
 
 # The size of the buffer for default flood polygons.
 DEFAULT_POLYGON_BUFFER = 0.05
@@ -783,19 +785,9 @@ class TextProductCommon(object):
                     creationTime = hazardEvent.get('creationTime')
                 formattedVal = formatMethod(creationTime, hashTag, replaceVal)
             else:
-                formattedVal = self.formatAsNecessary(replaceVal)
+                formattedVal = replaceVal
             returnVal = returnVal.replace('#' + hashTag + '#', formattedVal)
         return returnVal
-    
-    def formatAsNecessary(self, val):
-        if (self.is_number(val)):
-            return "{:2.1f}".format(val)
-        else:
-            return val
-
-    # TODO Should use fastnumbers
-    def is_number(self, val):
-        return bool(float_match(str(val)))
 
     def getFramedValues(self, text, beginStr='|* ', endStr=' *|'):
         '''
