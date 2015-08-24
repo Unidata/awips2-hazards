@@ -39,7 +39,6 @@ class MetaData(CommonMetaData.MetaData):
         else: # 'issued'
             metaData = [
                     self.getListOfCities(False),
-                    self.getBasisAndImpacts('basisAndImpactsStatement'),
                     self.getAdvisoryType(),
                     self.getImmediateCause(),
                     self.getOptionalSpecificType(),

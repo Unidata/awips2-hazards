@@ -16,6 +16,8 @@
     May 14, 2015    7376    Robert.Blum Changed to look for only None and not
                                         empty string.
     Jun 03, 2015    8530    Robert.Blum Added ProductPart for initials and the additionalComments.
+    Aug 24, 2015    9553    Robert.Blum Replaced basisAndImpactsStatement_segmentLevel with basisBullet
+                                        product part.
 '''
 
 
@@ -44,7 +46,6 @@ class Format(Legacy_Hydro_Formatter.Format):
             'polygonText': self._polygonText,
             'cityList': self._cityList,
             'summaryHeadlines': self._summaryHeadlines,
-            'basisAndImpactsStatement_segmentLevel': self._basisAndImpactsStatement_segmentLevel,
             'emergencyHeadline': self._emergencyHeadline,
             'attribution': self._attribution,
             'firstBullet': self._firstBullet,
@@ -100,11 +101,12 @@ class Format(Legacy_Hydro_Formatter.Format):
         return self._getFormattedText(bulletText, endText='\n')
 
     def _basisBullet(self, sectionDict):
+        vtecRecord = sectionDict.get('vtecRecord', {})
+        action = vtecRecord.get('act', '')
         # Get saved value from productText table if available
         bulletText = self._getVal('basisBullet', sectionDict)
         if bulletText is None:
             bulletText = ''
-            vtecRecord = sectionDict.get('vtecRecord')
             phen = vtecRecord.get('phen')
             sig = vtecRecord.get('sig')
             hazards = sectionDict.get('hazardEvents')
@@ -123,7 +125,9 @@ class Format(Legacy_Hydro_Formatter.Format):
             bulletText += basis
         self._setVal('basisBullet', bulletText, sectionDict, 'Basis Bullet')
 
-        startText = '* '
+        startText = ''
+        if action in ['NEW', 'EXT']:
+            startText = '* '
         if (self._runMode == 'Practice'):
             startText += "This is a test message.  "
         return self._getFormattedText(bulletText, startText=startText, endText='\n\n')

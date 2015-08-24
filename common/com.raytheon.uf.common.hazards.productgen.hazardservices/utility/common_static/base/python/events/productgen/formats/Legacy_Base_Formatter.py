@@ -37,7 +37,8 @@
     Jul 30, 2015    9681    Robert.Blum Fixed incorrect if statement in polygonText.
     Aug 01, 2015    9634    Robert.Blum Changing MND Header to all caps.
     Aug 03, 2015    9632    Robert.Blum Initials are now auto filled.
-    
+    Aug 19, 2015    9558    Robert.Blum Fixed _polygonText() to handle MultiPolygons
+    Aug 24, 2015    9553    Robert.Blum Removed _basisAndImpactsStatement_segmentLevel()
 '''
 
 import FormatTemplate
@@ -562,26 +563,6 @@ class Format(FormatTemplate.Formatter):
         headlineStr = headlineStr.upper()
         self._setVal('summaryHeadlines', headlineStr, segmentDict, 'Summary Headlines', required=False)
         return self._getFormattedText(headlineStr, endText='\n')
-
-    def _basisAndImpactsStatement_segmentLevel(self, segmentDict):
-        # Get saved value from productText table if available
-        text = self._getVal('basisAndImpactsStatement_segmentLevel', segmentDict)
-        if text is None:
-            text = ''
-            sections = segmentDict.get('sections', [])
-            statements = []
-            for section in sections:
-                for hazard in section.get('hazardEvents', []):
-                    statement = hazard.get('basisAndImpactsStatement_segmentLevel', None)
-                    # Check for a empty string from the HID
-                    if statement:
-                        statements.append(statement)
-            if len(statements) > 0:
-                text += '\n'.join(statements)
-            else:
-                text = '|* Current hydrometeorological situation and expected impacts *|'
-        self._setVal('basisAndImpactsStatement_segmentLevel', text, segmentDict, 'Basis and Impacts Statement')
-        return self._getFormattedText(text, endText='\n\n')
 
     def _endSegment(self, segmentDict):
         # Reset to empty dictionary

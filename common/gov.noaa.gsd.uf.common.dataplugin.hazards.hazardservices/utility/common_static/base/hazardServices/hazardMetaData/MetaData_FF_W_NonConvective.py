@@ -55,7 +55,6 @@ class MetaData(CommonMetaData.MetaData):
         elif status == "issued":
             metaData = [
                      self.getListOfCities(False),
-                     self.getBasisAndImpacts('basisAndImpactsStatement_segmentLevel'), 
                      self.getFloodSeverity(),
                      self.getHydrologicCause(editable=False),
                      self.getSource(hydrologicCause),

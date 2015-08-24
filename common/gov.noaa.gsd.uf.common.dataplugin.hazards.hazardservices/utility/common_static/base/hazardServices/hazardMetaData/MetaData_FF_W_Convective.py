@@ -38,7 +38,6 @@ class MetaData(CommonMetaData.MetaData):
         else: # issued
             metaData = [
                     self.getListOfCities(False),
-                    self.getBasisAndImpacts('basisAndImpactsStatement_segmentLevel'), 
                     self.getInclude(),
                     self.getImmediateCause(),
                     self.getSource(),

@@ -19,6 +19,7 @@
     07/22/2015   9645       Robert.Blum    Adding cityList to FF.W products to be consistent across products.
     07/27/2015   9637       Robert.Blum    Added polygonText to FL.* hazards.
     08/20/2015   9519       Robert.Blum    Removed locationsAffected when for CANs and EXPs.
+    08/24/2015   9553       Robert.Blum    Removed basisAndImpactsStatement_segmentLevel
 '''
 import types, collections
 
@@ -219,7 +220,6 @@ class HydroProductParts(object):
                 pointSections.append(pointSection)
             parts = [
                 #'emergencyStatement', # optional
-                'basisAndImpactsStatement_segmentLevel',
                 ('sections', sectionParts),
                 'callsToAction',
                 'polygonText',
@@ -250,6 +250,7 @@ class HydroProductParts(object):
         else:
             return [
                     'setUp_section',
+                    'basisBullet',
                     'locationsAffected',
                     'additionalComments',
                     ]
