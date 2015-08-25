@@ -41,7 +41,7 @@
     Aug 24, 2015    9553    Robert.Blum Removed _basisAndImpactsStatement_segmentLevel()
     Aug 25, 2015    9638    Robert.Blum Initials product part is now optional and updates to 
                                         reflect changes from the product editor.
-    
+    Aug 25, 2015    9992    Robert.Blum Fixed product level CTAs when none are selected.
 '''
 
 import FormatTemplate
@@ -265,6 +265,7 @@ class Format(FormatTemplate.Formatter):
         text = self._getVal(ctaKey, productDict)
 
         if text is None:
+            text = ''
             callsToAction =  self._tpc.getVal(productDict, ctaKey, None)
             if callsToAction:
                 text = ''

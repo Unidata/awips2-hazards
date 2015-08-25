@@ -41,7 +41,7 @@
     Aug 11, 2015    9920    Robert.Blum Additional fix for cityList query errors.
     Aug 13, 2015    8836    Chris.Cody  Changes for a configurable Event Id
     Aug 19, 2015    10224   Robert.Blum Adjusted additionalRainFalll to handle more user error cases.
-    
+    Aug 25, 2015    9992    Robert.Blum Fixed Product Level CTAs not correctly tranfering from staging dialog.
 '''
 
 import ProductTemplate
@@ -470,7 +470,7 @@ class Product(ProductTemplate.Product):
                 # list of the productStrings to be passed to the formatter
                 newCTAs = []
                 # Loop over the selected CTAs from the staging dialog
-                for value in cta_dict.get('values'):
+                for value in dialogInputMap.get(key):
                     # Compare value with each identifier to find a match
                     for choice in cta_dict.get('choices'):
                         if value == choice.get('identifier'):
