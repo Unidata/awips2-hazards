@@ -24,6 +24,8 @@
                                         Unknown flood severities.
     May 14, 2015    7376    Robert.Blum Changed to look for only None and not
                                         empty string.
+    Jun 02, 2015    7138    Robert.Blum Limited flood point table for RVS based on 
+                                        staging dialog input.
 '''
 import datetime
 import collections
@@ -291,6 +293,11 @@ class Format(Legacy_Base_Formatter.Format):
 
     def getDataForFloodPointTable(self, dictionary):
         HazardEventDicts = []
+
+        # Check if flood table was checked on staging dialog - RVS
+        if self._productID == 'RVS' and 'include' not in dictionary.get('floodPointTable', []):
+            return HazardEventDicts
+
         if dictionary.get('segments', None):
             # Product Level Table
             for segment in dictionary.get('segments'):
@@ -307,7 +314,7 @@ class Format(Legacy_Base_Formatter.Format):
             for hazard in dictionary.get('hazardEvents', []):
                 HazardEventDicts.append(hazard)
         return HazardEventDicts
-    
+
     def createDataDictForFloodPointTable(self, HazardEventDicts):
         # Group the hazards based on streamName
         riverGroups = {}

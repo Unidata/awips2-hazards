@@ -103,6 +103,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationMa
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ModifiedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorEntry;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
@@ -292,6 +294,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * May 19, 2015    7706    Robert.Blum  Fixed bug when checking for conflicts where it would check hazards
  *                                      that were ended.
  * May 28, 2015    7709    Chris.Cody   Add Reference name of forecast zone in the conflicting hazards
+ * Jun 02, 2015    7138    Robert.Blum  RVS can now be issued without changing the status/state of the 
+ *                                      hazard events.
  * 
  * </pre>
  * 
@@ -952,6 +956,8 @@ public class SessionEventManager implements
     public void handleProductGenerationCompletion(
             IProductGenerationComplete productGenerationComplete) {
 
+        ProductGeneratorTable pgTable = configManager
+                .getProductGeneratorTable();
         /*
          * If the product generation resulted in issuance, iterate through the
          * generated products, and for each one, iterate through the hazard
@@ -960,41 +966,47 @@ public class SessionEventManager implements
         if (productGenerationComplete.isIssued()) {
             for (GeneratedProductList generatedProductList : productGenerationComplete
                     .getGeneratedProducts()) {
-                for (IEvent event : generatedProductList.getEventSet()) {
-                    IHazardEvent hazardEvent = (IHazardEvent) event;
-                    ObservedHazardEvent oEvent = getEventById(hazardEvent
-                            .getEventID());
+                ProductGeneratorEntry pgEntry = pgTable.get(generatedProductList.getProductInfo());
+                if (pgEntry.getChangeHazardStatus() == true) {
+                    for (IEvent event : generatedProductList.getEventSet()) {
+                        IHazardEvent hazardEvent = (IHazardEvent) event;
+                        ObservedHazardEvent oEvent = getEventById(hazardEvent
+                                .getEventID());
 
-                    /*
-                     * If the hazard is pending or proposed, make it issued;
-                     * otherwise, if it needs a change to the ended status, do
-                     * this.
-                     */
-                    HazardStatus hazardStatus = oEvent.getStatus();
-                    boolean wasPreIssued = false;
-                    if (hazardStatus.equals(HazardStatus.PENDING)
-                            || hazardStatus.equals(HazardStatus.PROPOSED)) {
-                        oEvent.setStatus(HazardStatus.ISSUED);
-                        oEvent.clearUndoRedo();
-                        oEvent.setModified(false);
-                        wasPreIssued = true;
-                    } else if (isChangeToEndedStatusNeeded(hazardEvent)) {
-                        oEvent.setStatus(HazardStatus.ENDED);
-                    }
+                        /*
+                         * If the hazard is pending or proposed, make it issued;
+                         * otherwise, if it needs a change to the ended status,
+                         * do this.
+                         */
+                        HazardStatus hazardStatus = oEvent.getStatus();
+                        boolean wasPreIssued = false;
+                        if (hazardStatus.equals(HazardStatus.PENDING)
+                                || hazardStatus.equals(HazardStatus.PROPOSED)) {
+                            oEvent.setStatus(HazardStatus.ISSUED);
+                            oEvent.clearUndoRedo();
+                            oEvent.setModified(false);
+                            wasPreIssued = true;
+                        } else if (isChangeToEndedStatusNeeded(hazardEvent)) {
+                            oEvent.setStatus(HazardStatus.ENDED);
+                        }
 
-                    /*
-                     * If the hazard now has just changed to issued status (i.e.
-                     * it has not just been changed to ended, or been reissued),
-                     * adjust its start and end times and their boundaries. Then
-                     * update its duration choices list, if applicable.
-                     */
-                    if (oEvent.getStatus().equals(HazardStatus.ISSUED)
-                            && wasPreIssued) {
-                        updateTimeRangeBoundariesOfJustIssuedEvent(
-                                oEvent,
-                                (Long) hazardEvent
-                                        .getHazardAttribute(HazardConstants.ISSUE_TIME));
-                        updateDurationChoicesForEvent(oEvent, false);
+                        /*
+                         * If the hazard now has just changed to issued status
+                         * (i.e. it has not just been changed to ended, or been
+                         * reissued), adjust its start and end times and their
+                         * boundaries. Then update its duration choices list, if
+                         * applicable.
+                         */
+                        if (oEvent.getStatus().equals(HazardStatus.ISSUED)
+                                || wasPreIssued) {
+                            updateSavedTimesForEventIfIssued(oEvent, false);
+
+                            updateTimeRangeBoundariesOfJustIssuedEvent(
+                                    oEvent,
+                                    (Long) hazardEvent
+                                            .getHazardAttribute(HazardConstants.ISSUE_TIME));
+                            updateDurationChoicesForEvent(oEvent, false);
+                        }
                     }
                 }
             }

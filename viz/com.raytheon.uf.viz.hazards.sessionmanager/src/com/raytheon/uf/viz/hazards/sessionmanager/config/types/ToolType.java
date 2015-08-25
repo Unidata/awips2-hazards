@@ -22,6 +22,8 @@ import java.util.Map;
  * ------------ ---------- ----------- --------------------------
  * Jan 29, 2015 4375       Dan Schaffer initial creation
  * Feb  6, 2015 4375       Fixed bug in deserialization
+ * Jun 02, 2015 7138       Robert.Blum  Added new ToolType for Non 
+ *                                      Hazard Product Generators.
  * 
  * </pre>
  * 
@@ -29,7 +31,7 @@ import java.util.Map;
  * @version 1.0
  */
 public enum ToolType {
-    RECOMMENDER, PRODUCT_GENERATOR;
+    RECOMMENDER, HAZARD_PRODUCT_GENERATOR, NON_HAZARD_PRODUCT_GENERATOR;
 
     private static final Map<String, ToolType> stringToEnum = new HashMap<>();
 

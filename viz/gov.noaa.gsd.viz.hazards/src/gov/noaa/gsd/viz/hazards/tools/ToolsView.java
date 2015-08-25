@@ -57,6 +57,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
  * Jan 30, 2015   3626     Chris.Golden      Added ability to pass event type when
  *                                           running a recommender.
  * Feb 15, 2015 2271       Dan Schaffer      Incur recommender/product generator init costs immediately
+ * Jun 02, 2015   7138     Robert.Blum       Changed to use new Enums for Product Generators.
  * </pre>
  * 
  * @author Chris.Golden
@@ -168,7 +169,14 @@ public class ToolsView implements
                 new MenuItem(menu, SWT.SEPARATOR);
                 for (String name : toolIdentifiersForNames.keySet()) {
                     Tool tool = toolIdentifiersForNames.get(name);
-                    if (tool.getToolType() == ToolType.PRODUCT_GENERATOR
+                    if (tool.getToolType() == ToolType.HAZARD_PRODUCT_GENERATOR
+                            && tool.isVisible()) {
+                        addToolToMenu(menu, name, tool);
+                    }
+                }
+                for (String name : toolIdentifiersForNames.keySet()) {
+                    Tool tool = toolIdentifiersForNames.get(name);
+                    if (tool.getToolType() == ToolType.NON_HAZARD_PRODUCT_GENERATOR
                             && tool.isVisible()) {
                         addToolToMenu(menu, name, tool);
                     }

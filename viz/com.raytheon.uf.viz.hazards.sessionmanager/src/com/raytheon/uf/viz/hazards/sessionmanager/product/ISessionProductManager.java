@@ -49,6 +49,7 @@ import com.raytheon.uf.common.hazards.productgen.data.ProductData;
  *                                      specified methods private, as they are only to be
  *                                      used internally by this class.
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
+ * Jun 02, 2015 7138       Robert.Blum  Changes for issuing RVS products.
  * </pre>
  * 
  * @author bsteffen
@@ -194,4 +195,24 @@ public interface ISessionProductManager {
      * @param productGeneratorName
      */
     public void generateProducts(String productGeneratorName);
+
+    /**
+     * Run the given non hazard product generator
+     * 
+     * @param productGeneratorName
+     */
+    public void generateNonHazardProducts(String productGeneratorName);
+
+    /**
+     * Generate products from generatedProductsList.
+     * 
+     * @param issue
+     *            Flag indicating whether or not the generation is the result of
+     *            an issue command; if false, it is the result of a preview
+     *            command.
+     * @param generatedProductsList
+     *            List of generated products.
+     */
+    public void createProductsFromGeneratedProductList(boolean issue,
+            List<GeneratedProductList> generatedProductsList);
 }

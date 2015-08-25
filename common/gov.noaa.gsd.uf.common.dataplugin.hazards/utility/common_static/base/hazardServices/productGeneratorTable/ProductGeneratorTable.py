@@ -7,6 +7,7 @@
                                         Initial implementation
     Jan 26, 2015   4936     Chris.Cody  Implement scripts for Flash Flood Watch Products (FFA,FAA,FLA)
     Feb 04, 2015   6322     Robert.Blum Added Twitter and HTML sample formatters.
+    Jun 01, 2015   7138     Robert.Blum Added generatorType to each entry and also a few new fields for RVS.
     
     @author 
     @version 1.0
@@ -20,18 +21,20 @@ ProductGeneratorTable = {
              ('FL.A', "Flood1"),
              ],
             "previewFormatters": ["Legacy_FFA_Formatter", "Twitter", "HTML"],
-            "issueFormatters": ["Legacy_FFA_Formatter"], 
+            "issueFormatters": ["Legacy_FFA_Formatter"],
+            "generatorType": "HAZARD_PRODUCT_GENERATOR",
             },
         "FLW_FLS_ProductGenerator" : {
             "allowedHazards": [
              ('FA.W', "Flood1"),
              ('FA.Y', "Flood2"),
-             ('FL.W', "Flood3"),             
-             ('FL.Y', "Flood4"),             
+             ('FL.W', "Flood3"),
+             ('FL.Y', "Flood4"),
              ('HY.S', "Flood5"),
             ],
             "previewFormatters": ["Legacy_FLW_FLS_Formatter", "Twitter", "HTML"],
-            "issueFormatters": ["Legacy_FLW_FLS_Formatter"],  
+            "issueFormatters": ["Legacy_FLW_FLS_Formatter"],
+            "generatorType": "HAZARD_PRODUCT_GENERATOR",
             },
         "FFW_FFS_ProductGenerator" : {
             "allowedHazards": [
@@ -41,6 +44,7 @@ ProductGeneratorTable = {
              ],
             "previewFormatters": ["Legacy_FFW_FFS_Formatter", "Twitter", "HTML"],
             "issueFormatters": ["Legacy_FFW_FFS_Formatter"],
+            "generatorType": "HAZARD_PRODUCT_GENERATOR",
             },
         "ESF_ProductGenerator": {
             "allowedHazards": [
@@ -48,17 +52,20 @@ ProductGeneratorTable = {
              ],
             "previewFormatters": ["Legacy_ESF_Formatter"],
             "issueFormatters": ["Legacy_ESF_Formatter"],
+            "generatorType": "HAZARD_PRODUCT_GENERATOR",
             },
         "RVS_ProductGenerator": {
             "allowedHazards": [
              ('FL.W', "Flood"),
-             ('FL.Y', "Flood"),             
+             ('FL.Y', "Flood"),
              ('FL.A', "Flood"),
              ('HY.S', "Flood"),
              ],
+            "changeHazardStatus": False,
             "autoSelect": False,
             "previewFormatters": ["Legacy_RVS_Formatter"],
             "issueFormatters": ["Legacy_RVS_Formatter"],
+            "generatorType": "NON_HAZARD_PRODUCT_GENERATOR",
             },
 
 

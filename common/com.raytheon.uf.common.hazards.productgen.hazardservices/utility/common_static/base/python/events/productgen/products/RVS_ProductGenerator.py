@@ -1,5 +1,6 @@
 import collections
 import HydroGenerator
+import HazardDataAccess
 
 class Product(HydroGenerator.Product):
 
@@ -24,7 +25,7 @@ class Product(HydroGenerator.Product):
         self._purgeHours = 8
         self._includeAreaNames = False
         self._includeCityNames = False
-        
+
         self._vtecProduct = False
 
     def defineScriptMetadata(self):
@@ -33,12 +34,27 @@ class Product(HydroGenerator.Product):
         metadata['description'] = 'Content generator for RVS.'
         metadata['version'] = '1.0'
         return metadata
-       
+
     def defineDialog(self, eventSet):
         """
         @return: dialog definition to solicit user input before running tool
         """  
         dialogDict = {"title": "RVS Product"}
+
+        floodPointTableDict = {
+            "fieldType": "CheckBoxes", 
+            "fieldName": "floodPointTable",
+            "choices": [{'displayString':'Include Flood Point Table', 'identifier': 'include'}],
+            "defaultValues": 'include',
+            "values": 'include',
+            }
+
+        selectedHazardsDict = {
+            "fieldType": "RadioButtons", 
+            "fieldName": "selectedHazards",
+            "label": "Hazard Events",
+            "choices": ["Use selected set of hazards", "Report on all hazards"]
+            }
 
         headlineStatement = {
              "fieldType": "Text",
@@ -57,9 +73,9 @@ class Product(HydroGenerator.Product):
              "lines": 25,
              "values": "|* Enter Narrative Information *|",
             } 
-                        
-        fieldDicts = [headlineStatement, narrativeInformation]
-        dialogDict["metadata"] = fieldDicts        
+
+        fieldDicts = [floodPointTableDict, selectedHazardsDict, headlineStatement, narrativeInformation]
+        dialogDict["metadata"] = fieldDicts
         return dialogDict
 
 
@@ -81,30 +97,48 @@ class Product(HydroGenerator.Product):
              Also, returned is a set of hazard events, updated with product information.
 
         '''
-        self._initialize() 
+        self._initialize()
         self.logger.info("Start ProductGeneratorTemplate:execute RVS")
-        
-        # Extract information for execution
-        self._getVariables(eventSet, dialogInputMap)
+
+        whichEvents = dialogInputMap.get('selectedHazards')
+        hazardEvents = eventSet.getEvents()
         eventSetAttributes = eventSet.getAttributes()
 
+        # Extract information for execution
+        self._getVariables(eventSet, dialogInputMap)
+
+        # Create a RVS for all valid hazard events in the database
+        if whichEvents == 'Report on all hazards':
+            # Get all the current hazard events
+            mode = self._sessionDict.get('hazardMode', 'PRACTICE').upper()
+            hazardEvents = HazardDataAccess.getHazardEventsBySite(self._siteID, mode)
+
         rvsHazardEvents = []
-        for hazardEvent in self._inputHazardEvents:
-            if hazardEvent.getHazardType not in ['FL.W', 'FL.Y', 'FL.A', 'HY.S']:
-                rvsHazardEvents.append(hazardEvent)  
-        self._dialogInputMap = dialogInputMap          
-        productDicts, hazardEvents = self._makeProducts_FromHazardEvents(rvsHazardEvents, eventSetAttributes) 
+        for hazardEvent in hazardEvents:
+            phen = hazardEvent.getPhenomenon()
+            sig = hazardEvent.getSignificance()
+            phensig = phen + '.' + sig
+            if phensig in ['FL.W', 'FL.Y', 'FL.A', 'HY.S']:
+                rvsHazardEvents.append(hazardEvent)
+                
+
+        if not rvsHazardEvents:
+            return [], []
+
+        # Update this with correct hazards
+        self._inputHazardEvents = rvsHazardEvents
+
+        productDicts, hazardEvents = self._makeProducts_FromHazardEvents(rvsHazardEvents, eventSetAttributes)
 
         return productDicts, hazardEvents
 
-        
     def _getSegments(self, hazardEvents):
         '''
         @param hazardEvents: list of Hazard Events
         @return a list of segments for the hazard events
         '''
         return self._getSegments_ForPointsAndAreas(hazardEvents)
-    
+
     def _groupSegments(self, segments):
         '''
         RVS products do not have segments, so create a productSegmentGroup with no segments. 
@@ -114,7 +148,7 @@ class Product(HydroGenerator.Product):
         for productSegmentGroup in productSegmentGroups:
             self._addProductParts(productSegmentGroup)
         return productSegmentGroups
-    
+
     def _addProductParts(self, productSegmentGroup):
         productSegments = productSegmentGroup.productSegments
         productSegmentGroup.setProductParts(self._hydroProductParts._productParts_RVS(productSegments))

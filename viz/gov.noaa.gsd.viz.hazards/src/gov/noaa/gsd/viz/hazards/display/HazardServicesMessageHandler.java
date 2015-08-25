@@ -7,7 +7,14 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.FILE_PATH_KEY;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
@@ -70,9 +77,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorEntry;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
@@ -208,6 +218,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            product corrections.
  * May 18, 2015  6898       Chris.Cody        Restored set visible types for recommender completion
  * May 20, 2015  8227      Chris.Cody         Remove NullRecommender
+ * Jun 02, 2015  7138      Robert.Blum        Changes for RVS workflow.
  * 
  *                                            product corrections.
  * </pre>
@@ -1018,8 +1029,31 @@ public final class HazardServicesMessageHandler {
             break;
         case ISSUE:
             if (this.continueIfThereAreHazardConflicts()) {
-                sessionProductManager.createProductsFromHazardEventSets(true,
-                        action.getGeneratedProductsList());
+
+                // Check for Non Hazard Generator types
+                ProductGeneratorTable pgTable = sessionManager
+                        .getConfigurationManager().getProductGeneratorTable();
+
+                boolean nonHazardGeneratorType = false;
+                for (GeneratedProductList genProdList : action
+                        .getGeneratedProductsList()) {
+                    ProductGeneratorEntry pgEntry = pgTable.get(genProdList
+                            .getProductInfo());
+                    ToolType generatorType = pgEntry.getGeneratorType();
+                    if (generatorType == ToolType.NON_HAZARD_PRODUCT_GENERATOR) {
+                        nonHazardGeneratorType = true;
+                        break;
+                    }
+                }
+
+                if (nonHazardGeneratorType) {
+                    sessionProductManager
+                            .createProductsFromGeneratedProductList(true,
+                                    action.getGeneratedProductsList());
+                } else {
+                    sessionProductManager.createProductsFromHazardEventSets(
+                            true, action.getGeneratedProductsList());
+                }
             } else {
                 sessionManager.setIssueOngoing(false);
             }
@@ -1531,13 +1565,18 @@ public final class HazardServicesMessageHandler {
             }
             break;
 
-        case PRODUCT_GENERATOR:
+        case HAZARD_PRODUCT_GENERATOR:
             sessionProductManager.generateProducts(toolAction.getToolName());
+            break;
+
+        case NON_HAZARD_PRODUCT_GENERATOR:
+            sessionProductManager.generateNonHazardProducts(toolAction
+                    .getToolName());
             break;
 
         default:
             statusHandler.debug("Unrecognized tool type :"
-                    + toolAction.getRecommenderActionType());
+                    + toolAction.getToolType());
             break;
         }
 

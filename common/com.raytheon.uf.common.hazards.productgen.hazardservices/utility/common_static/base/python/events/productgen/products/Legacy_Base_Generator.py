@@ -34,6 +34,7 @@
     May 21, 2015    8181    Robert.Blum Added phen and sig to the hazard Dictionary.
     May 26, 2015    7447    Robert.Blum Changes to create accurate dictionaries for EXA/EXB and
                                         resulting segments.
+    Jun 02, 2015    7138    Robert.Blum Not calling the VTEC Engine for RVS.
 '''
 
 import ProductTemplate
@@ -200,10 +201,16 @@ class Product(ProductTemplate.Product):
         self._getVariables(eventSet)
         if not self._inputHazardEvents:
             return {}
-        # Important to turn off "issue" so that the ETN number will not be advanced
-        # when previewing the VTEC segmentation
-        self._issueFlag = False
-        segments = self._getSegments(self._inputHazardEvents)
+        segments = []
+        if self._productID is not 'RVS':
+            # TODO - Why is the VTEC Engine called for ESF products?
+
+            # Important to turn off "issue" so that the ETN number will not be advanced
+            # when previewing the VTEC segmentation
+            self._issueFlag = False
+            segments = self._getSegments(self._inputHazardEvents)
+        else:
+            self._generatedHazardEvents = self.determineShapeTypesForHazardEvents(self._inputHazardEvents)
         return self._groupSegments(segments)
 
     def _getProductLevelMetaData(self, inputHazardEvents, metaDataFile, productSegmentGroups):
@@ -367,7 +374,11 @@ class Product(ProductTemplate.Product):
         self._inputHazardEvents = eventSet.getEvents()
         metaDict = eventSet.getAttributes()
         if dialogInputMap:
-            self._storeDialogInputMap(dialogInputMap)
+            if self._productID == 'RVS':
+                # Dont save the staging values for RVS.
+                self._dialogInputMap = dialogInputMap
+            else:
+                self._storeDialogInputMap(dialogInputMap)
         else:
             self._dialogInputMap = {}
 
@@ -420,9 +431,10 @@ class Product(ProductTemplate.Product):
         for eventID in eventIDs:
             for key in dialogInputMap:
                 value = dialogInputMap.get(key)
-                # Some values may be lists e.g. calls to action
-                value = json.dumps(value)
-                ProductTextUtil.createOrUpdateProductText(key, '', '', '', [eventID], value)
+                if value is not None:
+                    # Some values may be lists e.g. calls to action
+                    value = json.dumps(value)
+                    ProductTextUtil.createOrUpdateProductText(key, '', '', '', [eventID], value)
         self.flush()
 
     def _addDialogInputMapToDict(self, dialogInputMap, productDict):
@@ -476,7 +488,11 @@ class Product(ProductTemplate.Product):
 
     def _makeProducts_FromHazardEvents(self, hazardEvents, eventSetAttributes):
         # Determine the list of segments given the hazard events 
-        segments = self._getSegments(hazardEvents)
+        segments = []
+        if self._productID is not 'RVS':
+            segments = self._getSegments(hazardEvents)
+        else:
+            self._generatedHazardEvents = self.determineShapeTypesForHazardEvents(hazardEvents)
         self.logger.info('Product Generator --  Number of segments=' + str(len(segments)))
 
         # Determine the list of products and associated segments given the segments
@@ -1420,8 +1436,12 @@ class Product(ProductTemplate.Product):
         Updates each productDictionary with the updated VTECRecords,
         database values, etc.
         '''
-        # Determine the list of segments given the hazard events 
-        segments = self._getSegments(hazardEvents)
+        # Determine the list of segments given the hazard events
+        segments = []
+        if self._productID is not 'RVS':
+            segments = self._getSegments(hazardEvents)
+        else:
+            self._generatedHazardEvents = self.determineShapeTypesForHazardEvents(hazardEvents)
 
         # Determine the list of products and associated segments given the segments
         productSegmentGroups = self._groupSegments(segments)

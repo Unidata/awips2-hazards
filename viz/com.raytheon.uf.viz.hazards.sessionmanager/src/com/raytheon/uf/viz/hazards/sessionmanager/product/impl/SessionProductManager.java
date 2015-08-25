@@ -53,6 +53,9 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -194,6 +197,9 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      product generation confirmation dialog.
  * May 07, 2015 6979       Robert.Blum  Changes for product corrections.
  * May 18, 2015 8227       Chris.Cody   Remove NullRecommender
+ * Jun 02, 2015 7138       Robert.Blum  Changes for RVS workflow: Issuing without changing 
+ *                                      the state of the hazards and not removing the validation
+ *                                      of the selected events before calling ProductGeneration.
  * </pre>
  * 
  * @author bsteffen
@@ -303,11 +309,15 @@ public class SessionProductManager implements ISessionProductManager {
      * @param issue
      *            Flag indicating whether or not the generation that is being
      *            contemplated is for issuance or preview.
+     * @param generatedProductsList
+     *            List of GeneratedProductList objects used to created the
+     *            ProductGeneratorInformation.
      * @return All product generator information.
      */
     private Collection<ProductGeneratorInformation> createAllProductGeneratorInformationForSelectedHazards(
-            boolean issue) {
-        Collection<ProductGeneratorInformation> result = getPreliminaryProductGeneratorInformationForSelectedHazards(issue);
+            boolean issue, List<GeneratedProductList> generatedProductsList) {
+        Collection<ProductGeneratorInformation> result = getPreliminaryProductGeneratorInformationForGeneratedProductList(
+                issue, generatedProductsList);
         addFinalProductGeneratorInformationForSelectedHazards(issue, result);
         return result;
     }
@@ -372,6 +382,61 @@ public class SessionProductManager implements ISessionProductManager {
          * Replace Watch with Warning Story.
          */
         Collections.reverse(result);
+        return result;
+    }
+
+    /**
+     * Get all the preliminary product generator information appropriate for the
+     * generatedProductsList. The information so gathered must be augmented by
+     * adding any product-specific input the user may provide to each of the
+     * product generation information objects before it is used for actual
+     * product generation. The preliminary product generator information
+     * includes, for each information object, the generator name, the events to
+     * which it would apply (all of which are selected), and any other possible
+     * events to which it could apply (none of which are currently selected).
+     * 
+     * @param issue
+     *            Flag indicating whether or not the generation that is being
+     *            contemplated is for issuance or preview.
+     * @return All preliminary product generator information.
+     */
+    private Collection<ProductGeneratorInformation> getPreliminaryProductGeneratorInformationForGeneratedProductList(
+            boolean issue, List<GeneratedProductList> generatedProductsList) {
+        List<ProductGeneratorInformation> result = new ArrayList<>();
+        ProductGeneratorTable pgt = configManager.getProductGeneratorTable();
+
+        for (GeneratedProductList genProdList : generatedProductsList) {
+            ProductGeneratorEntry entry = pgt.get(genProdList.getProductInfo());
+
+            Set<IHazardEvent> productEvents = new HashSet<>();
+            Set<IHazardEvent> possibleProductEvents = new HashSet<>();
+
+            for (ObservedHazardEvent e : eventManager.getEvents()) {
+                if (e.getPhenomenon() == null || e.getSignificance() == null) {
+                    continue;
+                }
+                String key = HazardEventUtilities.getHazardType(e);
+                for (String[] pair : entry.getAllowedHazards()) {
+                    if (pair[0].equals(key)) {
+                        if (Boolean.TRUE.equals(e
+                                .getHazardAttribute(HAZARD_EVENT_SELECTED))) {
+                            productEvents.add(e);
+                        } else if (e.getStatus() != HazardStatus.POTENTIAL
+                                && e.getStatus() != HazardStatus.ENDED
+                                && isIncludeAll(e)) {
+                            possibleProductEvents.add(e);
+                        }
+                    }
+                }
+            }
+
+            ProductGeneratorInformation info = new ProductGeneratorInformation();
+            info.setProductGeneratorName(genProdList.getProductInfo());
+            // Could be selected events or all valid events in database
+            info.setProductEvents(productEvents);
+            info.setPossibleProductEvents(possibleProductEvents);
+            result.add(info);
+        }
         return result;
     }
 
@@ -685,49 +750,63 @@ public class SessionProductManager implements ISessionProductManager {
      */
     private void issue(ProductGeneratorInformation productGeneratorInformation) {
 
-        /*
-         * Need to look at all events in the SessionManager because some events
-         * for which products were generated may not have been selected. For
-         * example, two FA.A's, one selected, one not, and the user adds the
-         * second one via the product staging dialog.
-         */
-        for (ObservedHazardEvent sessionEvent : eventManager.getEvents()) {
+        ProductGeneratorTable pgTable = configManager
+                .getProductGeneratorTable();
+        ProductGeneratorEntry pgEntry = pgTable.get(productGeneratorInformation
+                .getProductGeneratorName());
+
+        if (pgEntry.getChangeHazardStatus() == true) {
+
             /*
-             * Update Hazard Events with product information returned from the
-             * Product Generators
+             * Need to look at all events in the SessionManager because some
+             * events for which products were generated may not have been
+             * selected. For example, two FA.A's, one selected, one not, and the
+             * user adds the second one via the product staging dialog.
              */
-            for (IEvent ev : productGeneratorInformation.getGeneratedProducts()
-                    .getEventSet()) {
-                IHazardEvent updatedEvent = (IHazardEvent) ev;
-                if (checkForConflicts(updatedEvent)) {
-                    statusHandler
-                            .info("There is a grid conflict with the hazard event.");
-                    // TODO It needs to be decided if we should prevent the user
-                    // from issuing a hazard if there is a grid conflict.
-                }
-                if (sessionEvent.getEventID().equals(updatedEvent.getEventID())) {
+            for (ObservedHazardEvent sessionEvent : eventManager.getEvents()) {
 
-                    ObservedHazardEvent newEvent = new ObservedHazardEvent(
-                            updatedEvent, (SessionEventManager) eventManager);
+                /*
+                 * Update Hazard Events with product information returned from
+                 * the Product Generators
+                 */
+                for (IEvent ev : productGeneratorInformation
+                        .getGeneratedProducts().getEventSet()) {
+                    IHazardEvent updatedEvent = (IHazardEvent) ev;
+                    if (checkForConflicts(updatedEvent)) {
+                        statusHandler
+                                .info("There is a grid conflict with the hazard event.");
+                        // TODO It needs to be decided if we should prevent the
+                        // user
+                        // from issuing a hazard if there is a grid conflict.
+                    }
+                    if (sessionEvent.getEventID().equals(
+                            updatedEvent.getEventID())) {
 
-                    SessionEventUtilities.mergeHazardEvents(newEvent,
-                            sessionEvent);
-                    /*
-                     * This ensures that the "replaces" string is removed for
-                     * the next generation of a product.
-                     */
-                    sessionEvent
-                            .removeHazardAttribute(HazardConstants.REPLACES);
+                        ObservedHazardEvent newEvent = new ObservedHazardEvent(
+                                updatedEvent,
+                                (SessionEventManager) eventManager);
 
-                    if (updatedEvent.getStatus().equals(HazardStatus.ENDED)) {
-                        eventManager.endEvent(sessionEvent, Originator.OTHER);
-                    } else {
-                        eventManager.issueEvent(sessionEvent, Originator.OTHER);
+                        SessionEventUtilities.mergeHazardEvents(newEvent,
+                                sessionEvent);
+                        /*
+                         * This ensures that the "replaces" string is removed
+                         * for the next generation of a product.
+                         */
+                        sessionEvent
+                                .removeHazardAttribute(HazardConstants.REPLACES);
+
+                        if (updatedEvent.getStatus().equals(HazardStatus.ENDED)) {
+                            eventManager.endEvent(sessionEvent,
+                                    Originator.OTHER);
+                        } else {
+                            eventManager.issueEvent(sessionEvent,
+                                    Originator.OTHER);
+                        }
+
+                        break;
                     }
 
-                    break;
                 }
-
             }
         }
 
@@ -926,6 +1005,24 @@ public class SessionProductManager implements ISessionProductManager {
         generate(false, allProductGeneratorInfo);
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager
+     * #generateProducts(java.lang.String)
+     */
+    @Override
+    public void generateNonHazardProducts(String productGeneratorName) {
+        List<ObservedHazardEvent> selectedEvents = eventManager
+                .getSelectedEvents();
+        Collection<ProductGeneratorInformation> allProductGeneratorInfo = productGeneratorInfoFromName(
+                productGeneratorName, selectedEvents);
+        productGeneratorInformationForSelectedHazardsCache.put(false,
+                allProductGeneratorInfo);
+        generate(false, allProductGeneratorInfo);
+    }
+
     private boolean isAtLeastOneSelectedAllowed(String productGeneratorName,
             List<ObservedHazardEvent> selectedEvents) {
         ProductGeneratorTable pgTable = configManager
@@ -1051,7 +1148,8 @@ public class SessionProductManager implements ISessionProductManager {
     @Override
     public void createProductsFromHazardEventSets(boolean issue,
             List<GeneratedProductList> generatedProductsList) {
-        Collection<ProductGeneratorInformation> allProductGeneratorInformationForSelectedHazards = createAllProductGeneratorInformationForSelectedHazards(issue);
+        Collection<ProductGeneratorInformation> allProductGeneratorInformationForSelectedHazards = createAllProductGeneratorInformationForSelectedHazards(
+                issue, generatedProductsList);
 
         productGeneratorInformationForSelectedHazardsCache.put(issue,
                 allProductGeneratorInformationForSelectedHazards);
@@ -1095,6 +1193,45 @@ public class SessionProductManager implements ISessionProductManager {
 
             matchingProductGeneratorInformation
                     .setProductEvents(selectedEvents);
+            allMatchingProductGeneratorInformation
+                    .add(matchingProductGeneratorInformation);
+        }
+
+        runProductGeneration(allMatchingProductGeneratorInformation, issue);
+    }
+
+    @Override
+    public void createProductsFromGeneratedProductList(boolean issue,
+            List<GeneratedProductList> generatedProductsList) {
+        Collection<ProductGeneratorInformation> allProductGeneratorInformationForGeneratedProductsList = createAllProductGeneratorInformationForSelectedHazards(
+                issue, generatedProductsList);
+
+        productGeneratorInformationForSelectedHazardsCache.put(issue,
+                allProductGeneratorInformationForGeneratedProductsList);
+
+        ProductGeneratorInformation matchingProductGeneratorInformation = null;
+
+        Collection<ProductGeneratorInformation> allMatchingProductGeneratorInformation = new ArrayList<>();
+
+        List<ObservedHazardEvent> selectedHazards = sessionManager
+                .getEventManager().getSelectedEvents();
+        List<String> selectedEventIDs = new ArrayList<>(selectedHazards.size());
+        for (ObservedHazardEvent selectedEvent : selectedHazards) {
+            selectedEventIDs.add(selectedEvent.getEventID());
+        }
+
+        for (GeneratedProductList productList : generatedProductsList) {
+            for (ProductGeneratorInformation productGeneratorInformation : allProductGeneratorInformationForGeneratedProductsList) {
+                if (productList.getProductInfo().equals(
+                        productGeneratorInformation.getProductGeneratorName())) {
+                    matchingProductGeneratorInformation = productGeneratorInformation;
+                    // Set the Generated Products in the Information
+                    matchingProductGeneratorInformation
+                            .setGeneratedProducts(productList);
+                    break;
+                }
+            }
+
             allMatchingProductGeneratorInformation
                     .add(matchingProductGeneratorInformation);
         }
@@ -1618,26 +1755,37 @@ public class SessionProductManager implements ISessionProductManager {
                 public void run() {
                     try {
                         if (result != null) {
-                            productGeneratorInformation
-                                    .setGeneratedProducts(result);
-                            productGeneratorInformation
-                                    .getGeneratedProducts()
-                                    .getEventSet()
-                                    .addAttribute(HazardConstants.ISSUE_FLAG,
-                                            issue);
-
-                            if (issue
-                                    && !productGeneratorInformation
-                                            .getGeneratedProducts().isEmpty()) {
-                                for (IGeneratedProduct prod : productGeneratorInformation
-                                        .getGeneratedProducts()) {
-                                    pgiMap.put(prod,
-                                            productGeneratorInformation);
-                                }
+                            if (result.isEmpty()) {
+                                Shell shell = PlatformUI.getWorkbench()
+                                        .getActiveWorkbenchWindow().getShell();
+                                String generatorName = productGeneratorInformation
+                                        .getProductGeneratorName();
+                                MessageBox msgBox = new MessageBox(shell);
+                                msgBox.setText(generatorName);
+                                msgBox.setMessage(generatorName
+                                        + " completed. No products generated.");
+                                msgBox.open();
                             } else {
-                                notificationSender
-                                        .postNotification(new ProductGenerated(
-                                                productGeneratorInformation));
+                                productGeneratorInformation
+                                        .setGeneratedProducts(result);
+                                productGeneratorInformation
+                                        .getGeneratedProducts()
+                                        .getEventSet()
+                                        .addAttribute(
+                                                HazardConstants.ISSUE_FLAG,
+                                                issue);
+
+                                if (issue) {
+                                    for (IGeneratedProduct prod : productGeneratorInformation
+                                            .getGeneratedProducts()) {
+                                        pgiMap.put(prod,
+                                                productGeneratorInformation);
+                                    }
+                                } else {
+                                    notificationSender
+                                            .postNotification(new ProductGenerated(
+                                                    productGeneratorInformation));
+                                }
                             }
                         } else {
                             productGeneratorInformation

@@ -8,6 +8,7 @@
     Jan 31, 2015    4937    Robert.Blum General cleanup and bug fixes.
     Mar 23, 2015    7165    Robert.Blum Code consolidation - removed _prepareSection().
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
+    Jun 02, 2015    7138    Robert.Blum Defining productID.
     
     @author Robert.Blum@noaa.gov
     @version 1.0
@@ -54,6 +55,7 @@ class Product(HydroGenerator.Product):
         super(Product, self)._initialize()
         # This is for the VTEC Engine
         self._productCategory = 'FLW_FLS'
+        self._productID = 'FLW'
         self._areaName = ''
         # Number of hours past issuance time for expireTime
         # If -1, use the end time of the hazard

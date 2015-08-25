@@ -21,6 +21,8 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
+
 /**
  * 
  * Entry in the product generation table.
@@ -32,6 +34,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 10, 2013 1257       bsteffen    Initial creation
+ * Jun 02, 2015 7138       Robert.Blum Changes to match productGeneratorTable.py
  * 
  * </pre>
  * 
@@ -47,8 +50,12 @@ public class ProductGeneratorEntry {
     private String[] previewFormatters;
 
     private String[] issueFormatters;
-    
+
     private boolean autoSelect = true;
+
+    private boolean changeHazardStatus = true;
+
+    private ToolType generatorType;
 
     public String[][] getAllowedHazards() {
         return allowedHazards;
@@ -109,12 +116,49 @@ public class ProductGeneratorEntry {
         this.issueFormatters = issueFormatters;
     }
 
+    /**
+     * @param autoSelect
+     *            the autoSelect to set
+     */
     public void setAutoSelect(
             boolean autoSelect) {
         this.autoSelect = autoSelect;
     }
 
+    /**
+     * @return autoSelect
+     */
     public boolean getAutoSelect() {
-		return autoSelect;
-	}
+        return autoSelect;
+    }
+
+    /**
+     * @return the changeHazardStatus
+     */
+    public boolean getChangeHazardStatus() {
+        return changeHazardStatus;
+    }
+
+    /**
+     * @param changeHazardStatus
+     *            the changeHazardStatus to set
+     */
+    public void setChangeHazardStatus(boolean changeHazardStatus) {
+        this.changeHazardStatus = changeHazardStatus;
+    }
+
+    /**
+     * @return the generatorType
+     */
+    public ToolType getGeneratorType() {
+        return this.generatorType;
+    }
+
+    /**
+     * @param generatorType
+     *            the generatorType to set
+     */
+    public void setGeneratorType(ToolType generatorType) {
+        this.generatorType = generatorType;
+    }
 }
