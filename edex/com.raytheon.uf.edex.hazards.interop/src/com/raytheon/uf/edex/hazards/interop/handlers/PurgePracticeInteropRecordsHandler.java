@@ -22,11 +22,12 @@ package com.raytheon.uf.edex.hazards.interop.handlers;
 import java.util.Arrays;
 import java.util.Collection;
 
+import org.springframework.transaction.TransactionException;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeInteropRecordsRequest;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.edex.database.DataAccessLayerException;
 import com.raytheon.uf.edex.database.dao.CoreDao;
 import com.raytheon.uf.edex.database.dao.DaoConfig;
 
@@ -43,8 +44,8 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Dec 08, 2014  #2826     dgilling     Initial creation
- * 
+ * Dec 08, 2014    2826    dgilling    Initial creation
+ * Aug 05, 2015    9990    bphillip    Remove reference to CoreDao.executeNativeSql
  * </pre>
  * 
  * @author dgilling
@@ -86,8 +87,8 @@ public final class PurgePracticeInteropRecordsHandler implements
                     tableName);
 
             try {
-                dao.executeNativeSql(deleteStatment);
-            } catch (DataAccessLayerException e) {
+                dao.executeSQLUpdate(deleteStatment);
+            } catch (TransactionException e) {
                 String message = String.format("Failed to purge the %s table!",
                         tableName);
                 statusHandler.error(message, e);

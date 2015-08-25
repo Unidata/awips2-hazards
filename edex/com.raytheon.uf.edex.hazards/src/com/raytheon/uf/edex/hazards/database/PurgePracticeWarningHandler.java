@@ -20,12 +20,12 @@
 package com.raytheon.uf.edex.hazards.database;
 
 import org.apache.commons.lang.math.NumberUtils;
+import org.springframework.transaction.TransactionException;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeWarningRequest;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.edex.database.DataAccessLayerException;
 import com.raytheon.uf.edex.database.dao.CoreDao;
 import com.raytheon.uf.edex.database.dao.DaoConfig;
 
@@ -39,8 +39,8 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 8, 2014            jsanchez     Initial creation
- * 
+ * Aug 08, 2014            jsanchez    Initial creation
+ * Aug 05, 2015    9990    bphillip    Remove reference to CoreDao.executeNativeSql
  * </pre>
  * 
  * @author jsanchez
@@ -66,8 +66,8 @@ public class PurgePracticeWarningHandler implements
             throws Exception {
         Object result = null;
         try {
-            result = this.dao.executeNativeSql(DELETE_STATEMENT);
-        } catch (DataAccessLayerException e) {
+            result = this.dao.executeSQLUpdate(DELETE_STATEMENT);
+        } catch (TransactionException e) {
             statusHandler.error("Failed to purge the practice warning table!",
                     e);
             return null;
