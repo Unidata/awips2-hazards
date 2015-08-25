@@ -9,7 +9,7 @@ import json
 
 class MetaData(CommonMetaData.MetaData):
     
-    def execute(self, eventDicts=None, metaDict=None):        
+    def execute(self, eventDicts=None, metaDict=None):
         self._eventDicts = eventDicts
         productSegmentGroup = metaDict.get('productSegmentGroup')
         productLabel = productSegmentGroup.get('productLabel')
@@ -19,7 +19,11 @@ class MetaData(CommonMetaData.MetaData):
         productID = productSegmentGroup.get('productID')
         eventIDs = productSegmentGroup.get('eventIDs')
         suffix = "_"+productLabel
-                         
+        self.immediateCauses = set()
+        if self._eventDicts:
+            for eventDict in self._eventDicts:
+                self.immediateCauses.add(eventDict.get('immediateCause', 'ER'))
+
         # Set up initial values -- Use previous values from User Edited Text database if available
         for field in ['overviewSynopsis', 'callsToAction_productLevel']:
             exec field +'_value = ""'
@@ -42,6 +46,20 @@ class MetaData(CommonMetaData.MetaData):
 
         label = 'Overview Synopsis for '+productLabel
         choices = self.getSynopsisChoices(productLabel)
+        fields = []
+        fields.append({
+                     "fieldType": "Label",
+                     "fieldName": "overviewSynopsisExplanation" + suffix,
+                     "label": label,
+                     })
+        # only add the button if there is canned choices
+        if choices:
+            fields.append({
+                         "fieldType": "MenuButton",
+                         "fieldName": "overviewSynopsisCanned" + suffix,
+                         "label": "Choose Canned Text",
+                         "choices": choices,
+                         })
         metaData = [
                     {
                      "fieldType": "Composite",
@@ -49,19 +67,7 @@ class MetaData(CommonMetaData.MetaData):
                      "expandHorizontally": True,
                      "numColumns": 2,
                      "spacing": 5,
-                     "fields": [
-                                {
-                                 "fieldType": "Label",
-                                 "fieldName": "overviewSynopsisExplanation" + suffix,
-                                 "label": label,
-                                 },
-                                {
-                                 "fieldType": "MenuButton",
-                                 "fieldName": "overviewSynopsisCanned" + suffix,
-                                 "label": "Choose Canned Text",
-                                 "choices": choices,
-                                 }
-                                ]
+                     "fields": fields,
                      },
                     {
                      "fieldType": "Text",
@@ -107,7 +113,7 @@ class MetaData(CommonMetaData.MetaData):
         else:
             productString = "High mountain snow melt and increased reservoir " +\
                 "releases will cause the river flows to become high. Expect minor " +\
-                "flooding downstream from the dam."           
+                "flooding downstream from the dam."
         return {"identifier":"snowMeltReservoir",
                 "displayString":"Snow melt and Reservoir releases",
                 "productString":productString,
@@ -120,7 +126,7 @@ class MetaData(CommonMetaData.MetaData):
         else:
             productString = "Heavy rain will fall on a deep primed snowpack leading " +\
                 "to the melt increasing. Flows in Rivers will increase quickly and " +\
-                "reach critical levels."            
+                "reach critical levels."
         return {"identifier":"rainOnSnow",
                 "displayString":"Rain On Snow",
                 "productString":productString,
@@ -143,18 +149,61 @@ class MetaData(CommonMetaData.MetaData):
                 "displayString":"Increase in Category",
                 "productString": productString,
         }
-        
+
     def getSynopsisChoices(self, productLabel):
-        return [ 
-                self.synopsisTempSnowMelt(productLabel),
-                self.synopsisDayNightTemps(productLabel),
-                self.synopsisSnowMeltReservoir(productLabel),
-                self.synopsisRainOnSnow(productLabel),
-                self.synopsisIceJam(productLabel),
-                self.synopsisCategoryIncrease(productLabel)
+        choices = [ 
+                    self.synopsisTempSnowMelt(productLabel),
+                    self.synopsisDayNightTemps(productLabel),
+                    self.synopsisSnowMeltReservoir(productLabel),
+                    self.synopsisRainOnSnow(productLabel),
+                    self.synopsisIceJam(productLabel),
+                    self.synopsisCategoryIncrease(productLabel)
                 ]
-      
-    
+
+        identifiers = set()
+        for immediateCause in self.immediateCauses:
+            if immediateCause == 'SM':
+                identifiers.add(self.synopsisTempSnowMelt(productLabel).get('identifier'))
+                identifiers.add(self.synopsisDayNightTemps(productLabel).get('identifier'))
+                identifiers.add(self.synopsisSnowMeltReservoir(productLabel).get('identifier'))
+                identifiers.add(self.synopsisCategoryIncrease(productLabel).get('identifier'))
+            elif immediateCause == 'RS':
+                identifiers.add(self.synopsisRainOnSnow(productLabel).get('identifier'))
+                identifiers.add(self.synopsisIceJam(productLabel).get('identifier'))
+            elif immediateCause == 'IC':
+                identifiers.add(self.synopsisTempSnowMelt(productLabel).get('identifier'))
+                identifiers.add(self.synopsisDayNightTemps(productLabel).get('identifier'))
+                identifiers.add(self.synopsisSnowMeltReservoir(productLabel).get('identifier'))
+                identifiers.add(self.synopsisRainOnSnow(productLabel).get('identifier'))
+                identifiers.add(self.synopsisIceJam(productLabel).get('identifier'))
+                identifiers.add(self.synopsisCategoryIncrease(productLabel).get('identifier'))
+            elif immediateCause == 'IJ':
+                identifiers.add(self.synopsisIceJam(productLabel).get('identifier'))
+            elif immediateCause == 'MC':
+                identifiers.add(self.synopsisTempSnowMelt(productLabel).get('identifier'))
+                identifiers.add(self.synopsisDayNightTemps(productLabel).get('identifier'))
+                identifiers.add(self.synopsisSnowMeltReservoir(productLabel).get('identifier'))
+                identifiers.add(self.synopsisRainOnSnow(productLabel).get('identifier'))
+                identifiers.add(self.synopsisIceJam(productLabel).get('identifier'))
+                identifiers.add(self.synopsisCategoryIncrease(productLabel).get('identifier'))
+            elif immediateCause == 'UU':
+                identifiers.add(self.synopsisTempSnowMelt(productLabel).get('identifier'))
+                identifiers.add(self.synopsisDayNightTemps(productLabel).get('identifier'))
+                identifiers.add(self.synopsisSnowMeltReservoir(productLabel).get('identifier'))
+                identifiers.add(self.synopsisRainOnSnow(productLabel).get('identifier'))
+                identifiers.add(self.synopsisIceJam(productLabel).get('identifier'))
+                identifiers.add(self.synopsisCategoryIncrease(productLabel).get('identifier'))
+            elif immediateCause == 'DR':
+                identifiers.add(self.synopsisSnowMeltReservoir(productLabel).get('identifier'))
+
+        availableChoices = []
+        for identifier in identifiers:
+            for choice in choices:
+                if choice.get('identifier') == identifier:
+                    availableChoices.append(choice)
+                    break
+        return availableChoices
+
     def getCTAs(self, productLabel, cta_value):
         values = cta_value
         if not values:

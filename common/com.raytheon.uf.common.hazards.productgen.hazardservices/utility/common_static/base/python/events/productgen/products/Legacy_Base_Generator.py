@@ -41,7 +41,9 @@
     Aug 11, 2015    9920    Robert.Blum Additional fix for cityList query errors.
     Aug 13, 2015    8836    Chris.Cody  Changes for a configurable Event Id
     Aug 19, 2015    10224   Robert.Blum Adjusted additionalRainFalll to handle more user error cases.
-    Aug 25, 2015    9992    Robert.Blum Fixed Product Level CTAs not correctly tranfering from staging dialog.
+    Aug 25, 2015    9992    Robert.Blum Fixed Product Level CTAs not correctly transferring from staging dialog.
+    Aug 25, 2015    9626    Robert.Blum Added immediate cause for product level metadata.
+    
 '''
 
 import ProductTemplate
@@ -1180,6 +1182,7 @@ class Product(ProductTemplate.Product):
             eventDict['eventID'] = hazardEvent.getEventID()
             eventDict['hazardType'] = hazardEvent.getHazardType()
             eventDict['status'] = hazardEvent.getStatus()
+            eventDict['immediateCause'] = hazardEvent.get('immediateCause')
             eventDicts.append(eventDict)
         criteria = {'dataType':'metaData', 'fileName':metaDataFileName}
         metaData = self.bridge.getData(json.dumps(criteria)) 
