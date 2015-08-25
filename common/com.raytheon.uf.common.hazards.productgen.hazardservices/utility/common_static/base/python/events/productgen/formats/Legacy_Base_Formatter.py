@@ -39,6 +39,9 @@
     Aug 03, 2015    9632    Robert.Blum Initials are now auto filled.
     Aug 19, 2015    9558    Robert.Blum Fixed _polygonText() to handle MultiPolygons
     Aug 24, 2015    9553    Robert.Blum Removed _basisAndImpactsStatement_segmentLevel()
+    Aug 25, 2015    9638    Robert.Blum Initials product part is now optional and updates to 
+                                        reflect changes from the product editor.
+    
 '''
 
 import FormatTemplate
@@ -310,10 +313,12 @@ class Format(FormatTemplate.Formatter):
         return self._getFormattedText(text, endText='\n\n')
 
     def _initials(self, productDict):
-        initials = ForecasterInitials.getForecasterIdentification()
-        if initials is None or initials == '':
-             initials = '|* Name/Initials *|'
-        self._setVal('initials', initials, productDict, 'Initials')
+        if self._useProductTextTable == False:
+            # Change on Product Editor use getVal()
+            initials = self._getVal('initials', productDict)
+        else:
+            initials = ForecasterInitials.getForecasterIdentification()
+        self._setVal('initials', initials, productDict, 'Initials', required=False)
         return initials
 
     ################# Segment Level

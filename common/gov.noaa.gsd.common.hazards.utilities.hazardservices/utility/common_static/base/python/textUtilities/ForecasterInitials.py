@@ -17,5 +17,6 @@ def getForecasterIdentification():
 #                      "userName1" : "Full Name",
 #                      "userName2" : "Forecaster ID",
 #                      "userName3" : "initials",
+#                      "userName4" : "", # No initials in product
                  }
     return forecasterInitials.get(currentUser, currentUser)
