@@ -78,6 +78,7 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      then the storm polygon became un-editable.
  * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * May 20, 2015 6730       mduff        Fix to not zoom on middle mouse button click to remove vertex.
+ * Jun 02, 2015 8500       Chris.Cody   Single click does not select HE on Spatial Display
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -311,79 +312,74 @@ public class SelectionAction extends NonDrawingAction {
         private boolean findSelectedDE(Coordinate loc, int x, int y) {
             boolean selectedDEFound = true;
 
-            if (getSpatialDisplay().getSelectedDE() == null) {
-                AbstractDrawableComponent nadc = null;
+            AbstractDrawableComponent nadc = null;
+
+            /*
+             * Retrieve a list of drawables which contain this mouse click point
+             */
+            List<AbstractDrawableComponent> containingComponentsList = getSpatialDisplay()
+                    .getContainingComponents(loc, x, y);
+
+            /*
+             * Retrieve the currently selected hazard shape
+             */
+            AbstractDrawableComponent selectedElement = getSpatialDisplay()
+                    .getSelectedHazardLayer();
+
+            if (selectedElement != null) {
+                String selectedElementEventID = getSpatialDisplay()
+                        .eventIDForElement(selectedElement);
 
                 /*
-                 * Retrieve a list of drawables which contain this mouse click
-                 * point
+                 * If there is more than one containing component, make sure
+                 * that the topmost element is equal to the selected element. If
+                 * there are symbols (including points), give them precedence.
                  */
-                List<AbstractDrawableComponent> containingComponentsList = getSpatialDisplay()
-                        .getContainingComponents(loc, x, y);
-
-                /*
-                 * Retrieve the currently selected hazard shape
-                 */
-                AbstractDrawableComponent selectedElement = getSpatialDisplay()
-                        .getSelectedHazardLayer();
-
-                if (selectedElement != null) {
-                    String selectedElementEventID = getSpatialDisplay()
-                            .eventIDForElement(selectedElement);
-
-                    /*
-                     * If there is more than one containing component, make sure
-                     * that the topmost element is equal to the selected
-                     * element. If there are symbols (including points), give
-                     * them precedence.
-                     */
-                    for (AbstractDrawableComponent comp : containingComponentsList) {
-                        if (comp instanceof HazardServicesSymbol) {
-                            String containingComponentEventID = getSpatialDisplay()
-                                    .eventIDForElement(comp);
-
-                            if (containingComponentEventID
-                                    .equals(selectedElementEventID)) {
-                                nadc = comp;
-                                break;
-                            }
-                        }
-
-                    }
-
-                    if (nadc == null && containingComponentsList.size() > 0) {
-                        AbstractDrawableComponent comp = containingComponentsList
-                                .get(0);
+                for (AbstractDrawableComponent comp : containingComponentsList) {
+                    if (comp instanceof HazardServicesSymbol) {
                         String containingComponentEventID = getSpatialDisplay()
                                 .eventIDForElement(comp);
 
                         if (containingComponentEventID
                                 .equals(selectedElementEventID)) {
                             nadc = comp;
+                            break;
                         }
                     }
+
                 }
 
-                if (nadc == null) {
-                    /*
-                     * We need a better way of determining which containing
-                     * component of multiple components to chose as the
-                     * selected.
-                     */
-                    if (containingComponentsList.size() > 0) {
-                        nadc = containingComponentsList.get(0);
+                if (nadc == null && containingComponentsList.size() > 0) {
+                    AbstractDrawableComponent comp = containingComponentsList
+                            .get(0);
+                    String containingComponentEventID = getSpatialDisplay()
+                            .eventIDForElement(comp);
+
+                    if (containingComponentEventID
+                            .equals(selectedElementEventID)) {
+                        nadc = comp;
                     }
                 }
-
-                if (nadc != null) {
-                    allowPanning = false;
-                } else {
-                    // Pass this event on.
-                    allowPanning = true;
-                    selectedDEFound = false;
-                }
-                getSpatialDisplay().setSelectedDE(nadc);
             }
+
+            if (nadc == null) {
+                /*
+                 * We need a better way of determining which containing
+                 * component of multiple components to chose as the selected.
+                 */
+                if (containingComponentsList.size() > 0) {
+                    nadc = containingComponentsList.get(0);
+                }
+            }
+
+            if (nadc != null) {
+                allowPanning = false;
+            } else {
+                // Pass this event on.
+                allowPanning = true;
+                selectedDEFound = false;
+            }
+            getSpatialDisplay().setSelectedDE(nadc);
 
             return selectedDEFound;
         }
