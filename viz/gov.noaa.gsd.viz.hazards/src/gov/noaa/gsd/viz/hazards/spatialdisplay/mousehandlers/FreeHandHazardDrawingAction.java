@@ -9,8 +9,6 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
-import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.display.ILine;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
@@ -19,31 +17,22 @@ import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 import gov.noaa.nws.ncep.ui.pgen.tools.InputHandlerDefaultImpl;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.eclipse.swt.widgets.Event;
 
 import com.google.common.collect.Lists;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.LinearRing;
-import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
 
 /**
  * Rect drawing action(refer to RT collaboration)
@@ -133,72 +122,18 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                 return false;
             }
 
-            if (points.size() < 2) {
-                getSpatialDisplay().removeGhostLine();
-                points.clear();
+            getSpatialDisplay().removeGhostLine();
 
-                getSpatialDisplay().issueRefresh();
+            points.add(loc);
 
-                // Indicate that this drawing action is done.
-                getSpatialPresenter().getView().drawingActionComplete();
-            } else {
-                points.add(loc);
+            List<Coordinate> pointsCopy = new ArrayList<Coordinate>(points);
+            points.clear();
 
-                Utilities.closeCoordinatesIfNecessary(points);
+            // Indicate that this drawing action is done.
+            getSpatialPresenter().drawingActionComplete(
+                    new ArrayList<Coordinate>(pointsCopy));
 
-                // Add logic to simplify the number of
-                // points in the polygon. This will need
-                // to eventually be user-configurable.
-                LinearRing linearRing = new GeometryFactory()
-                        .createLinearRing(points.toArray(new Coordinate[0]));
-
-                Geometry polygon = new GeometryFactory().createPolygon(
-                        linearRing, null);
-                Geometry reducedGeometry = TopologyPreservingSimplifier
-                        .simplify(polygon, 0.0001);
-                List<Coordinate> reducedPoints = Arrays.asList(reducedGeometry
-                        .getCoordinates());
-                ArrayList<Coordinate> reducedPointsList = Lists
-                        .newArrayList(reducedPoints);
-
-                getSpatialDisplay().removeGhostLine();
-
-                // Could be LINE_SOLID or LINE_DASHED_4
-                @SuppressWarnings("unused")
-                AbstractDrawableComponent warningBox = def
-                        .create(DrawableType.LINE, freeLine, "Line",
-                                "LINE_DASHED_4", reducedPointsList,
-                                getSpatialDisplay().getActiveLayer());
-
-                points.clear();
-
-                try {
-                    HazardEventBuilder hazardEventBuilder = new HazardEventBuilder(
-                            getSpatialPresenter().getSessionManager());
-
-                    IHazardEvent hazardEvent = hazardEventBuilder
-                            .buildPolygonHazardEvent(reducedGeometry
-                                    .getCoordinates());
-                    ObservedHazardEvent observedHazardEvent = hazardEventBuilder
-                            .addEvent(hazardEvent);
-                    SessionEventAdded action = new SessionEventAdded(
-                            getSpatialPresenter().getSessionManager()
-                                    .getEventManager(), observedHazardEvent,
-                            getSpatialPresenter());
-                    getSpatialPresenter().publish(action);
-                } catch (InvalidGeometryException e) {
-                    statusHandler
-                            .handle(Priority.WARN,
-                                    "Error drawing freehand polygon: "
-                                            + e.getMessage());
-                }
-
-                // Indicate that this drawing action is done.
-                getSpatialPresenter().getView().drawingActionComplete();
-
-            }
-
-            return false;
+            return true;
         }
 
         // Needed to override this to prevent odd panning

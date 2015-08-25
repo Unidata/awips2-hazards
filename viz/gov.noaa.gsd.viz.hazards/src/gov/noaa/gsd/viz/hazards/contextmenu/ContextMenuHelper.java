@@ -19,20 +19,13 @@
  **/
 package gov.noaa.gsd.viz.hazards.contextmenu;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.LOW_RESOLUTION_GEOMETRY_IS_VISIBLE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ActionContributionItem;
@@ -280,7 +273,7 @@ public class ContextMenuHelper {
      */
     public List<IContributionItem> getSpatialHazardItems() {
 
-        Set<String> itemNames = new HashSet<>();
+        List<String> itemNames = new ArrayList<>();
         if (eventManager.isCurrentEvent()) {
             addResolutionTogglesForEvent(itemNames,
                     eventManager.getCurrentEvent(),
@@ -293,6 +286,8 @@ public class ContextMenuHelper {
                     CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS,
                     CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS);
 
+        }
+        for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
             @SuppressWarnings("unchecked")
             List<String> contextMenuEntries = (List<String>) event
                     .getHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
@@ -307,8 +302,8 @@ public class ContextMenuHelper {
                             continue;
                         }
 
-                        itemNames
-                                .add(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
+                        addItemIfNotAlreadyIncluded(itemNames,
+                                HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
                         break;
                     }
                 }
@@ -322,15 +317,15 @@ public class ContextMenuHelper {
         return items;
     }
 
-    private void addResolutionTogglesForEvent(Set<String> itemNames,
+    private void addResolutionTogglesForEvent(List<String> itemNames,
             ObservedHazardEvent event, String highResItemName,
             String lowResItemName) {
         if (event.getHazardType() != null) {
             if (event.getHazardAttribute(VISIBLE_GEOMETRY).equals(
                     LOW_RESOLUTION_GEOMETRY_IS_VISIBLE)) {
-                itemNames.add(highResItemName);
+                addItemIfNotAlreadyIncluded(itemNames, highResItemName);
             } else {
-                itemNames.add(lowResItemName);
+                addItemIfNotAlreadyIncluded(itemNames, lowResItemName);
             }
         }
     }
@@ -435,6 +430,12 @@ public class ContextMenuHelper {
             }
         };
         return new ActionContributionItem(action);
+    }
+
+    private void addItemIfNotAlreadyIncluded(List<String> itemNames, String item) {
+        if (!itemNames.contains(item)) {
+            itemNames.add(item);
+        }
     }
 
     /**

@@ -45,7 +45,7 @@ public class SpatialDisplayAction {
     public enum ActionIdentifier {
         SELECT_EVENT, DRAW_POLYGON, DRAW_LINE, DRAW_POINT,
 
-        DRAW_FREE_HAND_POLYGON, SELECT_BY_AREA, ON, OFF
+        DRAW_FREE_HAND_POLYGON, EDIT_POLYGON, EDIT_POLYGON_FREE_HAND, SELECT_BY_AREA, ON, OFF
     }
 
     private FramesInfo framesInfo = null;

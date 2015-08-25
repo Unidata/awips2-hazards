@@ -534,6 +534,16 @@ public class SpatialView implements
     private Action drawFreehandPolygonChoiceAction;
 
     /**
+     * Edit vertex based polygon choice action.
+     */
+    private Action editVertexBasedPolygonChoiceAction;
+
+    /**
+     * Edit free hand vertex based polygon choice action.
+     */
+    private Action editFreeHandVertexBasedPolygonChoiceAction;
+
+    /**
      * Draw vertex path choice action.
      */
     private Action drawVertexPathChoiceAction;
@@ -755,6 +765,19 @@ public class SpatialView implements
                     "Draw Freehand Polygon",
                     SpatialDisplayAction.ActionType.DRAWING,
                     SpatialDisplayAction.ActionIdentifier.DRAW_FREE_HAND_POLYGON);
+            editVertexBasedPolygonChoiceAction = new BasicSpatialAction("",
+                    "editPolygon.png", Action.AS_RADIO_BUTTON, "Edit Polygon",
+                    SpatialDisplayAction.ActionType.DRAWING,
+                    SpatialDisplayAction.ActionIdentifier.EDIT_POLYGON);
+            editVertexBasedPolygonChoiceAction.setEnabled(false);
+            editFreeHandVertexBasedPolygonChoiceAction = new BasicSpatialAction(
+                    "",
+                    "editPolygonFreeHand.png",
+                    Action.AS_RADIO_BUTTON,
+                    "Edit Polygon Free Hand",
+                    SpatialDisplayAction.ActionType.DRAWING,
+                    SpatialDisplayAction.ActionIdentifier.EDIT_POLYGON_FREE_HAND);
+            editFreeHandVertexBasedPolygonChoiceAction.setEnabled(false);
             drawVertexPathChoiceAction = new BasicSpatialAction("",
                     "drawPath.png", Action.AS_RADIO_BUTTON, "Draw Path",
                     SpatialDisplayAction.ActionType.DRAWING,
@@ -777,6 +800,8 @@ public class SpatialView implements
                     new SeparatorAction(), moveAndSelectChoiceAction,
                     drawVertexBasedPolygonChoiceAction,
                     drawFreehandPolygonChoiceAction,
+                    editVertexBasedPolygonChoiceAction,
+                    editFreeHandVertexBasedPolygonChoiceAction,
                     selectByAreaMapsPulldownAction, new SeparatorAction(),
                     addGeometryToSelectedAction);
         }
@@ -1247,6 +1272,22 @@ public class SpatialView implements
         return (shell.getCursor() == cursorsForCursorTypes.get(cursorType));
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView#
+     * setEditEventGeometryEnabled(java.lang.Boolean)
+     */
+    @Override
+    public void setEditEventGeometryEnabled(Boolean enabled) {
+        if (editVertexBasedPolygonChoiceAction != null) {
+            editVertexBasedPolygonChoiceAction.setEnabled(enabled);
+        }
+        if (editFreeHandVertexBasedPolygonChoiceAction != null) {
+            editFreeHandVertexBasedPolygonChoiceAction.setEnabled(enabled);
+        }
+    }
+
     // Private Methods
 
     private boolean hullWithinDisplay(Coordinate[] hull,
@@ -1503,4 +1544,5 @@ public class SpatialView implements
             addGeometryToSelectedAction.setEnabled(numSelected == 1);
         }
     }
+
 }

@@ -103,6 +103,10 @@ public class Utilities {
         return result;
     }
 
+    /**
+     * A polygon, must have a point at the end of its list of points that is the
+     * same as its first point.
+     */
     public static void closeCoordinatesIfNecessary(List<Coordinate> coordinates) {
         if (coordinates.size() > 0) {
             Coordinate firstPoint = coordinates.get(0);
@@ -110,6 +114,17 @@ public class Utilities {
             if (!firstPoint.equals(lastPoint)) {
                 Coordinate copy = (Coordinate) firstPoint.clone();
                 coordinates.add(copy);
+            }
+        }
+    }
+
+    public static void removeDuplicateLastPointAsNecessary(
+            List<Coordinate> coordinates) {
+        if (coordinates.size() > 0) {
+            Coordinate firstPoint = coordinates.get(0);
+            Coordinate lastPoint = coordinates.get(coordinates.size() - 1);
+            if (firstPoint.equals(lastPoint)) {
+                coordinates.remove(coordinates.size() - 1);
             }
         }
     }

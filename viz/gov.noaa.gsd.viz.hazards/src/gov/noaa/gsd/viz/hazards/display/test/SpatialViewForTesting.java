@@ -150,4 +150,15 @@ public class SpatialViewForTesting implements ISpatialView {
         throw new UnsupportedOperationException();
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView#
+     * setEditEventGeometryEnabled(java.lang.Boolean)
+     */
+    @Override
+    public void setEditEventGeometryEnabled(Boolean enabled) {
+        throw new UnsupportedOperationException();
+    }
+
 }

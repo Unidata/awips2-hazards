@@ -12,8 +12,11 @@ import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
+import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
@@ -28,9 +31,13 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
@@ -48,7 +55,9 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Point;
+import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
 
 /**
  * Spatial presenter, used to mediate between the model and the spatial view.
@@ -92,6 +101,12 @@ import com.vividsolutions.jts.geom.Point;
 public class SpatialPresenter extends
         HazardServicesPresenter<ISpatialView<?, ?>> implements IOriginator {
 
+    /** for logging */
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(getClass());
+
+    private final GeometryFactory geometryFactory = new GeometryFactory();
+
     /**
      * Mouse handler factory.
      */
@@ -102,6 +117,10 @@ public class SpatialPresenter extends
      * "multiple-deselection".
      */
     private final List<String> selectedEventIDs = new ArrayList<>();
+
+    private final HazardEventBuilder hazardEventBuilder;
+
+    private boolean isEditInProgress = false;
 
     /**
      * Construct a standard instance.
@@ -117,6 +136,7 @@ public class SpatialPresenter extends
             ISessionManager<ObservedHazardEvent, ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
+        this.hazardEventBuilder = new HazardEventBuilder(model);
     }
 
     // Public Methods
@@ -261,7 +281,6 @@ public class SpatialPresenter extends
                 .getSelectedEvents();
         if (!selectedEvents.isEmpty()) {
             List<Geometry> geometriesOfSelected = new ArrayList<>();
-            GeometryFactory geometryFactory = new GeometryFactory();
             for (ObservedHazardEvent selectedEvent : selectedEvents) {
                 geometriesOfSelected.add(selectedEvent.getGeometry());
             }
@@ -293,6 +312,7 @@ public class SpatialPresenter extends
                 selectedEventIDs.add(eventID);
             }
         }
+        getView().setEditEventGeometryEnabled(selectedEventIDs.size() == 1);
     }
 
     /**
@@ -383,6 +403,150 @@ public class SpatialPresenter extends
         getModel().getEventManager().addOrRemoveEnclosingUGCs(location);
     }
 
+    public void drawingActionComplete(List<Coordinate> points) {
+        getView().drawingActionComplete();
+        if (isEditInProgress) {
+            updateHazardEventFromCollectedPoints(points);
+            isEditInProgress = false;
+        } else {
+            buildHazardEventFromCollectedPoints(points);
+        }
+    }
+
+    /**
+     * Edit the currently selected hazard geometry with the collected points.
+     * Note that the direction in which the user draws the replacement points
+     * matter. It is assumed they are drawing the replacement points in the same
+     * direction as the original polygon. For select by area and as recommended
+     * by the recommenders, this direction is clockwise.
+     */
+    private void updateHazardEventFromCollectedPoints(List<Coordinate> points) {
+        ISessionEventManager<?> sessionEventManager = getModel()
+                .getEventManager();
+        IHazardEvent hazardEvent = sessionEventManager.getSelectedEvents().get(
+                0);
+        GeometryCollection gc = (GeometryCollection) hazardEvent.getGeometry();
+        GeometryCollection polygonCollection = extractPolygons(gc);
+        Coordinate[] origCoordinatesAsArray = polygonCollection
+                .getCoordinates();
+        List<Coordinate> origCoordinates = new ArrayList<>(
+                Arrays.asList(origCoordinatesAsArray));
+        Utilities.removeDuplicateLastPointAsNecessary(origCoordinates);
+        int indexOfFirstPointToRemove = indexOfClosestPoint(origCoordinates,
+                points.get(0));
+        int indexOfLastPointToRemove = indexOfClosestPoint(origCoordinates,
+                points.get(points.size() - 1));
+
+        List<Coordinate> newCoordinates = new ArrayList<>();
+
+        if (indexOfFirstPointToRemove <= indexOfLastPointToRemove) {
+            for (int i = 0; i < indexOfFirstPointToRemove; i++) {
+                newCoordinates.add(origCoordinates.get(i));
+            }
+            for (int i = 0; i < points.size(); i++) {
+                newCoordinates.add(points.get(i));
+            }
+
+            for (int i = indexOfLastPointToRemove + 1; i < origCoordinates
+                    .size(); i++) {
+                newCoordinates.add(origCoordinates.get(i));
+            }
+        } else {
+            /*
+             * This deals with the case when the user chooses a section to
+             * replace that bounds the first point of the original polygon (i.e.
+             * the replacement section is crossing over an edge condition).
+             */
+            for (int i = 0; i < points.size(); i++) {
+                newCoordinates.add(points.get(i));
+            }
+            for (int i = indexOfLastPointToRemove + 1; i < indexOfFirstPointToRemove; i++) {
+                newCoordinates.add(origCoordinates.get(i));
+            }
+        }
+        /*
+         * Only modify the geometry if the result is a polygon.
+         * 
+         * TODO - Should we put up a status message here?
+         */
+        if (newCoordinates.size() >= 3) {
+            Utilities.closeCoordinatesIfNecessary(newCoordinates);
+            Geometry newGeometry = hazardEventBuilder
+                    .geometryFromCoordinates(newCoordinates);
+            sessionEventManager.setModifiedEventGeometry(
+                    hazardEvent.getEventID(), newGeometry, true);
+        }
+
+    }
+
+    /**
+     * The River Flood Recommender can generate a collection that includes a
+     * point and an inundation polygon. We don't want the editing to get fouled
+     * up by the point so skip it.
+     * 
+     * @param gc
+     * @return The polygons of the collection
+     */
+    private GeometryCollection extractPolygons(GeometryCollection gc) {
+        List<Geometry> polygons = new ArrayList<>();
+        for (int i = 0; i < gc.getNumGeometries(); i++) {
+            Geometry g = gc.getGeometryN(i);
+            if (gc.getGeometryN(i).getClass() != Point.class) {
+                polygons.add(g);
+            }
+        }
+        GeometryCollection polygonCollection = new GeometryCollection(
+                polygons.toArray(new Geometry[0]), geometryFactory);
+        return polygonCollection;
+    }
+
+    private int indexOfClosestPoint(List<Coordinate> origCoordinates,
+            Coordinate coordinate) {
+        int result = 0;
+        double minDistance = coordinate.distance(origCoordinates.get(0));
+        for (int i = 1; i < origCoordinates.size(); i++) {
+            double distance = coordinate.distance(origCoordinates.get(i));
+            if (distance < minDistance) {
+                result = i;
+                minDistance = distance;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Build a {@link IHazardEvent} with the points that have been collected.
+     */
+    private void buildHazardEventFromCollectedPoints(List<Coordinate> points) {
+
+        try {
+            /*
+             * Do nothing if user hasn't drawn enough points to create a polygon
+             */
+            if (points.size() < 3) {
+                return;
+            }
+            Utilities.closeCoordinatesIfNecessary(points);
+            /*
+             * Simplify the number of points in the polygon. This will
+             * eventually need to be user-configurable.
+             */
+            LinearRing linearRing = geometryFactory.createLinearRing(points
+                    .toArray(new Coordinate[0]));
+
+            Geometry polygon = geometryFactory.createPolygon(linearRing, null);
+            Geometry reducedGeometry = TopologyPreservingSimplifier.simplify(
+                    polygon, 0.0001);
+            IHazardEvent hazardEvent = hazardEventBuilder
+                    .buildPolygonHazardEvent(reducedGeometry.getCoordinates());
+
+            hazardEventBuilder.addEvent(hazardEvent, this);
+        } catch (InvalidGeometryException e) {
+            statusHandler.handle(Priority.WARN,
+                    "Error drawing vertex polygon: " + e.getMessage(), e);
+        }
+    }
+
     private void filterEventsForTime(Collection<ObservedHazardEvent> events,
             SelectedTime selectedTime) {
         Iterator<ObservedHazardEvent> it = events.iterator();
@@ -403,6 +567,21 @@ public class SpatialPresenter extends
                 }
             }
         }
+    }
+
+    /**
+     * @return the isEditInProgress
+     */
+    public boolean isEditInProgress() {
+        return isEditInProgress;
+    }
+
+    /**
+     * @param isEditInProgress
+     *            the isEditInProgress to set
+     */
+    public void setEditInProgress(boolean isEditInProgress) {
+        this.isEditInProgress = isEditInProgress;
     }
 
 }

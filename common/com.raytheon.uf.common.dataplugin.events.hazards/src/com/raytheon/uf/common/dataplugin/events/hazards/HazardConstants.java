@@ -680,9 +680,9 @@ public final class HazardConstants {
 
     public static final String CONTEXT_MENU_HAZARD_INFORMATION_DIALOG = "Hazard Information Dialog";
 
-    public static final String CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS = "Show High Res Geometies For Selected Events";
+    public static final String CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS = "Show High Resolution Geometies For Selected Events";
 
-    public static final String CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS = "Show Low Res Geometries For Selected Events";
+    public static final String CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS = "Show Low Resolution Geometries For Selected Events";
 
     public static final String CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT = "Show High Resolution Geometry For This";
 

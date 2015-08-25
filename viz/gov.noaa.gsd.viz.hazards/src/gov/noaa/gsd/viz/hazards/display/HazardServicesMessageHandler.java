@@ -7,14 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.FILE_PATH_KEY;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
@@ -687,10 +680,6 @@ public final class HazardServicesMessageHandler {
                 UIOriginator.CONSOLE);
     }
 
-    private Date toDate(String timeInMillisAsLongAsString) {
-        return new Date(Long.valueOf(timeInMillisAsLongAsString));
-    }
-
     /**
      * This method is called when the visible time range is changed in the
      * Temporal Window.
@@ -1214,37 +1203,49 @@ public final class HazardServicesMessageHandler {
             setAddGeometryToSelected(spatialDisplayAction.getActionIdentifier());
 
         case DRAWING:
-            if (spatialDisplayAction.getActionIdentifier().equals(
-                    SpatialDisplayAction.ActionIdentifier.SELECT_EVENT)) {
-                // Activate the select hazard mouse handler
-                requestMouseHandler(HazardServicesMouseHandlers.SINGLE_SELECTION);
-            } else if (spatialDisplayAction.getActionIdentifier().equals(
-                    SpatialDisplayAction.ActionIdentifier.DRAW_POLYGON)
-                    || spatialDisplayAction.getActionIdentifier().equals(
-                            SpatialDisplayAction.ActionIdentifier.DRAW_LINE)
-                    || spatialDisplayAction.getActionIdentifier().equals(
-                            SpatialDisplayAction.ActionIdentifier.DRAW_POINT)) {
-                GeometryType geometryType = (spatialDisplayAction
-                        .getActionIdentifier()
-                        .equals(SpatialDisplayAction.ActionIdentifier.DRAW_POLYGON) ? GeometryType.POLYGON
-                        : (spatialDisplayAction
-                                .getActionIdentifier()
-                                .equals(SpatialDisplayAction.ActionIdentifier.DRAW_LINE) ? GeometryType.LINE
-                                : GeometryType.POINT));
+            switch (spatialDisplayAction.getActionIdentifier()) {
 
+            case SELECT_EVENT:
+                requestMouseHandler(HazardServicesMouseHandlers.SINGLE_SELECTION);
+                break;
+
+            case DRAW_POLYGON:
                 // Activate the hazard drawing mouse handler.
+                appBuilder.getSpatialPresenter().setEditInProgress(false);
                 requestMouseHandler(HazardServicesMouseHandlers.VERTEX_DRAWING,
-                        geometryType.getValue());
-            } else if (spatialDisplayAction
-                    .getActionIdentifier()
-                    .equals(SpatialDisplayAction.ActionIdentifier.DRAW_FREE_HAND_POLYGON)) {
-                requestMouseHandler(HazardServicesMouseHandlers.FREEHAND_DRAWING);
-            } else if (spatialDisplayAction.getActionIdentifier().equals(
-                    SpatialDisplayAction.ActionIdentifier.SELECT_BY_AREA)) {
+                        GeometryType.POLYGON.getValue());
+                break;
+
+            case EDIT_POLYGON:
+                appBuilder.getSpatialPresenter().setEditInProgress(true);
+                requestMouseHandler(HazardServicesMouseHandlers.VERTEX_DRAWING,
+                        GeometryType.LINE.getValue());
+                break;
+
+            case DRAW_FREE_HAND_POLYGON:
+                appBuilder.getSpatialPresenter().setEditInProgress(false);
+                requestMouseHandler(
+                        HazardServicesMouseHandlers.FREEHAND_DRAWING,
+                        GeometryType.POLYGON.getValue());
+                break;
+
+            case EDIT_POLYGON_FREE_HAND:
+                appBuilder.getSpatialPresenter().setEditInProgress(true);
+                requestMouseHandler(
+                        HazardServicesMouseHandlers.FREEHAND_DRAWING,
+                        GeometryType.POLYGON.getValue());
+                break;
+
+            case SELECT_BY_AREA:
                 String tableName = spatialDisplayAction.getMapsDbTableName();
                 String displayName = spatialDisplayAction.getLegendName();
                 requestMouseHandler(HazardServicesMouseHandlers.DRAW_BY_AREA,
                         tableName, displayName);
+                break;
+
+            default:
+                break;
+
             }
             break;
 

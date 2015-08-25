@@ -180,7 +180,7 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
      * Sets the enabled state of the undo flag.
      * 
      * @param undoFlag
-     *            True - enabled, Flase - disabled
+     *            True - enabled, False - disabled
      * 
      * @return
      */
@@ -190,10 +190,19 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
      * Sets the enabled state of the redo flag.
      * 
      * @param redoFlag
-     *            True - enabled, Flase - disabled
+     *            True - enabled, False - disabled
      * 
      * @return
      */
     public void setRedoEnabled(final Boolean redoFlag);
+
+    /**
+     * Enables the edit polygon button. This will be true when there is a single
+     * selected hazard event
+     * 
+     * @param enabled
+     *            True - enabled, False - disabled
+     */
+    public void setEditEventGeometryEnabled(final Boolean enabled);
 
 }

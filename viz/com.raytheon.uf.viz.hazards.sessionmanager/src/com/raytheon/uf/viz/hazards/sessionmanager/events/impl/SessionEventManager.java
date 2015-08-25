@@ -631,10 +631,11 @@ public class SessionEventManager implements
                 } else {
                     /*
                      * If the user says they don't want to overwrite, the
-                     * spatial display can be in an odd state. Force and update
-                     * to clear it out by issuing this notification. TODO - Is
-                     * there a way to handle this more directly in the spatial
-                     * display?
+                     * spatial display can be in an odd state. Force an update
+                     * to clear it out by issuing this notification.
+                     * 
+                     * TODO - Is there a way to handle this more directly in the
+                     * spatial display?
                      */
                     hazardEventModified(new SessionEventGeometryModified(this,
                             event, Originator.OTHER));
@@ -648,7 +649,7 @@ public class SessionEventManager implements
                 LOW_RESOLUTION_GEOMETRY_IS_VISIBLE)) {
             IQuestionAnswerer answerer = messenger.getQuestionAnswerer();
             return answerer
-                    .getUserAnswerToQuestion("Are you sure you want to overwrite high resolution geometry");
+                    .getUserAnswerToQuestion("Are you sure you want to overwrite the high resolution geometry?");
         }
         return true;
     }
@@ -3680,10 +3681,7 @@ public class SessionEventManager implements
     private boolean isLowResComputationNeeded(
             ObservedHazardEvent selectedEvent, HazardTypeEntry hazardType) {
         return hazardType != null
-                && !geoMapUtilities.isPointBasedHatching(selectedEvent)
-                && (!HazardStatus.hasEverBeenIssued(selectedEvent.getStatus()) || (HazardStatus
-                        .issuedButNotEnded(selectedEvent.getStatus()) && selectedEvent
-                        .isModified()));
+                && !geoMapUtilities.isPointBasedHatching(selectedEvent);
     }
 
     private Geometry reduceGeometry(Geometry geometry,

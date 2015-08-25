@@ -12,8 +12,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.LineDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PointDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
-import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
@@ -30,15 +28,12 @@ import org.eclipse.swt.widgets.Event;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -90,14 +85,11 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
     private final Map<GeometryType, HazardServicesDrawingAttributes> drawingAttributesForShapeTypes = Maps
             .newHashMap();
 
-    private final HazardEventBuilder hazardEventBuilder;
-
     private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
     public VertexHazardDrawingAction(
             ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager) {
         this.sessionManager = sessionManager;
-        hazardEventBuilder = new HazardEventBuilder(sessionManager);
     }
 
     @Override
@@ -217,37 +209,23 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
                 return false;
             }
 
+            addPointIfNotIdenticalToPreviousPoint(loc);
             if (mouseButton == 1) {
-                if (shapeType == GeometryType.POINT) {
-                    createPointShape(loc);
-                } else {
-                    addPointIfNotIdenticalToPreviousPoint(loc);
-                }
                 return true;
             } else if (mouseButton == 3) {
 
-                if (shapeType == GeometryType.POINT) {
-                    createPointShape(loc);
-                } else {
-                    /*
-                     * This is where the ghost object is replaced by the new
-                     * shape. For the moment just delete the ghost line.
-                     */
-                    addPointIfNotIdenticalToPreviousPoint(loc);
-                    if (points.size() != 0) {
-                        getSpatialDisplay().removeGhostLine();
-                        if (points.size() < (shapeType == GeometryType.POLYGON ? 3
-                                : 2)) {
-                            points.clear();
-                            getSpatialDisplay().issueRefresh();
-                        } else {
-                            createShapeFromCollectedPoints();
-                        }
-                    }
-                }
+                /*
+                 * This is where the ghost object is replaced by the new shape.
+                 * First, delete the ghost line.
+                 */
+                getSpatialDisplay().removeGhostLine();
+
+                List<Coordinate> pointsCopy = new ArrayList<Coordinate>(points);
+                points.clear();
 
                 // Indicate that this drawing action is done.
-                getSpatialPresenter().getView().drawingActionComplete();
+                getSpatialPresenter().drawingActionComplete(
+                        new ArrayList<Coordinate>(pointsCopy));
 
                 return true;
             }
@@ -283,51 +261,6 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
                     || (points.get(points.size() - 1).equals(point) == false)) {
                 points.add(point);
             }
-        }
-
-        /**
-         * Create a shape of the current type with the points that have been
-         * collected, and send it off to the presenter.
-         */
-        private void createShapeFromCollectedPoints() {
-
-            // If this is a polygon, it must have a point at the end of its
-            // list of points that is the same as its first point.
-            try {
-                IHazardEvent hazardEvent;
-                if (shapeType == GeometryType.POLYGON) {
-                    Utilities.closeCoordinatesIfNecessary(points);
-                    hazardEvent = hazardEventBuilder
-                            .buildPolygonHazardEvent(pointsAsArray());
-                } else {
-                    hazardEvent = hazardEventBuilder
-                            .buildLineHazardEvent(pointsAsArray());
-                }
-                ObservedHazardEvent modifiedEvent = hazardEventBuilder
-                        .addEvent(hazardEvent, getSpatialPresenter());
-                sessionManager.getEventManager().updateHazardAreas(
-                        modifiedEvent);
-            } catch (InvalidGeometryException e) {
-                statusHandler.handle(Priority.WARN,
-                        "Error drawing vertex polygon: " + e.getMessage(), e);
-            }
-            points.clear();
-        }
-
-        private Coordinate[] pointsAsArray() {
-            return points.toArray(new Coordinate[points.size()]);
-        }
-
-        /**
-         * Create a point shape using the specified location.
-         * 
-         * @param loc
-         *            Location at which to place the point shape.
-         */
-        private void createPointShape(Coordinate loc) {
-            IHazardEvent hazardEvent = hazardEventBuilder
-                    .buildPointHazardEvent(loc);
-            hazardEventBuilder.addEvent(hazardEvent, getSpatialPresenter());
         }
     }
 }
