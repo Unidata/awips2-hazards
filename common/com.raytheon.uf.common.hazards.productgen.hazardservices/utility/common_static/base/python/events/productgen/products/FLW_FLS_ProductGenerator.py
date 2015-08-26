@@ -9,6 +9,7 @@
     Mar 23, 2015    7165    Robert.Blum Code consolidation - removed _prepareSection().
     Apr 16, 2015    7579    Robert.Blum Updates for amended Product Editor.
     Jun 02, 2015    7138    Robert.Blum Defining productID.
+    Aug 26, 2015    9631    Robert.Blum Changed self._polygonBased to True.
     
     @author Robert.Blum@noaa.gov
     @version 1.0
@@ -66,9 +67,8 @@ class Product(HydroGenerator.Product):
         self._FLS_ProductName_Advisory = 'Flood Advisory'
         self._includeAreaNames = True
         self._includeCityNames = False
-        # Not Polygon-based, so locations listed will not be limited to within the polygon, 
-        # but rather than UGC area e.g. county or zone
-        self._polygonBased = False
+        # Polygon-based, so locations listed will be limited to within the polygon rather than county area
+        self._polygonBased = True
 
     def execute(self, eventSet, dialogInputMap):
         '''
