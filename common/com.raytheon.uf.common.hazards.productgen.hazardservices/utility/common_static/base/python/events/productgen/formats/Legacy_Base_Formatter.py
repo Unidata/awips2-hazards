@@ -42,6 +42,7 @@
     Aug 25, 2015    9638    Robert.Blum Initials product part is now optional and updates to 
                                         reflect changes from the product editor.
     Aug 25, 2015    9992    Robert.Blum Fixed product level CTAs when none are selected.
+    Aug 25, 2015    9627    Robert.Blum Removed canceling wording from replacements.
 '''
 
 import FormatTemplate
@@ -470,9 +471,6 @@ class Format(FormatTemplate.Formatter):
                 # assemble the vtecRecord type
                 hazStr = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
 
-                #determine the actionWords
-                actionWords = self._tpc.actionControlWord(vtecRecord, self._issueTime)
-
                 # the section could have multiple hazards, need to combine 
                 # the info for each hazard into one summaryheadline.
                 # ImmediateCause will be the same for all.
@@ -498,6 +496,13 @@ class Format(FormatTemplate.Formatter):
                     replaces = hazard.get('replaces')
                     if replaces:
                         replacesList.append(replaces)
+
+                #determine the actionWords
+                if replacedByList:
+                    # replaced added below
+                    actionWords = 'is'
+                else:
+                    actionWords = self._tpc.actionControlWord(vtecRecord, self._issueTime)
 
                 if immediateCause in ['DM']:
                     if hydrologicCause and hydrologicCause == 'siteImminent':
@@ -545,11 +550,14 @@ class Format(FormatTemplate.Formatter):
                     localStr = self._tpc.hazard_hook(
                       None, None, vtecRecord['phen'], vtecRecord['sig'], vtecRecord['act'],
                       vtecRecord['startTime'], vtecRecord['endTime'])  # May need to add leading space if non-null 
-                    headlineStr = '...' + hazStr + localStr + '...'
+                    if replacedByList:
+                        headlineStr = '...' + hazStr + localStr
+                    else:
+                        headlineStr = '...' + hazStr + localStr + '...'
 
                 # Add replaceStr
                 if len(replacedByList) > 0:
-                    replaceStr =  '\n...REPLACED BY '
+                    replaceStr =  ' REPLACED BY '
                     names = self._tpc.formatDelimitedList(replacedByList, delimiter=', ')
                     replaceStr += names + '...'
                 elif len(replacesList) > 0:
@@ -905,6 +913,7 @@ class Format(FormatTemplate.Formatter):
         '''
         locationPhrases = []
         areaGroups = []
+        replacement = False
 
         # There could be multiple points sharing a VTEC code e.g. NEW
         for segment in segments:
@@ -912,6 +921,7 @@ class Format(FormatTemplate.Formatter):
 
             pointAreaGroups = self._tpc.getGeneralAreaList(ugcs)
             areaGroups += pointAreaGroups
+            
 
             nameDescription, nameTypePhrase = self._tpc.getNameDescription(pointAreaGroups)
             affected = nameDescription + ' '+ nameTypePhrase
@@ -920,6 +930,7 @@ class Format(FormatTemplate.Formatter):
                 for hazard in section.get('hazardEvents', []):
                     riverName = hazard.get('riverName_GroupName')
                     proximity = hazard.get('proximity')
+                    replacement = hazard.get('replacedBy', False)
                     if proximity is None:
                         proximity = 'near'
                     riverPointName = hazard.get('riverPointName')
@@ -951,7 +962,11 @@ class Format(FormatTemplate.Formatter):
                 overview = nwsPhrase + ' is extending the ' + hazName + ' for '+ riverPhrase
 
             elif action == 'CAN':
-                overview = nwsPhrase + ' is canceling the ' + hazName + ' for '+ riverPhrase
+                if replacement:
+                    actionWord = 'replacing'
+                else:
+                    actionWord = 'canceling'
+                overview = nwsPhrase + ' is ' + actionWord + ' the ' + hazName + ' for '+ riverPhrase
     
             elif action == 'EXP':
                 expTimeCurrent = self._issueTime

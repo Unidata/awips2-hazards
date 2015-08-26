@@ -28,6 +28,7 @@
     Jun 2015       8530    Robert.Blum       Changes to conform to WarnGen outputs.
     Jun 2015       8532    Robert.Blum       Changes to conform to GFE/WarnGen output.
     Aug 2015       9641    Robert.Blum       Fixed duplicate "for" in first bullets.
+    Aug 2015       9627    Robert.Blum       Removed canceling wording from replacements.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
@@ -113,6 +114,11 @@ class AttributionFirstBulletText(object):
             self.riverName = self.hazardEventDict.get('riverName')
         self.streamName = self.hazardEventDict.get('streamName')
 
+        # Check for the replacedBy attribute
+        self.replacement = False
+        if self.hazardEventDict.get('replacedBy', None):
+            self.replacement = True
+
     # attribution
     def getAttributionText(self):
         if self.action == 'CAN':
@@ -137,12 +143,17 @@ class AttributionFirstBulletText(object):
     
     def attribution_CAN(self):
         attribution = '...The '
+        if self.replacement:
+            actionWord = 'replaced'
+        else:
+            actionWord = 'canceled'
+
         if self.phenSig in ['FA.W', 'FA.Y']:
             preQualifiers = self.preQualifiers()
             attribution += preQualifiers + self.hazardName + self.qualifiers(addPreposition=False)
-            attribution += ' has been canceled for ' + self.areaPhrase + '...'
+            attribution += ' has been ' + actionWord + ' for ' + self.areaPhrase + '...'
         else:
-            attribution += self.hazardName + ' for ' + self.areaPhrase + ' has been canceled...'
+            attribution += self.hazardName + ' for ' + self.areaPhrase + ' has been ' + actionWord + '...'
         return attribution
     
     def attribution_EXP(self):
@@ -233,7 +244,11 @@ class AttributionFirstBulletText(object):
         if self.geoType == 'area':
             firstBullet = ''
         else:
-            firstBullet = 'The ' + self.hazardName + ' is canceled for\n' + self.areaPhrase
+            if self.replacement:
+                actionWord = 'replaced'
+            else:
+                actionWord = 'canceled'
+            firstBullet = 'The ' + self.hazardName + ' is ' + actionWord + ' for\n' + self.areaPhrase
         return firstBullet
     
     def firstBullet_EXP(self):
