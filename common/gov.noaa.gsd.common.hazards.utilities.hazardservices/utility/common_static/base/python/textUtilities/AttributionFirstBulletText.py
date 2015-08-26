@@ -27,6 +27,7 @@
     Jun 05, 2015   8531    Chris.Cody        Changes to conform to WarnGen/RiverPro outputs
     Jun 2015       8530    Robert.Blum       Changes to conform to WarnGen outputs.
     Jun 2015       8532    Robert.Blum       Changes to conform to GFE/WarnGen output.
+    Aug 2015       9641    Robert.Blum       Fixed duplicate "for" in first bullets.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
@@ -350,7 +351,7 @@ class AttributionFirstBulletText(object):
                                 
         elif self.phenSig == 'FF.W':
             if self.immediateCause == 'DM' and self.riverName and self.damOrLeveeName:
-                qualifiers += ' for...\nThe ' + self.riverName + ' below ' + self.damOrLeveeName
+                qualifiers += '\nThe ' + self.riverName + ' below ' + self.damOrLeveeName
                 if addPreposition:
                     qualifiers += ' in '
             elif self.subType == 'BurnScar' and self.burnScarName:
@@ -369,12 +370,12 @@ class AttributionFirstBulletText(object):
                     if addPreposition:
                         qualifiers += ' in...'
             elif self.immediateCause == 'DM' and self.riverName and self.damOrLeveeName:
-                qualifiers += ' for...\nThe ' + self.riverName + ' below ' + self.damOrLeveeName
+                qualifiers += '\nThe ' + self.riverName + ' below ' + self.damOrLeveeName
                 if addPreposition:
                     qualifiers += ' in '
             elif self.typeOfFlooding:
                 if self.action in ['NEW', 'EXT']:
-                    qualifiers += ' for...\n  ' + self.typeOfFlooding
+                    qualifiers += '\n  ' + self.typeOfFlooding
                 else:
                     qualifiers += ' for ' + self.typeOfFlooding
                 if addPreposition:
@@ -386,7 +387,7 @@ class AttributionFirstBulletText(object):
             if self.immediateCause not in ['ER', 'IC']:
                 if self.typeOfFlooding:
                     if self.action in ['NEW', 'EXT']:
-                        qualifiers += ' for...\n  ' + self.typeOfFlooding
+                        qualifiers += '\n  ' + self.typeOfFlooding
                     else:
                         qualifiers += ' for ' + self.typeOfFlooding
                     if addPreposition:

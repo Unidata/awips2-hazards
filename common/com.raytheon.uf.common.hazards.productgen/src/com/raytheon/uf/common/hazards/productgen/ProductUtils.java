@@ -66,6 +66,8 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Dec 10, 2014 4933       Robert.Blum  Changes to allow for mixed case in the
  *                                      legacy product.
  * Jan 06, 2015 4937       Robert.Blum  wrapLegacy was incorrectly indenting bullets.
+ * Aug 26, 2015 9641       Robert.Blum  Changed ugc Pattern so basisBullets would not match
+ *                                      it.
  * 
  * </pre>
  * 
@@ -99,7 +101,7 @@ public class ProductUtils {
 
     // ugc pattern
     private static final Pattern ugcPtrn = Pattern
-            .compile("(^(\\w{2}[CZ]\\d{3}\\S*-\\d{6}-)$|((\\d{3}-)*\\d{6}-)$|((\\d{3}-)+))");
+            .compile("(^([A-Z]{2}[CZ]\\d{3}\\S*-\\d{6}-)$)");
 
     // list of areas pattern
     private static final Pattern listOfAreaNamePtrn = Pattern
