@@ -64,6 +64,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      events.
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Aug 26, 2015 9386       mduff       Fixed getPhenSig method.
  * </pre>
  * 
  * @author bsteffen
@@ -453,6 +454,27 @@ public class HazardEventUtilities {
     public static void setProductGeometry(IHazardEvent hazardEvent,
             Geometry geom) {
         hazardEvent.addHazardAttribute(LOW_RESOLUTION_GEOMETRY, geom);
+    }
+
+    /**
+     * Get the phenSig for the Hazard Event.
+     * 
+     * @param event
+     *            The Hazard Event
+     * @return The phenSig string or null if no phenSig
+     */
+    public static String getPhenSig(IHazardEvent event) {
+        String phensig = null;
+        if (event != null) {
+            if (event.getPhenomenon() != null
+                    && event.getSignificance() != null) {
+                phensig = event.getPhenomenon() + "." + event.getSignificance();
+                if (event.getSubType() != null && !event.getSubType().isEmpty()) {
+                    phensig += "." + event.getSubType();
+                }
+            }
+        }
+        return phensig;
     }
 
     // Private Static Methods.

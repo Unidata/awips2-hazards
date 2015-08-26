@@ -250,7 +250,7 @@ public class MegawidgetTest extends Dialog {
                         @Override
                         public void stateElementsChanged(
                                 MegawidgetManager manager,
-                                Map<String, Object> statesForIdentifiers) {
+                                Map<String, ?> statesForIdentifiers) {
                             StringBuilder stringBuilder = new StringBuilder();
                             for (Map.Entry<String, ?> entry : statesForIdentifiers
                                     .entrySet()) {
