@@ -17,8 +17,8 @@ from ufpy.dataaccess import DataAccessLayer
 from ufpy.dataaccess.PyGeometryData import PyGeometryData
 from com.raytheon.uf.common.monitor.config import FFMPSourceConfigurationManager
 from com.raytheon.uf.common.monitor.config import FFMPRunConfigurationManager
-
 from com.raytheon.uf.common.dataplugin.ffmp import FFMPBasinData, FFMPBasin, FFMPTemplates, FFMPTemplates_MODE as FFMPMode
+from gov.noaa.gsd.viz.hazards.spatialdisplay import HazardEventGeometryAggregator
 
 from java.util import Date
 from java.lang import Long, Float
@@ -313,7 +313,7 @@ class Recommender(RecommenderTemplate.Recommender):
     
     def _interpolateGuidance(self, geometry):
         return geometry
-                
+    
     def buildEvents(self, haveBasins):
         '''
         Builds a list of FF.W hazard events. For each small basin
@@ -325,8 +325,8 @@ class Recommender(RecommenderTemplate.Recommender):
         @return: An EventSet of potential flash flood (FF.W) hazard events
         '''
         pythonEventSet = EventSetFactory.createEventSet()
+
         if haveBasins :
-            self.counties = set()
             basins = []
             for basinName in self.smallBasinMap:
                 basin = self.smallBasinMap[basinName]
@@ -334,54 +334,33 @@ class Recommender(RecommenderTemplate.Recommender):
                 # need to fix storing of values...
                 if basin.has_key(PRECIP_VALUE):
                     precipValue = basin[PRECIP_VALUE]
-                    guidanceValue = basin[GUIDANCE_VALUE]
+                    #guidanceValue = basin[GUIDANCE_VALUE]
                     
-                    if guidanceValue > 0.0:
-                        if self.type == 'diff' :
-                            value = self._calcDiff(precipValue, guidanceValue)
-                        elif self.type == 'ratio' :
-                            value = self._calcRatio(precipValue, guidanceValue)
+                    #guidanceValue = 0
+                    #if guidanceValue > 0.0:
+                    #    if self.type == 'diff' :
+                    #        value = self._calcDiff(precipValue, guidanceValue)
+                    #    elif self.type == 'ratio' :
+                    #        value = self._calcRatio(precipValue, guidanceValue)
                     if self.type == 'qpe' :
                         value = self._calcQPE(precipValue)
+
                     if value >= self.compareValue:
-                        basinMetadata = self.ffmpTemplates.getBasin(JUtil.pyValToJavaObj(long(basinName)))
-                        county = basinMetadata.getCounty()
-                        if county:
-                            self.counties.add(county)
+                        geom = basin[GEOMETRY_KEY]
+                        g = geom.getGeometry()
+                        basins.append(g)
                         
-            if self.counties :
-                # Find the county for each basin, put in
-                # set, combine all the county Geometries into a 
-                # single geometry.
+            if basins :
                 hazardEvent = EventFactory.createEvent()
                 hazardEvent.setSiteID(self.currentSite)
                 hazardEvent.setHazardStatus(POTENTIAL_TYPE)
                 hazardEvent.setPhenomenon(FLASH_FLOOD_PHENOMENON)
                 hazardEvent.setSignificance(FLASH_FLOOD_SIGNIFICANCE)
                 hazardEvent.setSubType(FLASH_FLOOD_SUBTYPE)
-            
-                countyGeometries = []
-                rawGeometryList = [ ]
-
-                for countyname in self.counties:
-                    req = DataAccessLayer.newDataRequest()
-                    req.setDatatype('maps')
-                    req.addIdentifier('table','mapdata.county')
-                    columns = ['countyname']
-                    req.addIdentifier('locationField', columns[0])
-                    req.setParameters(*columns)
-                    req.addIdentifier('geomField','the_geom')
-                    req.addIdentifier('countyname', countyname)
-                    req.addIdentifier('cwa', self._wfo)
-                    countyGeomList = DataAccessLayer.getGeometryData(req)
-                    if countyGeomList is not None and len(countyGeomList) > 0:
-                        for countyGeom in countyGeomList:
-                            if countyGeom is not None:
-                                rawGeometryList.append(countyGeom.getGeometry())
-                    
-                geoCollection = GeometryFactory.createCollection(rawGeometryList)
-                unionGeometry = GeometryFactory.performCascadedUnion(geoCollection)
-                hazardEvent.setGeometry(unionGeometry)
+                
+                del basins[500:]
+                geometry = GeometryFactory.createCollection(basins)
+                hazardEvent.setGeometry(geometry)
                 
                 # Convert currentTime from milliseconds to seconds.
                 currentTime = long(self.currentTime) / 1000
@@ -397,8 +376,11 @@ class Recommender(RecommenderTemplate.Recommender):
                 self.logger.info("No events returned for Flash Flood Recommender.")
         else :
             self.logger.info("No basins available for Flash Flood Recommender.")
+            
+        aggregator = HazardEventGeometryAggregator()
+        aggregatedEventSet = aggregator.aggregateEvents(JUtil.pyValToJavaObj(pythonEventSet))
         
-        return pythonEventSet
+        return aggregatedEventSet;
     
     def _calcDiff(self, qpe, guid):
         '''
