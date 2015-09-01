@@ -12,7 +12,7 @@
 <mapEntry key="PATH" value="/awips2/python/bin:$PATH"/>
 </mapAttribute>
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="gov.noaa.gsd.viz.megawidgets.MegawidgetTest"/>
-<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="TimeDelta.json"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="RangeWithScale.json"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="tests-Hazard_Services"/>
 <stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Djava.library.path=/awips2/python/lib:/awips2/python/lib/python2.7/site-packages/jep&#10;-Dorg.eclipse.swt.internal.gtk.cairoGraphics=false"/>
 </launchConfiguration>

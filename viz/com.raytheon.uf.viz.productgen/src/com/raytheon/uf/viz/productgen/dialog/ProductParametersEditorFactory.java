@@ -7,11 +7,24 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.viz.megawidgets;
+package com.raytheon.uf.viz.productgen.dialog;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.common.utilities.collect.ClassKeyedMap;
-import gov.noaa.gsd.common.utilities.collect.IParameterInfo;
+import gov.noaa.gsd.viz.megawidgets.ExpandBarSpecifier;
+import gov.noaa.gsd.viz.megawidgets.FractionSpinnerSpecifier;
+import gov.noaa.gsd.viz.megawidgets.IConverter;
+import gov.noaa.gsd.viz.megawidgets.ISpecifier;
+import gov.noaa.gsd.viz.megawidgets.IStatefulSpecifier;
+import gov.noaa.gsd.viz.megawidgets.IntegerSpinnerSpecifier;
+import gov.noaa.gsd.viz.megawidgets.LabelSpecifier;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecificationException;
+import gov.noaa.gsd.viz.megawidgets.TextSpecifier;
+import gov.noaa.gsd.viz.megawidgets.TimeSpecifier;
+import gov.noaa.gsd.viz.megawidgets.UnboundedListBuilderSpecifier;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,6 +38,7 @@ import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 
 import com.google.common.collect.ImmutableMap;
+import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 
 /**
  * Description: Parameters editor factory, capable of constructing GUI-based
@@ -34,7 +48,7 @@ import com.google.common.collect.ImmutableMap;
  * megawidget-based GUIs to manipulate values.
  * <p>
  * Megawidgets are build using the
- * {@link #buildParametersEditor(Composite, List, Map, long, long, ICurrentTimeProvider, IParametersEditorListener)}
+ * {@link #buildParametersEditor(Composite, List, Map, long, long, ICurrentTimeProvider, IProductParametersEditorListener)}
  * method which returns a {@link MegawidgetManager}. Each megawidget managed by
  * the latter is given as its identifier the label with which the corresponding
  * parameter is associated. Note that the labels passed to the editor should not
@@ -77,21 +91,31 @@ import com.google.common.collect.ImmutableMap;
  * Aug 07, 2014    3777    Robert.Blum       Changed to make SpellCheck Enabled
  *                                           set to true the default for text
  *                                           megawidgets.
- * Dec 15, 2014    3846    Tracy Hansen      Small bug fix.
+ * Dec 15, 2014    3846    Tracy Hansen      small bug fix
+ * Apr 28, 2015    7579    Robert.Blum       Changes to allow LabelMegaWidgets on
+ *                                           the Product Editor.
+ * May 07, 2015    6979    Robert.Blum       Additional changes for LabelMegaWidgets,
+ *                                           they are now stateful.
+ * Jul 28, 2015    9687    Robert.Blum       Displaying label based on new KeyInfo flag.
+ * Jul 29, 2015    9686    Robert.Blum       Sizing text fields based on amount of text
+ *                                           they contain.
+ * Jul 30, 2015    9681    Robert.Blum       Adding * to labels if the field is required.
+ * Aug 31, 2015    9617    Chris.Golden      This library class has been littered with
+ *                                           product-editor-specific code, so it has now
+ *                                           been copied to the product editor package
+ *                                           and the original has reverted to be more
+ *                                           generic. This is not a permanent solution
+ *                                           to the problem, but it allows the megawidget
+ *                                           framework to remain more generic than it was
+ *                                           becoming.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class ParametersEditorFactory {
+public class ProductParametersEditorFactory {
 
     // Private Static Constants
-
-    /**
-     * Expand bar megawidget identifier prefix, used for expand bars that are to
-     * enclose megawidgets.
-     */
-    private static final String EXPAND_BAR_IDENTIFIER_PREFIX = "__expandBar__";
 
     /**
      * Minimum fraction value allowed.
@@ -122,24 +146,32 @@ public class ParametersEditorFactory {
     }
 
     /**
-     * Mapping of commonly used stateful megawidget specifiers to nested maps,
-     * the latter holding default specification parameters for those maps.
+     * Mapping of commonly used megawidget specifiers to nested maps, the latter
+     * holding default specification parameters for those maps.
      */
-    private static final Map<Class<? extends IStatefulSpecifier>, Map<String, Object>> DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS;
+    private static final Map<Class<? extends ISpecifier>, Map<String, Object>> DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS;
     static {
-        Map<Class<? extends IStatefulSpecifier>, Map<String, Object>> map = new HashMap<>();
+        Map<Class<? extends ISpecifier>, Map<String, Object>> map = new HashMap<>();
 
         /*
          * Add default values for text megawidgets.
          */
         Map<String, Object> defaults = new HashMap<>();
         defaults.put(TextSpecifier.MEGAWIDGET_TYPE, "Text");
-        defaults.put(TextSpecifier.MEGAWIDGET_SPACING, 5);
+        defaults.put(TextSpecifier.MEGAWIDGET_SPACING, 1);
         defaults.put(TextSpecifier.EXPAND_HORIZONTALLY, true);
         defaults.put(TextSpecifier.MEGAWIDGET_SEND_EVERY_STATE_CHANGE, false);
-        defaults.put(TextSpecifier.MEGAWIDGET_VISIBLE_LINES, 5);
         defaults.put(TextSpecifier.SPELLCHECK_ENABLED, true);
         map.put(TextSpecifier.class, defaults);
+
+        /*
+         * Add default values for pseudo-label megawidgets.
+         */
+        defaults = new HashMap<>();
+        defaults.put(TextSpecifier.MEGAWIDGET_TYPE, "Text");
+        defaults.put(TextSpecifier.MEGAWIDGET_SPACING, 5);
+        defaults.put(TextSpecifier.MEGAWIDGET_EDITABLE, false);
+        map.put(LabelSpecifier.class, defaults);
 
         /*
          * Add default values for integer spinner megawidgets.
@@ -205,8 +237,7 @@ public class ParametersEditorFactory {
     /**
      * Megawidget manager used as a parameters editor.
      */
-    private class ParametersEditor<K extends IParameterInfo> extends
-            MegawidgetManager {
+    private class ParametersEditor extends MegawidgetManager {
 
         // Public Constructors
 
@@ -256,27 +287,23 @@ public class ParametersEditorFactory {
         public ParametersEditor(Composite parent,
                 List<Map<String, Object>> specifiers,
                 Map<String, Object> state,
-                final Map<String, K> parametersForKeys, long minTime,
+                final Map<String, KeyInfo> parametersForKeys, long minTime,
                 long maxTime, ICurrentTimeProvider currentTimeProvider)
                 throws MegawidgetException {
             super(parent, specifiers, state, new MegawidgetManagerAdapter() {
 
-                @SuppressWarnings("unchecked")
                 @Override
                 public void stateElementChanged(MegawidgetManager manager,
                         String identifier, Object state) {
-                    ((IParametersEditorListener<K>) listenersForManagers
-                            .get(manager)).parameterValueChanged(
+                    listenersForManagers.get(manager).parameterValueChanged(
                             parametersForKeys.get(identifier), state);
                 }
 
-                @SuppressWarnings("unchecked")
                 @Override
                 public void sizeChanged(MegawidgetManager manager,
                         String identifier) {
-                    ((IParametersEditorListener<K>) listenersForManagers
-                            .get(manager)).sizeChanged(parametersForKeys
-                            .get(identifier));
+                    listenersForManagers.get(manager).sizeChanged(
+                            parametersForKeys.get(identifier));
                 }
             }, minTime, maxTime, currentTimeProvider);
         }
@@ -349,7 +376,7 @@ public class ParametersEditorFactory {
     /**
      * Map of megawidget managers to their listeners.
      */
-    private final Map<MegawidgetManager, IParametersEditorListener<? extends IParameterInfo>> listenersForManagers = new HashMap<>();
+    private final Map<MegawidgetManager, IProductParametersEditorListener> listenersForManagers = new HashMap<>();
 
     // Public Constructors
 
@@ -357,7 +384,7 @@ public class ParametersEditorFactory {
      * Construct a standard instance. This creates a default registering of
      * parameter classes with associated megawidget classes.
      */
-    public ParametersEditorFactory() {
+    public ProductParametersEditorFactory() {
 
         /*
          * Register some default mappings: strings are edited with multiline
@@ -633,11 +660,11 @@ public class ParametersEditorFactory {
      * @throws MegawidgetSpecificationException
      *             If the megawidgets cannot be constructed.
      */
-    public <K extends IParameterInfo> MegawidgetManager buildParametersEditor(
-            Composite parent, List<K> parameters,
-            Map<K, Object> valuesForParameters, long minimumTime,
-            long maximumTime, ICurrentTimeProvider currentTimeProvider,
-            IParametersEditorListener<K> parametersListener)
+    public MegawidgetManager buildParametersEditor(Composite parent,
+            List<KeyInfo> parameters, Map<KeyInfo, Object> valuesForParameters,
+            long minimumTime, long maximumTime,
+            ICurrentTimeProvider currentTimeProvider,
+            IProductParametersEditorListener parametersListener)
             throws MegawidgetException {
 
         /*
@@ -646,32 +673,71 @@ public class ParametersEditorFactory {
          */
         List<Map<String, Object>> specifiers = new ArrayList<>();
         Map<String, IConverter> convertersForKeys = new HashMap<>();
-        Map<String, K> parametersForKeys = new HashMap<>();
+        Map<String, KeyInfo> parametersForKeys = new HashMap<>();
         Map<String, Object> valuesForKeys = new HashMap<>();
-        for (K parameter : parameters) {
+        for (KeyInfo parameter : parameters) {
 
             /*
              * Get the key and the label for this parameter.
              */
             String key = parameter.getKey();
             String label = parameter.getLabel();
+            KeyInfo keyinfo = parameter;
 
-            /*
-             * Get the base specifier for this parameter type.
-             */
             Object value = valuesForParameters.get(parameter);
             valuesForKeys.put(key, value);
             if (value == null) {
                 throw new MegawidgetException(key, null, null,
                         "no associated parameter value");
             }
+
+            /*
+             * Get the base specifier for this parameter type.
+             */
+            Map<String, Object> baseSpecifier;
             Class<?> parameterClass = value.getClass();
-            Map<String, Object> baseSpecifier = megawidgetSpecifiersForParameterClasses
-                    .getProximate(parameterClass);
-            if (baseSpecifier == null) {
-                throw new MegawidgetException(key, null, null,
-                        "no megawidget specifier associated with type \""
-                                + parameterClass + "\"");
+            if (keyinfo.isEditable()) {
+                /*
+                 * Editable so make it a TextMegawidget.
+                 */
+                baseSpecifier = DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS
+                        .get(TextSpecifier.class);
+
+                /* Set the number of visible lines based on the amount of text */
+                String str = (String) value;
+                int numChars = str.length();
+                int charsPerLine = 75;
+                int numLines = numChars / charsPerLine
+                        + (numChars % charsPerLine == 0 ? 0 : 1);
+
+                if (numLines <= 4) {
+                    numLines = numLines * 2;
+                } else {
+                    // Max number of lines
+                    numLines = 8;
+                }
+
+                /*
+                 * If the text field is set to one line, the field will be
+                 * positioned next to the label instead of below the label. This
+                 * is unwanted, so verify that each field is at least 2 lines
+                 * long.
+                 */
+                if (numLines < 2) {
+                    numLines = 2;
+                }
+                baseSpecifier.put(TextSpecifier.MEGAWIDGET_VISIBLE_LINES,
+                        numLines);
+            } else {
+                /*
+                 * Non-Editable so make it a LabelMegawidget.
+                 */
+                baseSpecifier = DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS
+                        .get(LabelSpecifier.class);
+                if (baseSpecifier == null) {
+                    throw new MegawidgetException(key, null, null,
+                            "no default parameters for LabelSpecifier");
+                }
             }
 
             /*
@@ -681,41 +747,25 @@ public class ParametersEditorFactory {
             parametersForKeys.put(key, parameter);
 
             /*
-             * Determine whether or not the megawidget should be embedded within
-             * an expand bar.
-             */
-            boolean expandable = expandabilityForParameterClasses
-                    .getProximate(parameterClass);
-
-            /*
              * Modify the base specifier by adding the key as its identifier.
              */
             Map<String, Object> specifier = new HashMap<>(baseSpecifier);
             specifier.put(IStatefulSpecifier.MEGAWIDGET_IDENTIFIER, key);
 
-            /*
-             * If the megawidget should be expandable, embed it within an expand
-             * bar megawidget; otherwise, just set the label of the megawidget.
-             */
-            if (expandable) {
-                List<Map<String, Object>> pageSpecifiers = new ArrayList<>(1);
-                pageSpecifiers.add(specifier);
-                Map<String, Object> page = new HashMap<>();
-                page.put(ExpandBarSpecifier.PAGE_IDENTIFIER, label);
-                page.put(ExpandBarSpecifier.PAGE_FIELDS, pageSpecifiers);
-                List<Map<String, Object>> pageList = new ArrayList<>(1);
-                pageList.add(page);
-                specifier = new HashMap<>(expandBarSpecifier);
-                specifier.put(ExpandBarSpecifier.MEGAWIDGET_IDENTIFIER,
-                        EXPAND_BAR_IDENTIFIER_PREFIX + key);
-                specifier.put(ExpandBarSpecifier.MEGAWIDGET_PAGES, pageList);
-            } else if (label.isEmpty() == false) {
+            if (label.isEmpty() == false && keyinfo.isDisplayLabel()) {
+                if (keyinfo.isRequired() && label.startsWith("*") == false) {
+                    label = "*" + label;
+                }
                 specifier.put(IStatefulSpecifier.MEGAWIDGET_LABEL, label + ":");
             }
 
             /*
-             * Add the megawidget (or its enclosing expand bar, if it is
-             * embedded within one) to the list.
+             * Set the initial value
+             */
+            specifier.put(IStatefulSpecifier.MEGAWIDGET_STATE_VALUES, value);
+
+            /*
+             * Add the megawidget to the list.
              */
             specifiers.add(specifier);
 
@@ -763,7 +813,7 @@ public class ParametersEditorFactory {
          * editor. The former creates all the megawidgets that are specified and
          * notifies the listener of any parameter value changes.
          */
-        MegawidgetManager manager = new ParametersEditor<K>(parent, specifiers,
+        MegawidgetManager manager = new ParametersEditor(parent, specifiers,
                 valuesForKeys, parametersForKeys, minimumTime, maximumTime,
                 currentTimeProvider);
         listenersForManagers.put(manager, parametersListener);

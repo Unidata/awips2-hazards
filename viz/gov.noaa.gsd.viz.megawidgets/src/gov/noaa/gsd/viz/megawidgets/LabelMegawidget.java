@@ -9,8 +9,6 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import gov.noaa.gsd.viz.megawidgets.validators.TextValidator;
-
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -44,14 +42,13 @@ import com.google.common.collect.ImmutableSet;
  *                                           package, updated Javadoc and other
  *                                           comments.
  * Oct 10, 2014    4042    Chris.Golden      Added "preferredWidth" parameter.
- * May 06, 2015    6979    Robert.Blum       Now extends StatefulMegawidget.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see LabelSpecifier
  */
-public class LabelMegawidget extends StatefulMegawidget implements IControl {
+public class LabelMegawidget extends Megawidget implements IControl {
 
     // Protected Static Constants
 
@@ -78,19 +75,9 @@ public class LabelMegawidget extends StatefulMegawidget implements IControl {
     private final ControlComponentHelper helper;
 
     /**
-     * State validator.
-     */
-    private final TextValidator stateValidator;
-
-    /**
      * Font, if a custom font was created.
      */
     private final Font font;
-
-    /**
-     * Current value.
-     */
-    private String state = null;
 
     // Protected Constructors
 
@@ -107,10 +94,8 @@ public class LabelMegawidget extends StatefulMegawidget implements IControl {
      */
     protected LabelMegawidget(LabelSpecifier specifier, Composite parent,
             Map<String, Object> paramMap) {
-        super(specifier, paramMap);
+        super(specifier);
         helper = new ControlComponentHelper(specifier);
-        stateValidator = specifier.getStateValidator().copyOf();
-        state = (String) specifier.getStartingState(specifier.getIdentifier());
 
         /*
          * Create a label widget, setting its font to a bold and/or italic one
@@ -118,7 +103,7 @@ public class LabelMegawidget extends StatefulMegawidget implements IControl {
          * listener to dispose of said font when the label is disposed of.
          */
         label = new Label(parent, (specifier.isToWrap() ? SWT.WRAP : SWT.NONE));
-        label.setText(state);
+        label.setText(specifier.getLabel());
         if (specifier.isBold() || specifier.isItalic()) {
             FontData fontData = label.getFont().getFontData()[0];
             font = new Font(label.getDisplay(), new FontData(
@@ -242,32 +227,5 @@ public class LabelMegawidget extends StatefulMegawidget implements IControl {
         /*
          * No action.
          */
-    }
-
-    @Override
-    protected Object doGetState(String identifier) {
-        return state;
-    }
-
-    @Override
-    protected void doSetState(String identifier, Object state)
-            throws MegawidgetStateException {
-        try {
-            this.state = stateValidator.convertToStateValue(state);
-        } catch (MegawidgetException e) {
-            throw new MegawidgetStateException(e);
-        }
-        synchronizeComponentWidgetsToState();
-    }
-
-    @Override
-    protected String doGetStateDescription(String identifier, Object state)
-            throws MegawidgetStateException {
-        return (state == null ? " " : state.toString());
-    }
-
-    @Override
-    protected void doSynchronizeComponentWidgetsToState() {
-        label.setText(state);
     }
 }

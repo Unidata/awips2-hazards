@@ -22,6 +22,8 @@ import org.eclipse.swt.events.KeyAdapter;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.TraverseEvent;
+import org.eclipse.swt.events.TraverseListener;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
@@ -42,6 +44,10 @@ import org.eclipse.swt.widgets.Label;
  *                                      megawidget, but are instead passed up to
  *                                      any ancestor that is a scrolled
  *                                      composite.
+ * Aug 20, 2015    9617    Robert.Blum  Added ability for users to add entries to 
+ *                                      comboboxes.
+ * Aug 28, 2015    9617    Chris.Golden Corrections to last checkin for this
+ *                                      ticket.
  * </pre>
  * 
  * @author Chris.Golden
@@ -83,13 +89,7 @@ public class ComboBoxComponentHelper {
             @Override
             protected List<?> getMatchingProposals(String[] proposals,
                     String contents) {
-                List<String> matches = new ArrayList<>();
-                String lowerCaseContents = contents.toLowerCase();
-                for (String proposal : proposals) {
-                    if (proposal.toLowerCase().contains(lowerCaseContents)) {
-                        matches.add(proposal);
-                    }
-                }
+                List<String> matches = getMatches(contents, proposals);
                 return super.getMatchingProposals(
                         matches.toArray(new String[matches.size()]), "");
             }
@@ -103,6 +103,15 @@ public class ComboBoxComponentHelper {
          */
         public AutocompleteSelector() {
             super(comboBox);
+        }
+
+        // Public Methods
+
+        /**
+         * Update the proposals to be equal to the choices in the combo box.
+         */
+        public void updateProposals() {
+            provider.setProposals(combo.getItems());
         }
 
         // Protected Methods
@@ -142,6 +151,12 @@ public class ComboBoxComponentHelper {
     private final ControlComponentHelper helper;
 
     /**
+     * Autocomplete selector, or <code>null</code> if autocomplete is not
+     * enabled.
+     */
+    private final AutocompleteSelector autocompleteSelector;
+
+    /**
      * Last valid selection.
      */
     private String lastSelection;
@@ -158,17 +173,27 @@ public class ComboBoxComponentHelper {
      * @param autocomplete
      *            Flag indicating whether or not the combo box is to support
      *            autocomplete.
+     * @param allowNewChoice
+     *            Flag indicating whether or not the combo box is to support the
+     *            addition of new choices by the user; ignored unless
+     *            <code>autocomplete</code> is true.
+     * @param enable
+     *            Flag indicating whether or not the combo box should be
+     *            enabled.
+     * @param label
+     *            Label with the combo box, or <code>null</code> if there is
+     *            none.
      * @param helper
      *            Control component helper.
      */
     public ComboBoxComponentHelper(Composite parent,
             IComboBoxComponentHolder holder, boolean autocomplete,
-            boolean enable, Label label, ControlComponentHelper helper) {
+            boolean allowNewChoice, boolean enable, Label label,
+            ControlComponentHelper helper) {
         comboBox = new Combo(parent, (autocomplete ? SWT.DROP_DOWN
                 : SWT.READ_ONLY));
-        if (autocomplete) {
-            new AutocompleteSelector();
-        }
+        autocompleteSelector = (autocomplete ? new AutocompleteSelector()
+                : null);
         this.autocomplete = autocomplete;
         this.holder = holder;
         this.label = label;
@@ -201,6 +226,19 @@ public class ComboBoxComponentHelper {
                     handleSelectionChange();
                 }
             });
+            if (allowNewChoice) {
+                comboBox.addTraverseListener(new TraverseListener() {
+                    @Override
+                    public void keyTraversed(TraverseEvent e) {
+                        if ((e.detail == SWT.TRAVERSE_RETURN)
+                                && (isMatched(comboBox.getText(),
+                                        comboBox.getItems()) == false)) {
+                            e.doit = false;
+                            handleSelectionAddition();
+                        }
+                    }
+                });
+            }
         }
     }
 
@@ -265,19 +303,85 @@ public class ComboBoxComponentHelper {
     // Private Methods
 
     /**
+     * Determine whether or not the array of possible choices has any matches to
+     * the specified choice substring.
+     * 
+     * @param choiceSubstring
+     *            Substring to be matched.
+     * @param choices
+     *            Choices that may be matches.
+     * @return True if there is at least one match, false otherwise.
+     */
+    private boolean isMatched(String choiceSubstring, String[] choices) {
+        String lowerCaseContents = choiceSubstring.toLowerCase();
+        for (String choice : choices) {
+            if (choice.toLowerCase().contains(lowerCaseContents)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Get a list of matches from the specified list of possible choices to the
+     * specified choice substring.
+     * 
+     * @param choiceSubstring
+     *            Substring to be matched.
+     * @param choices
+     *            Choices that may be matches.
+     * @return List of matches, or an empty list if there are no matches.
+     */
+    private List<String> getMatches(String choiceSubstring, String[] choices) {
+        List<String> matches = new ArrayList<>();
+        String lowerCaseContents = choiceSubstring.toLowerCase();
+        for (String choice : choices) {
+            if (choice.toLowerCase().contains(lowerCaseContents)) {
+                matches.add(choice);
+            }
+        }
+        return matches;
+    }
+
+    /**
      * Handle the selection having changed.
      */
     private void handleSelectionChange() {
+
+        /*
+         * Do nothing unless the selection has changed.
+         */
         String text = comboBox.getText();
         if (text.equals(holder.getSelection()) == false) {
-            for (String item : comboBox.getItems()) {
-                if (item.equals(text)) {
-                    lastSelection = text;
-                    holder.setSelection(text);
+            System.err.println("Handling selection change to " + text);
+
+            /*
+             * Iterate through the existing choices, seeing if this selection is
+             * a substring in any of them. If so, select that choice.
+             */
+            String lowerCaseText = text.toLowerCase();
+            for (int j = 0; j < comboBox.getItemCount(); j++) {
+                String item = comboBox.getItem(j);
+                String lowerCaseItem = item.toLowerCase();
+                if (lowerCaseItem.contains(lowerCaseText)) {
+                    lastSelection = item;
+                    comboBox.select(j);
+                    holder.setSelection(item);
                     return;
                 }
             }
             comboBox.setText(lastSelection);
         }
+    }
+
+    /**
+     * Handle the addition of a new selection.
+     */
+    private void handleSelectionAddition() {
+        lastSelection = comboBox.getText();
+        comboBox.add(lastSelection);
+        comboBox.select(comboBox.getItemCount() - 1);
+        holder.setSelection(lastSelection);
+        autocompleteSelector.updateProposals();
     }
 }

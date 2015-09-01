@@ -1,0 +1,10 @@
+[
+                {
+                 "fieldType": "MenuButton",
+                 "fieldName": "overviewSynopsisCanned",
+                 "label": "Save/Restore",
+                 "choices": [
+                  "New set", "Save existing", "Duplicate"
+                 ]
+                }
+ ]

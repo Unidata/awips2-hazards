@@ -39,6 +39,10 @@ import java.util.Map;
  *                                           property to "isFullWidthOfDetailPanel".
  * Aug 04, 2014   4122     Chris.Golden      Changed to include autocomplete
  *                                           functionality.
+ * Aug 20, 2015   9617     Robert.Blum       Readonly property is now optional for
+ *                                           comboboxes.
+ * Aug 28, 2015   9617     Chris.Golden      Fixed code from previous entry for this
+ *                                           ticket.
  * </pre>
  * 
  * @author Chris.Golden
@@ -47,7 +51,7 @@ import java.util.Map;
  */
 public class ComboBoxSpecifier extends
         FlatBoundedChoicesMegawidgetSpecifier<String> implements
-        ISingleLineSpecifier {
+        ISingleLineSpecifier, IComboBoxSpecifier {
 
     // Private Variables
 
@@ -124,12 +128,13 @@ public class ComboBoxSpecifier extends
         return horizontalExpander;
     }
 
-    /**
-     * Determine whether or not autocomplete is enabled.
-     * 
-     * @return True if autocomplete is enabled, false otherwise.
-     */
+    @Override
     public final boolean isAutocompleteEnabled() {
         return comboBoxOptionsManager.isAutocompleteEnabled();
+    }
+
+    @Override
+    public boolean isAllowNewChoiceEnabled() {
+        return comboBoxOptionsManager.isAllowNewChoiceEnabled();
     }
 }

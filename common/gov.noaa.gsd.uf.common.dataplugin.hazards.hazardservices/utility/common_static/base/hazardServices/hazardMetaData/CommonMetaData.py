@@ -1691,6 +1691,7 @@ class MetaData(object):
                        "fieldName": "damOrLeveeName",
                         "fieldType":"ComboBox",
                         "autocomplete":  True,
+                        "allowNewChoice": True,
                         "label":"Dam or Levee:",
                         "editable": self.editableWhenNew(),
                         "enable": True,
@@ -1703,6 +1704,7 @@ class MetaData(object):
         damList = []
         mapsAccessor = MapsDatabaseAccessor()
         damOrLeveeNames = mapsAccessor.getPolygonNames(DAMINUNDATION_TABLE)
+        damOrLeveeNames.sort()
         for damOrLeveeName in damOrLeveeNames:
             ids = {}
             ids["identifier"] = damOrLeveeName

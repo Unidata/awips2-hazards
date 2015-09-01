@@ -22,6 +22,8 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 04, 2014    4122    Chris.Golden Initial creation.
+ * Aug 20, 2015    9617    Robert.Blum  Readonly property is now optional for comboboxes.
+ * Aug 28, 2015    9617    Chris.Golden Corrections to code written for this ticket.
  * </pre>
  * 
  * @author Chris.Golden
@@ -35,6 +37,11 @@ public class ComboBoxSpecifierOptionsManager {
      * Flag indicating whether or not autocomplete is enabled.
      */
     private final boolean autocomplete;
+
+    /**
+     * Flag indicating whether or not allowing new choices is enabled.
+     */
+    private final boolean allowNewChoice;
 
     // Public Constructors
 
@@ -61,6 +68,18 @@ public class ComboBoxSpecifierOptionsManager {
                 specifier.getIdentifier(), specifier.getType(),
                 parameters.get(IComboBoxSpecifier.AUTOCOMPLETE_ENABLED),
                 IComboBoxSpecifier.AUTOCOMPLETE_ENABLED, false);
+
+        /*
+         * Get the allow-new-choice flag if available.
+         */
+        boolean newChoice = ConversionUtilities
+                .getSpecifierBooleanValueFromObject(
+                        specifier.getIdentifier(),
+                        specifier.getType(),
+                        parameters
+                                .get(IComboBoxSpecifier.ALLOW_NEW_CHOICE_ENABLED),
+                        IComboBoxSpecifier.ALLOW_NEW_CHOICE_ENABLED, false);
+        allowNewChoice = (autocomplete && newChoice);
     }
 
     // Public Methods
@@ -72,5 +91,14 @@ public class ComboBoxSpecifierOptionsManager {
      */
     public boolean isAutocompleteEnabled() {
         return autocomplete;
+    }
+
+    /**
+     * Determine whether or not the allowing of new choices is enabled.
+     * 
+     * @return True if allowing new choices is enabled, false otherwise.
+     */
+    public boolean isAllowNewChoiceEnabled() {
+        return allowNewChoice;
     }
 }

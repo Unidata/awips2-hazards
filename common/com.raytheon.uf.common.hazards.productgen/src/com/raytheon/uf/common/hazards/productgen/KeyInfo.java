@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.common.hazards.productgen;
 
-import gov.noaa.gsd.common.utilities.collect.IParameterInfo;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +46,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Apr 23, 2014  3519     jsanchez     Made this class serializable and added the required field.
  * Jul 28, 2015  9687     Robert.Blum  Added displayLabel field.
  * Aug 03, 2015  8836     Chris.Cody   Changes for a configurable Event Id
+ * Aug 31, 2015  9617     Chris.Golden Decoupled from the megawidget framework.
  * </pre>
  * 
  * @author jsanchez
@@ -55,8 +54,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @Embeddable
 @DynamicSerialize
-public class KeyInfo implements IParameterInfo, ISerializableObject,
-        Serializable {
+public class KeyInfo implements ISerializableObject, Serializable {
     @DynamicSerializeElement
     private String name;
 
@@ -149,12 +147,10 @@ public class KeyInfo implements IParameterInfo, ISerializableObject,
         this.displayable = displayable;
     }
 
-    @Override
     public String getKey() {
         return toString();
     }
 
-    @Override
     public String getLabel() {
         return label;
     }
@@ -171,7 +167,7 @@ public class KeyInfo implements IParameterInfo, ISerializableObject,
         this.required = required;
     }
 
-    public boolean getDisplayLabel() {
+    public boolean isDisplayLabel() {
         return displayLabel;
     }
 
@@ -201,40 +197,54 @@ public class KeyInfo implements IParameterInfo, ISerializableObject,
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         KeyInfo other = (KeyInfo) obj;
         if (eventIDs == null) {
-            if (other.eventIDs != null)
+            if (other.eventIDs != null) {
                 return false;
-        } else if (!eventIDs.equals(other.eventIDs))
+            }
+        } else if (!eventIDs.equals(other.eventIDs)) {
             return false;
-        if (index != other.index)
+        }
+        if (index != other.index) {
             return false;
+        }
         if (name == null) {
-            if (other.name != null)
+            if (other.name != null) {
                 return false;
-        } else if (!name.equals(other.name))
+            }
+        } else if (!name.equals(other.name)) {
             return false;
+        }
         if (productCategory == null) {
-            if (other.productCategory != null)
+            if (other.productCategory != null) {
                 return false;
-        } else if (!productCategory.equals(other.productCategory))
+            }
+        } else if (!productCategory.equals(other.productCategory)) {
             return false;
+        }
         if (productID == null) {
-            if (other.productID != null)
+            if (other.productID != null) {
                 return false;
-        } else if (!productID.equals(other.productID))
+            }
+        } else if (!productID.equals(other.productID)) {
             return false;
+        }
         if (segment == null) {
-            if (other.segment != null)
+            if (other.segment != null) {
                 return false;
-        } else if (!segment.equals(other.segment))
+            }
+        } else if (!segment.equals(other.segment)) {
             return false;
+        }
         return true;
     }
 

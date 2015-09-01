@@ -20,11 +20,9 @@
 package com.raytheon.uf.viz.productgen.dialog;
 
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
-import gov.noaa.gsd.viz.megawidgets.IParametersEditorListener;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
-import gov.noaa.gsd.viz.megawidgets.ParametersEditorFactory;
 import gov.noaa.gsd.viz.megawidgets.UiBuilder;
 
 import java.io.Serializable;
@@ -94,6 +92,7 @@ import com.raytheon.uf.common.util.Pair;
  *                                      scrollbar when labels are removed from the product editor.
  * 07/30/2015   9681       Robert.Blum  Changed to use new abstract product dialog class.
  * 08/26/2015   8836       Chris.Cody   Changes for Unique (alpha-numeric) Event ID values
+ * 08/31/2015   9617       Chris.Golden Modified to use local copy of parameters editor factory.
  * </pre>
  * 
  * @author jsanchez
@@ -224,13 +223,13 @@ public class ProductDataEditor extends AbstractDataEditor {
             /*
              * Use factory to create megawidgets
              */
-            ParametersEditorFactory factory = new ParametersEditorFactory();
+            ProductParametersEditorFactory factory = new ProductParametersEditorFactory();
             manager = factory.buildParametersEditor(parentComposite, keyInfos,
                     valuesForKeyInfos, System.currentTimeMillis()
                             - TimeUnit.DAYS.toMillis(1L),
                     System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1L),
                     ProductEditorUtil.currentTimeProvider,
-                    new IParametersEditorListener<KeyInfo>() {
+                    new IProductParametersEditorListener() {
                         @Override
                         public void parameterValueChanged(KeyInfo keyInfo,
                                 Object value) {
@@ -397,7 +396,7 @@ public class ProductDataEditor extends AbstractDataEditor {
          */
         boolean selection = false;
         for (KeyInfo keyInfo : editableKeys.getKeyInfos()) {
-            if (keyInfo.getDisplayLabel()) {
+            if (keyInfo.isDisplayLabel()) {
                 selection = true;
                 break;
             }

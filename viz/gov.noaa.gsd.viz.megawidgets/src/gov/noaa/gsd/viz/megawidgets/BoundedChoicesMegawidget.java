@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.viz.megawidgets.validators.BoundedChoiceValidator;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -247,5 +248,27 @@ public abstract class BoundedChoicesMegawidget<T> extends StatefulMegawidget {
          * choices.
          */
         synchronizeComponentWidgetsToChoices();
+    }
+
+    /**
+     * Given the specified choice name, get an identifier that has not yet been
+     * used in the specified collection.
+     * 
+     * @param name
+     *            Name for which to generate an identifier.
+     * @param identifiers
+     *            Existing identifiers.
+     * @return Identifier for the name.
+     */
+    protected final String getUniqueIdentifierForNewName(String name,
+            Collection<String> identifiers) {
+        for (int j = 0; j < Integer.MAX_VALUE; j++) {
+            String identifier = name + (j > 0 ? j : "");
+            if (identifiers.contains(identifier) == false) {
+                return identifier;
+            }
+        }
+        throw new IllegalStateException("no unique identifier based upon \""
+                + name + "\" found");
     }
 }

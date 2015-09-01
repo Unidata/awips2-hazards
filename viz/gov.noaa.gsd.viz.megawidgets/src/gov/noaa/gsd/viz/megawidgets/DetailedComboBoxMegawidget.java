@@ -53,6 +53,10 @@ import com.google.common.collect.ImmutableSet;
  *                                      Also added use of display settings,
  *                                      allowing the saving and restoring of
  *                                      scroll origins.
+ * Aug 20, 2015    9617    Robert.Blum  Added ability for users to add entries to 
+ *                                      comboboxes.
+ * Aug 28, 2015    9617    Chris.Golden Added fixes for code added under this
+ *                                      ticket.
  * </pre>
  * 
  * @author Chris.Golden
@@ -129,6 +133,11 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
      * megawidget is not scrollable, this will be <code>null</code>.
      */
     private final Map<String, ScrolledComposite> choiceScrolledCompositesForIdentifiers;
+
+    /**
+     * Detail panel for any user added choices.
+     */
+    private final Composite newChoiceDetailPanel;
 
     /**
      * Details panel, holding whichever choice panel is associated with the
@@ -254,7 +263,8 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
                     public void setSelection(String item) {
                         handleSelectionChange(item);
                     }
-                }, specifier.isAutocompleteEnabled(), specifier.isEnabled(),
+                }, specifier.isAutocompleteEnabled(),
+                specifier.isAllowNewChoiceEnabled(), specifier.isEnabled(),
                 label, helper);
         List<String> choiceIdentifiers = populateComboBoxWithChoices();
         comboBoxHelper.getComboBox().setLayoutData(
@@ -426,57 +436,9 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
             Composite choicePanel = choicePanelsForSpecifierLists
                     .get(specifiers);
             if (choicePanel == null) {
-
-                /*
-                 * If the megawidget is to be scrollable, create a scrolled
-                 * composite and use its client area composite as the choice
-                 * panel. Otherwise, just create the choice panel directly.
-                 */
-                final ScrolledComposite scrolledComposite;
-                Map<String, Object> choicePanelParamMap;
-                if (specifier.isScrollable()) {
-                    choicePanelParamMap = new HashMap<>(paramMap);
-                    scrolledComposite = UiBuilder.buildScrolledComposite(this,
-                            detailsPanel, displaySettings, identifier,
-                            choicePanelParamMap);
-                    choiceScrolledCompositesForIdentifiers.put(identifier,
-                            scrolledComposite);
-                    choicePanel = (Composite) scrolledComposite.getContent();
-                } else {
-                    choicePanelParamMap = paramMap;
-                    choicePanel = new Composite(detailsPanel, SWT.NONE);
-                    scrolledComposite = null;
-                }
-
-                /*
-                 * Create the child megawidgets to be the detail fields for this
-                 * choice, and see if this results in this choice panel being
-                 * larger in either dimension than the previously largest one;
-                 * if so, record the new dimensions.
-                 */
-                List<IControl> children = UiBuilder
-                        .createChildMegawidgets(specifier, choicePanel, 1,
-                                specifier.isEnabled(), specifier.isEditable(),
-                                specifiers, choicePanelParamMap);
-                allChildren.addAll(children);
-                if (scrolledComposite != null) {
-                    choicePanel = scrolledComposite;
-                }
+                choicePanel = createChoicePanel(specifier, identifier,
+                        specifiers, neededDimensions, allChildren, paramMap);
                 choiceIdentifiersForPanels.put(choicePanel, identifier);
-                updateSizeToEncompassComposite(neededDimensions, choicePanel);
-
-                /*
-                 * If this choice panel is scrollable, give the scrolled
-                 * composite a chance to determine its client area's dimensions.
-                 */
-                if (scrolledComposite != null) {
-                    Display.getDefault().asyncExec(new Runnable() {
-                        @Override
-                        public void run() {
-                            UiBuilder.updateScrolledAreaSize(scrolledComposite);
-                        }
-                    });
-                }
             }
 
             /*
@@ -486,6 +448,23 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
             choicePanelsForSpecifierLists.put(specifiers, choicePanel);
             choicePanelsForIdentifiers.put(identifier, choicePanel);
         }
+
+        /*
+         * Get the specifiers for the detail fields for any new choice; if there
+         * are none, use an empty panel.
+         */
+        List<IControlSpecifier> specifiers = specifier
+                .getNewChoiceDetailFields();
+        if (specifiers == null) {
+            newChoiceDetailPanel = emptyPanel;
+        } else {
+            newChoiceDetailPanel = createChoicePanel(specifier, state,
+                    specifiers, neededDimensions, allChildren, paramMap);
+        }
+
+        /*
+         * Remember all children just created.
+         */
         this.children = Collections.unmodifiableList(allChildren);
 
         /*
@@ -684,6 +663,94 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
     }
 
     /**
+     * Create a choice panel.
+     * 
+     * @param specifier
+     *            Specifier of this megawidget.
+     * @param identifier
+     *            Identifier of the choice for which the panel is being created;
+     *            if <code>null</code>, it is assumed to be for new choices that
+     *            the user might create later.
+     * @param childSpecifiers
+     *            List of child specifiers that together make up the
+     *            specification for the choice panel to be created.
+     * @param neededDimensions
+     *            Needed dimensions to fit this and other choice panels; these
+     *            are updated by this method if necessary during its invocation.
+     * @param allChildren
+     *            List of all child megawidgets of this megawidget; this list is
+     *            updated by the addition of any child megawidgets created
+     *            during this method's invocation.
+     * @param paramMap
+     *            Map of parameters to be used to create child megawidgets.
+     * @return New choice panel.
+     * @throws MegawidgetException
+     *             If the child megawidget specifiers are illegal in some way.
+     */
+    private Composite createChoicePanel(DetailedComboBoxSpecifier specifier,
+            String identifier, List<IControlSpecifier> childSpecifiers,
+            Point neededDimensions, List<IControl> allChildren,
+            Map<String, Object> paramMap) throws MegawidgetException {
+
+        /*
+         * If the megawidget is to be scrollable, create a scrolled composite
+         * and use its client area composite as the choice panel. Otherwise,
+         * just create the choice panel directly.
+         */
+        final ScrolledComposite scrolledComposite;
+        Map<String, Object> choicePanelParamMap;
+        Composite choicePanel;
+        if (choiceScrolledCompositesForIdentifiers != null) {
+            choicePanelParamMap = new HashMap<>(paramMap);
+            scrolledComposite = UiBuilder.buildScrolledComposite(this,
+                    detailsPanel, displaySettings, identifier,
+                    choicePanelParamMap);
+            if (identifier != null) {
+                choiceScrolledCompositesForIdentifiers.put(identifier,
+                        scrolledComposite);
+            }
+            choicePanel = (Composite) scrolledComposite.getContent();
+        } else {
+            choicePanelParamMap = paramMap;
+            choicePanel = new Composite(detailsPanel, SWT.NONE);
+            scrolledComposite = null;
+        }
+
+        /*
+         * Create the child megawidgets to be the detail fields for this choice
+         * panel, and see if this results in this choice panel being larger in
+         * either dimension than the previously largest one; if so, record the
+         * new dimensions.
+         */
+        List<IControl> children = UiBuilder.createChildMegawidgets(specifier,
+                choicePanel, 1, specifier.isEnabled(), specifier.isEditable(),
+                childSpecifiers, choicePanelParamMap);
+        allChildren.addAll(children);
+        if (scrolledComposite != null) {
+            choicePanel = scrolledComposite;
+        }
+        updateSizeToEncompassComposite(neededDimensions, choicePanel);
+
+        /*
+         * If this choice panel is scrollable, give the scrolled composite a
+         * chance to determine its client area's dimensions.
+         */
+        if (scrolledComposite != null) {
+            Display.getDefault().asyncExec(new Runnable() {
+                @Override
+                public void run() {
+                    UiBuilder.updateScrolledAreaSize(scrolledComposite);
+                }
+            });
+        }
+
+        /*
+         * Return the resulting choice panel.
+         */
+        return choicePanel;
+    }
+
+    /**
      * Update the specified size to be big enough to encompass the specified
      * composite, if it is not already big enough to do so.
      * 
@@ -751,6 +818,66 @@ public class DetailedComboBoxMegawidget extends SingleBoundedChoiceMegawidget
      *            New combo box selection.
      */
     private void handleSelectionChange(String value) {
+
+        /*
+         * If allowing new choices, see if a new entry was added, and if so,
+         * generate an identifier for it, associate it with the new choices
+         * detail panel, and notify the state validator.
+         */
+        if (((DetailedComboBoxSpecifier) getSpecifier())
+                .isAllowNewChoiceEnabled()) {
+            if (choiceIdentifiersForNames.keySet().contains(value) == false) {
+
+                /*
+                 * Generate an identifier for the new choice, and use it to
+                 * record the choice name and to associate it with the new
+                 * choice detail panel.
+                 */
+                String identifier = getUniqueIdentifierForNewName(value,
+                        choiceIdentifiersForNames.values());
+                choiceIdentifiersForNames.put(value, identifier);
+                choiceNamesForIdentifiers.put(identifier, value);
+                choicePanelsForIdentifiers
+                        .put(identifier, newChoiceDetailPanel);
+
+                /*
+                 * If the new choice detail panel has never been associated with
+                 * an identifier until now, associate it with this new choice.
+                 */
+                if (choiceIdentifiersForPanels
+                        .containsKey(newChoiceDetailPanel) == false) {
+                    choiceIdentifiersForPanels.put(newChoiceDetailPanel,
+                            identifier);
+                }
+
+                /*
+                 * If the new choice detail panel is scrollable, record its
+                 * association with the identifier for scrolling purposes.
+                 */
+                if (newChoiceDetailPanel instanceof ScrolledComposite) {
+                    choiceScrolledCompositesForIdentifiers.put(identifier,
+                            (ScrolledComposite) newChoiceDetailPanel);
+                }
+
+                /*
+                 * Tell the validator about the change.
+                 */
+                try {
+                    getStateValidator()
+                            .setAvailableChoices(
+                                    new ArrayList<>(choiceIdentifiersForNames
+                                            .values()));
+                } catch (MegawidgetPropertyException e) {
+                    throw new IllegalStateException(
+                            "adding new choice caused internal error", e);
+                }
+            }
+        }
+
+        /*
+         * Set the state to the new selection, ensure the details panel is
+         * showing the right detail components, and notify the listener.
+         */
         state = choiceIdentifiersForNames.get(value);
         synchronizeDetailsPanelWithState();
         notifyListener(getSpecifier().getIdentifier(), state);

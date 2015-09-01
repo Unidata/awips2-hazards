@@ -14,5 +14,5 @@
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="gov.noaa.gsd.viz.megawidgets.MegawidgetTest"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="ParentWhenEnabledOrEditabilityChanges.json ParentWhenEnabledOrEditabilityChangesScript.py"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="tests-Hazard_Services"/>
-<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Djava.library.path=${env_var:ADE}/ufcore-foss/lib/org.jep.linux64&#10;-Dorg.eclipse.swt.internal.gtk.cairoGraphics=false"/>
+<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Djava.library.path=/awips2/python/lib:/awips2/python/lib/python2.7/site-packages/jep&#10;-Dorg.eclipse.swt.internal.gtk.cairoGraphics=false"/>
 </launchConfiguration>

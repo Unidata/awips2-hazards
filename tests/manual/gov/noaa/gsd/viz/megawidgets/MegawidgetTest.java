@@ -23,8 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import jep.Jep;
-
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
@@ -108,7 +106,6 @@ public class MegawidgetTest extends Dialog {
             System.exit(1);
         }
         if (args.length > 1) {
-            Jep.pyInitialize();
             PythonSideEffectsApplier.initialize();
         }
         MegawidgetTest dialog = new MegawidgetTest(args[0],
@@ -255,7 +252,7 @@ public class MegawidgetTest extends Dialog {
                                 MegawidgetManager manager,
                                 Map<String, Object> statesForIdentifiers) {
                             StringBuilder stringBuilder = new StringBuilder();
-                            for (Map.Entry<String, Object> entry : statesForIdentifiers
+                            for (Map.Entry<String, ?> entry : statesForIdentifiers
                                     .entrySet()) {
                                 if (stringBuilder.length() > 0) {
                                     stringBuilder.append(", ");
@@ -281,6 +278,13 @@ public class MegawidgetTest extends Dialog {
                                 MegawidgetPropertyException exception) {
                             System.err.println("Error: " + exception);
                             exception.printStackTrace(System.err);
+                        }
+
+                        @Override
+                        public void visibleTimeRangeChanged(
+                                MegawidgetManager manager, String identifier,
+                                long lower, long upper) {
+                            System.out.println("TIME RANGE CHANGED.");
                         }
 
                     }, minTime, maxTime);

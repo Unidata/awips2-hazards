@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.viz.megawidgets.validators.SingleChoiceValidatorHelper;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -27,6 +28,9 @@ import java.util.Map;
  * Jul 23, 2014    4122    Chris.Golden Initial creation.
  * Oct 20, 2014    4818    Chris.Golden Added option of providing a scrollable
  *                                      panel for child megawidgets.
+ * Aug 20, 2015    9617    Robert.Blum  Readonly property is now optional for
+ *                                      comboboxes.
+ * Aug 28, 2015    9617    Chris.Golden Fixed code added under this ticket.
  * </pre>
  * 
  * @author Chris.Golden
@@ -35,7 +39,8 @@ import java.util.Map;
  */
 public class DetailedComboBoxSpecifier extends
         FlatChoicesWithDetailMegawidgetSpecifier<String> implements
-        IPotentiallyScrollableContainerSpecifier<IControlSpecifier> {
+        IPotentiallyScrollableContainerSpecifier<IControlSpecifier>,
+        IComboBoxSpecifier {
 
     // Public Static Constants
 
@@ -48,6 +53,19 @@ public class DetailedComboBoxSpecifier extends
      */
     public static final String HEADER_EXPAND_HORIZONTALLY = "headerExpandHorizontally";
 
+    /**
+     * New choice detail fields parameter name; a detailed combo box may include
+     * a reference to a {@link List} object associated with this name. The
+     * provided list must contain zero or more child megawidget specifier
+     * parameter maps, each in the form of a {@link Map}, from which a
+     * megawidget specifier will be constructed. The resulting list of
+     * specifiers together comprise the specification of the detail panel to be
+     * shown when new choices are added to the megawidget by the user. If
+     * {@link IComboBoxSpecifier#ALLOW_NEW_CHOICE_ENABLED} is false, this
+     * parameter is ignored.
+     */
+    public static final String NEW_CHOICE_DETAIL_FIELDS = "newChoiceDetailFields";
+
     // Private Variables
 
     /**
@@ -59,6 +77,13 @@ public class DetailedComboBoxSpecifier extends
      * Combo box options manager.
      */
     private final ComboBoxSpecifierOptionsManager comboBoxOptionsManager;
+
+    /**
+     * List of detail megawidget specifiers to be used to populate the panel of
+     * any user-created choice; if {@link #NEW_CHOICE_DETAIL_FIELDS} is not
+     * supplied, this will be <code>null</code>.
+     */
+    private final List<IControlSpecifier> newChoiceDetailFields;
 
     /**
      * Flag indicating whether the header should expand to fill the available
@@ -91,6 +116,31 @@ public class DetailedComboBoxSpecifier extends
                 IControlSpecifier.class, parameters);
         comboBoxOptionsManager = new ComboBoxSpecifierOptionsManager(this,
                 parameters);
+
+        /*
+         * If new choice detail fields are specified, ensure they are correct.
+         */
+        if (isAllowNewChoiceEnabled()) {
+            Object fieldsObj = parameters.get(NEW_CHOICE_DETAIL_FIELDS);
+            List<?> fields = null;
+            try {
+                fields = (List<?>) fieldsObj;
+            } catch (Exception e) {
+                throw new MegawidgetSpecificationException(getIdentifier(),
+                        getType(), NEW_CHOICE_DETAIL_FIELDS, fieldsObj,
+                        "bad child megawidget specifier list", e);
+            }
+            try {
+                newChoiceDetailFields = getChildManager()
+                        .createMegawidgetSpecifiers(fields, fields.size());
+            } catch (MegawidgetSpecificationException e) {
+                throw new MegawidgetSpecificationException(getIdentifier(),
+                        getType(), NEW_CHOICE_DETAIL_FIELDS, fields,
+                        "bad child megawidget specifier", e);
+            }
+        } else {
+            newChoiceDetailFields = null;
+        }
 
         /*
          * Ensure that the header expand flag, if present, is acceptable.
@@ -148,6 +198,27 @@ public class DetailedComboBoxSpecifier extends
         return scrollable;
     }
 
+    @Override
+    public final boolean isAutocompleteEnabled() {
+        return comboBoxOptionsManager.isAutocompleteEnabled();
+    }
+
+    @Override
+    public boolean isAllowNewChoiceEnabled() {
+        return comboBoxOptionsManager.isAllowNewChoiceEnabled();
+    }
+
+    /**
+     * Get the list of detail megawidget specifiers to be used to populate any
+     * panel associated with a newly created choice.
+     * 
+     * @return List of detail megawidget specifiers, or <code>null</code> if
+     *         {@link #isAllowNewChoiceEnabled()} is false.
+     */
+    public List<IControlSpecifier> getNewChoiceDetailFields() {
+        return newChoiceDetailFields;
+    }
+
     /**
      * Determine whether or not the megawidget's header is to expand to take up
      * available horizontal space.
@@ -157,14 +228,5 @@ public class DetailedComboBoxSpecifier extends
      */
     public boolean isHeaderHorizontalExpander() {
         return headerExpandHorizontally;
-    }
-
-    /**
-     * Determine whether or not autocomplete is enabled.
-     * 
-     * @return True if autocomplete is enabled, false otherwise.
-     */
-    public final boolean isAutocompleteEnabled() {
-        return comboBoxOptionsManager.isAutocompleteEnabled();
     }
 }

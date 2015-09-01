@@ -9,8 +9,6 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import gov.noaa.gsd.viz.megawidgets.validators.TextValidator;
-
 import java.util.Map;
 
 /**
@@ -36,14 +34,13 @@ import java.util.Map;
  * Jun 17, 2014    3982    Chris.Golden      Changed "isFullWidthOfColumn"
  *                                           property to "isFullWidthOfDetailPanel".
  * Oct 10, 2014    4042    Chris.Golden      Added "preferredWidth" parameter.
- * May 07, 2015    6979    Robert.Blum       Now extends StatefulMegawidgetSpecifier.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see LabelMegawidget
  */
-public class LabelSpecifier extends StatefulMegawidgetSpecifier implements
+public class LabelSpecifier extends MegawidgetSpecifier implements
         IControlSpecifier {
 
     // Public Static Constants
@@ -83,15 +80,6 @@ public class LabelSpecifier extends StatefulMegawidgetSpecifier implements
      * default value is <code>false</code>.
      */
     public static final String LABEL_ITALIC = "italic";
-
-    /**
-     * Maximum number of characters parameter name; a megawidget may include a
-     * non-negative integer as the value associated with this name. This
-     * specifies the maximum number of characters that may be input into the
-     * text widget, or if <code>0</code>, indicates that there is no practical
-     * limit. If not specified, the default is <code>0</code>.
-     */
-    public static final String LABEL_MAX_CHARS = "maxChars";
 
     // Private Variables
 
@@ -135,7 +123,7 @@ public class LabelSpecifier extends StatefulMegawidgetSpecifier implements
      */
     public LabelSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters, new TextValidator(parameters, LABEL_MAX_CHARS));
+        super(parameters);
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.FALSE);
 
@@ -228,14 +216,5 @@ public class LabelSpecifier extends StatefulMegawidgetSpecifier implements
     @Override
     public final int getSpacing() {
         return optionsManager.getSpacing();
-    }
-
-    /**
-     * Get the maximum text length.
-     * 
-     * @return Maximum text length.
-     */
-    public final int getMaxTextLength() {
-        return ((TextValidator) getStateValidator()).getMaxCharacters();
     }
 }

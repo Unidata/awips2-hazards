@@ -34,6 +34,8 @@ import java.util.Map;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Aug 31, 2015   9617     Chris.Golden      Modified to support creation of
+ *                                           new choices by the user.
  * </pre>
  * 
  * @author Chris.Golden

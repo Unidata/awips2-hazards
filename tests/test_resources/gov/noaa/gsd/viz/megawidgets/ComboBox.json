@@ -5,6 +5,7 @@
   "label": "MA Cities:",
   "expandHorizontally": true,
   "autocomplete": true,
+  "allowNewChoice": true,
   "choices": [
    "Abington",
    "Acton",
@@ -370,9 +371,30 @@
   "expandHorizontally": true,
   "expandVertically": true,
   "headerExpandHorizontally": true,
-  "autocomplete": false,
+  "autocomplete": true,
+  "allowNewChoice": true,
   "values": "southbridge",
   "scrollable": true,
+  "newChoiceDetailFields": [
+   {
+    "fieldType": "UnboundedListBuilder",
+    "fieldName": "newChoiceList1",
+    "label": "Disaffected Areas:",
+    "values": [ "Playground", "Low-Voltage District", "Human League" ],
+    "expandHorizontally": true,
+    "expandVertically": true
+   },
+   {
+    "fieldType": "FractionSpinner",
+    "fieldName": "newChoiceSpinner1",
+    "label": "Expected Silliness (sph):",
+    "values": 2.5,
+    "minValue": 0.0,
+    "maxValue": 10.0,
+    "precision": 1,
+    "expandHorizontally": true
+   }
+  ],
   "choices": [
    {
     "identifier": "oxbow",

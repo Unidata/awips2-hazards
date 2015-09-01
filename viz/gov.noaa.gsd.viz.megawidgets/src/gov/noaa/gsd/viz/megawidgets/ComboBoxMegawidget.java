@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -56,6 +57,10 @@ import com.google.common.collect.ImmutableSet;
  *                                           changed.
  * Aug 04, 2014   4122     Chris.Golden      Changed to include autocomplete
  *                                           functionality.
+ * Aug 20, 2015   9617     Robert.Blum       Added ability for users to add
+ *                                           entries to comboboxes.
+ * Aug 28, 2015   9617     Chris.Golden      Added fixes for code added under this
+ *                                           ticket.
  * </pre>
  * 
  * @author Chris.Golden
@@ -151,7 +156,8 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
                     public void setSelection(String item) {
                         handleSelectionChange(item);
                     }
-                }, specifier.isAutocompleteEnabled(), specifier.isEnabled(),
+                }, specifier.isAutocompleteEnabled(),
+                specifier.isAllowNewChoiceEnabled(), specifier.isEnabled(),
                 label, helper);
         populateComboBoxWithChoices();
 
@@ -316,6 +322,32 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
      *            New combo box selection.
      */
     private void handleSelectionChange(String value) {
+
+        /*
+         * If allowing new choices, see if a new entry was added, and if so,
+         * generate an identifier for it and notify the state validator.
+         */
+        if (((ComboBoxSpecifier) getSpecifier()).isAllowNewChoiceEnabled()) {
+            if (choiceIdentifiersForNames.keySet().contains(value) == false) {
+                String identifier = getUniqueIdentifierForNewName(value,
+                        choiceIdentifiersForNames.values());
+                choiceIdentifiersForNames.put(value, identifier);
+                choiceNamesForIdentifiers.put(identifier, value);
+                try {
+                    getStateValidator()
+                            .setAvailableChoices(
+                                    new ArrayList<>(choiceIdentifiersForNames
+                                            .values()));
+                } catch (MegawidgetPropertyException e) {
+                    throw new IllegalStateException(
+                            "adding new choice caused internal error", e);
+                }
+            }
+        }
+
+        /*
+         * Set the state to the new selection and notify the listener.
+         */
         state = choiceIdentifiersForNames.get(value);
         notifyListener(getSpecifier().getIdentifier(), state);
     }

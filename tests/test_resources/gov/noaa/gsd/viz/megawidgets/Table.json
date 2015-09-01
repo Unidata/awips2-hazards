@@ -1,0 +1,22 @@
+[
+ {
+  "fieldType": "Table",
+  "fieldName": "table1",
+  "label": "Shopping List:",
+  "lines": 3,
+  "columnHeaders": [ "Item", "Type", "Quantity" ],
+  "values": [ [ "apples", "fruit", "3" ], [ "oranges", "fruit", "6" ], [ "pineapples", "fruit", "13" ] ]
+ },
+ {
+  "fieldType": "Button",
+  "fieldName": "incrementCounts",
+  "label": "Increment Count"
+ },
+ {
+  "fieldType": "CheckBox",
+  "fieldName": "enabled",
+  "label": "Enabled",
+  "values": true
+ }
+]
+ 
