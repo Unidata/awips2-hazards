@@ -353,7 +353,6 @@ public class ComboBoxComponentHelper {
          */
         String text = comboBox.getText();
         if (text.equals(holder.getSelection()) == false) {
-            System.err.println("Handling selection change to " + text);
 
             /*
              * Iterate through the existing choices, seeing if this selection is
