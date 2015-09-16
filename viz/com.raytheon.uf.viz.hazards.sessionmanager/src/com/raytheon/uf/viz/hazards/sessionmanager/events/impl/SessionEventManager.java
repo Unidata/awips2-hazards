@@ -317,6 +317,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Jul 29, 2015    9306    Chris.Cody   Add processing for HazardSatus.ELAPSED
  * Aug 03, 2015    8836    Chris.Cody   Changes for a configurable Event Id
  * Aug 17, 2015    9968    Chris.Cody   Changes for processing ENDED/ELAPSED/EXPIRED events
+ * Sep 04, 2015    7514    Chris.Golden Fixed bug introduced by July 6th check-in for this issue that caused
+ *                                      exceptions to be thrown when upgrading certain watches to warnings.
  * </pre>
  * 
  * @author bsteffen
@@ -816,23 +818,31 @@ public class SessionEventManager implements
                         .getMegawidgetSpecifierManager().getSpecifiers(), event);
 
         /*
-         * Update the time boundaries and the duration choices for the event.
+         * Update the time boundaries if this is not a new event; if it is new,
+         * simply copy the old event's time boundaries to this one. Then update
+         * the duration choices for the event.
          */
         if (event.getHazardAttribute(HazardConstants.REPLACES) == null) {
             updateTimeBoundariesForEvents(event, false);
+        } else {
+            startTimeBoundariesForEventIdentifiers.put(event.getEventID(),
+                    startTimeBoundariesForEventIdentifiers.get(oldEvent
+                            .getEventID()));
+            endTimeBoundariesForEventIdentifiers.put(event.getEventID(),
+                    endTimeBoundariesForEventIdentifiers.get(oldEvent
+                            .getEventID()));
         }
         updateDurationChoicesForEvent(event, false);
 
         /*
-         * When replacing a Watch with a Warning, convert the endTime to the
-         * nearest available duration for the Warning.
+         * If this is a new event, convert its end time to a duration if it does
+         * indeed have a duration. This handles the case where the replacement
+         * has a duration-based end time, whereas the original event has an
+         * absolute end time.
          */
         if (event.getHazardAttribute(HazardConstants.REPLACES) != null) {
             convertEndTimeToDuration(event);
         }
-
-        hazardEventModified(new SessionEventTimeRangeModified(this, event,
-                Originator.OTHER));
 
         return (originator != Originator.OTHER);
     }
@@ -908,7 +918,13 @@ public class SessionEventManager implements
         return matchFound;
     }
 
-    public void convertEndTimeToDuration(IHazardEvent event) {
+    /**
+     * Convert the specified hazard event's end time to a duration.
+     * 
+     * @param event
+     *            Event to have its end time converted to a duration.
+     */
+    private void convertEndTimeToDuration(IHazardEvent event) {
         long startTime = event.getStartTime().getTime();
         long endTime = event.getEndTime().getTime();
         long minDifference = Long.MAX_VALUE;
