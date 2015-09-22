@@ -69,6 +69,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.geospatial"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.edex.requestsrv"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataquery"/>
-	<classpathentry kind="lib" path="/org.jep/jep-3.4.0.jar" sourcepath="/org.jep/jep.src-3.4.0.jar"/>
+	<classpathentry kind="lib" path="/org.jep/jep-3.4.1.jar" sourcepath="/org.jep/jep.src-3.4.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
