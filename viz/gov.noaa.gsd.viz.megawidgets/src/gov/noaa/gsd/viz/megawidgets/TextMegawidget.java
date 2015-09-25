@@ -100,6 +100,9 @@ import com.raytheon.uf.viz.spellchecker.text.SpellCheckTextViewer;
  *                                           text fields don't expand to take the extra
  *                                           space. Allowing more fields to be viewed
  *                                           without scrolling.
+ * Oct 08, 2015  12165     Chris.Golden      Added option to show no border, so that
+ *                                           a read-only text field can look like a
+ *                                           label.
  * </pre>
  * 
  * @author Chris.Golden
@@ -226,13 +229,15 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
         onlySendEndStateChanges = !specifier.isSendingEveryChange();
 
         if (specifier.isSpellCheck()) {
-            textViewer = new SpellCheckTextViewer(panel, SWT.BORDER
-                    | (multiLine ? SWT.MULTI : SWT.SINGLE)
-                    | (multiLine ? SWT.WRAP | SWT.V_SCROLL : SWT.NONE));
+            textViewer = new SpellCheckTextViewer(panel,
+                    (specifier.isShowBorder() ? SWT.BORDER : SWT.NONE)
+                            | (multiLine ? SWT.MULTI : SWT.SINGLE)
+                            | (multiLine ? SWT.WRAP | SWT.V_SCROLL : SWT.NONE));
         } else {
-            textViewer = new TextViewer(panel, SWT.BORDER
-                    | (multiLine ? SWT.MULTI : SWT.SINGLE)
-                    | (multiLine ? SWT.WRAP | SWT.V_SCROLL : SWT.NONE));
+            textViewer = new TextViewer(panel,
+                    (specifier.isShowBorder() ? SWT.BORDER : SWT.NONE)
+                            | (multiLine ? SWT.MULTI : SWT.SINGLE)
+                            | (multiLine ? SWT.WRAP | SWT.V_SCROLL : SWT.NONE));
         }
         textViewer.getTextWidget().setAlwaysShowScrollBars(false);
         int limit = specifier.getMaxTextLength();

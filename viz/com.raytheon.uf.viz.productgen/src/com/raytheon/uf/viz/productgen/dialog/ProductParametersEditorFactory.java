@@ -108,6 +108,9 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
  *                                           to the problem, but it allows the megawidget
  *                                           framework to remain more generic than it was
  *                                           becoming.
+ * Oct 08, 2015   12165    Chris.Golden      Changed to use new borderless option for
+ *                                           Text megawidgets that are meant to look like
+ *                                           labels.
  * </pre>
  * 
  * @author Chris.Golden
@@ -171,6 +174,7 @@ public class ProductParametersEditorFactory {
         defaults.put(TextSpecifier.MEGAWIDGET_TYPE, "Text");
         defaults.put(TextSpecifier.MEGAWIDGET_SPACING, 5);
         defaults.put(TextSpecifier.MEGAWIDGET_EDITABLE, false);
+        defaults.put(TextSpecifier.SHOW_BORDER, false);
         map.put(LabelSpecifier.class, defaults);
 
         /*

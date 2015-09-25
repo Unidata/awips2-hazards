@@ -47,6 +47,9 @@ import java.util.Map;
  * Apr 10, 2015   6935     Chris.Golden      Added optional prompt text that if
  *                                           provided is displayed when the text
  *                                           field is empty.
+ * Oct 08, 2015  12165     Chris.Golden      Added option to show no border, so that
+ *                                           a read-only text field can look like a
+ *                                           label.
  * </pre>
  * 
  * @author Chris.Golden
@@ -58,6 +61,13 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
         IRapidlyChangingStatefulSpecifier {
 
     // Public Static Constants
+
+    /**
+     * Show border parameter name; a megawidget may include a boolean associated
+     * with this name to indicate whether or not a border should be shown. If
+     * not specified, the border is displayed.
+     */
+    public static final String SHOW_BORDER = "showBorder";
 
     /**
      * Prompting text parameter name; a megawidget may include a string as the
@@ -108,6 +118,11 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
      * Control options manager.
      */
     private final ControlSpecifierOptionsManager optionsManager;
+
+    /**
+     * Flag indicating whether or not the border should be shown.
+     */
+    private final boolean showBorder;
 
     /**
      * Flag indicating whether or not the megawidget is to expand to fill all
@@ -174,6 +189,13 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
                 .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
                         parameters.get(MEGAWIDGET_SEND_EVERY_STATE_CHANGE),
                         MEGAWIDGET_SEND_EVERY_STATE_CHANGE, true);
+
+        /*
+         * Ensure show border flag, if provided, is appropriate.
+         */
+        showBorder = ConversionUtilities.getSpecifierBooleanValueFromObject(
+                getIdentifier(), getType(), parameters.get(SHOW_BORDER),
+                SHOW_BORDER, true);
 
         /*
          * Ensure that the prompt text, if present, is acceptable.
@@ -279,6 +301,15 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
     @Override
     public final boolean isSendingEveryChange() {
         return sendingEveryChange;
+    }
+
+    /**
+     * Determine whether or not the border is to be shown.
+     * 
+     * @return True if the border is to be shown, false otherwise.
+     */
+    public final boolean isShowBorder() {
+        return showBorder;
     }
 
     /**
