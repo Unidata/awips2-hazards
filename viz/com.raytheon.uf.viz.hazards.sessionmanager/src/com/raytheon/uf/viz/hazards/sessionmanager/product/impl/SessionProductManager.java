@@ -53,9 +53,6 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.swt.widgets.MessageBox;
-import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -216,6 +213,8 @@ import com.vividsolutions.jts.geom.Puntal;
  * Jul 31, 2015 7458       Robert.Blum  Updating userName and workstation fields on events that are
  *                                      being issued.
  * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Oct 08, 2015 12346      Chris.Golden Removed SWT code that was put in as part of issue #7747, replacing
+ *                                      raw use of SWT message box with abstract user warning issuance.
  * </pre>
  * 
  * @author bsteffen
@@ -1806,15 +1805,13 @@ public class SessionProductManager implements ISessionProductManager {
                                         .postNotification(new ProductFailed(
                                                 productGeneratorInformation));
                             } else if (result.isEmpty()) {
-                                Shell shell = PlatformUI.getWorkbench()
-                                        .getActiveWorkbenchWindow().getShell();
-                                String generatorName = productGeneratorInformation
-                                        .getProductGeneratorName();
-                                MessageBox msgBox = new MessageBox(shell);
-                                msgBox.setText(generatorName);
-                                msgBox.setMessage(generatorName
-                                        + " completed. No products generated.");
-                                msgBox.open();
+                                messenger
+                                        .getWarner()
+                                        .warnUser(
+                                                "Product Generation Error",
+                                                productGeneratorInformation
+                                                        .getProductGeneratorName()
+                                                        + " completed. No products generated.");
                                 sessionManager.setIssueOngoing(false);
                                 sessionManager.setPreviewOngoing(false);
                             }
