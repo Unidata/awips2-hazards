@@ -64,7 +64,10 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      events.
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
- * Aug 26, 2015 9386       mduff       Fixed getPhenSig method.
+ * Aug 26, 2015 9386       mduff        Fixed getPhenSig method.
+ * Oct 13, 2015 12494      Chris Golden Reworked to allow hazard types to include
+ *                                      only phenomenon (i.e. no significance) where
+ *                                      appropriate.
  * </pre>
  * 
  * @author bsteffen
@@ -299,11 +302,35 @@ public class HazardEventUtilities {
      * @param event
      *            Hazard event.
      * @return Full type as a string, with each component separated from the
-     *         next by a period (.), or an empty string if there is no type.
+     *         next by a period (.), or <code>null</code> if there is no type.
      */
     public static String getHazardType(IHazardEvent event) {
         return getHazardType(event.getPhenomenon(), event.getSignificance(),
                 event.getSubType());
+    }
+
+    /**
+     * Determine whether the specified hazard event has a valid type.
+     * 
+     * @param event
+     *            Hazard event.
+     * @return True if the hazard event has a valid type, false otherwise.
+     */
+    public static boolean isHazardTypeValid(IHazardEvent event) {
+        return (event.getPhenomenon() != null);
+    }
+
+    /**
+     * Get the phen-sig, in the form "phen.sig" (or just "phen" if there is no
+     * significance), for the specified hazard event.
+     * 
+     * @param event
+     *            Hazard event.
+     * @return Phen-sig.
+     */
+    public static String getHazardPhenSig(IHazardEvent event) {
+        String sig = event.getSignificance();
+        return event.getPhenomenon() + (sig != null ? "." + sig : "");
     }
 
     /**
@@ -312,21 +339,24 @@ public class HazardEventUtilities {
      * @param phen
      *            Phenomenon, or <code>null</code> if there is no type.
      * @param sig
-     *            Significance, or <code>null</code> if there is no type.
+     *            Significance, or <code>null</code> if the type does not
+     *            include a significance.
      * @param subType
      *            Subtype, or <code>null</code> if there is no type, or the type
      *            does not include a subtype.
      * @return Full type as a string, with each component separated from the
-     *         next by a period (.), or an empty string if there is no type.
+     *         next by a period (.), or <code>null</code> if there is no type.
      */
     public static String getHazardType(String phen, String sig, String subType) {
-        if (phen == null || sig == null) {
+        if (phen == null) {
             return null;
         }
         StringBuilder str = new StringBuilder();
         str.append(phen);
-        str.append('.');
-        str.append(sig);
+        if (sig != null) {
+            str.append('.');
+            str.append(sig);
+        }
         if (subType != null) {
             str.append('.');
             str.append(subType);
@@ -343,20 +373,23 @@ public class HazardEventUtilities {
      *            Type description; this must consist of a string consisting of
      *            a type substring containing no spaces, optionally followed by
      *            a space ( ) and anything after that (which is ignored). The
-     *            type substring must itself consist of either two or three
+     *            type substring must itself consist of one, two or three
      *            components, each separated from the next by periods (.); the
-     *            components must be in the order phenomenon, significance, and
-     *            (if included) subtype. For example, the string
-     *            "FA.W (Warning)" would be valid; everything after the space
-     *            would be ignored, and the "FA" would be parsed as the
-     *            phenomenon, while the "W" is parsed as the significance, and
-     *            subtype would be taken to be <code>null</code>. Likewise
-     *            "FF.W.NonConvective (Warning)" would be parsed as having a
-     *            phenomenon of "FF", a significance of "W", and a subtype of
-     *            "NonConvective", again with the rest being ignored.
+     *            components must be in the order phenomenon, significance (if
+     *            appropriate to the type), and (again if appropriate) subtype.
+     *            For example, the string "FA.W (Warning)" would be valid;
+     *            everything after the space would be ignored, and the "FA"
+     *            would be parsed as the phenomenon, while the "W" is parsed as
+     *            the significance, and subtype would be taken to be
+     *            <code>null</code>. Likewise "FF.W.NonConvective (Warning)"
+     *            would be parsed as having a phenomenon of "FF", a significance
+     *            of "W", and a subtype of "NonConvective", again with the rest
+     *            being ignored.
      * @return Array of three elements, the first being the phenomenon, the
-     *         second the significance, and the third being either the subtype,
-     *         if applicable, or <code>null</code>.
+     *         second the significance (if applicable, or <code>null</code>),
+     *         and the third being either the subtype, if applicable, or
+     *         <code>null</code>'. If there is no type, an array of three
+     *         <code>null</code> references will be returned.
      */
     public static String[] getHazardPhenSigSubType(String type) {
         if (!type.isEmpty()) {
@@ -374,16 +407,29 @@ public class HazardEventUtilities {
         return EMPTY_PHEN_SIG_SUBTYPE;
     }
 
+    /**
+     * Populate the specified hazard event with field values appropriate to the
+     * specified type.
+     * 
+     * @param event
+     *            Event to which to assign a type.
+     * @param hazardType
+     *            Type to be assigned to hazard event.
+     */
     public static void populateEventForHazardType(IHazardEvent event,
             String hazardType) {
         int endPhen = hazardType.indexOf('.');
-        event.setPhenomenon(hazardType.substring(0, endPhen));
-        int endSig = hazardType.indexOf('.', endPhen + 1);
-        if (endSig > 0) {
-            event.setSignificance(hazardType.substring(endPhen + 1, endSig));
-            event.setSubType(hazardType.substring(endSig + 1));
+        if (endPhen == -1) {
+            event.setPhenomenon(hazardType);
         } else {
-            event.setSignificance(hazardType.substring(endPhen + 1));
+            event.setPhenomenon(hazardType.substring(0, endPhen));
+            int endSig = hazardType.indexOf('.', endPhen + 1);
+            if (endSig > 0) {
+                event.setSignificance(hazardType.substring(endPhen + 1, endSig));
+                event.setSubType(hazardType.substring(endSig + 1));
+            } else {
+                event.setSignificance(hazardType.substring(endPhen + 1));
+            }
         }
     }
 
@@ -391,7 +437,8 @@ public class HazardEventUtilities {
      * Returns a {@link HazardStatus} based on the VTEC action code.
      * 
      * @param action
-     * @return
+     *            VTEC action code.
+     * @return Hazard status.
      */
     public static HazardStatus stateBasedOnAction(String action) {
         if ("CAN".equals(action) || "EXP".equals(action)) {
@@ -401,9 +448,16 @@ public class HazardEventUtilities {
         }
     }
 
+    /**
+     * Parse the specified string of ETNs into a list.
+     * 
+     * @param String
+     *            holding ETNs.
+     * @return List of ETNs.
+     */
     public static List<String> parseEtns(String etns) {
         List<String> parsed = new ArrayList<String>();
-        if (etns != null && etns.isEmpty() == false) {
+        if ((etns != null) && (etns.isEmpty() == false)) {
             if (etns.contains("[")) {
                 etns = etns.replaceAll("\\[|\\]", "");
                 String[] split = etns.split(",");
@@ -456,37 +510,18 @@ public class HazardEventUtilities {
         hazardEvent.addHazardAttribute(LOW_RESOLUTION_GEOMETRY, geom);
     }
 
-    /**
-     * Get the phenSig for the Hazard Event.
-     * 
-     * @param event
-     *            The Hazard Event
-     * @return The phenSig string or null if no phenSig
-     */
-    public static String getPhenSig(IHazardEvent event) {
-        String phensig = null;
-        if (event != null) {
-            if (event.getPhenomenon() != null
-                    && event.getSignificance() != null) {
-                phensig = event.getPhenomenon() + "." + event.getSignificance();
-                if (event.getSubType() != null && !event.getSubType().isEmpty()) {
-                    phensig += "." + event.getSubType();
-                }
-            }
-        }
-        return phensig;
-    }
-
     // Private Static Methods.
 
     /**
-     * Comparing if any of the ETNs of the first list match any of the second
-     * list. The lists can be different lengths depending on the code that hits
-     * this.
+     * Compare the two specified lists of ETNS to determine whether any of those
+     * in the first list are also in the second list. The lists may be different
+     * lengths.
      * 
      * @param etns1
+     *            First list of ETNs.
      * @param etns2
-     * @return
+     *            Second list of ETNs.
+     * @return False if there is at least one ETN is found in both lists.
      */
     private static boolean compareEtns(List<String> etns1, List<String> etns2) {
         for (String etn1 : etns1) {

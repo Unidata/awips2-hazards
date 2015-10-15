@@ -215,6 +215,8 @@ import com.vividsolutions.jts.geom.Puntal;
  * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * Oct 08, 2015 12346      Chris.Golden Removed SWT code that was put in as part of issue #7747, replacing
  *                                      raw use of SWT message box with abstract user warning issuance.
+ * Oct 14, 2015 12494      Chris Golden Reworked to allow hazard types to include only phenomenon (i.e. no
+ *                                      significance) where appropriate.
  * </pre>
  * 
  * @author bsteffen
@@ -367,7 +369,7 @@ public class SessionProductManager implements ISessionProductManager {
 
             for (ObservedHazardEvent e : eventManager
                     .getEventsForCurrentSettings()) {
-                if (e.getPhenomenon() == null || e.getSignificance() == null) {
+                if (HazardEventUtilities.isHazardTypeValid(e) == false) {
                     continue;
                 }
                 String key = HazardEventUtilities.getHazardType(e);
@@ -429,7 +431,7 @@ public class SessionProductManager implements ISessionProductManager {
 
             for (ObservedHazardEvent e : eventManager
                     .getEventsForCurrentSettings()) {
-                if (e.getPhenomenon() == null || e.getSignificance() == null) {
+                if (HazardEventUtilities.isHazardTypeValid(e) == false) {
                     continue;
                 }
                 String key = HazardEventUtilities.getHazardType(e);
@@ -590,7 +592,7 @@ public class SessionProductManager implements ISessionProductManager {
             for (ObservedHazardEvent e : eventManager
                     .getEventsForCurrentSettings()) {
 
-                if (e.getPhenomenon() == null || e.getSignificance() == null) {
+                if (HazardEventUtilities.isHazardTypeValid(e) == false) {
                     continue;
                 }
 
@@ -1144,8 +1146,7 @@ public class SessionProductManager implements ISessionProductManager {
 
         List<String> noTypeEventIds = new ArrayList<>(selectedEvents.size());
         for (ObservedHazardEvent event : selectedEvents) {
-            if ((event.getPhenomenon() == null)
-                    || (event.getSignificance() == null)) {
+            if (HazardEventUtilities.isHazardTypeValid(event) == false) {
                 noTypeEventIds.add(event.getEventID());
             }
         }
@@ -1735,8 +1736,7 @@ public class SessionProductManager implements ISessionProductManager {
 
         boolean hasConflicts = HazardServicesClient
                 .getHazardEventInteropServices(mode).hasConflicts(
-                        hazardEvent.getPhenomenon() + "."
-                                + hazardEvent.getSignificance(),
+                        HazardEventUtilities.getHazardPhenSig(hazardEvent),
                         hazardEvent.getSiteID(), hazardEvent.getStartTime(),
                         hazardEvent.getEndTime());
 
@@ -2043,11 +2043,11 @@ public class SessionProductManager implements ISessionProductManager {
         if (productGeneratorInformation.getProductEvents() != null) {
             for (IHazardEvent hazardEvent : productGeneratorInformation
                     .getProductEvents()) {
-                sb.append(hazardEvent.getDisplayEventID()).append(" ")
-                        .append(hazardEvent.getPhenomenon()).append(".")
-                        .append(hazardEvent.getSignificance()).append("\n");
+                sb.append(hazardEvent.getDisplayEventID())
+                        .append(" ")
+                        .append(HazardEventUtilities
+                                .getHazardPhenSig(hazardEvent)).append("\n");
             }
         }
     }
-
 }

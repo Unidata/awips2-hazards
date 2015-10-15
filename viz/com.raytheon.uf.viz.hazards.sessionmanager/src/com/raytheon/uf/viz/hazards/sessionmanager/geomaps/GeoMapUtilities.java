@@ -97,6 +97,9 @@ import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
  * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen
  * May 05, 2015 7624       mduff        Removed multiple geometry point reductions.
  * Aug 14, 2015 9920       Robert.Blum  Parameters are no longer required on mapdata requests.
+ * Oct 13, 2015 12494      Chris Golden Reworked to allow hazard types to include
+ *                                      only phenomenon (i.e. no significance) where
+ *                                      appropriate.
  * </pre>
  * 
  * @author blawrenc
@@ -573,7 +576,8 @@ public class GeoMapUtilities {
     public boolean isWarngenHatching(IHazardEvent hazardEvent) {
         HazardTypeEntry hazardTypeEntry = getHazardTypeEntry(hazardEvent);
 
-        return hazardTypeEntry.isWarngenHatching();
+        return ((hazardTypeEntry != null) && hazardTypeEntry
+                .isWarngenHatching());
     }
 
     /**
@@ -585,7 +589,7 @@ public class GeoMapUtilities {
     public boolean isPointBasedHatching(IHazardEvent hazardEvent) {
         HazardTypeEntry hazardTypeEntry = getHazardTypeEntry(hazardEvent);
 
-        return hazardTypeEntry.isPointBased();
+        return ((hazardTypeEntry != null) && hazardTypeEntry.isPointBased());
     }
 
     /**

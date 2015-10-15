@@ -41,6 +41,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventResponse;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
@@ -67,6 +68,9 @@ import com.raytheon.uf.edex.registry.ebxml.util.EbxmlObjectUtil;
  * ------------ ---------- ----------- --------------------------
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * Aug 13, 2015 8836      Chris.Cody    Changes for a configurable Event Id
+ * Oct 14, 2015 12494     Chris Golden  Reworked to allow hazard types to include
+ *                                      only phenomenon (i.e. no significance) where
+ *                                      appropriate.
  * </pre>
  * 
  * @author bphillip
@@ -116,23 +120,24 @@ public class HazardEventServices implements IHazardEventServices {
 
     @Override
     @WebMethod(operationName = "store")
-    public HazardEventResponse store(@WebParam(name = "events")
-    HazardEvent... events) throws HazardEventServiceException {
+    public HazardEventResponse store(
+            @WebParam(name = "events") HazardEvent... events)
+            throws HazardEventServiceException {
         return storeEventList(Arrays.asList(events));
     }
 
     @Override
     @WebMethod(operationName = "storeEventList")
-    public HazardEventResponse storeEventList(@WebParam(name = "events")
-    List<HazardEvent> events) throws HazardEventServiceException {
+    public HazardEventResponse storeEventList(
+            @WebParam(name = "events") List<HazardEvent> events)
+            throws HazardEventServiceException {
         statusHandler.info("Creating " + events.size() + " HazardEvents: ");
         String userName = wsContext.getUserPrincipal().getName();
         HazardEventResponse response = new HazardEventResponse();
         try {
             validateEvents(events);
             for (HazardEvent event : events) {
-                String phensig = event.getPhenomenon() + "."
-                        + event.getSignificance();
+                String phensig = HazardEventUtilities.getHazardPhenSig(event);
                 if (event.getSubType() != null && !event.getSubType().isEmpty()) {
                     phensig += "." + event.getSubType();
                 }
@@ -154,15 +159,17 @@ public class HazardEventServices implements IHazardEventServices {
 
     @Override
     @WebMethod(operationName = "delete")
-    public HazardEventResponse delete(@WebParam(name = "events")
-    HazardEvent... events) throws HazardEventServiceException {
+    public HazardEventResponse delete(
+            @WebParam(name = "events") HazardEvent... events)
+            throws HazardEventServiceException {
         return deleteEventList(Arrays.asList(events));
     }
 
     @Override
     @WebMethod(operationName = "deleteEventList")
-    public HazardEventResponse deleteEventList(@WebParam(name = "events")
-    List<HazardEvent> events) throws HazardEventServiceException {
+    public HazardEventResponse deleteEventList(
+            @WebParam(name = "events") List<HazardEvent> events)
+            throws HazardEventServiceException {
         statusHandler.info("Deleting " + events.size() + " HazardEvents.");
         String userName = wsContext.getUserPrincipal().getName();
         HazardEventResponse response = new HazardEventResponse();
@@ -210,15 +217,17 @@ public class HazardEventServices implements IHazardEventServices {
 
     @Override
     @WebMethod(operationName = "update")
-    public HazardEventResponse update(@WebParam(name = "events")
-    HazardEvent... events) throws HazardEventServiceException {
+    public HazardEventResponse update(
+            @WebParam(name = "events") HazardEvent... events)
+            throws HazardEventServiceException {
         return updateEventList(Arrays.asList(events));
     }
 
     @Override
     @WebMethod(operationName = "updateEventList")
-    public HazardEventResponse updateEventList(@WebParam(name = "events")
-    List<HazardEvent> events) throws HazardEventServiceException {
+    public HazardEventResponse updateEventList(
+            @WebParam(name = "events") List<HazardEvent> events)
+            throws HazardEventServiceException {
         statusHandler.info("Updating " + events.size() + " HazardEvents: ");
         String userName = wsContext.getUserPrincipal().getName();
         HazardEventResponse response = new HazardEventResponse();
@@ -226,8 +235,7 @@ public class HazardEventServices implements IHazardEventServices {
             validateEvents(events);
             for (HazardEvent event : events) {
 
-                String phensig = event.getPhenomenon() + "."
-                        + event.getSignificance();
+                String phensig = HazardEventUtilities.getHazardPhenSig(event);
                 if (event.getSubType() != null && !event.getSubType().isEmpty()) {
                     phensig += "." + event.getSubType();
                 }
@@ -245,12 +253,13 @@ public class HazardEventServices implements IHazardEventServices {
         }
         return checkResponse("UPDATE", "Updated " + events.size()
                 + " HazardEvents.", response);
-   }
+    }
 
     @Override
     @WebMethod(operationName = "retrieveByParams")
-    public HazardEventResponse retrieveByParams(@WebParam(name = "params")
-    Object... params) throws HazardEventServiceException {
+    public HazardEventResponse retrieveByParams(
+            @WebParam(name = "params") Object... params)
+            throws HazardEventServiceException {
         HazardEventQueryRequest request = null;
         if (params.length % 3 != 0) {
             throw new IllegalArgumentException(
@@ -264,8 +273,9 @@ public class HazardEventServices implements IHazardEventServices {
 
     @Override
     @WebMethod(operationName = "retrieve")
-    public HazardEventResponse retrieve(@WebParam(name = "request")
-    HazardEventQueryRequest request) throws HazardEventServiceException {
+    public HazardEventResponse retrieve(
+            @WebParam(name = "request") HazardEventQueryRequest request)
+            throws HazardEventServiceException {
         statusHandler.info("Executing Query for HazardEvents:\n " + request);
         HazardEventResponse response = new HazardEventResponse();
         try {
@@ -282,8 +292,8 @@ public class HazardEventServices implements IHazardEventServices {
 
     @Override
     @WebMethod(operationName = "requestEventId")
-    public String requestEventId(@WebParam(name = "siteID")
-    String siteID) throws HazardEventServiceException {
+    public String requestEventId(@WebParam(name = "siteID") String siteID)
+            throws HazardEventServiceException {
         statusHandler.info("Requesting Event ID for Site [" + siteID + "] in ["
                 + (practice ? "Practice] Mode" : "Operational] Mode"));
         // have different numbering depending on practice/operational hazards
@@ -356,8 +366,7 @@ public class HazardEventServices implements IHazardEventServices {
      */
     @Override
     @WebMethod(operationName = "lookupRegion")
-    public String lookupRegion(@WebParam(name = "siteID")
-    String siteID) {
+    public String lookupRegion(@WebParam(name = "siteID") String siteID) {
         return RegionLookup.getWfoRegion(siteID);
     }
 

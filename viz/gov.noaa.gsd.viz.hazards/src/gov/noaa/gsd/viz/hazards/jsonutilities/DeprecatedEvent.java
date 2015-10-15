@@ -72,6 +72,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * Feb 16, 2014 2161       Chris.Golden Added support for end time "until further notice" flag.
  * Jul 31, 2015 7458       Robert.Blum  Added userName and workstation fields.
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Oct 14, 2015 12494      Chris Golden Reworked to allow hazard types to include
+ *                                      only phenomenon (i.e. no significance) where
+ *                                      appropriate.
  * </pre>
  * 
  * @author bsteffen
@@ -206,6 +209,8 @@ public class DeprecatedEvent {
             if (subType != null && !subType.isEmpty()) {
                 type += "." + subType;
             }
+        } else if (phen != null) {
+            type = phen;
         }
 
         if (event.getStatus() != null) {

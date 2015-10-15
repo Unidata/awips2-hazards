@@ -107,7 +107,9 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  * Jan 19, 2014 4849       rferrel      Log exceptions getting GFERecords to delete.
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
- * 
+ * Oct 14, 2015 12494      Chris Golden Reworked to allow hazard types to include
+ *                                      only phenomenon (i.e. no significance) where
+ *                                      appropriate.
  * </pre>
  * 
  * @author jsanchez
@@ -144,7 +146,7 @@ public class HazardEventHandler {
     private static final Pattern PARM_OPERATIONAL_PATTERN = Pattern
             .compile(PARM_OPERATIONAL_FCST);
 
-    private GridRequestHandler gridRequestHandler;
+    private final GridRequestHandler gridRequestHandler;
 
     /**
      * Constructor.
@@ -627,8 +629,7 @@ public class HazardEventHandler {
         IHazardEvent hazardEvent = hazardEventManager.createEvent();
 
         try {
-            hazardEvent.setEventID(HazardServicesEventIdUtil
-                    .getNewEventID());
+            hazardEvent.setEventID(HazardServicesEventIdUtil.getNewEventID());
         } catch (Exception e) {
             statusHandler.handle(Priority.ERROR,
                     "Hazard ID generation failed.", e);
@@ -861,8 +862,7 @@ public class HazardEventHandler {
      */
     public void deleteGrid(IHazardEvent hazardEvent, GridParmInfo gridParmInfo,
             boolean practice) throws Exception {
-        String phenSig = hazardEvent.getPhenomenon() + "."
-                + hazardEvent.getSignificance();
+        String phenSig = HazardEventUtilities.getHazardPhenSig(hazardEvent);
         TimeRange timeRange = GFERecordUtil.createGridTimeRange(
                 hazardEvent.getStartTime(), hazardEvent.getEndTime(),
                 gridParmInfo.getTimeConstraints());

@@ -181,6 +181,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      can be used to replace a particular hazard event.
  * Mar 25, 2015  7102      Chris.Golden Fixed bug that caused null pointer exceptions when
  *                                      attempting to compile the duration choices lists.
+ * Oct 13, 2015 12494      Chris Golden Reworked to allow hazard types to include
+ *                                      only phenomenon (i.e. no significance) where
+ *                                      appropriate.
  * </pre>
  * 
  * @author bsteffen
@@ -564,13 +567,16 @@ public class SessionConfigurationManager implements
             cat.setIdentifier(entry.getKey());
             List<Choice> children = new ArrayList<Choice>();
             for (String[] info : entry.getValue()) {
-                String subType = null;
+                String significance = null, subType = null;
+                if (info.length > 1) {
+                    significance = info[1];
+                }
                 if (info.length > 2) {
                     subType = info[2];
                 }
                 Choice child = new Choice();
                 String headline = getHeadline(HazardEventUtilities
-                        .getHazardType(info[0], info[1], subType));
+                        .getHazardType(info[0], significance, subType));
                 StringBuilder id = new StringBuilder();
                 for (String str : info) {
                     if (str != info[0]) {
@@ -952,15 +958,12 @@ public class SessionConfigurationManager implements
 
     @Override
     public String getHeadline(IHazardEvent event) {
-        return getHeadline(HazardEventUtilities.getHazardType(
-                event.getPhenomenon(), event.getSignificance(),
-                event.getSubType()));
+        return getHeadline(HazardEventUtilities.getHazardType(event));
     }
 
     @Override
     public long getDefaultDuration(IHazardEvent event) {
-        String type = HazardEventUtilities.getHazardType(event.getPhenomenon(),
-                event.getSignificance(), event.getSubType());
+        String type = HazardEventUtilities.getHazardType(event);
         return (type != null ? hazardTypes.getConfig().get(type)
                 .getDefaultDuration() : getSettings().getDefaultDuration());
     }
@@ -988,8 +991,7 @@ public class SessionConfigurationManager implements
         }
 
         return durationChoicesForHazardTypes.get(HazardEventUtilities
-                .getHazardType(event.getPhenomenon(), event.getSignificance(),
-                        event.getSubType()));
+                .getHazardType(event));
     }
 
     @Override
@@ -1011,8 +1013,7 @@ public class SessionConfigurationManager implements
         }
 
         return startTimeIsCurrentTimeForHazardTypes.get(HazardEventUtilities
-                .getHazardType(event.getPhenomenon(), event.getSignificance(),
-                        event.getSubType()));
+                .getHazardType(event));
     }
 
     @Override
@@ -1034,8 +1035,7 @@ public class SessionConfigurationManager implements
         }
 
         return allowTimeExpandForHazardTypes.get(HazardEventUtilities
-                .getHazardType(event.getPhenomenon(), event.getSignificance(),
-                        event.getSubType()));
+                .getHazardType(event));
     }
 
     @Override
@@ -1057,8 +1057,7 @@ public class SessionConfigurationManager implements
         }
 
         return allowTimeShrinkForHazardTypes.get(HazardEventUtilities
-                .getHazardType(event.getPhenomenon(), event.getSignificance(),
-                        event.getSubType()));
+                .getHazardType(event));
     }
 
     @Override
@@ -1125,29 +1124,34 @@ public class SessionConfigurationManager implements
 
     @Override
     public String getHazardCategory(IHazardEvent event) {
-        if (event.getPhenomenon() == null) {
+        if (HazardEventUtilities.isHazardTypeValid(event) == false) {
             return (String) event
                     .getHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY);
         }
         for (Entry<String, String[][]> entry : hazardCategories.getConfig()
                 .entrySet()) {
             for (String[] str : entry.getValue()) {
-                if (str.length >= 2) {
+                if (str.length > 0) {
                     if (event.getPhenomenon() == null) {
                         continue;
                     } else if (!event.getPhenomenon().equals(str[0])) {
                         continue;
-                    } else if (event.getSignificance() == null) {
-                        continue;
-                    } else if (!event.getSignificance().equals(str[1])) {
-                        continue;
                     }
-                    if (str.length >= 3) {
-                        if (event.getSubType() == null) {
+                    if (str.length > 1) {
+                        if (event.getSignificance() == null) {
                             continue;
-                        } else if (!event.getSubType().equals(str[2])) {
+                        } else if (!event.getSignificance().equals(str[1])) {
                             continue;
                         }
+                        if (str.length > 2) {
+                            if (event.getSubType() == null) {
+                                continue;
+                            } else if (!event.getSubType().equals(str[2])) {
+                                continue;
+                            }
+                        }
+                    } else if (event.getSignificance() != null) {
+                        continue;
                     }
                     return entry.getKey();
                 }

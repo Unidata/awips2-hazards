@@ -55,7 +55,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEve
  * Dec 18, 2014 #2826     dgilling     Change fields used in interoperability.
  * Feb 22, 2015   6561    mpduff       Use insertTime to find latest events.
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * 
+ * Oct 14, 2015 12494     Chris Golden  Reworked to allow hazard types to include
+ *                                      only phenomenon (i.e. no significance) where
+ *                                      appropriate.
  * </pre>
  * 
  * @author bkowal
@@ -175,9 +177,11 @@ public final class InteroperabilityUtil {
             int index = events.get(eventID).size() - 1;
             IHazardEvent existingEvent = events.get(eventID).get(index);
 
-            if (existingEvent.getSiteID().equals(siteID) == false
-                    || existingEvent.getPhenomenon().equals(phen) == false
-                    || existingEvent.getSignificance().equals(sig) == false) {
+            if ((existingEvent.getSiteID().equals(siteID) == false)
+                    || (existingEvent.getPhenomenon().equals(phen) == false)
+                    || ((existingEvent.getSignificance() == null) && (sig != null))
+                    || ((existingEvent.getSignificance() != null) && (existingEvent
+                            .getSignificance().equals(sig) == false))) {
                 continue;
             }
 

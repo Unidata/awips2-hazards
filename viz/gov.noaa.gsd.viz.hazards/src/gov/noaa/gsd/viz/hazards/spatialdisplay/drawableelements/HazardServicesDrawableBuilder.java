@@ -91,7 +91,9 @@ import com.vividsolutions.jts.geom.Puntal;
  * May 05, 2015 7624       mduff        Handle MultiPolygons, added deholer method.
  * Jun 24, 2015 6601       Chris.Cody   Change Create by Hazard Type display text
  * Jul 17, 2015 8890       Chris.Cody   Vertices appearing incorrectly on display
- * 
+ * Oct 13, 2015 12494      Chris Golden Reworked to allow hazard types to include
+ *                                      only phenomenon (i.e. no significance) where
+ *                                      appropriate.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -729,8 +731,15 @@ public class HazardServicesDrawableBuilder {
                 }
             }
 
+            /*
+             * TODO: This was removed for Redmine issue #3628 -- not sure why.
+             * It creates a text annotation for each geometry giving the
+             * significance of the event.
+             */
+            String significance = hazardEvent.getSignificance();
             if (false) {
-                // if (isWarngenHatching) {
+                // if (isWarngenHatching && (significance != null) &&
+                // (significance.isEmpty() == false)) {
                 for (IGeometryData geometryData : hazardArea) {
                     Geometry geometry = geometryData.getGeometry();
                     if (!geometry.isEmpty()
@@ -739,9 +748,8 @@ public class HazardServicesDrawableBuilder {
                                 .getCentroid();
 
                         AbstractDrawableComponent textComponent = new HazardServicesText(
-                                drawingAttributes,
-                                hazardEvent.getSignificance(), TEXT, centroid,
-                                activeLayer, hazardEvent.getSignificance());
+                                drawingAttributes, significance, TEXT,
+                                centroid, activeLayer, significance);
                         hatchedAreaAnnotations.add(textComponent);
                     }
                 }

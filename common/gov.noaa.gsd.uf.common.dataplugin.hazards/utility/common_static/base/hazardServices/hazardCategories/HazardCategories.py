@@ -28,6 +28,8 @@ HazardCategories = collections.OrderedDict(
                        ("LW", "Y"), ("SM", "Y"), ("WI", "Y") ],
                        
         "Tropical": [("TR", "W"), ("TR", "A"), ("HU", "W"), ("HU", "S"), ("HU", "A"), ("HI", "A"), ("HI", "W"), 
-                     ("TI", "W"), ("TI", "A"), ("TY", "A"),("TY", "W"), ("TS", "A"), ("TS", "W")],          
+                     ("TI", "W"), ("TI", "A"), ("TY", "A"),("TY", "W"), ("TS", "A"), ("TS", "W")],
+                   
+        "Probabilistic": [("Prob_Tornado",), ("Prob_Wind",), ("Prob_Hail",)]
         }
 )

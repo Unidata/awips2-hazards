@@ -26,6 +26,7 @@ import org.geotools.geometry.jts.JTS;
 import org.opengis.metadata.spatial.PixelOrientation;
 import org.opengis.referencing.operation.TransformException;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.gfe.GridDataHistory;
 import com.raytheon.uf.common.dataplugin.gfe.GridDataHistory.OriginType;
@@ -68,7 +69,9 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  * Apr 08, 2014 3357       bkowal       Added additional utility methods to support
  *                                      the updated gfe interoperability matching
  *                                      method.
- * 
+ * Oct 14, 2015 12494      Chris Golden Reworked to allow hazard types to include
+ *                                      only phenomenon (i.e. no significance) where
+ *                                      appropriate.
  * </pre>
  * 
  * @author jsanchez
@@ -137,8 +140,7 @@ public class GFERecordUtil {
         GFERecord record = new GFERecord(parmID, timeRange);
 
         // create discrete keys
-        String phensig = hazardEvent.getPhenomenon() + "."
-                + hazardEvent.getSignificance();
+        String phensig = HazardEventUtilities.getHazardPhenSig(hazardEvent);
         DiscreteKey[] discretekeys = DiscreteGridSliceUtil
                 .createSimpleDiscreteKeys(parmID, phensig);
 

@@ -26,6 +26,7 @@ import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 
@@ -43,7 +44,9 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * 04/16/2015   7579       Robert.Blum  Updates for amended Product Editor.
  * 07/08/2015   9063       Benjamin.Phillippe Fixed product name collision in dataEditorMap 
  * 07/23/2015   9625       Robert.Blum  Adjusted productID collision issue for RVS.
- * 
+ * Oct 13, 2015 12494      Chris Golden Reworked to allow hazard types to include
+ *                                      only phenomenon (i.e. no significance) where
+ *                                      appropriate.
  * </pre>
  * 
  * @author bphillip
@@ -55,7 +58,7 @@ class DataEditorManager {
      * Map of data editors. The keys are the product names and the values are
      * containers holding the editors associated with that product
      */
-    private Map<String, ProductEditorContainer> dataEditorMap = new HashMap<String, ProductEditorContainer>();
+    private final Map<String, ProductEditorContainer> dataEditorMap = new HashMap<String, ProductEditorContainer>();
 
     /**
      * Creates a new DataEditorManager.
@@ -173,8 +176,8 @@ class DataEditorManager {
         EventSet<IEvent> eventSet = product.getEventSet();
         if (eventSet.isEmpty() == false) {
             IHazardEvent event = (IHazardEvent) eventSet.iterator().next();
-            return event.getEventID() + " " + event.getPhenomenon() + "."
-                    + event.getSignificance();
+            return event.getEventID() + " "
+                    + HazardEventUtilities.getHazardPhenSig(event);
         } else {
             /*
              * RVS workaround since the eventSet is empty. There will only be
@@ -197,6 +200,7 @@ class DataEditorManager {
 
         /** Formatted text viewers */
         protected Map<String, FormattedTextViewer> textViewerMap = new HashMap<String, FormattedTextViewer>();
+
         /**
          * Gets all editors in this container
          * 

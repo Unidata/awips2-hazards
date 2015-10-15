@@ -7,9 +7,8 @@ from HazardCategories import HazardCategories
 
 # NOTE: The "classMetaData" entry is the name of a file containing a "class MetaData" with
 #       an execute(self, hazardEvent=None, metaDict=None) method.
-#       This method, when run, should return a dictionary holding a list of megawidgets
-#       and, optionally, a side effects script to be applied whenever those megawidgets'
-#       values are changed.
+#       This method, when run, should return a dictionary holding megawidgets and other
+#       related information.
 HazardMetaData =[
                 {"hazardTypes": [("FF", "W", "Convective")], "classMetaData": "MetaData_FF_W_Convective"},
                 {"hazardTypes": [("FF", "W", "NonConvective")], "classMetaData": "MetaData_FF_W_NonConvective"},
@@ -29,4 +28,5 @@ HazardMetaData =[
                                 HazardCategories.get("Marine") + HazardCategories.get("Non Precip") + HazardCategories.get("Tropical"),
                 "classMetaData": None, # empty for now -- MetaData_LongFused,
                 },
+                {"hazardTypes": HazardCategories.get("Probabilistic"), "classMetaData": None},
 ]

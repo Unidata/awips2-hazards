@@ -14,6 +14,7 @@ import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_DASHED_4;
 
 import java.awt.Color;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
@@ -29,10 +30,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 18, 2013     1264   Chris.Golden      Initial creation
- * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Aug  9, 2013 1921       daniel.s.schaffer Support of replacement of JSON with POJOs
  * Dec 05, 2014     4124   Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
- * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
+ * Feb 09, 2015 6260       Dan Schaffer      Fixed bugs in multi-polygon handling
+ * Oct 13, 2015 12494      Chris Golden      Reworked to allow hazard types to include
+ *                                           only phenomenon (i.e. no significance) where
+ *                                           appropriate.
  * </pre>
  * 
  * @author Chris.Golden
@@ -142,7 +146,7 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
          */
         if (element.equals(Element.OUTER)) {
             setColors(new Color[] { Color.WHITE, Color.WHITE });
-        } else if (hazardEvent.getPhenomenon() != null) {
+        } else if (HazardEventUtilities.isHazardTypeValid(hazardEvent)) {
             Color color = getColors()[1];
             setColors(new Color[] { color, color });
         } else {

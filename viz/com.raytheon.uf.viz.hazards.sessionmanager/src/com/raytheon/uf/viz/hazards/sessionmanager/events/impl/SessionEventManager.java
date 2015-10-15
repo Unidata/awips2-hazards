@@ -319,6 +319,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Aug 17, 2015    9968    Chris.Cody   Changes for processing ENDED/ELAPSED/EXPIRED events
  * Sep 04, 2015    7514    Chris.Golden Fixed bug introduced by July 6th check-in for this issue that caused
  *                                      exceptions to be thrown when upgrading certain watches to warnings.
+ * Oct 14, 2015   12494    Chris Golden Reworked to allow hazard types to include only phenomenon (i.e. no
+ *                                      significance) where appropriate.
  * </pre>
  * 
  * @author bsteffen
@@ -3496,9 +3498,9 @@ public class SessionEventManager implements
 
     private boolean isProposedStateAllowed(ObservedHazardEvent event,
             HazardStatus status) {
-        return !HazardStatus.hasEverBeenIssued(status)
-                && status != HazardStatus.PROPOSED
-                && event.getPhenomenon() != null;
+        return ((HazardStatus.hasEverBeenIssued(status) == false)
+                && (status != HazardStatus.PROPOSED) && HazardEventUtilities
+                    .isHazardTypeValid(event));
     }
 
     /*

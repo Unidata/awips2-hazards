@@ -36,8 +36,10 @@ import com.vividsolutions.jts.geom.Geometry;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 20, 2013            daniel.s.schaffer      Initial creation
- * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * 
+ * Nov 04, 2013 2182       daniel.s.schaffer      Started refactoring
+ * Oct 14, 2015 12494      Chris Golden           Reworked to allow hazard types to include
+ *                                                only phenomenon (i.e. no significance) where
+ *                                                appropriate.
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -138,7 +140,9 @@ public class InMemoryHazardEventManager extends HazardEventManager {
 
             if (filterName.equals(SIGNIFICANCE)) {
                 for (Object filterValue : list) {
-                    if (hazardEvent.getSignificance().equals(filterValue)) {
+                    if ((hazardEvent.getSignificance() != null)
+                            && hazardEvent.getSignificance()
+                                    .equals(filterValue)) {
                         internalTruth = true;
                         break;
                     } else {
