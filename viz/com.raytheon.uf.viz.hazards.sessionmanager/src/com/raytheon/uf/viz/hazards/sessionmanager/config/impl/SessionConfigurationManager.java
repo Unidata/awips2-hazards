@@ -53,6 +53,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEventFirstClassAttribute;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.configuration.ConfigLoader;
@@ -83,6 +84,7 @@ import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.core.jobs.JobPool;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.IEventModifyingScriptJobListener;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -94,6 +96,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardCatego
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardMetaData;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.EventDrivenToolEntry;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.EventDrivenTools;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
@@ -101,11 +105,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Page;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.styles.HazardStyle;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 
@@ -184,6 +189,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * Oct 13, 2015 12494      Chris Golden Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
+ * Nov 10, 2015 12762      Chris.Golden Added recommender running in response to
+ *                                      hazard event metadata changes, as well as the
+ *                                      use of the new recommender manager.
  * </pre>
  * 
  * @author bsteffen
@@ -231,6 +239,10 @@ public class SessionConfigurationManager implements
     public static final String ALERTS_CONFIG_PATH = FileUtil.join(
             "hazardServices", "alerts", "HazardAlertsConfig.xml");
 
+    public static final String EVENT_DRIVEN_TOOLS_PATH = FileUtil
+            .join("python", "events", "recommenders", "config",
+                    "EventDrivenTools.py");
+
     static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionConfigurationManager.class);
 
@@ -253,13 +265,16 @@ public class SessionConfigurationManager implements
 
     private static final HazardEventMetadata EMPTY_HAZARD_EVENT_METADATA = new HazardEventMetadata(
             EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
-            Collections.<String> emptySet(), Collections.<String> emptySet(),
-            null, null);
+            Collections.<String> emptySet(),
+            Collections.<String, String> emptyMap(),
+            Collections.<String> emptySet(), null, null);
 
     private ISessionNotificationSender notificationSender;
 
     private final JobPool loaderPool = new JobPool(
             "Loading Hazard Services Config", 1);
+
+    private ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
     private IPathManager pathManager;
 
@@ -280,6 +295,8 @@ public class SessionConfigurationManager implements
     private ConfigLoader<HazardAlertsConfig> alertsConfig;
 
     private ConfigLoader<SettingsConfig[]> settingsConfig;
+
+    private ConfigLoader<EventDrivenTools> eventDrivenTools;
 
     private ObservedSettings settings;
 
@@ -304,15 +321,19 @@ public class SessionConfigurationManager implements
 
     private Map<String, Boolean> allowTimeShrinkForHazardTypes;
 
+    private Map<String, Map<HazardEventFirstClassAttribute, String>> recommendersForTriggersForHazardTypes;
+
     private Set<String> typesRequiringPointIds;
 
     SessionConfigurationManager() {
 
     }
 
-    public SessionConfigurationManager(IPathManager pathManager,
-            ISessionTimeManager timeManager,
+    public SessionConfigurationManager(
+            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
+            IPathManager pathManager, ISessionTimeManager timeManager,
             ISessionNotificationSender notificationSender) {
+        this.sessionManager = sessionManager;
         this.pathManager = pathManager;
         this.timeManager = timeManager;
         this.notificationSender = notificationSender;
@@ -362,6 +383,31 @@ public class SessionConfigurationManager implements
                 .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_TYPES_PY);
         hazardTypes = new ConfigLoader<HazardTypes>(file, HazardTypes.class);
         loaderPool.schedule(hazardTypes);
+
+        /*
+         * Load any event-driven tool specifications from configuration, and
+         * schedule them to run at the specified intervals.
+         */
+        file = pathManager.getStaticLocalizationFile(EVENT_DRIVEN_TOOLS_PATH);
+        eventDrivenTools = new ConfigLoader<EventDrivenTools>(file,
+                EventDrivenTools.class);
+        loaderPool.schedule(eventDrivenTools);
+        for (final EventDrivenToolEntry entry : eventDrivenTools.getConfig()) {
+            timeManager.runAtRegularIntervals(
+                    new Runnable() {
+
+                        @Override
+                        public void run() {
+                            SessionConfigurationManager.this.sessionManager
+                                    .runTool(entry.getType(), entry
+                                            .getIdentifier(),
+                                            RecommenderExecutionContext
+                                                    .getTimeIntervalContext());
+                        }
+                    },
+                    ISessionTimeManager.MINUTE_AS_MILLISECONDS
+                            * entry.getIntervalMinutes());
+        }
 
         file = pathManager.getStaticLocalizationFile(ALERTS_CONFIG_PATH);
         alertsConfig = new ConfigLoader<HazardAlertsConfig>(file,
@@ -625,11 +671,12 @@ public class SessionConfigurationManager implements
 
         /*
          * Build a megawidget specifier manager out of the metadata, as well as
-         * getting a set of metadata-reload-triggering metadata keys. If the
-         * file that produced the metadata has an apply-interdependencies entry
-         * point, create a side effects applier for it. If it includes a map of
-         * event modifiers to the names of scripts that are to be run, remember
-         * these.
+         * getting a set of metadata-reload-triggering metadata keys, and a map
+         * of recommender-running metadata keys to their associated
+         * recommenders. If the file that produced the metadata has an
+         * apply-interdependencies entry point, create a side effects applier
+         * for it. If it includes a map of event modifiers to the names of
+         * scripts that are to be run, remember these.
          */
         ISideEffectsApplier sideEffectsApplier = null;
         File scriptFile = null;
@@ -656,6 +703,7 @@ public class SessionConfigurationManager implements
                     : new HazardEventMetadata(
                             EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
                             Collections.<String> emptySet(),
+                            Collections.<String, String> emptyMap(),
                             Collections.<String> emptySet(), scriptFile,
                             eventModifyingFunctionNamesForIdentifiers));
         }
@@ -665,6 +713,8 @@ public class SessionConfigurationManager implements
 
         Set<String> refreshTriggeringMetadataKeys = getMegawidgetIdentifiersWithParameter(
                 specifiersList, HazardConstants.METADATA_RELOAD_TRIGGER);
+        Map<String, String> recommendersTriggeredForMetadataKeys = getValuesForMegawidgetIdentifiersWithParameter(
+                specifiersList, HazardConstants.RECOMMENDER_RUN_TRIGGER);
         Set<String> editRiseCrestFallMetadataKeys = getMegawidgetIdentifiersWithParameter(
                 specifiersList, HazardConstants.METADATA_EDIT_RISE_CREST_FALL);
 
@@ -673,6 +723,7 @@ public class SessionConfigurationManager implements
                     specifiersList, IControlSpecifier.class,
                     timeManager.getCurrentTimeProvider(), sideEffectsApplier),
                     refreshTriggeringMetadataKeys,
+                    recommendersTriggeredForMetadataKeys,
                     editRiseCrestFallMetadataKeys, scriptFile,
                     eventModifyingFunctionNamesForIdentifiers);
         } catch (MegawidgetSpecificationException e) {
@@ -696,10 +747,30 @@ public class SessionConfigurationManager implements
      */
     private Set<String> getMegawidgetIdentifiersWithParameter(List<?> list,
             String parameterName) {
-        Set<String> triggeringIdentifiers = new HashSet<>();
-        addMegawidgetIdentifiersIncludingParameterToSet(list, parameterName,
-                triggeringIdentifiers);
-        return triggeringIdentifiers;
+        Map<String, Boolean> valuesForTriggerIdentifiers = new HashMap<>();
+        addMegawidgetIdentifiersIncludingParameterToMap(list, parameterName,
+                valuesForTriggerIdentifiers);
+        return valuesForTriggerIdentifiers.keySet();
+    }
+
+    /**
+     * Get the map of megawidget identifiers to associated values from the
+     * specified list, which may contain raw specifiers and their descendants,
+     * of any megawidget specifiers that include the specified parameter name.
+     * 
+     * @param list
+     *            List to be checked.
+     * @param parameterName
+     *            Parameter name for which to search.
+     * @return Map of megawidget identifiers that contain the specified
+     *         parameter to the corresponding parameter values.
+     */
+    private Map<String, String> getValuesForMegawidgetIdentifiersWithParameter(
+            List<?> list, String parameterName) {
+        Map<String, String> valuesForTriggerIdentifiers = new HashMap<>();
+        addMegawidgetIdentifiersIncludingParameterToMap(list, parameterName,
+                valuesForTriggerIdentifiers);
+        return valuesForTriggerIdentifiers;
     }
 
     /**
@@ -708,39 +779,42 @@ public class SessionConfigurationManager implements
      * a map of some sort (in which case it itself may be a raw specifier,
      * and/or its values must be checked recursively), or a primitive (which
      * never has any raw specifiers in it), and add any found specifiers that
-     * include the given parameter name to the specified set.
+     * include the given parameter name to the specified map.
      * 
      * @param object
      *            Object to be checked.
      * @param parameterName
      *            Parameter name for which to search.
-     * @param triggerIdentifiers
-     *            Set to which to add any megawidget identifiers that qualify.
+     * @param valuesForTriggerIdentifiers
+     *            Map holding megawidget identifiers that qualify paired with
+     *            their associated parameter values.
      */
-    private void addMegawidgetIdentifiersIncludingParameterToSet(Object object,
-            String parameterName, Set<String> triggeringIdentifiers) {
+    @SuppressWarnings("unchecked")
+    private <V> void addMegawidgetIdentifiersIncludingParameterToMap(
+            Object object, String parameterName,
+            Map<String, V> valuesForTriggerIdentifiers) {
 
         /*
          * Iterate through the list, recursively calling this method on any
          * sublist found, and treating any map as a potential megawidget
-         * specifier and, regardless of whether it is found to be or not, also
-         * recursively calling
+         * specifier and, regardless of whether it is found to be or not.
          */
         if (object instanceof Map) {
             Map<?, ?> map = (Map<?, ?>) object;
             if (map.containsKey(parameterName)
                     && map.containsKey(HazardConstants.FIELD_NAME)) {
-                triggeringIdentifiers.add(map.get(HazardConstants.FIELD_NAME)
-                        .toString());
+                valuesForTriggerIdentifiers.put(
+                        map.get(HazardConstants.FIELD_NAME).toString(),
+                        (V) map.get(parameterName));
             }
             for (Object value : map.values()) {
-                addMegawidgetIdentifiersIncludingParameterToSet(value,
-                        parameterName, triggeringIdentifiers);
+                addMegawidgetIdentifiersIncludingParameterToMap(value,
+                        parameterName, valuesForTriggerIdentifiers);
             }
         } else if (object instanceof List) {
             for (Object item : (List<?>) object) {
-                addMegawidgetIdentifiersIncludingParameterToSet(item,
-                        parameterName, triggeringIdentifiers);
+                addMegawidgetIdentifiersIncludingParameterToMap(item,
+                        parameterName, valuesForTriggerIdentifiers);
             }
         }
     }
@@ -897,6 +971,11 @@ public class SessionConfigurationManager implements
     }
 
     @Override
+    public EventDrivenTools getEventDrivenTools() {
+        return eventDrivenTools.getConfig();
+    }
+
+    @Override
     public Color getColor(IHazardEvent event) {
 
         StyleRule styleRule = null;
@@ -995,6 +1074,52 @@ public class SessionConfigurationManager implements
     }
 
     @Override
+    public String getRecommenderTriggeredByChange(IHazardEvent event,
+            HazardEventFirstClassAttribute change) {
+
+        /*
+         * If the recommenders for triggers for hazard types map has not yet
+         * been initialized, do so now. Include an entry of an empty map for the
+         * null hazard type, so that hazard events without a type have an entry.
+         */
+        if (recommendersForTriggersForHazardTypes == null) {
+            recommendersForTriggersForHazardTypes = new HashMap<>();
+            for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
+                    .getConfig().entrySet()) {
+                Map<HazardEventFirstClassAttribute, String> map = new HashMap<>();
+                Map<String, List<String>> attributeNameListsForRecommenders = entry
+                        .getValue().getModifyRecommenders();
+                if (attributeNameListsForRecommenders != null) {
+                    for (Map.Entry<String, List<String>> subEntry : attributeNameListsForRecommenders
+                            .entrySet()) {
+                        for (String attributeName : subEntry.getValue()) {
+                            HazardEventFirstClassAttribute attribute = HazardEventFirstClassAttribute
+                                    .getInstanceWithIdentifier(attributeName);
+                            if (attribute != null) {
+                                map.put(attribute, subEntry.getKey());
+                            } else {
+                                statusHandler
+                                        .warn("\""
+                                                + attributeName
+                                                + "\" is not a valid hazard event attribute "
+                                                + "(found in 'modifyRecommenders' entry for hazard type "
+                                                + entry.getKey()
+                                                + "); skipping.");
+                            }
+                        }
+                    }
+                }
+                recommendersForTriggersForHazardTypes.put(entry.getKey(), map);
+            }
+            recommendersForTriggersForHazardTypes.put(null, Collections
+                    .<HazardEventFirstClassAttribute, String> emptyMap());
+        }
+
+        return recommendersForTriggersForHazardTypes.get(
+                HazardEventUtilities.getHazardType(event)).get(change);
+    }
+
+    @Override
     public boolean isStartTimeIsCurrentTime(IHazardEvent event) {
 
         /*
@@ -1061,7 +1186,7 @@ public class SessionConfigurationManager implements
     }
 
     @Override
-    public Tool getTypeFirstRecommender(String hazardType) {
+    public String getTypeFirstRecommender(String hazardType) {
 
         /*
          * If the type-first recommenders for hazard types map has not yet been
@@ -1079,9 +1204,7 @@ public class SessionConfigurationManager implements
                 }
             }
         }
-        String toolName = typeFirstRecommendersForHazardTypes.get(hazardType);
-
-        return settings.getTool(toolName);
+        return typeFirstRecommendersForHazardTypes.get(hazardType);
     }
 
     @Override

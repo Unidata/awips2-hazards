@@ -102,7 +102,10 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Feb 22, 2015   6561     mpduff       Override get and get/setInsertTime
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
  * Jul 31, 2015 7458       Robert.Blum  Added new userName and workstation methods.
- * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id.
+ * Nov 10, 2015 12762      Chris.Golden Fixed potential bug causing notifications to
+ *                                      be sent out in a case where they are not
+ *                                      desired.
  * </pre>
  * 
  * @author bsteffen
@@ -772,9 +775,12 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
                 modifiedAttributes.put(changedKey, attributes.get(changedKey));
             }
             delegate.addHazardAttributes(modifiedAttributes);
-            eventManager
-                    .hazardEventModified(new SessionEventAttributesModified(
-                            eventManager, this, modifiedAttributes, originator));
+            if (notify) {
+                eventManager
+                        .hazardEventModified(new SessionEventAttributesModified(
+                                eventManager, this, modifiedAttributes,
+                                originator));
+            }
         }
     }
 

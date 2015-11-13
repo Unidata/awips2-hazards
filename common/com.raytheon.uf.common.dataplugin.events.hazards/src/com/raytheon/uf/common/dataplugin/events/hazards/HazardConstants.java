@@ -20,9 +20,12 @@
 package com.raytheon.uf.common.dataplugin.events.hazards;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import com.google.common.collect.ImmutableMap;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 
 /**
@@ -77,6 +80,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Jul 29, 2015 9306    Chris.Cody      Add HazardSatus.ELAPSED status
  * Jul 31, 2015 7458      Robert.Blum   Added new USER_NAME and WORKSTATION constants.
  * Aug 06, 2015 9968      Chris.Cody    Added Ended/Elapsed time status checking
+ * Nov 10, 2015 12762     Chris.Golden  Added constants and enums related to running tools.
  * </pre>
  * 
  * @author mnash
@@ -84,6 +88,145 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  */
 
 public final class HazardConstants {
+
+    /**
+     * Key for a hazard's label in a spatial input parameters dictionary.
+     */
+    public static final String SPATIAL_PARAMETERS_HAZARD_LABEL = "label";
+
+    /**
+     * Possible return types for hazard dictionaries
+     */
+    public static final String SPATIAL_PARAMETERS_RETURN_TYPE = "returnType";
+
+    public static final String SPATIAL_PARAMETERS_RETURN_TYPE_POINT = "Point";
+
+    // Frame information parameter names.
+
+    public static final String FRAMES_INFO = "framesInfo";
+
+    public static final String FRAME_TIMES = "frameTimeList";
+
+    public static final String FRAME_INDEX = "frameIndex";
+
+    public static final String FRAME_COUNT = "frameCount";
+
+    public static final String CURRENT_FRAME = "currentFrame";
+
+    // Recommender execution context parameter names.
+
+    public static final String RECOMMENDER_EXECUTION_TRIGGER = "trigger";
+
+    public static final String RECOMMENDER_EVENT_TYPE = "eventType";
+
+    public static final String RECOMMENDER_TRIGGER_EVENT_IDENTIFIER = "eventIdentifier";
+
+    public static final String RECOMMENDER_TRIGGER_ATTRIBUTE_IDENTIFIER = "attributeIdentifier";
+
+    // Recommender metadata keys.
+
+    public static final String RECOMMENDER_METADATA_TOOL_NAME = "toolName";
+
+    public static final String RECOMMENDER_METADATA_BACKGROUND = "background";
+
+    /**
+     * Types of changes or events that may trigger a recommender execution.
+     */
+    public enum Trigger {
+        NONE("none"), HAZARD_TYPE_FIRST("hazardTypeFirst"), HAZARD_EVENT_MODIFICATION(
+                "hazardEventModification"), HAZARD_EVENT_DECORATION_CHANGE(
+                "hazardEventDecorationChange"), TIME_INTERVAL("timeInterval");
+
+        // Private Variables
+
+        /**
+         * Identifier of the type.
+         */
+        private final String identifier;
+
+        // Private Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param identifier
+         *            Identifier of the type.
+         */
+        private Trigger(String identifier) {
+            this.identifier = identifier;
+        }
+
+        // Public Methods
+
+        @Override
+        public String toString() {
+            return identifier;
+        }
+    }
+
+    /**
+     * First-class attributes of hazard events.
+     */
+    public enum HazardEventFirstClassAttribute {
+        TIME_RANGE(HAZARD_EVENT_TIME_RANGE), GEOMETRY(HazardConstants.GEOMETRY), STATUS(
+                HAZARD_EVENT_STATUS), GEOMETRY_DECORATION(
+                HazardConstants.GEOMETRY_DECORATION);
+
+        // Private Static Constants
+
+        /**
+         * Map of identifiers to instances.
+         */
+        private static final Map<String, HazardEventFirstClassAttribute> INSTANCES_FOR_IDENTIFIERS;
+        static {
+            Map<String, HazardEventFirstClassAttribute> map = new HashMap<>();
+            for (HazardEventFirstClassAttribute value : values()) {
+                map.put(value.toString(), value);
+            }
+            INSTANCES_FOR_IDENTIFIERS = ImmutableMap.copyOf(map);
+        }
+
+        // Private Variables
+
+        /**
+         * Identifier of the type.
+         */
+        private final String identifier;
+
+        // Public Static Methods
+
+        /**
+         * Get the instance with the specified identifier.
+         * 
+         * @param identifier
+         *            Identifier.
+         * @return Instance, or <code>null</code> if there is no instance with
+         *         the specified identifier.
+         */
+        public static HazardEventFirstClassAttribute getInstanceWithIdentifier(
+                String identifier) {
+            return INSTANCES_FOR_IDENTIFIERS.get(identifier);
+        }
+
+        // Private Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param identifier
+         *            Identifier of the type.
+         */
+        private HazardEventFirstClassAttribute(String identifier) {
+            this.identifier = identifier;
+        }
+
+        // Public Methods
+
+        @Override
+        public String toString() {
+            return identifier;
+        }
+    }
 
     // part of the hazard lifecycle that the user will see
     public enum HazardStatus {
@@ -423,6 +566,16 @@ public final class HazardConstants {
     public static final String CREATION_TIME = "creationTime";
 
     /**
+     * Time range in hazard (start time to end time).
+     */
+    public static final String HAZARD_EVENT_TIME_RANGE = "timeRange";
+
+    /**
+     * Geometry decoration.
+     */
+    public static final String GEOMETRY_DECORATION = "geometryDecoration";
+
+    /**
      * Start time key in hazard
      */
     public static final String HAZARD_EVENT_START_TIME = "startTime";
@@ -624,6 +777,8 @@ public final class HazardConstants {
 
     public static final String METADATA_RELOAD_TRIGGER = "refreshMetadata";
 
+    public static final String RECOMMENDER_RUN_TRIGGER = "modifyRecommender";
+
     public static final String METADATA_EDIT_RISE_CREST_FALL = "editRiseCrestFall";
 
     public static final String FILE_PATH_KEY = "filePath";
@@ -641,11 +796,6 @@ public final class HazardConstants {
      * Key for run tool triggers list in the recommender dialog.
      */
     public static final String RUN_TOOL_TRIGGERS_LIST_KEY = "runToolTriggers";
-
-    /**
-     * Hazard event type.
-     */
-    public static final String EVENT_TYPE = "eventType";
 
     /**
      * Key for title text.

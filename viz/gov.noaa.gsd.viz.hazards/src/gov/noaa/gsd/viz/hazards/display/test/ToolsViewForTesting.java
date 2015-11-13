@@ -19,6 +19,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.eclipse.jface.action.Action;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 
 /**
  * Description: Mock {@link IToolsView} for testing
@@ -47,8 +49,8 @@ public class ToolsViewForTesting implements
     }
 
     @Override
-    public void showToolParameterGatherer(Tool tool, String eventType,
-            String jsonParams) {
+    public void showToolParameterGatherer(String tool, ToolType type,
+            RecommenderExecutionContext context, String jsonParams) {
 
     }
 

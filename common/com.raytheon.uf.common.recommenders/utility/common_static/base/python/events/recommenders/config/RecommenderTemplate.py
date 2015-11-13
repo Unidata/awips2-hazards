@@ -29,7 +29,8 @@
 #    ------------    ----------    -----------    --------------------------
 #    01/22/13                      mnash          Initial Creation.
 #    01/29/15        3626          Chris.Golden   Added EventSet to arguments for getting dialog info.
-#    
+#    11/10/15       12762          Chris.Golden   Added comments about what sort of metadata is
+#                                                 expected from defineScriptMetadata(). 
 # 
 #
 
@@ -45,7 +46,13 @@ class Recommender(object):
     def defineScriptMetadata(self):
         '''
         @return: Returns a python dictionary which defines basic information
-        about the recommender, such as author, script version, and description
+        about the recommender, such as author, script version, and description.
+        Standard metadata entries include: 'toolName', 'author', 'version',
+        'description', 'eventState' (the state of the created events, e.g.
+        'Pending' or 'Potential'), and 'background' (if set to True, the user
+        will not be notified when the recommender generates no events, as it is
+        intended to be run in the background in response to events being changed
+        or an interval of time passing). 
         '''
         return
     

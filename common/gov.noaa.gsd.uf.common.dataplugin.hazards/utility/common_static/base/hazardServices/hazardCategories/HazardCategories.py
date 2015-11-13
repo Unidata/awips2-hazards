@@ -1,6 +1,16 @@
 
 import collections
 
+#
+# Each entry in this dictionary defines a category, with the value for each category
+# being a list of tuples, with each of the tuples in turn defining a hazard type.
+# Note that the tuples may have one, two, or three elements, the first being the
+# phenomenon, the second the significance, and the third the sub-type.
+#
+# Note that if a single element tuple is being specified, it must have a comma (,)
+# following its single element; otherwise, Python will interpret it as a string
+# instead of a tuple, leading to errors.
+#
 HazardCategories = collections.OrderedDict(
         {
         "Convective": [ ("EW","W"), ("SV","W"), ("TO","W"), ("SV","A"), ("TO","A")],

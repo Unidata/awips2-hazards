@@ -112,20 +112,25 @@ import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.VizConstants;
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
+import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.globals.IGlobalChangedListener;
 import com.raytheon.uf.viz.core.globals.VizGlobalsManager;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
+import com.raytheon.uf.viz.hazards.sessionmanager.IFrameContextProvider;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.SessionManagerFactory;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager.StagingRequired;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.productgen.dialog.ProductViewer;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.VizWorkbenchManager;
@@ -219,6 +224,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Apr 10, 2015  6898      Chris.Cody          Refactored async messaging
  * May 14, 2015  7560      mpduff              Added Apply callback
  * Jul 30, 2015 9681       Robert.Blum         Added new method to display the product viewer.
+ * Nov 10, 2015 12762      Chris.Golden        Added support for use of new recommender manager.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -226,6 +232,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  */
 public class HazardServicesAppBuilder implements IPerspectiveListener4,
         IGlobalChangedListener, IWorkbenchListener, IMessenger {
+
+    // Private Classes
 
     // Public Static Constants
 
@@ -287,6 +295,21 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private final BoundedReceptionEventBus<Object> eventBus = new BoundedReceptionEventBus<>(
             BusConfiguration.Default(0), RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Implementation of a temporal frame context provider.
+     */
+    private final IFrameContextProvider frameContextProvider = new IFrameContextProvider() {
+
+        @Override
+        public FramesInfo getFramesInfo() {
+            FramesInfo framesInfo = null;
+            AbstractEditor editor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
+            return (editor != null ? editor.getActiveDisplayPane()
+                    .getDescriptor().getFramesInfo() : null);
+        }
+    };
 
     /**
      * Message handler for all incoming messages.
@@ -381,6 +404,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private IRiseCrestFallEditor graphicalEditor;
 
     private GraphicalEditor editor;
+
+    private IToolParameterGatherer toolParameterGatherer;
 
     public boolean getUserAnswerToQuestion(String question) {
         return questionAnswerer.getUserAnswerToQuestion(question);
@@ -536,7 +561,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          */
         currentTime = SimulatedTime.getSystemTime().getTime();
         this.sessionManager = SessionManagerFactory.getSessionManager(this,
-                eventBus);
+                frameContextProvider, eventBus);
         messageHandler = new HazardServicesMessageHandler(this, currentTime);
 
         /**
@@ -621,6 +646,51 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 }
                 IHazardEvent evt = (IHazardEvent) editor.open();
                 return evt;
+            }
+        };
+
+        this.toolParameterGatherer = new IToolParameterGatherer() {
+
+            @Override
+            public void getToolParameters(String tool, ToolType type,
+                    RecommenderExecutionContext context,
+                    Map<String, Serializable> dialogInput) {
+                Dict dict = new Dict();
+                for (String parameter : dialogInput.keySet()) {
+                    dict.put(parameter, dialogInput.get(parameter));
+                }
+                toolsPresenter.showToolParameterGatherer(tool, type, context,
+                        dict.toJSONString());
+            }
+
+            @Override
+            @Deprecated
+            public void requestToolSpatialInput(String tool, ToolType type,
+                    RecommenderExecutionContext context,
+                    Map<String, Serializable> spatialInput) {
+
+                /*
+                 * Do nothing unless the return type is a point.
+                 */
+                if (spatialInput.get(
+                        HazardConstants.SPATIAL_PARAMETERS_RETURN_TYPE).equals(
+                        HazardConstants.SPATIAL_PARAMETERS_RETURN_TYPE_POINT)) {
+
+                    /*
+                     * Activate the storm tracking mouse handler
+                     */
+                    String label = (String) spatialInput
+                            .get(HazardConstants.SPATIAL_PARAMETERS_HAZARD_LABEL);
+                    String eventType = null;
+                    if (spatialInput
+                            .containsKey(HazardConstants.HAZARD_EVENT_TYPE) == true) {
+                        eventType = (String) spatialInput
+                                .get(HazardConstants.HAZARD_EVENT_TYPE);
+                    }
+                    requestMouseHandler(
+                            HazardServicesMouseHandlers.STORM_TOOL_DRAG_DOT_DRAWING,
+                            tool, label, eventType);
+                }
             }
         };
     }
@@ -751,7 +821,43 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         spatialPresenter.getView().redoTimeMatching();
 
         // Send the current frame information to the session manager.
-        messageHandler.sendFrameInformationToSessionManager();
+        sendFrameInformationToSessionManager();
+    }
+
+    /**
+     * Updates the model with CAVE frame information.
+     */
+    public void sendFrameInformationToSessionManager() {
+
+        /*
+         * If frame information is available, use it.
+         */
+        final FramesInfo framesInfo = frameContextProvider.getFramesInfo();
+        if (framesInfo != null) {
+            VizApp.runAsync(new Runnable() {
+
+                @Override
+                public void run() {
+                    int frameCount = framesInfo.getFrameCount();
+                    int frameIndex = framesInfo.getFrameIndex();
+                    if ((frameCount > 0) && (frameIndex != -1)) {
+                        long selectedTime = framesInfo.getFrameTimes()[frameIndex]
+                                .getValidTime().getTimeInMillis();
+                        ISessionTimeManager timeManager = sessionManager
+                                .getTimeManager();
+                        long delta = timeManager.getUpperSelectedTimeInMillis()
+                                - timeManager.getLowerSelectedTimeInMillis();
+                        SelectedTime timeRange = new SelectedTime(selectedTime,
+                                selectedTime + delta);
+                        timeManager
+                                .setSelectedTime(timeRange, Originator.OTHER);
+                        notifyModelChanged(
+                                EnumSet.of(HazardConstants.Element.SELECTED_TIME_RANGE),
+                                Originator.OTHER);
+                    }
+                }
+            });
+        }
     }
 
     /**
@@ -1112,31 +1218,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         hazardDetailPresenter.hideHazardDetail();
     }
 
-    /**
-     * Show a tool subview that is used to gather parameter values for a tool
-     * that is to be executed.
-     * 
-     * @param eventType
-     *            The type of the event that this tool is to create; if present,
-     *            the tool is being run as a result of a hazard-type-first
-     *            invocation. Otherwise, it will be <code>null</code>.
-     * @param tool
-     *            The tool for which parameters are to be gathered.
-     * @param dialogInput
-     *            the parameters for this subview. Within the set of all fields
-     *            that are defined by these parameters, all the fields
-     *            (megawidget specifiers) must have unique identifiers.
-     */
-    public void showToolParameterGatherer(Tool tool, String eventType,
-            Map<String, Serializable> dialogInput) {
-        Dict dict = new Dict();
-        for (String parameter : dialogInput.keySet()) {
-            dict.put(parameter, dialogInput.get(parameter));
-        }
-        toolsPresenter.showToolParameterGatherer(tool, eventType,
-                dict.toJSONString());
-    }
-
     @Override
     public void perspectiveActivated(IWorkbenchPage page,
             IPerspectiveDescriptor perspective) {
@@ -1166,7 +1247,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         VizApp.runAsync(new Runnable() {
             @Override
             public void run() {
-                messageHandler.sendFrameInformationToSessionManager();
+                sendFrameInformationToSessionManager();
             }
         });
 
@@ -1279,7 +1360,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     @Override
     public void updateValue(IWorkbenchWindow changedWindow, Object value) {
-        messageHandler.sendFrameInformationToSessionManager();
+        sendFrameInformationToSessionManager();
     }
 
     /**
@@ -1472,6 +1553,11 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     @Override
     public IContinueCanceller getContinueCanceller() {
         return continueCanceller;
+    }
+
+    @Override
+    public IToolParameterGatherer getToolParameterGatherer() {
+        return toolParameterGatherer;
     }
 
     /**

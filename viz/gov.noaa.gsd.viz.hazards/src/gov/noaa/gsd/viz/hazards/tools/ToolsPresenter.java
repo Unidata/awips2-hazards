@@ -23,7 +23,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsToolsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 
 /**
  * Settings presenter, used to mediate between the model and the settings view.
@@ -44,9 +46,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           protected as it is called by setView().
  * Dec 05, 2014    4124    Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
- * Jan 29, 2015 4375       Dan Schaffer      Console initiation of RVS product generation
+ * Jan 29, 2015    4375    Dan Schaffer      Console initiation of RVS product generation
  * Jan 30, 2015    3626    Chris.Golden      Added ability to pass event type when
  *                                           running a recommender.
+ * Nov 10, 2015   12762    Chris.Golden      Added support for use of new recommender
+ *                                           manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -115,23 +119,22 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
      * Show a tool subview that is used to gather parameter values for a tool
      * that is to be executed.
      * 
-
-     * @param eventType
-     *            The type of the event that this tool is to create; if present,
-     *            the tool is being run as a result of a hazard-type-first
-     *            invocation. Otherwise, it will be <code>null</code>.
      * @param tool
-     *            The tool for which parameters are to be gathered.
+     *            Identifier for the tool for which parameters are to be
+     *            gathered.
+     * @param type
+     *            Type of the tool.
+     * @param context
+     *            Execution context for the tool to be run.
      * @param jsonParams
      *            JSON string giving the parameters for this subview. Within the
      *            set of all fields that are defined by these parameters, all
      *            the fields (megawidget specifiers) must have unique
      *            identifiers.
      */
-    public void showToolParameterGatherer(Tool tool, String eventType,
-            String jsonParams) {
-        getView().showToolParameterGatherer(tool, eventType, jsonParams);
-
+    public void showToolParameterGatherer(String tool, ToolType type,
+            RecommenderExecutionContext context, String jsonParams) {
+        getView().showToolParameterGatherer(tool, type, context, jsonParams);
     }
 
     @Override

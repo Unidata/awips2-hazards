@@ -76,6 +76,7 @@ import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEventFirstClassAttribute;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Significance;
@@ -133,6 +134,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IRiseCres
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
@@ -321,6 +323,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      exceptions to be thrown when upgrading certain watches to warnings.
  * Oct 14, 2015   12494    Chris Golden Reworked to allow hazard types to include only phenomenon (i.e. no
  *                                      significance) where appropriate.
+ * Nov 10, 2015   12762    Chris.Golden Added recommender running in response to hazard event metadata or
+ *                                      other attribute changes.
  * </pre>
  * 
  * @author bsteffen
@@ -468,6 +472,8 @@ public class SessionEventManager implements
     private final Map<String, MegawidgetSpecifierManager> megawidgetSpecifiersForEventIdentifiers = new HashMap<>();
 
     private final Map<String, Set<String>> metadataReloadTriggeringIdentifiersForEventIdentifiers = new HashMap<>();
+
+    private final Map<String, Map<String, String>> recommendersForTriggerIdentifiersForEventIdentifiers = new HashMap<>();
 
     private final Map<String, Set<String>> editRiseCrestFallTriggeringIdentifiersForEventIdentifiers = new HashMap<>();
 
@@ -1126,6 +1132,8 @@ public class SessionEventManager implements
             updateDurationChoicesForEvent(event, false);
         }
         updateEventMetadata(event);
+        triggerRecommenderForFirstClassAttributeChange(change.getEvent(),
+                HazardEventFirstClassAttribute.STATUS);
     }
 
     /**
@@ -1227,6 +1235,29 @@ public class SessionEventManager implements
     }
 
     /**
+     * If a change to the specified first class attribute value for the
+     * specified hazard event should trigger the running of a recommender, run
+     * that recommender now.
+     * 
+     * @param event
+     *            Hazard event that was changed.
+     * @param attribute
+     *            First-class attribute that experienced a value change.
+     */
+    private void triggerRecommenderForFirstClassAttributeChange(
+            IHazardEvent event, HazardEventFirstClassAttribute attribute) {
+        String recommenderIdentifier = configManager
+                .getRecommenderTriggeredByChange(event, attribute);
+        if (recommenderIdentifier != null) {
+            sessionManager.getRecommenderManager().runRecommender(
+                    recommenderIdentifier,
+                    RecommenderExecutionContext
+                            .getHazardEventModificationContext(
+                                    event.getEventID(), attribute.toString()));
+        }
+    }
+
+    /**
      * Respond to a CAVE current time tick by updating all the events' start and
      * end time editability boundaries.
      * 
@@ -1262,15 +1293,27 @@ public class SessionEventManager implements
 
         /*
          * If the command that was invoked is a metadata refresh trigger,
-         * perform the refresh; otherwise, if the command is meant to trigger
-         * the editing of rise-crest-fall information, start the edit.
+         * perform the refresh; if it is a recommender running trigger, run the
+         * recommender; otherwise, if the command is meant to trigger the
+         * editing of rise-crest-fall information, start the edit.
          */
+        String eventId = event.getEventID();
         if (metadataReloadTriggeringIdentifiersForEventIdentifiers
-                .containsKey(event.getEventID())
+                .containsKey(eventId)
                 && metadataReloadTriggeringIdentifiersForEventIdentifiers.get(
-                        event.getEventID()).contains(identifier)) {
+                        eventId).contains(identifier)) {
             updateEventMetadata(event);
             return;
+        } else if (recommendersForTriggerIdentifiersForEventIdentifiers
+                .containsKey(eventId)
+                && recommendersForTriggerIdentifiersForEventIdentifiers.get(
+                        eventId).containsKey(identifier)) {
+            sessionManager.getRecommenderManager().runRecommender(
+                    recommendersForTriggerIdentifiersForEventIdentifiers.get(
+                            eventId).get(identifier),
+                    RecommenderExecutionContext
+                            .getHazardEventModificationContext(eventId,
+                                    identifier));
         } else if (editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
                 .containsKey(event.getEventID())
                 && editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
@@ -1352,6 +1395,9 @@ public class SessionEventManager implements
         metadataReloadTriggeringIdentifiersForEventIdentifiers
                 .put(event.getEventID(),
                         metadata.getRefreshTriggeringMetadataKeys());
+        recommendersForTriggerIdentifiersForEventIdentifiers.put(
+                event.getEventID(),
+                metadata.getRcommendersTriggeredForMetadataKeys());
         editRiseCrestFallTriggeringIdentifiersForEventIdentifiers.put(
                 event.getEventID(),
                 metadata.getEditRiseCrestFallTriggeringMetadataKeys());
@@ -1572,10 +1618,13 @@ public class SessionEventManager implements
 
         /*
          * If any of the attributes changed are metadata-reload triggers, then
-         * reload the metadata; otherwise, if any of them are to trigger the
-         * editing of rise-crest-fall information, reload that.
+         * reload the metadata; if any of them are to trigger the running of
+         * recommenders, run the recommenders; otherwise, if any of them are to
+         * trigger the editing of rise-crest-fall information, reload that.
          */
         Set<String> metadataReloadTriggeringIdentifiers = metadataReloadTriggeringIdentifiersForEventIdentifiers
+                .get(change.getEvent().getEventID());
+        Map<String, String> recommendersForTriggerIdentifiers = recommendersForTriggerIdentifiersForEventIdentifiers
                 .get(change.getEvent().getEventID());
         Set<String> editRiseCrestFallTriggeringIdentifiers = editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
                 .get(change.getEvent().getEventID());
@@ -1583,6 +1632,17 @@ public class SessionEventManager implements
                 && (Sets.intersection(metadataReloadTriggeringIdentifiers,
                         change.getAttributeKeys()).isEmpty() == false)) {
             updateEventMetadata(change.getEvent());
+        } else if (recommendersForTriggerIdentifiers != null) {
+            Set<String> triggers = Sets.intersection(
+                    recommendersForTriggerIdentifiers.keySet(),
+                    change.getAttributeKeys());
+            for (String trigger : triggers) {
+                sessionManager.getRecommenderManager().runRecommender(
+                        recommendersForTriggerIdentifiers.get(trigger),
+                        RecommenderExecutionContext
+                                .getHazardEventModificationContext(change
+                                        .getEvent().getEventID(), trigger));
+            }
         } else if ((editRiseCrestFallTriggeringIdentifiers != null)
                 && (Sets.intersection(editRiseCrestFallTriggeringIdentifiers,
                         change.getAttributeKeys()).isEmpty() == false)) {
@@ -1602,6 +1662,8 @@ public class SessionEventManager implements
     public void hazardTimeRangeChanged(SessionEventTimeRangeModified change) {
         updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
                 false);
+        triggerRecommenderForFirstClassAttributeChange(change.getEvent(),
+                HazardEventFirstClassAttribute.TIME_RANGE);
     }
 
     /**
@@ -1615,6 +1677,8 @@ public class SessionEventManager implements
     public void hazardGeometryChanged(SessionEventGeometryModified change) {
         updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
                 false);
+        triggerRecommenderForFirstClassAttributeChange(change.getEvent(),
+                HazardEventFirstClassAttribute.GEOMETRY);
     }
 
     @Override
@@ -2130,6 +2194,8 @@ public class SessionEventManager implements
                         (ObservedHazardEvent) event, true);
                 megawidgetSpecifiersForEventIdentifiers.remove(eventIdentifier);
                 metadataReloadTriggeringIdentifiersForEventIdentifiers
+                        .remove(eventIdentifier);
+                recommendersForTriggerIdentifiersForEventIdentifiers
                         .remove(eventIdentifier);
                 editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
                         .remove(eventIdentifier);

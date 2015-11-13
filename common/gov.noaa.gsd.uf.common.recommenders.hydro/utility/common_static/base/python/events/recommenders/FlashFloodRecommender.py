@@ -17,7 +17,7 @@ from ufpy.dataaccess import DataAccessLayer
 from ufpy.dataaccess.PyGeometryData import PyGeometryData
 from com.raytheon.uf.common.monitor.config import FFMPSourceConfigurationManager
 from com.raytheon.uf.common.monitor.config import FFMPRunConfigurationManager
-from com.raytheon.uf.common.dataplugin.ffmp import FFMPBasinData, FFMPBasin, FFMPTemplates, FFMPTemplates_MODE as FFMPMode
+from com.raytheon.uf.common.dataplugin.ffmp import FFMPBasinData, FFMPBasin, FFMPTemplates, FFMPTemplates
 from gov.noaa.gsd.viz.hazards.spatialdisplay import HazardEventGeometryAggregator
 
 from java.util import Date
@@ -448,7 +448,7 @@ class Recommender(RecommenderTemplate.Recommender):
              
         self._dataKey = self._siteKey
         
-        self.ffmpTemplates= FFMPTemplates.getInstance(self._domain, self._siteKey, FFMPMode.CAVE)
+        self.ffmpTemplates= FFMPTemplates.getInstance(self._domain, self._siteKey, FFMPTemplates.MODE.CAVE)
         
     def __str__(self):
         return 'Flash Flood Recommender'

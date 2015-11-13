@@ -14,14 +14,14 @@ def getHazardMetaData(datatype, phenomenon, significance, subType = None) :
     """
     @param datatype: data type representing hazard metadata.  
     @param phenomenon: hazard phenomenon
-    @param significance:  hazard significance
+    @param significance:  optional hazard significance
     @param subType: optional hazard subType
     @return: A tuple of two values, the first being an object (executable
              or not) holding the metadata (or None if there is none), and
              the second being a relative path to the localized file from
              which the metadata was sourced (or None if there is none).
     """
-    if phenomenon is not None and significance is not None:
+    if phenomenon is not None:
         if subType == "": 
             subType = None
         hazardServicesConfig = HazardServicesConfig(datatype)
@@ -32,7 +32,7 @@ def getHazardMetaData(datatype, phenomenon, significance, subType = None) :
             hazardTypesList = metaDataDict[HAZARD_TYPES_DATA] or []
             
             for hazardType in hazardTypesList:
-                if phenomenon in hazardType and significance in hazardType:
+                if phenomenon in hazardType and (significance is None or significance in hazardType):
                     if subType is None or (subType is not None and subType in hazardType):
                         metaDataEntry = metaDataDict[CLASS_METADATA]
                         if type(metaDataEntry) is types.StringType:

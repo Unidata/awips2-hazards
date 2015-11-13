@@ -9,7 +9,12 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.messenger;
 
+import java.io.Serializable;
+import java.util.Map;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 
 /**
  * Description: Provides access to tools for alerting the user and retrieving
@@ -26,6 +31,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Dec 29, 2013            Bryon.Lawrence      Initial creation
  * Feb 28, 2015   3847     mpduff      Add Rise Crest Fall editor
  * May 14, 2015   7560     mpduff      Added apply callback.
+ * Nov 10, 2015  12762     Chris.Golden Added tool parameter gatherer inner
+ *                                      class to support the new recommender
+ *                                      manager.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -65,6 +73,54 @@ public interface IMessenger {
     public interface IRiseCrestFallEditor {
         public IHazardEvent getRiseCrestFallEditor(IHazardEvent event,
                 IEventApplier applier);
+    }
+
+    /**
+     * Interface allowing the user to gather information for a tool.
+     */
+    public interface IToolParameterGatherer {
+
+        /**
+         * Get the parameters for the specified tool.
+         * 
+         * @param tool
+         *            Identifier of the tool for which parameters are to be
+         *            gathered.
+         * @param type
+         *            Type of the tool.
+         * @param context
+         *            Context in which the tool is to be run.
+         * @param dialogInput
+         *            Map holding the parameters governing the contents of the
+         *            dialog to be created to gather the parameters.
+         */
+        public void getToolParameters(String tool, ToolType type,
+                RecommenderExecutionContext context,
+                Map<String, Serializable> dialogInput);
+
+        /**
+         * Get spatial input for the specified tool.
+         * <p>
+         * TODO: This method should not be part of the interface. However, until
+         * the special-case code for running the storm track tool has been
+         * removed, it must be included so that the storm track mouse handler
+         * can be put in place upon request. Once spatial decorations for all
+         * events are implemented, it will no longer be needed.
+         * 
+         * @param tool
+         *            Identifier of the tool for which input is to be requested.
+         * @param type
+         *            Type of the tool.
+         * @param context
+         *            Context in which the tool is to be run.
+         * @param spatialInput
+         *            Map holding the parameters governing the type of spatial
+         *            input to be requested.
+         */
+        @Deprecated
+        public void requestToolSpatialInput(String tool, ToolType type,
+                RecommenderExecutionContext context,
+                Map<String, Serializable> spatialInput);
     }
 
     /**
@@ -112,4 +168,13 @@ public interface IMessenger {
      *         values for that event.
      */
     public IRiseCrestFallEditor getRiseCrestFallEditor(IHazardEvent event);
+
+    /**
+     * Get a tool parameter gatherer.
+     * 
+     * @return Tool parameter gatherer. The implementation will allow a dialog
+     *         to be displayed comprised of megawidgets specified by the caller
+     *         in order to gather parameters for the running of a tool.
+     */
+    public IToolParameterGatherer getToolParameterGatherer();
 }

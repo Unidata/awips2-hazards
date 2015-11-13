@@ -7,14 +7,12 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.FILE_PATH_KEY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
@@ -27,14 +25,10 @@ import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.product.ReviewAction;
-import gov.noaa.gsd.viz.hazards.pythonjoblistener.HazardServicesRecommenderJobListener;
 import gov.noaa.gsd.viz.hazards.servicebackup.ChangeSiteAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -49,30 +43,20 @@ import java.util.Set;
 
 import net.engio.mbassy.listener.Handler;
 
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.PlatformUI;
-
 import com.google.common.collect.Lists;
-import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
-import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
-import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.VizApp;
-import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -82,7 +66,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGener
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -95,12 +78,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerationConfirmation;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingRequired;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
-import com.raytheon.viz.core.mode.CAVEMode;
-import com.raytheon.viz.ui.EditorUtil;
-import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
 
 /**
@@ -227,26 +209,16 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Jul 30, 2015 9681       Robert.Blum        Changes for new Product Viewer and generating
  *                                            view only products.
  * Aug 03, 2015 8836       Chris.Cody         Update Event Display type when settings change
+ * Nov 10, 2015 12762      Chris.Golden       Added support for use of new recommender manager,
+ *                                            removing a bunch of recommender-managing code that
+ *                                            didn't belong here and thus continuing the trend of
+ *                                            shrinking this class.
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
 public final class HazardServicesMessageHandler {
-
-    // Private Constants
-
-    /**
-     * The key for a hazard's label in a hazard event dict.
-     */
-    private final String HAZARD_LABEL = "label";
-
-    /**
-     * Possible return types for hazard dictionaries
-     */
-    private final String RETURN_TYPE = "returnType";
-
-    private final String POINT_RETURN_TYPE = "Point";
 
     // Private Static Constants
 
@@ -275,7 +247,7 @@ public final class HazardServicesMessageHandler {
 
     private final ISessionProductManager sessionProductManager;
 
-    private String eventType;
+    private final ISessionRecommenderManager sessionRecommenderManager;
 
     // Public Constructors
     /**
@@ -295,6 +267,7 @@ public final class HazardServicesMessageHandler {
         this.appBuilder = appBuilder;
         this.sessionManager = appBuilder.getSessionManager();
         this.sessionProductManager = sessionManager.getProductManager();
+        this.sessionRecommenderManager = sessionManager.getRecommenderManager();
         this.sessionEventManager = sessionManager.getEventManager();
         this.sessionTimeManager = sessionManager.getTimeManager();
         this.sessionConfigurationManager = sessionManager
@@ -315,53 +288,6 @@ public final class HazardServicesMessageHandler {
     // Methods
 
     /**
-     * Runs a recommender. If parameters must be gathered from the user, this
-     * method will do so. If not, it will simply run the recommender.
-     * 
-     * @param recommenderName
-     *            The name of the recommender to run.
-     */
-    public void runRecommender(String recommenderName) {
-
-        AbstractRecommenderEngine<?> recommenderEngine = appBuilder
-                .getSessionManager().getRecommenderEngine();
-
-        // Check if this tool requires user input from the display...
-        Map<String, Serializable> spatialInput = recommenderEngine
-                .getSpatialInfo(recommenderName);
-        EventSet<IEvent> eventSet = new EventSet<>();
-        eventSet.addAttribute(HazardConstants.EVENT_TYPE, eventType);
-        Map<String, Serializable> dialogInput = recommenderEngine
-                .getDialogInfo(recommenderName, eventSet);
-
-        if (!spatialInput.isEmpty() || !dialogInput.isEmpty()) {
-            if (!spatialInput.isEmpty()) {
-                // This will generally need to be asynchronous
-                spatialInput.put(HazardConstants.EVENT_TYPE, eventType);
-
-                processSpatialInput(recommenderName, spatialInput);
-            }
-
-            if (!dialogInput.isEmpty()) {
-                // If the dialog dictionary is non-empty, display the
-                // subview for gathering tool parameters.
-                if (!dialogInput.isEmpty()) {
-                    dialogInput.put(FILE_PATH_KEY, recommenderEngine
-                            .getInventory(recommenderName).getFile().getFile()
-                            .getPath());
-                    Tool tool = sessionConfigurationManager.getSettings()
-                            .getTool(recommenderName);
-                    appBuilder.showToolParameterGatherer(tool, eventType,
-                            dialogInput);
-                }
-            }
-        } else {
-            // Otherwise, just run the recommender.
-            runRecommender(recommenderName, null, null);
-        }
-    }
-
-    /**
      * Updates the CAVE selected time.
      * 
      * @return
@@ -369,167 +295,6 @@ public final class HazardServicesMessageHandler {
     private void updateCaveSelectedTime() {
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.CAVE_TIME));
-    }
-
-    /**
-     * Processes spatial input required by a tool and determines what action is
-     * needed to retrieve that spatial input. For example, the storm track tool
-     * needs a drag/drop dot to mark the location of a storm. Based on this,
-     * this routine will load the Drag Drop mouse handler to retrieve this
-     * input.
-     * 
-     * @param toolName
-     *            The name of the tool being run.
-     * @param spatialInput
-     *            the type of spatial input required.
-     */
-    private void processSpatialInput(String toolName,
-            Map<String, Serializable> spatialInput) {
-
-        String returnType = (String) spatialInput.get(RETURN_TYPE);
-
-        if (returnType.equals(POINT_RETURN_TYPE)) {
-            String label = (String) spatialInput.get(HAZARD_LABEL);
-            String eventType = null;
-            if (spatialInput.containsKey(HazardConstants.EVENT_TYPE) == true) {
-                eventType = (String) spatialInput
-                        .get(HazardConstants.EVENT_TYPE);
-            }
-
-            /*
-             * Activate the storm tracking mouse handler
-             */
-            appBuilder.requestMouseHandler(
-                    HazardServicesMouseHandlers.STORM_TOOL_DRAG_DOT_DRAWING,
-                    toolName, label, eventType);
-        }
-
-    }
-
-    /**
-     * This method is called when a recommender is run and parameters have
-     * already been collected for the recommender execution.
-     * 
-     * @param recommenderName
-     *            The name of the recommender to run
-     * @param sourceKey
-     *            The source of the runData
-     * @param spatialInfo
-     *            Spatial info to pass to the tool.
-     * @param dialogInfo
-     *            Dialog info to pass to the tool.
-     * 
-     * @throws VizException
-     */
-    private void runRecommender(String recommenderName,
-            Map<String, Serializable> spatialInfo,
-            Map<String, Serializable> dialogInfo) {
-
-        appBuilder.setCursor(SpatialViewCursorTypes.WAIT_CURSOR);
-        Display.getCurrent().update();
-
-        EventSet<IEvent> eventSet = new EventSet<>();
-
-        /*
-         * Add events to the event set.
-         */
-        Collection<ObservedHazardEvent> hazardEvents = sessionManager
-                .getEventManager().getEvents();
-
-        /*
-         * HazardEvent.py canConvert() does not know anything about observed
-         * hazard events. Also, HazardEvent.py is in a common plug-in while
-         * observed hazard event is in a viz plug-in. So, convert the observed
-         * hazard events to base hazard events.
-         */
-        for (IHazardEvent event : hazardEvents) {
-            BaseHazardEvent baseHazardEvent = new BaseHazardEvent(event);
-            eventSet.add(baseHazardEvent);
-        }
-
-        /*
-         * Add the hazard type the tool is to create to the event set.
-         */
-        eventSet.addAttribute(HazardConstants.EVENT_TYPE, eventType);
-
-        /*
-         * Add session information to event set.
-         */
-        eventSet.addAttribute(HazardConstants.CURRENT_TIME, sessionManager
-                .getTimeManager().getCurrentTime().getTime());
-
-        Dict frameInfo = HazardServicesEditorUtilities.buildFrameInformation();
-        eventSet.addAttribute("framesInfo",
-                (Serializable) Utilities.asMap(frameInfo));
-
-        eventSet.addAttribute(HazardConstants.SITE_ID, sessionManager
-                .getConfigurationManager().getSiteID());
-        eventSet.addAttribute(
-                HAZARD_MODE,
-                (CAVEMode.getMode()).toString().equals(
-                        CAVEMode.PRACTICE.toString()) ? HazardEventManager.Mode.PRACTICE
-                        .toString() : HazardEventManager.Mode.OPERATIONAL
-                        .toString());
-
-        sessionManager.getRecommenderEngine().runExecuteRecommender(
-                recommenderName, eventSet, spatialInfo, dialogInfo,
-                getRecommenderListener(recommenderName));
-
-        appBuilder.setCursor(SpatialViewCursorTypes.MOVE_VERTEX_CURSOR);
-
-    }
-
-    private IPythonJobListener<EventSet<IEvent>> getRecommenderListener(
-            String recommenderName) {
-        ObservedSettings settings = sessionConfigurationManager.getSettings();
-        Tool tool = settings.getTool(recommenderName);
-        return new HazardServicesRecommenderJobListener(
-                appBuilder.getEventBus(), tool);
-    }
-
-    /**
-     * Receives notification that the results of an asynchronous recommender
-     * result are now available. This method processes these results, updating
-     * the model state and notifying presenters of new events.
-     * 
-     * @param toolAction
-     *            The action received.
-     * @return
-     */
-    private void handleRecommenderResults(ToolAction toolAction) {
-        final EventSet<IEvent> eventList = toolAction.getRecommendedEventList();
-
-        /*
-         * If no events recommended then display message box declaring that the
-         * recommender has completed.
-         */
-        if (eventList.isEmpty()) {
-            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                    .getShell();
-            RecommenderCompletedMessageBox msgBox = new RecommenderCompletedMessageBox(
-                    shell, toolAction.getToolName());
-            msgBox.open();
-        }
-
-        sessionManager.handleRecommenderResult(eventList);
-
-        /*
-         * Make sure the updated hazard type is a part of the visible types in
-         * the current setting. If not, add it.
-         */
-        Set<String> visibleTypes = sessionConfigurationManager.getSettings()
-                .getVisibleTypes();
-        int startSize = visibleTypes.size();
-        for (IEvent ievent : eventList) {
-            IHazardEvent event = (IHazardEvent) ievent;
-            visibleTypes.add(HazardEventUtilities.getHazardType(event));
-        }
-
-        if (startSize != visibleTypes.size()) {
-            sessionConfigurationManager.getSettings().setVisibleTypes(
-                    visibleTypes);
-        }
-
     }
 
     @Handler
@@ -618,7 +383,9 @@ public final class HazardServicesMessageHandler {
 
     @Handler
     public void handleStormTrackModification(ModifyStormTrackAction action) {
-        runRecommender(HazardConstants.MODIFY_STORM_TRACK_TOOL,
+        sessionRecommenderManager.runRecommender(
+                HazardConstants.MODIFY_STORM_TRACK_TOOL,
+                RecommenderExecutionContext.getEmptyContext(),
                 action.getParameters(), null);
     }
 
@@ -682,24 +449,6 @@ public final class HazardServicesMessageHandler {
         List<Settings> availableSettings = sessionConfigurationManager
                 .getAvailableSettings();
         availableSettings.add(settings);
-    }
-
-    /**
-     * Updates the selected time in the Console as a result of a change to the
-     * CAVE frame time.
-     * 
-     * @param selectedTime
-     *            New selected time.
-     */
-    private void updateSelectedTimeFromCave(Date selectedTime) {
-        long delta = sessionTimeManager.getUpperSelectedTimeInMillis()
-                - sessionTimeManager.getLowerSelectedTimeInMillis();
-        SelectedTime timeRange = new SelectedTime(selectedTime.getTime(),
-                selectedTime.getTime() + delta);
-        sessionTimeManager.setSelectedTime(timeRange, Originator.OTHER);
-        appBuilder.notifyModelChanged(
-                EnumSet.of(HazardConstants.Element.SELECTED_TIME_RANGE),
-                Originator.OTHER);
     }
 
     /**
@@ -913,50 +662,6 @@ public final class HazardServicesMessageHandler {
      */
     private void preview() {
         sessionManager.generate(false);
-    }
-
-    /**
-     * Updates the model with CAVE frame information.
-     */
-    void sendFrameInformationToSessionManager() {
-
-        Dict frameDict = HazardServicesEditorUtilities.buildFrameInformation();
-        if (!frameDict.isEmpty()) {
-            VizApp.runAsync(new FrameUpdater(frameDict));
-        }
-
-    }
-
-    private class FrameUpdater implements Runnable {
-
-        private final Dict frameDict;
-
-        private FrameUpdater(final Dict frameDict) {
-            this.frameDict = frameDict;
-        }
-
-        @Override
-        public void run() {
-            /*
-             * Make sure the HazardServices selected time is in-sync with the
-             * frame being viewed.
-             */
-            AbstractEditor abstractEditor = EditorUtil
-                    .getActiveEditorAs(AbstractEditor.class);
-            if (abstractEditor != null) {
-                Integer frameCount = frameDict
-                        .getDynamicallyTypedValue(HazardServicesEditorUtilities.FRAME_COUNT);
-                Integer frameIndex = frameDict
-                        .getDynamicallyTypedValue(HazardServicesEditorUtilities.FRAME_INDEX);
-                List<Long> dataTimeList = frameDict
-                        .getDynamicallyTypedValue(HazardServicesEditorUtilities.FRAME_TIMES);
-                if ((frameCount > 0) && (frameIndex != -1)) {
-                    updateSelectedTimeFromCave(new Date(
-                            dataTimeList.get(frameIndex)));
-                }
-            }
-        }
-
     }
 
     /**
@@ -1318,11 +1023,13 @@ public final class HazardServicesMessageHandler {
             break;
 
         case FRAME_CHANGED:
-            sendFrameInformationToSessionManager();
+            appBuilder.sendFrameInformationToSessionManager();
             break;
 
         case RUN_TOOL:
-            runRecommender(spatialDisplayAction.getToolName(),
+            sessionRecommenderManager.runRecommender(
+                    spatialDisplayAction.getToolName(),
+                    RecommenderExecutionContext.getEmptyContext(),
                     spatialDisplayAction.getToolParameters(), null);
             break;
 
@@ -1575,6 +1282,11 @@ public final class HazardServicesMessageHandler {
     /**
      * Handle a received tool action. This method is called implicitly by the
      * event bus when actions of this type are sent across the latter.
+     * <p>
+     * TODO: When {@link ToolAction} is excised from the system as part of
+     * refactoring in the future, most of the functionality below will be
+     * handled by a call to {@link SessionManager.runTool(ToolType, String)}.
+     * </p>
      * 
      * @param toolAction
      *            Action received.
@@ -1585,18 +1297,14 @@ public final class HazardServicesMessageHandler {
         case RECOMMENDER:
             switch (toolAction.getRecommenderActionType()) {
             case RUN_RECOMENDER:
-                eventType = toolAction.getEventType();
-                runRecommender(toolAction.getToolName());
+                sessionRecommenderManager.runRecommender(
+                        toolAction.getToolName(), toolAction.getContext());
                 break;
 
             case RUN_RECOMMENDER_WITH_PARAMETERS:
-                eventType = toolAction.getEventType();
-                runRecommender(toolAction.getToolName(), null,
-                        toolAction.getAuxiliaryDetails());
-                break;
-
-            case RECOMMENDATIONS:
-                handleRecommenderResults(toolAction);
+                sessionRecommenderManager.runRecommender(
+                        toolAction.getToolName(), toolAction.getContext(),
+                        null, toolAction.getAuxiliaryDetails());
                 break;
 
             default:

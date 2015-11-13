@@ -25,7 +25,9 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
@@ -62,28 +64,30 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 20, 2013 1257       bsteffen    Initial creation
- * Jul 24, 2013  585       C. Golden   Changed to allow loading from bundles.
- * Mar 19, 2014 2925       C. Golden   Changed to fire off notification when
- *                                     visible time range changes.
- * May 12, 2014 2925       C. Golden   Added originator to visible time
- *                                     range change notification, and
- *                                     added current time provider and
- *                                     getter.
- * Nov 18, 2014 4124       C. Golden   Revamped to use a single SelectedTime
- *                                     object for both single selected time
- *                                     instances, and selected time ranges.
- *                                     Also added code to change the selected
- *                                     time to always intersect all selected
- *                                     events' time ranges whenever the
- *                                     event selection changes or the start
- *                                     or end time of an event changes.
- * Jan 30, 2015 2331       C. Golden   Added timer that at regular intervals
- *                                     fires off time tick notifications.
- * Mar 30, 2015 7272       mduff       Changes to support Guava upgrade.
- * Jul 09, 2015 9359       Chris.Cody  Correct for an error when event begin time is
- *                                     after the end of the visible time window and 
- *                                     event end time is UNTIL FURTHER NOTICE
+ * May 20, 2013 1257       bsteffen     Initial creation
+ * Jul 24, 2013  585       Chris.Golden Changed to allow loading from bundles.
+ * Mar 19, 2014 2925       Chris.Golden Changed to fire off notification when
+ *                                      visible time range changes.
+ * May 12, 2014 2925       Chris.Golden Added originator to visible time
+ *                                      range change notification, and
+ *                                      added current time provider and
+ *                                      getter.
+ * Nov 18, 2014 4124       Chris.Golden Revamped to use a single SelectedTime
+ *                                      object for both single selected time
+ *                                      instances, and selected time ranges.
+ *                                      Also added code to change the selected
+ *                                      time to always intersect all selected
+ *                                      events' time ranges whenever the
+ *                                      event selection changes or the start
+ *                                      or end time of an event changes.
+ * Jan 30, 2015 2331       Chris.Golden Added timer that at regular intervals
+ *                                      fires off time tick notifications.
+ * Mar 30, 2015 7272       mduff        Changes to support Guava upgrade.
+ * Jul 09, 2015 9359       Chris.Cody   Correct for an error when event begin time is
+ *                                      after the end of the visible time window and 
+ *                                      event end time is UNTIL FURTHER NOTICE
+ * Nov 10, 2015 12762      Chris.Golden Added ability to schedule arbitrary
+ *                                      tasks to run at regular intervals.
  * </pre>
  * 
  * @author bsteffen
@@ -119,12 +123,6 @@ public class SessionTimeManager implements ISessionTimeManager {
         }
     };
 
-    /**
-     * Number of milliseconds in a minute.
-     */
-    private static final long MINUTE_AS_MILLISECONDS = TimeUnit.MINUTES
-            .toMillis(1L);
-
     // Private Variables
 
     /**
@@ -155,9 +153,16 @@ public class SessionTimeManager implements ISessionTimeManager {
 
     /**
      * Timer used to fire off regular time tick notifications when time is
-     * ticking.
+     * ticking, as well as any tasks scheduled to run at regular intervals via
+     * {@link #runAtRegularIntervals(Runnable, long)}.
      */
     private Timer timer;
+
+    /**
+     * Map of tasks to be executed at regular intervals to their intervals in
+     * milliseconds.
+     */
+    private final Map<Runnable, Long> intervalsMillisForTasks = new IdentityHashMap<>();
 
     /**
      * Simulated time change listener, used to receive notifications that the
@@ -187,6 +192,13 @@ public class SessionTimeManager implements ISessionTimeManager {
              * occur on the minute.
              */
             scheduleTimerNotifications();
+
+            /*
+             * Run any tasks that have been scheduled to be executed at
+             * intervals, and if the current CAVE time is not frozen, schedule
+             * any future executions of these tasks.
+             */
+            runAndScheduleTasks();
         }
     };
 
@@ -207,8 +219,8 @@ public class SessionTimeManager implements ISessionTimeManager {
         /*
          * Create a timer that fires every CAVE current time minute, and
          * schedule the firings. Also subscribe to notifications of simulated
-         * time changes, and for each such change, reschedule the timer
-         * notifications if simulated time has not been frozen.
+         * time changes to update the timer appropriately whenever such changes
+         * occur.
          */
         scheduleTimerNotifications();
         SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(
@@ -313,6 +325,21 @@ public class SessionTimeManager implements ISessionTimeManager {
                 this, originator));
     }
 
+    @Override
+    public void runAtRegularIntervals(Runnable task, long intervalInMillis) {
+
+        /*
+         * Remember this task for the future.
+         */
+        intervalsMillisForTasks.put(task, intervalInMillis);
+
+        /*
+         * Run the task immediately, and schedule it to be executed at regular
+         * intervals if the current CAVE time is not frozen.
+         */
+        runAndScheduleTask(task);
+    }
+
     /**
      * Handle a change in the selected events.
      * 
@@ -415,6 +442,52 @@ public class SessionTimeManager implements ISessionTimeManager {
                 });
             }
         }, offsetUntilFirstSimulatedMinuteChange, MINUTE_AS_MILLISECONDS);
+    }
+
+    /**
+     * Run any tasks that have been specified previously, and if the currentr
+     * CAVE time is not frozen, schedule these tasks to be executed at regular
+     * intervals.
+     * <p>
+     * <strong>Note:</strong> The {@link #timer} object must exist when this
+     * method is called.
+     */
+    private void runAndScheduleTasks() {
+        for (Runnable task : intervalsMillisForTasks.keySet()) {
+            runAndScheduleTask(task);
+        }
+    }
+
+    /**
+     * Run the specified task, and if the current CAVE clock time is not frozen,
+     * schedule it to be executed at the proper interval.
+     * 
+     * @param task
+     *            Task to be run and potentially scheduled.
+     */
+    private void runAndScheduleTask(final Runnable task) {
+
+        /*
+         * Just schedule it to run immediately if there is no timer, as this
+         * means the current CAVE clock time is frozen. Otherwise, schedule
+         * execution to occur immediately and at intervals in the future.
+         */
+        if (timer == null) {
+            RUNNABLE_ASYNC_SCHEDULER.schedule(task);
+        } else {
+
+            /*
+             * Schedule execution to occur at a fixed interval. See the comment
+             * for the call of the same timer method in
+             * scheduleTimerNotifications() for caveats.
+             */
+            timer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    RUNNABLE_ASYNC_SCHEDULER.schedule(task);
+                }
+            }, 0L, intervalsMillisForTasks.get(task));
+        }
     }
 
     /**

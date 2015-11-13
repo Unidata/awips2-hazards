@@ -34,6 +34,7 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeInteropRecordsRequest;
@@ -45,7 +46,6 @@ import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.localization.exception.LocalizationOpFailedException;
-import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
 import com.raytheon.uf.common.site.SiteMap;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -54,6 +54,7 @@ import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.core.requests.ThriftClient;
+import com.raytheon.uf.viz.hazards.sessionmanager.IFrameContextProvider;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.AllHazardsFilterStrategy;
@@ -62,6 +63,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardSessionAlert
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionAutoCheckConflictsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
@@ -73,10 +75,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.impl.SessionProductManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.impl.SessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.impl.SessionTimeManager;
-import com.raytheon.uf.viz.recommenders.CAVERecommenderEngine;
-import com.raytheon.uf.viz.recommenders.interactive.InteractiveRecommenderEngine;
 import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
@@ -110,6 +113,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      created by a recommender.
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * Aug 13, 2015 8836       Chris.Cody   Additional Changes for Hazard Event Id and Registry changes
+ * Nov 10, 2015 12762      Chris.Golden Added code to implement and use new recommender manager.
  * </pre>
  * 
  * @author bsteffen
@@ -151,11 +155,13 @@ public class SessionManager implements
 
     private final ISessionProductManager productManager;
 
-    private final AbstractRecommenderEngine<?> recommenderEngine;
+    private final ISessionRecommenderManager recommenderManager;
 
     private final IHazardSessionAlertsManager alertsManager;
 
     private final IHazardEventManager hazardManager;
+
+    private final IFrameContextProvider frameContextProvider;
 
     /*
      * Flag indicating whether or not automatic hazard checking is running.
@@ -182,25 +188,29 @@ public class SessionManager implements
      */
 
     public SessionManager(IPathManager pathManager,
-            IHazardEventManager hazardEventManager, IMessenger messenger,
+            IHazardEventManager hazardEventManager,
+            IFrameContextProvider contextProvider, IMessenger messenger,
             BoundedReceptionEventBus<Object> eventBus) {
         // TODO switch the bus to async
         // bus = new AsyncEventBus(Executors.newSingleThreadExecutor());
         this.eventBus = eventBus;
         sender = new SessionNotificationSender(eventBus);
         timeManager = new SessionTimeManager(sender);
-        configManager = new SessionConfigurationManager(pathManager,
+        configManager = new SessionConfigurationManager(this, pathManager,
                 timeManager, sender);
         eventManager = new SessionEventManager(this, timeManager,
                 configManager, hazardEventManager, sender, messenger);
         productManager = new SessionProductManager(this, timeManager,
                 configManager, eventManager, sender, messenger);
+        recommenderManager = new SessionRecommenderManager(this, messenger,
+                eventBus);
         alertsManager = new HazardSessionAlertsManager(sender, timeManager);
         alertsManager.addAlertGenerationStrategy(HazardNotification.class,
                 new HazardEventExpirationAlertStrategy(alertsManager,
                         timeManager, configManager, hazardEventManager,
                         new AllHazardsFilterStrategy()));
         hazardManager = hazardEventManager;
+        frameContextProvider = contextProvider;
 
         try {
             setupEventIdDisplay();
@@ -213,13 +223,11 @@ public class SessionManager implements
          * observer (done in the stop method)?
          */
         alertsManager.start();
-        recommenderEngine = new CAVERecommenderEngine();
-        recommenderEngine.injectEngine(new InteractiveRecommenderEngine());
         eventBus.subscribe(timeManager);
         eventBus.subscribe(configManager);
         eventBus.subscribe(eventManager);
         eventBus.subscribe(productManager);
-        eventBus.subscribe(recommenderEngine);
+        eventBus.subscribe(recommenderManager);
         eventBus.subscribe(alertsManager);
 
     }
@@ -245,13 +253,18 @@ public class SessionManager implements
     }
 
     @Override
+    public ISessionRecommenderManager getRecommenderManager() {
+        return recommenderManager;
+    }
+
+    @Override
     public IHazardSessionAlertsManager getAlertsManager() {
         return alertsManager;
     }
 
     @Override
-    public AbstractRecommenderEngine<?> getRecommenderEngine() {
-        return recommenderEngine;
+    public IFrameContextProvider getFrameContextProvider() {
+        return frameContextProvider;
     }
 
     @Override
@@ -275,8 +288,9 @@ public class SessionManager implements
 
         productManager.shutdown();
 
+        recommenderManager.shutdown();
+
         alertsManager.shutdown();
-        recommenderEngine.shutdownEngine();
     }
 
     @Override
@@ -465,6 +479,22 @@ public class SessionManager implements
                         eventManager, Originator.OTHER);
                 this.sender.postNotificationAsync(notification);
             }
+
+            /*
+             * Make sure the updated hazard type is a part of the visible types
+             * in the current setting. If not, add it.
+             */
+            Set<String> visibleTypes = configManager.getSettings()
+                    .getVisibleTypes();
+            int startSize = visibleTypes.size();
+            for (IEvent ievent : eventList) {
+                IHazardEvent event = (IHazardEvent) ievent;
+                visibleTypes.add(HazardEventUtilities.getHazardType(event));
+            }
+
+            if (startSize != visibleTypes.size()) {
+                configManager.getSettings().setVisibleTypes(visibleTypes);
+            }
         }
     }
 
@@ -505,6 +535,23 @@ public class SessionManager implements
      */
     public BoundedReceptionEventBus<Object> getEventBus() {
         return eventBus;
+    }
+
+    @Override
+    public void runTool(ToolType type, String identifier,
+            RecommenderExecutionContext context) {
+        switch (type) {
+        case RECOMMENDER:
+            recommenderManager.runRecommender(identifier, context);
+            break;
+        case HAZARD_PRODUCT_GENERATOR:
+            productManager.generateProducts(identifier);
+            break;
+
+        case NON_HAZARD_PRODUCT_GENERATOR:
+            productManager.generateNonHazardProducts(identifier);
+            break;
+        }
     }
 
     @Override

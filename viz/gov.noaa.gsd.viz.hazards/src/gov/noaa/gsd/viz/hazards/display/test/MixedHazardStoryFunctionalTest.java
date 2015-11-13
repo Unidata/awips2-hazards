@@ -73,6 +73,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
@@ -84,6 +85,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsMo
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 
 /**
  * Description: {@link FunctionalTest} of the mixed hazard story.
@@ -195,8 +197,8 @@ class MixedHazardStoryFunctionalTest extends
     protected void runFirstStep() {
         this.step = Steps.RUN_DAM_BREAK;
         eventBus.publishAsync(new ToolAction(
-                ToolAction.RecommenderActionEnum.RUN_RECOMENDER, settings
-                        .getTool(DAM_BREAK_FLOOD_RECOMMENDER)));
+                ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
+                DAM_BREAK_FLOOD_RECOMMENDER, ToolType.RECOMMENDER));
     }
 
     @Handler(priority = -1)
@@ -408,7 +410,7 @@ class MixedHazardStoryFunctionalTest extends
                 step = Steps.RUN_FLOOD;
                 eventBus.publishAsync(new ToolAction(
                         ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
-                        settings.getTool(RIVER_FLOOD_RECOMMENDER)));
+                        RIVER_FLOOD_RECOMMENDER, ToolType.RECOMMENDER));
                 break;
 
             case RUN_FLOOD:
@@ -484,8 +486,9 @@ class MixedHazardStoryFunctionalTest extends
 
                     eventBus.publishAsync(new ToolAction(
                             ToolAction.RecommenderActionEnum.RUN_RECOMMENDER_WITH_PARAMETERS,
-                            settings.getTool(RIVER_FLOOD_RECOMMENDER),
-                            riverFloodInfo, "tbd"));
+                            RIVER_FLOOD_RECOMMENDER, ToolType.RECOMMENDER,
+                            riverFloodInfo, RecommenderExecutionContext
+                                    .getEmptyContext()));
                     break;
                 default:
                     testError();

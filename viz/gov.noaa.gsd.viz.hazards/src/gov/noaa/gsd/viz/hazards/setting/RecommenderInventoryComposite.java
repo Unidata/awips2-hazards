@@ -68,6 +68,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  *                                      of abstract recommender engine.
  * Dec 05, 2014 4124       Chris.Golden Changed to work with ObservedSettings.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Nov 10, 2015 12762      Chris.Golden Added support for use of new recommender
+ *                                      manager.
  * </pre>
  * 
  * @author Robert.Blum
@@ -127,7 +129,7 @@ public class RecommenderInventoryComposite extends Composite {
             public void widgetSelected(SelectionEvent event) {
                 TreeItem item = (TreeItem) event.item;
                 EventRecommender rec = presenter.getSessionManager()
-                        .getRecommenderEngine().getInventory(item.getText());
+                        .getRecommenderManager().getRecommender(item.getText());
                 if (event.detail == SWT.CHECK) {
                     boolean checked = item.getChecked();
                     checkItems(item, checked);
@@ -273,8 +275,8 @@ public class RecommenderInventoryComposite extends Composite {
                 });
                 for (String recom : filenames) {
                     // instantiates each of the recommenders
-                    presenter.getSessionManager().getRecommenderEngine()
-                            .getInventory(recom);
+                    presenter.getSessionManager().getRecommenderManager()
+                            .getRecommender(recom);
                 }
                 return Status.OK_STATUS;
             }

@@ -26,12 +26,14 @@ import org.eclipse.core.runtime.jobs.Job;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 
@@ -45,12 +47,14 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 20, 2013 1257       bsteffen    Initial creation
+ * May 20, 2013  1257      bsteffen    Initial creation
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
  * Nov 19, 2013  1463      blawrenc    Added state of automatic hazard conflict testing.
  * Nov 23, 2013  1462      blawrenc    Added state of hatched area drawing
  * Oct 08, 2014  4042      Chris.Golden Added generate method (moved from message handler).
  * Dec 05, 2014  4124      Chris.Golden Changed to work with parameterized config manager.
+ * Nov 10, 2015 12762      Chris.Golden Added code to implement and use new recommender
+ *                                      manager.
  * </pre>
  * 
  * @author bsteffen
@@ -96,14 +100,18 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
     public IHazardSessionAlertsManager getAlertsManager();
 
     /**
-     * Get the recommender engine to use for running recommenders.
-     * 
-     * TODO this may be moved out of session manager or into a sub manager, this
-     * is a pending design decision.
+     * Get a manager for handling recommenders.
      * 
      * @return
      */
-    public AbstractRecommenderEngine<?> getRecommenderEngine();
+    public ISessionRecommenderManager getRecommenderManager();
+
+    /**
+     * Get the temporal frame context provider.
+     * 
+     * @return Temporal frame context provider.
+     */
+    public IFrameContextProvider getFrameContextProvider();
 
     /**
      * Register an object as to receive ISessionNotifiation events for this
@@ -164,7 +172,13 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
      */
     public boolean areHatchedAreasDisplayed();
 
-    void handleRecommenderResult(EventSet<IEvent> eventList);
+    /**
+     * Handle the result of a recommender run.
+     * 
+     * @param Event
+     *            list resulting.
+     */
+    public void handleRecommenderResult(EventSet<IEvent> eventList);
 
     /**
      * 
@@ -190,6 +204,19 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
      * @param isOngoing
      */
     public void setIssueOngoing(boolean isOngoing);
+
+    /**
+     * Run the specified tool.
+     * 
+     * @param type
+     *            Type of the tool to be run.
+     * @param identifier
+     *            Identifier of the tool to be run.
+     * @param context
+     *            Context for the tool, if any.
+     */
+    public void runTool(ToolType type, String identifier,
+            RecommenderExecutionContext context);
 
     /**
      * Generate products based upon the currently selected events.

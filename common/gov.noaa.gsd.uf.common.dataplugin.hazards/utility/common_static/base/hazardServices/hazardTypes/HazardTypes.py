@@ -68,7 +68,17 @@
 #                           . You will see W and Y symbols marking the area under threat.
 #         hazardTypeFirstRecommender  Set the name of the recommender you want launched if the 
 #                                     forecaster opts for the Hazard Type First workflow 
-#
+#         modifyRecommenders Optional parameter. If specified, it provides a mapping of
+#                            the names of recommenders to lists of hazard attributes that
+#                            should trigger those recommenders to be run when any of the
+#                            given attributes are changed. The actual value must be a
+#                            dictionary, with each key being the name of a recommender, and
+#                            the associated value being a list holding the names of attributes
+#                            that when changed trigger the running of that recommender. Valid
+#                            attributes are "timeRange", "geometry", "geometryDecoration", and
+#                            "status".  (Note that any hazard event attributes that may be
+#                            specific to a hazard type, e.g. "cta", may be made triggers as
+#                            well within a hazard type's metadata generation script.) 
 #         startTimeIsCurrentTime: Affects unissued and issued; if true, start time is never
 #                                 editable by the user, and must be the current CAVE clock
 #                                 time.  Default is False.
@@ -1738,7 +1748,10 @@ HazardTypes = {
               'inclusionAreaInSqKm' : 1.0,
               'defaultDuration': 1 * HOURS,
               'durationIncrement': 60,
-              'allowUntilFurtherNotice': True
+              'allowUntilFurtherNotice': True,
+              'modifyRecommenders': {
+                                     'SwathRecommender': [ 'geometry', 'geometryDecoration', 'timeRange', 'status' ]
+                                     }
               },
     'Prob_Wind' : {
               'headline': 'Probabilistic Wind',
@@ -1759,7 +1772,10 @@ HazardTypes = {
               'inclusionAreaInSqKm' : 1.0,
               'defaultDuration': 1 * HOURS,
               'durationIncrement': 60,
-              'allowUntilFurtherNotice': True
+              'allowUntilFurtherNotice': True,
+              'modifyRecommenders': {
+                                     'SwathRecommender': [ 'geometry', 'geometryDecoration', 'timeRange', 'status' ]
+                                     }
               },
     'Prob_Hail' : {
               'headline': 'Probabilistic Hail',
@@ -1780,6 +1796,9 @@ HazardTypes = {
               'inclusionAreaInSqKm' : 1.0,
               'defaultDuration': 1 * HOURS,
               'durationIncrement': 60,
-              'allowUntilFurtherNotice': True
+              'allowUntilFurtherNotice': True,
+              'modifyRecommenders': {
+                                     'SwathRecommender': [ 'geometry', 'geometryDecoration', 'timeRange', 'status' ]
+                                     }
               },
     }

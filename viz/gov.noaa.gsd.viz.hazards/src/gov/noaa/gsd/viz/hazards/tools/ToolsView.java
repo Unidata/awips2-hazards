@@ -35,6 +35,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 
 /**
  * Tools view, an implementation of IToolsView that provides an SWT-based view.
@@ -56,8 +57,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
  * Jan 29, 2015   4375     Dan Schaffer      Console initiation of RVS product generation
  * Jan 30, 2015   3626     Chris.Golden      Added ability to pass event type when
  *                                           running a recommender.
- * Feb 15, 2015 2271       Dan Schaffer      Incur recommender/product generator init costs immediately
+ * Feb 15, 2015   2271     Dan Schaffer      Incur recommender/product generator init costs immediately
  * Jun 02, 2015   7138     Robert.Blum       Changed to use new Enums for Product Generators.
+ * Nov 10, 2015  12762     Chris.Golden      Added support for use of new recommender manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -108,7 +110,8 @@ public class ToolsView implements
             public void widgetSelected(SelectionEvent event) {
                 presenter.publish(new ToolAction(
                         ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
-                        (Tool) event.widget.getData()));
+                        ((Tool) event.widget.getData()).getToolName(),
+                        ((Tool) event.widget.getData()).getToolType()));
             }
         };
 
@@ -277,8 +280,8 @@ public class ToolsView implements
     }
 
     @Override
-    public final void showToolParameterGatherer(Tool tool, String eventType,
-            String jsonParams) {
+    public final void showToolParameterGatherer(String tool, ToolType type,
+            RecommenderExecutionContext context, String jsonParams) {
         if (toolDialog != null) {
             Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                     .getShell();
@@ -291,7 +294,7 @@ public class ToolsView implements
             return;
         }
         toolDialog = new ToolDialog(presenter, PlatformUI.getWorkbench()
-                .getActiveWorkbenchWindow().getShell(), tool, eventType,
+                .getActiveWorkbenchWindow().getShell(), tool, type, context,
                 jsonParams);
         toolDialog.open();
         toolDialog.getShell().addDisposeListener(dialogDisposeListener);

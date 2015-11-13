@@ -24,18 +24,19 @@ import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.colormap.Color;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEventFirstClassAttribute;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.EventDrivenTools;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
@@ -72,6 +73,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      requires a point identifier, and which hazard
  *                                      types can be used to replace a particular
  *                                      hazard event.
+ * Nov 10, 2015 12762      Chris.Golden Added recommender running in response to
+ *                                      hazard event metadata changes, as well as the
+ *                                      use of the new recommender manager.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -269,6 +274,20 @@ public interface ISessionConfigurationManager<S extends ISettings> {
     public List<String> getDurationChoices(IHazardEvent event);
 
     /**
+     * Get the identifier of the recommender that is triggered by a change to
+     * the specified first-class property of the specified hazard event.
+     * 
+     * @param event
+     *            Event that experienced a change.
+     * @param change
+     *            Change that occurred.
+     * @return Recommender identifier to be run in response, or
+     *         <code>null</code> if no recommender is triggered by this change.
+     */
+    public String getRecommenderTriggeredByChange(IHazardEvent event,
+            HazardEventFirstClassAttribute change);
+
+    /**
      * Get the start-time-is-current-time flag from the hazard types
      * configuration file for an event.
      * 
@@ -308,10 +327,10 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * @param hazardType
      *            Type of the hazard for which the type-first recommender is
      *            desired.
-     * @return The associated recommender, or <code>null</code> if there is
-     *         none.
+     * @return The identifier of the associated recommender, or
+     *         <code>null</code> if there is none.
      */
-    public Tool getTypeFirstRecommender(String hazardType);
+    public String getTypeFirstRecommender(String hazardType);
 
     /**
      * Determine whether or not the specified hazard type requires that the
@@ -353,6 +372,11 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * Get the hazard types
      */
     public HazardTypes getHazardTypes();
+
+    /**
+     * Get the event-driven tools.
+     */
+    public EventDrivenTools getEventDrivenTools();
 
     /**
      * Execute any shutdown needed.

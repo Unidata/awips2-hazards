@@ -52,7 +52,7 @@ public class CAVERecommenderPythonFactory extends
             .getHandler(CAVERecommenderPythonFactory.class);
 
     public CAVERecommenderPythonFactory() {
-        this(AbstractRecommenderEngine.DEFAULT_RECOMMENDER_JOB_COORDINATOR, 2);
+        this(AbstractRecommenderEngine.DEFAULT_RECOMMENDER_JOB_COORDINATOR, 1);
     }
 
     /**

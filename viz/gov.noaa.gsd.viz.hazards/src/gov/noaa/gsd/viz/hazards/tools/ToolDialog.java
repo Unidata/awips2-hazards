@@ -48,7 +48,8 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 
 /**
  * Tool dialog, used to allow the user to specify parameters for tool
@@ -127,6 +128,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  *                                           running a recommender.
  * Jun 17, 2015   8389     Benjamin.Phillippe Fixed min/max time visible variables to 
  *                                            not expect exception when initializing
+ * Nov 10, 2015  12762     Chris.Golden      Added support for use of new recommender
+ *                                           manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -198,11 +201,19 @@ class ToolDialog extends BasicDialog {
     private final List<String> runToolTriggerIdentifiers;
 
     /**
-     * Event type to be created, if specified at construction time.
+     * Execution context in which the tool is to be run.
      */
-    private final String eventType;
+    private final RecommenderExecutionContext context;
 
-    private final Tool tool;
+    /**
+     * Identifier of the tool for which the dialog is being shown.
+     */
+    private final String tool;
+
+    /**
+     * Type of the tool for which the dialog is being shown.
+     */
+    private final ToolType type;
 
     // Public Constructors
 
@@ -214,23 +225,25 @@ class ToolDialog extends BasicDialog {
      * @param parent
      *            Parent shell.
      * @param tool
-     *            the tool to be executed.
-     * @param eventType
-     *            The type of the event that this tool is to create; if present,
-     *            the tool is being run as a result of a hazard-type-first
-     *            invocation. Otherwise, it will be <code>null</code>.
+     *            Identifier of the tool to be executed.
+     * @param type
+     *            Type of the tool.
+     * @param context
+     *            Execution context in which this tool is to be run.
      * @param jsonParams
      *            JSON string giving the parameters for this dialog. Within the
      *            set of all fields that are defined by these parameters, all
      *            the fields (megawidget specifiers) must have unique
      *            identifiers.
      */
-    public ToolDialog(ToolsPresenter presenter, Shell parent, Tool tool,
-            String eventType, String jsonParams) {
+    public ToolDialog(ToolsPresenter presenter, Shell parent, String tool,
+            ToolType type, RecommenderExecutionContext context,
+            String jsonParams) {
         super(parent);
         this.presenter = presenter;
         this.tool = tool;
-        this.eventType = eventType;
+        this.type = type;
+        this.context = context;
         setShellStyle(SWT.CLOSE | SWT.MODELESS | SWT.BORDER | SWT.TITLE
                 | SWT.RESIZE);
         setBlockOnOpen(false);
@@ -483,7 +496,7 @@ class ToolDialog extends BasicDialog {
             presenter
                     .publish(new ToolAction(
                             ToolAction.RecommenderActionEnum.RUN_RECOMMENDER_WITH_PARAMETERS,
-                            tool, getState(), eventType));
+                            tool, type, getState(), context));
         }
     }
 

@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.time;
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -35,16 +36,18 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 21, 2013 1257       bsteffen    Initial creation
- * May 12, 2014 2925       C. Golden   Added originator to visible time
- *                                     range change notification, and
- *                                     added current time provider and
- *                                     getter.
- * Nov 18, 2014 4124       C. Golden   Reorganized and changed over to
- *                                     use a SelectedTime object to
- *                                     represent both single selected
- *                                     time instances, and selected
- *                                     time ranges.
+ * May 21, 2013 1257       bsteffen     Initial creation
+ * May 12, 2014 2925       Chris.Golden Added originator to visible time
+ *                                      range change notification, and
+ *                                      added current time provider and
+ *                                      getter.
+ * Nov 18, 2014 4124       Chris.Golden Reorganized and changed over to
+ *                                      use a SelectedTime object to
+ *                                      represent both single selected
+ *                                      time instances, and selected
+ *                                      time ranges.
+ * Nov 10, 2015 12762      Chris.Golden Added ability to schedule arbitrary
+ *                                      tasks to run at regular intervals.
  * </pre>
  * 
  * @author bsteffen
@@ -52,6 +55,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  */
 
 public interface ISessionTimeManager {
+
+    // Public Static Constants
+
+    /**
+     * Number of milliseconds in a minute.
+     */
+    public static final long MINUTE_AS_MILLISECONDS = TimeUnit.MINUTES
+            .toMillis(1L);
+
+    // Public Methods
 
     /**
      * Get the current time provider.
@@ -144,6 +157,27 @@ public interface ISessionTimeManager {
      *            Originator of the action.
      */
     public void setVisibleTimeRange(TimeRange timeRange, IOriginator originator);
+
+    /**
+     * Execute the specified runnable at the given regular intervals.
+     * <p>
+     * Note that any runnable provided will be executed in the following
+     * circumstances once this method is called:
+     * </p>
+     * <ol>
+     * <li>Shortly after this method is executed (initial run).</li>
+     * <li>Whenever the CAVE clock time is changed (frozen, unfrozen, or set to
+     * a new value).</li>
+     * <li>If the CAVE clock time is not frozen, at the specified regular
+     * intervals starting from the last occurrence of either (1) or (2).</li>
+     * </ol>
+     * 
+     * @param task
+     *            Task to be executed at regular intervals.
+     * @param intervalInMillis
+     *            Interval in milliseconds between executions.
+     */
+    public void runAtRegularIntervals(Runnable task, long intervalInMillis);
 
     /**
      * Execute any shutdown needed.

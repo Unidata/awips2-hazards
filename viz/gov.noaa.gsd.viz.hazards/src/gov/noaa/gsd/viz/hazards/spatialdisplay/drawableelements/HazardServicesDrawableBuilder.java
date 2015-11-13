@@ -10,7 +10,6 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesEditorUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.DotDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.LineDrawingAttributes;
@@ -94,6 +93,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Oct 13, 2015 12494      Chris Golden Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
+ * Nov 10, 2015 12762      Chris.Golden Added support for use of new recommender manager.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -519,8 +519,8 @@ public class HazardServicesDrawableBuilder {
             List<Map<String, Serializable>> shapes = (List<Map<String, Serializable>>) hazardEvent
                     .getHazardAttribute(HazardConstants.TRACK_POINTS);
 
-            DataTime currentFrame = HazardServicesEditorUtilities
-                    .currentFrame();
+            DataTime currentFrame = sessionManager.getFrameContextProvider()
+                    .getFramesInfo().getCurrentFrame();
 
             /*
              * Artifically loop one past the natural end of the loop to force

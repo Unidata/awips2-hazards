@@ -34,8 +34,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 
 /**
  * Description: Presenter for the hazard-type-first dialog.
@@ -49,7 +51,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Jan 29, 2015    3626    Chris.Golden Added the passing of the event type
  *                                      chosen to a recommender that is being
  *                                      run as a result of that choice.
- * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
+ * Jan 29, 2015    4375    Dan Schaffer Console initiation of RVS product generation
+ * Nov 10, 2015   2762     Chris.Golden Added support for use of new recommender
+ *                                      manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -399,7 +403,9 @@ public class HazardTypeFirstPresenter extends
          */
         publish(new ToolAction(ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
                 getModel().getConfigurationManager().getTypeFirstRecommender(
-                        selectedType), selectedType));
+                        selectedType), ToolType.RECOMMENDER,
+                RecommenderExecutionContext
+                        .getHazardTypeFirstContext(selectedType)));
     }
 
     /**

@@ -34,6 +34,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 
 /**
@@ -92,8 +93,8 @@ class DamBreakFunctionalTest extends
          */
         this.step = Steps.RUN_DAM_BREAK_LOW_CONFIDENCE;
         eventBus.publishAsync(new ToolAction(
-                ToolAction.RecommenderActionEnum.RUN_RECOMENDER, settings
-                        .getTool(DAM_BREAK_FLOOD_RECOMMENDER)));
+                ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
+                DAM_BREAK_FLOOD_RECOMMENDER, ToolType.RECOMMENDER));
     }
 
     @Handler(priority = -1)
@@ -112,7 +113,7 @@ class DamBreakFunctionalTest extends
                 step = Steps.RUN_DAM_BREAK_HIGH_CONFIDENCE;
                 eventBus.publishAsync(new ToolAction(
                         ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
-                        settings.getTool(DAM_BREAK_FLOOD_RECOMMENDER)));
+                        DAM_BREAK_FLOOD_RECOMMENDER, ToolType.RECOMMENDER));
                 break;
 
             case RECEIVE_DAM_BREAK_HIGH_CONFIDENCE_EVENTS:
@@ -126,7 +127,7 @@ class DamBreakFunctionalTest extends
                 step = Steps.RUN_DAM_BREAK_DAM_FAILED;
                 eventBus.publishAsync(new ToolAction(
                         ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
-                        settings.getTool(DAM_BREAK_FLOOD_RECOMMENDER)));
+                        DAM_BREAK_FLOOD_RECOMMENDER, ToolType.RECOMMENDER));
                 break;
 
             case RECEIVE_DAM_BREAK_DAM_FAILED_EVENTS:

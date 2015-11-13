@@ -36,9 +36,11 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.TopologyException;
 
@@ -304,8 +306,9 @@ public class AutoTestUtilities {
         damBreakInfo.put(URGENCY_LEVEL, urgencyLevel.toString());
         eventBus.publishAsync(new ToolAction(
                 ToolAction.RecommenderActionEnum.RUN_RECOMMENDER_WITH_PARAMETERS,
-                settings.getTool(FunctionalTest.DAM_BREAK_FLOOD_RECOMMENDER),
-                damBreakInfo, "tbd"));
+                FunctionalTest.DAM_BREAK_FLOOD_RECOMMENDER,
+                ToolType.RECOMMENDER, damBreakInfo, RecommenderExecutionContext
+                        .getEmptyContext()));
     }
 
     void setAddToPendingMode(SpatialDisplayAction.ActionIdentifier mode) {

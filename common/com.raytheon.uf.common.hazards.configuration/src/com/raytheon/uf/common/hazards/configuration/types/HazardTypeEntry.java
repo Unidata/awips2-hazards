@@ -22,6 +22,7 @@ package com.raytheon.uf.common.hazards.configuration.types;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
@@ -54,7 +55,14 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
  * Mar 06, 2015 3850       Chris.Golden Added replacedBy and
  *                                      requirePointId fields.
- * Mar 26, 2015 7110       hansen       Automatically include all allowedHazards if "includeAll"
+ * Mar 26, 2015 7110       hansen       Automatically include all
+ *                                      allowedHazards if "includeAll"
+ * Nov 10, 2015 12762      Chris.Golden Added modifyRecommenders to
+ *                                      allow recommenders to be
+ *                                      specified that are to be
+ *                                      triggered when an event's
+ *                                      time range, status, or geometry
+ *                                      changes.
  * </pre>
  * 
  * @author bsteffen
@@ -113,6 +121,17 @@ public class HazardTypeEntry {
     private long defaultDuration;
 
     private boolean allowUntilFurtherNotice;
+
+    private Map<String, List<String>> modifyRecommenders;
+
+    public Map<String, List<String>> getModifyRecommenders() {
+        return modifyRecommenders;
+    }
+
+    public void setModifyRecommenders(
+            Map<String, List<String>> modifyRecommenders) {
+        this.modifyRecommenders = modifyRecommenders;
+    }
 
     public String getHeadline() {
         return headline;

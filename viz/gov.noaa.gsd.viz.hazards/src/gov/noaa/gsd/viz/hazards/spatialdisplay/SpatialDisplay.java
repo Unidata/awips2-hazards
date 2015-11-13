@@ -100,10 +100,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationMa
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.viz.awipstools.IToolChangedListener;
 import com.raytheon.viz.core.rsc.jts.JTSCompiler;
 import com.raytheon.viz.hydro.perspective.HydroPerspectiveManager;
@@ -184,6 +185,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Jul 07, 2015 7921       Chris.Cody   Re-scale hatching areas and handle bar points
  * Oct 26, 2015 12754      Chris.Golden Fixed drawing bug that caused only one hazard to be drawn at a
  *                                      time, regardless of how many should have been displayed.
+ * Nov 10, 2015 12762      Chris.Golden Added support for use of new recommender manager.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1999,22 +2001,14 @@ public class SpatialDisplay extends
             String gagePointFirstRecommender = startupConfig
                     .getGagePointFirstRecommender();
 
-            ObservedSettings settings = configManager.getSettings();
-            Tool tool = settings.getTool(gagePointFirstRecommender);
+            Map<String, Serializable> riverGageInfo = new HashMap<>();
+            riverGageInfo.put("selectedPointID", riverGageLid);
 
-            if (tool != null) {
-                Map<String, Serializable> riverGageInfo = new HashMap<>();
-                riverGageInfo.put("selectedPointID", riverGageLid);
-
-                eventBus.publishAsync(new ToolAction(
-                        ToolAction.RecommenderActionEnum.RUN_RECOMMENDER_WITH_PARAMETERS,
-                        tool, riverGageInfo, ""));
-            } else {
-                statusHandler
-                        .warn("No Hazard Generation Tool associated with configured value "
-                                + gagePointFirstRecommender
-                                + " Discarding request.\n Check value set in StartUpConfig.py script.");
-            }
+            eventBus.publishAsync(new ToolAction(
+                    ToolAction.RecommenderActionEnum.RUN_RECOMMENDER_WITH_PARAMETERS,
+                    gagePointFirstRecommender, ToolType.RECOMMENDER,
+                    riverGageInfo, RecommenderExecutionContext
+                            .getEmptyContext()));
         }
     }
 
