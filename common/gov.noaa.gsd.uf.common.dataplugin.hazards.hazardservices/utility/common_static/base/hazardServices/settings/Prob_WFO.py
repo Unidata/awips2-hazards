@@ -1,46 +1,23 @@
-Hydrology_All = { 
-    "settingsID" : "Hydrology_All",
-    "perspectiveIDs" : ["com.raytheon.viz.hydro.HydroPerspective",
-                        "com.raytheon.viz.mpe.ui.MPEPerspective",
-                        "com.raytheon.uf.viz.d2d.ui.perspectives.D2D5Pane",
-                        "com.raytheon.viz.ui.GFEPerspective"],
-    "displayName": "Hydrology - All",
+Prob_WFO = {
+    "settingsID" : "Prob_WFO",
+    "perspectiveIDs" : [],
+    "displayName": "Probabilistic WFO",
     "visibleTypes": [
-        "FF.A",
-        "FF.W.Convective",
-        "FF.W.NonConvective",
-        "FF.W.BurnScar",
-        "FA.Y",
-        "FA.A",
-        "FA.W",
-        "FL.Y",
-        "FL.A",
-        "FL.W",
-        "HY.O",
-        "HY.S"
+        "Prob_Tornado",
+        "Prob_Severe",
     ],
     "hazardCategoriesAndTypes": [
         {
-        "displayString": "Hydrology",
+        "displayString": "Prob Convective",
         "children": [
-        "FF.A",
-        "FF.W.Convective",
-        "FF.W.NonConvective",
-        "FF.W.BurnScar",
-        "FA.Y",
-        "FA.A",
-        "FA.W",
-        "FL.Y",
-        "FL.A",
-        "FL.W",
-        "HY.O",
-        "HY.S"
+        "Prob_Tornado",
+        "Prob_Severe",
         ]
         }
     ],
     #"hazardsFilter" : "Hydrology_All",
     "defaultTimeDisplayDuration": 172800000,
-    "defaultCategory" : "Hydrology",
+    "defaultCategory" : "Prob Convective",
     "mapCenter": {
         "lat": 41.06,
         "lon":-95.91,
@@ -189,47 +166,12 @@ Hydrology_All = {
         },
     },
     "toolbarTools": [
-        {
-            "toolName": "DamBreakFloodRecommender",
-            "displayName": "Dam/Levee Break Flood Recommender",
-            "toolType": "RECOMMENDER",
-            "visible":True,
-        },
-        {
-            "toolName": "BurnScarFloodRecommender",
-            "displayName": "Burn Scar Flood Recommender",
-            "toolType": "RECOMMENDER",
-            "visible":True,
-        },
-        {
-            "toolName": "RiverFloodRecommender",
-            "displayName": "River Flood Recommender",
-            "toolType": "RECOMMENDER",
-            "visible":True,
-        },
-        {
-            "toolName": "FlashFloodRecommender",
-            "displayName": "Flash Flood Recommender",
-            "toolType": "RECOMMENDER",
-            "visible":True,
-        },
-        {
-            "toolName": "StormTrackTool",
-            "displayName": "Storm Track",
-            "toolType": "RECOMMENDER",
-            "visible":True,
-        },
-        {
-            "toolName": "ModifyStormTrackTool",
-            "toolType": "RECOMMENDER",
-            "visible":False,
-        },
-        {
-            "toolName": "RVS_ProductGenerator",
-            "displayName": "Generate RVS",
-            "toolType": "NON_HAZARD_PRODUCT_GENERATOR",
-            "visible":True,
-        }
+#         {
+#             "toolName": "DamBreakFloodRecommender",
+#             "displayName": "Dam/Levee Break Flood Recommender",
+#             "toolType": "RECOMMENDER",
+#             "visible":True,
+#         },
     ],
     # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
     #"eventIdDisplayType" : "ALWAYS_FULL"

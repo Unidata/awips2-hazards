@@ -1729,6 +1729,41 @@ HazardTypes = {
               'defaultDuration': 8 * HOURS,
               'durationIncrement': 60,
              },
+               
+    # National Center Prob Hazards
+    'Prob_Convection' : {'headline': 'Convective Outlook',
+              '_override_lock_': OVERRIDE_LOCK,
+              'combinableSegments': True,
+              'includeAll': True,
+              'allowAreaChange': False,
+              'allowTimeChange': False,
+              'expirationTime': (-30, 30),
+              'hazardConflictList': [],
+              'ugcType': 'zone',
+              'ugcLabel': 'name',
+              #'hazardClipArea' : 'cwa',
+              'inclusionFractionTest' : True,
+              'inclusionFraction': 0.1,
+              'defaultDuration': 8 * HOURS,
+              'durationIncrement': 60,
+              },
+    'Prob_Rainfall' : {'headline': 'Excessive Rainfall Outlook',
+          '_override_lock_': OVERRIDE_LOCK,
+          'combinableSegments': True,
+          'includeAll': True,
+          'allowAreaChange': False,
+          'allowTimeChange': False,
+          'expirationTime': (-30, 30),
+          'hazardConflictList': [],
+          'ugcType': 'zone',
+          'ugcLabel': 'name',
+          #'hazardClipArea' : 'cwa',
+          'inclusionFractionTest' : True,
+          'inclusionFraction': 0.1,
+          'defaultDuration': 8 * HOURS,
+          'durationIncrement': 60,
+          },
+               
     'Prob_Tornado' : {
               'headline': 'Probabilistic Tornado',
               '_override_lock_': OVERRIDE_LOCK,
@@ -1753,8 +1788,8 @@ HazardTypes = {
                                      'SwathRecommender': [ 'geometry', 'geometryDecoration', 'timeRange', 'status' ]
                                      }
               },
-    'Prob_Wind' : {
-              'headline': 'Probabilistic Wind',
+    'Prob_Severe' : {
+              'headline': 'Probabilistic Severe',
               '_override_lock_': OVERRIDE_LOCK,
               'combinableSegments': False,
               'allowAreaChange': False,
@@ -1777,28 +1812,5 @@ HazardTypes = {
                                      'SwathRecommender': [ 'geometry', 'geometryDecoration', 'timeRange', 'status' ]
                                      }
               },
-    'Prob_Hail' : {
-              'headline': 'Probabilistic Hail',
-              '_override_lock_': OVERRIDE_LOCK,
-              'combinableSegments': False,
-              'allowAreaChange': False,
-              'allowTimeChange': True,
-              'expirationTime': (-30, 30),
-              'hazardConflictList': [],
-              'warngenHatching': False,
-              'pointBased': False,
-              'ugcType': 'county',
-              'ugcLabel': '',
-              'hazardClipArea' : 'cwa',
-              'inclusionFractionTest': True,
-              'inclusionFraction': 0.1,
-              'inclusionAreaTest' : True,
-              'inclusionAreaInSqKm' : 1.0,
-              'defaultDuration': 1 * HOURS,
-              'durationIncrement': 60,
-              'allowUntilFurtherNotice': True,
-              'modifyRecommenders': {
-                                     'SwathRecommender': [ 'geometry', 'geometryDecoration', 'timeRange', 'status' ]
-                                     }
-              },
+ 
     }

@@ -17,12 +17,12 @@
 # 19 Aug 15    7135        Joe Wakefield  Updated
 
 ## Good to go?
-hostid=`hostname | cut -c 1-3`
-if [ "$hostid" != "dx1" ] && [ "$hostid" != "dx2" ]
-then
-  echo "ERROR : $0 must be run on dx1 or dx2"
-  exit 1
-fi
+#hostid=`hostname | cut -c 1-3`
+#if [ "$hostid" != "dx1" ] && [ "$hostid" != "dx2" ]
+#then
+#  echo "ERROR : $0 must be run on dx1 or dx2"
+#  exit 1
+#fi
 # this below apparently is not necessary
 #if [ "`whoami`" != "awips" ]
 #then

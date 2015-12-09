@@ -1721,6 +1721,79 @@ class MetaData(object):
                 "displayString": "Select for flood point table"
         }
 
+########################
+### Probabilistic
+
+    # Excessive Rainfall Outlook
+    def getRisk(self):
+        values = 'riskSlight'
+        choices = self.riskChoices()
+        return {
+            "fieldName": "risk",
+            "fieldType":"ComboBox",
+            "label":"Risk:",
+            "values": values,
+            "expandHorizontally": False,
+            "choices": choices,
+            "editable" : True,
+            "refreshMetadata": True,
+                }
+        
+    def riskChoices(self):
+        return [
+                self.riskSeeText(),
+                self.riskSlight(),
+                self.riskModerate(),
+                self.riskHigh(),
+            ]
+        
+    def riskSeeText(self):
+        return {"identifier":"riskSeeText", "displayString":"See Text"}
+    def riskSlight(self):
+        return {"identifier":"riskSlight", "displayString":"SLGT - Slight Risk"}
+    def riskModerate(self):
+        return {"identifier":"riskModerate", "displayString":"MDT - Moderate Risk"}
+    def riskHigh(self):
+        return {"identifier":"riskHigh", "displayString":"HIGH - High Risk"}
+
+    # Convection Outlook
+    def getConvectionCategory(self):
+        values = 'convectionSlight'
+        choices = self.convectionCategoryChoices()
+        return {
+            "fieldName": "convectionCategory",
+            "fieldType":"ComboBox",
+            "label":"Convection Category:",
+            "values": values,
+            "expandHorizontally": False,
+            "choices": choices,
+            "editable" : True,
+            "refreshMetadata": True,
+                }
+        
+    def convectionCategoryChoices(self):
+        return [
+                self.convectionThunderstorm(),
+                self.convectionMarginal(),
+                self.convectionSlight(),
+                self.convectionEnhanced(),
+                self.convectionModerate(),
+                self.convectionHigh(),
+            ]
+        
+    def convectionThunderstorm(self):
+        return {"identifier":"convectionThunderstorm", "displayString":"TSTM - Thunderstorm"}
+    def convectionMarginal(self):
+        return {"identifier":"convectionMarginal", "displayString":"1: MRGL - Marginal"}
+    def convectionSlight(self):
+        return {"identifier":"convectionSlight", "displayString":"2: SLGT - Slight"}
+    def convectionEnhanced(self):
+        return {"identifier":"convectionEnhanced", "displayString":"3: ENH - Enhanced"}
+    def convectionModerate(self):
+        return {"identifier":"convectionModerate", "displayString":"4: MDT - Moderate"}
+    def convectionHigh(self):
+        return {"identifier":"convectionHigh", "displayString":"5: HIGH - High"}
+
 def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
     
     returnDict = {}
@@ -1775,7 +1848,6 @@ def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
         return returnDict
     else:
         return None
-
 
 
 
