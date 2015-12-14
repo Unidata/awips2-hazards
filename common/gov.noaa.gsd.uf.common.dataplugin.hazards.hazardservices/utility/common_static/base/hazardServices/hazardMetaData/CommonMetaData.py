@@ -40,6 +40,7 @@ from HazardConstants import *
 import os, sys
 from collections import OrderedDict
 from MapsDatabaseAccessor import MapsDatabaseAccessor
+import pprint
 
 class MetaData(object):
 
@@ -1793,6 +1794,374 @@ class MetaData(object):
         return {"identifier":"convectionModerate", "displayString":"4: MDT - Moderate"}
     def convectionHigh(self):
         return {"identifier":"convectionHigh", "displayString":"5: HIGH - High"}
+
+
+    def convectiveGetAttrs(self):
+        attrs = self.hazardEvent.getHazardAttributes()
+        probSeverAttrs = attrs.get('probSeverAttrs')
+        
+        tbl = {
+            "fieldType": "Table",
+            "fieldName": "probSvrAttrs",
+            "label": "Cell Attributes:",
+            "lines": 4,
+            "columnHeaders": [ "Category", "Value"],
+            "values": [list((k,v)) for k,v in probSeverAttrs.iteritems()],
+            "refreshMetadata": True
+        }
+        
+        return tbl
+        
+    def convectiveControls(self):
+        attrs = self.hazardEvent.getHazardAttributes()
+        probSeverAttrs = attrs.get('probSeverAttrs')
+        
+        mws = []
+        # ThreatID
+        mws.append(self._getConvectiveCellId(probSeverAttrs))
+        # Motion Vector
+        mws.append(self._getConvectiveMotionVector())
+        # Hazard Type (Svr/Tor)
+        # Duration (see config)
+        # Probability Trend
+        mws.append(self._getConvectiveProbabilityTrend())
+        # Warning Discussion
+        mws.append(self._getConvectiveDiscussion())
+        # Activate
+        mws.append(self._getConvectiveActivate())
+        # Redraw # Reset History # Preview grid
+        mws.append(self._getConvectiveAuxControls())
+        # Path/shape "recommender"
+        mws.append(self._getConvectiveSwathPresets())
+        # preview slider
+        mws.append(self._getConvectivePreview())
+        
+        
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "convectiveGroup",
+            "label": "",
+            "leftMargin": 10,
+            "rightMargin": 10,
+            "topMargin": 10,
+            "bottomMargin": 10,
+            "expandHorizontally": True,
+            "expandVertically": True,
+            "fields": mws
+        }
+
+        
+        return grp
+        
+    def _getConvectiveCellId(self, probSeverAttrs):
+        objectID = probSeverAttrs.get('objectids')
+        
+        grp = {
+            "fieldType": "Composite",
+            "fieldName": "convectiveThreatGroup",
+            "label": "",
+            #"leftMargin": 10,
+            #"rightMargin": 10,
+            #"topMargin": 10,
+            #"bottomMargin": 10,
+            #"expandHorizontally": True,
+            #"expandVertically": True,
+            "numColumns":2,
+            "fields": [
+                        {
+                        "fieldType": "Label",
+                        "fieldName": "convectiveThreatLabel",
+                        "label": "ThreatID:",
+                        },
+                        {
+                        "fieldType": "Label",
+                        "fieldName": "convectiveThreatValue",
+                        "label": objectID
+                        }
+                       ]
+        }
+
+        
+        return grp
+
+
+    def _getConvectiveMotionVector(self):
+        grp = {
+            "fieldType": "Composite",
+            "fieldName": "convectiveMotionVectorGroup",
+            "label": "",
+            #"leftMargin": 10,
+            #"rightMargin": 10,
+            #"topMargin": 10,
+            #"bottomMargin": 10,
+            #"expandHorizontally": True,
+            #"expandVertically": True,
+            "numColumns":4,
+            "fields": [
+                        {
+                        "fieldType": "Label",
+                        "fieldName": "convectiveObjectMotion",
+                        "label": "Motion Vector:"
+                        },
+                        {
+                        "fieldType": "IntegerSpinner",
+                        "fieldName": "convectiveObjectDir",
+                        "label": "",
+                        "minValue": 0,
+                        "maxValue": 360,
+                        "values": 270,
+                        "incrementDelta": 5,
+                        "showScale": False
+                        },
+                        {
+                        "fieldType": "IntegerSpinner",
+                        "fieldName": "convectiveObjectSpdKts",
+                        "label": "deg @",
+                        "minValue": 0,
+                        "maxValue": 75,
+                        "values": 32,
+                        "showScale": False
+                        },
+                        {
+                        "fieldType": "Label",
+                        "fieldName": "convectiveObjectMotion2",
+                        "label": "kts"
+                        },
+                       ]
+        }
+
+        
+        return grp
+        
+    def _getConvectiveProbabilityTrend(self):
+
+        trends = {
+            "fieldType": "Composite",
+            "fieldName": "convectiveTrendsGroup",
+            "label": "",
+            #"leftMargin": 10,
+            #"rightMargin": 10,
+            #"topMargin": 10,
+            #"bottomMargin": 10,
+            #"expandHorizontally": True,
+            #"expandVertically": True,
+            "numColumns":8,
+            "fields": [
+                        {
+                        "fieldType": "Label",
+                        "fieldName": "convectiveProbTrendLabel",
+                        "label": "Trend Interpolation:"
+                        },
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "convectiveProbTrendDraw",
+                        "label": "Draw"
+                        },
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "convectiveProbTrendLinear",
+                        "label": "Linear"
+                        },
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "convectiveProbTrendExp1",
+                        "label": "Exp1"
+                        },
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "convectiveProbTrendExp2",
+                        "label": "Exp2"
+                        },
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "convectiveProbTrendBell",
+                        "label": "Bell"
+                        },
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "convectiveProbTrendPlus5",
+                        "label": "+5"
+                        },
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "convectiveProbTrendMinus5",
+                        "label": "-5"
+                        },
+
+                       ]
+        }
+
+        probs = {
+            "fieldType": "Composite",
+            "fieldName": "convectiveProbGroup",
+            "label": "",
+            #"leftMargin": 10,
+            #"rightMargin": 10,
+            #"topMargin": 10,
+            #"bottomMargin": 10,
+            #"expandHorizontally": True,
+            #"expandVertically": True,
+            "numColumns":3,
+            "fields": [
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "convectiveProbTrendUndo",
+                        "label": "Undo"
+                        },
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "convectiveProbTrendRedo",
+                        "label": "Redo"
+                        },
+                        {
+                        "fieldType": "Text",
+                        "fieldName": "convectiveProbTrendHolder",
+                        "label": "(Holder For Prob Trend MW)",
+                        "visibleChars": 40,
+                        "lines": 10,
+                        "expandHorizontally": True
+                        }
+                    ]
+            }
+                       
+                       
+
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "convectiveProbabilityGroup",
+            "label": "",
+            "expandHorizontally": True,
+            "expandVertically": True,
+            "numColumns":1,
+            "fields": [
+                       trends,
+                       probs,
+                       ]
+        }
+
+        
+        return grp
+
+    def _getConvectiveDiscussion(self):
+        text = {
+            "fieldType": "Text",
+            "fieldName": "convectiveWarningDecisionDiscussion",
+            "label": "Warning Decision Discussion",
+            "visibleChars": 40,
+            "lines": 10,
+            "expandHorizontally": True,
+            "promptText": "Recognized text will be copied here (or type manually)."
+            
+        }
+        
+        return text
+        
+    def _getConvectiveActivate(self):
+        butt = {
+            "fieldType": "Button",
+            "fieldName": "convectiveActivateThreat",
+            "label": "Activate Threat",
+        }
+        
+        return butt
+
+    def _getConvectiveAuxControls(self):
+        aux = {
+            "fieldType": "Composite",
+            "fieldName": "convectiveAuxiliaryControls",
+            "label": "",
+            #"leftMargin": 10,
+            #"rightMargin": 10,
+            #"topMargin": 10,
+            #"bottomMargin": 10,
+            #"expandHorizontally": True,
+            #"expandVertically": True,
+            "numColumns":4,
+            "fields": [
+                        {
+                        "fieldType": "Label",
+                        "fieldName": "convectiveAuxControlsLabel",
+                        "label": "Auxiliary Controls:"
+                        },
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "convectiveAuxControlRedraw",
+                        "label": "Redraw Threat"
+                        },
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "convectiveAuxControlResetHistory",
+                        "label": "Reset History"
+                        },
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "convectiveAuxControlPreviewGrid",
+                        "label": "Preview Grid"
+                        },
+                       ]
+        }
+        
+        return aux
+
+    def _getConvectivePreview(self):
+        presets = {
+            "fieldType": "IntegerSpinner",
+            "fieldName": "convectivePreviewSlider",
+            "label": "Preview Time",
+            "minValue": 0,
+            "maxValue": 60,
+            "values": 0,
+            "showScale": True
+        }
+        
+        return presets
+        
+
+    def _getConvectiveSwathPresets(self):
+        slider = {
+            "fieldType": "ComboBox",
+            "fieldName": "convectiveSwathPresets",
+            "label": "Swath Presets:",
+            "choices": ["<-- Choose -->",
+                        "Right-turning Supercell", 
+                        "Left-Turning Supercell", 
+                        "Broad Swath",
+                        "Light Bulb Swath",
+                        "Cubic Spline Interpolation"
+                        ],
+            "values": "<-- Choose -->",
+            "expandHorizontally": True
+        }
+        
+        return slider
+        
+
+def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
+    
+    returnDict = {}
+
+    def convectiveFilter(myIterable, prefix):
+        return [tf for tf in myIterable if tf.startswith(prefix)]
+
+    if triggerIdentifiers:
+        convectTriggers = convectiveFilter(triggerIdentifiers, 'convective')
+        convectMutables = convectiveFilter(mutableProperties, 'convective')
+        
+        
+        pprint.pprint(triggerIdentifiers)
+        print '@@@'
+        pprint.pprint(mutableProperties)
+        print '###'
+        print pprint.pprint(convectTriggers)
+        print '+++'
+        print pprint.pprint(convectMutables)
+        os.sys.__stdout__.flush() 
+    
+
+    #return returnDict
+    return None
 
 def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
     

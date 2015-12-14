@@ -32,6 +32,6 @@ HazardMetaData =[
                  
                 {"hazardTypes": [("Prob_Convection",)], "classMetaData": "MetaData_Prob_Convection"},
                 {"hazardTypes": [("Prob_Rainfall",)], "classMetaData": "MetaData_Prob_Rainfall"},
-                {"hazardTypes": [("Prob_Tornado",), ("Prob_Severe",)], "classMetaData":  None},
+                {"hazardTypes": [("Prob_Tornado",), ("Prob_Severe",)], "classMetaData": "MetaData_Prob_Convective" },
 
 ]

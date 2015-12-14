@@ -1809,7 +1809,7 @@ HazardTypes = {
               'durationIncrement': 60,
               'allowUntilFurtherNotice': True,
               'modifyRecommenders': {
-                                     'SwathRecommender': [ 'geometry', 'geometryDecoration', 'timeRange', 'status' ]
+                                     'SwathRecommender': [ 'geometry', 'geometryDecoration', 'status' ]
                                      }
               },
  
