@@ -1725,6 +1725,18 @@ class MetaData(object):
 ########################
 ### Probabilistic
 
+    def probability(self):
+        return {
+            "fieldType": "IntegerSpinner",
+            "fieldName": "probability",
+            "label": "Probability",
+            "minValue": 1,
+            "maxValue": 100,
+            "values": 50,
+            "expandHorizontally": True,
+            "showScale": True,                
+            }
+
     # Excessive Rainfall Outlook
     def getRisk(self):
         values = 'riskSlight'

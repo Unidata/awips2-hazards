@@ -378,8 +378,9 @@ public class GeoMapUtilities {
                             if (!intersectionGeometry.isEmpty()) {
                                 DefaultGeometryData intersectionGeometryData = new DefaultGeometryData();
                                 intersectionGeometryData
-                                        .setGeometry(mappingGeometry.intersection(asCollection
-                                                .getGeometryN(geometryIndex)));
+                                        .setGeometry(intersectionGeometry);
+                                // .setGeometry(mappingGeometry.intersection(asCollection
+                                // .getGeometryN(geometryIndex)));
                                 result.add(intersectionGeometryData);
                             }
                         }
@@ -460,11 +461,19 @@ public class GeoMapUtilities {
         for (IGeometryData geoData : geoDataSet) {
             Geometry geometry = geoData.getGeometry();
             if (geometry instanceof LineString) {
-                geometries.add(geometry);
-            } else {
-                if (geometry instanceof GeometryCollection) {
-                    geometry = asUnion((GeometryCollection) geometry);
+                continue;
+            } else if (geometry instanceof GeometryCollection) {
+                GeometryCollection geometryCollection = (GeometryCollection) geometry;
+                int numGeo = geometryCollection.getNumGeometries();
+                for (int n = 0; n < numGeo; n++) {
+                    Geometry g = geometryCollection.getGeometryN(n);
+                    if (g instanceof LineString) {
+                        continue;
+                    } else {
+                        polygonUnion = polygonUnion.union(g);
+                    }
                 }
+            } else {
                 polygonUnion = polygonUnion.union(geometry);
             }
 

@@ -3928,15 +3928,17 @@ public class SessionEventManager implements
 
         if (isLowResComputationNeeded(selectedEvent, hazardType)) {
             if (geoMapUtilities.isWarngenHatching(selectedEvent)) {
-                result = geoMapUtilities.warngenClipping(selectedEvent,
-                        hazardType);
+                // result =
+                // geoMapUtilities.warngenClipping(selectedEvent,hazardType);
+                result = selectedEvent.getGeometry();
                 result = reduceGeometry(result, hazardType);
                 if (!result.isEmpty()) {
                     result = addGoosenecksAsNecessary(result);
                 }
 
             } else {
-                result = geoMapUtilities.gfeClipping(selectedEvent);
+                // result = geoMapUtilities.gfeClipping(selectedEvent);
+                result = selectedEvent.getGeometry();
             }
 
             if (result.isEmpty()) {
@@ -4083,7 +4085,11 @@ public class SessionEventManager implements
         Set<String> ugcs = geoMapUtilities.getUgcsGeometryDataMapping(
                 mapDBtableName, hazardArea).keySet();
 
-        return new ArrayList<>(ugcs);
+        // TODO - Fix this to do whole CONUS
+        HashSet hs = new HashSet();
+        hs.add("NEZ053");
+        return new ArrayList<>(hs);
+        // return new ArrayList<>(ugcs);
     }
 
     private void warngenHatchingAddRemove(

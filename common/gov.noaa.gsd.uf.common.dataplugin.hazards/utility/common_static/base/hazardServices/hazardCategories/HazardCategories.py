@@ -31,8 +31,13 @@ HazardCategories = collections.OrderedDict(
           
         ### Probabilistic
         "Prob Convective" :[("Prob_Tornado",), ("Prob_Severe",)],
-        "Prob Storm Prediction" :[("Prob_Convection",)],
-        "Prob Weather Prediction" :[("Prob_Rainfall",)],
+        "Prob Storm Prediction" :[("Prob_Convection",), 
+                                  ('Prob_Convection','Thunderstorms'), ('Prob_Convection','Marginal'),
+                                  ('Prob_Convection','Slight'),('Prob_Convection','Enhanced'),
+                                  ('Prob_Convection','Moderate'),('Prob_Convection','High')],
+        "Prob Weather Prediction" :[("Prob_Rainfall",),
+                                    ('Prob_Rainfall','SeeText'), ('Prob_Rainfall','Slight'),
+                                    ('Prob_Rainfall','Moderate'), ('Prob_Rainfall','High')],
          
         ### WFO Deterministic
         "Convective": [ ("EW","W"), ("SV","W"), ("TO","W"), ("SV","A"), ("TO","A")],

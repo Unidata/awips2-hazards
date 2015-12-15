@@ -214,6 +214,9 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
                     os.sys.__stdout__.flush()
 
             # TODO Use JUtil.pyValToJavaObj() when JUtil.pyDictToJavaMap() is fully resolved
+#             print "Product Interface", productDict
+#             os.sys.__stdout__.flush()
+            
             generatedProduct.setEntries(JUtil.pyDictToJavaMap(productDict))
 
     def createProductsFromDictionary(self, dataList, eventSet, genProdList, updateList):

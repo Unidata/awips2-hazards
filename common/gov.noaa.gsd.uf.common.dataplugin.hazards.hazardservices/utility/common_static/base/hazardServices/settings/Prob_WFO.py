@@ -34,8 +34,6 @@ Prob_WFO = {
         "Event ID",
         "Hazard Type",
         "Status",
-        "Stream",
-        "Point ID",
         "Start Time",
         "End Time",
     ],
@@ -166,12 +164,12 @@ Prob_WFO = {
         },
     },
     "toolbarTools": [
-#         {
-#             "toolName": "DamBreakFloodRecommender",
-#             "displayName": "Dam/Levee Break Flood Recommender",
-#             "toolType": "RECOMMENDER",
-#             "visible":True,
-#         },
+        {
+            "toolName": "PHICellIDRecommender",
+            "displayName": "PHI Cell ID Recommender",
+            "toolType": "RECOMMENDER",
+            "visible":True,
+        }
     ],
     # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
     #"eventIdDisplayType" : "ALWAYS_FULL"

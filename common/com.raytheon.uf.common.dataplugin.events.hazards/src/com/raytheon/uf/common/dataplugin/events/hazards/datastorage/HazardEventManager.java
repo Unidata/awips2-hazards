@@ -69,7 +69,7 @@ public class HazardEventManager implements IHazardEventManager {
             .getHandler(HazardEventManager.class);
 
     /** Data Access Services */
-    private IHazardEventServices hazardDataAccess;
+    private final IHazardEventServices hazardDataAccess;
 
     /** Enum denoting what mode CAVE is in */
     public static enum Mode {

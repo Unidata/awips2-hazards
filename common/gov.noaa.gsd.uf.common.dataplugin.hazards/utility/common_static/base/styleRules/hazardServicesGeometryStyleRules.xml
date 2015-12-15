@@ -881,4 +881,131 @@
      </hazardStyle>
    </styleRule>
 
+
+
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>Prob_Tornado</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="0.90" g="0.31" b="0.00" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>Prob_Severe</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="0.55" g="0.55" b="0.88" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>Prob_Rainfall</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="0.38" g="0.64" b="0.88" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>Prob_Rainfall.SeeText</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="0.90" g="0.58" b="0.85" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>Prob_Rainfall.Slight</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="1.00" g="0.75" b="0.41" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>Prob_Rainfall.Moderate</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="0.93" g="0.43" b="0.73" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>Prob_Rainfall.High</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="0.85" g="0.91" b="1.00" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>Prob_Convection</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="0.33" g="0.11" b="0.75" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>Prob_Convection.Thunderstorms</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="0.27" g="0.45" b="1.00" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>Prob_Convection.Marginal</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="0.69" g="0.48" b="1.00" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>Prob_Convection.Slight</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="0.52" g="0.27" b="0.80" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>Prob_Convection.Enhanced</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="0.00" g="0.66" b="0.84" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>Prob_Convection.Moderate</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="0.39" g="0.73" b="1.00" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+
+   <styleRule>
+      <paramLevelMatches>
+         <parameter>Prob_Convection.High</parameter>
+      </paramLevelMatches>
+      <hazardStyle>
+          <color r="0.48" g="0.00" b="0.73" a="1.0"/>
+     </hazardStyle>
+   </styleRule>
+
 </styleRuleset>

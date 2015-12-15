@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.utilities;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
@@ -22,6 +23,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.operation.valid.IsValidOp;
 
@@ -132,8 +134,60 @@ public class HazardEventBuilder {
         // Update user/workstation base on who created the event
         event.setUserName(LocalizationManager.getInstance().getCurrentUser());
         event.setWorkStation(VizApp.getHostName());
+
+        ObservedSettings settings = sessionManager.getConfigurationManager()
+                .getSettings();
+
+        /*
+         * Check if they are adding the Geometry to the selected hazard. In this
+         * case do not create a new event.
+         */
+        if ((Boolean.TRUE.equals(settings.getAddGeometryToSelected()))
+                && (event.getHazardType() == null)
+                && (sessionManager.getEventManager().getSelectedEvents().size() == 1)) {
+            ObservedHazardEvent existingEvent = sessionManager
+                    .getEventManager().getSelectedEvents().iterator().next();
+            Geometry existingGeometries = existingEvent.getGeometry();
+            List<Geometry> geometryList = new ArrayList<>();
+
+            for (int i = 0; i < existingGeometries.getNumGeometries(); ++i) {
+                geometryList.add(existingGeometries.getGeometryN(i));
+            }
+
+            Geometry newGeometries = event.getGeometry();
+
+            for (int i = 0; i < newGeometries.getNumGeometries(); ++i) {
+                geometryList.add(newGeometries.getGeometryN(i));
+            }
+
+            GeometryCollection geometryCollection = geometryFactory
+                    .createGeometryCollection(geometryList
+                            .toArray(new Geometry[geometryList.size()]));
+            existingEvent.setGeometry(geometryCollection);
+            /*
+             * Combine the geometryCollection together!
+             */
+            // Geometry geom = geometryCollection.union();
+            // existingEvent.setGeometry(geom);
+            // existingEvent
+            // .removeHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
+            return existingEvent;
+        }
+
         return sessionManager.getEventManager().addEvent(event, originator);
     }
+
+    // public ObservedHazardEvent addEvent(IHazardEvent event) {
+    // return addEvent(event, null);
+    // }
+    //
+    // public ObservedHazardEvent addEvent(IHazardEvent event,
+    // IOriginator originator) {
+    // // Update user/workstation base on who created the event
+    // event.setUserName(LocalizationManager.getInstance().getCurrentUser());
+    // event.setWorkStation(VizApp.getHostName());
+    // return sessionManager.getEventManager().addEvent(event, originator);
+    // }
 
     public IHazardEvent buildPolygonHazardEvent(List<Coordinate> coordinates)
             throws InvalidGeometryException {

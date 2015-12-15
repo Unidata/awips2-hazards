@@ -3,8 +3,10 @@ Prob_National = {
     "perspectiveIDs" : [],
     "displayName": "Probabilistic National",
     "visibleTypes": [
-        "Prob_Tornado",
-        "Prob_Severe",
+        "Prob_Convection",'Prob_Convection.Thunderstorms', 'Prob_Convection.Marginal',
+        'Prob_Convection.Slight','Prob_Convection.Enhanced','Prob_Convection.Moderate','Prob_Convection.High',
+        "Prob_Rainfall",'Prob_Rainfall.SeeText', 'Prob_Rainfall.Slight','Prob_Rainfall.Moderate',
+        'Prob_Rainfall.High',
     ],
     "hazardCategoriesAndTypes": [
         {
@@ -39,8 +41,6 @@ Prob_National = {
         "Event ID",
         "Hazard Type",
         "Status",
-        "Stream",
-        "Point ID",
         "Start Time",
         "End Time",
     ],

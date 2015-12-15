@@ -10,13 +10,14 @@ class MetaData(CommonMetaData.MetaData):
         self.initialize(hazardEvent, metaDict)
         if self.hazardStatus in ["elapsed", "ending", "ended"]:
             metaData = [
-                    #self.getListOfCities(),
                     self.getEndingSynopsis(), 
                     ]
         else:
-            metaData = [
-                    #self.getListOfCities(),
-                    self.getRisk(),
+            if self.hazardEvent.getSignificance() is None:
+                metaData = [self.getRisk(), self.probability()]
+            else:
+                metaData = []
+            metaData += [
                     self.basisStatement(),
                     # Preserving CAP defaults for future reference.
 #                     self.getCAP_Fields([

@@ -22,16 +22,16 @@ HazardMetaData =[
                 {"hazardTypes": [("FL", "Y")], "classMetaData": "MetaData_FL_Y"},
                 {"hazardTypes": [("HY", "O")], "classMetaData": "MetaData_HY_O"},
                 {"hazardTypes": [("HY", "S")], "classMetaData": None},
-                #{"hazardTypes": HazardCategories.get("Probabilistic"), "classMetaData": "MetaData_Probabilistic"},
                 {"hazardTypes": HazardCategories.get("Convective"), "classMetaData": None},
                 {
                  "hazardTypes":  HazardCategories.get("Winter Weather") +  HazardCategories.get("Coastal Flood") + HazardCategories.get("Fire Weather") +\
                                  HazardCategories.get("Marine") + HazardCategories.get("Non Precip") + HazardCategories.get("Tropical"),
                  "classMetaData": None, # empty for now -- MetaData_LongFused,
                 },
-                 
-                {"hazardTypes": [("Prob_Convection",)], "classMetaData": "MetaData_Prob_Convection"},
-                {"hazardTypes": [("Prob_Rainfall",)], "classMetaData": "MetaData_Prob_Rainfall"},
-                {"hazardTypes": [("Prob_Tornado",), ("Prob_Severe",)], "classMetaData": "MetaData_Prob_Convective" },
+                                
+                {"hazardTypes": HazardCategories.get('Prob Storm Prediction'), "classMetaData": "MetaData_Prob_Convection"},                
+                {"hazardTypes": HazardCategories.get('Prob Weather Prediction'), "classMetaData": "MetaData_Prob_Rainfall"},
+
+                {"hazardTypes": [("Prob_Tornado",), ("Prob_Severe",)], "classMetaData":  None},
 
 ]

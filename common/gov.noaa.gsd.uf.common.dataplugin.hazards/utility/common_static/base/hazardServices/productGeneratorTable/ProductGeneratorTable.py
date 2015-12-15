@@ -14,6 +14,48 @@
 '''
 
 ProductGeneratorTable = {
+        
+        # Probabilistic                
+        "Excessive_Rainfall_ProductGenerator": {
+            "allowedHazards": [
+             ('Prob_Rainfall', "Prob"),
+             ('Prob_Rainfall.SeeText',"Prob"),
+             ('Prob_Rainfall.Slight',"Prob"),
+             ('Prob_Rainfall.Moderate',"Prob"),
+             ('Prob_Rainfall.High',"Prob"),
+             ],
+            "previewFormatters": ["ProbabilisticFormatter"],
+            "issueFormatters": ["ProbabilisticFormatter"],
+            "generatorType": "HAZARD_PRODUCT_GENERATOR",                                                
+        },
+                         
+        "National_Convection_ProductGenerator": {
+            "allowedHazards": [
+             ('Prob_Convection',"Prob"),
+             ('Prob_Convection.Thunderstorms',"Prob"),
+             ('Prob_Convection.Marginal',"Prob"),
+             ('Prob_Convection.Slight',"Prob"),
+             ('Prob_Convection.Enhanced',"Prob"),
+             ('Prob_Convection.Moderate',"Prob"),
+             ('Prob_Convection.High',"Prob"),
+             ],
+            "previewFormatters": ["ProbabilisticFormatter"],
+            "issueFormatters": ["ProbabilisticFormatter"],
+            "generatorType": "HAZARD_PRODUCT_GENERATOR",                                                
+        },
+
+        "Prob_Convective_ProductGenerator": {
+            "allowedHazards": [
+             ('Prob_Tornado', "Prob"),
+             ('Prob_Severe',"Prob"),
+             ],
+            "previewFormatters": ["ProbabilisticFormatter"],
+            "issueFormatters": ["ProbabilisticFormatter"],
+            "generatorType": "HAZARD_PRODUCT_GENERATOR",                                                
+        },
+                         
+                         
+        # WFO Legacy                                           
         "FFA_ProductGenerator": {
             "allowedHazards": [
              ('FF.A', "Flood"),
