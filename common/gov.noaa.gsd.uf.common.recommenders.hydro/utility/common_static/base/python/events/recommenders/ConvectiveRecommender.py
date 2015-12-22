@@ -45,13 +45,14 @@ DEFAULT_POLYGON_BUFFER = 0.05
 #
 # Keys to values in the attributes dictionary produced
 # by the flood recommender.
-CELL_ID = "objectids"
+OBJECT_ID = "objectids"
 MISSING_VALUE = -9999
 MILLIS_PER_SECOND = 1000
 
 ### FIXME
 #DEFAULT_DURATION_IN_SECS = 2700 # 45 minutes
 DEFAULT_DURATION_IN_SECS = 120
+PROBABILITY_FILTER = 40 # filter our any objects less than this.
 SOURCEPATH = '/awips2/edex/data/hdf5/convectprob'
 
 class Recommender(RecommenderTemplate.Recommender):
@@ -108,7 +109,7 @@ RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-
                  tool
         """
         metaDict = {}
-        metaDict["toolName"] = "PHICellIDRecommender"
+        metaDict["toolName"] = "ConvectiveRecommender"
         metaDict["author"] = "GSD"
         metaDict["version"] = "1.0"
         metaDict["description"] = "Ingests convective cell identification and attributes from automated source"
@@ -174,6 +175,9 @@ RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-
                 
         mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventSet)
         
+#        for evt in mergedEventSet:
+#            print 'ME:', evt.getHazardAttributes().get('removeEvent'), evt.getHazardAttributes().get('probSeverAttrs').get(OBJECT_ID)
+        
         return mergedEventSet
     
 
@@ -202,7 +206,6 @@ RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-
                     
                     
                     ### entry is too old, skip to next one
-#                    if startTime > latestDatetime or endTime < currentTime:
                     if startTime < latestDatetime or startTime > currentTime or endTime < currentTime:
                         continue
                     
@@ -210,6 +213,12 @@ RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-
                     
                     for i in range(group.values()[0].len()):
                         row = {k:v[i] for k,v in group.iteritems()}
+                        
+                        ### Dumb filter. Need to make dynamic
+                        if row.get('probabilities') < PROBABILITY_FILTER:
+                            continue
+                        
+                        
                         hazardEvent = EventFactory.createEvent()
                         hazardEvent.setCreationTime(currentTime)
                         hazardEvent.setStartTime(startTime)
@@ -217,15 +226,14 @@ RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-
                         
                         #hazardEvent.setHazardStatus("PENDING")
                         hazardEvent.setHazardMode("O")
-                        ### FIXME :: Change these to Chris's new Phens
                         hazardEvent.setPhenomenon("Prob_Severe")
-                        #hazardEvent.setSignificance("W")
-                        ###########################################
                         
                         
                         polygon = loads(row.pop('polygons'))
                         hazardEvent.setGeometry(polygon)
                         hazardEvent.setHazardAttributes({'probSeverAttrs':row})
+                        hazardEvent.set('objectID', row.get('objectids'))
+                        hazardEvent.set('removeEvent',False)
                         eventsList.append(hazardEvent)
                 
                 hFile.close()
@@ -271,7 +279,7 @@ RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-
                 
     
     def toString(self):
-        return "PHICellIDRecommender"
+        return "ConvectiveRecommender"
     
     def getLatestTimestampOfCurrentEvents(self, eventSet):
         ### Initialize latestDatetime
@@ -291,7 +299,7 @@ RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-
                latestDatetime =  eventCreationTime
                
         return latestDatetime
-
+    
     def getCurrentEvents(self, eventSet):
         siteID = eventSet.getAttributes().get('siteID')        
         mode = eventSet.getAttributes().get('hazardMode', 'PRACTICE').upper()
@@ -309,32 +317,44 @@ RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-
     
     def mergeHazardEvents(self, currentEvents, recommendedEventSet):        
         mergedEvents = EventSet(None)
+        recEventObjectIDs = list(set([c.get('probSeverAttrs').get(OBJECT_ID) for c in recommendedEventSet]))
+        currEventObjectIDs = list(set([c.get('probSeverAttrs').get(OBJECT_ID) for c in currentEvents]))
+        
         
         for recommendedEvent in recommendedEventSet:
+            recommendedEvent.set('removeEvent',False)
+            
             recProbSeverAttrs = recommendedEvent.get('probSeverAttrs')
-            # Look for an event that already exists
-            found = False
-            for currentEvent in currentEvents:
-                curProbSeverAttrs = currentEvent.get('probSeverAttrs')
-                if curProbSeverAttrs.get(CELL_ID) == recProbSeverAttrs.get(CELL_ID):
-                    # If ended, then simply add the new recommended one
-                    if currentEvent.getStatus() == 'ELAPSED' or currentEvent.getStatus() == 'ENDED':
-                        continue 
-                    
-                    ### Needed? Will there be any other hazardType than "Prob_Severe"?
-                    elif currentEvent.getHazardType() != recommendedEvent.getHazardType():
-                        # Handle transitions to new hazard type
-                        currentEvent.setStatus('ending')
-                        mergedEvents.add(currentEvent)
-                        recommendedEvent.setStatus('pending')
-                        mergedEvents.add(recommendedEvent)
-                    else:
-                        currentEvent.setGeometry(recommendedEvent.getGeometry())
-                        currentEvent.setHazardAttributes({'probSeverAttrs':recProbSeverAttrs})
-                        mergedEvents.add(currentEvent)
-                    found = True
-            if not found:
+            
+            if recProbSeverAttrs.get(OBJECT_ID) not in currEventObjectIDs:
                 mergedEvents.add(recommendedEvent)
+                
+            else:
+            
+                for currentEvent in currentEvents:
+                    curProbSeverAttrs = currentEvent.get('probSeverAttrs')
+                    if curProbSeverAttrs.get(OBJECT_ID) == recProbSeverAttrs.get(OBJECT_ID):
+                        # If ended, then simply add the new recommended one
+                        if currentEvent.getStatus() == 'ELAPSED' or currentEvent.getStatus() == 'ENDED':
+                            continue 
+                        
+                        ### Needed? Will there be any other hazardType than "Prob_Severe"?
+                        elif currentEvent.getHazardType() != recommendedEvent.getHazardType():
+                            # Handle transitions to new hazard type
+                            currentEvent.setStatus('ending')
+                            mergedEvents.add(currentEvent)
+                            recommendedEvent.setStatus('pending')
+                            mergedEvents.add(recommendedEvent)
+                        else:
+                            currentEvent.setGeometry(recommendedEvent.getGeometry())
+                            currentEvent.set('probSeverAttrs',recProbSeverAttrs)
+                            mergedEvents.add(currentEvent)
+                
+        ### Needed if currentEvent is no longer, but not issued
+        for c in currentEvents:
+            if c.get('probSeverAttrs').get(OBJECT_ID) not in recEventObjectIDs and c.getStatus() != 'ISSUED':
+                c.set('removeEvent',True)
+                mergedEvents.add(c)
                 
         return mergedEvents
                             

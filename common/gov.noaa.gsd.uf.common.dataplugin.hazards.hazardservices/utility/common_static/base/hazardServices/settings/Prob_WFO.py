@@ -32,6 +32,7 @@ Prob_WFO = {
     "defaultDuration": 28800000,
     "visibleColumns": [
         "Event ID",
+        "Object ID",
         "Hazard Type",
         "Status",
         "Start Time",
@@ -135,23 +136,11 @@ Prob_WFO = {
             "fieldName": "alert",
             "type": "countdown"
         },
-        "Point ID": {
+        "Object ID": {
             "sortDir": "none",
-            "fieldName": "pointID",
+            "fieldName": "objectID",
             "type": "string"
-        },
-        "River Mile": {
-            "sortPriority": 2,
-            "sortDir": "ascending",
-            "fieldName": "riverMile",
-            "type": "number"
-        },
-        "Stream": {
-            "sortPriority": 1,
-            "sortDir": "ascending",
-            "fieldName": "streamName",
-            "type": "string"
-        },
+            },
         "Workstation": {
             "sortDir": "none",
             "fieldName": "workStation", 
@@ -165,8 +154,8 @@ Prob_WFO = {
     },
     "toolbarTools": [
         {
-            "toolName": "PHICellIDRecommender",
-            "displayName": "PHI Cell ID Recommender",
+            "toolName": "ConvectiveRecommender",
+            "displayName": "Convective Recommender (PHI)",
             "toolType": "RECOMMENDER",
             "visible":True,
         }

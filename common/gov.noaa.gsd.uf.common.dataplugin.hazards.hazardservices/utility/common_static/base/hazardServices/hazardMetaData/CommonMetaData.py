@@ -1919,26 +1919,53 @@ class MetaData(object):
                         {
                         "fieldType": "IntegerSpinner",
                         "fieldName": "convectiveObjectDir",
+                        "sendEveryChange": False,
                         "label": "",
                         "minValue": 0,
                         "maxValue": 360,
                         "values": 270,
                         "incrementDelta": 5,
-                        "showScale": False
+                        "showScale": False,
+                        "modifyRecommender": "SwathRecommender"
                         },
                         {
                         "fieldType": "IntegerSpinner",
                         "fieldName": "convectiveObjectSpdKts",
                         "label": "deg @",
+                        "sendEveryChange": False,
                         "minValue": 0,
                         "maxValue": 75,
                         "values": 32,
-                        "showScale": False
+                        "showScale": False,
+                        "modifyRecommender": "SwathRecommender"
                         },
                         {
                         "fieldType": "Label",
                         "fieldName": "convectiveObjectMotion2",
                         "label": "kts"
+                        },
+                       {
+                        "fieldType": "IntegerSpinner",
+                        "fieldName": "convectiveObjectDirUnc",
+                        "label": "Dir Uncertainty (deg)",
+                        "sendEveryChange": False,
+                        "minValue": 0,
+                        "maxValue": 180,
+                        "values": 10,
+                        "incrementDelta": 5,
+                        "showScale": False,
+                        "modifyRecommender": "SwathRecommender"
+                        },
+                       {
+                        "fieldType": "IntegerSpinner",
+                        "fieldName": "convectiveObjectSpdKtsUnc",
+                        "label": "Speed Uncertainty (kts)",
+                        "sendEveryChange": False,
+                        "minValue": 0,
+                        "maxValue": 40,
+                        "values": 10,
+                        "showScale": False,
+                        "modifyRecommender": "SwathRecommender"
                         },
                        ]
         }
@@ -2162,14 +2189,16 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         convectMutables = convectiveFilter(mutableProperties, 'convective')
         
         
-        pprint.pprint(triggerIdentifiers)
-        print '@@@'
-        pprint.pprint(mutableProperties)
-        print '###'
-        print pprint.pprint(convectTriggers)
-        print '+++'
-        print pprint.pprint(convectMutables)
-        os.sys.__stdout__.flush() 
+        #=======================================================================
+        # pprint.pprint(triggerIdentifiers)
+        # print '@@@'
+        # pprint.pprint(mutableProperties)
+        # print '###'
+        # print pprint.pprint(convectTriggers)
+        # print '+++'
+        # print pprint.pprint(convectMutables)
+        # os.sys.__stdout__.flush() 
+        #=======================================================================
     
 
     #return returnDict

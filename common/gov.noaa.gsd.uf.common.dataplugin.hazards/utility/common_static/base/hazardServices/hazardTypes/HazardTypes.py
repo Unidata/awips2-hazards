@@ -1995,9 +1995,9 @@ HazardTypes = {
               'defaultDuration': 1 * HOURS,
               'durationIncrement': 60,
               'allowUntilFurtherNotice': True,
-              'modifyRecommenders': {
-                                     'SwathRecommender': [ 'geometry', 'geometryDecoration', 'status' ]
-                                     },
+           #   'modifyRecommenders': {
+           #                          'SwathRecommender': [ 'geometry', 'geometryDecoration', 'status' ]
+           #                          },
               'allowOverlappingPolygons': True,
               },
  

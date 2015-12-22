@@ -25,7 +25,11 @@ class MetaData(CommonMetaData.MetaData):
                     ]
 
         return {
-                METADATA_KEY: metaData
+                METADATA_KEY: metaData,
+#                EVENT_MODIFIERS_KEY: { 
+#                                      "convectiveObjectSpdKts": "testScript",
+#                                      "convectiveObjectDir": "testScript"
+#                                      }
                 }    
             
 

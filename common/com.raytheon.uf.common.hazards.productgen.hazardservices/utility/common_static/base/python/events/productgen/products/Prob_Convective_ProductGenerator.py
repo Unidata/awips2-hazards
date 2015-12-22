@@ -123,12 +123,19 @@ class Product(Prob_Generator.Product):
 
         # Update this with correct hazards
         self._inputHazardEvents = probHazardEvents
-#         if probHazardEvents:
-#             hazardEvent = probHazardEvents[0]
-#             attrs = hazardEvent.get("probSeverAttrs")
-#             objectID = attrs.get('objectids') 
-#             print "Prob Convective PG attrs", attrs
-#             self.flush()
+        if probHazardEvents:
+            hazardEvent = probHazardEvents[0]
+            attrs = hazardEvent.get("probSeverAttrs")
+            if not attrs:
+                attrs = {}
+            print hazardEvent.getHazardAttributes()
+            self._objectID = attrs.get('objectids', '41')
+            self._percentage = attrs.get('probability', '54')
+            self._motion = attrs.get('motion', 'Moving NNE at 29mph')
+            defaultDiscussion = ''' Mesocyclone interacted with line producing brief spin-up. Not confident in enduring tornadoes...but more brief spinups are possible as more interactions occur.'''
+            self._discussion = attrs.get('discussion', defaultDiscussion)            
+            print "Prob Convective PG attrs", attrs
+            self.flush()
                            
         productDict = collections.OrderedDict()
         self._initializeProductDict(productDict, eventSetAttributes)
@@ -140,26 +147,30 @@ class Product(Prob_Generator.Product):
         return productDicts, probHazardEvents
 
     def _getDummyText(self):
-        return '''
-        Probabilistic Hazard Information Bulletin
-        
-        WHAT:  Tornado 54%
-           Thread ID: 41  Automated Threat: Yes
+        fcst =  '''
+        Probabilistic Hazard Information Bulletin        
+        '''
+        fcst = fcst + '''
+        WHAT:  Tornado ''' + self._percentage + '%'
+        fcst = fcst + '''
+           Thread ID: ''' + self._objectID + '  Automated Threat: Yes'
+        fcst = fcst + '''
            
         WHEN: 
             Start: 7:05 pm Thu May 7th, 2015
             End:   8:05 pm Thu May 7th, 2015
-            
-        WHERE: 
-            North of Denton
-            Moving NNE at 29mph
-            WFO: FWD
-            
-        DISCUSSION: Mesocyclone interacted with line producing brief spin-up.  
-        Not confident in enduring tornadoes...but more brief spinups are 
-        possible as more interactions occur.
                 
+        WHERE: 
+            North of Denton '''
+        fcst = fcst + self._motion
+        fcst = fcst + '''
+            Moving NNE at 29mph
+            WFO: FWD            
         '''
+        fcst = fcst + '''
+        DISCUSSION: ''' + self._discussion
+        return fcst
+       
 
     def _getSegments(self, hazardEvents):
         '''

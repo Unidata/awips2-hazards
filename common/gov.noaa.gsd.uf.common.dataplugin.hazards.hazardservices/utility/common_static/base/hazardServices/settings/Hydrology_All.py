@@ -230,12 +230,6 @@ Hydrology_All = {
             "toolType": "NON_HAZARD_PRODUCT_GENERATOR",
             "visible":True,
         },
-        {
-            "toolName": "PHICellIDRecommender",
-            "displayName": "PHI Cell ID Recommender",
-            "toolType": "RECOMMENDER",
-            "visible":True,
-        }
     ],
     # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
     #"eventIdDisplayType" : "ALWAYS_FULL"
