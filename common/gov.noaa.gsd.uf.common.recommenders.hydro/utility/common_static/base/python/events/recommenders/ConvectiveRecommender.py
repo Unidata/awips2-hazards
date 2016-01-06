@@ -317,23 +317,21 @@ RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-
     
     def mergeHazardEvents(self, currentEvents, recommendedEventSet):        
         mergedEvents = EventSet(None)
-        recEventObjectIDs = list(set([c.get('probSeverAttrs').get(OBJECT_ID) for c in recommendedEventSet]))
-        currEventObjectIDs = list(set([c.get('probSeverAttrs').get(OBJECT_ID) for c in currentEvents]))
+        recEventObjectIDs = list(set([c.get('objectID') for c in recommendedEventSet]))
+        currEventObjectIDs = list(set([c.get('objectID') for c in currentEvents]))
         
         
         for recommendedEvent in recommendedEventSet:
             recommendedEvent.set('removeEvent',False)
             
-            recProbSeverAttrs = recommendedEvent.get('probSeverAttrs')
             
-            if recProbSeverAttrs.get(OBJECT_ID) not in currEventObjectIDs:
+            if recommendedEvent.get('objectID') not in currEventObjectIDs:
                 mergedEvents.add(recommendedEvent)
                 
             else:
             
                 for currentEvent in currentEvents:
-                    curProbSeverAttrs = currentEvent.get('probSeverAttrs')
-                    if curProbSeverAttrs.get(OBJECT_ID) == recProbSeverAttrs.get(OBJECT_ID):
+                    if currentEvent.get('objectID') == recommendedEvent.get('objectID'):
                         # If ended, then simply add the new recommended one
                         if currentEvent.getStatus() == 'ELAPSED' or currentEvent.getStatus() == 'ENDED':
                             continue 
@@ -347,14 +345,17 @@ RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-
                             mergedEvents.add(recommendedEvent)
                         else:
                             currentEvent.setGeometry(recommendedEvent.getGeometry())
-                            currentEvent.set('probSeverAttrs',recProbSeverAttrs)
+                            currentEvent.set('probSeverAttrs',recommendedEvent.get('probSeverAttrs'))
                             mergedEvents.add(currentEvent)
                 
         ### Needed if currentEvent is no longer, but not issued
         for c in currentEvents:
-            if c.get('probSeverAttrs').get(OBJECT_ID) not in recEventObjectIDs and c.getStatus() != 'ISSUED':
-                c.set('removeEvent',True)
-                mergedEvents.add(c)
+            ### FIXME: Manually drawn objects currently do not have 'probSeverAttrs'
+            ### Probably should find/make a better descriminator
+            if c.get('probSeverAttrs'): 
+                if c.get('objectID') not in recEventObjectIDs and c.getStatus() != 'ISSUED':
+                    c.set('removeEvent',True)
+                    mergedEvents.add(c)
                 
         return mergedEvents
                             

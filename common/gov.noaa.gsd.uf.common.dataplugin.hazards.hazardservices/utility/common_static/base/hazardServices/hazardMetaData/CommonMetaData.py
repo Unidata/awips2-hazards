@@ -1812,25 +1812,27 @@ class MetaData(object):
         attrs = self.hazardEvent.getHazardAttributes()
         probSeverAttrs = attrs.get('probSeverAttrs')
         
+        vals = [['N/A', 'N/A']]
+        
+        if probSeverAttrs:
+            vals = [list((k,v)) for k,v in probSeverAttrs.iteritems()]
+            
         tbl = {
             "fieldType": "Table",
             "fieldName": "probSvrAttrs",
             "label": "Cell Attributes:",
             "lines": 4,
             "columnHeaders": [ "Category", "Value"],
-            "values": [list((k,v)) for k,v in probSeverAttrs.iteritems()],
+            "values": vals,
             "refreshMetadata": True
         }
         
         return tbl
         
     def convectiveControls(self):
-        attrs = self.hazardEvent.getHazardAttributes()
-        probSeverAttrs = attrs.get('probSeverAttrs')
-        
         mws = []
         # ThreatID
-        mws.append(self._getConvectiveCellId(probSeverAttrs))
+        mws.append(self._getConvectiveCellId())
         # Motion Vector
         mws.append(self._getConvectiveMotionVector())
         # Hazard Type (Svr/Tor)
@@ -1866,8 +1868,10 @@ class MetaData(object):
         
         return grp
         
-    def _getConvectiveCellId(self, probSeverAttrs):
-        objectID = probSeverAttrs.get('objectids')
+    def _getConvectiveCellId(self):
+        
+        ### For manually drawn hazards, go with hazard event ID as it should be unique
+        objectID = self.hazardEvent.get('objectID') if self.hazardEvent.get('objectID') else self.hazardEvent.getDisplayEventID()
         
         grp = {
             "fieldType": "Composite",

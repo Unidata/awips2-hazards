@@ -127,10 +127,12 @@ class Product(Prob_Generator.Product):
             self._WFO = 'XXX'
             hazardEvent = probHazardEvents[0]
             hazardAttrs = hazardEvent.getHazardAttributes()
+            self._objectID = hazardEvent.get('objectID') if hazardEvent.get('objectID') else hazardEvent.getDisplayEventID()
             probAttrs = hazardEvent.get("probSeverAttrs")
+            self._automated = True
             if not probAttrs:
                 probAttrs = {}
-            self._objectID = probAttrs.get('objectids', '41')
+                self._automated = False
             self._percentage = probAttrs.get('probabilities', '54')
             # Convert to a string
             self._direction = self._convertDirection(probAttrs.get('convectiveObjectDir', 270))
@@ -163,7 +165,7 @@ class Product(Prob_Generator.Product):
         fcst = fcst + '''
         WHAT:  ''' + self._headline + '    '   + `self._percentage` + '%'
         fcst = fcst + '''
-           Thread ID: ''' + self._objectID + '  Automated Threat: Yes'
+           Thread ID: ''' + self._objectID + '  Automated Threat: ' + str(self._automated)
         fcst = fcst + '''
            
         WHEN: 

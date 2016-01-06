@@ -121,20 +121,45 @@ class Recommender(RecommenderTemplate.Recommender):
         
         
         ### convert poly to Google Coords to make use of Karstens' code
+        total = time.time()
+        st0 = time.time()
         gglPoly = so.transform(self._c4326t3857,poly)
+        print '[-2] took ', time.time()-st0, 'seconds'
         
         ### calc for 1-minute intervals over duration
         numIvals = int(durationSecs/60)
         downstreamPolys = []
+        st0 = time.time()
         for step in range(numIvals):
             secs = step*60
+            start = time.time()
             gglDownstream = self.downStream(secs, speedVal, dirVal, spdUVal, dirUVal, gglPoly)
+            print '\t[-1] took ', time.time()-start, 'seconds'
             downstreamPolys.append(so.transform(self._c3857t4326, gglDownstream))
         
+        print '[0] took ', time.time()-st0, 'seconds'
+        start = time.time()
         envelope = shapely.ops.cascaded_union(downstreamPolys)
+        print '[1] took ', time.time()-start, 'seconds'
         
+        start = time.time()
+        envelope = shapely.ops.cascaded_union(downstreamPolys)
+        print '[2] took ', time.time()-start, 'seconds'
+        start = time.time()
+        envelope = shapely.ops.cascaded_union(downstreamPolys)
+        print '[3] took ', time.time()-start, 'seconds'
+        start = time.time()
         polys = shapely.geometry.MultiPolygon([poly, envelope])
+        print '[4] took ', time.time()-start, 'seconds'
+        start = time.time()
+        envelope = shapely.ops.cascaded_union(downstreamPolys)
+        print '[5] took ', time.time()-start, 'seconds'
+        start = time.time()
         event.setGeometry(polys)
+        print '[6] took ', time.time()-start, 'seconds'
+        
+        print '=== FINAL took ', time.time()-total, 'seconds ==='
+        print '...for polygon with', len(poly.exterior.coords), 'points'
         
         
 
