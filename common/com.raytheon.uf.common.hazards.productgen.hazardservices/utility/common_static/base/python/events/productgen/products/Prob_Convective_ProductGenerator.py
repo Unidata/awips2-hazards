@@ -1,7 +1,7 @@
 """
     Description: Probabilistic Hazard Information
 """
-import collections
+import collections, time
 import Prob_Generator
 import HazardDataAccess
 
@@ -124,17 +124,27 @@ class Product(Prob_Generator.Product):
         # Update this with correct hazards
         self._inputHazardEvents = probHazardEvents
         if probHazardEvents:
+            self._WFO = 'XXX'
             hazardEvent = probHazardEvents[0]
-            attrs = hazardEvent.get("probSeverAttrs")
-            if not attrs:
-                attrs = {}
-            print hazardEvent.getHazardAttributes()
-            self._objectID = attrs.get('objectids', '41')
-            self._percentage = attrs.get('probability', '54')
-            self._motion = attrs.get('motion', 'Moving NNE at 29mph')
+            hazardAttrs = hazardEvent.getHazardAttributes()
+            probAttrs = hazardEvent.get("probSeverAttrs")
+            if not probAttrs:
+                probAttrs = {}
+            self._objectID = probAttrs.get('objectids', '41')
+            self._percentage = probAttrs.get('probabilities', '54')
+            # Convert to a string
+            self._direction = self._convertDirection(probAttrs.get('convectiveObjectDir', 270))
+            # Convert to mph
+            self._speed = round(hazardAttrs.get('convectiveObjectSpdKts', 32)  * 1.15)
+            st = float(time.mktime(hazardEvent.getStartTime().timetuple())) * 1000
+            et = float(time.mktime(hazardEvent.getEndTime().timetuple())) * 1000
+            self._startTime = self._timeFormat(st)
+            self._endTime = self._timeFormat(et)
+            self._headline = hazardAttrs.get('headline', 'Probabilistic Severe')
             defaultDiscussion = ''' Mesocyclone interacted with line producing brief spin-up. Not confident in enduring tornadoes...but more brief spinups are possible as more interactions occur.'''
-            self._discussion = attrs.get('discussion', defaultDiscussion)            
-            print "Prob Convective PG attrs", attrs
+            self._discussion = hazardAttrs.get('convectiveWarningDecisionDiscussion', defaultDiscussion)            
+            #print "Prob Convective PG hazardAttrs", hazardAttrs
+            #print "    start, end time", hazardEvent.getStartTime(), hazardEvent.getEndTime()
             self.flush()
                            
         productDict = collections.OrderedDict()
@@ -151,27 +161,69 @@ class Product(Prob_Generator.Product):
         Probabilistic Hazard Information Bulletin        
         '''
         fcst = fcst + '''
-        WHAT:  Tornado ''' + self._percentage + '%'
+        WHAT:  ''' + self._headline + '    '   + `self._percentage` + '%'
         fcst = fcst + '''
            Thread ID: ''' + self._objectID + '  Automated Threat: Yes'
         fcst = fcst + '''
            
         WHEN: 
-            Start: 7:05 pm Thu May 7th, 2015
-            End:   8:05 pm Thu May 7th, 2015
-                
+
+            Start: ''' + self._startTime + '''
+            End:  ''' + self._endTime + '''
+        
         WHERE: 
-            North of Denton '''
-        fcst = fcst + self._motion
+            North of MyTown '''
+      
         fcst = fcst + '''
-            Moving NNE at 29mph
-            WFO: FWD            
+            Moving '''+self._direction + ''' at ''' + `self._speed` + ''' mph
+            WFO: ''' + self._WFO + '''            
         '''
         fcst = fcst + '''
         DISCUSSION: ''' + self._discussion
         return fcst
-       
+    
+    def _timeFormat(self, inputTime):
+        format='%I:%M %p %Z %d %a %b, %Y'
+        return self._tpc.getFormattedTime(inputTime, format)
+        #return '7:05 pm Thu May 7th, 2015'
+         
+    def _convertDirection(self, inputDirection):
+         return self.dirTo16PtText(inputDirection)
 
+    ### From GFE TextUtils.py
+    def dirTo16PtText(self, numDir):
+        "Convert the numerical direction to a string: N, NE, E, ..."
+        dirList = self.dir16PtList()
+        for dir in dirList:
+            if numDir >= dir[1] and numDir < dir[2]:
+                return dir[0]
+        print "WARNING -- illegal direction for conversion: ", numDir
+        return None
+
+    def dir16PtList(self):
+        dirSpan = 22.5 # 22.5 degrees per direction
+        base = 11.25 # start with N
+        return [
+            ('N',   360-base,          361),
+            ('N',   0,                 base),
+            ('NNE', base            ,  base + 1*dirSpan),
+            ('NE',  base + 1*dirSpan,  base + 2*dirSpan),
+            ('ENE', base + 2*dirSpan,  base + 3*dirSpan),
+            ('E',   base + 3*dirSpan,  base + 4*dirSpan),
+            ('ESE', base + 4*dirSpan,  base + 5*dirSpan),
+            ('SE',  base + 5*dirSpan,  base + 6*dirSpan),
+            ('SSE', base + 6*dirSpan,  base + 7*dirSpan),
+            ('S',   base + 7*dirSpan,  base + 8*dirSpan),
+            ('SSW', base + 8*dirSpan,  base + 9*dirSpan),
+            ('SW',  base + 9*dirSpan,  base + 10*dirSpan),
+            ('WSW', base + 10*dirSpan,  base + 11*dirSpan),
+            ('W',   base + 11*dirSpan,  base + 12*dirSpan),
+            ('WNW', base + 12*dirSpan,  base + 13*dirSpan),
+            ('NW',  base + 13*dirSpan,  base + 14*dirSpan),
+            ('NNW', base + 14*dirSpan,  base + 15*dirSpan),
+            ]
+
+    
     def _getSegments(self, hazardEvents):
         '''
         @param hazardEvents: list of Hazard Events
