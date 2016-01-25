@@ -50,8 +50,8 @@ MISSING_VALUE = -9999
 MILLIS_PER_SECOND = 1000
 
 ### FIXME
-#DEFAULT_DURATION_IN_SECS = 2700 # 45 minutes
-DEFAULT_DURATION_IN_SECS = 120
+DEFAULT_DURATION_IN_SECS = 2700 # 45 minutes
+#DEFAULT_DURATION_IN_SECS = 120
 PROBABILITY_FILTER = 40 # filter our any objects less than this.
 SOURCEPATH = '/awips2/edex/data/hdf5/convectprob'
 
@@ -80,28 +80,6 @@ class Recommender(RecommenderTemplate.Recommender):
             Column11: mean motion south, in m/s (float)
         """
 
-        self._probSevereKeys = ['ObjectType', 
-                                'Probability', 
-                                'MUCAPE', 
-                                'EffectiveShear',
-                                'MESH',
-                                'SatGrowthPredictor1',
-                                'SatGrowthPredictor2',
-                                'LatLons',
-                                'ObjectID',
-                                'MeanMotionEast',
-                                'MeanMotionSouth'
-                                ]
-        
-        #self._probSvrFile = open('/home/kevin.manross/SSEC_AWIPS_CONVECTPROB_20151012_200017.ascii','r')
-        self._probSvr='''
-Valid: 20151012_200017 
-RAD:5:3007 J/kg:26.8 kts:1954Z 0.15 in.:N/A:N/A:25.72,-77.96,25.72,-77.95,25.73,-77.94,25.74,-77.94,25.75,-77.93,25.76,-77.92,25.76,-77.91,25.76,-77.90,25.75,-77.89,25.75,-77.88,25.75,-77.87,25.74,-77.87,25.73,-77.87,25.72,-77.87,25.71,-77.87,25.70,-77.87,25.70,-77.88,25.70,-77.89,25.70,-77.90,25.71,-77.91,25.70,-77.92,25.70,-77.93,25.71,-77.94,25.71,-77.95,25.71,-77.96,25.72,-77.96:26286:4.12000:-1.18300 
-RAD:6:603 J/kg:38.6 kts:1958Z 0.08 in.:1945Z 1.59 %/min (strong):1945Z 0.04 /min (moderate):37.97,-89.04,37.98,-89.03,37.99,-89.03,38.00,-89.02,38.01,-89.01,38.01,-89.00,38.01,-88.99,38.01,-88.98,38.02,-88.97,38.02,-88.96,38.02,-88.95,38.02,-88.94,38.01,-88.94,38.00,-88.94,37.99,-88.94,37.98,-88.93,37.97,-88.94,37.96,-88.95,37.95,-88.96,37.94,-88.97,37.94,-88.98,37.93,-88.99,37.93,-89.00,37.93,-89.01,37.94,-89.02,37.95,-89.03,37.96,-89.04,37.97,-89.04:26290:3.77521:7.83281 
-RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-89.38,37.54,-89.37,37.55,-89.36,37.55,-89.35,37.55,-89.34,37.54,-89.34,37.53,-89.34,37.52,-89.34,37.51,-89.34,37.50,-89.34,37.49,-89.34,37.48,-89.34,37.47,-89.35,37.47,-89.36,37.47,-89.37,37.47,-89.38,37.47,-89.39,37.48,-89.40,37.49,-89.40,37.50,-89.40,37.51,-89.40,37.52,-89.40:26291:2.49717:7.77522
-'''.strip()
-
-        
     
     def defineScriptMetadata(self):
         """
@@ -160,12 +138,8 @@ RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-
         if spatialInputMap:
             spatialMap = JUtil.pyDictToJavaMap(spatialInputMap)
             
-        #forecastType = dialogInputMap.get("forecastType")
-        
-        
         currentTime = datetime.datetime.fromtimestamp(long(sessionAttributes["currentTime"])/1000)
         latestCurrentTime = self.getLatestTimestampOfCurrentEvents(eventSet)
-
         
         ### Is this needed?  Tracy says there are instances where events are
         ### not included in the passed in eventSet, but are available in the database
@@ -175,8 +149,8 @@ RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-
                 
         mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventSet)
         
-#        for evt in mergedEventSet:
-#            print 'ME:', evt.getHazardAttributes().get('removeEvent'), evt.getHazardAttributes().get('probSeverAttrs').get(OBJECT_ID)
+        #for evt in mergedEventSet:
+        #    print 'ME:', evt.getHazardAttributes().get('removeEvent'), evt.getHazardAttributes().get('probSeverAttrs').get(OBJECT_ID), evt.getCreationTime(), evt.getStartTime(), evt.getEndTime()
         
         return mergedEventSet
     
@@ -191,7 +165,8 @@ RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-
     def _eventSetFromHDFFile(self, hdfFilenameList, currentTime, latestDatetime=None):
 
         eventsList = []
-        
+        eventsPerID = {}
+
         for hdfFilename in hdfFilenameList:
             hFile = None
             try:
@@ -204,39 +179,48 @@ RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-
                     startTime = self._parseGroupName(group.name)
                     endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
                     
-                    
                     ### entry is too old, skip to next one
-                    if startTime < latestDatetime or startTime > currentTime or endTime < currentTime:
+                    if startTime > currentTime or endTime < currentTime:
                         continue
-                    
-        
                     
                     for i in range(group.values()[0].len()):
                         row = {k:v[i] for k,v in group.iteritems()}
-                        
+
                         ### Dumb filter. Need to make dynamic
                         if row.get('probabilities') < PROBABILITY_FILTER:
                             continue
                         
+                        row['startTime'] = startTime
+                        row['endTime'] = endTime
                         
-                        hazardEvent = EventFactory.createEvent()
-                        hazardEvent.setCreationTime(currentTime)
-                        hazardEvent.setStartTime(startTime)
-                        hazardEvent.setEndTime(endTime)
+                        ### If data are in chronological order, may not need this if/else                        
+                        if not eventsPerID.get(row['objectids']):
+                            eventsPerID[row['objectids']] = row
+                        else:
+                            existingStartTime = eventsPerID.get(row['objectids']).get('startTime')
+                            newStartTime = row.get('startTime')
+                            if newStartTime > existingStartTime:
+                                eventsPerID[row['objectids']] = row
                         
-                        #hazardEvent.setHazardStatus("PENDING")
-                        hazardEvent.setHazardMode("O")
-                        hazardEvent.setPhenomenon("Prob_Severe")
+        for key,values in eventsPerID.iteritems():
                         
-                        
-                        polygon = loads(row.pop('polygons'))
-                        hazardEvent.setGeometry(polygon)
-                        hazardEvent.setHazardAttributes({'probSeverAttrs':row})
-                        hazardEvent.set('objectID', row.get('objectids'))
-                        hazardEvent.set('removeEvent',False)
-                        eventsList.append(hazardEvent)
-                
-                hFile.close()
+            hazardEvent = EventFactory.createEvent()
+            hazardEvent.setCreationTime(currentTime)
+            hazardEvent.setStartTime(values.pop('startTime'))
+            hazardEvent.setEndTime(values.pop('endTime'))
+            
+            #hazardEvent.setHazardStatus("PENDING")
+            hazardEvent.setHazardMode("O")
+            hazardEvent.setPhenomenon("Prob_Severe")
+            
+            polygon = loads(values.pop('polygons'))
+            hazardEvent.setGeometry(polygon)
+            hazardEvent.setHazardAttributes({'probSeverAttrs':values})
+            hazardEvent.set('objectID', key)
+            hazardEvent.set('removeEvent',False)
+            eventsList.append(hazardEvent)
+            
+        hFile.close()
 
         eventSet = EventSetFactory.createEventSet(eventsList)
         return eventSet
@@ -344,6 +328,12 @@ RAD:4:662 J/kg:38.8 kts:2000Z 0.00 in.:N/A:N/A:37.52,-89.40,37.53,-89.39,37.54,-
                             recommendedEvent.setStatus('pending')
                             mergedEvents.add(recommendedEvent)
                         else:
+                            
+                            
+                            currentEvent.setCreationTime(recommendedEvent.getCreationTime())
+                            currentEvent.setStartTime(recommendedEvent.getStartTime())
+                            currentEvent.setEndTime(recommendedEvent.getEndTime())
+
                             currentEvent.setGeometry(recommendedEvent.getGeometry())
                             currentEvent.set('probSeverAttrs',recommendedEvent.get('probSeverAttrs'))
                             mergedEvents.add(currentEvent)

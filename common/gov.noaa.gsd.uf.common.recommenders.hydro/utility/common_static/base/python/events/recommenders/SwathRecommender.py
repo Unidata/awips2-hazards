@@ -11,10 +11,113 @@ import shapely
 import shapely.ops as so
 import shapely.geometry as sg
 import shapely.affinity as sa
-
+from inspect import currentframe, getframeinfo
+import os
 
 
 import JUtil
+     
+
+#===============================================================================
+# Users wanting to add new storm paths should enter a new method in this class
+# with the same name as one of the choices found in 
+# CommonMetaData.py:_getConvectiveSwathPresets()
+# and using the same arguments to the new method in this class as the existing
+# methods.
+#
+# For example, if I want to add anew path named 'foo', I would add 'foo'
+# as a choice in CommonMetaData.py:_getConvectiveSwathPresets()
+# and a method below as:
+#
+# def foo(self, speedVal, dirVal, spdUVal, dirUVal, step, numIvals):
+#
+# which would do some calculations based on the values passed in and
+# then return a dictionary:
+# 
+#        returnDict = {
+#                      'speedVal':speedVal, 
+#                      'dirVal':dirVal, 
+#                      'spdUVal':spdUVal,
+#                      'dirUVal':dirUVal
+#                      }
+#
+# 
+#===============================================================================
+class SwathPreset(object):
+    def __init__(self):
+        pass
+    
+    def NoPreset(self, speedVal, dirVal, spdUVal, dirUVal, step, numIvals):
+        returnDict = {
+                      'speedVal':speedVal, 
+                      'dirVal':dirVal, 
+                      'spdUVal':spdUVal,
+                      'dirUVal':dirUVal
+                      }
+        return returnDict
+    
+    def RightTurningSupercell(self, speedVal, dirVal, spdUVal, dirUVal, step, numIvals): 
+        spdWt = 0.75
+        dirWtTup = (0.,30.)
+        dirWt = dirWtTup[1] * step / numIvals
+        dirVal = dirVal + dirWt
+        speedVal =  speedVal * spdWt
+      
+        returnDict = {
+                      'speedVal':speedVal, 
+                      'dirVal':dirVal, 
+                      'spdUVal':spdUVal,
+                      'dirUVal':dirUVal
+                      }
+        return returnDict
+    
+    def LeftTurningSupercell(self, speedVal, dirVal, spdUVal, dirUVal, step, numIvals): 
+        spdWt = 0.75
+        dirWtTup = (0.,30.)
+        dirWt = -1. * dirWtTup[1] * step / numIvals
+        dirVal = dirVal + dirWt
+        speedVal = speedVal * spdWt
+        
+        returnDict = {
+                      'speedVal':speedVal, 
+                      'dirVal':dirVal, 
+                      'spdUVal':spdUVal,
+                      'dirUVal':dirUVal
+                      }
+        return returnDict
+    
+    def BroadSwath(self, speedVal, dirVal, spdUVal, dirUVal, step, numIvals):
+        spdUValWtTup = (0.,15)
+        dirUValWtTup = (0.,40)
+        spdUValWt = spdUValWtTup[1] * step / numIvals
+        spdUVal = spdUVal + (spdUValWtTup[1] - spdUValWt)
+        dirUValWt = dirUValWtTup[1] * step / numIvals
+        dirUVal = dirUVal + (dirUValWtTup[1] - dirUValWt)
+
+        returnDict = {
+                      'speedVal':speedVal, 
+                      'dirVal':dirVal, 
+                      'spdUVal':spdUVal,
+                      'dirUVal':dirUVal
+                      }
+        return returnDict
+    
+    def LightBulbSwath(self, speedVal, dirVal, spdUVal, dirUVal, step, numIvals):
+        spdUValWtTup = (0.,7)
+        dirUValWtTup = (0.,20)
+        spdUValWt = spdUValWtTup[1] * step / numIvals
+        spdUVal = spdUVal + (spdUValWtTup[0] + spdUValWt)
+        dirUValWt = dirUValWtTup[1] * step / numIvals
+        dirUVal = dirUVal + (dirUValWtTup[0] + dirUValWt)
+
+        returnDict = {
+                      'speedVal':speedVal, 
+                      'dirVal':dirVal, 
+                      'spdUVal':spdUVal,
+                      'dirUVal':dirUVal
+                      }
+        return returnDict
+    
      
 class Recommender(RecommenderTemplate.Recommender):
     
@@ -23,6 +126,7 @@ class Recommender(RecommenderTemplate.Recommender):
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'SwathRecommender', level=logging.INFO))
         self.logger.setLevel(logging.INFO)
+        self.sp = SwathPreset()
         
 
     def defineScriptMetadata(self):
@@ -81,9 +185,7 @@ class Recommender(RecommenderTemplate.Recommender):
             if event.getHazardAttributes().get('selected'):
                 if not event.getHazardAttributes().get('removeEvent'):  ### UNNEEDED ONCE CODE UPDATED TO REMOVE THE EVENT
                     self.createIntervalPolygons(event)
-                
-                
-        
+                    
         return eventSet
 
     def createIntervalPolygons(self, event):
@@ -118,66 +220,79 @@ class Recommender(RecommenderTemplate.Recommender):
         if hasattr(poly,'__iter__'):
             poly = poly[0]
             
+        presetChoice = attrs.get('convectiveSwathPresets')
+        presetMethod = getattr(self.sp,presetChoice )
         
         
         ### convert poly to Google Coords to make use of Karstens' code
+        fi_filename = os.path.basename(getframeinfo(currentframe()).filename)
         total = time.time()
         st0 = time.time()
         gglPoly = so.transform(self._c4326t3857,poly)
-        print '[-2] took ', time.time()-st0, 'seconds'
+        print '[',fi_filename, getframeinfo(currentframe()).lineno, '] took ', time.time()-st0, 'seconds'
         
         ### calc for 1-minute intervals over duration
         numIvals = int(durationSecs/60)
         downstreamPolys = []
         st0 = time.time()
         for step in range(numIvals):
+            origDirVal = dirVal
+            presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, step, numIvals)
             secs = step*60
             start = time.time()
-            gglDownstream = self.downStream(secs, speedVal, dirVal, spdUVal, dirUVal, gglPoly)
-            print '\t[-1] took ', time.time()-start, 'seconds'
+            gglDownstream = self.downStream(secs,
+                                            presetResults['speedVal'],
+                                            presetResults['dirVal'],
+                                            presetResults['spdUVal'],
+                                            presetResults['dirUVal'],
+                                            origDirVal,
+                                            gglPoly)
+            print '\t[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-start, 'seconds'
             downstreamPolys.append(so.transform(self._c3857t4326, gglDownstream))
         
-        print '[0] took ', time.time()-st0, 'seconds'
+        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-st0, 'seconds'
         start = time.time()
         envelope = shapely.ops.cascaded_union(downstreamPolys)
-        print '[1] took ', time.time()-start, 'seconds'
+        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-start, 'seconds'
         
         start = time.time()
         envelope = shapely.ops.cascaded_union(downstreamPolys)
-        print '[2] took ', time.time()-start, 'seconds'
+        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-start, 'seconds'
         start = time.time()
         envelope = shapely.ops.cascaded_union(downstreamPolys)
-        print '[3] took ', time.time()-start, 'seconds'
+        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-start, 'seconds'
         start = time.time()
         polys = shapely.geometry.MultiPolygon([poly, envelope])
-        print '[4] took ', time.time()-start, 'seconds'
+        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-start, 'seconds'
         start = time.time()
         envelope = shapely.ops.cascaded_union(downstreamPolys)
-        print '[5] took ', time.time()-start, 'seconds'
+        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-start, 'seconds'
         start = time.time()
         event.setGeometry(polys)
-        print '[6] took ', time.time()-start, 'seconds'
+        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-start, 'seconds'
         
-        print '=== FINAL took ', time.time()-total, 'seconds ==='
-        print '...for polygon with', len(poly.exterior.coords), 'points'
+        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] === FINAL took ', time.time()-total, 'seconds ==='
+        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] ...for polygon with', len(poly.exterior.coords), 'points'
         
         
 
-    def downStream(self, secs, speedVal, dirVal, spdUVal, dirUVal, threat):
+    def downStream(self, secs, speedVal, dirVal, spdUVal, dirUVal, origDirVal, threat):
         dis = secs * speedVal * 0.514444444
         xDis = dis * math.cos(math.radians(270.0 - dirVal))
         yDis = dis * math.sin(math.radians(270.0 - dirVal))
         xDis2 = secs * spdUVal * 0.514444444
         yDis2 = dis * math.tan(math.radians(dirUVal))
         threat = sa.translate(threat,xDis,yDis)
-        #threat_orig = sa.translate(threat_orig,xDis,yDis)
-        #rot = dirValLast - dirVal
-        #threat = sa.rotate(threat,rot,origin='centroid')
-        #threat_orig = sa.rotate(threat_orig,rot,origin='centroid')
-        #rotVal = -1 * (270 - dirValLast)
-        #if rotVal > 0:
-        #        rotVal = -1 * (360 - rotVal)
-        #threat = sa.rotate(threat,rotVal,origin='centroid')
+    
+        if origDirVal:
+            rot = origDirVal - dirVal
+            threat = sa.rotate(threat,rot,origin='centroid')
+    
+            #rotVal = -1 * (270 - dirVal)
+            #if rotVal > 0:
+            #    rotVal = -1 * (360 - rotVal)
+            #print '\tRotVal1:', rotVal
+            #threat = sa.rotate(threat,rotVal,origin='centroid')
         coords = threat.exterior.coords
         center = threat.centroid
         newCoords = []
@@ -189,10 +304,12 @@ class Recommender(RecommenderTemplate.Recommender):
                 c2 = sa.translate(p,x,y)
                 newCoords.append((c2.x,c2.y))
         threat = sg.Polygon(newCoords)
-        #rotVal = 270 - dirValLast
-        #if rotVal < 0:
+        #if origDirVal:
+        #    rotVal = 270 - origDirVal
+        #    if rotVal < 0:
         #        rotVal = rotVal + 360
-        #threat = sa.rotate(threat,rotVal,origin='centroid')
+        #    print '\tRotVal2:', rotVal
+        #    threat = sa.rotate(threat,rotVal,origin='centroid')
         return threat
 
 

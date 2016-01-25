@@ -2163,22 +2163,23 @@ class MetaData(object):
         
 
     def _getConvectiveSwathPresets(self):
-        slider = {
+        presets = {
             "fieldType": "ComboBox",
             "fieldName": "convectiveSwathPresets",
             "label": "Swath Presets:",
-            "choices": ["<-- Choose -->",
-                        "Right-turning Supercell", 
-                        "Left-Turning Supercell", 
-                        "Broad Swath",
-                        "Light Bulb Swath",
-                        "Cubic Spline Interpolation"
+            "choices": ["NoPreset",
+                        "RightTurningSupercell", 
+                        "LeftTurningSupercell", 
+                        "BroadSwath",
+                        "LightBulbSwath",
+                        #"CubicSplineInterpolation"
                         ],
-            "values": "<-- Choose -->",
-            "expandHorizontally": True
+            "values": "NoPreset",
+            "expandHorizontally": True,
+            "modifyRecommender": "SwathRecommender"
         }
         
-        return slider
+        return presets
         
 
 def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):

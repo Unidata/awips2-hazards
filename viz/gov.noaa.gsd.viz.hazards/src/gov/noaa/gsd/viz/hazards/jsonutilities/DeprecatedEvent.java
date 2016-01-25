@@ -99,6 +99,8 @@ public class DeprecatedEvent {
 
     private String streamName;
 
+    private String objectID;
+
     private String backupSiteID;
 
     private double[][] draggedPoints;
@@ -163,6 +165,7 @@ public class DeprecatedEvent {
     public DeprecatedEvent(IHazardEvent event) {
         Map<String, Serializable> attr = event.getHazardAttributes();
 
+        objectID = (String) attr.get("objectID");
         eventID = event.getEventID();
         displayEventID = event.getDisplayEventID();
         pointID = (String) event.getHazardAttribute(HazardConstants.POINTID);
@@ -508,6 +511,21 @@ public class DeprecatedEvent {
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
+    }
+
+    /**
+     * @return the objectID
+     */
+    public String getObjectID() {
+        return objectID;
+    }
+
+    /**
+     * @param objectID
+     *            the objectID to set
+     */
+    public void setObjectID(String objectID) {
+        this.objectID = objectID;
     }
 
     /**
