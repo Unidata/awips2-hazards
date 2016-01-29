@@ -325,6 +325,11 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      significance) where appropriate.
  * Nov 10, 2015   12762    Chris.Golden Added recommender running in response to hazard event metadata or
  *                                      other attribute changes.
+ * Jan 28, 2016   12762    Chris.Golden Changed to only run recommender a single time in response to multiple
+ *                                      trigger-type hazard event attributes changing simultaneously, and also
+ *                                      added the fetching of metadata specifiers for an event when the latter
+ *                                      is added, not later on when the HID comes up (the latter behavior was
+ *                                      a bug).
  * </pre>
  * 
  * @author bsteffen
@@ -1253,7 +1258,8 @@ public class SessionEventManager implements
                     recommenderIdentifier,
                     RecommenderExecutionContext
                             .getHazardEventModificationContext(
-                                    event.getEventID(), attribute.toString()));
+                                    event.getEventID(),
+                                    Sets.newHashSet(attribute.toString())));
         }
     }
 
@@ -1313,7 +1319,7 @@ public class SessionEventManager implements
                             eventId).get(identifier),
                     RecommenderExecutionContext
                             .getHazardEventModificationContext(eventId,
-                                    identifier));
+                                    Sets.newHashSet(identifier)));
         } else if (editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
                 .containsKey(event.getEventID())
                 && editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
@@ -1568,9 +1574,10 @@ public class SessionEventManager implements
      * Ensure that toggles of end time "until further notice" flags result in
      * the appropriate time being set to "until further notice" or, if the flag
      * has been set to false, an appropriate default time. Also ensure that any
-     * metadata state changes that should trigger a metadata reload do so.
-     * Finally, generate notifications that the list of selected hazard events
-     * has changed if the selected attribute is found to have been altered.
+     * metadata state changes that should trigger a metadata reload, or that
+     * should trigger a recommender run, do so. Finally, generate notifications
+     * that the list of selected hazard events has changed if the selected
+     * attribute is found to have been altered.
      * 
      * @param change
      *            Change that occurred.
@@ -1633,15 +1640,36 @@ public class SessionEventManager implements
                         change.getAttributeKeys()).isEmpty() == false)) {
             updateEventMetadata(change.getEvent());
         } else if (recommendersForTriggerIdentifiers != null) {
+
+            /*
+             * See if at least one of the attributes that changed is a
+             * recommender trigger. If so, put together a mapping of
+             * recommenders that need to be run to the set of one or more
+             * attributes that triggered them. Then, iterate through the
+             * recommenders to be run, executing each in turn.
+             */
             Set<String> triggers = Sets.intersection(
                     recommendersForTriggerIdentifiers.keySet(),
                     change.getAttributeKeys());
+            Map<String, Set<String>> recommendersForTriggerSets = new HashMap<>();
             for (String trigger : triggers) {
+                String recommender = recommendersForTriggerIdentifiers
+                        .get(trigger);
+                if (recommendersForTriggerSets.containsKey(recommender)) {
+                    recommendersForTriggerSets.get(recommender).add(trigger);
+                } else {
+                    Set<String> triggerSet = Sets.newHashSet(trigger);
+                    recommendersForTriggerSets.put(recommender, triggerSet);
+                }
+            }
+            for (Map.Entry<String, Set<String>> entry : recommendersForTriggerSets
+                    .entrySet()) {
                 sessionManager.getRecommenderManager().runRecommender(
-                        recommendersForTriggerIdentifiers.get(trigger),
+                        entry.getKey(),
                         RecommenderExecutionContext
                                 .getHazardEventModificationContext(change
-                                        .getEvent().getEventID(), trigger));
+                                        .getEvent().getEventID(), entry
+                                        .getValue()));
             }
         } else if ((editRiseCrestFallTriggeringIdentifiers != null)
                 && (Sets.intersection(editRiseCrestFallTriggeringIdentifiers,
@@ -2141,6 +2169,12 @@ public class SessionEventManager implements
 
         notificationSender.postNotificationAsync(new SessionEventAdded(this,
                 oevent, originator));
+
+        /*
+         * Create the event metadata for the new event.
+         */
+        updateEventMetadata(oevent);
+
         return oevent;
     }
 

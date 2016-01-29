@@ -56,7 +56,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Oct 27, 2015   12762    Chris.Golden Initial creation.
- * 
+ * Jan 28, 2016   12762    Chris.Golden Changed to use new attribute identifiers
+ *                                      constant.
  * </pre>
  * 
  * @author Chris.Golden
@@ -314,8 +315,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 HazardConstants.RECOMMENDER_TRIGGER_EVENT_IDENTIFIER,
                 context.getEventIdentifier());
         eventSet.addAttribute(
-                HazardConstants.RECOMMENDER_TRIGGER_ATTRIBUTE_IDENTIFIER,
-                context.getAttributeIdentifier());
+                HazardConstants.RECOMMENDER_TRIGGER_ATTRIBUTE_IDENTIFIERS,
+                context.getAttributeIdentifiers());
     }
 
     /**

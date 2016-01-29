@@ -1823,8 +1823,7 @@ class MetaData(object):
             "label": "Cell Attributes:",
             "lines": 4,
             "columnHeaders": [ "Category", "Value"],
-            "values": vals,
-            "refreshMetadata": True
+            "values": vals
         }
         
         return tbl

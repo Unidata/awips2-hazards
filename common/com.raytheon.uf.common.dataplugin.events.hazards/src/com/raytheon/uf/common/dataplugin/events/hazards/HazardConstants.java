@@ -81,6 +81,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Jul 31, 2015 7458      Robert.Blum   Added new USER_NAME and WORKSTATION constants.
  * Aug 06, 2015 9968      Chris.Cody    Added Ended/Elapsed time status checking
  * Nov 10, 2015 12762     Chris.Golden  Added constants and enums related to running tools.
+ * Jan 28, 2016 12762     Chris.Golden  Changed constant for attribute identifiers when running
+ *                                      tools to reflect that it now means identifiers plural,
+ *                                      not a single identifier.
  * </pre>
  * 
  * @author mnash
@@ -121,7 +124,7 @@ public final class HazardConstants {
 
     public static final String RECOMMENDER_TRIGGER_EVENT_IDENTIFIER = "eventIdentifier";
 
-    public static final String RECOMMENDER_TRIGGER_ATTRIBUTE_IDENTIFIER = "attributeIdentifier";
+    public static final String RECOMMENDER_TRIGGER_ATTRIBUTE_IDENTIFIERS = "attributeIdentifiers";
 
     // Recommender metadata keys.
 

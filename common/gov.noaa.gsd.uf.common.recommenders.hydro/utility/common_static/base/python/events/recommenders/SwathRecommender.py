@@ -178,7 +178,7 @@ class Recommender(RecommenderTemplate.Recommender):
                          str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
                          str(eventSet.getAttribute("eventType")) + "\n    hazard ID: " +
                          str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute: " +
-                         str(eventSet.getAttribute("attributeIdentifier")) + "\n")
+                         str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
         sys.stderr.flush()
         
         for event in eventSet:
