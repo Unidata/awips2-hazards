@@ -339,6 +339,8 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  *                                      is added, not later on when the HID comes up (the latter behavior was
  *                                      a bug).
  * Feb 10, 2016   15561    Chris.Golden Removed hard-coded UGC that had been put in for testing.
+ * Feb 10, 2015   13279    Chris.Golden Fixed bugs in calculation of new end time when a replacement event
+ *                                      uses duration-based end times and the original event does not.
  * </pre>
  * 
  * @author bsteffen
@@ -731,6 +733,7 @@ public class SessionEventManager implements
     public boolean setEventType(ObservedHazardEvent event, String phenomenon,
             String significance, String subType, IOriginator originator) {
         ObservedHazardEvent oldEvent = null;
+
         /*
          * If the event cannot change type, create a new event with the new
          * type.
@@ -816,13 +819,15 @@ public class SessionEventManager implements
         }
 
         /*
-         * Set the event's end time to have a distance from the start time equal
-         * to its default duration. Also remove any recorded interval from
-         * before "until further notice" had been turned on, in case it was,
-         * since this could lead to the wrong interval being used for the new
-         * event type if "until further notice" is subsequently turned off.
+         * If this event is changing type (as opposed to a new event created
+         * because the type cannot change on the original), set the event's end
+         * time to have a distance from the start time equal to the new type's
+         * default duration. Also remove any recorded interval from before
+         * "until further notice" had been turned on, in case it was, since this
+         * could lead to the wrong interval being used for the new event type if
+         * "until further notice" is subsequently turned off.
          */
-        if (event.getHazardAttribute(HazardConstants.REPLACES) == null) {
+        if (oldEvent == null) {
             event.setEndTime(new Date(event.getStartTime().getTime()
                     + configManager.getDefaultDuration(event)),
                     Originator.OTHER);
@@ -844,7 +849,7 @@ public class SessionEventManager implements
          * simply copy the old event's time boundaries to this one. Then update
          * the duration choices for the event.
          */
-        if (event.getHazardAttribute(HazardConstants.REPLACES) == null) {
+        if (oldEvent == null) {
             updateTimeBoundariesForEvents(event, false);
         } else {
             startTimeBoundariesForEventIdentifiers.put(event.getEventID(),
@@ -862,7 +867,7 @@ public class SessionEventManager implements
          * has a duration-based end time, whereas the original event has an
          * absolute end time.
          */
-        if (event.getHazardAttribute(HazardConstants.REPLACES) != null) {
+        if (oldEvent != null) {
             convertEndTimeToDuration(event);
         }
 
@@ -947,47 +952,63 @@ public class SessionEventManager implements
      *            Event to have its end time converted to a duration.
      */
     private void convertEndTimeToDuration(IHazardEvent event) {
-        long startTime = event.getStartTime().getTime();
-        long endTime = event.getEndTime().getTime();
-        long minDifference = Long.MAX_VALUE;
-        if (configManager.getDurationChoices(event).isEmpty() == false) {
+
+        /*
+         * Do nothing unless this event has duration choices.
+         */
+        if (durationChoicesForEventIdentifiers.containsKey(event.getEventID())
+                && (durationChoicesForEventIdentifiers.get(event.getEventID())
+                        .isEmpty() == false)) {
+
+            /*
+             * Get the time deltas corresponding to the available duration
+             * choices.
+             */
             Map<String, Long> deltasForDurations = null;
+            long startTime = event.getStartTime().getTime();
+            long endTime = event.getEndTime().getTime();
             try {
                 deltasForDurations = durationChoiceValidator
-                        .convertToAvailableMapForProperty(configManager
-                                .getDurationChoices(event));
+                        .convertToAvailableMapForProperty(durationChoicesForEventIdentifiers
+                                .get(event.getEventID()));
             } catch (MegawidgetPropertyException e) {
                 statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(),
                         e);
+
                 /*
-                 * Use the default duration, otherwise endTime may be locked on
-                 * HID.
+                 * If a problem occurred, use the default duration to avoid
+                 * leaving the hazard event in an invalid state.
                  */
                 event.setTimeRange(new Date(startTime), new Date(startTime
                         + configManager.getDefaultDuration(event)));
                 return;
             }
-            for (String duration : deltasForDurations.keySet()) {
-                long newEndTime = startTime + deltasForDurations.get(duration);
-                long difference;
-                if (newEndTime < endTime) {
-                    difference = endTime - newEndTime;
-                    if (difference < minDifference) {
-                        minDifference = difference;
-                    }
-                } else if (endTime < newEndTime) {
-                    difference = newEndTime - endTime;
-                    if (difference < minDifference) {
-                        minDifference = difference;
-                    }
+
+            /*
+             * Iterate through the duration choices, looking for the choice for
+             * which its time delta summed with the start time is the smallest
+             * distance from the existing end time of all the choices, and make
+             * a record of that time delta.
+             */
+            long minDifference = Long.MAX_VALUE;
+            long minDifferenceTimeDelta = 0L;
+            for (Long timeDelta : deltasForDurations.values()) {
+                long thisEndTime = startTime + timeDelta;
+                long difference = Math.abs(thisEndTime - endTime);
+                if (difference < minDifference) {
+                    minDifference = difference;
+                    minDifferenceTimeDelta = timeDelta;
                 } else {
-                    // Same endTimes
-                    minDifference = 0L;
                     break;
                 }
             }
-            event.setTimeRange(new Date(startTime), new Date(endTime
-                    + minDifference));
+
+            /*
+             * Set the end time to match the duration choice that yields an end
+             * time closest to the original.
+             */
+            event.setTimeRange(new Date(startTime), new Date(startTime
+                    + minDifferenceTimeDelta));
         }
     }
 

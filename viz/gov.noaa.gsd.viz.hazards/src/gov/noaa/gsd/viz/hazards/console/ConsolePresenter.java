@@ -45,6 +45,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeChanged;
@@ -98,6 +99,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           notifications now come from the session
  *                                           time manager. Also changed to use time
  *                                           range boundaries for the events.
+ * Nov 18, 2015   13279    Chris.Golden      Fixed bug that caused temporal display's
+ *                                           event time range sliders to not always
+ *                                           have the correct possible-value boundaries.
  * </pre>
  * 
  * @author Chris.Golden
@@ -442,6 +446,13 @@ public class ConsolePresenter extends
     public void sessionEventTimeRangeModified(
             SessionEventTimeRangeModified notification) {
         updateHazardEventsForEventChange();
+    }
+
+    @Handler
+    public void sessionEventTimeRangeBoundariesModified(
+            SessionEventsTimeRangeBoundariesModified notification) {
+        getView().updateEventTimeRangeBoundaries(
+                notification.getChangedEvents());
     }
 
     @Handler
