@@ -28,6 +28,8 @@ recommender framework
     Jul 29, 2015    9306     Chris.Cody          Add processing for HazardSatus.ELAPSED
     Aug 11, 2015    9448     Robert.Blum         Changed to look at both observed and forecast
                                                  data when computing Warning/Watch/Advisory.
+    Sep 10, 2015   10195     Chris.Cody          Modify getFloodPolygonForRiverPointHazard to take a string
+                                                 representation of a list or a list of strings of point coords
 
 @since: November 2012
 @author: GSD Hazard Services Team
@@ -114,7 +116,7 @@ class Recommender(RecommenderTemplate.Recommender):
         fieldDicts = [choiceFieldDict, includeNonFloodPointDict, warningThreshCutOff]
         dialogDict["fields"] = fieldDicts
 
-        valueDict = {"forecastType":"Warning","includePointsBelowAdvisory":True,
+        valueDict = {"forecastType":"Warning","includePointsBelowAdvisory":False,
                      "warningThreshold": warningThreshCutOff["values"] }
         dialogDict["valueDict"] = valueDict
         
@@ -238,7 +240,21 @@ class Recommender(RecommenderTemplate.Recommender):
     
     def mergeHazardEvents(self, currentEvents, recommendedEventSet):        
         mergedEvents = EventSet(None)
+
+        # Remove non-issued FL.* hazards from the currentEvents
+        # that do not match a pointID in the recommendedEvents
         
+        for currentEvent in currentEvents:
+            foundCurrentPointID = False
+            removeCurrentEvent = False
+            for recommendedEvent in recommendedEventSet:
+                if currentEvent.get(POINT_ID) == recommendedEvent.get(POINT_ID):
+                    foundCurrentPointID = True
+                    break
+            if not foundCurrentPointID:
+                if currentEvent.getPhenomenon() == "FL" and currentEvent.getStatus() in ['POTENTIAL', 'PENDING']:
+                    currentEvent.setStatus("DELETED")
+
         for recommendedEvent in recommendedEventSet:
             self.setHazardType(recommendedEvent)
             # Look for an event that already exists
@@ -362,8 +378,16 @@ class Recommender(RecommenderTemplate.Recommender):
         # Then check to determine if there 
         # is an additional inundation map available.
         forecastPointDict = hazardEvent.get(FORECAST_POINT)
-        point = forecastPointDict.get(POINT)
-        coords = [float(point[0]), float(point[1])]
+        pointList = forecastPointDict.get(POINT)
+        if isinstance(pointList, str):
+            pointStrLen = len(pointList)
+            pointSubString = pointList[1:pointStrLen -1]
+            pointStringList = pointSubString.split(', ')
+            pointStringVal0 = pointStringList[0]
+            pointStringVal1 = pointStringList[1]
+            pointList = [ pointStringVal0, pointStringVal1 ]
+        
+        coords = [float(pointList[0]), float(pointList[1])]
         pointGeometry = GeometryFactory.createPoint(coords)
         geometryList = [pointGeometry]
                 
@@ -425,4 +449,3 @@ class Recommender(RecommenderTemplate.Recommender):
             return True
         else:
             return False
-

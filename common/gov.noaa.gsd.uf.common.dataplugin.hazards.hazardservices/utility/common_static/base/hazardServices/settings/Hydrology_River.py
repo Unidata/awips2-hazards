@@ -38,17 +38,6 @@ Hydrology_River = {
     #"hazardsFilter" : "Hydrology_River",     
     "defaultTimeDisplayDuration": 172800000, 
     "defaultCategory" : "Hydrology",
-    "mapCenter": {
-        "lat": 41.06, 
-        "lon": -95.91, 
-        "zoom": 7
-    }, 
-    #The following variable needs to be overridden at the site level e.g. 
-    #    Example:  "possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
-    "possibleSites": [ ],
-    #The following variable needs to be overridden at the site level
-    #    Example:  "visibleSites":  ["BOU", "OAX"]
-    "visibleSites": [], 
     "defaultDuration": 28800000, 
     "visibleColumns": [
         "Event ID",
@@ -228,6 +217,7 @@ Hydrology_River = {
             "visible":True,
         }
     ],
-    # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
-    "eventIdDisplayType" : "ONLY_SERIAL"
+
 }
+
+

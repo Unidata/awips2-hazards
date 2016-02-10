@@ -59,11 +59,15 @@ class Recommender(RecommenderTemplate.Recommender):
         burnScarFieldDict["fieldType"] = "ComboBox"
         burnScarFieldDict["autocomplete"] = True
         
+        self.burnScarPolyDict = {}
         mapsAccessor = MapsDatabaseAccessor()
         try:
             self.burnScarPolyDict = mapsAccessor.getPolygonDict(BURNSCARAREA_TABLE)
         except:
-            burnScarFieldDict["label"] = '''No shapefiles found for BURN SCAR areas.  
+            pass
+
+        if not self.burnScarPolyDict:
+            burnScarFieldDict["values"] = '''No shapefiles found for BURN SCAR areas.  
 Please click CANCEL and manually draw an inundation area. 
 (Please verify your maps database for mapdata. '''+ BURNSCARAREA_TABLE + ''')'''
             burnScarFieldDict["fieldType"] = "Label"
@@ -71,8 +75,7 @@ Please click CANCEL and manually draw an inundation area.
             dialogDict["fields"] = burnScarFieldDict
             dialogDict["valueDict"] = valueDict
             return dialogDict
-            
-        
+
         burnScarList = sorted(self.burnScarPolyDict.keys())
         burnScarFieldDict["choices"] = burnScarList
         

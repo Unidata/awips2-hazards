@@ -18,6 +18,7 @@
     Jun 03, 2015    8530    Robert.Blum Added ProductPart for initials and the additionalComments.
     Aug 24, 2015    9553    Robert.Blum Replaced basisAndImpactsStatement_segmentLevel with basisBullet
                                         product part.
+    Sep 15, 2015    8687    Robert.Blum Using riverName from DamMetaData.py for basisBullet.
 '''
 
 
@@ -114,6 +115,14 @@ class Format(Legacy_Hydro_Formatter.Format):
             subType = hazards[0].get('subType')
             hazardType = phen + '.' + sig + '.' + subType
             basis = self.basisText.getBulletText(hazardType, hazards[0])
+            damOrLeveeName = hazards[0].get('damOrLeveeName')
+            if '#riverName#' in basis and damOrLeveeName:
+                # replace the riverName with the one from DamMetaData.py
+                damInfo = self._damInfo().get(damOrLeveeName)
+                if damInfo:
+                    riverName = damInfo.get('riverName')
+                    if riverName:
+                        basis = basis.replace('#riverName#', riverName)
             basis = self._tpc.substituteParameters(hazards[0], basis)
             if basis is None :
                  basis = '...Flash Flooding was reported'
@@ -131,9 +140,3 @@ class Format(Legacy_Hydro_Formatter.Format):
         if (self._runMode == 'Practice'):
             startText += "This is a test message.  "
         return self._getFormattedText(bulletText, startText=startText, endText='\n\n')
-
-    def _damInfo(self):
-        from MapsDatabaseAccessor import MapsDatabaseAccessor
-        mapsAccessor = MapsDatabaseAccessor()
-        damInfoDict = mapsAccessor.getAllDamInundationMetadata()
-        return damInfoDict

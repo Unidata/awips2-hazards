@@ -21,11 +21,8 @@ package gov.noaa.gsd.viz.hazards.servicebackup;
 
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
 
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
-
-import javax.xml.bind.JAXB;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ActionContributionItem;
@@ -34,12 +31,7 @@ import org.eclipse.jface.action.IMenuCreator;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Menu;
 
-import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
-import com.raytheon.uf.common.localization.LocalizationFile;
-import com.raytheon.uf.common.localization.PathManager;
-import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
@@ -55,7 +47,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * ------------ ---------- ----------- --------------------------
  * Aug 28, 2013            mnash     Initial creation
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
- * 
+ * Sep 28, 2015 10302,8167 hansen       Re-wrote retrieveSites to use get Backup Sites from StartupConfig
  * </pre>
  * 
  * @author mnash
@@ -135,36 +127,9 @@ public class ChangeSiteAction extends Action {
         }
 
         private List<String> retrieveSites() {
-            IPathManager pathMgr = PathManagerFactory.getPathManager();
-
-            Map<LocalizationLevel, LocalizationFile> files = pathMgr
-                    .getTieredLocalizationFile(LocalizationType.CAVE_STATIC,
-                            "hazardServices" + PathManager.SEPARATOR
-                                    + "settings" + PathManager.SEPARATOR
-                                    + "backupSites.xml");
-            LocalizationFile file = null;
-            if (files.containsKey(LocalizationLevel.SITE)) {
-                file = files.get(LocalizationLevel.SITE);
-            } else {
-                file = files.get(LocalizationLevel.BASE);
-            }
-
-            BackupSites bSites = JAXB.unmarshal(file.getFile(),
-                    BackupSites.class);
-            String site = LocalizationManager
-                    .getContextName(LocalizationLevel.SITE);
-
-            List<String> sites = new CopyOnWriteArrayList<String>();
-            sites.add(site);
-            if (bSites.getSites() != null) {
-                for (int i = 0; i < bSites.getSites().length; i++) {
-                    if (bSites.getSites()[i].equalsIgnoreCase(site)) {
-                        continue;
-                    }
-                    sites.add(bSites.getSites()[i].toUpperCase());
-                }
-            }
-            return sites;
+            return Arrays.asList(presenter.getSessionManager()
+                    .getConfigurationManager().getStartUpConfig()
+                    .getBackupSites());
         }
     };
 

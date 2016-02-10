@@ -785,7 +785,8 @@ class TextProductCommon(object):
                     creationTime = hazardEvent.get('creationTime')
                 formattedVal = formatMethod(creationTime, hashTag, replaceVal)
             else:
-                formattedVal = replaceVal
+                # Verify it is a string 
+                formattedVal = str(replaceVal)
             returnVal = returnVal.replace('#' + hashTag + '#', formattedVal)
         return returnVal
 

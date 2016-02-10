@@ -23,19 +23,6 @@ TOR = {
     "defaultTimeDisplayDuration": 14400000, 
     "maxDuration": 90, 
     "durationIncrement": 1, 
-    "mapCenter": {
-        "lat": 41.06, 
-        "lon": -95.91, 
-        "zoom": 7
-    }, 
-    "defaultSiteID": "OAX", 
-    "defaultCategory": "Convective", 
-    #The following variable needs to be overridden at the site level e.g. 
-    #    Example:  "possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
-    "possibleSites": [],
-    #The following variable needs to be overridden at the site level
-    #    Example:  "visibleSites":  ["BOU", "OAX"]
-    "visibleSites": [], 
     "defaultDuration": 1800000, 
     "visibleColumns": [
         "Event ID",
@@ -165,6 +152,6 @@ TOR = {
             "visible":False,
         },
     ],
-    # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
-    "eventIdDisplayType" : "ALWAYS_FULL"
+
 }
+

@@ -92,6 +92,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                           the events.
  * May 05, 2015 6898       Chris.Cody        Pan & Scale Visible and Selected Time
  * Jul 30, 2015 9681       Robert.Blum       Added new ViewProductsAction to the console.
+ * Sep 14, 2015  3473      Chris.Cody   Implement Hazard Services Import/Export through Central Registry server.
  * </pre>
  * 
  * @author Chris.Golden
@@ -161,6 +162,16 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
      * the same perspective is true.
      */
     private static final String LAST_DETACHED_BOUNDS_HEIGHT_SUFFIX = ".lastDetachedBoundsHeight";
+
+    /**
+     * Export Site Configuration Data menu text.
+     */
+    public static final String EXPORT_HAZARD_SITE_MENU_TEXT = "Export Hazard Site";
+
+    /**
+     * Import Site Configuration Data menu text.
+     */
+    public static final String IMPORT_BACKUP_HAZARD_SITE_MENU_TEXT = "Import Backup Hazard Site";
 
     // Package Interfaces
 
@@ -439,6 +450,16 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     private SelectedTimeModeAction selectedTimeModeAction;
 
     /**
+     * Export Site Configuration Files Action
+     */
+    private Action exportHazardConfigAction;
+
+    /**
+     * Import Backup Site Configuration Files Action
+     */
+    private Action importBackupSiteConfigAction;
+
+    /**
      * Map of button identifiers to the associated toolbar navigation actions.
      * These are constructed if necessary as contributions to the main user
      * interface and then passed to the view part when it comes into existence.
@@ -711,7 +732,20 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                     RESET_EVENTS_COMMAND_MENU_TEXT, null,
                     Action.AS_PUSH_BUTTON, null,
                     ConsoleAction.ActionType.RESET, ConsoleAction.RESET_EVENTS);
+
             SeparatorAction sep = new SeparatorAction();
+
+            exportHazardConfigAction = new BasicConsoleAction(
+                    EXPORT_HAZARD_SITE_MENU_TEXT, null, Action.AS_PUSH_BUTTON,
+                    null, ConsoleAction.ActionType.SITE_DATA_OPERATION,
+                    ConsoleAction.EXPORT_SITE_CONFIG);
+
+            importBackupSiteConfigAction = new BasicConsoleAction(
+                    IMPORT_BACKUP_HAZARD_SITE_MENU_TEXT, null,
+                    Action.AS_PUSH_BUTTON, null,
+                    ConsoleAction.ActionType.SITE_DATA_OPERATION,
+                    ConsoleAction.IMPORT_SITE_CONFIG);
+
             checkHazardConflictsAction = new BasicConsoleAction(
                     CHECK_HAZARD_CONFLICTS_MENU_TEXT, null,
                     Action.AS_PUSH_BUTTON, null,
@@ -734,9 +768,11 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             Action viewProductsAction = new ViewProductAction(presenter);
 
             List<Action> actions = Lists.newArrayList(resetEventsCommandAction,
-                    sep, checkHazardConflictsAction,
-                    autoCheckHazardConflictsAction, showHatchedAreaAction, sep,
-                    reviewAction, viewProductsAction);
+                    sep, exportHazardConfigAction,
+                    importBackupSiteConfigAction, sep,
+                    checkHazardConflictsAction, autoCheckHazardConflictsAction,
+                    showHatchedAreaAction, sep, reviewAction,
+                    viewProductsAction);
             if (CAVEMode.PRACTICE.equals(CAVEMode.getMode())) {
                 Action changeVtecFormat = new ChangeVtecFormatAction(presenter
                         .getSessionManager().getProductManager());

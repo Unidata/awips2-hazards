@@ -73,10 +73,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      requires a point identifier, and which hazard
  *                                      types can be used to replace a particular
  *                                      hazard event.
+ * Sep 28, 2015 10302,8167 hansen       Added "getSettingsValue"
  * Nov 10, 2015 12762      Chris.Golden Added recommender running in response to
  *                                      hazard event metadata changes, as well as the
  *                                      use of the new recommender manager.
- * 
  * </pre>
  * 
  * @author bsteffen
@@ -208,6 +208,13 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * @return
      */
     public SettingsConfig getSettingsConfig();
+
+    /**
+     * Get the getSettingsValue.
+     * 
+     * @return
+     */
+    public <T> T getSettingsValue(String identifier, ISettings settings);
 
     /**
      * Use color table to determine which color should be used for an event.

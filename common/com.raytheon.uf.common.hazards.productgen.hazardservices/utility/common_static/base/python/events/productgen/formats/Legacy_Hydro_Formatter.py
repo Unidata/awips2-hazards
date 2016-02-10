@@ -32,6 +32,7 @@
                                         place so that it can be easily overridden by sites.
     Jul 27, 2015    9637    Robert.Blum Adjustment of && due to adding polygonText product part 
                                         for FL.* hazards.
+    Sep 09, 2015    10263   Robert Blum No Forecast bullet if there is no forecast stage.
 '''
 import datetime
 import collections
@@ -196,9 +197,8 @@ class Format(Legacy_Base_Formatter.Format):
             # There will only be one hazard per section for point hazards
             hazard = sectionDict.get('hazardEvents')[0]
             bulletContent = ForecastStageText().getForecastStageText(hazard, self.timezones)
-            bulletContent = 'Forecast...' + bulletContent
         self._setVal('forecastStageBullet', bulletContent, sectionDict, 'Forecast Stage Bullet', required=False)
-        return self._getFormattedText(bulletContent, startText='* ', endText='\n')
+        return self._getFormattedText(bulletContent, startText='* Forecast...', endText='\n')
 
     def _getRiverDescription(self, hazardDict):
         '''

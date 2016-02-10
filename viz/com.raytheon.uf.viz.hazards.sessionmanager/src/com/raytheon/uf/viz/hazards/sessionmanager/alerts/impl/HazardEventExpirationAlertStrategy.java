@@ -68,6 +68,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                         manager.
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * Aug 06, 2015 9968      Chris.Cody    Changes for processing ENDED/ELAPSED events
+ * Sep 15, 2015 7629     Robert.Blum   Updates for saving pending hazards.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -188,7 +189,6 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
                 /*
                  * Nothing to do here
                  */
-
             } else if (status.equals(HazardStatus.PENDING)
                     && hazardEvent.getHazardAttributes().containsKey(
                             HazardConstants.GFE_INTEROPERABILITY)) {
@@ -197,9 +197,11 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
                  * interoperability which can be in the PENDING state if it was
                  * created in response to the save of a GFE grid.
                  */
-            }
-
-            else {
+            } else if (status.equals(HazardStatus.PENDING)) {
+                /*
+                 * Nothing to do here - User saved pending hazard(s).
+                 */
+            } else {
                 throw new IllegalArgumentException("Unexpected state "
                         + hazardEvent.getStatus());
             }

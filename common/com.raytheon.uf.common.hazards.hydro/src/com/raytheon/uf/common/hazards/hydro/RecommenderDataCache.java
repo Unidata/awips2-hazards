@@ -54,6 +54,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * Aug 27, 2015 9713       Robert.Blum Reducing cache time to 30 seconds.
  * </pre>
  * 
  * @author Chris.Cody
@@ -66,7 +67,7 @@ public class RecommenderDataCache {
     /**
      * Configurable value for how long to retain cached data.
      */
-    public static long holdTimeMils = TimeUtil.MILLIS_PER_MINUTE * 5;
+    public static long holdTimeMils = TimeUtil.MILLIS_PER_SECOND * 30;
 
     /**
      * Flag denoting whether to start a Timer (based on absoluteTime values and

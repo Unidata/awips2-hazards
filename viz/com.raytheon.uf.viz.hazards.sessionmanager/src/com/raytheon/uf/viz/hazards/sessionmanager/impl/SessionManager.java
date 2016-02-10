@@ -26,6 +26,7 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -40,6 +41,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeInteropRecordsRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeWarningRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
+import com.raytheon.uf.common.hazards.productgen.data.HazardSiteDataRequest;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
@@ -47,6 +49,7 @@ import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.localization.exception.LocalizationOpFailedException;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
+import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.site.SiteMap;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -63,6 +66,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardSessionAlert
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionAutoCheckConflictsModified;
@@ -308,8 +312,6 @@ public class SessionManager implements
     @Override
     public void toggleHatchedAreaDisplay() {
         hatchAreaDisplay = !hatchAreaDisplay;
-
-        ISessionEventManager<ObservedHazardEvent> eventManager = getEventManager();
         eventBus.publish(new SessionHatchingToggled(Originator.OTHER));
     }
 
@@ -583,4 +585,67 @@ public class SessionManager implements
         HazardServicesEventIdUtil.setupHazardEventId(isPracticeMode, siteId);
     }
 
+    /**
+     * Export Hazard Services Site Configuration Files
+     * 
+     * <pre>
+     * Make Hazard Services Site Localization file backup call to Request Server. 
+     * Request Server will execute hs_export_configuration script to tar and gzip
+     * Local SITE Localization data files. 
+     * Script on Request Server will then call: msg_send to move 
+     * Site data to Central Registry Server X.400 directory
+     * </pre>
+     * 
+     * @param siteId
+     *            Hazard Services Site to archive (Local Site)
+     */
+    @Override
+    public void exportApplicationSiteData(String siteId) {
+
+        boolean isPractice = (CAVEMode.getMode() == CAVEMode.PRACTICE);
+
+        try {
+            HazardSiteDataRequest hazardSiteDataReq = new HazardSiteDataRequest(
+                    siteId, isPractice);
+
+            RequestRouter.route(hazardSiteDataReq);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error Exporting Hazard Services Site Data files.", e);
+        }
+    }
+
+    /**
+     * Import Hazard Services Site Configuration Files
+     * 
+     * <pre>
+     * Make Hazard Services Site (Local Cave) import call to Request Server. 
+     * Request Server will execute import script to pull Site File 
+     * FROM Central Registry X.400 directory.
+     * Request Server extracts requested Site Id data files into
+     * Localization directories for Hazard Services.
+     * </pre>
+     * 
+     * @param backupSiteIdList
+     *            List of sites that the Local Hazard Services Site can run as
+     *            backup for
+     */
+    @Override
+    public void importApplicationBackupSiteData(List<String> backupSiteIdList) {
+
+        boolean isPractice = (CAVEMode.getMode() == CAVEMode.PRACTICE);
+
+        try {
+            StartUpConfig startupConfig = configManager.getStartUpConfig();
+            String siteBackupBaseDir = startupConfig.getSiteBackupBaseDir();
+
+            HazardSiteDataRequest hazardSiteDataReq = new HazardSiteDataRequest(
+                    siteBackupBaseDir, backupSiteIdList, isPractice);
+
+            RequestRouter.route(hazardSiteDataReq);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error Importing Hazard Services Site Data files.", e);
+        }
+    }
 }

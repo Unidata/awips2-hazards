@@ -93,6 +93,7 @@ import com.raytheon.uf.common.util.Pair;
  * 07/30/2015   9681       Robert.Blum  Changed to use new abstract product dialog class.
  * 08/26/2015   8836       Chris.Cody   Changes for Unique (alpha-numeric) Event ID values
  * 08/31/2015   9617       Chris.Golden Modified to use local copy of parameters editor factory.
+ * 09/11/2015   9508       Robert.Blum  Save MessageBox now notifies of missing required fields.
  * </pre>
  * 
  * @author jsanchez
@@ -350,7 +351,39 @@ public class ProductDataEditor extends AbstractDataEditor {
         saveButton.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                saveModifiedValues();
+                boolean displayMB = false;
+                StringBuilder messageSB = new StringBuilder();
+                if (hasUnsavedChanges()) {
+                    saveModifiedValues();
+                    messageSB.append("Modified values saved.");
+                } else {
+                    displayMB = true;
+                    // Update MessageBox message
+                    messageSB.append("No modifications to save.");
+                }
+
+                // Check if all required fields are filled in
+                if (requiredFieldsCompleted() == false) {
+                    displayMB = true;
+                    List<String> incompleteFields = getIncompleteRequiredFields();
+                    messageSB
+                            .append("\n\nThe following required fields are incomplete:\n");
+                    for (String field : incompleteFields) {
+                        messageSB.append(field);
+                        messageSB.append("\n");
+                    }
+                }
+
+                // Display the messageBox is needed
+                if (displayMB) {
+                    Shell shell = getDisplay().getActiveShell();
+                    MessageBox messageBox = new MessageBox(shell, SWT.OK
+                            | SWT.ON_TOP | SWT.ICON_INFORMATION);
+                    messageBox.setText("Save Status");
+                    messageBox.setMessage(messageSB.toString());
+                    messageBox.open();
+                }
+
                 updateTabLabel();
             }
         });
@@ -585,30 +618,15 @@ public class ProductDataEditor extends AbstractDataEditor {
 
     @Override
     public void saveModifiedValues() {
-        boolean showMB = true;
         for (KeyInfo keyInfo : editableKeys.getKeyInfos()) {
             Serializable value = editableKeys.getModifiedValue(keyInfo, true);
             if (value != null) {
-                showMB = false;
                 ProductTextUtil.createOrUpdateProductText(keyInfo.getName(),
                         keyInfo.getProductCategory(), keyInfo.getProductID(),
                         keyInfo.getSegment(),
                         new ArrayList<String>(keyInfo.getEventIDs()), value);
             }
         }
-
-        if (showMB) {
-            String saveText = "No modifications to save.";
-            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                    .getShell();
-            MessageBox messageBox = new MessageBox(shell, SWT.OK | SWT.ON_TOP
-                    | SWT.ICON_INFORMATION);
-            messageBox.setText("Unable to save");
-            messageBox.setMessage(saveText);
-            messageBox.open();
-            handler.info(saveText);
-        }
-
         editableKeys.clearModifiedValues();
     }
 
@@ -652,5 +670,23 @@ public class ProductDataEditor extends AbstractDataEditor {
         } else {
             undoButton.setText(UNDO_BUTTON_LABEL);
         }
+    }
+
+    /**
+     * Returns a List (of Labels) of all the required fields that have not been
+     * completed. If all the required fields are completed it returns a empty
+     * List.
+     */
+    private List<String> getIncompleteRequiredFields() {
+        List<String> incompleteFields = new ArrayList<String>(editableKeys
+                .getKeyInfos().size());
+        for (KeyInfo keyInfo : editableKeys.getKeyInfos()) {
+            String value = String.valueOf(editableKeys.getValue(keyInfo));
+            if (keyInfo.isRequired()
+                    && (value == null || value.trim().length() == 0)) {
+                incompleteFields.add(keyInfo.getLabel());
+            }
+        }
+        return incompleteFields;
     }
 }

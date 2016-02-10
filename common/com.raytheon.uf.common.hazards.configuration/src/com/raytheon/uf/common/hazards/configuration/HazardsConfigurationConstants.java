@@ -31,6 +31,7 @@ import java.io.File;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 28, 2014            bkowal     Initial creation
+ * Aug 31, 2015    9757    Robert.Blum Added addtional path constants.
  * 
  * </pre>
  * 
@@ -48,4 +49,35 @@ public class HazardsConfigurationConstants {
     public static final String HAZARD_TYPES_PY = "hazardServices"
             + File.separator + "hazardTypes" + File.separator
             + "HazardTypes.py";
+
+    public static final String START_UP_CONFIG_PY = "hazardServices"
+            + File.separator + "startUpConfig" + File.separator
+            + "StartUpConfig.py";
+
+    public static final String HAZARD_CATEGORIES_PY = "hazardServices"
+            + File.separator + "hazardCategories" + File.separator
+            + "HazardCategories.py";
+
+    public static final String HAZARD_METADATA_PY = "hazardServices"
+            + File.separator + "hazardMetaData" + File.separator
+            + "HazardMetaData.py";
+
+    public static final String ALERTS_CONFIG_PATH = "hazardServices"
+            + File.separator + "alerts" + File.separator
+            + "HazardAlertsConfig.xml";
+
+    public static final String EVENT_DRIVEN_TOOLS_PY = "python"
+            + File.separator + "events" + File.separator + "recommenders"
+            + File.separator + "config" + File.separator
+            + "EventDrivenTools.py";
+
+    public static final String PRODUCT_GENERATOR_TABLE_PY = "hazardServices"
+            + File.separator + "productGeneratorTable" + File.separator
+            + "ProductGeneratorTable.py";
+
+    public static final String DEFAULT_CONFIG_PY = "python" + File.separator
+            + "dataStorage" + File.separator + "defaultConfig.py";
+
+    public static final String VTEC_CONSTANTS_PY = "python" + File.separator
+            + "VTECutilities" + File.separator + "VTECConstants.py";
 }

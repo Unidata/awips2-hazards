@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 
+import java.util.Set;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -37,6 +39,8 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * Feb 10, 2015 6393       Chris.Golden Added hazard detail tab text.
  * Apr 09, 2015 7382       Chris.Golden Added hazard detail "show sliders" flag.
  * Apr 15, 2015 3508       Chris.Golden Added hazard detail "assume wide" flag.
+ * Sep 14, 2015 3473       Chris.Cody   Implement Hazard Services Import/Export through Central Registry server.
+ * Sep 28, 2015 10302,8167 hansen       Added values to be optionally included in Settings - visibleSites, possibleSites, mapCenter, eventIdDisplayType
  * </pre>
  * 
  * @author bsteffen
@@ -61,6 +65,24 @@ public class StartUpConfig {
 
     @JsonProperty("hazardDetailWide")
     private boolean hazardDetailWide;
+
+    @JsonProperty("siteBackupBaseDir")
+    private String siteBackupBaseDir;
+
+    @JsonProperty("visibleSites")
+    private Set<String> visibleSites;
+
+    @JsonProperty("possibleSites")
+    private Set<String> possibleSites;
+
+    @JsonProperty("backupSites")
+    private String[] backupSites;
+
+    @JsonProperty("eventIdDisplayType")
+    private String eventIdDisplayType;
+
+    @JsonProperty("mapCenter")
+    private MapCenter mapCenter;
 
     public Console getConsole() {
         return console;
@@ -111,8 +133,57 @@ public class StartUpConfig {
         this.hazardDetailWide = hazardDetailWide;
     }
 
+    public String getSiteBackupBaseDir() {
+        return siteBackupBaseDir;
+    }
+
+    public void setSiteBackupBaseDir(String siteBackupBaseDir) {
+        this.siteBackupBaseDir = siteBackupBaseDir;
+    }
+
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
     }
+
+    public Set<String> getPossibleSites() {
+        return possibleSites;
+    }
+
+    public void setPossibleSites(Set<String> possibleSites) {
+        this.possibleSites = possibleSites;
+    }
+
+    public Set<String> getVisibleSites() {
+        return visibleSites;
+    }
+
+    public void setVisibleSites(Set<String> visibleSites) {
+        this.visibleSites = visibleSites;
+    }
+
+    public String[] getBackupSites() {
+        return backupSites;
+    }
+
+    public void setBackupSites(String[] backupSites) {
+        this.backupSites = backupSites;
+    }
+
+    public String getEventIdDisplayType() {
+        return (this.eventIdDisplayType);
+    }
+
+    public void setEventIdDisplayType(String eventIdDisplayType) {
+        this.eventIdDisplayType = eventIdDisplayType;
+    }
+
+    public MapCenter getMapCenter() {
+        return mapCenter;
+    }
+
+    public void setMapCenter(MapCenter mapCenter) {
+        this.mapCenter = mapCenter;
+    }
+
 }

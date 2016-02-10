@@ -2,10 +2,49 @@
 
 
 
-StartUpConfig = {
-    "Alerts": [],
+StartUpConfig = {                                                   
+    #########################
+    #########################
+    #  MUST OVERRIDE!!
+    #  Site Configuration - The following MUST BE overridden at the site level 
     
-    # Title text that is to be shown in the tabs of the HID for each event.
+    # Map Center -- The Spatial Display will center on this lat / lon by default with the given zoom level
+    "mapCenter": {
+        "lat": 41.06,
+        "lon":-95.91,
+        "zoom": 7
+    },
+    # Possible Sites -- Hazards from these sites can be selected to be visible in the Hazard Services display.
+    #    They will appear in the Settings dialog as a check list from which to choose
+    # Example:  "possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
+    "possibleSites": [],
+    
+    # Visible Sites -- Hazards from these sites will be, by default, visible in the Hazard Services display
+    # Example:  "visibleSites":  ["BOU", "OAX"]
+    "visibleSites": [],
+    
+    # Backup Sites 
+    # Example:  "backupSites":  ["PUB", "GJT"]
+    "backupSites": [],
+
+    # Directory of mounted X.400 directory where exported Site Config data is stored.
+    "siteBackupBaseDir" : "CHANGEME",
+
+    # NOTE: The following can be added to a Settings file to trump the values in StartUpConfig
+    #     "mapCenter", "possibleSites", "visibleSites", "eventIdDisplayType"
+    
+    #########################
+    
+    #########################
+    #  General Display
+    # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
+    "eventIdDisplayType" : "FULL_ON_DIFF",
+    
+    
+    #########################
+    # Hazard Information Dialog
+    #    
+    # Title text that is to be shown in the tabs of the Hazard Information Dialog for each event.
     # Must be a list of strings, with each string being one of the following:
     #
     #    eventID        Event identifier.
@@ -24,21 +63,33 @@ StartUpConfig = {
     # Note that any element of this list that yields an empty string is
     # skipped, so if the list is [ "eventID", "pointID" ] and there is no
     # point ID for a particular hazard event, then only the event ID is
-    # shown in that event's title text in the HID tab.
+    # shown in that event's title text in the Hazard Information Dialog tab.
     "hazardDetailTabText" : [ "eventID", "hazardType", "pointID" ],
     
     # Flag indicating whether or not the scale bar with two sliders on it
-    # should be shown below the start-end time UI element in the HID.
+    # should be shown below the start-end time UI element in the Hazard Information Dialog.
     "showHazardDetailStartEndTimeScale": False,
 
-    # Flag indicating whether or not the HID's layout should be optimized
+    # Flag indicating whether or not the Hazard Information Dialog's layout should be optimized
     # for a wider window.
     "hazardDetailWide": False,  
     
-    # PIL order in which Product Generation should take place.
-    "disseminationOrder" : [ 'FFW', 'FLW', 'FFS', 'FLS', 'FFA'],
+    #########################
+    # Console
     "Console": {
                 "TimeLineNavigation": "onToolBar", # "onToolBar" or "belowTimeLine",
                 },
-    "gagePointFirstRecommender" : "RiverFloodRecommender"
+
+    #########################
+    # Recommenders
+    "gagePointFirstRecommender" : "RiverFloodRecommender",
+    
+    #########################
+    # Product Generation
+
+    # PIL order in which Product Generation should take place.
+    "disseminationOrder" : [ 'FFW', 'FLW', 'FFS', 'FLS', 'FFA'],
+    
+    "Alerts": [],
+
     }

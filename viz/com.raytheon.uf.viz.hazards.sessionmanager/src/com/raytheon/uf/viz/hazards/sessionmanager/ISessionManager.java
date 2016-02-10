@@ -21,6 +21,8 @@ package com.raytheon.uf.viz.hazards.sessionmanager;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 
+import java.util.List;
+
 import org.eclipse.core.runtime.jobs.Job;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -53,6 +55,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * Nov 23, 2013  1462      blawrenc    Added state of hatched area drawing
  * Oct 08, 2014  4042      Chris.Golden Added generate method (moved from message handler).
  * Dec 05, 2014  4124      Chris.Golden Changed to work with parameterized config manager.
+ * Sep 14, 2015  3473      Chris.Cody   Implement Hazard Services Import/Export through
+ *                                      Central Registry server.
  * Nov 10, 2015 12762      Chris.Golden Added code to implement and use new recommender
  *                                      manager.
  * </pre>
@@ -221,10 +225,6 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
     /**
      * Generate products based upon the currently selected events.
      * <p>
-     * TODO: Rethink whether this method should actually be within the session
-     * product manager. For now, it is here because the
-     * {@link #setPreviewOngoing(boolean)} and {@link #setIssueOngoing(boolean)}
-     * methods are, but maybe those belong in the product manager too.
      * 
      * @param issue
      *            Flag indicating whether or not the generation is occurring as
@@ -232,4 +232,25 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
      *            initiated the generation.
      */
     public void generate(boolean issue);
+
+    /**
+     * Export Hazard Services Site Configuration Files
+     * 
+     * Push the Hazard Services Configuration Files for this Site
+     * 
+     * @siteId Site Identifier to Export
+     */
+    public void exportApplicationSiteData(String siteId);
+
+    /**
+     * Import Hazard Services Site Configuration Files
+     * 
+     * Pull the Hazard Services Configuration Files for a Backup Site
+     * 
+     * @param backupSiteIdList
+     *            List of Site Id values that will be imported as backup
+     *            localization site data
+     */
+    public void importApplicationBackupSiteData(List<String> backupSiteIdList);
+
 }

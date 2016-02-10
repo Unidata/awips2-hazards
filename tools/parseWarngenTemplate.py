@@ -72,7 +72,7 @@ filename = args.warngenVMFile
 localSite = args.localizedSite
 metaType = args.metaType
 
-OUTPUTDIR = '/awips2/edex/data/utility/common_static/site/'+localSite+'/python/bridge/'
+OUTPUTDIR = '/awips2/edex/data/utility/common_static/site/'+localSite+'/python/textUtilities/'
 if not os.path.exists(OUTPUTDIR):
     os.makedirs(OUTPUTDIR)
 

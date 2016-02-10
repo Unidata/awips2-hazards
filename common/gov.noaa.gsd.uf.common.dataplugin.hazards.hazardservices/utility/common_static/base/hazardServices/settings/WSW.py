@@ -21,18 +21,6 @@ WSW = {
     "defaultTimeDisplayDuration": 86400000, 
     "maxDuration": 3600, 
     "durationIncrement": 60, 
-    "mapCenter": {
-        "lat": 41.06, 
-        "lon": -95.91, 
-        "zoom": 7
-    }, 
-    "defaultCategory": "Winter Weather", 
-    #The following variable needs to be overridden at the site level e.g. 
-    #    Example:  "possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
-    "possibleSites": [],
-    #The following variable needs to be overridden at the site level
-    #    Example:  "visibleSites":  ["BOU", "OAX"]
-    "visibleSites": [], 
     "defaultDuration": 28800000, 
     "visibleColumns": [
         "Event ID",
@@ -150,6 +138,6 @@ WSW = {
     },
     "toolbarTools": [
     ],
-    # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
-    "eventIdDisplayType" : "ALWAYS_FULL"
+
 }
+

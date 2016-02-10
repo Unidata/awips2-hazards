@@ -31,6 +31,7 @@ ALL_HUC = 'ALL'
 QPE_SOURCE = 'qpeSource'
 GUID_SOURCE = 'guidSource'
 TYPE_SOURCE = 'typeSource'
+RADAR = 'radar'
 ACCUMULATION_INTERVAL = 'accumulationInterval'
 
 #  Time and key constants
@@ -58,7 +59,7 @@ GUIDANCE_VALUE = 'guidanceValue'
 COMPARE_VALUE = 'compareValue'
 GEOMETRY_KEY = 'geometry'
 
-VALUE_TYPES = ['diff', 'ratio', 'qpe']
+VALUE_TYPES = ['diff', 'ratio', 'QPE Source']
 #
 # Supported FFMP QPE, Guidance and Forecast data sources.
 # FFMP configuration may be read for these sources for
@@ -68,8 +69,6 @@ VALUE_TYPES = ['diff', 'ratio', 'qpe']
 # shown to the forecaster in the recommender dialog.
 # See ffmp/FFMPSourceConfig.xml for available FFMP
 # data sources.
-supportedQPESourceList = ['DHR']
-supportedGuidanceSourceList = ['FFG']
 
 ffgGuidances = ['FFG0124hr', 'FFG0324hr', 'FFG0624hr']
      
@@ -115,18 +114,31 @@ class Recommender(RecommenderTemplate.Recommender):
         qpfDisplayNames = []
         guidDisplayNames = []
         
-        #
+        srcConfigMan = FFMPSourceConfigurationManager.getInstance()
+        supportedQPESourceList = srcConfigMan.getQPESources()
+        
         # Process supported FFMP QPE sources
         for choice in supportedQPESourceList:
             qpeChoices.append(choice)
             qpeDisplayNames.append(choice)
              
-        #
+        supportedGuidanceSourceList = srcConfigMan.getGuidanceDisplayNames()
+        
         # Process supported FFMP Guidance sources       
         for choice in supportedGuidanceSourceList:
             guidChoices.append(choice)
             guidDisplayNames.append(choice)
                     
+        runCfgMan = FFMPRunConfigurationManager.getInstance()
+        products = runCfgMan.getProducts()
+        
+        radarChoices = []
+        for product in products:
+            if (product.getProductName() == 'DHR' or product.getProductName() == 'DPR'):
+                radarChoices.append(product.getProductKey())
+                
+        radarChoices = sorted(set(radarChoices))
+        
         valueDict = {}            
         qpeDict = {}
         fieldDictList = []
@@ -138,6 +150,14 @@ class Recommender(RecommenderTemplate.Recommender):
         valueDict[QPE_SOURCE] = qpeDict['defaultValues']
         fieldDictList.append(qpeDict)
 
+        radarDict = {}
+        radarDict['fieldType'] = 'ComboBox'
+        radarDict['fieldName'] = RADAR
+        radarDict['label'] = 'Radar:'
+        radarDict['choices'] = radarChoices
+        radarDict['defaultValues'] = radarChoices[0]
+        fieldDictList.append(radarDict)
+        
         guidDict = {}
         guidDict['fieldType'] = 'ComboBox'
         guidDict['fieldName'] = GUID_SOURCE
@@ -167,16 +187,15 @@ class Recommender(RecommenderTemplate.Recommender):
         valueDict[TYPE_SOURCE] = typeDict['defaultValues']
         fieldDictList.append(typeDict)
         
-        # TODO maybe use side effects here?
         compareValueDict = {}
         compareValueDict['fieldType'] = 'FractionSpinner'
         compareValueDict['showScale'] = 0
         compareValueDict['fieldName'] = COMPARE_VALUE
-        compareValueDict['label'] = 'Value (inches):'
-        compareValueDict['minValue'] = 0
-        compareValueDict['maxValue'] = 24
-        compareValueDict['incrementDelta'] = 1
-        compareValueDict['precision'] = 1
+        compareValueDict['label'] = 'Value (inches/%):'
+        compareValueDict['minValue'] = -6
+        compareValueDict['maxValue'] = 6
+        compareValueDict['incrementDelta'] = 0.5
+        compareValueDict['precision'] = 2
         valueDict['compareValue'] = 1
         fieldDictList.append(compareValueDict)
 
@@ -185,6 +204,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
         return dialogDict
     
+        
     def execute(self, eventSet, dialogInputMap, spatialInputMap):
         '''
         Runs the Flash Flood Recommender tool
@@ -199,17 +219,18 @@ class Recommender(RecommenderTemplate.Recommender):
         
         @return: A list of potential Flash Flood Hazard events. 
         '''
+        self.smallBasinMap = {}
         self.currentTime = eventSet.getAttribute(CURRENT_TIME)
         self.currentSite = eventSet.getAttribute(CURRENT_SITE)
 
+        # pull these out of the dialog
         self._sourceName = dialogInputMap.get(QPE_SOURCE)   
         self._guidanceName = dialogInputMap.get(GUID_SOURCE)
-        
+        self._radar = dialogInputMap.get(RADAR)
+        self.type = dialogInputMap.get(TYPE_SOURCE)
+        self.compareValue = dialogInputMap.get(COMPARE_VALUE)        
         self.accumulationHours = int(dialogInputMap.get(ACCUMULATION_INTERVAL))
         
-        self.type = dialogInputMap.get(TYPE_SOURCE)  # pull this out of the dialog
-        
-        self.compareValue = dialogInputMap.get(COMPARE_VALUE)
         self._localize()
         cont = self.getQPEValues()
         if cont :
@@ -257,7 +278,7 @@ class Recommender(RecommenderTemplate.Recommender):
         '''
         ffmpSourceConfigManager = FFMPSourceConfigurationManager.getInstance()
         
-        if self._guidanceName == 'FFG':
+        if self._guidanceName == 'RFCFFG':
             if self.accumulationHours <= 1 :
                 guidanceSource = ffgGuidances[0]
             elif self.accumulationHours <= 3 :
@@ -308,8 +329,7 @@ class Recommender(RecommenderTemplate.Recommender):
             basin = {}
             basin[PRECIP_VALUE] = value
             basin[GEOMETRY_KEY] = geom
-            self.smallBasinMap[basinName] = basin
-        
+            self.smallBasinMap[basinName] = basin        
     
     def _interpolateGuidance(self, geometry):
         return geometry
@@ -325,7 +345,6 @@ class Recommender(RecommenderTemplate.Recommender):
         @return: An EventSet of potential flash flood (FF.W) hazard events
         '''
         pythonEventSet = EventSetFactory.createEventSet()
-
         if haveBasins :
             basins = []
             for basinName in self.smallBasinMap:
@@ -334,15 +353,13 @@ class Recommender(RecommenderTemplate.Recommender):
                 # need to fix storing of values...
                 if basin.has_key(PRECIP_VALUE):
                     precipValue = basin[PRECIP_VALUE]
-                    #guidanceValue = basin[GUIDANCE_VALUE]
+                    guidanceValue = basin[GUIDANCE_VALUE]
                     
-                    #guidanceValue = 0
-                    #if guidanceValue > 0.0:
-                    #    if self.type == 'diff' :
-                    #        value = self._calcDiff(precipValue, guidanceValue)
-                    #    elif self.type == 'ratio' :
-                    #        value = self._calcRatio(precipValue, guidanceValue)
-                    if self.type == 'qpe' :
+                    if self.type == 'diff' :
+                        value = self._calcDiff(precipValue, guidanceValue)
+                    elif self.type == 'ratio' :
+                        value = self._calcRatio(precipValue, guidanceValue)
+                    elif self.type == 'QPE Source' :
                         value = self._calcQPE(precipValue)
 
                     if value >= self.compareValue:
@@ -358,7 +375,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 hazardEvent.setSignificance(FLASH_FLOOD_SIGNIFICANCE)
                 hazardEvent.setSubType(FLASH_FLOOD_SUBTYPE)
                 
-                del basins[500:]
+#                 del basins[500:]
                 geometry = GeometryFactory.createCollection(basins)
                 hazardEvent.setGeometry(geometry)
                 
@@ -391,9 +408,6 @@ class Recommender(RecommenderTemplate.Recommender):
         if math.isnan(guid) :
             guid = 0
             
-        qpe = round(qpe, 2)
-        guid = round(guid, 2)
-        
         return qpe - guid
         
     def _calcQPE(self, qpe):
@@ -452,3 +466,34 @@ class Recommender(RecommenderTemplate.Recommender):
         
     def __str__(self):
         return 'Flash Flood Recommender'
+        
+def applyInterdependencies(triggerIdentifiers, mutableProperties):
+   
+    if triggerIdentifiers == None or \
+        "typeSource" in triggerIdentifiers:
+        if mutableProperties["typeSource"]["values"] == "diff":
+            return {
+                    "compareValue": {
+                                       "maxValue": 6,
+                                       "minValue": -6,
+                                       "incrementDelta": 0.5
+                                    }
+                    }
+        elif mutableProperties["typeSource"]["values"] == "ratio":
+            return {
+                    "compareValue": {
+                                       "maxValue": 200,
+                                       "minValue": 0,
+                                       "incrementDelta": 1.0
+                                    }
+                    }
+        elif mutableProperties["typeSource"]["values"] == "qpe":
+            return {
+                    "compareValue": {
+                                       "maxValue": 24,
+                                       "minValue": 0,
+                                       "incrementDelta": 1.0
+                                    }
+                    }
+    else:
+        return None        

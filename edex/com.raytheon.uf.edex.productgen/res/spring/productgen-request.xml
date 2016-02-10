@@ -29,4 +29,12 @@
 		<constructor-arg value="com.raytheon.uf.common.hazards.productgen.data.ProductDataRequest" />
 		<constructor-arg ref="productDataHandler" />
 	</bean>
+    
+    <bean id="hazardSiteDataHandler" class="com.raytheon.uf.edex.productgen.HazardSiteDataHandler" />
+        
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg value="com.raytheon.uf.common.hazards.productgen.data.HazardSiteDataRequest" />
+        <constructor-arg ref="hazardSiteDataHandler" />
+    </bean>
+
 </beans>

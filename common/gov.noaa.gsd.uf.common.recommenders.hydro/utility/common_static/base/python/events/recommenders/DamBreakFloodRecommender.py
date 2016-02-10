@@ -52,7 +52,10 @@ class Recommender(RecommenderTemplate.Recommender):
         try:
             self.damPolygonDict = mapsAccessor.getPolygonDict(DAMINUNDATION_TABLE)
         except:
-            damFieldDict["label"] = '''No shapefiles found for DAM BREAK inundation.  
+            pass
+
+        if not self.damPolygonDict:
+            damFieldDict["values"] = '''No shapefiles found for DAM BREAK inundation.  
 Please click CANCEL and manually draw an inundation area. 
 (Please verify your maps database for mapdata. '''+ DAMINUNDATION_TABLE + ''')'''
             damFieldDict["fieldType"] = "Label"
@@ -60,7 +63,6 @@ Please click CANCEL and manually draw an inundation area.
             dialogDict["fields"] = damFieldDict
             dialogDict["valueDict"] = valueDict
             return dialogDict
-            
 
             
         damOrLeveeNameList = sorted(self.damPolygonDict.keys())

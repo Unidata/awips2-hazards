@@ -43,7 +43,8 @@
     Aug 19, 2015    10224   Robert.Blum Adjusted additionalRainFalll to handle more user error cases.
     Aug 25, 2015    9992    Robert.Blum Fixed Product Level CTAs not correctly transferring from staging dialog.
     Aug 25, 2015    9626    Robert.Blum Added immediate cause for product level metadata.
-    
+    Sep 01, 2015    9590    Robert.Blum Removed metadata from the product dictionary.
+    Sep 09, 2015    10263   Robert.Blum Changes to set the previousForecastCategory correctly.
 '''
 
 import ProductTemplate
@@ -722,8 +723,8 @@ class Product(ProductTemplate.Product):
                     self.sectionUGCs.update(hazardEvent.get('ugcs', []))
                 # Add both the identifier and the productString for this attributes.
                 # The identifiers are needed for the BasisText module.
-                if attribute == 'advisoryType':
-                    hazardDict[attribute + '_productString'] = self._tpc.getProductStrings(hazardEvent, metaData, attribute)
+                if attribute in ['advisoryType', 'warningType', 'optionalSpecificType']:
+                    hazardDict[attribute + '_productString'] = self._tpc.getProductStrings(hazardEvent, metaData, attribute, attributes.get(attribute))
 
         # Add impacts to the dictionary
         if vtecRecord.get("phen") != "HY" and vtecRecord.get('sig') != 'S':
@@ -749,7 +750,6 @@ class Product(ProductTemplate.Product):
         hazardDict['endTime'] = hazardEvent.getEndTime()
         hazardDict['creationTime'] = hazardEvent.getCreationTime()
         hazardDict['geometry'] = hazardEvent.getProductGeometry()
-        hazardDict['metaData'] = metaData
 
         if hazardEvent.get('pointID'):
             # Add RiverForecastPoint data to the dictionary
@@ -1100,7 +1100,7 @@ class Product(ProductTemplate.Product):
             format = '%l%M %p'
         return floodTime.strftime(format).lstrip()
 
-    def _setProductInformation(self, vtecRecords, hazardEvents):
+    def _setProductInformation(self, vtecRecords, hazardEvents, hazardEventDicts=[]):
         if self._issueFlag:
             for vtecRecord in vtecRecords:
                 for hazardEvent in hazardEvents:
@@ -1117,7 +1117,11 @@ class Product(ProductTemplate.Product):
                         try:
                             hazardEvent.set('previousForecastCategory', self._maxFcstCategory)
                         except:
-                            pass
+                            # Get the value from the hazardEvent dictionary
+                            for eventDict in hazardEventDicts:
+                                if eventDict.get('eventID') == hazardEvent.getEventID():
+                                    hazardEvent.set('previousForecastCategory', eventDict.get('maxFcstCategory', None))
+                                    break
 
     def getSegmentHazardEvents(self, segments, hazardEventList=None):
         '''
@@ -1522,7 +1526,7 @@ class Product(ProductTemplate.Product):
                     sectionDict = segmentDict.get('sections')[sectionCounter]
                     sectionDict['vtecRecord'] = sectionVtecRecord
                     # Update the Product Information
-                    self._setProductInformation([sectionVtecRecord], sectionHazardEvents)
+                    self._setProductInformation([sectionVtecRecord], sectionHazardEvents, sectionDict.get('hazardEvents', None))
 
                     # Update the RFP values for each hazard
                     for hazardDict in sectionDict.get('hazardEvents', []):

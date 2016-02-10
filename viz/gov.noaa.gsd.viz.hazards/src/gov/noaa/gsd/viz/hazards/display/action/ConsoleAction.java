@@ -21,6 +21,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Sep 14, 2015  3473      Chris.Cody  Implement Hazard Services Import/Export through Central Registry server.
  * </pre>
  * 
  * @author Chris.Golden
@@ -36,7 +37,9 @@ public class ConsoleAction {
 
         RUN_AUTOMATED_TESTS, RUN_PRODUCT_GENERATION_TESTS,
 
-        EVENT_END_TIME_UNTIL_FURTHER_NOTICE_CHANGED
+        EVENT_END_TIME_UNTIL_FURTHER_NOTICE_CHANGED,
+
+        SITE_DATA_OPERATION
     }
 
     public static final String CHECK_CONFLICTS = "CheckConflicts";
@@ -46,6 +49,10 @@ public class ConsoleAction {
     public static final String SHOW_HATCHED_AREA = "ShowHazardHatchedArea";
 
     public static final String RESET_EVENTS = "Events";
+
+    public static final String EXPORT_SITE_CONFIG = "ExportSiteConfig";
+
+    public static final String IMPORT_SITE_CONFIG = "ImportSiteConfig";
 
     // Applies in instances where a setting or a tool
     // are chosen.

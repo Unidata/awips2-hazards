@@ -43,6 +43,8 @@
                                         reflect changes from the product editor.
     Aug 25, 2015    9992    Robert.Blum Fixed product level CTAs when none are selected.
     Aug 25, 2015    9627    Robert.Blum Removed canceling wording from replacements.
+    Sep 02, 2015    9637    Robert.Blum Removed gage point from polygonText and also duplicates.
+    Sep 15, 2015    8687    Robert.Blum Changes to use DamMetaData.py.
 '''
 
 import FormatTemplate
@@ -384,24 +386,17 @@ class Format(FormatTemplate.Formatter):
                 for geometry in hazard.get('geometry'):
                     if geometry.geom_type == HazardConstants.SHAPELY_POLYGON:
                         polygonPointLists.append(list(geometry.exterior.coords))
-                    elif geometry.geom_type == HazardConstants.SHAPELY_POINT or geometry.geom_type == HazardConstants.SHAPELY_LINE:
+                    elif geometry.geom_type == HazardConstants.SHAPELY_POINT:
+                        continue # Dont add gage point to polygon text
+                    elif geometry.geom_type == HazardConstants.SHAPELY_LINE:
                         polygonPointLists.append(list(geometry.coords))
                     else:
                         for geo in geometry:
                             polygonPointLists.append(list(geo.exterior.coords))
-        
-        if isPointBasedHazard:
-            # Point Based Hazard
-            polyStr = '&&\n'
-        polyStr += 'LAT...LON'
 
-        # 4 points per line
-        pointsOnLine = 0
+        lonLatPoints = []
         for polygon in polygonPointLists:
             for lon,lat in polygon:
-                if pointsOnLine == 4:
-                    polyStr += '\n' 
-                    pointsOnLine = 0
                 # For end of Aleutians
                 if lat > 50 and lon > 0 :
                     lon = 360 - lon
@@ -411,8 +406,28 @@ class Format(FormatTemplate.Formatter):
                 if lat < 0 :
                     lat = -lat
                 lat = int(100 * lat + 0.5)
-                polyStr += ' ' + str(lat) + ' ' + str(lon)
-                pointsOnLine += 1
+                lonLatPoints.append((lon, lat))
+
+        # Remove duplicates now that the
+        # points have been reduced
+        lonLatDict = OrderedDict.fromkeys(lonLatPoints)
+        
+
+        # Construct the text string
+        if isPointBasedHazard:
+            # Point Based Hazard
+            polyStr = '\n&&\n\n\n'
+        polyStr += 'LAT...LON'
+
+        # 4 points per line
+        pointsOnLine = 0
+        for lon, lat in lonLatDict:
+            if pointsOnLine == 4:
+                polyStr += '\n' 
+                pointsOnLine = 0
+            polyStr += ' ' + str(lat) + ' ' + str(lon)
+            pointsOnLine += 1
+
         if (self._runMode == 'Practice' and isPointBasedHazard == False):
             polyStr = 'This is a test message. Do not take action based on this message. \n\n' + polyStr
         return polyStr + '\n'
@@ -761,7 +776,7 @@ class Format(FormatTemplate.Formatter):
                                     if scenarioText:
                                         locationsAffected += scenarioText + '\n\n'
                             # Rule of Thumb
-                            ruleOfThumb = damInfo.get('ruleOfThumb')
+                            ruleOfThumb = damInfo.get('ruleofthumb')
                             if ruleOfThumb:
                                 locationsAffected += ruleOfThumb + '\n\n'
 
@@ -1054,6 +1069,12 @@ class Format(FormatTemplate.Formatter):
         if text:
             return startText + text + endText
         return ''
+
+    def _damInfo(self):
+        from MapsDatabaseAccessor import MapsDatabaseAccessor
+        mapsAccessor = MapsDatabaseAccessor()
+        damInfoDict = mapsAccessor.getAllDamInundationMetadata()
+        return damInfoDict
 
     def flush(self):
         ''' Flush the print buffer '''

@@ -366,19 +366,19 @@ class MetaData(CommonMetaData.MetaData):
                 self.scenarioMediumNormal(),
                 ]        
     def scenarioHighFast(self):
-        return {"identifier":"highFast", 
+        return {"identifier":"highfast", 
                 "displayString": "High Fast",
                 "productString": "High Fast"}
     def scenarioHighNormal(self):
-        return {"identifier":"highNormal", 
+        return {"identifier":"highnormal", 
                 "displayString": "High Normal",
                 "productString": "High Normal"}
     def scenarioMediumFast(self):
-        return {"identifier":"mediumFast", 
+        return {"identifier":"mediumfast", 
                 "displayString": "Medium Fast",
                 "productString": "Medium Fast"}
     def scenarioMediumNormal(self):
-        return {"identifier":"mediumNormal", 
+        return {"identifier":"mediumnormal", 
                 "displayString": "Medium Normal",
                 "productString": "Medium Normal"}
 

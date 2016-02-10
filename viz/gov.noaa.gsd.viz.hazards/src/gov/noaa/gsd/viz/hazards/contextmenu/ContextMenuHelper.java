@@ -24,6 +24,7 @@ import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -38,6 +39,7 @@ import org.eclipse.swt.widgets.Menu;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
@@ -66,6 +68,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * May 21, 2015 7730       Chris.Cody   Move Add/Delete Vertex to top of Context Menu
+ * Sep 15, 2015 7629       Robert.Blum  Added new context menus for saving pending hazards.
  * </pre>
  * 
  * @author mnash
@@ -75,7 +78,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 public class ContextMenuHelper {
 
     private enum Command {
-        DELETE("Delete"), PROPOSE("Propose"), END("End"), REVERT("Revert");
+        DELETE("Delete"), PROPOSE("Propose"), END("End"), REVERT("Revert"), SAVE(
+                "Save");
 
         private String value;
 
@@ -102,6 +106,10 @@ public class ContextMenuHelper {
         PROPOSE_THIS_HAZARD(appendThis(Command.PROPOSE)),
 
         REMOVE_POTENTIAL_HAZARDS("Remove Potential"),
+
+        SAVE_THIS_HAZARD(appendThis(Command.SAVE)),
+
+        SAVE_ALL_PENDING_HAZARDS("Save All Pending"),
 
         ;
 
@@ -162,6 +170,15 @@ public class ContextMenuHelper {
                                 ContextMenuSelections.PROPOSE_THIS_HAZARD
                                         .getValue());
                     }
+                    addContributionItem(items,
+                            ContextMenuSelections.SAVE_THIS_HAZARD.getValue());
+		    Collection<ObservedHazardEvent> pendingEvents = eventManager
+                            .getEventsByStatus(HazardStatus.PENDING);
+                    if (pendingEvents.size() > 1) {
+                        addContributionItem(items,
+                                ContextMenuSelections.SAVE_ALL_PENDING_HAZARDS
+                                        .getValue());
+                    }
                     break;
 
                 case ISSUED:
@@ -218,6 +235,15 @@ public class ContextMenuHelper {
             if (areProposableEvents) {
                 text = Command.PROPOSE.value + textWithoutCommand;
                 addContributionItem(items, text);
+            }
+            text = Command.SAVE.value + textWithoutCommand;
+            addContributionItem(items, text);
+            Collection<ObservedHazardEvent> pendingEvents = eventManager
+                    .getEventsByStatus(HazardStatus.PENDING);
+            if (pendingEvents.size() > 1) {
+                addContributionItem(items,
+                        ContextMenuSelections.SAVE_ALL_PENDING_HAZARDS
+                                .getValue());
             }
         }
         if (states.contains(HazardStatus.ISSUED)) {
@@ -512,6 +538,18 @@ public class ContextMenuHelper {
                         HazardStatus.PENDING.getValue())) {
             eventManager.proposeEvents(eventManager.getSelectedEvents(),
                     Originator.OTHER);
+
+        } else if (menuLabel.contains(Command.SAVE.value)
+                && menuLabel.toLowerCase().contains(
+                        HazardStatus.PENDING.getValue())) {
+            List<IHazardEvent> events = new ArrayList<IHazardEvent>(
+                    eventManager.getEventsByStatus(HazardStatus.PENDING));
+            eventManager.saveEvents(events);
+        } else if (menuLabel.equals(ContextMenuSelections.SAVE_THIS_HAZARD
+                .getValue())) {
+            List<IHazardEvent> events = new ArrayList<IHazardEvent>(1);
+            events.add(eventManager.getCurrentEvent());
+            eventManager.saveEvents(events);
 
         } else {
             /*

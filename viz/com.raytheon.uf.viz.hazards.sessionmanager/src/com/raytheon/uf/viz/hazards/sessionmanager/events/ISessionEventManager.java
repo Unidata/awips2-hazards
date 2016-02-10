@@ -79,6 +79,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      them beyond the allowed ranges.
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
+ * Sep 15, 2015 7629       Robert.Blum  Added method that persists a list of events.
  * </pre>
  * 
  * @author bsteffen
@@ -609,4 +610,5 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public void setModifiedEventGeometry(String eventID, Geometry geometry,
             boolean checkGeometryValidity);
 
+    public void saveEvents(List<IHazardEvent> events);
 }

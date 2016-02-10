@@ -107,6 +107,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
  * Jun 24, 2015 6601       Chris.Cody        Change Create by Hazard Type display text
  * Jul 21, 2015 2921       Robert.Blum       Changes for multi panel displays.
+ * Sep 09, 2015 6603       Chris.Cody        Added isSelectByAreaActive to track "by Area" selection state
  * </pre>
  * 
  * @author Chris.Golden
@@ -237,6 +238,11 @@ public class SpatialView implements
          */
         @Override
         public void run() {
+
+            SpatialDisplayAction.ActionIdentifier ai = (getStyle() == Action.AS_CHECK_BOX ? (isChecked() ? SpatialDisplayAction.ActionIdentifier.ON
+                    : SpatialDisplayAction.ActionIdentifier.OFF)
+                    : actionName);
+
             presenter
                     .publish(new SpatialDisplayAction(
                             actionType,
@@ -582,6 +588,16 @@ public class SpatialView implements
     private MouseHandlerFactory mouseFactory;
 
     // Public Constructors
+
+    /**
+     * Track Select By Area Selection state. Ending a select by area operation
+     * (whether or not areas are selected) causes an unwanted
+     * SpatialDisplayAction.ActionIdentifier.SELECT_EVENT to be dispatched at
+     * the end of the dispose call that releases the Spatial View resource. This
+     * flag allows for the SELECT_EVENT to be ignored and retain a stable system
+     * state.
+     */
+    private boolean isSelectByAreaActive = false;
 
     /**
      * Construct a standard instance.
@@ -1334,8 +1350,14 @@ public class SpatialView implements
      * Receive notification that a drawing action has been completed.
      */
     private void notifyDrawingActionComplete() {
-        moveAndSelectChoiceAction.setChecked(true);
-        moveAndSelectChoiceAction.run();
+
+        if (isSelectByAreaActive == true) {
+            isSelectByAreaActive = false;
+        } else {
+            moveAndSelectChoiceAction.setChecked(true);
+            moveAndSelectChoiceAction.run();
+        }
+
         drawVertexBasedPolygonChoiceAction.setChecked(false);
         drawFreehandPolygonChoiceAction.setChecked(false);
         drawVertexPathChoiceAction.setChecked(false);
@@ -1351,6 +1373,7 @@ public class SpatialView implements
         drawFreehandPolygonChoiceAction.setChecked(false);
         drawVertexPathChoiceAction.setChecked(false);
         drawPointChoiceAction.setChecked(false);
+        isSelectByAreaActive = true;
     }
 
     /**

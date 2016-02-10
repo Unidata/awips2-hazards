@@ -29,6 +29,7 @@
     Jun 2015       8532    Robert.Blum       Changes to conform to GFE/WarnGen output.
     Aug 2015       9641    Robert.Blum       Fixed duplicate "for" in first bullets.
     Aug 2015       9627    Robert.Blum       Removed canceling wording from replacements.
+    Sep 2015       9590    Robert.Blum       Removed metadata from the product dictionary.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
@@ -87,7 +88,6 @@ class AttributionFirstBulletText(object):
         # that have multiple hazard events. There is no gaurantee that the 
         # below attributes will be the same for all the hazards in the section.
         # For now using values from first hazard.
-        self.metaData = self.hazardEventDict.get('metaData')
         self.pointID = self.hazardEventDict.get('pointID')
         self.hydrologicCause = self.hazardEventDict.get('hydrologicCause')
         if self.hydrologicCause:
@@ -97,12 +97,12 @@ class AttributionFirstBulletText(object):
         self.warningType = self.hazardEventDict.get('warningType')
         self.warningTypeStr = None
         if self.warningType:
-            self.warningTypeStr = self.tpc.getProductStrings(self.hazardEventDict, self.metaData, 'warningType', self.warningType)
+            self.warningTypeStr = self.hazardEventDict.get('warningType_productString')
         self.advisoryType = self.hazardEventDict.get('advisoryType_productString')
         self.optionalSpecificType = self.hazardEventDict.get('optionalSpecificType')
         self.optionalSpecificTypeStr = None
         if self.optionalSpecificType:
-            self.optionalSpecificTypeStr = self.tpc.getProductStrings(self.hazardEventDict, self.metaData, 'optionalSpecificType', self.optionalSpecificType)
+            self.optionalSpecificTypeStr = self.hazardEventDict.get('optionalSpecificType_productString')
         self.burnScarName = self.hazardEventDict.get('burnScarName')
         self.damOrLeveeName = self.hazardEventDict.get('damOrLeveeName')
         self.riverName = None
@@ -268,7 +268,8 @@ class AttributionFirstBulletText(object):
         forStr = ''
         if self.geoType == 'area':
             if self.phenSig in ['FF.W', 'FA.W', 'FA.Y']:
-                firstBullet += ' for...'
+                if not self.optionalSpecificType and not self.warningType:
+                    firstBullet += ' for...'
             else:
                 forStr = ' for '
         else:
@@ -301,7 +302,8 @@ class AttributionFirstBulletText(object):
         if self.geoType == 'area':
             firstBullet = preQualifiers + self.hazardName
             if self.phenSig in ['FF.W', 'FA.W', 'FA.Y']:
-                firstBullet += ' for...'
+                if not self.optionalSpecificType and not self.warningType:
+                    firstBullet += ' for...'
             else:
                 forStr = ' for '
         else:
@@ -402,7 +404,10 @@ class AttributionFirstBulletText(object):
             if self.immediateCause not in ['ER', 'IC']:
                 if self.typeOfFlooding:
                     if self.action in ['NEW', 'EXT']:
-                        qualifiers += '\n  ' + self.typeOfFlooding
+                        if self.optionalSpecificTypeStr:
+                            qualifiers += ' for..\n  ' + self.typeOfFlooding
+                        else:
+                            qualifiers += '\n  ' + self.typeOfFlooding
                     else:
                         qualifiers += ' for ' + self.typeOfFlooding
                     if addPreposition:

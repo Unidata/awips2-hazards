@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EVENT_ID_DISPLAY_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE;
@@ -32,6 +33,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
@@ -209,6 +211,10 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Jul 30, 2015 9681       Robert.Blum        Changes for new Product Viewer and generating
  *                                            view only products.
  * Aug 03, 2015 8836       Chris.Cody         Update Event Display type when settings change
+ * Sep 14, 2015 3473       Chris.Cody         Implement Hazard Services Import/Export through
+ *                                            Central Registry server.
+ * Sep 28, 2015 10302,8167 hansen             Re-wrote retrieveBackupSiteList to use get backup
+ *                                               sites from startup config.
  * Nov 10, 2015 12762      Chris.Golden       Added support for use of new recommender manager,
  *                                            removing a bunch of recommender-managing code that
  *                                            didn't belong here and thus continuing the trend of
@@ -894,6 +900,20 @@ public final class HazardServicesMessageHandler {
         sessionManager.toggleHatchedAreaDisplay();
     }
 
+    private void exportApplicationSiteData() {
+        String siteId = getSiteId();
+        sessionManager.exportApplicationSiteData(siteId);
+    }
+
+    /**
+     * Process a user request (ConsoleAction) to import Hazard Services
+     * Localization for a list of backed up Site Id values.
+     */
+    private void importApplicationBackupSiteData() {
+        List<String> backupSiteIdList = retrieveBackupSiteIdList(false);
+        sessionManager.importApplicationBackupSiteData(backupSiteIdList);
+    }
+
     /**
      * Examines all hazards looking for potential conflicts. Returns the user's
      * decision as to whether or not to continue with the conflicts.
@@ -926,7 +946,6 @@ public final class HazardServicesMessageHandler {
     @Handler
     @Deprecated
     public void settingsModified(final SettingsModified notification) {
-        reloadHazardServicesEventId();
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.CURRENT_SETTINGS));
     }
@@ -1147,6 +1166,16 @@ public final class HazardServicesMessageHandler {
              */
             break;
 
+        case SITE_DATA_OPERATION:
+
+            if (consoleAction.getId().equals(ConsoleAction.EXPORT_SITE_CONFIG)) {
+                exportApplicationSiteData();
+            } else if (consoleAction.getId().equals(
+                    ConsoleAction.IMPORT_SITE_CONFIG)) {
+
+                importApplicationBackupSiteData();
+            }
+            break;
         default:
             throw new IllegalArgumentException("Unexpected action type "
                     + consoleAction.getActionType());
@@ -1470,15 +1499,15 @@ public final class HazardServicesMessageHandler {
     /**
      * Update Hazard Event Id Display Type on Settings change.
      * 
-     * This method should be run before refreshiing Console and Spatial
-     * displays.
+     * This method should be run before refreshing Console and Spatial displays.
      * 
      */
-    private void reloadHazardServicesEventId() {
+    private void reloadHazardServidesEventId() {
         ISettings currentSettings = sessionManager.getConfigurationManager()
                 .getSettings();
-        String eventIdDisplayTypeString = currentSettings
-                .getEventIdDisplayType();
+        String eventIdDisplayTypeString = sessionManager
+                .getConfigurationManager().getSettingsValue(
+                        EVENT_ID_DISPLAY_TYPE, currentSettings);
 
         if ((eventIdDisplayTypeString != null)
                 && (eventIdDisplayTypeString.isEmpty() == false)) {
@@ -1486,5 +1515,46 @@ public final class HazardServicesMessageHandler {
                     .setIdDisplayType(HazardServicesEventIdUtil.IdDisplayType
                             .valueOf(eventIdDisplayTypeString));
         }
+    }
+
+    /**
+     * Return the currently configured Site Id value.
+     * 
+     * @return 3 character Site Id
+     */
+    private String getSiteId() {
+        return sessionConfigurationManager.getSiteID();
+    }
+
+    /**
+     * Return the list of Hazard Services Backed Up Site Id values.
+     * 
+     * Backed Up Site Id values are pulled from Localization:
+     * cave_static/.../hazardServces/backupSites.xml The "..." could be "base"
+     * or "site/<SITE_ID>, or user based.
+     * 
+     * @param includeLocalSite
+     *            boolean flag. When True; will include the current Site Id
+     * @param defaultToBase
+     *            boolean flag. When True and no Site specific values are found
+     *            that are configured for the current site; it will use the
+     *            backupSites.xml values from the base file.
+     * @return
+     */
+    private List<String> retrieveBackupSiteIdList(boolean includeLocalSite) {
+
+        List<String> backupSiteIdList = Arrays.asList(sessionManager
+                .getConfigurationManager().getStartUpConfig().getBackupSites());
+
+        if (includeLocalSite == true) {
+            String site = getSiteId();
+            backupSiteIdList.add(site);
+        }
+        if ((backupSiteIdList == null) || (backupSiteIdList.isEmpty())) {
+            statusHandler
+                    .warn("No configured Hazard Services Back up Site Id values found in StartUpConfig.");
+        }
+
+        return backupSiteIdList;
     }
 }

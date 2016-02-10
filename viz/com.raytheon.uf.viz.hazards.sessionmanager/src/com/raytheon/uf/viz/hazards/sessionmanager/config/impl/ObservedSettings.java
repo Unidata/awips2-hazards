@@ -494,6 +494,7 @@ public class ObservedSettings implements ISettings {
             setEventIdDisplayType(update.getEventIdDisplayType(), false, null);
             notify = true;
         }
+
         if (notify) {
             if (idChanged) {
                 settingsChangedIdentifier(true, Originator.OTHER);

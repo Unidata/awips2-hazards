@@ -26,6 +26,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Apr 23, 2014   2925     Chris.Golden Initial creation.
+ * Sep 10, 2015  11274     mduff        Set the parameters when creating a copy.
  * </pre>
  * 
  * @author Chris.Golden
@@ -123,7 +124,7 @@ public class BoundedComparableValidator<T extends Comparable<T>> extends
      */
     protected BoundedComparableValidator(BoundedComparableValidator<T> other) {
         super(other);
-        parameters = null;
+        parameters = other.getParameters();
         minimumValueKey = other.minimumValueKey;
         maximumValueKey = other.maximumValueKey;
         comparableClass = other.comparableClass;

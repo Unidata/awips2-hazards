@@ -77,9 +77,10 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Feb 23, 2015 3618      Chris.Golden  Added possible sites to settings.
  * May 18, 2015 8227      Chris.Cody    Remove NullRecommender
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * Jul 29, 2015 9306    Chris.Cody      Add HazardSatus.ELAPSED status
+ * Jul 29, 2015 9306      Chris.Cody    Add HazardSatus.ELAPSED status
  * Jul 31, 2015 7458      Robert.Blum   Added new USER_NAME and WORKSTATION constants.
  * Aug 06, 2015 9968      Chris.Cody    Added Ended/Elapsed time status checking
+ * Sep 28, 2015 10302,8167 hansen       Added backupSites, eventIdDisplayType, mapCenter
  * Nov 10, 2015 12762     Chris.Golden  Added constants and enums related to running tools.
  * Jan 28, 2016 12762     Chris.Golden  Changed constant for attribute identifiers when running
  *                                      tools to reflect that it now means identifiers plural,
@@ -975,6 +976,8 @@ public final class HazardConstants {
 
     public static final String SETTING_HAZARD_SITES = "visibleSites";
 
+    public static final String BACKUP_HAZARD_SITES = "backupSites";
+
     /*
      * TODO The following need to be moved to something specific to storm track
      */
@@ -991,6 +994,8 @@ public final class HazardConstants {
     public static final String STATIC_SETTINGS = "staticSettings";
 
     public static final String SPATIAL_INFO = "spatialInfo";
+
+    public static final String MAP_CENTER = "mapCenter";
 
     /*
      * Constants related to Data Access Framework Requests.
@@ -1224,4 +1229,5 @@ public final class HazardConstants {
 
     public static final int MISSING_VALUE = -9999;
 
+    public static final String EVENT_ID_DISPLAY_TYPE = "eventIdDisplayType";
 }

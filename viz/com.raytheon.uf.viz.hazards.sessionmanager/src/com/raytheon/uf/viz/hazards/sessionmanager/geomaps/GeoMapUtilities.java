@@ -22,7 +22,6 @@ package com.raytheon.uf.viz.hazards.sessionmanager.geomaps;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_ALL;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_INTERSECTION;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.MAPDATA_COUNTY;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -100,6 +99,7 @@ import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
  * Oct 13, 2015 12494      Chris Golden Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
+ * Sep 03, 2015 11213      mduff        Fixed performance issue for initial preview.
  * </pre>
  * 
  * @author blawrenc
@@ -694,7 +694,7 @@ public class GeoMapUtilities {
     }
 
     private Geometry buildCWAGeometry() {
-        String mapDBtableName = MAPDATA_COUNTY;
+        String mapDBtableName = HazardConstants.MAPDATA_CWA;
 
         String mapLabelParameter = "";
         String cwa = configManager.getSiteID();

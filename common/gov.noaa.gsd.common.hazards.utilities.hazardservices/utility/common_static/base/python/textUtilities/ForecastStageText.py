@@ -22,6 +22,7 @@
     Jun 25, 2015    8313   Benjamin.Phillippe Fixed issued event loading when time is changed
     Jul 23, 2015    9643   Robert.Blum       All rounding is now done in one common place so that it can 
                                              be easily overridden by sites.
+    Sep 09, 2015    10263   Robert Blum       No Forecast bullet if there is no forecast stage.
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types
@@ -49,7 +50,9 @@ class ForecastStageText(object):
         self.timeZones = timeZones
         river_description = self.getRiverDescription(hazard)
         forecast_description = self.getForecastDescription(hazard)
-        bulletContent = river_description+' '+forecast_description
+        bulletContent = ''
+        if forecast_description:
+            bulletContent = river_description+' '+forecast_description
         return bulletContent
 
     def getRiverDescription(self, hazard):
@@ -135,6 +138,9 @@ class ForecastStageText(object):
         #                          can be >, = , < crest stage
         
         '''
+        # Cant have a forecast bullet with no forecast stage
+        if hazard.maximumForecastStage == None or hazard.maximumForecastStage == MISSING_VALUE:
+            return ''
 
         # risingFalling -- Are we rising or falling?
         if compareStage != MISSING_VALUE:
@@ -154,7 +160,8 @@ class ForecastStageText(object):
         self.firstRiseFallTime = ''
         self.secondRiseFallTime = ''
         # rise above / fall below flood stage
-        if hazard.forecastRiseAboveFloodStageTime_ms and hazard.forecastFallBelowFloodStageTime_ms:
+        if hazard.forecastRiseAboveFloodStageTime_ms and hazard.forecastFallBelowFloodStageTime_ms and \
+           hazard.forecastRiseAboveFloodStageTime_ms != MISSING_VALUE and hazard.forecastFallBelowFloodStageTime_ms != MISSING_VALUE:
             if hazard.forecastRiseAboveFloodStageTime_ms < hazard.forecastFallBelowFloodStageTime_ms:
                 self.firstRiseFallTime = ' above flood stage at ' + hazard.forecastRiseAboveFloodStageTime_str
                 self.secondRiseFallTime = ', then fall below flood stage at ' + hazard.forecastFallBelowFloodStageTime_str + ' and continue falling'
@@ -164,21 +171,25 @@ class ForecastStageText(object):
             else: # both missing
                 self.firstRiseFallTime = ''
                 self.secondRiseFallTime = ''
-        elif hazard.forecastRiseAboveFloodStageTime_ms and (hazard.forecastFallBelowFloodStageTime_ms is None or hazard.forecastFallBelowFloodStageTime_ms == 0): 
+        elif hazard.forecastRiseAboveFloodStageTime_ms and hazard.forecastRiseAboveFloodStageTime_ms != MISSING_VALUE and \
+             (hazard.forecastFallBelowFloodStageTime_ms is None or hazard.forecastFallBelowFloodStageTime_ms == 0 or 
+             hazard.forecastFallBelowFloodStageTime_ms == MISSING_VALUE): 
             self.firstRiseFallTime = ' above flood stage at ' + hazard.forecastRiseAboveFloodStageTime_str + ' and continue rising'
             self.secondRiseFallTime = ''
-        elif (hazard.forecastRiseAboveFloodStageTime_ms is None or hazard.forecastRiseAboveFloodStageTime_ms == 0) and hazard.forecastFallBelowFloodStageTime_ms:
+        elif (hazard.forecastRiseAboveFloodStageTime_ms is None or hazard.forecastRiseAboveFloodStageTime_ms == 0 or
+              hazard.forecastRiseAboveFloodStageTime_ms == MISSING_VALUE) and hazard.forecastFallBelowFloodStageTime_ms and \
+              hazard.forecastFallBelowFloodStageTime_ms != MISSING_VALUE:
             self.firstRiseFallTime = ' below flood stage at ' + hazard.forecastFallBelowFloodStageTime_str + ' and continue falling'
-            self.secondRiseFallTime = ''         
+            self.secondRiseFallTime = ''
         else: # both missing
             self.firstRiseFallTime = ''
             self.secondRiseFallTime = ''
-                        
+
         # is crest = Maximum forecast stage/flow?  This is a proxy to determine if this a complex event.
         if hazard.forecastCrestStage !=  hazard.maximumForecastStage:
             self._crestToMaximum = 'not equal'
         else:
-            self._crestToMaximum = 'equal'            
+            self._crestToMaximum = 'equal'
 
         # is crest above/below/at Flood stage
         if hazard.forecastCrestStage:
@@ -211,7 +222,7 @@ class ForecastStageText(object):
                 self.finalStageFlow='.'
         phrase = 'is expected to ' + self.risingFalling + self.firstRiseFallTime + self.crestStatement + self.secondRiseFallTime + self.finalStageFlow 
         return phrase
-    
+
     def createHazard(self, hazardDict):
         '''
         Interface for V3 formatters
@@ -230,13 +241,13 @@ class ForecastStageText(object):
         hazard.forecastFallBelowFloodStageTime_ms = hazardDict.get('forecastFallBelowFloodStageTime_ms')
         hazard.forecastCrestTime_ms = hazardDict.get('forecastCrestTime_ms')
          
-        if hazard.forecastRiseAboveFloodStageTime_ms:
+        if hazard.forecastRiseAboveFloodStageTime_ms and hazard.forecastRiseAboveFloodStageTime_ms != MISSING_VALUE:
             hazard.forecastRiseAboveFloodStageTime_str = hazardDict.get('forecastRiseAboveFloodStageTime_str',
                   self.tpc.getFormattedTime(hazard.forecastRiseAboveFloodStageTime_ms, format='%I00 %p %Z %a %b %d %Y',
                                             timeZones=self.timeZones))
         else:
             hazard.forecastRiseAboveFloodStageTime_str = None
-        if hazard.forecastFallBelowFloodStageTime_ms:
+        if hazard.forecastFallBelowFloodStageTime_ms and hazard.forecastFallBelowFloodStageTime_ms != MISSING_VALUE:
             hazard.forecastFallBelowFloodStageTime_str = hazardDict.get('forecastFallBelowFloodStageTime_str',
                   self.tpc.getFormattedTime(hazard.forecastFallBelowFloodStageTime_ms, format='%I00 %p %Z %a %b %d %Y',
                                             timeZones=self.timeZones)) 

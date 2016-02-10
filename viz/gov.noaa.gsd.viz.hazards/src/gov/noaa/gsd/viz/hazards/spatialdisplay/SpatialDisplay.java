@@ -183,6 +183,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Jun 22, 2015 7203       Chris.Cody   Prevent Event Text Data overlap in a single county
  * Jun 24, 2015 6601       Chris.Cody   Change Create by Hazard Type display text
  * Jul 07, 2015 7921       Chris.Cody   Re-scale hatching areas and handle bar points
+ * Sep 18, 2015 9905       Chris.Cody   Correct Spatial Display selection error
  * Oct 26, 2015 12754      Chris.Golden Fixed drawing bug that caused only one hazard to be drawn at a
  *                                      time, regardless of how many should have been displayed.
  * Nov 10, 2015 12762      Chris.Golden Added support for use of new recommender manager.
@@ -781,7 +782,7 @@ public class SpatialDisplay extends
         hatchedAreas.clear();
         hatchedAreaAnnotations.clear();
 
-        Layer activeLayer = this.getActiveLayer();
+        Layer activeLayer = getActiveLayer();
         List<AbstractDrawableComponent> activeLayerDrawables = activeLayer
                 .getDrawables();
         for (ObservedHazardEvent hazardEvent : events) {
@@ -799,7 +800,7 @@ public class SpatialDisplay extends
              */
             for (AbstractDrawableComponent adc : new ArrayList<AbstractDrawableComponent>(
                     activeLayerDrawables)) {
-                String id = this.eventIDForElement(adc);
+                String id = eventIDForElement(adc);
                 if (hazardEvent.getEventID().equals(id)) {
                     activeLayer.remove(adc);
                 }
@@ -864,7 +865,6 @@ public class SpatialDisplay extends
 
         // Comparator to sort strings longest to shortest.
         Comparator<String> shortestLastComparator = new Comparator<String>() {
-            @Override
             public int compare(String o1, String o2) {
                 return Integer.compare(o2.length(), o1.length());
             }
@@ -2026,7 +2026,7 @@ public class SpatialDisplay extends
      */
     private void checkForMapRescale(PaintProperties paintProps) {
         double newScaleFactor = 0.0d;
-        double canvasX = paintProps.getCanvasBounds().width;
+        double canvasX = (double) paintProps.getCanvasBounds().width;
         double viewX = paintProps.getView().getExtent().getWidth();
         if (viewX != 0.0d) {
             newScaleFactor = canvasX / viewX;

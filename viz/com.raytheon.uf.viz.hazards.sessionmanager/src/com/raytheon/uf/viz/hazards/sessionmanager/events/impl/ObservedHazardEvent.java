@@ -1,5 +1,4 @@
 /**
- * This software was developed and / or modified by Raytheon Company,
  * pursuant to Contract DG133W-05-CQ-1067 with the US Government.
  * 
  * U.S. EXPORT CONTROLLED TECHNICAL DATA
@@ -22,6 +21,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -106,6 +106,15 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Nov 10, 2015 12762      Chris.Golden Fixed potential bug causing notifications to
  *                                      be sent out in a case where they are not
  *                                      desired.
+ * Feb 08, 2016 9650       Chris.Golden Altered changed() method to check properly
+ *                                      for geometry collection differences (for
+ *                                      18-Hazard-Services Redmine issue #9650).
+ * Feb 08, 2016 10207      Chris.Golden Altered general changed() method to remove
+ *                                      bugs (for 18-Hazard-Services Redmine issue
+ *                                      #10207).
+ * Feb 10, 2016 15561      Chris.Golden Removed bug caused by trying to copy
+ *                                      attribute map when at least one of the
+ *                                      attribute values is null.
  * </pre>
  * 
  * @author bsteffen
@@ -259,18 +268,15 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     private final boolean changed(Object newObj, Object oldObj) {
-        if (newObj == null) {
-            if (oldObj == null) {
-                return false;
-            }
-        } else if (newObj.equals(oldObj)) {
+        if ((newObj == null) && (oldObj == null)) {
             return false;
+        } else if (((newObj == null) && (oldObj != null)) || (newObj != null)
+                && (oldObj == null)) {
+            return true;
         } else if ((newObj instanceof Object[]) && (oldObj instanceof Object[])) {
-
-            return !Arrays.deepEquals((Object[]) newObj, (Object[]) oldObj);
-
+            return (Arrays.deepEquals((Object[]) newObj, (Object[]) oldObj) == false);
         }
-        return true;
+        return (newObj.equals(oldObj) == false);
     }
 
     private final boolean changed(Geometry newObj, Geometry oldObj) {
@@ -278,6 +284,21 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
             if (oldObj == null) {
                 return false;
             }
+        } else if (newObj instanceof GeometryCollection) {
+            if (oldObj instanceof GeometryCollection) {
+                int size = newObj.getNumGeometries();
+                if (size != oldObj.getNumGeometries()) {
+                    return true;
+                }
+                for (int j = 0; j < size; j++) {
+                    if (newObj.getGeometryN(j).equalsExact(
+                            oldObj.getGeometryN(j)) == false) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            return true;
         } else if (newObj.equalsExact(oldObj)) {
             return false;
         }
@@ -287,8 +308,17 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     @Override
     public Map<String, Serializable> getHazardAttributes() {
         Map<String, Serializable> attr = delegate.getHazardAttributes();
-        // Do not allow modification because listeners would need to be fired.
-        attr = ImmutableMap.copyOf(delegate.getHazardAttributes());
+
+        /*
+         * Do not allow modification because listeners would need to be fired.
+         * Before creating the immutable map, filter out any entries from the
+         * original map that have null values, as this is not allowed for
+         * immutable maps.
+         */
+        Map<String, Serializable> map = new HashMap<>(
+                delegate.getHazardAttributes());
+        map.values().removeAll(Collections.singleton(null));
+        attr = ImmutableMap.copyOf(map);
         return attr;
     }
 

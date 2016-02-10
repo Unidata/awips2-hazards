@@ -18,6 +18,7 @@ like burn scar areas.
  Aug 03, 2015   9920     Robert.Blum Fixed duplicate alias sql error.
  Aug 14, 2015   9920     Robert.Blum Additional changes to stay in sync with ufcore.
                                      Parameters are no longer required on mapdata requests.
+ Sep 10, 2015   11510    Robert.Blum Fixed query bug caused by recent merge.
 
 """
 
@@ -47,20 +48,17 @@ class MapsDatabaseAccessor(object):
         return {'exterior_coords': exterior_coords,
                 'interior_coords': interior_coords}
         
-    def getPolygonNames(self, tablename):
+    def getPolygonNames(self, tablename, locationField="name", columns=[]):
         
         table = "mapdata."+tablename
         req = DataAccessLayer.newDataRequest()
         req.setDatatype("maps")
         req.addIdentifier("table", table)
         req.addIdentifier("geomField", "the_geom")
-        
-        columns = [
-                   "name",
-                   ]
+        req.addIdentifier("locationField", locationField)
 
-        ### Important to set addIdentifier("locationField", "name") !!!
-        req.addIdentifier("locationField", columns[0])
+        if columns:
+            req.setParameters(columns)
         retGeoms = DataAccessLayer.getGeometryData(req)
 
         nameList = []
@@ -71,20 +69,17 @@ class MapsDatabaseAccessor(object):
 
         
     
-    def getPolygonDict(self, tablename):
+    def getPolygonDict(self, tablename, locationField="name", columns=[]):
         
         table = "mapdata."+tablename
         req = DataAccessLayer.newDataRequest()
         req.setDatatype("maps")
         req.addIdentifier("table", table)
         req.addIdentifier("geomField", "the_geom")
-        
-        columns = [
-                   "name",
-                   ]
+        req.addIdentifier("locationField", locationField)
 
-        ### Important to set addIdentifier("locationField", "name") !!!
-        req.addIdentifier("locationField", columns[0])
+        if columns:
+            req.setParameters(columns)
         retGeoms = DataAccessLayer.getGeometryData(req)
 
         retDict = {}

@@ -59,6 +59,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  *                                                        unmarshal method that uses a file
  * Apr 28, 2014 3556       bkowal       Relocate to a common plugin.
  * Feb 24, 2015 6605       mpduff       Changed how loadJson reads files.
+ * Aug 31, 2015 9757       Robert.Blum  Removed TODO since we dont want to incrementally override non-class
+ *                                      based config files.
  * 
  * </pre>
  * 
@@ -166,8 +168,6 @@ public class ConfigLoader<T> implements Runnable {
         if (varName == null) {
             varName = file.getName().replaceFirst("[.][^.]+$", "");
         }
-        // TODO use incremental python override and make sure localization
-        // importing is being used.
         Jep jep = new Jep(false, pyIncludes);
         jep.runScript(file.getAbsolutePath());
         jep.eval("import json");

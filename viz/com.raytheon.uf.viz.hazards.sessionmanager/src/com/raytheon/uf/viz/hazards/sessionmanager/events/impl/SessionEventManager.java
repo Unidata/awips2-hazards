@@ -34,6 +34,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.L
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.LOW_RESOLUTION_GEOMETRY_IS_VISIBLE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PILS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.REPLACED_BY;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_SITES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
 import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
@@ -82,9 +83,11 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductC
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Significance;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.VisvalingamWhyattSimplifier;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
@@ -143,9 +146,9 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.TopologyException;
 import com.vividsolutions.jts.operation.valid.IsValidOp;
-import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
 
 /**
  * Implementation of ISessionEventManager
@@ -321,8 +324,13 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Aug 17, 2015    9968    Chris.Cody   Changes for processing ENDED/ELAPSED/EXPIRED events
  * Sep 04, 2015    7514    Chris.Golden Fixed bug introduced by July 6th check-in for this issue that caused
  *                                      exceptions to be thrown when upgrading certain watches to warnings.
+ * Sep 09  2015   10207    Chris.Cody   Switched Polygon Point reduction to use Visvalingam-Whyatt algorithm.
+ * Sep 15, 2015    7629    Robert.Blum  Changes for saving pending hazards.
  * Oct 14, 2015   12494    Chris Golden Reworked to allow hazard types to include only phenomenon (i.e. no
  *                                      significance) where appropriate.
+ * Sep 28, 2015 10302,8167 hansen       Added calls to "getSettingsValue"
+ * Oct 01, 2015    7629    Robert.Blum  Fixing bug from first commit that allowed event to not be assigned an
+ *                                      event ID.
  * Nov 10, 2015   12762    Chris.Golden Added recommender running in response to hazard event metadata or
  *                                      other attribute changes.
  * Jan 28, 2016   12762    Chris.Golden Changed to only run recommender a single time in response to multiple
@@ -330,6 +338,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      added the fetching of metadata specifiers for an event when the latter
  *                                      is added, not later on when the HID comes up (the latter behavior was
  *                                      a bug).
+ * Feb 10, 2016   15561    Chris.Golden Removed hard-coded UGC that had been put in for testing.
  * </pre>
  * 
  * @author bsteffen
@@ -1868,7 +1877,8 @@ public class SessionEventManager implements
 
     private void filterEventsForConfig(Collection<? extends IHazardEvent> events) {
         ISettings settings = configManager.getSettings();
-        Set<String> siteIDs = settings.getVisibleSites();
+        Set<String> siteIDs = configManager.getSettingsValue(
+                SETTING_HAZARD_SITES, settings);
         Set<String> phenSigs = settings.getVisibleTypes();
         Set<HazardStatus> statuses = EnumSet.noneOf(HazardStatus.class);
         for (String state : settings.getVisibleStatuses()) {
@@ -1898,11 +1908,23 @@ public class SessionEventManager implements
 
     private void loadEventsForSettings(ObservedSettings settings) {
         HazardEventQueryRequest queryRequest = new HazardEventQueryRequest();
-        Set<String> visibleSites = settings.getVisibleSites();
-        if (visibleSites == null || visibleSites.isEmpty()) {
-            return;
-        }
+        Set<String> visibleSites = configManager.getSettingsValue(
+                SETTING_HAZARD_SITES, settings);
 
+        String configSiteID = configManager.getSiteID();
+
+        /*
+         * If the settings file has not been overridden for the site, add the
+         * currently configured site to the list of visible sites.
+         */
+        if (visibleSites == null) {
+            visibleSites = new HashSet<>(1);
+        }
+        if (visibleSites.contains(configSiteID) == false) {
+            visibleSites = new HashSet<>(visibleSites);
+            visibleSites.add(configSiteID);
+            settings.setVisibleSites(visibleSites);
+        }
         Set<String> visibleTypes = settings.getVisibleTypes();
         if (visibleTypes == null || visibleTypes.isEmpty()) {
             return;
@@ -2015,6 +2037,15 @@ public class SessionEventManager implements
                 SessionEventUtilities.mergeHazardEvents(oevent, existingEvent);
                 return existingEvent;
             }
+        } else {
+            /*
+             * Since the event doesn't have a valid identifier, request one.
+             */
+            try {
+                oevent.setEventID(HazardServicesEventIdUtil.getNewEventID());
+            } catch (Exception e) {
+                statusHandler.error("Unable to set event id", e);
+            }
         }
 
         /*
@@ -2061,13 +2092,6 @@ public class SessionEventManager implements
                 existingEvent
                         .removeHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
                 return existingEvent;
-
-            } else {
-                try {
-                    oevent.setEventID(HazardServicesEventIdUtil.getNewEventID());
-                } catch (Exception e) {
-                    statusHandler.error("Unable to set event id", e);
-                }
             }
         }
 
@@ -3675,7 +3699,6 @@ public class SessionEventManager implements
         }
         setLowResolutionGeometry(hazardEvent, lowResolutionGeometry);
         return true;
-
     }
 
     /*
@@ -3962,21 +3985,18 @@ public class SessionEventManager implements
 
         if (isLowResComputationNeeded(selectedEvent, hazardType)) {
             if (geoMapUtilities.isWarngenHatching(selectedEvent)) {
-                // result =
-                // geoMapUtilities.warngenClipping(selectedEvent,hazardType);
-                result = selectedEvent.getGeometry();
+                result = geoMapUtilities.warngenClipping(selectedEvent,
+                        hazardType);
                 result = reduceGeometry(result, hazardType);
                 if (!result.isEmpty()) {
                     result = addGoosenecksAsNecessary(result);
                 }
 
             } else {
-                // result = geoMapUtilities.gfeClipping(selectedEvent);
-                result = selectedEvent.getGeometry();
+                result = geoMapUtilities.gfeClipping(selectedEvent);
             }
 
             if (result.isEmpty()) {
-
                 throw new HazardGeometryOutsideCWAException();
             }
             if (!(result instanceof GeometryCollection)) {
@@ -4029,6 +4049,18 @@ public class SessionEventManager implements
                 && !geoMapUtilities.isPointBasedHatching(selectedEvent);
     }
 
+    /**
+     * Reduce Geometry to the Point Limit (20) if possible.
+     * 
+     * This method uses a VisvalingamWhyattSimplifier algorithm to reduce the
+     * number of points used to render a polygon. This method is called from
+     * <code>buildSelectedHazardProductGeometries</code>. Not all Hazard
+     * Services geometries are reduced to 20 points.
+     * 
+     * @param geometry
+     * @param hazardTypeEntry
+     * @return Geometry with reduced number of points.
+     */
     private Geometry reduceGeometry(Geometry geometry,
             HazardTypeEntry hazardTypeEntry) {
 
@@ -4037,29 +4069,18 @@ public class SessionEventManager implements
          */
         int pointLimit = hazardTypeEntry.getHazardPointLimit();
 
-        if (pointLimit > 0) {
+        if ((pointLimit > 0) && (geometry.getNumPoints() > pointLimit)) {
 
-            /**
-             * TODO: Eventually we want to share the same logic WarnGen uses to
-             * reduce points. This is not accessible right not, at least without
-             * creating a dependency between Hazard Services and WarnGen.
-             */
-            if (geometry.getNumPoints() > pointLimit) {
-
-                double distanceTolerance = DEFAULT_DISTANCE_TOLERANCE;
-
-                DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(
-                        geometry);
-
-                do {
-                    simplifier.setDistanceTolerance(distanceTolerance);
-                    geometry = simplifier.getResultGeometry();
-                    distanceTolerance += DEFAULT_DISTANCE_TOLERANCE_INCREMENT;
-                } while (geometry.getNumPoints() > pointLimit);
+            if (geometry instanceof GeometryCollection) {
+                geometry = VisvalingamWhyattSimplifier
+                        .reduceGeometryCollection(
+                                (GeometryCollection) geometry, pointLimit);
+            } else {
+                geometry = VisvalingamWhyattSimplifier.reducePolygon(
+                        (Polygon) geometry, pointLimit);
             }
         }
         return geometry;
-
     }
 
     private List<String> buildUGCs(IHazardEvent hazardEvent) {
@@ -4119,11 +4140,7 @@ public class SessionEventManager implements
         Set<String> ugcs = geoMapUtilities.getUgcsGeometryDataMapping(
                 mapDBtableName, hazardArea).keySet();
 
-        // TODO - Fix this to do whole CONUS
-        HashSet hs = new HashSet();
-        hs.add("NEZ053");
-        return new ArrayList<>(hs);
-        // return new ArrayList<>(ugcs);
+        return new ArrayList<>(ugcs);
     }
 
     private void warngenHatchingAddRemove(
@@ -4234,4 +4251,18 @@ public class SessionEventManager implements
         return geometryFactory.createLineString(closestCoordinates);
     }
 
+    @Override
+    public void saveEvents(List<IHazardEvent> events) {
+        List<IHazardEvent> dbEvents = new ArrayList<IHazardEvent>(events.size());
+        for (IHazardEvent event : events) {
+            // Verify all events are of type HazardEvent
+            if (event instanceof HazardEvent == false) {
+                IHazardEvent dbEvent = dbManager.createEvent(event);
+                dbEvents.add(dbEvent);
+            } else {
+                dbEvents.add(event);
+            }
+        }
+        dbManager.storeEvents(dbEvents);
+    }
 }
