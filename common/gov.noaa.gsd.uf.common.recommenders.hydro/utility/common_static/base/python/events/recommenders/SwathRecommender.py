@@ -126,7 +126,6 @@ class Recommender(RecommenderTemplate.Recommender):
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'SwathRecommender', level=logging.INFO))
         self.logger.setLevel(logging.INFO)
-        self.sp = SwathPreset()
         
 
     def defineScriptMetadata(self):
@@ -179,40 +178,76 @@ class Recommender(RecommenderTemplate.Recommender):
                          str(eventSet.getAttribute("eventType")) + "\n    hazard ID: " +
                          str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute: " +
                          str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
+        
+        self._trigger = {'trigger':eventSet.getAttribute("trigger"), 'attrs':eventSet.getAttribute("attributeIdentifiers")}
+
         sys.stderr.flush()
         
-        for event in eventSet:
-            if event.getHazardAttributes().get('selected'):
+        self.sp = SwathPreset()
+        
+        import pprint
+        for event in eventSet:                                                      ##### If called from PHIGridRecommender...
+            if event.getEventID() == eventSet.getAttribute("eventIdentifier") or eventSet.getAttribute("eventIdentifier") is None:
                 if not event.getHazardAttributes().get('removeEvent'):  ### UNNEEDED ONCE CODE UPDATED TO REMOVE THE EVENT
                     self.createIntervalPolygons(event)
+                    
+                    #print 'vvvvvvvv'
+                    #pprint.pprint(event)
+                    #pprint.pprint(event.getHazardAttributes())
+                    #print '^^^^^^^'
+                    #sys.stdout.flush()
                     
         return eventSet
 
     def createIntervalPolygons(self, event):
         attrs = event.getHazardAttributes()
+        probSevereAttrs = attrs.get('probSeverAttrs')
         
-        ### get dir
-        dirVal = attrs.get('convectiveObjectDir')
-        if dirVal:
-          dirVal = int(dirVal)  
-        ### get dirUncertainty (degrees)
-        dirUVal = attrs.get('convectiveObjectDirUnc')
-        if dirUVal:
-            dirUVal = int(dirUVal)
+        if self._trigger.get('trigger') == 'hazardEventModification':
+            ### get dir
+            dirVal = attrs.get('convectiveObjectDir')
+            if dirVal:
+                dirVal = int(dirVal)
+                ### If the user adjusts the DIR, save that adjustment to be picked up by the 
+                ### automated call (PHI Grid Recommender)
+                if probSevereAttrs:
+                    probSevereAttrs['wdir'] = dirVal
+                    event.set('probSeverAttrs', probSevereAttrs)
+                else:
+                    event.set('probSeverAttrs', {'wdir':dirVal})
+            ### get dirUncertainty (degrees)
+            dirUVal = attrs.get('convectiveObjectDirUnc')
+            if dirUVal:
+                dirUVal = int(dirUVal)
+            else:
+                dirUVal = 10
+            ### get speed
+            speedVal = attrs.get('convectiveObjectSpdKts')
+            if speedVal:
+                speedVal = int(speedVal)
+                ### If the user adjusts the SPD, save that adjustment to be picked up by the 
+                ### automated call (PHI Grid Recommender)
+                if probSevereAttrs: 
+                    probSevereAttrs['wspd'] = speedVal
+                    event.set('probSeverAttrs', probSevereAttrs)
+                else:
+                    event.set('probSeverAttrs', {'wspd':speedVal})
+            ### get speedUncertainty (kts)
+            spdUVal = attrs.get('convectiveObjectSpdKtsUnc')
+            if spdUVal:
+                spdUVal = int(spdUVal)
+            else:
+                spdUVal = 10
+            print 'HandDrawn...', dirVal, speedVal
         else:
+            dirVal = probSevereAttrs.get('wdir')
+            speedVal = probSevereAttrs.get('wspd')
             dirUVal = 10
-        ### get speed
-        speedVal = attrs.get('convectiveObjectSpdKts')
-        if speedVal:
-            speedVal = int(speedVal)
-        ### get speedUncertainty (kts)
-        spdUVal = attrs.get('convectiveObjectSpdKtsUnc')
-        if spdUVal:
-            spdUVal = int(spdUVal)
-        else:
             spdUVal = 10
+            print 'Automated...', dirVal, speedVal
+                
         ### get duration (in seconds)
-        durationSecs = 2700 # (45 mins)
+        durationSecs = int(round((event.getEndTime()-event.getStartTime()).total_seconds()))
         ### get initial polygon
         poly = event.getGeometry()
         
@@ -220,7 +255,7 @@ class Recommender(RecommenderTemplate.Recommender):
         if hasattr(poly,'__iter__'):
             poly = poly[0]
             
-        presetChoice = attrs.get('convectiveSwathPresets')
+        presetChoice = attrs.get('convectiveSwathPresets') if attrs.get('convectiveSwathPresets') is not None else 'NoPreset'
         presetMethod = getattr(self.sp,presetChoice )
         
         
@@ -229,7 +264,6 @@ class Recommender(RecommenderTemplate.Recommender):
         total = time.time()
         st0 = time.time()
         gglPoly = so.transform(self._c4326t3857,poly)
-        print '[',fi_filename, getframeinfo(currentframe()).lineno, '] took ', time.time()-st0, 'seconds'
         
         ### calc for 1-minute intervals over duration
         numIvals = int(durationSecs/60)
@@ -247,32 +281,14 @@ class Recommender(RecommenderTemplate.Recommender):
                                             presetResults['dirUVal'],
                                             origDirVal,
                                             gglPoly)
-            print '\t[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-start, 'seconds'
             downstreamPolys.append(so.transform(self._c3857t4326, gglDownstream))
         
-        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-st0, 'seconds'
-        start = time.time()
         envelope = shapely.ops.cascaded_union(downstreamPolys)
-        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-start, 'seconds'
-        
-        start = time.time()
-        envelope = shapely.ops.cascaded_union(downstreamPolys)
-        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-start, 'seconds'
-        start = time.time()
-        envelope = shapely.ops.cascaded_union(downstreamPolys)
-        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-start, 'seconds'
-        start = time.time()
         polys = shapely.geometry.MultiPolygon([poly, envelope])
-        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-start, 'seconds'
-        start = time.time()
-        envelope = shapely.ops.cascaded_union(downstreamPolys)
-        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-start, 'seconds'
-        start = time.time()
         event.setGeometry(polys)
-        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] took ', time.time()-start, 'seconds'
+        event.addHazardAttribute('downStreamPolygons',downstreamPolys)
         
-        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] === FINAL took ', time.time()-total, 'seconds ==='
-        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] ...for polygon with', len(poly.exterior.coords), 'points'
+        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] === FINAL took ', time.time()-total, 'seconds for ', event.get('objectID'), ' ==='
         
         
 

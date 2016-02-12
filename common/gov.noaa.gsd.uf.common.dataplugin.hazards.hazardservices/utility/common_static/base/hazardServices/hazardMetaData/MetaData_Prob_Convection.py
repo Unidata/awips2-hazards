@@ -44,5 +44,5 @@ class MetaData(CommonMetaData.MetaData):
             } 
 
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
-    propertyChanges = CommonMetaData.applyInterdependencies(triggerIdentifiers, mutableProperties)
+    propertyChanges = CommonMetaData.applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties)
     return propertyChanges

@@ -29,6 +29,8 @@ import pprint
 from collections import defaultdict
 from shapely.wkt import loads
 
+from PHIGridRecommender import Recommender as PHIGridRecommender
+
 
 
 #from MapsDatabaseAccessor import MapsDatabaseAccessor
@@ -79,6 +81,18 @@ class Recommender(RecommenderTemplate.Recommender):
             Column10: mean motion east, in m/s (float)
             Column11: mean motion south, in m/s (float)
         """
+
+    #===========================================================================
+    # def defineSpatialInfo(self):
+    #     '''
+    #     @summary: Determines spatial information needed by the recommender.
+    #     @return: Unknown
+    #     @todo: fix comments, further figure out spatial info
+    #     '''
+    #     resultDict = {"outputType":"spatialInfo",
+    #                   "label":"Drag To Hazard Location", "returnType":"Point"}
+    #     return resultDict
+    #===========================================================================
 
     
     def defineScriptMetadata(self):
@@ -145,27 +159,47 @@ class Recommender(RecommenderTemplate.Recommender):
         ### not included in the passed in eventSet, but are available in the database
         currentEvents = self.getCurrentEvents(eventSet)
         
-        recommendedEventSet = self.getRecommendedEvents(currentTime, latestCurrentTime)
+        recommendedEventList = self.getRecommendedEvents(currentTime, latestCurrentTime)
                 
-        mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventSet)
+        mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventList, currentTime)
         
         #for evt in mergedEventSet:
         #    print 'ME:', evt.getHazardAttributes().get('removeEvent'), evt.getHazardAttributes().get('probSeverAttrs').get(OBJECT_ID), evt.getCreationTime(), evt.getStartTime(), evt.getEndTime()
+        
+#        ### REMOVE ME!! This is to automate the PHIGRidRecommender following
+#        ### execution of the Convective recommender until we find a better 
+#        ### way to implement this  
+#        pgr = PHIGridRecommender()
+#        pgr.execute(mergedEventSet, None, None)
         
         return mergedEventSet
     
 
     def getRecommendedEvents(self, currentTime, latestDatetime):
         hdfFilesList = self._getLatestProbSevereDataHDFFileList(latestDatetime)
-        eventSet = self._eventSetFromHDFFile(hdfFilesList, currentTime, latestDatetime)
+        eventList = self._eventSetFromHDFFile(hdfFilesList, currentTime, latestDatetime)
         
-        return eventSet
+        return eventList
+
+    def _uvToSpdDir(self, motionEasts, motionSouths):
+        if motionEasts is None or motionSouths is None:
+            wdir = 270
+            wspd = 32 #kts
+        else:
+            u = float(motionEasts)
+            v = -1.*float(motionSouths)
+            wspd = int(round(math.sqrt(u**2 + v**2) * 1.94384)) # to knots
+            wdir = int(round(math.degrees(math.atan2(-u, -v))))
+            if wdir < 0:
+                wdir += 360
+                
+        return {'wdir':wdir, 'wspd':wspd}
 
 
     def _eventSetFromHDFFile(self, hdfFilenameList, currentTime, latestDatetime=None):
 
         eventsList = []
-        eventsPerID = {}
+        eventsPerTimestamp = {}
 
         for hdfFilename in hdfFilenameList:
             hFile = None
@@ -177,12 +211,15 @@ class Recommender(RecommenderTemplate.Recommender):
             if hFile:
                 for group in hFile.values():
                     startTime = self._parseGroupName(group.name)
-                    endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+                    ##endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+                    #endTime = None
                     
                     ### entry is too old, skip to next one
-                    if startTime > currentTime or endTime < currentTime:
+                    if startTime > currentTime:
                         continue
                     
+                    eventsPerTimestamp[startTime] = {}
+
                     for i in range(group.values()[0].len()):
                         row = {k:v[i] for k,v in group.iteritems()}
 
@@ -190,40 +227,22 @@ class Recommender(RecommenderTemplate.Recommender):
                         if row.get('probabilities') < PROBABILITY_FILTER:
                             continue
                         
+                        
                         row['startTime'] = startTime
-                        row['endTime'] = endTime
+                        vectorDict = self._uvToSpdDir(row.get('motionEasts'),row.get('motionSouths'))
+                        row['wdir'] = vectorDict.get('wdir')
+                        row['wspd'] = vectorDict.get('wspd')
                         
-                        ### If data are in chronological order, may not need this if/else                        
-                        if not eventsPerID.get(row['objectids']):
-                            eventsPerID[row['objectids']] = row
-                        else:
-                            existingStartTime = eventsPerID.get(row['objectids']).get('startTime')
-                            newStartTime = row.get('startTime')
-                            if newStartTime > existingStartTime:
-                                eventsPerID[row['objectids']] = row
+                        eventsPerTimestamp[startTime].update({row['objectids']:row})
                         
-        for key,values in eventsPerID.iteritems():
-                        
-            hazardEvent = EventFactory.createEvent()
-            hazardEvent.setCreationTime(currentTime)
-            hazardEvent.setStartTime(values.pop('startTime'))
-            hazardEvent.setEndTime(values.pop('endTime'))
-            
-            #hazardEvent.setHazardStatus("PENDING")
-            hazardEvent.setHazardMode("O")
-            hazardEvent.setPhenomenon("Prob_Severe")
-            
-            polygon = loads(values.pop('polygons'))
-            hazardEvent.setGeometry(polygon)
-            hazardEvent.setHazardAttributes({'probSeverAttrs':values})
-            hazardEvent.set('objectID', key)
-            hazardEvent.set('removeEvent',False)
-            eventsList.append(hazardEvent)
-            
         hFile.close()
 
-        eventSet = EventSetFactory.createEventSet(eventsList)
-        return eventSet
+        latestSet = []
+        if len(eventsPerTimestamp):
+            latestTimeStamp = sorted(eventsPerTimestamp.keys())[-1]
+            latestSet = eventsPerTimestamp[latestTimeStamp]
+            
+        return latestSet
                            
                     
     def _parseGroupName(self, rootName):
@@ -298,54 +317,78 @@ class Recommender(RecommenderTemplate.Recommender):
                 currentEvents.append(event)
                 eventIDs.append(event.getEventID())
         return currentEvents
+
+    def makeHazardEvent(self, ID, values, currentTime):
+            hazardEvent = EventFactory.createEvent()
+            hazardEvent.setCreationTime(currentTime)
+            startTime = values.pop('startTime')
+            hazardEvent.setStartTime(startTime)
+            endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+            hazardEvent.setEndTime(endTime)
+            
+            hazardEvent.setHazardStatus("potential")
+            hazardEvent.setHazardMode("O")
+            hazardEvent.setPhenomenon("Prob_Severe")
+            
+            polygon = loads(values.pop('polygons'))
+            hazardEvent.setGeometry(polygon)
+            hazardEvent.set('probSeverAttrs',values)
+            hazardEvent.set('objectID', ID)
+            hazardEvent.set('removeEvent',False)
+            
+            return hazardEvent
+        
     
-    def mergeHazardEvents(self, currentEvents, recommendedEventSet):        
+    def mergeHazardEvents(self, currentEvents, recommendedEventList, currentTime):        
         mergedEvents = EventSet(None)
-        recEventObjectIDs = list(set([c.get('objectID') for c in recommendedEventSet]))
+        
+        ### if no recommended events, return current events
+        if len(recommendedEventList) == 0:
+            return currentEvents
+        
+        recEventObjectIDs = sorted(recommendedEventList.keys())
         currEventObjectIDs = list(set([c.get('objectID') for c in currentEvents]))
         
-        
-        for recommendedEvent in recommendedEventSet:
-            recommendedEvent.set('removeEvent',False)
+        for ID, recommendedEvent in recommendedEventList.iteritems():
+
             
-            
-            if recommendedEvent.get('objectID') not in currEventObjectIDs:
+            if ID not in currEventObjectIDs:
+                recommendedEvent = self.makeHazardEvent(ID, recommendedEvent, currentTime)
                 mergedEvents.add(recommendedEvent)
                 
             else:
             
                 for currentEvent in currentEvents:
-                    if currentEvent.get('objectID') == recommendedEvent.get('objectID'):
+                    
+                    if currentEvent.get('objectID') not in recEventObjectIDs and currentEvent.getStatus() != 'ISSUED':
+                        ### See CommonMetaData where manually drawn events get objectID starting with 'M'
+                        if not currentEvent.get('objectID').startswith('M'): 
+                            currentEvent.set('removeEvent',True)
+                            mergedEvents.add(currentEvent)
+                   
+                    elif currentEvent.get('objectID') == ID:
                         # If ended, then simply add the new recommended one
                         if currentEvent.getStatus() == 'ELAPSED' or currentEvent.getStatus() == 'ENDED':
                             continue 
                         
                         ### Needed? Will there be any other hazardType than "Prob_Severe"?
-                        elif currentEvent.getHazardType() != recommendedEvent.getHazardType():
-                            # Handle transitions to new hazard type
-                            currentEvent.setStatus('ending')
-                            mergedEvents.add(currentEvent)
-                            recommendedEvent.setStatus('pending')
-                            mergedEvents.add(recommendedEvent)
+#                        elif currentEvent.getHazardType() != recommendedEvent.getHazardType():
+#                            print '\t[', fi_filename, getframeinfo(currentframe()).lineno,']'
+#                            # Handle transitions to new hazard type
+#                            currentEvent.setStatus('ending')
+#                            mergedEvents.add(currentEvent)
+#                            #recommendedEvent.setStatus('pending')
+#                            mergedEvents.add(recommendedEvent)
                         else:
-                            
-                            
-                            currentEvent.setCreationTime(recommendedEvent.getCreationTime())
-                            currentEvent.setStartTime(recommendedEvent.getStartTime())
-                            currentEvent.setEndTime(recommendedEvent.getEndTime())
-
-                            currentEvent.setGeometry(recommendedEvent.getGeometry())
-                            currentEvent.set('probSeverAttrs',recommendedEvent.get('probSeverAttrs'))
+                            #currentEvent.setCreationTime(recommendedEvent.getCreationTime())
+                            startTime = recommendedEvent.pop('startTime')
+                            endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+                            currentEvent.setStartTime(startTime)
+                            currentEvent.setEndTime(endTime)
+                            currentEvent.setGeometry(recommendedEvent.pop('polygons'))
+                            currentEvent.set('probSeverAttrs',recommendedEvent)
                             mergedEvents.add(currentEvent)
                 
-        ### Needed if currentEvent is no longer, but not issued
-        for c in currentEvents:
-            ### FIXME: Manually drawn objects currently do not have 'probSeverAttrs'
-            ### Probably should find/make a better descriminator
-            if c.get('probSeverAttrs'): 
-                if c.get('objectID') not in recEventObjectIDs and c.getStatus() != 'ISSUED':
-                    c.set('removeEvent',True)
-                    mergedEvents.add(c)
                 
         return mergedEvents
                             

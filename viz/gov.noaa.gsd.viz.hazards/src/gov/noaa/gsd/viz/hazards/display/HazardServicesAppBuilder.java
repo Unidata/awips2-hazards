@@ -240,8 +240,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     /**
      * Hard-coded canned case time. For use in Operation Mode for now.
      */
-    // public final static String CANNED_TIME = "1297137600000"; // 4Z
-    public final static String CANNED_TIME = "1447266970000"; // 4Z
+    public final static String CANNED_TIME = "1297137600000"; // 4Z
 
     // Private Static Constants
 

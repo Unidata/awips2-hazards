@@ -161,6 +161,12 @@ Prob_WFO = {
             "displayName": "Convective Recommender (PHI)",
             "toolType": "RECOMMENDER",
             "visible":True,
+        },
+        {
+            "toolName": "PHIGridRecommender",
+            "displayName": "PHI Grid Recommender",
+            "toolType": "RECOMMENDER",
+            "visible":True,
         }
     ],
     # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  

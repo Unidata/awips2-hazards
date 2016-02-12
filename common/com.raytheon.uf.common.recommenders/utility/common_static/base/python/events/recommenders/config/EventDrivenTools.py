@@ -18,4 +18,7 @@
 #   whenever the CAVE time is changed, frozen, or unfrozen.
 #
 EventDrivenTools = [
-                    ]
+                    { "type": "RECOMMENDER", "identifier": "ConvectiveRecommender", "intervalMinutes": 2 },
+                    #{ "type": "RECOMMENDER", "identifier": "SwathRecommender", "intervalMinutes": 2 },
+                    #{ "type": "RECOMMENDER", "identifier": "PHIGridRecommender", "intervalMinutes": 2 }
+                   ]

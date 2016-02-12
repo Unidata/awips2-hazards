@@ -387,8 +387,7 @@ public class SpatialDisplay extends
             Calendar simulatedDate = TimeUtil.newCalendar(TimeZone
                     .getTimeZone("UTC"));
             simulatedDate.setTime(date);
-            // SimulatedTime.getSystemTime().setFrozen(true);
-            SimulatedTime.getSystemTime().setFrozen(false);
+            SimulatedTime.getSystemTime().setFrozen(true);
             SimulatedTime.getSystemTime().setTime(simulatedDate.getTime());
         }
 

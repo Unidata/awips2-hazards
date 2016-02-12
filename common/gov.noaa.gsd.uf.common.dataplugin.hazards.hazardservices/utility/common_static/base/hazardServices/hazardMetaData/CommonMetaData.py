@@ -1823,7 +1823,7 @@ class MetaData(object):
             "label": "Cell Attributes:",
             "lines": 4,
             "columnHeaders": [ "Category", "Value"],
-            "values": vals
+            "values": vals,
         }
         
         return tbl
@@ -1870,7 +1870,9 @@ class MetaData(object):
     def _getConvectiveCellId(self):
         
         ### For manually drawn hazards, go with hazard event ID as it should be unique
-        objectID = self.hazardEvent.get('objectID') if self.hazardEvent.get('objectID') else self.hazardEvent.getDisplayEventID()
+        objectID = self.hazardEvent.get('objectID') if self.hazardEvent.get('objectID') else 'M' + self.hazardEvent.getDisplayEventID()
+        if self.hazardEvent.get('objectID') is None:
+            self.hazardEvent.set('objectID', objectID)
         
         grp = {
             "fieldType": "Composite",
@@ -1902,6 +1904,14 @@ class MetaData(object):
 
 
     def _getConvectiveMotionVector(self):
+        probSvrAttrs = self.hazardEvent.get('probSeverAttrs')
+        if probSvrAttrs is not None:
+            wdir = probSvrAttrs.get('wdir') 
+            wspd = probSvrAttrs.get('wspd') 
+        else:
+            wdir = 270
+            wspd = 32 # kts
+        
         grp = {
             "fieldType": "Composite",
             "fieldName": "convectiveMotionVectorGroup",
@@ -1926,7 +1936,7 @@ class MetaData(object):
                         "label": "",
                         "minValue": 0,
                         "maxValue": 360,
-                        "values": 270,
+                        "values": wdir,
                         "incrementDelta": 5,
                         "showScale": False,
                         "modifyRecommender": "SwathRecommender"
@@ -1938,7 +1948,7 @@ class MetaData(object):
                         "sendEveryChange": False,
                         "minValue": 0,
                         "maxValue": 75,
-                        "values": 32,
+                        "values": wspd,
                         "showScale": False,
                         "modifyRecommender": "SwathRecommender"
                         },
@@ -2046,6 +2056,11 @@ class MetaData(object):
             #"expandVertically": True,
             "numColumns":3,
             "fields": [
+                        {
+                         "fieldType": "HiddenField",
+                         "fieldName": "convectiveProbabilityTrend",
+                         "values": [100,80,60,40,20,10]
+                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendUndo",
