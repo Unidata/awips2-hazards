@@ -53,7 +53,19 @@ ProductGeneratorTable = {
             "issueFormatters": ["ProbabilisticFormatter"],
             "generatorType": "HAZARD_PRODUCT_GENERATOR",                                                
         },
-                         
+
+        # Aviation
+        "SIGMET_ProductGenerator": {
+            "allowedHazards": [
+            ('SIGMET.W', 'Aviation'),
+            #('AIRMET.Y', 'Aviation'),
+            #('VA.Y', 'Aviation'),
+            #('VASIGMET.W', 'Aviation'),
+            #('VASIGMET.W.Eruption', 'Aviation'),    
+            ],
+            "previewFormatters": ["Legacy_SIGMET_Formatter"],
+            "issueFormatters": ["Legacy_SIGMET_Formatter"],
+        },               
                          
         # WFO Legacy                                           
         "FFA_ProductGenerator": {

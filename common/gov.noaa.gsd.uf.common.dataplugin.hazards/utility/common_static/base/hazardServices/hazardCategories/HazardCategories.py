@@ -38,6 +38,10 @@ HazardCategories = collections.OrderedDict(
         "Prob Weather Prediction" :[("Prob_Rainfall",),
                                     ('Prob_Rainfall','SeeText'), ('Prob_Rainfall','Slight'),
                                     ('Prob_Rainfall','Moderate'), ('Prob_Rainfall','High')],
+        
+        ### Aviation
+        "Aviation": [("SIGMET","W")],
+        
          
         ### WFO Deterministic
         "Convective": [ ("EW","W"), ("SV","W"), ("TO","W"), ("SV","A"), ("TO","A")],

@@ -2002,5 +2002,22 @@ HazardTypes = {
            #                          },
               'allowOverlappingPolygons': True,
               },
- 
+    ################
+    # Aviation Hazards
+    'SIGMET.W' : {
+              'headline': 'Aviation SIGMET',
+              '_override_lock_': OVERRIDE_LOCK,
+              'combinableSegments': True,
+              'includeAll': True,
+              'allowAreaChange': True,
+              'allowTimeChange': True,
+              'expirationTime': (-30, 30),
+              'hazardConflictList': [],
+              'ugcType': 'zone',
+              'ugcLabel': 'name',
+              'inclusionFractionTest': True,
+              'inclusionFraction': 0.1,
+              'defaultDuration': 6 * HOURS, #6 hours
+              'durationIncrement': 60,
+              },  
     }
