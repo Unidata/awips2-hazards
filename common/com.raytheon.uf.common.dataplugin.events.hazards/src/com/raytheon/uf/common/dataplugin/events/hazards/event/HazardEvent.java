@@ -626,10 +626,12 @@ public class HazardEvent implements IHazardEvent, IValidator {
         }
         HazardEvent other = (HazardEvent) obj;
         if (uniqueID == null) {
-            if (other.uniqueID != null)
+            if (other.uniqueID != null) {
                 return false;
-        } else if (!uniqueID.equals(other.uniqueID))
+            }
+        } else if (!uniqueID.equals(other.uniqueID)) {
             return false;
+        }
         if (creationTime == null) {
             if (other.creationTime != null) {
                 return false;
@@ -712,7 +714,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
             }
         } else if (!subType.equals(other.subType)) {
             return false;
-	}
+        }
         return true;
     }
 

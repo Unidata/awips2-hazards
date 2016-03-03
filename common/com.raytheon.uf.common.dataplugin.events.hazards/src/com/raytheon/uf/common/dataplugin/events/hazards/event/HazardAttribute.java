@@ -44,6 +44,9 @@ import com.raytheon.uf.common.registry.annotations.RegistryObject;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.io.ParseException;
+import com.vividsolutions.jts.io.WKTReader;
 
 /**
  * A hazard attribute that allows for any value to be added to the registry.
@@ -52,13 +55,14 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Sep 17, 2012            mnash       Initial creation
- * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * Nov 14, 2013 1472       bkowal      Remove ISerializableObject
- * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * 
+ * Date         Ticket#    Engineer      Description
+ * ------------ ---------- ------------- --------------------------
+ * Sep 17, 2012            mnash         Initial creation.
+ * Nov  04, 2013   2182    Dan.Schaffer  Started refactoring.
+ * Nov 14, 2013    1472    bkowal        Remove ISerializableObject.
+ * May 29, 2015    6895    Ben.Phillippe Refactored Hazard Service data access.
+ * Mar 03, 2016   16145    Chris.Golden  Added ability to handle Geometry
+ *                                       objects found within hazard attributes.
  * </pre>
  * 
  * @author mnash
@@ -72,68 +76,100 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
 @RegistryObject({ HazardConstants.HAZARD_EVENT_IDENTIFIER, "key" })
 public class HazardAttribute implements IValidator, Serializable {
 
-    /** Serial version unique ID */
+    // Private Static Constants
+
+    /**
+     * Serial version unique ID.
+     */
     private static final long serialVersionUID = -7904265699776408418L;
 
-    /** Key begin tag used for parsing maps */
+    /**
+     * Key begin tag used for parsing maps.
+     */
     private static final String KEY_BEGIN_TAG = "<key>";
 
-    /** Key end tag used for parsing maps */
+    /**
+     * Key end tag used for parsing maps.
+     */
     private static final String KEY_END_TAG = "</key>";
 
-    /** Value begin tag used for parsing maps */
+    /**
+     * Value begin tag used for parsing maps.
+     */
     private static final String VALUE_BEGIN_TAG = "<value>";
 
-    /** Value end tag used for parsing maps */
+    /**
+     * Value end tag used for parsing maps.
+     */
     private static final String VALUE_END_TAG = "</value>";
 
-    /** Event ID of the Hazard Event associated with this attribute */
+    /**
+     * Well-Known-Text reader, used for deserializing {@link Geometry} objects.
+     * This is thread-local because WKT readers are not thread-safe.
+     */
+    private static final ThreadLocal<WKTReader> WKT_READER = new ThreadLocal<WKTReader>() {
+        @Override
+        protected WKTReader initialValue() {
+            return new WKTReader();
+        }
+    };
+
+    // Private Variables
+
+    /**
+     * Event identifier of the hazard event associated with this attribute.
+     */
     @DynamicSerializeElement
     @XmlElement
     private String eventID;
 
-    /** The attribute key */
+    /**
+     * Attribute key.
+     */
     @DynamicSerializeElement
     @XmlElement
     private String key;
 
-    /** The value of the attribute */
+    /**
+     * Value of the attribute.
+     */
     @DynamicSerializeElement
     @XmlElement
     private Object value;
 
     /**
-     * If the value is a collection or map, this is object type stored within
-     * the map or collection
+     * If the value is a collection, map, or geometry, this is the type of the
+     * value.
      */
     @DynamicSerializeElement
     @XmlElement
     private Class<?> valueType;
 
     /**
-     * If the value is a collection or map, this stores the type of collection
-     * or map
+     * If the value is a collection or map, this stores the type of object
+     * stored within the map or collection.
      */
     @DynamicSerializeElement
     @XmlElement
     private Class<? extends Object> collectionValueType;
 
+    // Public Constructors
+
     /**
-     * Creates an empty HazardAttribute
+     * Construct an empty instance.
      */
     public HazardAttribute() {
-
     }
 
     /**
-     * Creates a new HazardAttribute for the event with the provided ID
+     * Construct a standard instance.
      * 
      * @param eventID
-     *            The ID of the HazardEvent
+     *            Identifier of the hazard event.
      * @param key
-     *            The attribute key
+     *            Attribute key.
      * @param value
-     *            The attribute value
+     *            Attribute value.
      */
     public HazardAttribute(String eventID, String key, Object value) {
         this.eventID = eventID;
@@ -141,30 +177,24 @@ public class HazardAttribute implements IValidator, Serializable {
         setValue(value);
     }
 
+    // Public Methods
+
+    @Override
     public boolean isValid() throws ValidationException {
         return eventID != null && key != null & value != null;
     }
 
     /**
-     * Sets the collectionValueType
+     * Get the value object.
      * 
-     * @param collectionValueType
-     *            the collectionValueType to set
-     */
-    public void setCollectionValueType(
-            Class<? extends Object> collectionValueType) {
-        this.collectionValueType = collectionValueType;
-    }
-
-    /**
-     * Gets the value object
-     * 
-     * @return The value object
+     * @return Value object.
      */
     public Object getValueObject() {
         Object retVal = value;
         if (valueType != null && (value instanceof String)) {
-            if (Map.class.isAssignableFrom(valueType)) {
+            if (Geometry.class.isAssignableFrom(valueType)) {
+                retVal = unmarshalGeometry((String) value);
+            } else if (Map.class.isAssignableFrom(valueType)) {
                 retVal = unmarshalMap(collectionValueType, (String) value);
             } else if (List.class.isAssignableFrom(valueType)) {
                 retVal = unmarshalList(collectionValueType, (String) value);
@@ -175,12 +205,200 @@ public class HazardAttribute implements IValidator, Serializable {
         return retVal;
     }
 
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime
+                * result
+                + ((collectionValueType == null) ? 0 : collectionValueType
+                        .hashCode());
+        result = prime * result + ((eventID == null) ? 0 : eventID.hashCode());
+        result = prime * result + ((key == null) ? 0 : key.hashCode());
+        result = prime * result + ((value == null) ? 0 : value.hashCode());
+        result = prime * result
+                + ((valueType == null) ? 0 : valueType.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        HazardAttribute other = (HazardAttribute) obj;
+        if (collectionValueType == null) {
+            if (other.collectionValueType != null) {
+                return false;
+            }
+        } else if (!collectionValueType.equals(other.collectionValueType)) {
+            return false;
+        }
+        if (eventID == null) {
+            if (other.eventID != null) {
+                return false;
+            }
+        } else if (!eventID.equals(other.eventID)) {
+            return false;
+        }
+        if (key == null) {
+            if (other.key != null) {
+                return false;
+            }
+        } else if (!key.equals(other.key)) {
+            return false;
+        }
+        if (value == null) {
+            if (other.value != null) {
+                return false;
+            }
+        } else if (!value.equals(other.value)) {
+            return false;
+        }
+        if (valueType == null) {
+            if (other.valueType != null) {
+                return false;
+            }
+        } else if (!valueType.equals(other.valueType)) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("HazardAttribute:");
+        builder.append("\n\t  Key: ").append(key);
+        builder.append("\n\tValue: ").append(value);
+        if (valueType != null) {
+            builder.append("\n\tValue Type: ").append(valueType);
+        }
+        if (collectionValueType != null) {
+            builder.append("\n\tWithin collection Value Type: ").append(
+                    collectionValueType);
+        }
+        return builder.toString();
+    }
+
     /**
-     * Converts the value to a String
+     * Get the hazard event identifier.
+     * 
+     * @return Hazard event identifier.
+     */
+    public String getEventID() {
+        return eventID;
+    }
+
+    /**
+     * Get the attribute key.
+     * 
+     * @return Attribute key.
+     */
+    public String getKey() {
+        return key;
+    }
+
+    /**
+     * Get the attribute value.
+     * 
+     * @return Attribute value.
+     */
+    public Object getValue() {
+        return value;
+    }
+
+    /**
+     * Set the hazard event identifier.
+     * 
+     * @param eventID
+     *            New hazard event identifier.
+     */
+    public void setEventID(String eventID) {
+        this.eventID = eventID;
+    }
+
+    /**
+     * Set the attribute key.
+     * 
+     * @param key
+     *            New key.
+     */
+    public void setKey(String key) {
+        this.key = key;
+    }
+
+    /**
+     * Set the attribute value.
+     * 
+     * @param value
+     *            New value.
+     */
+    public void setValue(Object value) {
+        this.value = value;
+        convertValue();
+    }
+
+    /**
+     * Get the value type.
+     * 
+     * @return Value type.
+     */
+    public Class<?> getValueType() {
+        return valueType;
+    }
+
+    /**
+     * Set the value type.
+     * 
+     * @param valueType
+     *            New value type.
+     */
+    public void setValueType(Class<?> valueType) {
+        this.valueType = valueType;
+    }
+
+    /**
+     * Get the type of the values within the collection or map that comprises
+     * the attribute value, if the latter is the case.
+     * 
+     * @return Type of the values within the collection or map that comprises
+     *         the attribute value, or <code>null</code> if the attribute value
+     *         is not a collection or map.
+     */
+    public Class<? extends Object> getCollectionValueType() {
+        return collectionValueType;
+    }
+
+    /**
+     * Set the type of the values within the collection or map that comprises
+     * the attribute value, if the latter is the case.
+     * 
+     * @param collectionValueType
+     *            New collection value type.
+     */
+    public void setCollectionValueType(
+            Class<? extends Object> collectionValueType) {
+        this.collectionValueType = collectionValueType;
+    }
+
+    // Private Methods
+
+    /**
+     * Convert the value to a string.
      */
     @SuppressWarnings("unchecked")
     private void convertValue() {
-        if (value instanceof Collection) {
+        if (value instanceof Geometry) {
+            valueType = value.getClass();
+            value = marshalGeometry((Geometry) value);
+        } else if (value instanceof Collection) {
             valueType = value.getClass();
             Collection<Object> coll = (Collection<Object>) value;
             if (!coll.isEmpty()) {
@@ -204,13 +422,33 @@ public class HazardAttribute implements IValidator, Serializable {
     }
 
     /**
-     * Unmarshals a map
+     * Marshal the specified map to a string.
+     * 
+     * @param map
+     *            Map to be marshalled.
+     * @return Marshalled map.
+     */
+    private String marshalMap(Map<String, ?> map) {
+        StringBuilder str = new StringBuilder();
+        for (Entry<String, ?> entry : map.entrySet()) {
+            str.append(KEY_BEGIN_TAG).append(entry.getKey())
+                    .append(KEY_END_TAG);
+            str.append(VALUE_BEGIN_TAG).append(marshal(entry.getValue()))
+                    .append(VALUE_END_TAG);
+            str.append("\n");
+        }
+        ;
+        return str.toString();
+    }
+
+    /**
+     * Unmarshal a map from the specified string.
      * 
      * @param collectionValueType
-     *            The type of object stored in the map
+     *            Type of object stored in the map.
      * @param str
-     *            The marshalled String
-     * @return A HashMap
+     *            Marshalled string.
+     * @return Hash map.
      */
     private HashMap<String, ? extends Object> unmarshalMap(
             Class<? extends Object> collectionValueType, String str) {
@@ -220,44 +458,24 @@ public class HazardAttribute implements IValidator, Serializable {
             String[] keyVal = line.split(KEY_END_TAG + VALUE_BEGIN_TAG);
             String value = keyVal.length == 2 ? keyVal[1] : null;
             map.put(keyVal[0].replace(KEY_BEGIN_TAG, ""),
-                    convert(collectionValueType, value));
+                    unmarshal(collectionValueType, value));
         }
 
         return map;
     }
 
     /**
-     * Marshals a map
+     * Marshal the specified collection to a string.
      * 
-     * @param map
-     *            The map to marshal
-     * @return The marshalled map
+     * @param collection
+     *            Collection to be marshalled.
+     * @return Marshalled collection.
      */
-    private String marshalMap(Map<String, ?> map) {
+    private String marshalCollection(Collection<?> collection) {
         StringBuilder str = new StringBuilder();
-        for (Entry<String, ?> entry : map.entrySet()) {
-            str.append(KEY_BEGIN_TAG).append(entry.getKey())
-                    .append(KEY_END_TAG);
-            str.append(VALUE_BEGIN_TAG).append(entry.getValue())
-                    .append(VALUE_END_TAG);
-            str.append("\n");
-        }
-        ;
-        return str.toString();
-    }
-
-    /**
-     * Marshals a collection
-     * 
-     * @param coll
-     *            The collection to marshal
-     * @return
-     */
-    private String marshalCollection(Collection<?> coll) {
-        StringBuilder str = new StringBuilder();
-        Iterator<?> iterator = coll.iterator();
+        Iterator<?> iterator = collection.iterator();
         while (iterator.hasNext()) {
-            str.append(VALUE_BEGIN_TAG).append(iterator.next())
+            str.append(VALUE_BEGIN_TAG).append(marshal(iterator.next()))
                     .append(VALUE_END_TAG);
             str.append("\n");
         }
@@ -266,13 +484,13 @@ public class HazardAttribute implements IValidator, Serializable {
     }
 
     /**
-     * Unmarshals a set
+     * Unmarshal a set from the specified string.
      * 
      * @param collectionValueType
-     *            The type of items stored in the set
+     *            Type of object stored in the set.
      * @param str
-     *            The marshalled set
-     * @return A HashSet
+     *            Marshalled string.
+     * @return Hash set.
      */
     @SuppressWarnings("unchecked")
     private HashSet<? extends Object> unmarshalSet(
@@ -281,13 +499,13 @@ public class HazardAttribute implements IValidator, Serializable {
     }
 
     /**
-     * Unmarshals a List
+     * Unmarshal a list from the specified string.
      * 
      * @param collectionValueType
-     *            The type of object in the List
+     *            Type of object stored in the list.
      * @param str
-     *            The marshalled List
-     * @return An ArrayList
+     *            Marshalled string.
+     * @return Array list.
      */
     @SuppressWarnings("unchecked")
     private ArrayList<? extends Object> unmarshalList(
@@ -296,23 +514,23 @@ public class HazardAttribute implements IValidator, Serializable {
     }
 
     /**
-     * General method to unmarshal a collection
+     * Unmarshal a collection from the specified string.
      * 
      * @param type
-     *            The type of collection
+     *            Type of collection.
      * @param collectionValueType
-     *            The type object object stored in the collection
+     *            Type of object object stored in the collection.
      * @param str
-     *            The marshalled collection
-     * @return The unmarshalled collection
+     *            Marshalled string.
+     * @return Collection.
      */
     private <T extends Collection<Object>> T unmarshalCollection(Class<T> type,
             Class<? extends Object> collectionValueType, String str) {
         try {
-            T coll = (T) type.newInstance();
+            T coll = type.newInstance();
             String[] lines = str.split(VALUE_END_TAG + "\n");
             for (String line : lines) {
-                coll.add(convert(collectionValueType,
+                coll.add(unmarshal(collectionValueType,
                         line.replace(VALUE_BEGIN_TAG, "")));
             }
             return coll;
@@ -322,200 +540,76 @@ public class HazardAttribute implements IValidator, Serializable {
     }
 
     /**
-     * Converts a String to a different object type
+     * Marshal the specified object to a string.
+     * 
+     * @param object
+     *            Object to be converted.
+     * @return String version of the object.
+     */
+    private String marshal(Object object) {
+        if (object instanceof Geometry) {
+            return marshalGeometry((Geometry) object);
+        }
+        return (object == null ? null : object.toString());
+    }
+
+    /**
+     * Unmarshal the specified string into the specified type of object.
      * 
      * @param clazz
-     *            The class to convert it to
-     * @param s
-     *            The string
-     * @return The converted object
+     *            Type of object into which to unmarshal the string.
+     * @param str
+     *            Marshalled string.
+     * @return Converted object.
      */
-    private Object convert(Class<? extends Object> clazz, String s) {
+    private Object unmarshal(Class<? extends Object> clazz, String str) {
+        if (clazz == null) {
+            return null;
+        }
         Object retVal = null;
         if (String.class.equals(clazz)) {
-            retVal = s;
+            retVal = str;
         } else if (Integer.class.equals(clazz)) {
-            retVal = Integer.parseInt(s);
+            retVal = Integer.parseInt(str);
         } else if (Float.class.equals(clazz)) {
-            retVal = Float.parseFloat(s);
+            retVal = Float.parseFloat(str);
         } else if (Double.class.equals(clazz)) {
-            retVal = Double.parseDouble(s);
+            retVal = Double.parseDouble(str);
         } else if (Long.class.equals(clazz)) {
-            retVal = Long.parseLong(s);
+            retVal = Long.parseLong(str);
         } else if (Date.class.equals(clazz)) {
-            retVal = new Date(Long.parseLong(s));
+            retVal = new Date(Long.parseLong(str));
+        } else if (Geometry.class.isAssignableFrom(clazz)) {
+            retVal = unmarshalGeometry(str);
         }
         return retVal;
     }
 
-    /*
-     * (non-Javadoc)
+    /**
+     * Marshal the specified geometry into Well-Known-Text format.
      * 
-     * @see java.lang.Object#hashCode()
+     * @param geometry
+     *            Geometry to be marshaled.
+     * @return String holding the geometry as Well-Known-Text.
      */
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime
-                * result
-                + ((collectionValueType == null) ? 0 : collectionValueType
-                        .hashCode());
-        result = prime * result + ((eventID == null) ? 0 : eventID.hashCode());
-        result = prime * result + ((key == null) ? 0 : key.hashCode());
-        result = prime * result + ((value == null) ? 0 : value.hashCode());
-        result = prime * result
-                + ((valueType == null) ? 0 : valueType.hashCode());
-        return result;
+    private String marshalGeometry(Geometry geometry) {
+        return geometry.toText();
     }
 
-    /*
-     * (non-Javadoc)
+    /**
+     * Unmarshal the specified Well-Known-Text representation of a geometry into
+     * a geometry object.
      * 
-     * @see java.lang.Object#equals(java.lang.Object)
+     * @param geometry
+     *            String holding the geometry in Well-Known-Text format.
+     * @return Geometry.
      */
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        HazardAttribute other = (HazardAttribute) obj;
-        if (collectionValueType == null) {
-            if (other.collectionValueType != null)
-                return false;
-        } else if (!collectionValueType.equals(other.collectionValueType))
-            return false;
-        if (eventID == null) {
-            if (other.eventID != null)
-                return false;
-        } else if (!eventID.equals(other.eventID))
-            return false;
-        if (key == null) {
-            if (other.key != null)
-                return false;
-        } else if (!key.equals(other.key))
-            return false;
-        if (value == null) {
-            if (other.value != null)
-                return false;
-        } else if (!value.equals(other.value))
-            return false;
-        if (valueType == null) {
-            if (other.valueType != null)
-                return false;
-        } else if (!valueType.equals(other.valueType))
-            return false;
-        return true;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#toString()
-     */
-    @Override
-    public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("HazardAttribute:");
-        builder.append("\n\t  Key: ").append(key);
-        builder.append("\n\tValue: ").append(value);
-        if (valueType != null) {
-            builder.append("\n\tValue Type: ").append(valueType);
+    private Geometry unmarshalGeometry(String text) {
+        try {
+            return WKT_READER.get().read(text);
+        } catch (ParseException e) {
+            throw new IllegalStateException(
+                    "could not unmarshal Well-Known-Text geometry", e);
         }
-        if (collectionValueType != null) {
-            builder.append("\n\tCollection Value Type: ").append(
-                    collectionValueType);
-        }
-        return builder.toString();
     }
-
-    /**
-     * Gets the eventID
-     * 
-     * @return The eventID
-     */
-    public String getEventID() {
-        return eventID;
-    }
-
-    /**
-     * Gets the key
-     * 
-     * @return The key
-     */
-    public String getKey() {
-        return key;
-    }
-
-    /**
-     * Gets the value
-     * 
-     * @return The value
-     */
-    public Object getValue() {
-        return value;
-    }
-
-    /**
-     * Sets the eventID
-     * 
-     * @param eventID
-     *            the eventID to set
-     */
-    public void setEventID(String eventID) {
-        this.eventID = eventID;
-    }
-
-    /**
-     * Sets the key
-     * 
-     * @param key
-     *            the key to set
-     */
-    public void setKey(String key) {
-        this.key = key;
-    }
-
-    /**
-     * Sets the value
-     * 
-     * @param value
-     *            the value to set
-     */
-    public void setValue(Object value) {
-        this.value = value;
-        convertValue();
-    }
-
-    /**
-     * Gets the valueType
-     * 
-     * @return the valueType
-     */
-    public Class<?> getValueType() {
-        return valueType;
-    }
-
-    /**
-     * Sets the valueType
-     * 
-     * @param valueType
-     *            the valueType to set
-     */
-    public void setValueType(Class<?> valueType) {
-        this.valueType = valueType;
-    }
-
-    /**
-     * Gets the collectionValueType
-     * 
-     * @return the collectionValueType
-     */
-    public Class<? extends Object> getCollectionValueType() {
-        return collectionValueType;
-    }
-
 }
