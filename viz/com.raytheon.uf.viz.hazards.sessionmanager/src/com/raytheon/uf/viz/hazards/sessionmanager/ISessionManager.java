@@ -59,6 +59,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                      Central Registry server.
  * Nov 10, 2015 12762      Chris.Golden Added code to implement and use new recommender
  *                                      manager.
+ * Mar 03, 2016 14004      Chris.Golden Changed to pass recommender identifier to the
+ *                                      method handling recommender results.
  * </pre>
  * 
  * @author bsteffen
@@ -179,10 +181,14 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
     /**
      * Handle the result of a recommender run.
      * 
-     * @param Event
-     *            list resulting.
+     * @param recommenderIdentifier
+     *            Identifier of the recommender that ran.
+     * @param events
+     *            Set of events that were created or modified by the
+     *            recommender.
      */
-    public void handleRecommenderResult(EventSet<IEvent> eventList);
+    public void handleRecommenderResult(String recommenderIdentifier,
+            EventSet<IEvent> events);
 
     /**
      * 

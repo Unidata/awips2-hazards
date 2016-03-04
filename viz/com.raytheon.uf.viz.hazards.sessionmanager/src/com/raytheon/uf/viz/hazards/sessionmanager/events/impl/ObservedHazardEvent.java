@@ -115,6 +115,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Feb 10, 2016 15561      Chris.Golden Removed bug caused by trying to copy
  *                                      attribute map when at least one of the
  *                                      attribute values is null.
+ * Mar 03, 2016 14004      Chris.Golden Added missing setGeometry() method.
  * </pre>
  * 
  * @author bsteffen
@@ -471,6 +472,10 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         setTimeRange(startTime, endTime, true, originator);
     }
 
+    public void setGeometry(Geometry geom, IOriginator originator) {
+        setGeometry(geom, true, originator);
+    }
+
     public void setHazardMode(ProductClass productClass, IOriginator originator) {
         setHazardMode(productClass, true, originator);
     }
@@ -630,7 +635,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     protected void setStartTime(Date date, boolean notify,
             IOriginator originator) {
-
         if (changed(getStartTime(), date)) {
             delegate.setStartTime(date);
             if (notify) {

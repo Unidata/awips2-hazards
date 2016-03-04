@@ -20,7 +20,8 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.originator;
 
 /**
- * Originator for session based elements
+ * Catch-all originator for session based origins of notifications not covered
+ * by other originators.
  * 
  * <pre>
  * 

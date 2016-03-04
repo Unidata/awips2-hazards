@@ -70,13 +70,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionAutoCheckConflictsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionHatchingToggled;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.RecommenderOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.impl.SessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
@@ -118,6 +118,11 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * Aug 13, 2015 8836       Chris.Cody   Additional Changes for Hazard Event Id and Registry changes
  * Nov 10, 2015 12762      Chris.Golden Added code to implement and use new recommender manager.
+ * Mar 03, 2016 14004      Chris.Golden Changed to pass recommender identifier to the method
+ *                                      handling recommender results, and removed bogus creation of
+ *                                      notification within that method, as well as passing the
+ *                                      recommender identifier as an originator to the call to add
+ *                                      the event(s) created or modified by the recommender.
  * </pre>
  * 
  * @author bsteffen
@@ -445,11 +450,12 @@ public class SessionManager implements
     }
 
     @Override
-    public void handleRecommenderResult(EventSet<IEvent> eventList) {
-        if (eventList != null) {
+    public void handleRecommenderResult(String recommenderIdentifier,
+            EventSet<IEvent> events) {
+        if (events != null) {
             String eventID = null;
-            Set<String> eventIdSet = new HashSet<>(eventList.size());
-            for (IEvent event : eventList) {
+            Set<String> eventIdSet = new HashSet<>(events.size());
+            for (IEvent event : events) {
                 if (event instanceof IHazardEvent) {
                     IHazardEvent hevent = (IHazardEvent) event;
                     eventID = hevent.getEventID();
@@ -467,19 +473,9 @@ public class SessionManager implements
                     hevent.setUserName(LocalizationManager.getInstance()
                             .getCurrentUser());
                     hevent.setWorkStation(VizApp.getHostName());
-                    eventManager.addEvent(hevent, Originator.OTHER);
+                    eventManager.addEvent(hevent, new RecommenderOriginator(
+                            recommenderIdentifier));
                 }
-            }
-
-            /*
-             * The addEvent method will not fire a notification for existing
-             * events. The ModifyStormTrackTool (Recommender) may need to have
-             * the event geometry redrawn.
-             */
-            if (eventIdSet.size() > 0) {
-                SessionEventsModified notification = new SessionEventsModified(
-                        eventManager, Originator.OTHER);
-                this.sender.postNotificationAsync(notification);
             }
 
             /*
@@ -489,7 +485,7 @@ public class SessionManager implements
             Set<String> visibleTypes = configManager.getSettings()
                     .getVisibleTypes();
             int startSize = visibleTypes.size();
-            for (IEvent ievent : eventList) {
+            for (IEvent ievent : events) {
                 IHazardEvent event = (IHazardEvent) ievent;
                 visibleTypes.add(HazardEventUtilities.getHazardType(event));
             }

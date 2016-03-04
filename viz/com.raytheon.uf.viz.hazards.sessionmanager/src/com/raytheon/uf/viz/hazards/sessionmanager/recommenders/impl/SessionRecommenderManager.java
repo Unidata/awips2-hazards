@@ -58,6 +58,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Oct 27, 2015   12762    Chris.Golden Initial creation.
  * Jan 28, 2016   12762    Chris.Golden Changed to use new attribute identifiers
  *                                      constant.
+ * Mar 03, 2016   14004    Chris.Golden Changed to pass recommender identifier to
+ *                                      the method handling recommender results.
  * </pre>
  * 
  * @author Chris.Golden
@@ -280,8 +282,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                                          * Let the session manager handle the
                                          * rest.
                                          */
-                                        sessionManager
-                                                .handleRecommenderResult(result);
+                                        sessionManager.handleRecommenderResult(
+                                                recommenderIdentifier, result);
                                     }
                                 });
                     }

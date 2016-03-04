@@ -170,7 +170,8 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *            New start time.
      * @param endTime
      *            New end time.
-     * @originator Originator of this change.
+     * @param originator
+     *            Originator of this change.
      * @return True if the new time range is now in use, false if it was
      *         rejected because one or both values fell outside their allowed
      *         boundaries.

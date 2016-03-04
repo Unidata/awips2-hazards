@@ -136,6 +136,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IQuestion
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IRiseCrestFallEditor;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.RecommenderOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeChanged;
@@ -341,6 +342,9 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  * Feb 10, 2016   15561    Chris.Golden Removed hard-coded UGC that had been put in for testing.
  * Feb 10, 2015   13279    Chris.Golden Fixed bugs in calculation of new end time when a replacement event
  *                                      uses duration-based end times and the original event does not.
+ * Mar 03, 2016   14004    Chris.Golden Changed to pass originator when merging hazard events, and to
+ *                                      only run event-triggered recommenders when they are not triggered
+ *                                      by modifications to events caused by those same recommenders.
  * </pre>
  * 
  * @author bsteffen
@@ -395,14 +399,6 @@ public class SessionEventManager implements
 
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionEventManager.class);
-
-    /**
-     * Default distance tolerance and increment for use in geometry point
-     * reduction algorithm.
-     */
-    private static final double DEFAULT_DISTANCE_TOLERANCE = 0.001f;
-
-    private static final double DEFAULT_DISTANCE_TOLERANCE_INCREMENT = 0.001f;
 
     // Private Variables
 
@@ -1168,7 +1164,7 @@ public class SessionEventManager implements
         }
         updateEventMetadata(event);
         triggerRecommenderForFirstClassAttributeChange(change.getEvent(),
-                HazardEventFirstClassAttribute.STATUS);
+                HazardEventFirstClassAttribute.STATUS, change.getOriginator());
     }
 
     /**
@@ -1278,12 +1274,23 @@ public class SessionEventManager implements
      *            Hazard event that was changed.
      * @param attribute
      *            First-class attribute that experienced a value change.
+     * @param originator
+     *            Originator of the change.
      */
     private void triggerRecommenderForFirstClassAttributeChange(
-            IHazardEvent event, HazardEventFirstClassAttribute attribute) {
+            IHazardEvent event, HazardEventFirstClassAttribute attribute,
+            IOriginator originator) {
+
+        /*
+         * Get the recommender identifier that is to be triggered by this
+         * first-class attribute; if there is one, and it is not the same as the
+         * recommender (if any) that caused the change, run that recommender.
+         */
         String recommenderIdentifier = configManager
                 .getRecommenderTriggeredByChange(event, attribute);
-        if (recommenderIdentifier != null) {
+        if ((recommenderIdentifier != null)
+                && ((originator instanceof RecommenderOriginator == false) || (recommenderIdentifier
+                        .equals(((RecommenderOriginator) originator).getName()) == false))) {
             sessionManager.getRecommenderManager().runRecommender(
                     recommenderIdentifier,
                     RecommenderExecutionContext
@@ -1672,27 +1679,58 @@ public class SessionEventManager implements
         } else if (recommendersForTriggerIdentifiers != null) {
 
             /*
+             * Determine whether or not a recommender triggered this change, and
+             * if so, note its name, since recommenders should not be triggered
+             * by changes caused by the earlier runs of those same recommenders.
+             */
+            String cause = null;
+            if (change.getOriginator() instanceof RecommenderOriginator) {
+                cause = ((RecommenderOriginator) change.getOriginator())
+                        .getName();
+            }
+
+            /*
              * See if at least one of the attributes that changed is a
              * recommender trigger. If so, put together a mapping of
              * recommenders that need to be run to the set of one or more
-             * attributes that triggered them. Then, iterate through the
-             * recommenders to be run, executing each in turn.
+             * attributes that triggered them.
              */
             Set<String> triggers = Sets.intersection(
                     recommendersForTriggerIdentifiers.keySet(),
                     change.getAttributeKeys());
-            Map<String, Set<String>> recommendersForTriggerSets = new HashMap<>();
+            Map<String, Set<String>> triggerSetsForRecommenders = new HashMap<>();
             for (String trigger : triggers) {
+
+                /*
+                 * Get the recommender to be triggered by this attribute
+                 * identifier; if it is the same as the recommender that caused
+                 * the attribute to change, do nothing with it.
+                 */
                 String recommender = recommendersForTriggerIdentifiers
                         .get(trigger);
-                if (recommendersForTriggerSets.containsKey(recommender)) {
-                    recommendersForTriggerSets.get(recommender).add(trigger);
+                if (recommender.equals(cause)) {
+                    continue;
+                }
+
+                /*
+                 * If the recommender is already associated with a set of
+                 * triggers, add this trigger to the set; otherwise, create a
+                 * new set holding this trigger and associate it with the
+                 * recommender.
+                 */
+                if (triggerSetsForRecommenders.containsKey(recommender)) {
+                    triggerSetsForRecommenders.get(recommender).add(trigger);
                 } else {
                     Set<String> triggerSet = Sets.newHashSet(trigger);
-                    recommendersForTriggerSets.put(recommender, triggerSet);
+                    triggerSetsForRecommenders.put(recommender, triggerSet);
                 }
             }
-            for (Map.Entry<String, Set<String>> entry : recommendersForTriggerSets
+
+            /*
+             * Iterate through the recommenders to be run, executing each in
+             * turn.
+             */
+            for (Map.Entry<String, Set<String>> entry : triggerSetsForRecommenders
                     .entrySet()) {
                 sessionManager.getRecommenderManager().runRecommender(
                         entry.getKey(),
@@ -1721,7 +1759,8 @@ public class SessionEventManager implements
         updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
                 false);
         triggerRecommenderForFirstClassAttributeChange(change.getEvent(),
-                HazardEventFirstClassAttribute.TIME_RANGE);
+                HazardEventFirstClassAttribute.TIME_RANGE,
+                change.getOriginator());
     }
 
     /**
@@ -1736,7 +1775,7 @@ public class SessionEventManager implements
         updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
                 false);
         triggerRecommenderForFirstClassAttributeChange(change.getEvent(),
-                HazardEventFirstClassAttribute.GEOMETRY);
+                HazardEventFirstClassAttribute.GEOMETRY, change.getOriginator());
     }
 
     @Override
@@ -2053,9 +2092,9 @@ public class SessionEventManager implements
 
         if (eventID != null && eventID.length() > 0) {
             ObservedHazardEvent existingEvent = getEventById(eventID);
-
             if (existingEvent != null) {
-                SessionEventUtilities.mergeHazardEvents(oevent, existingEvent);
+                SessionEventUtilities.mergeHazardEvents(oevent, existingEvent,
+                        originator);
                 return existingEvent;
             }
         } else {
