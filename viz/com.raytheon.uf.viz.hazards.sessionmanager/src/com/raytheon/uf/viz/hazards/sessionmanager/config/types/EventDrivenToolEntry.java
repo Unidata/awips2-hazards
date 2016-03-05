@@ -9,6 +9,9 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 
+import java.util.Collections;
+import java.util.List;
+
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 /**
@@ -21,6 +24,8 @@ import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Nov 10, 2015   12762    Chris.Golden Initial creation.
+ * Mar 04, 2016   15933    Chris.Golden Changed to allow specification of
+ *                                      a sequence of tools to be run.
  * </pre>
  * 
  * @author Chris.Golden
@@ -31,7 +36,7 @@ public class EventDrivenToolEntry {
     @XmlJavaTypeAdapter(ToolTypeAdapter.class)
     private ToolType type;
 
-    private String identifier;
+    private List<String> identifiers;
 
     private int intervalMinutes;
 
@@ -43,12 +48,12 @@ public class EventDrivenToolEntry {
         this.type = type;
     }
 
-    public String getIdentifier() {
-        return identifier;
+    public List<String> getIdentifiers() {
+        return Collections.unmodifiableList(identifiers);
     }
 
-    public void setIdentifier(String identifier) {
-        this.identifier = identifier;
+    public void setIdentifiers(List<String> identifiers) {
+        this.identifiers = identifiers;
     }
 
     public int getIntervalMinutes() {

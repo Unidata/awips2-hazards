@@ -51,6 +51,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 import org.eclipse.swt.widgets.Display;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -201,8 +202,12 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Nov 10, 2015 12762      Chris.Golden Added recommender running in response to
  *                                      hazard event metadata changes, as well as the
  *                                      use of the new recommender manager.
- * Aug 31, 2015 9757       Robert.Blum  Added Observers to config files so overrides are picked up.
+ * Aug 31, 2015 9757       Robert.Blum  Added Observers to config files so overrides are
+ *                                      picked up.
  * Sep 28, 2015 10302,8167 hansen       Added "getSettingsValue"
+ * Mar 04, 2016 15933      Chris.Golden Added ability to run multiple recommenders in
+ *                                      sequence in response to a time interval trigger,
+ *                                      instead of just one recommender.
  * </pre>
  * 
  * @author bsteffen
@@ -425,11 +430,25 @@ public class SessionConfigurationManager implements
 
                         @Override
                         public void run() {
-                            SessionConfigurationManager.this.sessionManager
-                                    .runTool(entry.getType(), entry
-                                            .getIdentifier(),
-                                            RecommenderExecutionContext
-                                                    .getTimeIntervalContext());
+                            List<String> identifiers = entry.getIdentifiers();
+                            Set<String> setOfIdentifiers = new HashSet<>(
+                                    identifiers);
+                            if (setOfIdentifiers.size() != entry
+                                    .getIdentifiers().size()) {
+                                statusHandler
+                                        .warn("List of recommenders to be executed sequentially ("
+                                                + Joiner.on(", ").join(
+                                                        identifiers)
+                                                + ") at regular time intervals cannot include "
+                                                + "any duplicate entries; these recommenders "
+                                                + "will not be executed.");
+                            } else {
+                                SessionConfigurationManager.this.sessionManager.runTools(
+                                        entry.getType(),
+                                        entry.getIdentifiers(),
+                                        RecommenderExecutionContext
+                                                .getTimeIntervalContext());
+                            }
                         }
                     },
                     ISessionTimeManager.MINUTE_AS_MILLISECONDS

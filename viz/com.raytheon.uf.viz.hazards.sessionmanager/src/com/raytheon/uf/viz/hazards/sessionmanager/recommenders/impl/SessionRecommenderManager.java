@@ -19,6 +19,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.Lists;
@@ -60,6 +62,9 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      constant.
  * Mar 03, 2016   14004    Chris.Golden Changed to pass recommender identifier to
  *                                      the method handling recommender results.
+ * Mar 04, 2016   15933    Chris.Golden Added ability to run multiple recommenders
+ *                                      in sequence in response to a time interval
+ *                                      trigger, instead of just one recommender.
  * </pre>
  * 
  * @author Chris.Golden
@@ -68,6 +73,12 @@ import com.raytheon.viz.core.mode.CAVEMode;
 public class SessionRecommenderManager implements ISessionRecommenderManager {
 
     // Private Static Constants
+
+    /**
+     * Maximum size of the
+     * {@link #sequentialRecommendersForExecutionContextIdentifiers} map.
+     */
+    private static final int MAXIMUM_SEQUENTIAL_RECOMMENDERS_MAP_SIZE = 100;
 
     /**
      * Scheduler to be used to ensure that result notifications are published on
@@ -119,6 +130,49 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      */
     private final AbstractRecommenderEngine<?> recommenderEngine;
 
+    /**
+     * <p>
+     * Map of recommender execution context identifiers to lists of recommenders
+     * that are to be run sequentially in the order they are specified in the
+     * list, with each one waiting for the previous one to complete before
+     * running. Note that only execution contexts that are to be used for two or
+     * more recommenders specified via
+     * {@link #runRecommenders(List, RecommenderExecutionContext)} have entries
+     * in this map; no entries are created for execution contexts associated
+     * with the running of just one recommender.
+     * </p>
+     * <p>
+     * It is impossible to guarantee that an entry in this map will be deleted
+     * when its recommenders have been run, since any interruption in running
+     * any of the recommenders (e.g. canceling an input dialog for a recommender
+     * in the list) will cause the corresponding entry in the map to never get
+     * deleted, since no notification of the failure to complete the sequential
+     * running will be provided to this manager. Thus, this is implemented as a
+     * map with a set maximum size, which deletes the oldest entry whenever it
+     * reaches that size and needs to store a new entry. The number of entries
+     * that may be stored simultaneously is
+     * {@link #MAXIMUM_SEQUENTIAL_RECOMMENDERS_MAP_SIZE}.
+     * </p>
+     */
+    private final Map<Long, List<String>> sequentialRecommendersForExecutionContextIdentifiers = new LinkedHashMap<Long, List<String>>(
+            MAXIMUM_SEQUENTIAL_RECOMMENDERS_MAP_SIZE + 1, 0.75f, true) {
+
+        // Private Static Constants
+
+        /**
+         * Serial version UID.
+         */
+        private static final long serialVersionUID = 1L;
+
+        // Protected Methods
+
+        @Override
+        protected final boolean removeEldestEntry(
+                Map.Entry<Long, List<String>> eldest) {
+            return (size() > MAXIMUM_SEQUENTIAL_RECOMMENDERS_MAP_SIZE);
+        }
+    };
+
     // Constructors
 
     /**
@@ -155,6 +209,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          */
         EventSet<IEvent> eventSet = new EventSet<>();
         addContextAsEventSetAttributes(context, eventSet);
+
         /*
          * Determine whether or not any spatial or dialog input is required; if
          * either or both are, request the appropriate input. Otherwise, just
@@ -187,6 +242,16 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         }
     }
 
+    @Override
+    public void runRecommenders(List<String> recommenderIdentifiers,
+            RecommenderExecutionContext context) {
+        if (recommenderIdentifiers.size() > 1) {
+            sequentialRecommendersForExecutionContextIdentifiers.put(
+                    context.getIdentifier(), recommenderIdentifiers);
+        }
+        runRecommender(recommenderIdentifiers.get(0), context);
+    }
+
     /*
      * This method should be private, and thus is marked deprecated; see
      * interface for details.
@@ -194,7 +259,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
     @Override
     @Deprecated
     public void runRecommender(final String recommenderIdentifier,
-            RecommenderExecutionContext context,
+            final RecommenderExecutionContext context,
             Map<String, Serializable> spatialInfo,
             Map<String, Serializable> dialogInfo) {
 
@@ -206,10 +271,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 .getEventManager().getEvents();
 
         /*
-         * HazardEvent.py canConvert() does not know anything about observed
-         * hazard events. Also, HazardEvent.py is in a common plug-in while
-         * observed hazard event is in a viz plug-in. So, convert the observed
-         * hazard events to base hazard events.
+         * Convert the observed hazard events to base hazard events.
          */
         for (IHazardEvent event : hazardEvents) {
             BaseHazardEvent baseHazardEvent = new BaseHazardEvent(event);
@@ -284,6 +346,35 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                                          */
                                         sessionManager.handleRecommenderResult(
                                                 recommenderIdentifier, result);
+
+                                        /*
+                                         * If this recommender is being run as
+                                         * part of a list of recommenders to be
+                                         * run sequentially, then run the next
+                                         * one, and if the next one is the last
+                                         * one in the sequence, remove the list
+                                         * from the sequential-recommenders map
+                                         * since it will no longer be
+                                         * referenced.
+                                         */
+                                        long contextIdentifier = context
+                                                .getIdentifier();
+                                        List<String> sequentialRecommenders = sequentialRecommendersForExecutionContextIdentifiers
+                                                .get(contextIdentifier);
+                                        if (sequentialRecommenders != null) {
+                                            int nextIndex = sequentialRecommenders
+                                                    .indexOf(recommenderIdentifier) + 1;
+                                            String nextRecommenderIdentifier = sequentialRecommenders
+                                                    .get(nextIndex);
+                                            if (nextIndex == sequentialRecommenders
+                                                    .size() - 1) {
+                                                sequentialRecommendersForExecutionContextIdentifiers
+                                                        .remove(contextIdentifier);
+                                            }
+                                            runRecommender(
+                                                    nextRecommenderIdentifier,
+                                                    context);
+                                        }
                                     }
                                 });
                     }

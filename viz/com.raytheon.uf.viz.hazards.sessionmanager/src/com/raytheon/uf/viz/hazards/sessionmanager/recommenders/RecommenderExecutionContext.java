@@ -10,6 +10,7 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.recommenders;
 
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.common.collect.ImmutableSet;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Trigger;
@@ -30,6 +31,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Trigger;
  * Jan 28, 2016   12762    Chris.Golden Changed attribute identifier data member to
  *                                      hold a set of identifiers, not just a single
  *                                      one.
+ * Mar 04, 2016   15933    Chris.Golden Added unique identifier.
  * </pre>
  * 
  * @author Chris.Golden
@@ -37,21 +39,21 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Trigger;
  */
 public class RecommenderExecutionContext {
 
-    // Private Static Constants
+    // Private Static Variables
 
     /**
-     * Empty recommender execution context.
+     * Counter shared amongst instances to generate unique identifiers for all
+     * instances.
      */
-    private static final RecommenderExecutionContext EMPTY_CONTEXT = new RecommenderExecutionContext(
-            Trigger.NONE, null, null, null);
-
-    /**
-     * Time interval recommender execution context.
-     */
-    private static final RecommenderExecutionContext TIME_INTERVAL_CONTEXT = new RecommenderExecutionContext(
-            Trigger.TIME_INTERVAL, null, null, null);
+    private static final AtomicLong counter = new AtomicLong();
 
     // Private Variables
+
+    /**
+     * Identifier for this context; will be unique amongst the set of all
+     * instances of this class for all practical purposes.
+     */
+    private final long identifier;
 
     /**
      * Trigger of this execution.
@@ -89,7 +91,7 @@ public class RecommenderExecutionContext {
      * @return Context.
      */
     public static RecommenderExecutionContext getEmptyContext() {
-        return EMPTY_CONTEXT;
+        return new RecommenderExecutionContext(Trigger.NONE, null, null, null);
     }
 
     /**
@@ -146,7 +148,8 @@ public class RecommenderExecutionContext {
      * @return Context.
      */
     public static RecommenderExecutionContext getTimeIntervalContext() {
-        return TIME_INTERVAL_CONTEXT;
+        return new RecommenderExecutionContext(Trigger.TIME_INTERVAL, null,
+                null, null);
     }
 
     // Private Constructors
@@ -175,6 +178,7 @@ public class RecommenderExecutionContext {
     private RecommenderExecutionContext(Trigger trigger,
             String eventIdentifier, Set<String> attributeIdentifiers,
             String eventType) {
+        this.identifier = counter.getAndIncrement();
         this.trigger = trigger;
         this.eventIdentifier = eventIdentifier;
         this.attributeIdentifiers = (attributeIdentifiers == null ? null
@@ -183,6 +187,16 @@ public class RecommenderExecutionContext {
     }
 
     // Public Methods
+
+    /**
+     * Get the identifier for this context. This will be unique amongst the set
+     * of all instances of this class for all practical purposes.
+     * 
+     * @return Identifier.
+     */
+    public long getIdentifier() {
+        return identifier;
+    }
 
     /**
      * Get the trigger of this execution.

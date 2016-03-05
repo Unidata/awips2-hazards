@@ -61,6 +61,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                      manager.
  * Mar 03, 2016 14004      Chris.Golden Changed to pass recommender identifier to the
  *                                      method handling recommender results.
+ * Mar 04, 2016 15933      Chris.Golden Added ability to run multiple recommenders in
+ *                                      sequence in response to a time interval trigger,
+ *                                      instead of just one recommender.
  * </pre>
  * 
  * @author bsteffen
@@ -216,16 +219,17 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
     public void setIssueOngoing(boolean isOngoing);
 
     /**
-     * Run the specified tool.
+     * Run the specified tools.
      * 
      * @param type
-     *            Type of the tool to be run.
-     * @param identifier
-     *            Identifier of the tool to be run.
+     *            Type of the tools to be run.
+     * @param identifiers
+     *            Identifiers of the tool to be run, ordered in the sequence
+     *            they are to be executed.
      * @param context
-     *            Context for the tool, if any.
+     *            Context for the execution, if any.
      */
-    public void runTool(ToolType type, String identifier,
+    public void runTools(ToolType type, List<String> identifiers,
             RecommenderExecutionContext context);
 
     /**

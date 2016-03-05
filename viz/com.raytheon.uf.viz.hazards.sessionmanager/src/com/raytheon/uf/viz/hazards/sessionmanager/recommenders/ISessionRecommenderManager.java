@@ -10,6 +10,7 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.recommenders;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.recommenders.EventRecommender;
@@ -25,7 +26,9 @@ import com.raytheon.uf.common.recommenders.EventRecommender;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Oct 23, 2015   12762    Chris.Golden Initial creation.
- * 
+ * Mar 04, 2016   15933    Chris.Golden Added ability to run multiple recommenders in
+ *                                      sequence in response to a time interval trigger,
+ *                                      instead of just one recommender.
  * </pre>
  * 
  * @author Chris.Golden
@@ -55,6 +58,21 @@ public interface ISessionRecommenderManager {
      *            Execution context in which to run the recommender.
      */
     public void runRecommender(String recommenderIdentifier,
+            RecommenderExecutionContext context);
+
+    /**
+     * Run the specified recommenders sequentially, waiting for the first to
+     * complete before running the second and so on. If parameters must be
+     * gathered from the user via spatial or dialog input, this method will do
+     * so. If not, it will simply run the recommender.
+     * 
+     * @param recommenderIdentifiers
+     *            The identifiers of the recommenders to be run, in the order in
+     *            which they should be run.
+     * @param context
+     *            Execution context in which to run the recommenders.
+     */
+    public void runRecommenders(List<String> recommenderIdentifiers,
             RecommenderExecutionContext context);
 
     /**

@@ -123,6 +123,9 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      notification within that method, as well as passing the
  *                                      recommender identifier as an originator to the call to add
  *                                      the event(s) created or modified by the recommender.
+ * Mar 04, 2016 15933      Chris.Golden Added ability to run multiple recommenders in sequence in
+ *                                      response to a time interval trigger, instead of just one
+ *                                      recommender.
  * </pre>
  * 
  * @author bsteffen
@@ -536,18 +539,26 @@ public class SessionManager implements
     }
 
     @Override
-    public void runTool(ToolType type, String identifier,
+    public void runTools(ToolType type, List<String> identifiers,
             RecommenderExecutionContext context) {
         switch (type) {
         case RECOMMENDER:
-            recommenderManager.runRecommender(identifier, context);
+            recommenderManager.runRecommenders(identifiers, context);
             break;
         case HAZARD_PRODUCT_GENERATOR:
-            productManager.generateProducts(identifier);
+            if (identifiers.size() > 1) {
+                throw new UnsupportedOperationException(
+                        "cannot run multiple product generators in sequence");
+            }
+            productManager.generateProducts(identifiers.get(0));
             break;
 
         case NON_HAZARD_PRODUCT_GENERATOR:
-            productManager.generateNonHazardProducts(identifier);
+            if (identifiers.size() > 1) {
+                throw new UnsupportedOperationException(
+                        "cannot run multiple non-hazard product generators in sequence");
+            }
+            productManager.generateNonHazardProducts(identifiers.get(0));
             break;
         }
     }
