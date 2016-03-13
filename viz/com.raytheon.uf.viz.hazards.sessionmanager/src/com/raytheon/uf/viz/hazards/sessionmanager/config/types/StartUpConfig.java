@@ -51,6 +51,9 @@ public class StartUpConfig {
     @JsonProperty("Console")
     private Console console;
 
+    @JsonProperty("isNational")
+    boolean isNational;
+
     @JsonProperty("disseminationOrder")
     private String[] disseminationOrder;
 
@@ -65,6 +68,9 @@ public class StartUpConfig {
 
     @JsonProperty("hazardDetailWide")
     private boolean hazardDetailWide;
+
+    @JsonProperty("includeIssueButton")
+    private boolean includeIssueButton;
 
     @JsonProperty("siteBackupBaseDir")
     private String siteBackupBaseDir;
@@ -92,6 +98,14 @@ public class StartUpConfig {
         this.console = console;
     }
 
+    public boolean isNational() {
+        return isNational;
+    }
+
+    public void setIsNational(boolean isNational) {
+        this.isNational = isNational;
+    }
+
     public String[] getDisseminationOrder() {
         return disseminationOrder;
     }
@@ -114,6 +128,14 @@ public class StartUpConfig {
 
     public void setHazardDetailTabText(String[] hazardDetailTabText) {
         this.hazardDetailTabText = hazardDetailTabText;
+    }
+
+    public boolean includeIssueButton() {
+        return includeIssueButton;
+    }
+
+    public void setIncludeIssueButton(boolean includeIssueButton) {
+        this.includeIssueButton = includeIssueButton;
     }
 
     public boolean isShowingHazardDetailStartEndTimeScale() {

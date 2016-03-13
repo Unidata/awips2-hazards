@@ -45,6 +45,14 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 03, 2015 8836       Chris.Cody  Initial creation
+ * <<<<<<< HEAD
+ * =======
+ * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through request server
+ * Oct 27, 2015 12077    Ben.Phillippe Removed unnecessary status message
+ * Jan 20, 2016 14980      kbisanz     Fixed string compare issue in
+ *                                     getDisplayId() causing the full ID to
+ *                                     be returned
+ * >>>>>>> 88336ec... Issue #14980 Fix full ID incorrectly displayed when FULL_ON_DIFF set.
  * </pre>
  * 
  * @author Chris.Cody
@@ -139,7 +147,8 @@ public class HazardServicesEventIdUtil {
             boolean newIsPracticeMode, String newSiteId)
             throws HazardEventServiceException {
         setupHazardEventId(newIsPracticeMode, newSiteId,
-                IdDisplayType.ALWAYS_FULL);
+        // IdDisplayType.ALWAYS_FULL);
+                IdDisplayType.FULL_ON_DIFF);
     }
 
     /**
@@ -368,8 +377,9 @@ public class HazardServicesEventIdUtil {
     public static String getSerialIdFromFullId(String fullId) {
         if (fullId != null) {
             if (FULL_ID_LEN == fullId.length()) {
-                return (fullId.substring(SERIAL_ID_IDX,
-                        (SERIAL_ID_IDX + SERIAL_ID_LEN)));
+                String serial = fullId.substring(SERIAL_ID_IDX,
+                        (SERIAL_ID_IDX + SERIAL_ID_LEN));
+                return serial.replaceFirst("^0+(?!$)", "");
             } else {
                 if (ignoreErrorIdValues == false) {
                     statusHandler.handle(Priority.ERROR,
@@ -559,16 +569,16 @@ public class HazardServicesEventIdUtil {
         String idAppId = getAppIdFromFullId(fullId);
         String idSiteId = getSiteIdFromFullId(fullId);
         String idYear = getYearFromFullId(fullId);
-        if ((curAppId != idAppId) || (curSiteId != idSiteId)
-                || (curYear != idYear)) {
+        if ((!curAppId.equals(idAppId)) || (!curSiteId.equals(idSiteId))
+                || (!curYear.equals(idYear))) {
             if ((idDisplayType == IdDisplayType.FULL_ON_DIFF)) {
                 return (fullId);
             } else if ((idDisplayType == IdDisplayType.PROG_ON_DIFF)) {
-                if (curAppId != idAppId) {
+                if (!curAppId.equals(idAppId)) {
                     return (fullId.substring(APP_ID_IDX));
-                } else if (curSiteId != idSiteId) {
+                } else if (!curSiteId.equals(idSiteId)) {
                     return (fullId.substring(SITE_ID_IDX));
-                } else if (curYear != idYear) {
+                } else if (!curYear.equals(idYear)) {
                     return (fullId.substring(YEAR_IDX));
                 } else {
                     return (getSerialIdFromFullId(fullId));

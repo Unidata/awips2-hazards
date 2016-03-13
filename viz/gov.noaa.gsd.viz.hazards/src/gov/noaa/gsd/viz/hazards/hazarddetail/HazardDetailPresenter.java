@@ -1114,6 +1114,7 @@ public class HazardDetailPresenter extends
         boolean showStartEndTimeScale = startUpConfig
                 .isShowingHazardDetailStartEndTimeScale();
         boolean buildForWideViewing = startUpConfig.isHazardDetailToBeWide();
+        boolean includeIssueButton = startUpConfig.includeIssueButton();
 
         /*
          * Initialize the view.
@@ -1122,7 +1123,8 @@ public class HazardDetailPresenter extends
         getView().initialize(timeRange.getStart().getTime(),
                 timeRange.getEnd().getTime(),
                 getModel().getTimeManager().getCurrentTimeProvider(),
-                showStartEndTimeScale, buildForWideViewing, extraDataForEvents);
+                showStartEndTimeScale, buildForWideViewing, includeIssueButton,
+                extraDataForEvents);
 
         /*
          * Show the detail view if appropriate.

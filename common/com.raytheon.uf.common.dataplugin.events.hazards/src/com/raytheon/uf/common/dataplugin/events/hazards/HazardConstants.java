@@ -1230,4 +1230,7 @@ public final class HazardConstants {
     public static final int MISSING_VALUE = -9999;
 
     public static final String EVENT_ID_DISPLAY_TYPE = "eventIdDisplayType";
+
+    public static final String NATIONAL = "National";
+
 }

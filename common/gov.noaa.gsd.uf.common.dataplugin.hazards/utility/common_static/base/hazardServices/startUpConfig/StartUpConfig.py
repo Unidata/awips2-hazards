@@ -4,6 +4,8 @@
 
 StartUpConfig = {                                                   
     #########################
+    "isNational": True, #False, 
+    
     #########################
     #  MUST OVERRIDE!!
     #  Site Configuration - The following MUST BE overridden at the site level 
@@ -17,15 +19,15 @@ StartUpConfig = {
     # Possible Sites -- Hazards from these sites can be selected to be visible in the Hazard Services display.
     #    They will appear in the Settings dialog as a check list from which to choose
     # Example:  "possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
-    "possibleSites": [],
+    "possibleSites": ["National"],
     
     # Visible Sites -- Hazards from these sites will be, by default, visible in the Hazard Services display
     # Example:  "visibleSites":  ["BOU", "OAX"]
-    "visibleSites": [],
+    "visibleSites": ["National"],
     
     # Backup Sites 
     # Example:  "backupSites":  ["PUB", "GJT"]
-    "backupSites": [],
+    "backupSites": ["National"],
 
     # Directory of mounted X.400 directory where exported Site Config data is stored.
     "siteBackupBaseDir" : "CHANGEME",
@@ -39,8 +41,7 @@ StartUpConfig = {
     #  General Display
     # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
     "eventIdDisplayType" : "FULL_ON_DIFF",
-    
-    
+       
     #########################
     # Hazard Information Dialog
     #    
@@ -73,6 +74,9 @@ StartUpConfig = {
     # Flag indicating whether or not the Hazard Information Dialog's layout should be optimized
     # for a wider window.
     "hazardDetailWide": False,  
+    
+    # Flag indicating whether to include the Issue button on the Hazard Information Dialog
+    "includeIssueButton": True,
     
     #########################
     # Console

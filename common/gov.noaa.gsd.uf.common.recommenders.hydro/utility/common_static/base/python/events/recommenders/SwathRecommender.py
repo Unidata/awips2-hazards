@@ -16,7 +16,9 @@ import os
 
 
 import JUtil
-     
+
+DEFAULT_WDIR = 270
+DEFAULT_WSPD = 32     
 
 #===============================================================================
 # Users wanting to add new storm paths should enter a new method in this class
@@ -173,32 +175,72 @@ class Recommender(RecommenderTemplate.Recommender):
         
         # For now, just print out a message saying this was run.
         import sys
-        sys.stderr.write("Running swath recommender.\n    trigger: " +
-                         str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
-                         str(eventSet.getAttribute("eventType")) + "\n    hazard ID: " +
-                         str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute: " +
-                         str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
+#         sys.stderr.write("Running swath recommender.\n    trigger: " +
+#                          str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
+#                          str(eventSet.getAttribute("eventType")) + "\n    hazard ID: " +
+#                          str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute: " +
+#                          str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
         
         self._trigger = {'trigger':eventSet.getAttribute("trigger"), 'attrs':eventSet.getAttribute("attributeIdentifiers")}
 
-        sys.stderr.flush()
+        sys.stderr.flush()  
         
         self.sp = SwathPreset()
         
+        sessionAttributes = eventSet.getAttributes()
+        currentTime = long(sessionAttributes["currentTime"])
+        
         import pprint
-        for event in eventSet:                                                      ##### If called from PHIGridRecommender...
-            if event.getEventID() == eventSet.getAttribute("eventIdentifier") or eventSet.getAttribute("eventIdentifier") is None:
-                if not event.getHazardAttributes().get('removeEvent'):  ### UNNEEDED ONCE CODE UPDATED TO REMOVE THE EVENT
-                    self.createIntervalPolygons(event)
-                    
-                    #print 'vvvvvvvv'
-                    #pprint.pprint(event)
-                    #pprint.pprint(event.getHazardAttributes())
-                    #print '^^^^^^^'
-                    #sys.stdout.flush()
+        for event in eventSet:  ##### If called from PHIGridRecommender...
+            # FIXME kludge since can't figure out why product generation is not setting the issueTime
+            #  Need this set in order to Issue                               
+            event.set('issueTime', currentTime)
+            
+            if event.getEventID() == eventSet.getAttribute("eventIdentifier") or eventSet.getAttribute("eventIdentifier") is None:                
+                update = self._needUpdate(event)                    
+#                 print '[SR]', event.getEventID(), event.get('objectID')
+#                 print '=== 000 ==='
+#                 print "start, end", event.getStartTime(), event.getEndTime()
+#                 print '=== 111 ==='
+#                 pprint.pprint(event.getHazardAttributes())
+#                 print '=== ... ==='
+                if update:
+                    if event.getStatus() != 'ELAPSED' or event.getStatus() != 'ENDED':
+                        #print 'Creating...'
+                        self.createIntervalPolygons(event)                    
+#                         print 'vvvvvvvv'
+#                         pprint.pprint(event)
+#                         pprint.pprint(event.getHazardAttributes())
+#                         print '^^^^^^^'
+                        sys.stdout.flush()
+                        
                     
         return eventSet
 
+    def _calcEventDuration(self, event):
+        startTime = event.getStartTime()
+        endTime = event.getEndTime()
+        durationMinutes = int(round((endTime-startTime).total_seconds() / 60))
+        return durationMinutes
+
+    def _needUpdate(self, event):
+        update = False
+        triggerCheckList = ['convectiveObjectSpdKtsUnc', 'convectiveObjectDirUnc', 'convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveSwathPresets', 'duration']
+        attrs = event.getHazardAttributes()
+        
+        newTriggerAttrs = {t:attrs.get(t) for t in triggerCheckList}
+        newTriggerAttrs['duration'] = self._calcEventDuration(event)
+                        
+        for t in triggerCheckList:
+            prevName =  "prev_"+t
+            prevVal = event.get(prevName)
+            newVal = newTriggerAttrs.get(t)
+            if prevVal != newVal:
+                update = True
+            event.set(prevName, newVal)
+                    
+        return update
+            
     def createIntervalPolygons(self, event):
         attrs = event.getHazardAttributes()
         probSevereAttrs = attrs.get('probSeverAttrs')
@@ -206,15 +248,19 @@ class Recommender(RecommenderTemplate.Recommender):
         if self._trigger.get('trigger') == 'hazardEventModification':
             ### get dir
             dirVal = attrs.get('convectiveObjectDir')
+#             if not dirVal:
+#                 # Need some kind of default
+#                 dirVal = DEFAULT_WDIR
             if dirVal:
                 dirVal = int(dirVal)
                 ### If the user adjusts the DIR, save that adjustment to be picked up by the 
                 ### automated call (PHI Grid Recommender)
                 if probSevereAttrs:
                     probSevereAttrs['wdir'] = dirVal
-                    event.set('probSeverAttrs', probSevereAttrs)
                 else:
-                    event.set('probSeverAttrs', {'wdir':dirVal})
+                    probSevereAttrs = {'wdir':dirVal}
+                event.set('probSeverAttrs', probSevereAttrs)
+           
             ### get dirUncertainty (degrees)
             dirUVal = attrs.get('convectiveObjectDirUnc')
             if dirUVal:
@@ -223,28 +269,31 @@ class Recommender(RecommenderTemplate.Recommender):
                 dirUVal = 10
             ### get speed
             speedVal = attrs.get('convectiveObjectSpdKts')
+#             # Need some kind of default?
+#             if not speedVal:
+#                 speedVal = DEFAULT_WSPD
             if speedVal:
                 speedVal = int(speedVal)
                 ### If the user adjusts the SPD, save that adjustment to be picked up by the 
                 ### automated call (PHI Grid Recommender)
                 if probSevereAttrs: 
                     probSevereAttrs['wspd'] = speedVal
-                    event.set('probSeverAttrs', probSevereAttrs)
                 else:
-                    event.set('probSeverAttrs', {'wspd':speedVal})
-            ### get speedUncertainty (kts)
+                    probSevereAttrs = {'wspd':speedVal}
+                event.set('probSeverAttrs', probSevereAttrs)
+                ### get speedUncertainty (kts)
             spdUVal = attrs.get('convectiveObjectSpdKtsUnc')
             if spdUVal:
                 spdUVal = int(spdUVal)
             else:
                 spdUVal = 10
-            print 'HandDrawn...', dirVal, speedVal
+            #print 'SwathRec HandDrawn...', dirVal, speedVal, event.get('probSeverAttrs')
         else:
             dirVal = probSevereAttrs.get('wdir')
             speedVal = probSevereAttrs.get('wspd')
             dirUVal = 10
             spdUVal = 10
-            print 'Automated...', dirVal, speedVal
+            #print 'SwathRec Automated...', dirVal, speedVal, event.get('probSeverAttrs')
                 
         ### get duration (in seconds)
         durationSecs = int(round((event.getEndTime()-event.getStartTime()).total_seconds()))
@@ -288,11 +337,11 @@ class Recommender(RecommenderTemplate.Recommender):
         event.setGeometry(polys)
         event.addHazardAttribute('downStreamPolygons',downstreamPolys)
         
-        print '[', fi_filename, getframeinfo(currentframe()).lineno,'] === FINAL took ', time.time()-total, 'seconds for ', event.get('objectID'), ' ==='
-        
-        
+        #print '[', fi_filename, getframeinfo(currentframe()).lineno,'] === FINAL took ', time.time()-total, 'seconds for ', event.get('objectID'), ' ==='
 
     def downStream(self, secs, speedVal, dirVal, spdUVal, dirUVal, origDirVal, threat):
+        speedVal = float(speedVal)
+        dirVal = float(dirVal)
         dis = secs * speedVal * 0.514444444
         xDis = dis * math.cos(math.radians(270.0 - dirVal))
         yDis = dis * math.sin(math.radians(270.0 - dirVal))
@@ -353,4 +402,8 @@ class Recommender(RecommenderTemplate.Recommender):
         
     def __str__(self):
         return 'Swath Recommender'
+
+    def flush(self):
+        import os
+        os.sys.__stdout__.flush()
 

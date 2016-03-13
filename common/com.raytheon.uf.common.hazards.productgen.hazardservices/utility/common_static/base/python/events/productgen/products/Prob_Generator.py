@@ -380,17 +380,24 @@ class Product(ProductTemplate.Product):
 
         # These come from SiteInfo
         # Primary Site
-        siteEntry = self._siteInfo.get(self._siteID)
-        self._fullStationID = siteEntry.get('fullStationID')  # KBOU
-        self._region = siteEntry.get('region')
-        self._wfoCity = siteEntry.get('wfoCity')
-        self._wfoCityState = siteEntry.get('wfoCityState')
         self._areaName = ''  # siteEntry.get('state')  #  'GEORGIA' 
-
-        # Backup Site
-        siteEntry = self._siteInfo.get(self._backupSiteID)
-        self._backupWfoCityState = siteEntry.get('wfoCityState')
-        self._backupFullStationID = siteEntry.get('fullStationID')
+        if self._siteID == HazardConstants.NATIONAL:
+            self._fullStationID = ''  # KBOU
+            self._region = ''
+            self._wfoCity = ''
+            self._wfoCityState = ''
+            self._backupWfoCityState = ''
+            self._backupFullStationID = ''
+        else:
+            siteEntry = self._siteInfo.get(self._siteID)
+            self._fullStationID = siteEntry.get('fullStationID')  # KBOU
+            self._region = siteEntry.get('region')
+            self._wfoCity = siteEntry.get('wfoCity')
+            self._wfoCityState = siteEntry.get('wfoCityState')
+            # Backup Site
+            siteEntry = self._siteInfo.get(self._backupSiteID)
+            self._backupWfoCityState = siteEntry.get('wfoCityState')
+            self._backupFullStationID = siteEntry.get('fullStationID')
 
         vtecMode = metaDict.get('vtecMode')
         if vtecMode:
@@ -1427,9 +1434,12 @@ class Product(ProductTemplate.Product):
         Takes the dataList (product dictionaries) from a previous execution of the generator and updates them. 
         '''
         self._initialize()
-
+        
         # Extract information for update
         self._getVariables(eventSet)
+
+        # NOTE:  Workaround to bypass VTEC infrastructure when issuing
+        return dataList, self._inputHazardEvents
 
         productDicts, hazardEvents = self.updateProductDictionaries(dataList, self._inputHazardEvents)
         return productDicts, hazardEvents 

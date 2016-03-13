@@ -129,6 +129,7 @@ GFE_DATA = "GFEGrids"
 
 # Localization
 LOCALIZATION_LEVEL = "level"
+NATIONAL = 'National'
 
 # Hazard Services Settings
 SETTINGS_ID = "settingsID"

@@ -282,8 +282,9 @@ public class ProductEditor extends AbstractProductDialog {
                     }
                 }
 
-                // Make the Hazard Data Editor tab selected by default
-                editorAndFormatsTabFolder.setSelection(0);
+                // Make the First Formatted tab selected by default
+                // Hazard Data Editor tab
+                editorAndFormatsTabFolder.setSelection(1);
             }
         }
         productFolder.setSelection(0);

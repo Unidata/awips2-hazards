@@ -30,9 +30,6 @@ from collections import defaultdict
 from shapely.wkt import loads
 
 from PHIGridRecommender import Recommender as PHIGridRecommender
-
-
-
 #from MapsDatabaseAccessor import MapsDatabaseAccessor
 
 from HazardConstants import *
@@ -57,6 +54,9 @@ DEFAULT_DURATION_IN_SECS = 2700 # 45 minutes
 PROBABILITY_FILTER = 40 # filter our any objects less than this.
 SOURCEPATH = '/awips2/edex/data/hdf5/convectprob'
 
+DEFAULT_WDIR = 270
+DEFAULT_WSPD = 32     
+
 class Recommender(RecommenderTemplate.Recommender):
 
     def __init__(self):
@@ -79,7 +79,8 @@ class Recommender(RecommenderTemplate.Recommender):
             Column8: Comma separated list of lats and lons. "Lat1, Lon1,...,Lat(n),Lon(n),Lat1,Lon1. Lat1 and Lon1 pair are at the end of the list, too, in order to close the polygon
             Column9: ObjectID (long)
             Column10: mean motion east, in m/s (float)
-            Column11: mean motion south, in m/s (float)
+            Column11: mean motcan't multiply sequence by non-int of type 'float'
+    at /home/hansen/caveData/common/base/python/events/recommenders/SwathRecommender.downStream(SwathRecommion south, in m/s (float)
         """
 
     #===========================================================================
@@ -121,7 +122,7 @@ class Recommender(RecommenderTemplate.Recommender):
 #         choiceFieldDict["label"] = "Type:"
 #         choiceFieldDict["choices"] = ["Watch", "Warning", "Advisory", "ALL"]
 #         
-#         fieldDicts = [choiceFieldDict]
+#         fieldDicts = []
 #         dialogDict["fields"] = fieldDicts
 # 
 #         valueDict = {"forecastType":"Warning"}
@@ -155,13 +156,10 @@ class Recommender(RecommenderTemplate.Recommender):
         currentTime = datetime.datetime.fromtimestamp(long(sessionAttributes["currentTime"])/1000)
         latestCurrentTime = self.getLatestTimestampOfCurrentEvents(eventSet)
         
-        ### Is this needed?  Tracy says there are instances where events are
-        ### not included in the passed in eventSet, but are available in the database
-        currentEvents = self.getCurrentEvents(eventSet)
-        
-        recommendedEventList = self.getRecommendedEvents(currentTime, latestCurrentTime)
+        currentEvents = self.getCurrentEvents(eventSet)        
+        recommendedEventDict = self.getRecommendedEvents(currentTime, latestCurrentTime)
                 
-        mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventList, currentTime)
+        mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventDict, currentTime)
         
         #for evt in mergedEventSet:
         #    print 'ME:', evt.getHazardAttributes().get('removeEvent'), evt.getHazardAttributes().get('probSeverAttrs').get(OBJECT_ID), evt.getCreationTime(), evt.getStartTime(), evt.getEndTime()
@@ -183,8 +181,8 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def _uvToSpdDir(self, motionEasts, motionSouths):
         if motionEasts is None or motionSouths is None:
-            wdir = 270
-            wspd = 32 #kts
+            wdir = DEFAULT_WDIR
+            wspd = DEFAULT_WSPD #kts
         else:
             u = float(motionEasts)
             v = -1.*float(motionSouths)
@@ -234,8 +232,9 @@ class Recommender(RecommenderTemplate.Recommender):
                         row['wspd'] = vectorDict.get('wspd')
                         
                         eventsPerTimestamp[startTime].update({row['objectids']:row})
-                        
-        hFile.close()
+            
+            if hFile:
+                hFile.close()
 
         latestSet = []
         if len(eventsPerTimestamp):
@@ -319,80 +318,155 @@ class Recommender(RecommenderTemplate.Recommender):
         return currentEvents
 
     def makeHazardEvent(self, ID, values, currentTime):
-            hazardEvent = EventFactory.createEvent()
-            hazardEvent.setCreationTime(currentTime)
-            startTime = values.pop('startTime')
-            hazardEvent.setStartTime(startTime)
-            endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
-            hazardEvent.setEndTime(endTime)
-            
-            hazardEvent.setHazardStatus("potential")
-            hazardEvent.setHazardMode("O")
-            hazardEvent.setPhenomenon("Prob_Severe")
-            
-            polygon = loads(values.pop('polygons'))
-            hazardEvent.setGeometry(polygon)
-            hazardEvent.set('probSeverAttrs',values)
-            hazardEvent.set('objectID', ID)
-            hazardEvent.set('removeEvent',False)
-            
-            return hazardEvent
+        hazardEvent = EventFactory.createEvent()
+        hazardEvent.setCreationTime(currentTime)
+        self.setEventTimes(hazardEvent, values, currentTime)
         
-    
-    def mergeHazardEvents(self, currentEvents, recommendedEventList, currentTime):        
-        mergedEvents = EventSet(None)
+        hazardEvent.setHazardStatus("potential")
+        hazardEvent.setHazardMode("O")        
         
-        ### if no recommended events, return current events
-        if len(recommendedEventList) == 0:
-            return currentEvents
         
-        recEventObjectIDs = sorted(recommendedEventList.keys())
-        currEventObjectIDs = list(set([c.get('objectID') for c in currentEvents]))
         
-        for ID, recommendedEvent in recommendedEventList.iteritems():
 
+        hazardEvent.setPhenomenon("Prob_Severe")
+        
+        polygon = loads(values.pop('polygons'))
+        hazardEvent.setGeometry(polygon)
+        hazardEvent.set('probSeverAttrs',values)
+        hazardEvent.set('objectID', ID)
+        
+        return hazardEvent
+
+    def setEventTimes(self, event, values, currentTime):
+        psStartTime = values.pop('startTime')
+        event.set('probSevereStartTime', self._getMillis(psStartTime))
+        psEndTime = psStartTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+        event.set('probSevereEndTime', self._getMillis(psEndTime)) 
+        # Current time rounded to nearest minute
+        startTime = self.roundTime(currentTime) 
+        endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+        event.setStartTime(startTime)
+        event.setEndTime(endTime)
             
-            if ID not in currEventObjectIDs:
+    def mergeHazardEvents(self, currentEventsList, recommendedEventDict, currentTime):    
+        ### if no recommended events, return current events
+        if len(recommendedEventDict) == 0:
+            #print '[1] No NEW records, returning CURRENT events...'
+            return currentEventsList
+        
+        mergedEvents = EventSet(None)
+        ### recommended events but no current events
+        if len(currentEventsList) == 0:
+            #print '[2] No CURRENT records, making and returning NEW events...'
+            for ID, recommendedEvent in recommendedEventDict.iteritems():
                 recommendedEvent = self.makeHazardEvent(ID, recommendedEvent, currentTime)
                 mergedEvents.add(recommendedEvent)
-                
+            return mergedEvents
+
+        nonManualCurrentEvents = EventSet(None)
+        manualCurrentEvents = EventSet(None)
+        for c in currentEventsList:
+            if c.get('objectID'):
+                if not c.get('objectID').startswith('M'):
+                    nonManualCurrentEvents.add(c)
+                else:
+                    manualCurrentEvents.add(c)
+                    mergedEvents.add(c)
             else:
+                mergedEvents.add(c)
+                
+        recEventObjectIDs = sorted(recommendedEventDict.keys())
+        
+        ### Manual Events are filtered out, so now only need to worry about merging/comparing automated events
+        nonManualCurrEventObjectIDs = list(set([c.get('objectID') for c in nonManualCurrentEvents]))
+                
+        ### Using set difference, obtain new recommended objects and add
+        newRecs = list(set(recEventObjectIDs).difference(set(nonManualCurrEventObjectIDs)))
+        for newRec in newRecs:
+            #print '[3] Adding NEW event', newRec, ' to mergedEvents'            
+            recommendedEvent = self.makeHazardEvent(newRec, recommendedEventDict[newRec], currentTime)
             
-                for currentEvent in currentEvents:
+            recGeom = recommendedEvent.getGeometry()
+            intersects = False
+                
+            #===================================================================
+            # #########  FIXME ###############
+            # #
+            # # Keep getting error at intersects call:
+            # # <class 'shapely.geos.PredicateError'>: Failed to evaluate <_FuncPtr object at 0x7f88208aeae0>
+            # # at /awips2/python/lib/python2.7/site-packages/shapely/geos.errcheck_predicate(geos.py:500)
+            # # at /awips2/python/lib/python2.7/site-packages/shapely/predicates.__call__(predicates.py:11)
+            # # at /awips2/python/lib/python2.7/site-packages/shapely/geometry/base.intersects(base.py:614)
+            # # but cannot repeat in python interpreter (see intersectionTest.py)
+            # ################################
+            #
+            # ### Logic to ignore any automated events that spatially overlap a manually drawn event
+            # for manEvt in manualCurrentEvents:
+            #     manGeom = manEvt.getGeometry()
+            #     print 'MAN:', type(manGeom)
+            #     print 'AUTO:', type(recGeom)
+            #     #if recGeom.intersects(manGeom):
+            #     if manGeom.intersects(recGeom):
+            #         intersects = True
+            #===================================================================
+
+            if not intersects:
+                mergedEvents.add(recommendedEvent)
+                            
+        ### Using set difference, obtain expired (recommended event ID no longer present) IDs and set hazardEvent to 'ended'
+        expiredRecs = list(set(nonManualCurrEventObjectIDs).difference(set(recEventObjectIDs)))
+        for expiredRec in expiredRecs:
+            #print '[4] Found event', expiredRec, ' to potentially be removed...'
+            for currentEvent in nonManualCurrentEvents:
+                if currentEvent.get('objectID') == expiredRec:
+                    if currentEvent.getStatus() != 'ISSUED' and currentEvent.get('objectID'):
+                        currentEvent.set('vtecCodes', ['CAN'])
+                        currentEvent.setStatus('ENDED')
+                        #print '\t[4.5] Setting current event', currentEvent.get('objectID'), ' to status ', currentEvent.getStatus()
+                        mergedEvents.add(currentEvent)
+        
+        ### Using set intersection, update current events with recommended event attributes
+        updates = list(set(recEventObjectIDs).intersection(set(nonManualCurrEventObjectIDs)))
+        for currentEvent in nonManualCurrentEvents:
+            currID = currentEvent.get('objectID')
+            #print '[5] Potentially updating event', currID, ' (status', currentEvent.getStatus(), ')'
+            if currID not in expiredRecs and currID in recommendedEventDict:
+                #print '\t[5.5] Yep, now updating ', currID
+                recommendedEvent = recommendedEventDict[currID]
+                self.setEventTimes(currentEvent, recommendedEvent, currentTime)
+                try:
+                    currentEvent.setGeometry(recommendedEvent.pop('polygons'))
+                except:
+                    print 'WHAT\'S WRONG WITH THIS POLYGON?', type(recommendedEvent.get('polygons')) 
                     
-                    if currentEvent.get('objectID') not in recEventObjectIDs and currentEvent.getStatus() != 'ISSUED':
-                        ### See CommonMetaData where manually drawn events get objectID starting with 'M'
-                        if not currentEvent.get('objectID').startswith('M'): 
-                            currentEvent.set('removeEvent',True)
-                            mergedEvents.add(currentEvent)
-                   
-                    elif currentEvent.get('objectID') == ID:
-                        # If ended, then simply add the new recommended one
-                        if currentEvent.getStatus() == 'ELAPSED' or currentEvent.getStatus() == 'ENDED':
-                            continue 
-                        
-                        ### Needed? Will there be any other hazardType than "Prob_Severe"?
-#                        elif currentEvent.getHazardType() != recommendedEvent.getHazardType():
-#                            print '\t[', fi_filename, getframeinfo(currentframe()).lineno,']'
-#                            # Handle transitions to new hazard type
-#                            currentEvent.setStatus('ending')
-#                            mergedEvents.add(currentEvent)
-#                            #recommendedEvent.setStatus('pending')
-#                            mergedEvents.add(recommendedEvent)
-                        else:
-                            #currentEvent.setCreationTime(recommendedEvent.getCreationTime())
-                            startTime = recommendedEvent.pop('startTime')
-                            endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
-                            currentEvent.setStartTime(startTime)
-                            currentEvent.setEndTime(endTime)
-                            currentEvent.setGeometry(recommendedEvent.pop('polygons'))
-                            currentEvent.set('probSeverAttrs',recommendedEvent)
-                            mergedEvents.add(currentEvent)
-                
-                
+                currentEvent.set('probSeverAttrs',recommendedEvent)
+                mergedEvents.add(currentEvent)
+                            
+#         print 'Returning...'
+#         for evt in mergedEvents:
+#             print evt.get('objectID'), evt.getStatus()
+#         print '=== Done ==='        
         return mergedEvents
                             
-
+    def roundTime(self, dt=None, dateDelta=datetime.timedelta(minutes=1)):
+        """Round a datetime object to a multiple of a timedelta
+        dt : datetime.datetime object, default now.
+        dateDelta : timedelta object, we round to a multiple of this, default 1 minute.
+        Author: Thierry Husson 2012 - Use it as you want but don't blame me.
+                Stijn Nevens 2014 - Changed to use only datetime objects as variables
+        """
+        roundTo = dateDelta.total_seconds()
+    
+        if dt == None : dt = datetime.datetime.now()
+        seconds = (dt - dt.min).seconds
+        # // is a floor division, not a comment on following line:
+        rounding = (seconds+roundTo/2) // roundTo * roundTo
+        return dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)
+    
+    def _getMillis(self, dt):
+        epoch = datetime.datetime.utcfromtimestamp(0)
+        delta = dt - epoch
+        return delta.total_seconds() * 1000.0
                 
     def flush(self):
         import os

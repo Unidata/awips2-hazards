@@ -328,6 +328,7 @@ public class HazardDetailViewForTesting implements
             ICurrentTimeProvider currentTimeProvider,
             boolean showStartEndTimeScale,
             boolean buildForWideViewing,
+            boolean includeIssueButton,
             Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers) {
     }
 

@@ -89,6 +89,8 @@ public interface IHazardDetailView {
      * @param buildForWideViewing
      *            Flag indicating whether or not the view should be laid out so
      *            as to be optimized for wide viewing.
+     * @param includeIssueButton
+     *            Flag indicating whether or not to include the Issue button.
      * @param extraDataForEventIdentifiers
      *            Map pairing event identifiers with any extra data they may
      *            have used in previous view instantiations, allowing such data
@@ -100,6 +102,7 @@ public interface IHazardDetailView {
             ICurrentTimeProvider currentTimeProvider,
             boolean showStartEndTimeScale,
             boolean buildForWideViewing,
+            boolean includeIssueButton,
             Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers);
 
     /**

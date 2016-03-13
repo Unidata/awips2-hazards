@@ -14,6 +14,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NATIONAL;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
@@ -282,8 +283,12 @@ public final class HazardServicesMessageHandler {
 
         this.eventBus.subscribe(this);
 
-        sessionConfigurationManager.setSiteID(LocalizationManager.getInstance()
-                .getCurrentSite());
+        if (sessionConfigurationManager.getStartUpConfig().isNational()) {
+            sessionConfigurationManager.setSiteID(NATIONAL);
+        } else {
+            sessionConfigurationManager.setSiteID(LocalizationManager
+                    .getInstance().getCurrentSite());
+        }
 
         String staticSettingID = getSettingForCurrentPerspective();
 

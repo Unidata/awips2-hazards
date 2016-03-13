@@ -1,3 +1,20 @@
+    # Settings 
+    #
+    # NOTE: The following can be added to a Settings file to trump the values in StartUpConfig
+    #     "mapCenter", "possibleSites", "visibleSites", "eventIdDisplayType"
+    # Examples:  
+    #"mapCenter": {
+    #    "lat": 41.06,
+    #    "lon":-95.91,
+    #    "zoom": 7
+    #},
+    #"possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
+    #"visibleSites":  ["BOU", "OAX"]
+    #
+    # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
+    #"eventIdDisplayType" : "PROG_ON_DIFF",
+
+
 Prob_WFO = {
     "settingsID" : "Prob_WFO",
     "perspectiveIDs" : ["com.raytheon.viz.hydro.HydroPerspective",
@@ -5,6 +22,9 @@ Prob_WFO = {
                         "com.raytheon.uf.viz.d2d.ui.perspectives.D2D5Pane",
                         "com.raytheon.viz.ui.GFEPerspective"],
     "displayName": "Probabilistic WFO",
+    "possibleSites": ["National"],
+    "visibleSites": ["National"],
+    
     "visibleTypes": [
         "Prob_Tornado",
         "Prob_Severe",
@@ -18,20 +38,8 @@ Prob_WFO = {
         ]
         }
     ],
-    #"hazardsFilter" : "Hydrology_All",
     "defaultTimeDisplayDuration": 172800000,
     "defaultCategory" : "Prob Convective",
-    "mapCenter": {
-        "lat": 41.06,
-        "lon":-95.91,
-        "zoom": 7
-    },
-    # The following variable needs to be overridden at the site level e.g. 
-    #    Example:  "possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
-    "possibleSites": [ ],
-    # The following variable needs to be overridden at the site level
-    #    Example:  "visibleSites":  ["BOU", "OAX"]
-    "visibleSites": [],
     "defaultDuration": 28800000,
     "visibleColumns": [
         "Event ID",
@@ -119,21 +127,23 @@ Prob_WFO = {
             "fieldName": "siteID",
             "sortDir": "none"
         },
-        "VTEC Codes": {
-            "type": "string",
-            "fieldName": "vtecCodes",
-            "sortDir": "none"
-        },
-        "ETNs": {
-            "type": "string",
-            "fieldName": "etns",
-            "sortDir": "none"
-        },
-        "PILs": {
-            "type": "string",
-            "fieldName": "pils",
-            "sortDir": "none"
-        },
+        #=======================================================================
+        # "VTEC Codes": {
+        #     "type": "string",
+        #     "fieldName": "vtecCodes",
+        #     "sortDir": "none"
+        # },
+        # "ETNs": {
+        #     "type": "string",
+        #     "fieldName": "etns",
+        #     "sortDir": "none"
+        # },
+        # "PILs": {
+        #     "type": "string",
+        #     "fieldName": "pils",
+        #     "sortDir": "none"
+        # },
+        #=======================================================================
         "Time to Expiration": {
             "sortDir": "none",
             "fieldName": "alert",
@@ -169,7 +179,4 @@ Prob_WFO = {
             "visible":True,
         }
     ],
-    # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
-    #"eventIdDisplayType" : "ALWAYS_FULL"
-    "eventIdDisplayType" : "ONLY_SERIAL"
 }

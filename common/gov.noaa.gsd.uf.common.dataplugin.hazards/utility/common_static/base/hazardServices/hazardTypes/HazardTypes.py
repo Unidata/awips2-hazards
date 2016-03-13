@@ -1982,7 +1982,7 @@ HazardTypes = {
               'allowAreaChange': False,
               'allowTimeChange': True,
               'expirationTime': (-30, 30),
-              'durationChoiceList': [str(i+1)+" min" for i in range(60)],
+              'durationChoiceList': [str(i+1)+" min" for i in range(100)],
               'defaultDuration': 45 * MINUTES,
               'durationIncrement': 1,
 
@@ -1997,9 +1997,9 @@ HazardTypes = {
               'inclusionAreaTest' : True,
               'inclusionAreaInSqKm' : 1.0,
               'allowUntilFurtherNotice': False,
-           #   'modifyRecommenders': {
-           #                          'SwathRecommender': [ 'geometry', 'geometryDecoration', 'status' ]
-           #                          },
+              'modifyRecommenders': {
+                                     'SwathRecommender': [ 'timeRange' ]
+                                     },
               'allowOverlappingPolygons': True,
               },
     ################

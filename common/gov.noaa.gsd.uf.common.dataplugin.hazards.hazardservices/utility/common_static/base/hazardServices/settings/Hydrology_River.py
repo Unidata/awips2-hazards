@@ -1,7 +1,32 @@
+    # Settings 
+    #
+    # NOTE: The following can be added to a Settings file to trump the values in StartUpConfig
+    #     "mapCenter", "possibleSites", "visibleSites", "eventIdDisplayType"
+    # Examples:  
+    #"mapCenter": {
+    #    "lat": 41.06,
+    #    "lon":-95.91,
+    #    "zoom": 7
+    #},
+    #"possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
+    #"visibleSites":  ["BOU", "OAX"]
+    #
+    # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
+    #"eventIdDisplayType" : "PROG_ON_DIFF",
+
 Hydrology_River = {
     "settingsID" : "Hydrology_River",
     "perspectiveIDs" : [],
     "displayName": "Hydrology - River", 
+    
+    "mapCenter": {
+        "lat": 41.06,
+        "lon":-95.91,
+        "zoom": 7
+    },
+    "possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
+    "visibleSites":  ["BOU", "OAX"],
+
     "visibleTypes": [
 #         "FF.A", 
 #         "FF.W.Convective", 
@@ -35,7 +60,6 @@ Hydrology_River = {
         ]
         }
     ], 
-    #"hazardsFilter" : "Hydrology_River",     
     "defaultTimeDisplayDuration": 172800000, 
     "defaultCategory" : "Hydrology",
     "defaultDuration": 28800000, 

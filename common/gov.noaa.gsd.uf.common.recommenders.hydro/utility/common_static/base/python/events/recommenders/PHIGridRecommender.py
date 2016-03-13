@@ -24,7 +24,7 @@ from SwathRecommender import Recommender as SwathRecommender
 import JUtil
      
 ### FIXME: set path in configuration somewhere
-OUTPUTDIR = '/scratch2/PHIGridTesting'
+OUTPUTDIR = '/scratch/PHIGridTesting'
 ### FIXME: need better (dynamic or configurable) way to set domain corner
 buff = 1.
 lonPoints = 1200
@@ -86,11 +86,12 @@ class Recommender(RecommenderTemplate.Recommender):
         
         # For now, just print out a message saying this was run.
         import sys
-        sys.stderr.write("Running GRID recommender.\n    trigger: " +
-                         str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
-                         str(eventSet.getAttribute("eventType")) + "\n    hazard ID: " +
-                         str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute: " +
-                         str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
+#         sys.stderr.write("Running GRID recommender.\n    trigger: " +
+#                          str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
+#                          str(eventSet.getAttribute("eventType")) + "\n    hazard ID: " +
+#                          str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute: " +
+#                          str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
+        sys.stderr.write("Running GRID recommender.\n")
         sys.stderr.flush()
         
         swathRec = SwathRecommender()
@@ -154,18 +155,25 @@ class Recommender(RecommenderTemplate.Recommender):
         Creates an output netCDF file in OUTPUTDIR (set near top)
         '''
         epoch = (timeStamp-datetime.datetime.fromtimestamp(0)).total_seconds()
-        outfileTime = datetime.datetime.fromtimestamp(time.time())
-        outfileTimeISO = outfileTime.isoformat()
-        outputFilename = 'PHIGrid_' + outfileTimeISO + '.nc'
-        pathFile = os.path.join(OUTPUTDIR,outputFilename)
+        nowTime = datetime.datetime.fromtimestamp(time.time())
+        outDir = os.path.join(OUTPUTDIR, nowTime.strftime("%Y%m%d_%H"))
+        outputFilename = 'PHIGrid_' + timeStamp.isoformat() + '.nc'
+        if not os.path.exists(outDir):
+            try:
+                os.makedirs(outDir)
+            except:
+                sys.stderr.write('Could not create PHI grids output directory:' +outDir+ '.  No output written')
+
+        pathFile = os.path.join(outDir,outputFilename)
         
         try:
             f = netcdf.netcdf_file(pathFile,'w')
             f.title = 'Probabilistic Hazards Information grid'
             f.institution = 'NOAA Hazardous Weather Testbed; ESRL Global Systems Division and National Severe Storms Laboratory'
             f.source = 'AWIPS2 Hazard Services'
-            f.history = 'Initially created ' + outfileTimeISO
+            f.history = 'Initially created ' + nowTime.isoformat()
             f.comment = 'These data are experimental'
+            f.time_origin = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
             
             f.createDimension('lats', len(lats))
             f.createDimension('lons', len(lons))

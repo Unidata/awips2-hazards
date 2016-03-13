@@ -215,6 +215,11 @@ public class HazardDetailView extends
     private boolean buildForWideViewing;
 
     /**
+     * Flag indicating whether or not to include the Issue button.
+     */
+    private boolean includeIssueButton;
+
+    /**
      * Map pairing event identifiers with any extra data they may have used in
      * previous view instantiations, allowing such data to persist between
      * different views.
@@ -578,7 +583,6 @@ public class HazardDetailView extends
          */
         showViewPart();
 
-
         /*
          * Execute further manipulation of the view part immediately, or delay
          * such execution until the view part is created if it has not yet been
@@ -631,6 +635,7 @@ public class HazardDetailView extends
             ICurrentTimeProvider currentTimeProvider,
             boolean showStartEndTimeScale,
             boolean buildForWideViewing,
+            boolean includeIssueButton,
             Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers) {
         this.minVisibleTime = minVisibleTime;
         this.maxVisibleTime = maxVisibleTime;
@@ -642,6 +647,7 @@ public class HazardDetailView extends
         this.showStartEndTimeScale = showStartEndTimeScale;
         this.buildForWideViewing = buildForWideViewing;
         this.extraDataForEventIdentifiers = extraDataForEventIdentifiers;
+        this.includeIssueButton = includeIssueButton;
 
         /*
          * Execute manipulation of the view part immediately, or delay such
@@ -779,7 +785,8 @@ public class HazardDetailView extends
          * Do the basic initialization.
          */
         getViewPart().initialize(minVisibleTime, maxVisibleTime,
-                currentTimeProvider, showStartEndTimeScale, buildForWideViewing,
+                currentTimeProvider, showStartEndTimeScale,
+                buildForWideViewing, includeIssueButton,
                 extraDataForEventIdentifiers);
 
         /*

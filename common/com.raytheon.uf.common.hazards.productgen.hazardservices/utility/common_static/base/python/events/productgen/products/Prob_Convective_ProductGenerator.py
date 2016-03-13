@@ -126,6 +126,7 @@ class Product(Prob_Generator.Product):
         if probHazardEvents:
             self._WFO = 'XXX'
             hazardEvent = probHazardEvents[0]
+            hazardEvent.set('issueTime', self._issueTime)
             hazardAttrs = hazardEvent.getHazardAttributes()
             self._objectID = hazardEvent.get('objectID') if hazardEvent.get('objectID') else hazardEvent.getDisplayEventID()
             probAttrs = hazardEvent.get("probSeverAttrs")
@@ -143,20 +144,22 @@ class Product(Prob_Generator.Product):
             self._startTime = self._timeFormat(st)
             self._endTime = self._timeFormat(et)
             self._headline = hazardAttrs.get('headline', 'Probabilistic Severe')
+            self._location = self._getLocation(hazardEvent)
             defaultDiscussion = ''' Mesocyclone interacted with line producing brief spin-up. Not confident in enduring tornadoes...but more brief spinups are possible as more interactions occur.'''
             self._discussion = hazardAttrs.get('convectiveWarningDecisionDiscussion', defaultDiscussion)            
             #print "Prob Convective PG hazardAttrs", hazardAttrs
-            #print "    start, end time", hazardEvent.getStartTime(), hazardEvent.getEndTime()
+            #print "    start, end time, issueTime", hazardEvent.getStartTime(), hazardEvent.getEndTime(), hazardEvent.get('issueTime')
             self.flush()
                            
         productDict = collections.OrderedDict()
         self._initializeProductDict(productDict, eventSetAttributes)
         productDict['productText'] =  self._getDummyText()
+        productDict['issueTime'] = self._issueTime
         productDicts = [productDict]
 
         #productDicts, hazardEvents = self._makeProducts_FromHazardEvents(probHazardEvents, eventSetAttributes)
 
-        return productDicts, probHazardEvents
+        return productDicts, [hazardEvent]
 
     def _getDummyText(self):
         fcst =  '''
@@ -169,12 +172,11 @@ class Product(Prob_Generator.Product):
         fcst = fcst + '''
            
         WHEN: 
-
             Start: ''' + self._startTime + '''
             End:  ''' + self._endTime + '''
         
         WHERE: 
-            North of MyTown '''
+            '''+self._location
       
         fcst = fcst + '''
             Moving '''+self._direction + ''' at ''' + `self._speed` + ''' mph
@@ -188,9 +190,32 @@ class Product(Prob_Generator.Product):
         format='%I:%M %p %Z %d %a %b, %Y'
         return self._tpc.getFormattedTime(inputTime, format)
         #return '7:05 pm Thu May 7th, 2015'
-         
+                 
     def _convertDirection(self, inputDirection):
          return self.dirTo16PtText(inputDirection)
+
+    def _getLocation(self, hazardEvent):
+        ugcs = hazardEvent.get('ugcs')
+        return str(ugcs)          
+#         # Get hazard geometry
+#         
+#         #Here's the query we'd be going for:
+#         #  SELECT countyname FROM mapdata.county WHERE the_geom && ST_SetSrid('BOX3D(-96.963120 41.692394, -96.508260 42.128302)'::box3d,4326)
+#
+#         geometry = hazardEvent.getGeometry()
+#         columns = ['countyname']
+#         print "Prob_Convective_ProductGenerator", geometry
+#         self.flush()
+#         counties = self.mapDataQuery('county', columns, geometry=geometry, intersect=True)
+#         print "counties", counties
+#         self.flush()
+#         # Find cwa's that overlap it
+#         columns = ['wfo']
+#         cwas = self.mapDataQuery('cwa', columns, geometry=geometry, intersect=True)
+#         print "cwas", cwas
+#         self.flush()
+#         return 'North of MyTown'        
+
 
     ### From GFE TextUtils.py
     def dirTo16PtText(self, numDir):

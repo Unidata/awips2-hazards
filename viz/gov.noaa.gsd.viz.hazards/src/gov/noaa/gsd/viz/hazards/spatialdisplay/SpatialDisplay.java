@@ -387,7 +387,8 @@ public class SpatialDisplay extends
             Calendar simulatedDate = TimeUtil.newCalendar(TimeZone
                     .getTimeZone("UTC"));
             simulatedDate.setTime(date);
-            SimulatedTime.getSystemTime().setFrozen(true);
+            // SimulatedTime.getSystemTime().setFrozen(true);
+            SimulatedTime.getSystemTime().setFrozen(false);
             SimulatedTime.getSystemTime().setTime(simulatedDate.getTime());
         }
 
@@ -865,6 +866,7 @@ public class SpatialDisplay extends
 
         // Comparator to sort strings longest to shortest.
         Comparator<String> shortestLastComparator = new Comparator<String>() {
+            @Override
             public int compare(String o1, String o2) {
                 return Integer.compare(o2.length(), o1.length());
             }
@@ -2026,7 +2028,7 @@ public class SpatialDisplay extends
      */
     private void checkForMapRescale(PaintProperties paintProps) {
         double newScaleFactor = 0.0d;
-        double canvasX = (double) paintProps.getCanvasBounds().width;
+        double canvasX = paintProps.getCanvasBounds().width;
         double viewX = paintProps.getView().getExtent().getWidth();
         if (viewX != 0.0d) {
             newScaleFactor = canvasX / viewX;

@@ -23,6 +23,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.MAPDATA_COUNTY;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NATIONAL;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
@@ -1600,8 +1601,11 @@ public class SessionProductManager implements ISessionProductManager {
                     geometryCollection = new GeometryFactory()
                             .buildGeometry(polygonGeometries);
                 }
-                partsOfCounty.addPortionsDescriptionToEvent(geometryCollection,
-                        event, configManager.getSiteID());
+                if (!configManager.getSiteID().equals(NATIONAL)) {
+                    partsOfCounty.addPortionsDescriptionToEvent(
+                            geometryCollection, event,
+                            configManager.getSiteID());
+                }
             }
 
             /*

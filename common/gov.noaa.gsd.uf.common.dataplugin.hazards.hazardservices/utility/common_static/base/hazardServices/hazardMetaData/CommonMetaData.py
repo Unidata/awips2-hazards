@@ -37,10 +37,11 @@ from RiverForecastUtils import *
 import VTECConstants
 from LocalizationInterface import LocalizationInterface
 from HazardConstants import *
-import os, sys
+import os, sys, re
 from collections import OrderedDict
 from MapsDatabaseAccessor import MapsDatabaseAccessor
 import pprint
+from com.raytheon.uf.common.time import SimulatedTime
 
 class MetaData(object):
 
@@ -75,7 +76,7 @@ class MetaData(object):
         return {
          'fieldName': fieldName,
          'fieldType':'Text',
-         'label': label, 
+         'label': label,
          'values': '',
          "visibleChars": 60,
          "lines": 6,
@@ -181,17 +182,17 @@ class MetaData(object):
             self.floodSeverityUnknown()
         ]        
     def floodSeverityNone(self):
-            return {"displayString": "N (None)","identifier": "N","productString": ""}
+            return {"displayString": "N (None)", "identifier": "N", "productString": ""}
     def floodSeverityArealOrFlash(self):
-        return {"displayString": "0 (Areal Flood or Flash Flood Products)","identifier": "0","productString": ""}
+        return {"displayString": "0 (Areal Flood or Flash Flood Products)", "identifier": "0", "productString": ""}
     def floodSeverityMinor(self):
-        return {"displayString": "1 (Minor)","identifier": "1", "productString": "Minor"}
+        return {"displayString": "1 (Minor)", "identifier": "1", "productString": "Minor"}
     def floodSeverityModerate(self):
-        return {"displayString": "2 (Moderate)","identifier": "2","productString": "Moderate"}
+        return {"displayString": "2 (Moderate)", "identifier": "2", "productString": "Moderate"}
     def floodSeverityMajor(self):
-        return {"displayString": "3 (Major)","identifier": "3", "productString": "Major"}
+        return {"displayString": "3 (Major)", "identifier": "3", "productString": "Major"}
     def floodSeverityUnknown(self):
-        return {"displayString": "U (Unknown)","identifier": "U","productString": ""}
+        return {"displayString": "U (Unknown)", "identifier": "U", "productString": ""}
 
     def getFloodRecord(self):
         return {
@@ -200,10 +201,10 @@ class MetaData(object):
              "label":"Flood Record Status:",
              "expandHorizontally": True,
              "choices":[
-                      {"displayString": "NO (Record Flood Not Expected)","identifier": "NO"},
-                      {"displayString": "NR (Near Record or Record Flood Expected)","identifier": "NR"},
-                      {"displayString": "UU (Flood Without a Period of Record to Compare)","identifier": "UU"},
-                      {"displayString": "OO (Flood record status is not applicable)","identifier": "OO"},
+                      {"displayString": "NO (Record Flood Not Expected)", "identifier": "NO"},
+                      {"displayString": "NR (Near Record or Record Flood Expected)", "identifier": "NR"},
+                      {"displayString": "UU (Flood Without a Period of Record to Compare)", "identifier": "UU"},
+                      {"displayString": "OO (Flood record status is not applicable)", "identifier": "OO"},
                      ],
             }
     
@@ -317,7 +318,7 @@ class MetaData(object):
         
     def eventTypeGenericFlooding(self):
         return {
-                "identifier":"genericFlooding", 
+                "identifier":"genericFlooding",
                 "displayString": "Generic (provide reasoning)",
                 "detailFields": [
                     {
@@ -347,7 +348,7 @@ class MetaData(object):
         
     def rain_amount_unknown(self):
         return {"identifier":"rainUnknown", "displayString":"Unknown",
-                "productString":"",}
+                "productString":"", }
 
     def enterAmount(self):                
         return  {"identifier":"rainKnown", "displayString":"",
@@ -387,46 +388,46 @@ class MetaData(object):
             return choice.get('identifier')       
 
     def dopplerSource(self):
-        return {"identifier":"dopplerSource", 
+        return {"identifier":"dopplerSource",
                 "displayString": "Doppler Radar indicated",
         }
         
     def dopplerGaugesSource(self):
-        return {"identifier":"dopplerGaugesSource", 
+        return {"identifier":"dopplerGaugesSource",
                 "displayString": "Doppler Radar and automated gauges",
         }
         
     def trainedSpottersSource(self):
-        return {"identifier":"trainedSpottersSource", 
+        return {"identifier":"trainedSpottersSource",
                 "displayString": "Trained spotters reported",
         }
     def publicSource(self):
-        return {"identifier":"publicSource", 
+        return {"identifier":"publicSource",
                 "displayString": "Public reported",
         }
         
     def localLawEnforcementSource(self):
-        return {"identifier":"localLawEnforcementSource", 
+        return {"identifier":"localLawEnforcementSource",
                 "displayString": "Local law enforcement reported",
         }
         
     def emergencyManagementSource(self):
-        return {"identifier":"emergencyManagementSource", 
+        return {"identifier":"emergencyManagementSource",
                 "displayString": "Emergency management reported",
         }
         
     def satelliteSource(self):
-        return {"identifier":"satelliteSource", 
+        return {"identifier":"satelliteSource",
                 "displayString": "Satellite estimates",
         }
         
     def satelliteGaugesSource(self):
-        return {"identifier":"satelliteGaugesSource", 
+        return {"identifier":"satelliteGaugesSource",
                 "displayString": "Satellite estimates and gauge reports",
         }
         
     def gaugesSource(self):
-        return {"identifier":"gaugesSource", 
+        return {"identifier":"gaugesSource",
                 "displayString": "Gauge reports",
         }             
 
@@ -460,8 +461,8 @@ class MetaData(object):
              "values": values,
             }
     def selectListOfCities(self):
-        return {"identifier":"selectListOfCities", 
-                "displayString": "Select for a list of cities", 
+        return {"identifier":"selectListOfCities",
+                "displayString": "Select for a list of cities",
                 "productString": "Arbitrary arguments used by cities list generator."}
 
     def getLocationsAffected(self, defaultOn=True):
@@ -479,8 +480,8 @@ class MetaData(object):
             }
 
     def selectLocationsAffected(self):
-        return {"identifier":"selectLocationsAffected", 
-                "displayString": "Select for locations affected", 
+        return {"identifier":"selectLocationsAffected",
+                "displayString": "Select for locations affected",
                 "productString": "Arbitrary arguments used by locations affected generator."}
  
     def getAdditionalInfo(self):
@@ -493,12 +494,12 @@ class MetaData(object):
                      "lines": 3
                     }                    
     def listOfDrainages(self):
-        return {"identifier":"listOfDrainages", 
-                "displayString": "Automated list of drainages", 
+        return {"identifier":"listOfDrainages",
+                "displayString": "Automated list of drainages",
                 "productString": "This includes the following streams and drainages..." }
     def additionalRain(self):
         return  {"identifier":"addtlRain",
-                 "displayString": "Additional rainfall", 
+                 "displayString": "Additional rainfall",
                  "productString": 
                     '''Additional rainfall amounts of #additionalRainLowerBound# to #additionalRainUpperBound# inches are possible in the
                     warned area.''',
@@ -546,19 +547,19 @@ class MetaData(object):
                      }
         
     def recedingWater(self):  # EXP / CAN
-        return {"identifier":"recedingWater", 
+        return {"identifier":"recedingWater",
                 "displayString": "Water is receding",
                 "productString": 
                 '''Flood waters have receded...and are no longer expected to pose a threat
-                to life or property. Please continue to heed any road closures.''',}
+                to life or property. Please continue to heed any road closures.''', }
     def rainEnded(self):  # EXP / CAN
         return {"identifier":"rainEnded",
                 "displayString": "Heavy rain ended",
                 "productString": 
-                '''The heavy rain has ended...and flooding is no longer expected to pose a threat.''',}
+                '''The heavy rain has ended...and flooding is no longer expected to pose a threat.''', }
  
     def getRiver(self):
-        riverName = self.hazardEvent.get('riverName','')
+        riverName = self.hazardEvent.get('riverName', '')
         return {
              "fieldType": "Text",
              "fieldName": "riverName",
@@ -610,7 +611,7 @@ class MetaData(object):
              "maxChars": 40,
              "visibleChars": 12,
             }         
-    def getCTAs(self,values=None):
+    def getCTAs(self, values=None):
  
         pageFields = { 
                          "fieldType":"CheckList",
@@ -668,17 +669,17 @@ class MetaData(object):
                  should take necessary precautions immediately. '''}
     def ctaFlashFloodWatchMeans(self):
         return {"identifier": "flashFloodWatchMeansCTA",
-                "displayString": "A Flash Flood Watch means...", 
+                "displayString": "A Flash Flood Watch means...",
                 "productString": '''A Flash Flood Watch means that conditions may develop
                       that lead to flash flooding.  Flash flooding is a very dangerous situation.
                       \n\nYou should monitor later forecasts and be prepared to take action should
                       flash flood warnings be issued.'''}
     def ctaActQuickly(self):
-        return {"identifier": "actQuicklyCTA","displayString": "Act Quickly...",
+        return {"identifier": "actQuicklyCTA", "displayString": "Act Quickly...",
                 "productString": 
                 "Move to higher ground now. Act quickly to protect your life."}
     def ctaChildSafety(self):
-        return {"identifier": "childSafetyCTA","displayString": "Child Safety...",
+        return {"identifier": "childSafetyCTA", "displayString": "Child Safety...",
                 "productString": 
                 '''Keep children away from storm drains...culverts...creeks and streams.
                 Water levels can rise rapidly and sweep children away.'''}
@@ -691,7 +692,7 @@ class MetaData(object):
                   ground to escape flood waters. Do not stay in areas subject to flooding
                   when water begins rising.'''}
     def ctaSafety(self):
-        return {"identifier": "safetyCTA","displayString": "Safety...by foot or motorist",
+        return {"identifier": "safetyCTA", "displayString": "Safety...by foot or motorist",
                 "productString":
                 "Do not enter or cross flowing water or water of unknown depth."}
     def ctaTurnAround(self):
@@ -703,12 +704,12 @@ class MetaData(object):
                   Just one foot of flowing water is powerful enough to sweep vehicles off the road.
                   When encountering flooded roads make the smart choice...Turn around...Dont drown.'''}
     def ctaStayAway(self):
-        return {"identifier": "stayAwayCTA","displayString": "Stay away or be swept away",
+        return {"identifier": "stayAwayCTA", "displayString": "Stay away or be swept away",
                 "productString":
                 '''Stay away or be swept away. River banks and culverts can become
                 unstable and unsafe.'''}
     def ctaArroyos(self):
-        return {"identifier": "arroyosCTA","displayString": "Arroyos...",
+        return {"identifier": "arroyosCTA", "displayString": "Arroyos...",
                 "productString": 
                 '''Remain alert for flooding even in locations not receiving rain.
                 arroyos...Streams and rivers can become raging killer currents
@@ -728,7 +729,7 @@ class MetaData(object):
                '''To report flooding...have the nearest law enforcement agency relay
                   your report to the National Weather Service forecast office.'''}
     def ctaAutoSafety(self):
-        return {"identifier": "autoSafetyCTA","displayString": "Auto Safety",
+        return {"identifier": "autoSafetyCTA", "displayString": "Auto Safety",
                "productString":
                '''Flooding is occurring or is imminent. Most flood related deaths
                 occur in automobiles. Do not attempt to cross water covered bridges...
@@ -774,7 +775,7 @@ class MetaData(object):
                  inches of rapidly flowing water can quickly carry away your
                  vehicle.'''}
     def ctaFlashFloodWarningMeans(self):
-        return {"identifier": "ffwMeansCTA","displayString": "A Flash Flood Warning means...",
+        return {"identifier": "ffwMeansCTA", "displayString": "A Flash Flood Warning means...",
               "productString": 
              '''A flash flood warning means that flooding is imminent or occurring.
                 If you are in the warning area move to higher ground immediately.
@@ -823,7 +824,7 @@ class MetaData(object):
                 If you come upon flood waters... stop... turn around and go another way.'''}
     def ctaLastStatement(self):
         return {"identifier": "lastStatementCTA",
-                "displayString": "Last river flood statement on this event...", 
+                "displayString": "Last river flood statement on this event...",
                 "productString": "This will be the last river flood statement on this event.  Stay tuned to developments."}
     def ctaWarningInEffect(self):
         return {"identifier":  "warningInEffectCTA",
@@ -835,7 +836,7 @@ class MetaData(object):
         return {
          'fieldName': 'endingSynopsis',
          'fieldType':'Text',
-         'label': label, 
+         'label': label,
          'values': '',
          "visibleChars": 60,
          "lines": 6,
@@ -877,10 +878,10 @@ class MetaData(object):
     '''        
     def getEndingOption(self):
         choices = [
-                    {"displayString": "Water is receding","identifier": "Water is receding",
+                    {"displayString": "Water is receding", "identifier": "Water is receding",
                      "productString": '''Flood waters have receded...and are no longer expected to pose a threat to life or property.
                      Please continue to heed any road closures.'''},
-                    {"displayString": "Heavy rain ended","identifier": "Heavy rain ended",
+                    {"displayString": "Heavy rain ended", "identifier": "Heavy rain ended",
                      "productString": '''Excess runoff from heavy rain has ended over the warned area. If flooding has been observed...Please report it
                      to your local law enforcement agency.'''},
                     ]
@@ -893,7 +894,7 @@ class MetaData(object):
                 }
         
     # CAP FIELDS
-    def getCAP_Fields(self,tupleList=None):
+    def getCAP_Fields(self, tupleList=None):
         capFieldsExpandBar = {
                  
                "fieldType": "ExpandBar",
@@ -921,7 +922,7 @@ class MetaData(object):
                     'label':'Urgency:',
                     'expandHorizontally': True,
                     'values': 'Immediate',
-                    'choices': ['Immediate', 'Expected', 'Future','Past','Unknown']
+                    'choices': ['Immediate', 'Expected', 'Future', 'Past', 'Unknown']
                     },
                    {     
                     'fieldName': 'responseType',
@@ -929,15 +930,15 @@ class MetaData(object):
                     'label':'Response Type:',
                     'expandHorizontally': True,
                     'values': 'Avoid',
-                    'choices': ['Shelter','Evacuate','Prepare','Execute','Avoid','Monitor','Assess','AllClear','None']
-                    },                    
+                    'choices': ['Shelter', 'Evacuate', 'Prepare', 'Execute', 'Avoid', 'Monitor', 'Assess', 'AllClear', 'None']
+                    },
                    { 
                     'fieldName': 'severity',
                     'fieldType':'ComboBox',
                     'labeMenuItemsl':'Severity:',
                     'expandHorizontally': True,
                     'values': 'Severe',
-                    'choices': ['Extreme','Severe','Moderate','Minor','Unknown']
+                    'choices': ['Extreme', 'Severe', 'Moderate', 'Minor', 'Unknown']
                     },
                    { 
                     'fieldName': 'certainty',
@@ -945,17 +946,17 @@ class MetaData(object):
                     'label':'Certainty:',
                     'expandHorizontally': True,
                     'values': 'Likely',
-                    'choices': ['Observed','Likely','Possible','Unlikely','Unknown']
+                    'choices': ['Observed', 'Likely', 'Possible', 'Unlikely', 'Unknown']
                     },
-                ]  + [self.CAP_WEA_Message()]
+                ] + [self.CAP_WEA_Message()]
 
 
     # Used to be in subclasses                
     def setCAP_Fields(self, tupleList):
         # Set the defaults for the CAP Fields
-        ### NOTE - since we are using a ExpandBar, we have to
-        ### mind the structure which is a dict of lists 
-        ### of dicts of lists (seriously)
+        # ## NOTE - since we are using a ExpandBar, we have to
+        # ## mind the structure which is a dict of lists 
+        # ## of dicts of lists (seriously)
          
         capExpandBar = self.getCAP_Fields()
         for entry in capExpandBar['pages']:
@@ -975,7 +976,7 @@ class MetaData(object):
                 "choices": [{
                       "identifier":  "WEA_activated",
                       "displayString": "",
-                      "productString": "",       
+                      "productString": "",
                       "detailFields": [{
                          'fieldName': 'WEA_Text',
                          'fieldType':'Text',
@@ -1012,7 +1013,7 @@ class MetaData(object):
 
     def as_str(self, obj):
         if isinstance(obj, dict):  
-            return {self.as_str(key):self.as_str(value) for key,value in obj.items()}
+            return {self.as_str(key):self.as_str(value) for key, value in obj.items()}
         elif isinstance(obj, list) or isinstance(obj, set):  
             return [self.as_str(value) for value in obj]    
         elif isinstance(obj, unicode):  
@@ -1031,20 +1032,20 @@ class MetaData(object):
 #
 #
 
-    def getCrestsOrImpacts(self,parm):
+    def getCrestsOrImpacts(self, parm):
         
-        ### Get Search Fields Section
+        # ## Get Search Fields Section
         searchFields = self.getSearchFieldsSection(parm)
         
-        ### Get Forecast Points Section
+        # ## Get Forecast Points Section
         fcstPoints = self.getForecastPointsSection(parm)
         
-        ### Get Selected Points Section
+        # ## Get Selected Points Section
         selectedPoints = self.getSelectedForecastPoints(parm)
         
-        ### Want to have Search Params to expand, but as one group
-        ### This will allow us to add the Selected Points Section 
-        ### at the end to be always visible
+        # ## Want to have Search Params to expand, but as one group
+        # ## This will allow us to add the Selected Points Section 
+        # ## at the end to be always visible
         
         expandGroup = {
             "fieldName": parm + "ExpandGroup",
@@ -1059,7 +1060,7 @@ class MetaData(object):
             "fields": [searchFields]
         }
 
-        expandBar =  {
+        expandBar = {
             "fieldName": parm + "ExpandBar",
             "fieldType":"ExpandBar",
             "label": "",
@@ -1072,7 +1073,7 @@ class MetaData(object):
             "pages": [{ "pageName": parm.capitalize() + " Search Parameters", "pageFields": [expandGroup]}]
         }
         
-        fields = [expandBar,fcstPoints,selectedPoints]
+        fields = [expandBar, fcstPoints, selectedPoints]
         
         label = "Crest Comparison"
         
@@ -1098,44 +1099,44 @@ class MetaData(object):
 
     def getSearchFieldsSection(self, parm):
         
-        ### Get Ref/Stg Flow Combo
+        # ## Get Ref/Stg Flow Combo
         refStageFlow = self.getRefStgFlow(parm)
         
-        ### Get Stg Window sliders
-        ### Get Max Depth Sliders
-        ### Get FlowWindow Slides
-        ### Get Max Offset slider
+        # ## Get Stg Window sliders
+        # ## Get Max Depth Sliders
+        # ## Get FlowWindow Slides
+        # ## Get Max Offset slider
         stgWindow = self.getStageWindow(parm)
         
         
-        ### Get Search Type
+        # ## Get Search Type
         searchType = self.getSearchType(parm)
         
-        ### Get Apply Button
+        # ## Get Apply Button
         apply = self.getApplyButton(parm)
         
         ### !!!! CREST ONLY !!! Get Year Lookback slider  ###
         lookback = self.getYearLookbackSpinner(parm)
         
-        ### Group to hold all widgets
+        # ## Group to hold all widgets
         searchFields = {
             "fieldName": parm + "Compare",
             "fieldType":"Composite",
             "expandHorizontally": False,
             "expandVertically": False,
-            "fields": [refStageFlow,stgWindow,searchType,apply]
+            "fields": [refStageFlow, stgWindow, searchType, apply]
         }
         
         
         ### !!!! CREST ONLY !!! Get Year Lookback slider  ###
         if parm == "crests":
-            searchFields["fields"].insert(2,lookback)
+            searchFields["fields"].insert(2, lookback)
         
         return searchFields
     
     
 
-    def getForecastPointsSection(self,parm):
+    def getForecastPointsSection(self, parm):
         pointID = self.hazardEvent.get("pointID")
 
         if self._riverForecastUtils is None:
@@ -1200,7 +1201,7 @@ class MetaData(object):
                  "fieldName": parm + "ForecastPointsGroup",
                  "expandHorizontally": False,
                  "expandVertically": True,
-                 "fields" : [riverLabel,valuesTable]
+                 "fields" : [riverLabel, valuesTable]
                  
                  }
 
@@ -1237,21 +1238,21 @@ class MetaData(object):
         return refStageFlow
 
 
-    def getYearLookbackSpinner(self,parm):
+    def getYearLookbackSpinner(self, parm):
         lookback = {
                         "fieldType": "IntegerSpinner",
                         "fieldName": parm + "YearLookbackSpinner",
                         "label": "Year Lookback:",
-                        "minValue": -150,
-                        "maxValue": -1,
-                        "values": -50,
+                        "minValue":-150,
+                        "maxValue":-1,
+                        "values":-50,
                         "spacing": 5,
                         "expandHorizontally": True,
                         "showScale": True
                     } 
         return lookback
 
-    def getApplyButton(self,parm):
+    def getApplyButton(self, parm):
         apply = {
                     "fieldType": "Button",
                     "fieldName": parm + "ApplyButton",
@@ -1263,16 +1264,16 @@ class MetaData(object):
             
         
     # Search Type Dropdown (specific to 'crest' or 'impacts')
-    def getSearchType(self,parm):
+    def getSearchType(self, parm):
         choices = ["Recent in Stage/Flow, Year Window",
                    "Closest in Stage/Flow, Year Window",
                    "Recent in Stage/Flow Window",
-                   "Closest in Stage/Flow Window","Highest in Stage/Flow Window"
+                   "Closest in Stage/Flow Window", "Highest in Stage/Flow Window"
                    ]
         values = "Closest in Stage/Flow, Year Window"
         if parm == "impacts":
-            choices = ["All Below Upper Stage/Flow", 
-                       "Closest in Stage/Flow Window", 
+            choices = ["All Below Upper Stage/Flow",
+                       "Closest in Stage/Flow Window",
                        "Highest in Stage/Flow Window"  
                        ]
             values = "All Below Upper Stage/Flow"
@@ -1287,7 +1288,7 @@ class MetaData(object):
             }
         
     # Stage Widow search criteria widgets (sliders and text fields)
-    def getStageWindow(self,parm,low=-4,hi=4):
+    def getStageWindow(self, parm, low=-4, hi=4):
         return {
             "fieldName": parm + "stageWindowGroup",
             "fieldType":"Group",
@@ -1323,9 +1324,9 @@ class MetaData(object):
                         "fieldType": "IntegerSpinner",
                         "fieldName": parm + "maxDepthBelowFloodStage",
                         "label": "Maximum Depth Below Flood Stage:",
-                        "minValue": -10, 
+                        "minValue":-10,
                         "maxValue": 0,
-                        "values": -3,
+                        "values":-3,
                         "expandHorizontally": True,
                         "showScale": True
                     },
@@ -1377,7 +1378,7 @@ class MetaData(object):
     Note: we are creating a LABEL: TEXT layout in a single group and returning the GROUP
     This is for looking up via physical element ('PE')
     """
-    def getLookupPE(self,parm,basedOn=False):
+    def getLookupPE(self, parm, basedOn=False):
         base = ""
         label = "Lookup PE:"
         value = "HG"
@@ -1420,11 +1421,11 @@ class MetaData(object):
     """
     Create a radio button list for user to select the "Settings for Selected Forecast Point"
     """
-    def getSelectedForecastPoints(self,parm):
+    def getSelectedForecastPoints(self, parm):
         
         filters = self._setupSearchParameterFilters(parm)
 
-        if self.hazardEvent.get(parm+"ReferenceStageFlow"):
+        if self.hazardEvent.get(parm + "ReferenceStageFlow"):
             self._updateSearchParmsWithHazardEvent(self.hazardEvent, parm, filters)
 
         filterValues = {k:filters[k]['values'] for k in filters}
@@ -1504,7 +1505,7 @@ class MetaData(object):
             defCrest, crestList = self._riverForecastUtils.getHistoricalCrest(self._riverForecastPoint, primaryPE, filterValues)
 
             if defCrest.startswith(str(MISSING_VALUE)):
-                defCrest=""
+                defCrest = ""
                 crestList.append("")
             choices = crestList
             value = defCrest
@@ -1517,10 +1518,10 @@ class MetaData(object):
                     "expandVertically": True
             }
         
-        groupHeaderLabel  = {
+        groupHeaderLabel = {
                        
                        "fieldType": "Label",
-                       "fieldName": parm+"GroupForecastPointsLabel",
+                       "fieldName": parm + "GroupForecastPointsLabel",
                        "leftMargin": 40,
                        "rightMargin": 10,
                        "label": headerLabel,
@@ -1530,15 +1531,15 @@ class MetaData(object):
         selectionHeaderLabel = {
                        
                        "fieldType": "Label",
-                       "fieldName": parm+"SelectedForecastPointsLabel",
+                       "fieldName": parm + "SelectedForecastPointsLabel",
                        "label": selectionLabel,
                        
                        }
         
-        fields = [ groupHeaderLabel,selectionHeaderLabel,selectedForecastPoints ]
+        fields = [ groupHeaderLabel, selectionHeaderLabel, selectedForecastPoints ]
         
         grp = {
-            "fieldName": parm+"PointsAndTextFieldGroup",
+            "fieldName": parm + "PointsAndTextFieldGroup",
             "fieldType":"Group",
             "label": "",
             "expandHorizontally": False,
@@ -1555,7 +1556,7 @@ class MetaData(object):
         sortedCharsAsKeys = sorted(charDescDict.keys())
         
         for char in sortedCharsAsKeys:
-            id = "impactCheckBox_"+str(char)
+            id = "impactCheckBox_" + str(char)
             desc = charDescDict.get(char)
             entry = {
                      "identifier": id,
@@ -1563,7 +1564,7 @@ class MetaData(object):
                     "detailFields": [ 
                                      {
                                      "fieldType": "Text",
-                                     "fieldName": "impactTextField_"+str(char),
+                                     "fieldName": "impactTextField_" + str(char),
                                      "expandHorizontally": False,
                                      "visibleChars": 35,
                                      "lines":2,
@@ -1624,12 +1625,12 @@ class MetaData(object):
                     singleParameter = k
                 swfDict[identifier] = singleParameter
         
-        filters['Stage Window Lower'] = swfDict[parm+"StageWindowSpinnerLow"]
-        filters['Stage Window Upper'] = swfDict[parm+"StageWindowSpinnerHi"]
-        filters['Depth Below Flood Stage'] = swfDict[parm+"maxDepthBelowFloodStage"]
-        filters['Flow Window Lower'] = swfDict[parm+"FlowWindow1"]
-        filters['Flow Window Upper'] = swfDict[parm+"FlowWindow2"]
-        filters['Flow Stage Window'] = swfDict[parm+"MaxOffsetBelowFloodFlow"]
+        filters['Stage Window Lower'] = swfDict[parm + "StageWindowSpinnerLow"]
+        filters['Stage Window Upper'] = swfDict[parm + "StageWindowSpinnerHi"]
+        filters['Depth Below Flood Stage'] = swfDict[parm + "maxDepthBelowFloodStage"]
+        filters['Flow Window Lower'] = swfDict[parm + "FlowWindow1"]
+        filters['Flow Window Upper'] = swfDict[parm + "FlowWindow2"]
+        filters['Flow Stage Window'] = swfDict[parm + "MaxOffsetBelowFloodFlow"]
         
         
         if parm == 'crests':
@@ -1645,17 +1646,17 @@ class MetaData(object):
     
     def _updateSearchParmsWithHazardEvent(self, hazardEvent, parm, filters):
         
-        filters['Reference Type']['values'] = hazardEvent.get(parm+"ReferenceStageFlow")
-        filters['Stage Window Lower']['values'] = hazardEvent.get(parm+"StageWindowSpinnerLow")
-        filters['Stage Window Upper']['values'] = hazardEvent.get(parm+"StageWindowSpinnerHi")
-        filters['Depth Below Flood Stage']['values'] = hazardEvent.get(parm+"maxDepthBelowFloodStage")
-        filters['Flow Window Lower']['values'] = hazardEvent.get(parm+"FlowWindow1")
-        filters['Flow Window Upper']['values'] = hazardEvent.get(parm+"FlowWindow2")
-        filters['Flow Stage Window']['values'] = hazardEvent.get(parm+"MaxOffsetBelowFloodFlow")
-        filters['Search Type']['values'] = hazardEvent.get(parm+"SearchType")
+        filters['Reference Type']['values'] = hazardEvent.get(parm + "ReferenceStageFlow")
+        filters['Stage Window Lower']['values'] = hazardEvent.get(parm + "StageWindowSpinnerLow")
+        filters['Stage Window Upper']['values'] = hazardEvent.get(parm + "StageWindowSpinnerHi")
+        filters['Depth Below Flood Stage']['values'] = hazardEvent.get(parm + "maxDepthBelowFloodStage")
+        filters['Flow Window Lower']['values'] = hazardEvent.get(parm + "FlowWindow1")
+        filters['Flow Window Upper']['values'] = hazardEvent.get(parm + "FlowWindow2")
+        filters['Flow Stage Window']['values'] = hazardEvent.get(parm + "MaxOffsetBelowFloodFlow")
+        filters['Search Type']['values'] = hazardEvent.get(parm + "SearchType")
      
         if parm == 'crests':
-            filters['Year Lookback']['values'] = hazardEvent.get(parm+"YearLookbackSpinner")
+            filters['Year Lookback']['values'] = hazardEvent.get(parm + "YearLookbackSpinner")
      
         return filters
 
@@ -1688,7 +1689,7 @@ class MetaData(object):
             } 
 
     def getDamOrLevee(self, damOrLeveeName):
-        choices  = self.damOrLeveeChoices()
+        choices = self.damOrLeveeChoices()
         if not damOrLeveeName and choices:
             damOrLeveeName = choices[0]
         damOrLevee = {
@@ -1718,12 +1719,12 @@ class MetaData(object):
         return damList
 
     def includeFloodPointTable(self):
-        return {"identifier":"selectFloodPointTable", 
+        return {"identifier":"selectFloodPointTable",
                 "displayString": "Select for flood point table"
         }
 
 ########################
-### Probabilistic
+# ## Probabilistic
 
     def probability(self):
         return {
@@ -1734,7 +1735,7 @@ class MetaData(object):
             "maxValue": 100,
             "values": 50,
             "expandHorizontally": True,
-            "showScale": True,                
+            "showScale": True,
             }
 
     # Excessive Rainfall Outlook
@@ -1815,7 +1816,10 @@ class MetaData(object):
         vals = [['N/A', 'N/A']]
         
         if probSeverAttrs:
-            vals = [list((k,v)) for k,v in probSeverAttrs.iteritems()]
+            vals = [list((k, v)) for k, v in probSeverAttrs.iteritems()]
+            
+        #print "CommonMetaData convectiveGetAttrs probSeverAttrs, vals", probSeverAttrs, vals
+        #self.flush()
             
         tbl = {
             "fieldType": "Table",
@@ -1832,12 +1836,16 @@ class MetaData(object):
         mws = []
         # ThreatID
         mws.append(self._getConvectiveCellId())
+        # Threat Type
+        mws.append(self._getConvectiveThreatType())
         # Motion Vector
         mws.append(self._getConvectiveMotionVector())
         # Hazard Type (Svr/Tor)
         # Duration (see config)
         # Probability Trend
         mws.append(self._getConvectiveProbabilityTrend())
+        # Storm Chars
+        mws.append(self._getStormCharacteristics())
         # Warning Discussion
         mws.append(self._getConvectiveDiscussion())
         # Activate
@@ -1866,10 +1874,64 @@ class MetaData(object):
 
         
         return grp
+    
+    def _getConvectiveThreatType(self):
+        threatType = {
+            "fieldType": "ComboBox",
+            "fieldName": "convectiveThreatType",
+            "label": "Threat Type:",
+            "choices": ["None",
+                        "Severe",
+                        "Tornado"
+                        ],
+            "values": "None",
+            "expandHorizontally": False,
+        }
+        
+        return threatType
+
+    def _getStormCharacteristics(self):
+        hailType = self._buildStormChars('Wind', [str(x) + " mph" for x in [60, 65, 70, 75, 80, 85, 90]])
+
+        windType = self._buildStormChars('Hail', [str(x)+"\"" for x in [1, 1.5, 2, 2.5, 3, 3.5, ">=4"]])
+        
+        tornType = self._buildStormChars('Torn', ['radar indicated', 'radar observed', 'spotter observed'])
+        
+        threatTypes = {
+            "fieldType": "Composite",
+            "fieldName": "convectiveStormCharsGroup",
+            "label": "Storm Characteristics (included in discussion)",
+            #"leftMargin": 10,
+            #"rightMargin": 10,
+            #"topMargin": 10,
+            #"bottomMargin": 10,
+            #"expandHorizontally": True,
+            #"expandVertically": True,
+            "numColumns":3,
+            "fields": [hailType, windType, tornType]
+            }
+
+        
+        return threatTypes
+
+    def _buildStormChars(self, typ, vals):
+        capType = typ.capitalize()
+        values = ["None"]
+        values.extend(vals)
+        chars = {
+            "fieldType": "ComboBox",
+            "fieldName": "convectiveStormChars"+capType,
+            "label": capType+" Chars:",
+            "choices": values,
+            "values": "None",
+            "expandHorizontally": False,
+        }
+        
+        return chars
         
     def _getConvectiveCellId(self):
         
-        ### For manually drawn hazards, go with hazard event ID as it should be unique
+        # ## For manually drawn hazards, go with hazard event ID as it should be unique
         objectID = self.hazardEvent.get('objectID') if self.hazardEvent.get('objectID') else 'M' + self.hazardEvent.getDisplayEventID()
         if self.hazardEvent.get('objectID') is None:
             self.hazardEvent.set('objectID', objectID)
@@ -1878,12 +1940,12 @@ class MetaData(object):
             "fieldType": "Composite",
             "fieldName": "convectiveThreatGroup",
             "label": "",
-            #"leftMargin": 10,
-            #"rightMargin": 10,
-            #"topMargin": 10,
-            #"bottomMargin": 10,
-            #"expandHorizontally": True,
-            #"expandVertically": True,
+            # "leftMargin": 10,
+            # "rightMargin": 10,
+            # "topMargin": 10,
+            # "bottomMargin": 10,
+            # "expandHorizontally": True,
+            # "expandVertically": True,
             "numColumns":2,
             "fields": [
                         {
@@ -1910,18 +1972,18 @@ class MetaData(object):
             wspd = probSvrAttrs.get('wspd') 
         else:
             wdir = 270
-            wspd = 32 # kts
+            wspd = 32  # kts
         
         grp = {
             "fieldType": "Composite",
             "fieldName": "convectiveMotionVectorGroup",
             "label": "",
-            #"leftMargin": 10,
-            #"rightMargin": 10,
-            #"topMargin": 10,
-            #"bottomMargin": 10,
-            #"expandHorizontally": True,
-            #"expandVertically": True,
+            # "leftMargin": 10,
+            # "rightMargin": 10,
+            # "topMargin": 10,
+            # "bottomMargin": 10,
+            # "expandHorizontally": True,
+            # "expandVertically": True,
             "numColumns":4,
             "fields": [
                         {
@@ -1936,7 +1998,7 @@ class MetaData(object):
                         "label": "",
                         "minValue": 0,
                         "maxValue": 360,
-                        "values": wdir,
+                        "values": int(wdir),
                         "incrementDelta": 5,
                         "showScale": False,
                         "modifyRecommender": "SwathRecommender"
@@ -1948,7 +2010,7 @@ class MetaData(object):
                         "sendEveryChange": False,
                         "minValue": 0,
                         "maxValue": 75,
-                        "values": wspd,
+                        "values": int(wspd),
                         "showScale": False,
                         "modifyRecommender": "SwathRecommender"
                         },
@@ -1992,12 +2054,12 @@ class MetaData(object):
             "fieldType": "Composite",
             "fieldName": "convectiveTrendsGroup",
             "label": "",
-            #"leftMargin": 10,
-            #"rightMargin": 10,
-            #"topMargin": 10,
-            #"bottomMargin": 10,
-            #"expandHorizontally": True,
-            #"expandVertically": True,
+            # "leftMargin": 10,
+            # "rightMargin": 10,
+            # "topMargin": 10,
+            # "bottomMargin": 10,
+            # "expandHorizontally": True,
+            # "expandVertically": True,
             "numColumns":8,
             "fields": [
                         {
@@ -2048,18 +2110,18 @@ class MetaData(object):
             "fieldType": "Composite",
             "fieldName": "convectiveProbGroup",
             "label": "",
-            #"leftMargin": 10,
-            #"rightMargin": 10,
-            #"topMargin": 10,
-            #"bottomMargin": 10,
-            #"expandHorizontally": True,
-            #"expandVertically": True,
+            # "leftMargin": 10,
+            # "rightMargin": 10,
+            # "topMargin": 10,
+            # "bottomMargin": 10,
+            # "expandHorizontally": True,
+            # "expandVertically": True,
             "numColumns":3,
             "fields": [
                         {
                          "fieldType": "HiddenField",
                          "fieldName": "convectiveProbabilityTrend",
-                         "values": [100,80,60,40,20,10]
+                         "values": [100, 80, 60, 40, 20, 10]
                          },
                         {
                         "fieldType": "Button",
@@ -2102,6 +2164,16 @@ class MetaData(object):
         return grp
 
     def _getConvectiveDiscussion(self):
+        previousText = self.hazardEvent.get("convectiveWarningDecisionDiscussion")
+        simTimeMils = SimulatedTime.getSystemTime().getMillis()
+        currentTime = datetime.datetime.fromtimestamp(simTimeMils / 1000)
+        
+        textVals = currentTime.strftime("[%m-%d-%Y %H:%M:%S]  ")
+        if previousText:
+            textVals += previousText
+
+        textVals += '\n\n'
+
         text = {
             "fieldType": "Text",
             "fieldName": "convectiveWarningDecisionDiscussion",
@@ -2109,8 +2181,8 @@ class MetaData(object):
             "visibleChars": 40,
             "lines": 10,
             "expandHorizontally": True,
-            "promptText": "Recognized text will be copied here (or type manually)."
-            
+            "promptText": "Recognized text will be copied here (or type manually).",
+            "values": textVals,
         }
         
         return text
@@ -2129,12 +2201,12 @@ class MetaData(object):
             "fieldType": "Composite",
             "fieldName": "convectiveAuxiliaryControls",
             "label": "",
-            #"leftMargin": 10,
-            #"rightMargin": 10,
-            #"topMargin": 10,
-            #"bottomMargin": 10,
-            #"expandHorizontally": True,
-            #"expandVertically": True,
+            # "leftMargin": 10,
+            # "rightMargin": 10,
+            # "topMargin": 10,
+            # "bottomMargin": 10,
+            # "expandHorizontally": True,
+            # "expandVertically": True,
             "numColumns":4,
             "fields": [
                         {
@@ -2182,11 +2254,11 @@ class MetaData(object):
             "fieldName": "convectiveSwathPresets",
             "label": "Swath Presets:",
             "choices": ["NoPreset",
-                        "RightTurningSupercell", 
-                        "LeftTurningSupercell", 
+                        "RightTurningSupercell",
+                        "LeftTurningSupercell",
                         "BroadSwath",
                         "LightBulbSwath",
-                        #"CubicSplineInterpolation"
+                        # "CubicSplineInterpolation"
                         ],
             "values": "NoPreset",
             "expandHorizontally": True,
@@ -2217,11 +2289,35 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         # print '+++'
         # print pprint.pprint(convectMutables)
         # os.sys.__stdout__.flush() 
-        #=======================================================================
+        #=======================================================================       
+        #print pprint.pprint(convectTriggers)
+        #print '***'
+        #print pprint.pprint(mutableProperties[convectTriggers[0]]['values'])
+        
+        discussion = mutableProperties['convectiveWarningDecisionDiscussion']['values']
+        discLines = discussion.split('\n\n')
+        if len(discLines[0]) > 0:
+            latestTimestampMatch = re.match('\[\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}\]  ', discLines[0])
+            if latestTimestampMatch:
+                latestTimestamp = latestTimestampMatch.group(0)
+                hailVal0 = mutableProperties['convectiveStormCharsHail']['values']
+                hailVal = 'Hail: '+hailVal0 if hailVal0 != "None" else ''
+                windVal0 = mutableProperties['convectiveStormCharsWind']['values']
+                windVal = 'Winds: '+windVal0 if windVal0 != "None" else ''
+                tornVal0 = mutableProperties['convectiveStormCharsTorn']['values']
+                tornVal = 'Tornado: '+tornVal0 if tornVal0 != "None" else ''
+                updateLine = ' '.join([latestTimestamp, hailVal, windVal, tornVal])
+                discLines[0] = updateLine
+                discussion = '\n\n'.join(discLines)                        
+        
+        returnDict['convectiveWarningDecisionDiscussion'] = { 'values' : discussion}
+        
+        
+        os.sys.__stdout__.flush() 
+        
     
 
-    #return returnDict
-    return None
+    return returnDict
 
 def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
     
@@ -2230,7 +2326,7 @@ def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
     # Get any changes required for the rise-crest-fall read-only text fields.
     ufnChanges = applyRiseCrestFallInterdependencies(triggerIdentifiers, mutableProperties)
 
-    ### originalList is used in multiple cases.  Assign it only once
+    # ## originalList is used in multiple cases.  Assign it only once
     oListTemp = mutableProperties.get("impactCheckBoxes")
     if oListTemp:
         originalList = oListTemp['extraData']['origList']
@@ -2238,7 +2334,7 @@ def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
         originalList = None
     
 
-    ### For Impacts and Crests interaction
+    # ## For Impacts and Crests interaction
     impactsCrestsChanges = None
     if triggerIdentifiers is not None:
         impactsCrestsChanges = {}
@@ -2253,7 +2349,7 @@ def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
             offCheckList = list(set(originalList).difference(currentVals))
     
             for off in offCheckList:
-                offText = 'impactTextField_'+off.split('_')[-1]
+                offText = 'impactTextField_' + off.split('_')[-1]
                 impactsCrestsChanges[offText] = { "enable" : False}
         
         
@@ -2350,7 +2446,7 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
                         endingOption = endingOption.replace('<br />', '\n')
                         endingOption = endingOption.replace('<br>', '\n')
                 propertyChanges["endingSynopsis"] = {
-                                "values" : endingOption,                        
+                                "values" : endingOption,
                                 } 
     return propertyChanges
                 

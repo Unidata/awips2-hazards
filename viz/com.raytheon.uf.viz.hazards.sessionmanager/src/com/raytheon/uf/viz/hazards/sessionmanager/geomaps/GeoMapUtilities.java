@@ -260,12 +260,15 @@ public class GeoMapUtilities {
                 mapdataTable);
         mapDataRequest.addIdentifier(HazardConstants.GEOMETRY_FIELD_IDENTIFIER,
                 "the_geom");
-        mapDataRequest.addIdentifier(HazardConstants.IN_LOCATION_IDENTIFIER,
-                "true");
-        mapDataRequest.addIdentifier(HazardConstants.LOCATION_FIELD_IDENTIFIER,
-                HazardConstants.CWA_IDENTIFIER);
-        mapDataRequest.setLocationNames(cwa);
-        mapDataRequest.addIdentifier(HazardConstants.CWA_IDENTIFIER, cwa);
+        if (!cwa.equals("National")) {
+            mapDataRequest.addIdentifier(
+                    HazardConstants.IN_LOCATION_IDENTIFIER, "true");
+            mapDataRequest.addIdentifier(
+                    HazardConstants.LOCATION_FIELD_IDENTIFIER,
+                    HazardConstants.CWA_IDENTIFIER);
+            mapDataRequest.setLocationNames(cwa);
+            mapDataRequest.addIdentifier(HazardConstants.CWA_IDENTIFIER, cwa);
+        }
 
         /*
          * Label parameter may be an empty string if defined as such in the

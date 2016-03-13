@@ -1,3 +1,19 @@
+    # Settings 
+    #
+    # NOTE: The following can be added to a Settings file to trump the values in StartUpConfig
+    #     "mapCenter", "possibleSites", "visibleSites", "eventIdDisplayType"
+    # Examples:  
+    #"mapCenter": {
+    #    "lat": 41.06,
+    #    "lon":-95.91,
+    #    "zoom": 7
+    #},
+    #"possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
+    #"visibleSites":  ["BOU", "OAX"]
+    #
+    # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
+    #"eventIdDisplayType" : "PROG_ON_DIFF",
+
 WSW = {
     "settingsID": "WSW",
     "perspectiveIDs": ["com.raytheon.viz.ui.GFEPerspective"], 

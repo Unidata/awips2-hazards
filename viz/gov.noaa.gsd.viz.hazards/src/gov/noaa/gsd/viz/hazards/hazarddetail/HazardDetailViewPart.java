@@ -720,6 +720,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private boolean buildForWideViewing;
 
     /**
+     * Flag indicating whether or not to include Issue button
+     */
+    private boolean includeIssueButton;
+
+    /**
      * <p>
      * Cache of megawidget managers associated with event identifiers. Only the
      * most recently used megawidget managers are cached away; the maximum
@@ -1461,6 +1466,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             ICurrentTimeProvider currentTimeProvider,
             boolean showStartEndTimeScale,
             boolean buildForWideViewing,
+            boolean includeIssueButton,
             Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers) {
         initialized = true;
 
@@ -1473,6 +1479,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         this.showStartEndTimeScale = showStartEndTimeScale;
         this.buildForWideViewing = buildForWideViewing;
         this.extraDataForEventIds = extraDataForEventIdentifiers;
+        this.includeIssueButton = includeIssueButton;
 
         /*
          * If the view part UI elements have been built, create the time option
@@ -1691,11 +1698,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 PREVIEW_BUTTON_TOOLTIP_TEXT);
         createButton(buttonBar, Command.PROPOSE, PROPOSE_BUTTON_TEXT,
                 PROPOSE_BUTTON_TOOLTIP_TEXT);
-        /*
-         * TODO: RM 3851 - Make this configurable using flag in startupconfig.py
-         */
-        // createButton(buttonBar, Command.ISSUE, ISSUE_BUTTON_TEXT,
-        // ISSUE_BUTTON_TOOLTIP_TEXT);
+        includeIssueButton = true;
+        if (includeIssueButton) {
+            createButton(buttonBar, Command.ISSUE, ISSUE_BUTTON_TEXT,
+                    ISSUE_BUTTON_TOOLTIP_TEXT);
+        }
     }
 
     @Override

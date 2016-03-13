@@ -4044,16 +4044,21 @@ public class SessionEventManager implements
         Geometry result = selectedEvent.getGeometry();
 
         if (isLowResComputationNeeded(selectedEvent, hazardType)) {
-            if (geoMapUtilities.isWarngenHatching(selectedEvent)) {
-                result = geoMapUtilities.warngenClipping(selectedEvent,
-                        hazardType);
-                result = reduceGeometry(result, hazardType);
-                if (!result.isEmpty()) {
-                    result = addGoosenecksAsNecessary(result);
-                }
-
+            // No clipping for National
+            if (configManager.getSiteID().equals("National")) {
+                result = selectedEvent.getGeometry();
             } else {
-                result = geoMapUtilities.gfeClipping(selectedEvent);
+                if (geoMapUtilities.isWarngenHatching(selectedEvent)) {
+                    result = geoMapUtilities.warngenClipping(selectedEvent,
+                            hazardType);
+                    result = reduceGeometry(result, hazardType);
+                    if (!result.isEmpty()) {
+                        result = addGoosenecksAsNecessary(result);
+                    }
+
+                } else {
+                    result = geoMapUtilities.gfeClipping(selectedEvent);
+                }
             }
 
             if (result.isEmpty()) {
