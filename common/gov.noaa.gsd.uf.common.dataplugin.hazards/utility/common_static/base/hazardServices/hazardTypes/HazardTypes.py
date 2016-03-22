@@ -75,7 +75,7 @@
 #                            dictionary, with each key being the name of a recommender, and
 #                            the associated value being a list holding the names of attributes
 #                            that when changed trigger the running of that recommender. Valid
-#                            attributes are "timeRange", "geometry", "geometryDecoration", and
+#                            attributes are "timeRange", "geometry", "visualFeature", and
 #                            "status".  (Note that any hazard event attributes that may be
 #                            specific to a hazard type, e.g. "cta", may be made triggers as
 #                            well within a hazard type's metadata generation script.) 
@@ -1971,7 +1971,7 @@ HazardTypes = {
               'durationIncrement': 60,
               'allowUntilFurtherNotice': True,
               'modifyRecommenders': {
-                                     'SwathRecommender': [ 'geometry', 'geometryDecoration', 'timeRange', 'status' ]
+                                     'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status' ]
                                      },
               'allowOverlappingPolygons': True,
               },
@@ -1998,7 +1998,7 @@ HazardTypes = {
               'inclusionAreaInSqKm' : 1.0,
               'allowUntilFurtherNotice': False,
               'modifyRecommenders': {
-                                     'SwathRecommender': [ 'timeRange' ]
+                                     'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status' ]
                                      },
               'allowOverlappingPolygons': True,
               },

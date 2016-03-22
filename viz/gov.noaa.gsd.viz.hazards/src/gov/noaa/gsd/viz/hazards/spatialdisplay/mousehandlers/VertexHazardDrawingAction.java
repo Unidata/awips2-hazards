@@ -7,11 +7,11 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.LineDrawingAttributes;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.PointDrawingAttributes;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDrawingAttributes;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.LineDrawingAttributes;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.PointDrawingAttributes;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.PolygonDrawingAttributes;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
@@ -190,7 +190,7 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
 
                 ((Line) ghost).setLinePoints(ghostPts);
 
-                getSpatialDisplay().setGhostLine(ghost);
+                getSpatialDisplay().setGhostOfElementBeingEdited(ghost);
                 getSpatialDisplay().issueRefresh();
             }
 
@@ -218,7 +218,7 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
                  * This is where the ghost object is replaced by the new shape.
                  * First, delete the ghost line.
                  */
-                getSpatialDisplay().removeGhostLine();
+                getSpatialDisplay().removeGhostOfElementBeingEdited();
 
                 List<Coordinate> pointsCopy = new ArrayList<Coordinate>(points);
                 points.clear();

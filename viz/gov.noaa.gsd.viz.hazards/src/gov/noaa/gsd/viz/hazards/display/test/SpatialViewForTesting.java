@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
@@ -40,6 +41,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Dec 05, 2014 4124       Chris.Golden      Changed to work with ObservedSettings.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
+ * Mar 16, 2016 15676      Chris.Golden      Changed to work with latest spatial view.
+ * Mar 24, 2016 15676      Chris.Golden      Ditto.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -161,4 +164,9 @@ public class SpatialViewForTesting implements ISpatialView {
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public void drawSpatialEntities(List spatialEntities,
+            Set selectedEventIdentifiers) {
+        throw new UnsupportedOperationException();
+    }
 }

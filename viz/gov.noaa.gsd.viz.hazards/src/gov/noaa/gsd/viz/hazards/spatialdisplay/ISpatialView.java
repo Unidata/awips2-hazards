@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
@@ -14,7 +15,9 @@ import gov.noaa.gsd.viz.mvp.IView;
 
 import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -40,6 +43,11 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Dec 05, 2014   4124     Chris.Golden      Changed to work with ObservedSettings.
  * Dec 13, 2014 4959       Dan Schaffer      Spatial Display cleanup and other bug fixes
  * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
+ * Mar 16, 2016 15676      Chris.Golden      Changed to make visual features work.
+ *                                           Will be refactored to remove numerous
+ *                                           existing kludges.
+ * Mar 24, 2016 15676      Chris.Golden      Changed method that draws spatial entities
+ *                                           to take another parameter.
  * </pre>
  * 
  * @author Chris.Golden
@@ -78,6 +86,18 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
             Map<String, Boolean> forModifyingStormTrack,
             Map<String, Boolean> eventEditability,
             boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed);
+
+    /**
+     * Draw spatial entities on the view.
+     * 
+     * @param spatialEntities
+     *            Spatial entities.
+     * @param selectedEventIdentifiers
+     *            Identifiers of events that are currently selected.
+     */
+    public void drawSpatialEntities(
+            List<SpatialEntity<VisualFeatureSpatialIdentifier>> spatialEntities,
+            Set<String> selectedEventIdentifiers);
 
     /**
      * Force time matching to be recalculated.

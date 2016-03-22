@@ -53,6 +53,7 @@ class Recommender(RecommenderTemplate.Recommender):
         metadata['description'] = '''
         '''
         metadata['eventState'] = 'Pending'
+        metadata['includeEventTypes'] = [ "Prob_Severe", "Prob_Tornado" ]
         
         # This tells Hazard Services to not notify the user when the recommender
         # creates no hazard events. Since this recommender is to be run in response
@@ -86,12 +87,12 @@ class Recommender(RecommenderTemplate.Recommender):
         
         # For now, just print out a message saying this was run.
         import sys
-#         sys.stderr.write("Running GRID recommender.\n    trigger: " +
-#                          str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
-#                          str(eventSet.getAttribute("eventType")) + "\n    hazard ID: " +
-#                          str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute: " +
-#                          str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
-        sys.stderr.write("Running GRID recommender.\n")
+        sys.stderr.write("Running PHI grid recommender.\n    trigger:    " +
+                         str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
+                         str(eventSet.getAttribute("eventType")) + "\n    origin:     " + 
+                         str(eventSet.getAttribute("origin")) + "\n    hazard ID:  " +
+                         str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute:  " +
+                         str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
         sys.stderr.flush()
         
         swathRec = SwathRecommender()

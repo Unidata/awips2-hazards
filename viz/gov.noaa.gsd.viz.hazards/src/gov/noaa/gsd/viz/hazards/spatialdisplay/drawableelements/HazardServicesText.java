@@ -7,11 +7,10 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.TextPositioner;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 import gov.noaa.nws.ncep.ui.pgen.elements.Text;
 
+import java.awt.Color;
 import java.util.ArrayList;
 
 import com.vividsolutions.jts.geom.Coordinate;
@@ -30,11 +29,16 @@ import com.vividsolutions.jts.geom.Point;
  *                                             points.
  * Nov 23, 2013   1462     Bryon.Lawrence      Set text to bold.
  * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
+ * Mar 16, 2016 15676      Chris.Golden        Added code to support visual features.
+ * Mar 24, 2016 15676      Chris.Golden        Added ability to change font size and
+ *                                             specify color directly.
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
 public class HazardServicesText extends Text implements IHazardServicesShape {
+
+    public static final int FONT_SIZE = 15;
 
     private final HazardServicesDrawingAttributes drawingAttributes;
 
@@ -44,6 +48,30 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
      * The center point of the drawable that the text is annotating.
      */
     private final Coordinate textCoordinate;
+
+    private boolean visualFeature;
+
+    public HazardServicesText(
+            HazardServicesDrawingAttributes drawingAttributes, String text,
+            float pointSize, Color color, Coordinate coordinate,
+            Layer activeLayer, String id) {
+        this.id = id;
+        this.drawingAttributes = drawingAttributes;
+        this.textCoordinate = coordinate;
+        setPgenCategory(text);
+        setPgenType("TEXT");
+        setParent(activeLayer);
+        setText(new String[] { text });
+        setColors(new Color[] { color });
+        setFontSize(pointSize);
+
+        // Allow the TextPositioner to adjust the label's location
+        // relative to the coordinate.
+        updatePosition();
+
+        setStyle(FontStyle.BOLD);
+
+    }
 
     /**
      * 
@@ -77,6 +105,7 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
         setParent(activeLayer);
         setText(new String[] { pgenCategory });
         setColors(drawingAttributes.getColors());
+        setFontSize(FONT_SIZE);
 
         // Allow the TextPositioner to adjust the label's location
         // relative to the centroid of the hazard area.
@@ -159,13 +188,18 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
     }
 
     @Override
-    public float getFontSize() {
-        return 15;
+    public Geometry getGeometry() {
+        return null;
     }
 
     @Override
-    public Geometry getGeometry() {
-        return null;
+    public boolean isVisualFeature() {
+        return visualFeature;
+    }
+
+    @Override
+    public void setVisualFeature(boolean visualFeature) {
+        this.visualFeature = visualFeature;
     }
 
     @Override
@@ -179,7 +213,7 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
     }
 
     @Override
-    public void setIsEditable(boolean isEditable) {
+    public void setEditable(boolean editable) {
         throw new UnsupportedOperationException("Text is never editable");
     }
 
@@ -202,7 +236,7 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
     }
 
     @Override
-    public void setMovable(boolean isMovable) {
+    public void setMovable(boolean movable) {
         throw new UnsupportedOperationException("Text is never movable.");
     }
 

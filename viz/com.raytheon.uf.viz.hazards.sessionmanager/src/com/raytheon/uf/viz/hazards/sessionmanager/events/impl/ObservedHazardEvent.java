@@ -18,6 +18,9 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
+import gov.noaa.gsd.common.visuals.VisualFeature;
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -25,6 +28,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
@@ -49,6 +53,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventVisualFeaturesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.modifiable.IModifiable;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
@@ -116,6 +121,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      attribute map when at least one of the
  *                                      attribute values is null.
  * Mar 03, 2016 14004      Chris.Golden Added missing setGeometry() method.
+ * Mar 06, 2016 15676      Chris.Golden Added visual features.
  * </pre>
  * 
  * @author bsteffen
@@ -182,6 +188,16 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     @Override
     public Geometry getProductGeometry() {
         return delegate.getProductGeometry();
+    }
+
+    @Override
+    public VisualFeaturesList getBaseVisualFeatures() {
+        return delegate.getBaseVisualFeatures();
+    }
+
+    @Override
+    public VisualFeaturesList getSelectedVisualFeatures() {
+        return delegate.getSelectedVisualFeatures();
     }
 
     @Override
@@ -387,6 +403,23 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
+    public void setBaseVisualFeatures(VisualFeaturesList visualFeatures) {
+        setBaseVisualFeatures(visualFeatures, true, Originator.OTHER);
+    }
+
+    @Override
+    public void setSelectedVisualFeatures(VisualFeaturesList visualFeatures) {
+        setSelectedVisualFeatures(visualFeatures, true, Originator.OTHER);
+    }
+
+    @Override
+    public void setVisualFeatures(VisualFeaturesList baseVisualFeatures,
+            VisualFeaturesList selectedVisualFeatures) {
+        setVisualFeatures(baseVisualFeatures, selectedVisualFeatures, true,
+                Originator.OTHER);
+    }
+
+    @Override
     public void setHazardMode(ProductClass mode) {
         setHazardMode(mode, true, Originator.OTHER);
     }
@@ -474,6 +507,22 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     public void setGeometry(Geometry geom, IOriginator originator) {
         setGeometry(geom, true, originator);
+    }
+
+    public void setBaseVisualFeatures(VisualFeaturesList visualFeatures,
+            IOriginator originator) {
+        setBaseVisualFeatures(visualFeatures, true, originator);
+    }
+
+    public void setSelectedVisualFeatures(VisualFeaturesList visualFeatures,
+            IOriginator originator) {
+        setSelectedVisualFeatures(visualFeatures, true, originator);
+    }
+
+    public void setVisualFeatures(VisualFeaturesList baseVisualFeatures,
+            VisualFeaturesList selectedVisualFeatures, IOriginator originator) {
+        setVisualFeatures(baseVisualFeatures, selectedVisualFeatures, true,
+                originator);
     }
 
     public void setHazardMode(ProductClass productClass, IOriginator originator) {
@@ -672,6 +721,178 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
         }
 
+    }
+
+    /**
+     * Set the base visual features to those specified.
+     * 
+     * @param visualFeatures
+     *            New base visual features.
+     * @param notify
+     *            Flag indicating whether or not to send out a notification of
+     *            any change that results.
+     * @param originator
+     *            Originator of the change.
+     * @return Set of identifiers of base visual features that changed as a
+     *         result of this invocation, or <code>null</code> if none changed.
+     */
+    protected Set<String> setBaseVisualFeatures(
+            VisualFeaturesList visualFeatures, boolean notify,
+            IOriginator originator) {
+        VisualFeaturesList oldVisualFeatures = getBaseVisualFeatures();
+        if (listChanged(oldVisualFeatures, visualFeatures)) {
+            Set<String> changedIdentifiers = getIdentifiersOfChanged(
+                    oldVisualFeatures, visualFeatures);
+            delegate.setBaseVisualFeatures(visualFeatures);
+            if (notify) {
+                eventManager
+                        .hazardEventModified(new SessionEventVisualFeaturesModified(
+                                eventManager, this, changedIdentifiers,
+                                Collections.<String> emptySet(), originator));
+            }
+            return changedIdentifiers;
+        }
+        return null;
+    }
+
+    /**
+     * Set the selected visual features to those specified.
+     * 
+     * @param visualFeatures
+     *            New selected visual features.
+     * @param notify
+     *            Flag indicating whether or not to send out a notification of
+     *            any change that results.
+     * @param originator
+     *            Originator of the change.
+     * @return Set of identifiers of selected visual features that changed as a
+     *         result of this invocation, or <code>null</code> if none changed.
+     */
+    protected Set<String> setSelectedVisualFeatures(
+            VisualFeaturesList visualFeatures, boolean notify,
+            IOriginator originator) {
+        VisualFeaturesList oldVisualFeatures = getSelectedVisualFeatures();
+        if (listChanged(oldVisualFeatures, visualFeatures)) {
+            Set<String> changedIdentifiers = getIdentifiersOfChanged(
+                    oldVisualFeatures, visualFeatures);
+            delegate.setSelectedVisualFeatures(visualFeatures);
+            if (notify) {
+                eventManager
+                        .hazardEventModified(new SessionEventVisualFeaturesModified(
+                                eventManager, this, Collections
+                                        .<String> emptySet(),
+                                changedIdentifiers, originator));
+            }
+            return changedIdentifiers;
+        }
+        return null;
+    }
+
+    /**
+     * Set the base and selected visual features to those lists specified.
+     * 
+     * @param baseVisualFeatures
+     *            New base visual features.
+     * @param selectedVisualFeatures
+     *            New selected visual features.
+     * @param notify
+     *            Flag indicating whether or not to send out a notification of
+     *            any change that results.
+     * @param originator
+     *            Originator of the change.
+     */
+    protected void setVisualFeatures(VisualFeaturesList baseVisualFeatures,
+            VisualFeaturesList selectedVisualFeatures, boolean notify,
+            IOriginator originator) {
+        Set<String> changedBaseIdentifiers = setBaseVisualFeatures(
+                baseVisualFeatures, false, originator);
+        Set<String> changedSelectedIdentifiers = setSelectedVisualFeatures(
+                selectedVisualFeatures, false, originator);
+        if (notify
+                && ((changedBaseIdentifiers != null) || (changedSelectedIdentifiers != null))) {
+            eventManager
+                    .hazardEventModified(new SessionEventVisualFeaturesModified(
+                            eventManager, this, changedBaseIdentifiers,
+                            changedSelectedIdentifiers, originator));
+        }
+    }
+
+    /**
+     * Determine whether or not replacing one list with the other results in a
+     * change. If one is <code>null</code> and the other empty, that is
+     * considered no change.
+     * 
+     * @param oldList
+     *            Old list.
+     * @param newList
+     *            New list.
+     * @return True if the two lists are functionally equivalent, false
+     *         otherwise.
+     */
+    private boolean listChanged(List<?> oldList, List<?> newList) {
+        if (oldList != newList) {
+            if (((oldList == null) && (newList != null) && newList.isEmpty())
+                    || ((oldList != null) && (newList == null) && oldList
+                            .isEmpty())) {
+                return false;
+            }
+            return changed(oldList, newList);
+        }
+        return false;
+    }
+
+    /**
+     * Get the identifiers of any visual features that changed between the
+     * specified old and new lists.
+     * 
+     * @param oldVisualFeatures
+     *            Old visual features list.
+     * @param newVisualFeatures
+     *            New visual features list.
+     * @return Set of identifiers of those visual features that changed.
+     */
+    private Set<String> getIdentifiersOfChanged(
+            VisualFeaturesList oldVisualFeatures,
+            VisualFeaturesList newVisualFeatures) {
+
+        /*
+         * Build a set of identifiers of visual features that have changed
+         * between the two visual features lists. If the old or new visual
+         * features list is null, then all the ones in the other list are
+         * considered changed (they've either been added or deleted), so list
+         * them. Otherwise, iterate through the lists, comparing each in turn;
+         * z-order matters, so even if the lists are identical in content but
+         * not in ordering, any order changes mean that both visual features at
+         * such an index are considered changed.
+         */
+        Set<String> changedIdentifiers = new HashSet<>();
+        if ((oldVisualFeatures == null) || (newVisualFeatures == null)) {
+            VisualFeaturesList list = (oldVisualFeatures == null ? newVisualFeatures
+                    : oldVisualFeatures);
+            for (VisualFeature visualFeature : list) {
+                changedIdentifiers.add(visualFeature.getIdentifier());
+            }
+        } else {
+            VisualFeaturesList shorterList = (oldVisualFeatures.size() > newVisualFeatures
+                    .size() ? newVisualFeatures : oldVisualFeatures);
+            VisualFeaturesList longerList = (shorterList == oldVisualFeatures ? newVisualFeatures
+                    : oldVisualFeatures);
+            int index = 0;
+            while (index < shorterList.size()) {
+                if (shorterList.get(index).equals(longerList.get(index)) == false) {
+                    changedIdentifiers.add(shorterList.get(index)
+                            .getIdentifier());
+                    changedIdentifiers.add(longerList.get(index)
+                            .getIdentifier());
+                }
+                index++;
+            }
+            while (index < longerList.size()) {
+                changedIdentifiers.add(longerList.get(index).getIdentifier());
+                index++;
+            }
+        }
+        return changedIdentifiers;
     }
 
     private Geometry toCollectionAsNecessary(Geometry geom) {

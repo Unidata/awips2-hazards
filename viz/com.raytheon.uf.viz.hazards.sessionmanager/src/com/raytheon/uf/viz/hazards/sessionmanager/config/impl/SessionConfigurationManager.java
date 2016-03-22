@@ -208,6 +208,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Mar 04, 2016 15933      Chris.Golden Added ability to run multiple recommenders in
  *                                      sequence in response to a time interval trigger,
  *                                      instead of just one recommender.
+ * Mar 22, 2016 15676      Chris.Golden Changed line styles returned to make more sense
+ *                                      (dotted was referred to as dashed).
  * </pre>
  * 
  * @author bsteffen
@@ -1127,8 +1129,6 @@ public class SessionConfigurationManager implements
         case PENDING:
             return null;
         case PROPOSED:
-            return LineStyle.DASHED;
-        case POTENTIAL:
             return LineStyle.DOTTED;
         default:
             return LineStyle.SOLID;

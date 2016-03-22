@@ -5,9 +5,10 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.viz.hazards.spatialdisplay;
+package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
-import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_DASHED_4;
+import static gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.LineStyle.LINE_DASHED_2;
+import static gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.LineStyle.LINE_DASHED_3;
 
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
@@ -15,8 +16,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
- * The PGEN drawing attributes associated with a star drawn on the Spatial
- * Display in Hazard Services.
+ * <Description> The PGEN drawing attributes associated with a polygon drawn on
+ * the Spatial Display in Hazard Services. All drawables in Hazard Services are
+ * rendered using PGEN drawing classes.
  * 
  * <pre>
  * SOFTWARE HISTORY
@@ -26,38 +28,43 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Dec 05, 2014 4124       Chris.Golden        Changed to work with newly parameterized
  *                                             config manager.
+ * Mar 16, 2016 15676      Chris.Golden        Moved to more appropriate location.
+ * Mar 24, 2016 15676      Chris.Golden        Added ability to set size scale, and to use
+ *                                             dotted line style.
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
-public class StarDrawingAttributes extends HazardServicesDrawingAttributes {
+public class LineDrawingAttributes extends HazardServicesDrawingAttributes {
 
-    public static double SIZE_SCALE = 3.0;
+    public static double SIZE_SCALE = 7.5;
 
-    @SuppressWarnings("unused")
-    private String[] label = { "" };
+    private double sizeScale = SIZE_SCALE;
 
-    public StarDrawingAttributes(
+    public LineDrawingAttributes(
             ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager)
             throws VizException {
         super(sessionManager.getConfigurationManager());
-        filled = true;
-        closed = true;
+        setClosed(false);
+        setFilled(false);
     }
 
     @Override
-    public void setString(String[] label) {
-        this.label = label;
+    public void setDottedLineStyle() {
+        this.lineStyle = LINE_DASHED_2;
     }
 
     @Override
     public void setDashedLineStyle() {
-        this.lineStyle = LINE_DASHED_4;
+        this.lineStyle = LINE_DASHED_3;
     }
 
     @Override
     public double getSizeScale() {
-        return SIZE_SCALE;
+        return sizeScale;
     }
 
+    public void setSizeScale(double sizeScale) {
+        this.sizeScale = sizeScale;
+    }
 }

@@ -7,9 +7,10 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.viz.hazards.spatialdisplay;
+package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
-import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_DASHED_4;
+import static gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.LineStyle.LINE_DASHED_2;
+import static gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.LineStyle.LINE_DASHED_4;
 
 import java.awt.Color;
 import java.util.List;
@@ -36,6 +37,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Dec 05, 2014 4124       Chris.Golden        Changed to work with newly parameterized
  *                                             config manager.
  * Jun 24, 2015 6601       Chris.Cody          Change Create by Hazard Type display text
+ * Mar 16, 2016 15676      Chris.Golden        Moved to more appropriate location.
+ * Mar 24, 2016 15676      Chris.Golden        Added dotted line style.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -54,7 +57,12 @@ public class StormTrackDotDrawingAttributes extends
             String eventType) throws VizException {
         super(sessionManager.getConfigurationManager());
         this.eventType = eventType;
-        closed = true;
+        setClosed(true);
+    }
+
+    @Override
+    public void setDottedLineStyle() {
+        this.lineStyle = LINE_DASHED_2;
     }
 
     @Override

@@ -24,8 +24,10 @@ import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Event;
@@ -81,6 +83,11 @@ import com.vividsolutions.jts.geom.Polygon;
  * Jun 02, 2015 8500       Chris.Cody   Single click does not select HE on Spatial Display
  * Jul 06, 2015 6930       Chris.Cody   Change containing object for SYMBOL_NEW_LAT_LON
  * Jul 17, 2015 8890       Chris.Cody   Vertices appearing incorrectly on display
+ * Mar 24, 2016 15676      Chris.Golden Numerous bug fixes for multiple selection, selection itself
+ *                                      of non-editable/movable shapes, visual feature stuff, etc. For
+ *                                      the most part, what worked prior to visual features should now
+ *                                      work again, with some enhancements in terms of selectability
+ *                                      of immutable shapes.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -185,6 +192,11 @@ public class SelectionAction extends NonDrawingAction {
         private boolean allowPanning = false;
 
         /**
+         * Drawable element under a mouse-down.
+         */
+        private AbstractDrawableComponent drawableElementUnderMouseDown;
+
+        /**
          * Listens for the press of the SHIFT or CTRL keys. If the mouse pointer
          * is over a hazard, this signifies multiple selection via left mouse
          * click. If the mouse pointer is not over a hazard, then either a
@@ -227,12 +239,91 @@ public class SelectionAction extends NonDrawingAction {
          *      int, int)
          */
         @Override
-        public boolean handleMouseDown(int anX, int aY, int button) {
+        public boolean handleMouseDown(int x, int y, int button) {
+            drawableElementUnderMouseDown = null;
             if (button == 1) {
-                Coordinate loc = toCoordinate(anX, aY);
+                Coordinate loc = toCoordinate(x, y);
 
                 if (loc != null) {
-                    findSelectedDE(loc, anX, aY);
+
+                    AbstractDrawableComponent nadc = null;
+
+                    /*
+                     * Retrieve a list of drawables which contain this mouse
+                     * click point
+                     */
+                    List<AbstractDrawableComponent> containingComponentsList = getSpatialDisplay()
+                            .getContainingComponents(loc, x, y);
+
+                    /*
+                     * Retrieve the currently selected shapes, and from it
+                     * compile a set of the event identifiers that are currently
+                     * selected.
+                     */
+                    Set<AbstractDrawableComponent> selectedElements = getSpatialDisplay()
+                            .getSelectedElements();
+                    Set<String> selectedEventIdentifiers = new HashSet<>(
+                            selectedElements.size(), 1.0f);
+                    for (AbstractDrawableComponent selectedElement : selectedElements) {
+                        selectedEventIdentifiers.add(getSpatialDisplay()
+                                .eventIDForElement(selectedElement));
+                    }
+
+                    /*
+                     * If there is more than one containing component, make sure
+                     * that the topmost element is equal to one of the selected
+                     * elements. If there are symbols (including points), give
+                     * them precedence.
+                     */
+                    for (AbstractDrawableComponent comp : containingComponentsList) {
+                        String containingComponentEventID = getSpatialDisplay()
+                                .eventIDForElement(comp);
+                        if (((nadc == null) || (comp instanceof HazardServicesSymbol))
+                                && selectedEventIdentifiers
+                                        .contains(containingComponentEventID)
+                                && (isComponentEditable(comp) || isComponentMovable(comp))) {
+                            nadc = comp;
+                            if (comp instanceof HazardServicesSymbol) {
+                                break;
+                            }
+                        }
+                    }
+
+                    /*
+                     * If none of the selected components were found to have
+                     * been clicked, then just pick the topmost component
+                     * containing the click. Also choose the topmost one that is
+                     * uneditable and unmovable, in case it needs to be selected
+                     * during mouse-up later.
+                     * 
+                     * TODO: We need a better way of determining which
+                     * containing component of multiple components to chose as
+                     * the selected.
+                     */
+                    if (nadc == null) {
+                        for (AbstractDrawableComponent comp : containingComponentsList) {
+                            if (isComponentEditable(comp)
+                                    || isComponentMovable(comp)) {
+                                nadc = comp;
+                                break;
+                            } else if (drawableElementUnderMouseDown == null) {
+                                drawableElementUnderMouseDown = comp;
+                            }
+                        }
+                    }
+
+                    /*
+                     * If something was found to be editable, but nothing was
+                     * set for the drawable element under the mouse down, set
+                     * the latter to the former.
+                     */
+                    if (drawableElementUnderMouseDown == null) {
+                        drawableElementUnderMouseDown = nadc;
+                    }
+
+                    allowPanning = (nadc == null);
+
+                    getSpatialDisplay().setElementBeingEdited(nadc);
                 }
             }
 
@@ -242,49 +333,42 @@ public class SelectionAction extends NonDrawingAction {
         @Override
         public boolean handleMouseUp(int x, int y, int button) {
 
+            /*
+             * If button 3, tell the spatial presenter that a zone was selected;
+             * If button 2, add or delete a vertex if something was being
+             * edited; otherwise, if a vertex was moving, finish the move;
+             * otherwise, if an element was being moved, finish the move;
+             * otherwise, treat the click if panning was not happening.
+             */
             boolean result = true;
             if (button == 3) {
                 Coordinate loc = toCoordinate(x, y);
                 spatialPresenter.zoneSelected(loc);
-            }
-
-            /*
-             * Button 2 functionality for adding/deleting vertices... This
-             * mimics WarnGen.
-             */
-            else if (button == 2) {
-                if (getSpatialDisplay().getSelectedHazardLayer() != null) {
-                    handleVertexAdditionOrDeletion();
-                }
+            } else if (button == 2) {
+                handleVertexAdditionOrDeletion();
                 result = true;
             } else if (isVertexMove) {
                 handleVertexMove();
-
             } else if (ghostEl != null) {
-                DrawableElement selectedDE = getSpatialDisplay()
-                        .getSelectedDE();
-                if (selectedDE != null) {
-                    IHazardServicesShape origShape = (IHazardServicesShape) selectedDE;
-                    Class<?> selectedDEclass = selectedDE.getClass();
+                DrawableElement editedElement = getSpatialDisplay()
+                        .getElementBeingEdited();
+                if (editedElement != null) {
+                    Class<?> selectedDEclass = editedElement.getClass();
                     if (selectedDEclass.equals(HazardServicesSymbol.class)) {
-                        handleStormTrackModification(selectedDE);
-
+                        handleStormTrackModification(editedElement);
                     } else {
-                        handleShapeMove(origShape, selectedDEclass);
+                        handleShapeMove((IHazardServicesShape) editedElement,
+                                selectedDEclass);
                     }
-
                 }
-            } else if (!allowPanning) {
-                /*
-                 * Treat this has a hazard selection.
-                 */
+            } else if (drawableElementUnderMouseDown != null) {
                 boolean multipleSelection = shiftKeyIsDown || ctrlKeyIsDown;
                 getSpatialDisplay().elementClicked(
-                        getSpatialDisplay().getSelectedDE(), multipleSelection);
-
+                        drawableElementUnderMouseDown, multipleSelection);
             } else {
                 result = false;
             }
+
             finalizeMouseHandling();
 
             return result;
@@ -298,94 +382,6 @@ public class SelectionAction extends NonDrawingAction {
             return loc;
         }
 
-        /**
-         * Determines if the mouse pointer is within a polygon. If it is, then
-         * this becomes the containing DE.
-         * 
-         * @param loc
-         *            The coordinate representing the location of the mouse
-         *            pointer.
-         * @param x
-         *            X coordinate in pixel space.
-         * @param y
-         *            Y coordinate in pixel space.
-         * @return Whether or not a containing component was found.
-         */
-        private boolean findSelectedDE(Coordinate loc, int x, int y) {
-            boolean selectedDEFound = true;
-
-            AbstractDrawableComponent nadc = null;
-
-            /*
-             * Retrieve a list of drawables which contain this mouse click point
-             */
-            List<AbstractDrawableComponent> containingComponentsList = getSpatialDisplay()
-                    .getContainingComponents(loc, x, y);
-
-            /*
-             * Retrieve the currently selected hazard shape
-             */
-            AbstractDrawableComponent selectedElement = getSpatialDisplay()
-                    .getSelectedHazardLayer();
-
-            if (selectedElement != null) {
-                String selectedElementEventID = getSpatialDisplay()
-                        .eventIDForElement(selectedElement);
-
-                /*
-                 * If there is more than one containing component, make sure
-                 * that the topmost element is equal to the selected element. If
-                 * there are symbols (including points), give them precedence.
-                 */
-                for (AbstractDrawableComponent comp : containingComponentsList) {
-                    if (comp instanceof HazardServicesSymbol) {
-                        String containingComponentEventID = getSpatialDisplay()
-                                .eventIDForElement(comp);
-
-                        if (containingComponentEventID
-                                .equals(selectedElementEventID)) {
-                            nadc = comp;
-                            break;
-                        }
-                    }
-
-                }
-
-                if (nadc == null && containingComponentsList.size() > 0) {
-                    AbstractDrawableComponent comp = containingComponentsList
-                            .get(0);
-                    String containingComponentEventID = getSpatialDisplay()
-                            .eventIDForElement(comp);
-
-                    if (containingComponentEventID
-                            .equals(selectedElementEventID)) {
-                        nadc = comp;
-                    }
-                }
-            }
-
-            if (nadc == null) {
-                /*
-                 * We need a better way of determining which containing
-                 * component of multiple components to chose as the selected.
-                 */
-                if (containingComponentsList.size() > 0) {
-                    nadc = containingComponentsList.get(0);
-                }
-            }
-
-            if (nadc != null) {
-                allowPanning = false;
-            } else {
-                // Pass this event on.
-                allowPanning = true;
-                selectedDEFound = false;
-            }
-            getSpatialDisplay().setSelectedDE(nadc);
-
-            return selectedDEFound;
-        }
-
         private void handleShapeMove(IHazardServicesShape origShape,
                 Class<?> selectedDEclass) {
             if ((selectedDEclass.equals(HazardServicesPolygon.class))
@@ -394,23 +390,29 @@ public class SelectionAction extends NonDrawingAction {
 
                 Geometry modifiedGeometry = buildModifiedGeometry(origShape,
                         coords);
-                eventManager.setModifiedEventGeometry(origShape.getID(),
-                        modifiedGeometry, true);
-
+                if (eventManager.setModifiedEventGeometry(origShape.getID(),
+                        modifiedGeometry, true)) {
+                    getSpatialDisplay().setHoverElement(null);
+                } else {
+                    getSpatialPresenter().updateDisplayables();
+                }
+                getSpatialDisplay().issueRefresh();
             }
         }
 
         private Geometry buildModifiedGeometry(IHazardServicesShape origShape,
                 List<Coordinate> coords) {
-            Geometry origShapeGeometry = geometryFromShape(origShape);
-            Geometry newShapeGeometry = geometryFromCoordinates(origShape,
-                    coords);
-            List<Geometry> eventGeometries = getGeometriesForEvent(origShape
-                    .getID());
-            Geometry modifiedGeometry = mergeInNewGeometry(origShapeGeometry,
-                    newShapeGeometry, eventGeometries);
-
-            return modifiedGeometry;
+            if (origShape.isVisualFeature()) {
+                return geometryFromCoordinates(origShape, coords);
+            } else {
+                Geometry origShapeGeometry = geometryFromShape(origShape);
+                Geometry newShapeGeometry = geometryFromCoordinates(origShape,
+                        coords);
+                List<Geometry> eventGeometries = getGeometriesForEvent(origShape
+                        .getID());
+                return mergeInNewGeometry(origShapeGeometry, newShapeGeometry,
+                        eventGeometries);
+            }
         }
 
         private Geometry geometryFromShape(IHazardServicesShape shape) {
@@ -467,10 +469,14 @@ public class SelectionAction extends NonDrawingAction {
                     .getDataManager().getActiveLayer().getDrawables();
 
             for (AbstractDrawableComponent hazard : hazards) {
+                if ((hazard instanceof IHazardServicesShape == false)
+                        || (((IHazardServicesShape) hazard).isVisualFeature())) {
+                    continue;
+                }
                 Class<?> hazardClass = hazard.getClass();
                 String hazardID = ((IHazardServicesShape) hazard).getID();
 
-                if (hazardID.equals(eventID)) {
+                if (eventID.equals(hazardID)) {
                     if (hazardClass.equals(HazardServicesPolygon.class)) {
                         Geometry geometry = ((IHazardServicesShape) hazard)
                                 .getGeometry();
@@ -523,18 +529,24 @@ public class SelectionAction extends NonDrawingAction {
         }
 
         private void handleVertexMove() {
-            getSpatialDisplay().setSelectedDE(null);
 
             isVertexMove = false;
 
-            AbstractDrawableComponent selectedElement = getSpatialDisplay()
-                    .getSelectedHazardLayer();
+            AbstractDrawableComponent editedElement = getSpatialDisplay()
+                    .getElementBeingEdited();
 
-            IHazardServicesShape eventShape = (IHazardServicesShape) selectedElement;
-            Geometry modifiedGeometry = buildModifiedGeometry(eventShape,
-                    selectedElement.getPoints());
-            eventManager.setModifiedEventGeometry(eventShape.getID(),
-                    modifiedGeometry, true);
+            if (editedElement != null) {
+                getSpatialDisplay().setElementBeingEdited(null);
+                IHazardServicesShape eventShape = (IHazardServicesShape) editedElement;
+                Geometry modifiedGeometry = buildModifiedGeometry(eventShape,
+                        editedElement.getPoints());
+                if (eventManager.setModifiedEventGeometry(eventShape.getID(),
+                        modifiedGeometry, true)) {
+                    getSpatialDisplay().setHoverElement(null);
+                } else {
+                    getSpatialPresenter().updateDisplayables();
+                }
+            }
 
         }
 
@@ -547,12 +559,14 @@ public class SelectionAction extends NonDrawingAction {
         }
 
         private void finalizeMouseHandling() {
-            getSpatialDisplay().removeGhostLine();
+            getSpatialDisplay().removeGhostOfElementBeingEdited();
 
-            getSpatialDisplay().setSelectedDE(null);
+            getSpatialDisplay().setElementBeingEdited(null);
             ghostEl = null;
 
             getSpatialDisplay().issueRefresh();
+
+            drawableElementUnderMouseDown = null;
 
             movePointIndex = -1;
             moveType = null;
@@ -582,40 +596,55 @@ public class SelectionAction extends NonDrawingAction {
             } else {
                 prevLoc = loc;
             }
+
+            drawableElementUnderMouseDown = null;
+
             /*
-             * Check to see if the user is moving a point in a hazard polygon...
+             * If the user is moving a point in a polygon...
              */
-            if ((moveType != null) && (moveType == MoveType.SINGLE_POINT)
-                    && (button == 1)) {
+            if ((moveType == MoveType.SINGLE_POINT) && (button == 1)) {
                 AbstractDrawableComponent selectedElement = getSpatialDisplay()
-                        .getSelectedHazardLayer();
+                        .getElementBeingEdited();
 
-                if ((selectedElement != null) && (movePointIndex >= 0)) {
-                    isVertexMove = true;
+                if (selectedElement != null) {
 
                     /*
-                     * Replace the previous coordinate with the new one. If this
-                     * is a polygon, the last point must be the same as the
-                     * first, so ensure that this is the case if the first point
-                     * is the one being moved. (The last point is never the one
-                     * being moved for poly- gons.)
+                     * Only move individual points if the shape allows editing;
+                     * otherwise, just move the entire shape.
                      */
-                    List<Coordinate> coords = selectedElement.getPoints();
-                    coords.set(movePointIndex, loc);
-                    if (selectedElement.getClass().equals(
-                            HazardServicesPolygon.class)
-                            && (movePointIndex == 0)) {
-                        coords.set(coords.size() - 1, loc);
+                    if ((movePointIndex >= 0)
+                            && ((IHazardServicesShape) selectedElement)
+                                    .isEditable()) {
+                        isVertexMove = true;
+
+                        /*
+                         * Replace the previous coordinate with the new one. If
+                         * this is a polygon, the last point must be the same as
+                         * the first, so ensure that this is the case if the
+                         * first point is the one being moved. (The last point
+                         * is never the one being moved for polygons.)
+                         */
+                        List<Coordinate> coords = selectedElement.getPoints();
+                        coords.set(movePointIndex, loc);
+                        if (selectedElement.getClass().equals(
+                                HazardServicesPolygon.class)
+                                && (movePointIndex == 0)) {
+                            coords.set(coords.size() - 1, loc);
+                        }
+
+                        /*
+                         * The shape's coords are updated...
+                         */
+                        ghostEl = selectedElement.copy();
+                        getSpatialDisplay().setGhostOfElementBeingEdited(
+                                ghostEl);
+                        getSpatialDisplay().useAsHandlebarPoints(
+                                coords.toArray(new Coordinate[coords.size()]));
+                        getSpatialDisplay().issueRefresh();
+                    } else {
+                        return super.handleMouseDownMove(anX, aY, button);
                     }
-
-                    /*
-                     * The shape's coords are updated...
-                     */
-                    ghostEl = selectedElement.copy();
-                    getSpatialDisplay().setGhostLine(ghostEl);
-                    getSpatialDisplay().issueRefresh();
                 }
-
                 return true;
             }
 
@@ -641,14 +670,14 @@ public class SelectionAction extends NonDrawingAction {
              * Then allow panning.
              */
             AbstractDrawableComponent selectedComponent = getSpatialDisplay()
-                    .getSelectedDE();
+                    .getElementBeingEdited();
 
             if ((selectedComponent != null
-                    && (selectedComponent != getSpatialDisplay()
-                            .getSelectedHazardLayer()) && !(selectedComponent instanceof HazardServicesSymbol))) {
+                    && (getSpatialDisplay().getSelectedElements().contains(
+                            selectedComponent) == false) && (selectedComponent instanceof HazardServicesSymbol == false))) {
                 allowPanning = true;
                 // Shapes have vertices
-                this.isVertexMove = true;
+                isVertexMove = true;
             }
 
             if (!allowPanning || moveType == MoveType.ALL_POINTS) {
@@ -671,184 +700,154 @@ public class SelectionAction extends NonDrawingAction {
 
             editor.getActiveDisplayPane().setFocus();
 
-            if (moveType == MoveType.ALL_POINTS) {
-                handleMouseDownMove(x, y, 1);
-            } else {
+            // Need to check here if the user selected a move mode from the
+            // right-click context menu. If so, then call
+            // handleMouseDownMove().
+            // Treat this as if the user is holding down the mouse button
 
-                // Need to check here if the user selected a move mode from the
-                // right-click context menu. If so, then call
-                // handleMouseDownMove().
-                // Treat this as if the user is holding down the mouse button
+            // AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
+            // .getInstance().getActiveEditor());
+            Coordinate loc = editor.translateClick(x, y);
+            moveType = null;
 
-                // AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                // .getInstance().getActiveEditor());
-                Coordinate loc = editor.translateClick(x, y);
-                moveType = null;
+            if (loc != null) {
 
-                if (loc != null) {
-                    AbstractDrawableComponent selectedElement = getSpatialDisplay()
-                            .getSelectedHazardLayer();
+                /*
+                 * Retrieve the currently selected shapes, and from it compile a
+                 * set of the event identifiers that are currently selected and
+                 * which are editable.
+                 */
+                Set<AbstractDrawableComponent> selectedElements = getSpatialDisplay()
+                        .getSelectedElements();
+                Set<String> selectedEventIdentifiers = new HashSet<>(
+                        selectedElements.size(), 1.0f);
+                for (AbstractDrawableComponent selectedElement : selectedElements) {
+                    if (isComponentEditable(selectedElement)
+                            || isComponentMovable(selectedElement)) {
+                        selectedEventIdentifiers.add(getSpatialDisplay()
+                                .eventIDForElement(selectedElement));
+                    }
+                }
 
-                    if (selectedElement != null) {
+                /*
+                 * First try to find a component that completely contains the
+                 * click point. There could be several of these.
+                 */
+                AbstractDrawableComponent nadc = null;
+                List<AbstractDrawableComponent> containingComponentList = getSpatialDisplay()
+                        .getContainingComponents(loc, x, y);
 
-                        boolean isEditable = SelectionAction.this
-                                .isComponentEditable(selectedElement);
+                for (AbstractDrawableComponent comp : containingComponentList) {
+                    if (selectedEventIdentifiers.contains(getSpatialDisplay()
+                            .eventIDForElement(comp))
+                            && (isComponentEditable(comp) || isComponentMovable(comp))) {
+                        nadc = comp;
+                        break;
+                    }
+                }
 
-                        if (isEditable) {
-                            String selectedElementEventID = getSpatialDisplay()
-                                    .eventIDForElement(selectedElement);
+                /*
+                 * If no element has been found, try to find the closest
+                 * element.
+                 */
+                if (nadc == null) {
 
-                            AbstractDrawableComponent nadc = null;
-                            // First try to find a component that completely
-                            // contains
-                            // the click point. There could be several of these.
-                            List<AbstractDrawableComponent> containingComponentList = getSpatialDisplay()
-                                    .getContainingComponents(loc, x, y);
+                    AbstractDrawableComponent comp = getSpatialDisplay()
+                            .getNearestComponent(loc);
 
-                            for (AbstractDrawableComponent comp : containingComponentList) {
-                                String containingComponentEventID = getSpatialDisplay()
-                                        .eventIDForElement(comp);
+                    if ((comp != null)
+                            && selectedEventIdentifiers
+                                    .contains(getSpatialDisplay()
+                                            .eventIDForElement(comp))
+                            && (isComponentEditable(comp) || isComponentMovable(comp))) {
 
-                                if (containingComponentEventID
-                                        .equals(selectedElementEventID)) {
-                                    /*
-                                     * Since there may be multiple geometries
-                                     * associated with an event ID, make sure
-                                     * that the selectedElement in the tool
-                                     * layer reflects the correct geometry.
-                                     */
-                                    if (!comp.equals(selectedElement)
-                                            && (comp instanceof HazardServicesPolygon)) {
-                                        getSpatialDisplay()
-                                                .setSelectedHazardLayer(comp);
-                                    }
-                                    /*
-                                     * Need a bit more logic here. Just because
-                                     * two components have the same event id
-                                     * doesn't make them equal.
-                                     */
-                                    if (comp.equals(selectedElement)) {
-                                        nadc = comp;
-                                        break;
-                                    }
-                                }
-                            }
+                        nadc = comp;
+                    }
+                }
 
-                            if (nadc == null) {
-                                // There is no containing element.
-                                // Try to find the closest element...
-                                AbstractDrawableComponent comp = getSpatialDisplay()
-                                        .getNearestComponent(loc);
+                /*
+                 * If an element has been found, proceed.
+                 */
+                if (nadc != null) {
 
-                                if (comp != null) {
-                                    String containingComponentEventID = getSpatialDisplay()
-                                            .eventIDForElement(comp);
+                    // Set the mouse cursor to a move symbol
+                    getSpatialPresenter().getView().setCursor(
+                            SpatialViewCursorTypes.MOVE_SHAPE_CURSOR);
 
-                                    if (containingComponentEventID
-                                            .equals(selectedElementEventID)) {
-                                        nadc = comp;
-                                    }
-                                }
-                            }
+                    if (isComponentEditable(nadc)) {
 
-                            if (nadc != null) {
-                                // Set the mouse cursor to a move symbol
-                                getSpatialPresenter()
-                                        .getView()
-                                        .setCursor(
-                                                SpatialViewCursorTypes.MOVE_SHAPE_CURSOR);
+                        // Set the flag indicating that the handle
+                        // bars on the selected polygon may be
+                        // displayed.
+                        getSpatialDisplay().setHoverElement(nadc);
 
-                                IHazardServicesShape shape = (IHazardServicesShape) nadc;
+                        // Test to determine if the mouse is close
+                        // to the border of the geometry.
+                        Coordinate mouseScreenCoord = new Coordinate(x, y);
+                        Point clickPointScreen = geometryFactory
+                                .createPoint(mouseScreenCoord);
 
-                                if (shape.isEditable()) {
-                                    // Set the flag indicating that the handle
-                                    // bars on the selected polygon may be
-                                    // displayed.
-                                    getSpatialDisplay()
-                                            .setDrawSelectedHandleBars(true);
+                        // Create a line string with screen
+                        // coordinates.
+                        Coordinate[] shapeCoords = ((IHazardServicesShape) nadc)
+                                .getGeometry().getCoordinates();
 
-                                    // Test to determine if the mouse is close
-                                    // to
-                                    // the border of the geometry.
-                                    Coordinate mouseScreenCoord = new Coordinate(
-                                            x, y);
+                        Coordinate[] shapeScreenCoords = new Coordinate[shapeCoords.length];
 
-                                    Point clickPointScreen = geometryFactory
-                                            .createPoint(mouseScreenCoord);
-
-                                    // Create a line string with screen
-                                    // coordinates.
-                                    Coordinate[] shapeCoords = shape
-                                            .getGeometry().getCoordinates();
-
-                                    Coordinate[] shapeScreenCoords = new Coordinate[shapeCoords.length];
-
-                                    for (int i = 0; i < shapeCoords.length; ++i) {
-                                        double[] coords = editor
-                                                .translateInverseClick(shapeCoords[i]);
-                                        shapeScreenCoords[i] = new Coordinate(
-                                                coords[0], coords[1]);
-                                    }
-
-                                    LineString ls2 = geometryFactory
-                                            .createLineString(shapeScreenCoords);
-
-                                    double dist = clickPointScreen
-                                            .distance(ls2);
-
-                                    if (dist <= SELECTION_DISTANCE_PIXELS) {
-                                        getSpatialPresenter()
-                                                .getView()
-                                                .setCursor(
-                                                        SpatialViewCursorTypes.DRAW_CURSOR);
-                                    }
-
-                                    // Test to determine if the mouse is close
-                                    // to
-                                    // one of the hazard's vertices...
-                                    List<Coordinate> coordList = selectedElement
-                                            .getPoints();
-                                    Coordinate coords[] = coordList
-                                            .toArray(new Coordinate[coordList
-                                                    .size()]);
-
-                                    double minDistance = Double.MAX_VALUE;
-
-                                    // Convert to screen coords (pixels)
-                                    for (int i = 0; i < coords.length
-                                            && coords[i] != null; ++i) {
-                                        double[] screen = editor
-                                                .translateInverseClick(coords[i]);
-                                        Coordinate vertexScreenCoord = new Coordinate(
-                                                screen[0], screen[1]);
-
-                                        dist = mouseScreenCoord
-                                                .distance(vertexScreenCoord);
-
-                                        if (dist <= SELECTION_DISTANCE_PIXELS) {
-                                            if (dist < minDistance) {
-                                                getSpatialPresenter()
-                                                        .getView()
-                                                        .setCursor(
-                                                                SpatialViewCursorTypes.MOVE_VERTEX_CURSOR);
-                                                moveType = MoveType.SINGLE_POINT;
-                                                movePointIndex = i;
-                                                minDistance = dist;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                getSpatialDisplay().setDrawSelectedHandleBars(
-                                        false);
-
-                                getSpatialPresenter().getView().setCursor(
-                                        SpatialViewCursorTypes.ARROW_CURSOR);
-                            }
+                        for (int i = 0; i < shapeCoords.length; ++i) {
+                            double[] coords = editor
+                                    .translateInverseClick(shapeCoords[i]);
+                            shapeScreenCoords[i] = new Coordinate(coords[0],
+                                    coords[1]);
                         }
 
+                        LineString ls = geometryFactory
+                                .createLineString(shapeScreenCoords);
+
+                        double dist = clickPointScreen.distance(ls);
+
+                        if (dist <= SELECTION_DISTANCE_PIXELS) {
+                            getSpatialPresenter().getView().setCursor(
+                                    SpatialViewCursorTypes.DRAW_CURSOR);
+                        }
+
+                        // Test to determine if the mouse is close
+                        // to
+                        // one of the hazard's vertices...
+                        List<Coordinate> coordList = nadc.getPoints();
+                        Coordinate coords[] = coordList
+                                .toArray(new Coordinate[coordList.size()]);
+
+                        double minDistance = Double.MAX_VALUE;
+
+                        // Convert to screen coords (pixels)
+                        for (int i = 0; i < coords.length && coords[i] != null; ++i) {
+                            double[] screen = editor
+                                    .translateInverseClick(coords[i]);
+                            Coordinate vertexScreenCoord = new Coordinate(
+                                    screen[0], screen[1]);
+
+                            dist = mouseScreenCoord.distance(vertexScreenCoord);
+
+                            if (dist <= SELECTION_DISTANCE_PIXELS) {
+                                if (dist < minDistance) {
+                                    getSpatialPresenter()
+                                            .getView()
+                                            .setCursor(
+                                                    SpatialViewCursorTypes.MOVE_VERTEX_CURSOR);
+                                    moveType = MoveType.SINGLE_POINT;
+                                    movePointIndex = i;
+                                    minDistance = dist;
+                                    break;
+                                }
+                            }
+                        }
                     }
+                } else {
+                    getSpatialDisplay().setHoverElement(null);
+
+                    getSpatialPresenter().getView().setCursor(
+                            SpatialViewCursorTypes.ARROW_CURSOR);
                 }
             }
 
@@ -863,13 +862,13 @@ public class SelectionAction extends NonDrawingAction {
         }
 
         /**
-         * Add a new vertex to a selected geometry.
+         * Add a new vertex to the geometry over which the cursor was hovering.
          */
         public void addVertex() {
             AbstractEditor editor = EditorUtil
                     .getActiveEditorAs(AbstractEditor.class);
             AbstractDrawableComponent selectedElement = getSpatialDisplay()
-                    .getSelectedHazardLayer();
+                    .getHoverElement();
 
             if (selectedElement != null) {
                 int lastMouseX = editor.getActiveDisplayPane().getLastMouseX();
@@ -957,6 +956,9 @@ public class SelectionAction extends NonDrawingAction {
                     eventManager.setModifiedEventGeometry(eventShape.getID(),
                             modifiedGeometry, true);
 
+                    getSpatialDisplay().useAsHandlebarPoints(
+                            modifiedGeometry.getCoordinates());
+
                     movePointIndex = -1;
                     moveType = null;
                 }
@@ -964,13 +966,13 @@ public class SelectionAction extends NonDrawingAction {
         }
 
         /**
-         * Delete a vertex from a selected geometry.
+         * Delete a vertex from the geometry over which the cursor was hovering.
          */
         public void deleteVertex() {
             AbstractDrawableComponent selectedElement = getSpatialDisplay()
-                    .getSelectedHazardLayer();
+                    .getHoverElement();
 
-            if ((selectedElement != null) && (moveType != null)
+            if ((selectedElement != null)
                     && (moveType == MoveType.SINGLE_POINT)
                     && (movePointIndex >= 0)
                     && (((IHazardServicesShape) selectedElement).isEditable())) {
@@ -995,23 +997,13 @@ public class SelectionAction extends NonDrawingAction {
                     eventManager.setModifiedEventGeometry(eventShape.getID(),
                             modifiedGeometry, true);
 
+                    getSpatialDisplay().useAsHandlebarPoints(
+                            modifiedGeometry.getCoordinates());
+
                     movePointIndex = -1;
                     moveType = null;
                 }
             }
-        }
-
-        /**
-         * Moves the entire hazard element.
-         * 
-         * @param
-         * @return
-         */
-        public void setMoveEntireElement() {
-            moveType = MoveType.ALL_POINTS;
-            AbstractDrawableComponent selectedElement = getSpatialDisplay()
-                    .getSelectedHazardLayer();
-            getSpatialDisplay().setSelectedDE(selectedElement);
         }
     }
 }

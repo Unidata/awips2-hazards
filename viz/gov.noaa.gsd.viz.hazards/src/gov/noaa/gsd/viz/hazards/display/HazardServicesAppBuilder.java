@@ -225,6 +225,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * May 14, 2015  7560      mpduff              Added Apply callback
  * Jul 30, 2015 9681       Robert.Blum         Added new method to display the product viewer.
  * Nov 10, 2015 12762      Chris.Golden        Added support for use of new recommender manager.
+ * Mar 15, 2016 15676      Chris.Golden        Updated to use new method names.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -795,7 +796,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         // Allow all views to contribute to the console toolbar.
         buildToolBar();
 
-        spatialPresenter.updateCaveSelectedTime();
+        spatialPresenter.updateSelectedTime();
 
         // Add THIS HazardServicesAppBuilder as a perspective listener.
         // when loading a drawing layer
@@ -1289,7 +1290,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         buildToolBar();
 
         // Update the spatial display.
-        spatialPresenter.updateSpatialDisplay();
+        spatialPresenter.updateDisplayables();
     }
 
     @Override

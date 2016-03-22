@@ -80,6 +80,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
  * Sep 15, 2015 7629       Robert.Blum  Added method that persists a list of events.
+ * Mar 24, 2016 15676      Chris.Golden Changed setModifiedEventGeometry() to return true if it
+ *                                      succeeds in changing the geometry, false otherwise.
  * </pre>
  * 
  * @author bsteffen
@@ -608,8 +610,21 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      */
     public void updateHazardAreas(IHazardEvent hazardEvent);
 
-    public void setModifiedEventGeometry(String eventID, Geometry geometry,
-            boolean checkGeometryValidity);
+    /**
+     * Set the specified event's geometry to be as specified.
+     * 
+     * @param eventID
+     *            Identifier of the event that is to have its geometry modified.
+     * @param geometry
+     *            New geometry.
+     * @param checkValidity
+     *            Flag indicating whether or not geometry validity should be
+     *            checked before using it.
+     * @return True if the geometry was set, false if it was not (for example,
+     *         if a validity check on the geometry failed).
+     */
+    public boolean setModifiedEventGeometry(String eventID, Geometry geometry,
+            boolean checkValidity);
 
     public void saveEvents(List<IHazardEvent> events);
 }

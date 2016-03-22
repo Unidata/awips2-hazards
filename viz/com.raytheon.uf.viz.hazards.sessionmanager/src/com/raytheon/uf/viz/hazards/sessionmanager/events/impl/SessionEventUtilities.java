@@ -49,6 +49,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                      allowing the originator of modifications to be
  *                                      passed to the event so that it can send out the
  *                                      appropriate originator in its notifications.
+ * Mar 06, 2016 15676      Chris.Golden Added visual features to merging methods.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -69,6 +70,8 @@ public class SessionEventUtilities {
         oldEvent.setTimeRange(newEvent.getStartTime(), newEvent.getEndTime());
         oldEvent.setCreationTime(newEvent.getCreationTime());
         oldEvent.setGeometry(newEvent.getGeometry());
+        oldEvent.setVisualFeatures(newEvent.getBaseVisualFeatures(),
+                newEvent.getSelectedVisualFeatures());
         oldEvent.setPhenomenon(newEvent.getPhenomenon());
         oldEvent.setSignificance(newEvent.getSignificance());
         oldEvent.setSubType(newEvent.getSubType());
@@ -131,6 +134,8 @@ public class SessionEventUtilities {
                 originator);
         oldEvent.setCreationTime(newEvent.getCreationTime(), originator);
         oldEvent.setGeometry(newEvent.getGeometry(), originator);
+        oldEvent.setVisualFeatures(newEvent.getBaseVisualFeatures(),
+                newEvent.getSelectedVisualFeatures(), originator);
         oldEvent.setPhenomenon(newEvent.getPhenomenon(), originator);
         oldEvent.setSignificance(newEvent.getSignificance(), originator);
         oldEvent.setSubType(newEvent.getSubType(), originator);

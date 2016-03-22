@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
@@ -108,6 +109,11 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Jun 24, 2015 6601       Chris.Cody        Change Create by Hazard Type display text
  * Jul 21, 2015 2921       Robert.Blum       Changes for multi panel displays.
  * Sep 09, 2015 6603       Chris.Cody        Added isSelectByAreaActive to track "by Area" selection state
+ * Mar 16, 2016 15676      Chris.Golden      Changed to make visual features work.
+ *                                           Will be refactored to remove numerous
+ *                                           existing kludges.
+ * Mar 24, 2016 15676      Chris.Golden      Changed method that draws spatial entities
+ *                                           to take another parameter.
  * </pre>
  * 
  * @author Chris.Golden
@@ -453,7 +459,8 @@ public class SpatialView implements
             AbstractEditor abstractEditor = EditorUtil
                     .getActiveEditorAs(AbstractEditor.class);
             if (abstractEditor != null) {
-                for (IDisplayPane displayPane : Arrays.asList(abstractEditor.getDisplayPanes())) {
+                for (IDisplayPane displayPane : Arrays.asList(abstractEditor
+                        .getDisplayPanes())) {
                     descriptor = displayPane.getDescriptor();
                     if ((descriptor != null)
                             && (descriptor instanceof IMapDescriptor)) {
@@ -630,7 +637,8 @@ public class SpatialView implements
         AbstractEditor abstractEditor = EditorUtil
                 .getActiveEditorAs(AbstractEditor.class);
         if (abstractEditor != null) {
-            for (IDisplayPane displayPane : Arrays.asList(abstractEditor.getDisplayPanes())) {
+            for (IDisplayPane displayPane : Arrays.asList(abstractEditor
+                    .getDisplayPanes())) {
                 displayPane.getBounds();
                 displayPane.getRenderableDisplay().getView();
                 idesc = displayPane.getDescriptor();
@@ -682,7 +690,7 @@ public class SpatialView implements
                                 .getResource();
                         display.getDescriptor()
                                 .removeFrameChangedListener(this);
-                        display.setAllowDisposeMessage(false);
+                        display.setGenerateDisposeMessage(false);
                         display.unload();
                         displayPane.getDescriptor().getResourceList()
                                 .remove(rp);
@@ -859,6 +867,14 @@ public class SpatialView implements
     }
 
     @Override
+    public void drawSpatialEntities(
+            List<SpatialEntity<VisualFeatureSpatialIdentifier>> spatialEntities,
+            Set<String> selectedEventIdentifiers) {
+        spatialDisplay.drawSpatialEntities(spatialEntities,
+                selectedEventIdentifiers);
+    }
+
+    @Override
     public void setMouseHandler(HazardServicesMouseHandlers mouseHandlerType,
             String... args) {
         /*
@@ -955,7 +971,6 @@ public class SpatialView implements
 
     @Override
     public void modifyShape(HazardServicesDrawingAction drawingAction) {
-
         switch (drawingAction) {
         case ADD_VERTEX:
             IInputHandler mouseHandler = mouseFactory.getMouseHandler(
@@ -969,7 +984,6 @@ public class SpatialView implements
             mouseHandler = mouseFactory.getMouseHandler(
                     HazardServicesMouseHandlers.SINGLE_SELECTION,
                     new String[] {});
-
             SelectionHandler deleteMouseHandler = (SelectionHandler) mouseHandler;
             deleteMouseHandler.deleteVertex();
             break;
@@ -1492,7 +1506,8 @@ public class SpatialView implements
             AbstractEditor abstractEditor = EditorUtil
                     .getActiveEditorAs(AbstractEditor.class);
             if (abstractEditor != null) {
-                for (IDisplayPane displayPane : Arrays.asList(abstractEditor.getDisplayPanes())) {
+                for (IDisplayPane displayPane : Arrays.asList(abstractEditor
+                        .getDisplayPanes())) {
                     IDescriptor idesc = displayPane.getDescriptor();
                     IMapDescriptor desc = null;
                     if (idesc instanceof IMapDescriptor) {

@@ -27,6 +27,7 @@ import net.engio.mbassy.listener.Handler;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Element;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.RecommenderTriggerOrigin;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
@@ -52,8 +53,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  *                                      chosen to a recommender that is being
  *                                      run as a result of that choice.
  * Jan 29, 2015    4375    Dan Schaffer Console initiation of RVS product generation
- * Nov 10, 2015   2762     Chris.Golden Added support for use of new recommender
+ * Nov 10, 2015    2762    Chris.Golden Added support for use of new recommender
  *                                      manager.
+ * Mar 16, 2016   15676    Chris.Golden Changed to work with new recommender execution
+ *                                      context.
  * </pre>
  * 
  * @author Chris.Golden
@@ -404,8 +407,8 @@ public class HazardTypeFirstPresenter extends
         publish(new ToolAction(ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
                 getModel().getConfigurationManager().getTypeFirstRecommender(
                         selectedType), ToolType.RECOMMENDER,
-                RecommenderExecutionContext
-                        .getHazardTypeFirstContext(selectedType)));
+                RecommenderExecutionContext.getHazardTypeFirstContext(
+                        selectedType, RecommenderTriggerOrigin.USER)));
     }
 
     /**

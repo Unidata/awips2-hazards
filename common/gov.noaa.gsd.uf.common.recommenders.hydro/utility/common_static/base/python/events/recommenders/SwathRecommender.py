@@ -4,6 +4,7 @@ Swath recommender for probabilistic hazard types.
 import datetime, math
 import EventFactory, EventSetFactory, GeometryFactory
 import RecommenderTemplate
+from VisualFeatures import VisualFeatures
 import logging, UFStatusHandler
 
 import math, time
@@ -142,6 +143,7 @@ class Recommender(RecommenderTemplate.Recommender):
         metadata['description'] = '''
         '''
         metadata['eventState'] = 'Pending'
+        metadata['onlyIncludeTriggerEvent'] = True
         
         # This tells Hazard Services to not notify the user when the recommender
         # creates no hazard events. Since this recommender is to be run in response
@@ -175,11 +177,12 @@ class Recommender(RecommenderTemplate.Recommender):
         
         # For now, just print out a message saying this was run.
         import sys
-#         sys.stderr.write("Running swath recommender.\n    trigger: " +
-#                          str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
-#                          str(eventSet.getAttribute("eventType")) + "\n    hazard ID: " +
-#                          str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute: " +
-#                          str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
+        sys.stderr.write("Running swath recommender.\n    trigger:    " +
+                         str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
+                         str(eventSet.getAttribute("eventType")) + "\n    origin:     " + 
+                         str(eventSet.getAttribute("origin")) + "\n    hazard ID:  " +
+                         str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute:  " +
+                         str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
         
         self._trigger = {'trigger':eventSet.getAttribute("trigger"), 'attrs':eventSet.getAttribute("attributeIdentifiers")}
 
@@ -189,33 +192,30 @@ class Recommender(RecommenderTemplate.Recommender):
         
         sessionAttributes = eventSet.getAttributes()
         currentTime = long(sessionAttributes["currentTime"])
+
+        resultEventSet = EventSetFactory.createEventSet(None)
         
         import pprint
         for event in eventSet:  ##### If called from PHIGridRecommender...
+
             # FIXME kludge since can't figure out why product generation is not setting the issueTime
             #  Need this set in order to Issue                               
             event.set('issueTime', currentTime)
-            
-            if event.getEventID() == eventSet.getAttribute("eventIdentifier") or eventSet.getAttribute("eventIdentifier") is None:                
-                update = self._needUpdate(event)                    
-#                 print '[SR]', event.getEventID(), event.get('objectID')
-#                 print '=== 000 ==='
-#                 print "start, end", event.getStartTime(), event.getEndTime()
-#                 print '=== 111 ==='
-#                 pprint.pprint(event.getHazardAttributes())
-#                 print '=== ... ==='
+
+            if event.getEventID() == eventSet.getAttribute("eventIdentifier") or eventSet.getAttribute("eventIdentifier") is None:
+                update = self._needUpdate(event)
                 if update:
                     if event.getStatus() != 'ELAPSED' or event.getStatus() != 'ENDED':
-                        #print 'Creating...'
-                        self.createIntervalPolygons(event)                    
-#                         print 'vvvvvvvv'
-#                         pprint.pprint(event)
-#                         pprint.pprint(event.getHazardAttributes())
-#                         print '^^^^^^^'
-                        sys.stdout.flush()
-                        
+                      self.createIntervalPolygons(event)
+                      resultEventSet.add(event)
+                
+                    #print 'vvvvvvvv'
+                    #pprint.pprint(event)
+                    #pprint.pprint(event.getHazardAttributes())
+                    #print '^^^^^^^'
+                    #sys.stdout.flush()
                     
-        return eventSet
+        return resultEventSet
 
     def _calcEventDuration(self, event):
         startTime = event.getStartTime()
@@ -333,8 +333,34 @@ class Recommender(RecommenderTemplate.Recommender):
             downstreamPolys.append(so.transform(self._c3857t4326, gglDownstream))
         
         envelope = shapely.ops.cascaded_union(downstreamPolys)
-        polys = shapely.geometry.MultiPolygon([poly, envelope])
-        event.setGeometry(polys)
+        baseVisualFeatures = VisualFeatures([
+                                             {
+                                              "identifier": "base",
+                                              "borderColor": "eventType",
+                                              "borderThickness": "eventType",
+                                              "borderStyle": "eventType",
+                                              "textSize": "eventType",
+                                              "label": str(event.get('objectID')) + " " + event.getHazardType(),
+                                              "textColor": "eventType",
+                                              "geometry": { (VisualFeatures.datetimeToEpochTimeMillis(event.getStartTime()),
+                                                             VisualFeatures.datetimeToEpochTimeMillis(event.getEndTime())): poly }
+                                              }
+                                             ])
+        selectedVisualFeatures = VisualFeatures([
+                                                 {
+                                                  "identifier": "swath",
+                                                  "borderColor": { "red": 1, "green": 1, "blue": 0 },
+                                                  "borderThickness": 3,
+                                                  "borderStyle": "dotted",
+                                                  "geometry": { (VisualFeatures.datetimeToEpochTimeMillis(event.getStartTime()),
+                                                                 VisualFeatures.datetimeToEpochTimeMillis(event.getEndTime())): envelope }
+                                                  }
+                                                 ]
+                                                )
+        print ' ---- BASE VISUAL FEATURES FOR ', event.getEventID(), " = ", str(len(baseVisualFeatures)), ' ----'
+        print ' ---- SELECTED VISUAL FEATURES FOR ', event.getEventID(), " = ", str(len(selectedVisualFeatures)), ' ----'
+        event.setBaseVisualFeatures(baseVisualFeatures)
+        event.setSelectedVisualFeatures(selectedVisualFeatures)
         event.addHazardAttribute('downStreamPolygons',downstreamPolys)
         
         #print '[', fi_filename, getframeinfo(currentframe()).lineno,'] === FINAL took ', time.time()-total, 'seconds for ', event.get('objectID'), ' ==='

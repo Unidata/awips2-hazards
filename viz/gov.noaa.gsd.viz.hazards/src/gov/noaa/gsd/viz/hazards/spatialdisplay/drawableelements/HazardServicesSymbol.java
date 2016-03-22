@@ -7,7 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
 import gov.noaa.nws.ncep.ui.pgen.display.SymbolImageUtil;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
@@ -39,6 +38,7 @@ import com.vividsolutions.jts.geom.Point;
  * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
  *                                             points.
  * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
+ * Mar 16, 2016 15676      Chris.Golden        Added code to support visual features.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -63,10 +63,12 @@ public class HazardServicesSymbol extends Symbol implements
      */
     private final long pointID;
 
+    private boolean visualFeature;
+
     /**
      * Flag indicating whether or not this symbol is movable.
      */
-    private boolean isMovable = true;
+    private boolean movable = true;
 
     private Geometry geometry = null;
 
@@ -200,6 +202,16 @@ public class HazardServicesSymbol extends Symbol implements
         return geometry;
     }
 
+    @Override
+    public boolean isVisualFeature() {
+        return visualFeature;
+    }
+
+    @Override
+    public void setVisualFeature(boolean visualFeature) {
+        this.visualFeature = visualFeature;
+    }
+
     /**
      * @return the pointID associated with this Symbol. The pointID is used in
      *         operations such as tracking.
@@ -214,17 +226,17 @@ public class HazardServicesSymbol extends Symbol implements
     }
 
     @Override
-    public void setIsEditable(boolean isEditable) {
+    public void setEditable(boolean editable) {
         throw new UnsupportedOperationException("Symbols are never editable");
     }
 
     @Override
     public boolean isMovable() {
-        return isMovable;
+        return movable;
     }
 
     @Override
-    public void setMovable(boolean isMovable) {
-        this.isMovable = isMovable;
+    public void setMovable(boolean movable) {
+        this.movable = movable;
     }
 }

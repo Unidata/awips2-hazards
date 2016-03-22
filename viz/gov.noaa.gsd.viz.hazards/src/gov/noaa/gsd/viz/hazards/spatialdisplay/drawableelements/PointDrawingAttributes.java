@@ -7,10 +7,11 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.viz.hazards.spatialdisplay;
+package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
-import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_DASHED_4;
+import static gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.LineStyle.LINE_DASHED_2;
+import static gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.LineStyle.LINE_DASHED_4;
 
 import java.awt.Color;
 
@@ -37,6 +38,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Oct 13, 2015 12494      Chris Golden      Reworked to allow hazard types to include
  *                                           only phenomenon (i.e. no significance) where
  *                                           appropriate.
+ * Mar 16, 2016 15676      Chris.Golden      Moved to more appropriate location.
+ * Mar 24, 2016 15676      Chris.Golden      Added dotted line style.
  * </pre>
  * 
  * @author Chris.Golden
@@ -55,19 +58,15 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
 
     // Private Static Constants
 
-    private static final double INNER_SIZE_SCALE = 5.5;
+    public static final double INNER_DIAMETER = 5.5;
 
-    private static final double OUTER_SIZE_SCALE = 8.5;
+    public static final double OUTER_DIAMETER = 8.5;
 
-    private static final double OUTER_SELECTED_SIZE_SCALE = 10.5;
+    public static final double OUTER_SELECTED_DIAMETER = 10.5;
 
     // Private Variables
 
     private double sizeScale;
-
-    private final float lineWidth = 2.0f;
-
-    private final Color[] colors = new Color[] { Color.WHITE, Color.WHITE };
 
     private Element element = Element.INNER;
 
@@ -85,8 +84,8 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
             ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager)
             throws VizException {
         this(sessionManager, Element.INNER);
-        this.closed = true;
-        this.filled = true;
+        setClosed(true);
+        setFilled(true);
     }
 
     /**
@@ -104,6 +103,11 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
             Element element) throws VizException {
         super(sessionManager.getConfigurationManager());
         this.element = element;
+    }
+
+    @Override
+    public void setDottedLineStyle() {
+        this.lineStyle = LINE_DASHED_2;
     }
 
     @Override
@@ -125,6 +129,10 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
         return element;
     }
 
+    public void setSizeScale(double sizeScale) {
+        this.sizeScale = sizeScale;
+    }
+
     @Override
     public void setAttributes(int shapeNum, IHazardEvent hazardEvent) {
         super.setAttributes(shapeNum, hazardEvent);
@@ -132,11 +140,11 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
                 .getHazardAttribute(HAZARD_EVENT_SELECTED);
 
         if (element.equals(Element.INNER)) {
-            sizeScale = INNER_SIZE_SCALE;
+            sizeScale = INNER_DIAMETER;
         } else if (selected) {
-            sizeScale = OUTER_SELECTED_SIZE_SCALE;
+            sizeScale = OUTER_SELECTED_DIAMETER;
         } else {
-            sizeScale = OUTER_SIZE_SCALE;
+            sizeScale = OUTER_DIAMETER;
         }
 
         /*

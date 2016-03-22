@@ -9,6 +9,7 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
@@ -23,16 +24,33 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSy
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesText;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionAction;
+import gov.noaa.nws.ncep.ui.pgen.PgenRangeRecord;
+import gov.noaa.nws.ncep.ui.pgen.PgenSession;
+import gov.noaa.nws.ncep.ui.pgen.PgenUtil;
 import gov.noaa.nws.ncep.ui.pgen.display.AbstractElementContainer;
+import gov.noaa.nws.ncep.ui.pgen.display.CurveFitter;
 import gov.noaa.nws.ncep.ui.pgen.display.DefaultElementContainer;
 import gov.noaa.nws.ncep.ui.pgen.display.DisplayProperties;
-import gov.noaa.nws.ncep.ui.pgen.display.ElementContainerFactory;
+import gov.noaa.nws.ncep.ui.pgen.display.IArc;
+import gov.noaa.nws.ncep.ui.pgen.display.IAvnText;
+import gov.noaa.nws.ncep.ui.pgen.display.IDisplayable;
+import gov.noaa.nws.ncep.ui.pgen.display.ILine;
+import gov.noaa.nws.ncep.ui.pgen.display.IMidCloudText;
+import gov.noaa.nws.ncep.ui.pgen.display.IMultiPoint;
+import gov.noaa.nws.ncep.ui.pgen.display.ISinglePoint;
+import gov.noaa.nws.ncep.ui.pgen.display.ISymbol;
+import gov.noaa.nws.ncep.ui.pgen.display.IText;
+import gov.noaa.nws.ncep.ui.pgen.display.IText.DisplayType;
+import gov.noaa.nws.ncep.ui.pgen.display.LineDisplayElement;
 import gov.noaa.nws.ncep.ui.pgen.display.LinePatternManager;
+import gov.noaa.nws.ncep.ui.pgen.display.RasterElementContainer;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
+import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 import gov.noaa.nws.ncep.ui.pgen.elements.Text;
+import gov.noaa.nws.ncep.ui.pgen.gfa.IGfa;
 
 import java.awt.Color;
 import java.io.Serializable;
@@ -43,6 +61,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +106,7 @@ import com.raytheon.uf.viz.core.drawables.IShadedShape;
 import com.raytheon.uf.viz.core.drawables.PaintProperties;
 import com.raytheon.uf.viz.core.drawables.ResourcePair;
 import com.raytheon.uf.viz.core.exception.VizException;
+import com.raytheon.uf.viz.core.map.IMapDescriptor;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.core.rsc.IResourceDataChanged;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
@@ -107,6 +127,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.viz.awipstools.IToolChangedListener;
 import com.raytheon.viz.core.rsc.jts.JTSCompiler;
+import com.raytheon.viz.core.rsc.jts.JTSCompiler.JTSGeometryData;
 import com.raytheon.viz.hydro.perspective.HydroPerspectiveManager;
 import com.raytheon.viz.hydro.resource.MultiPointResource;
 import com.raytheon.viz.hydrocommon.data.GageData;
@@ -187,6 +208,14 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Oct 26, 2015 12754      Chris.Golden Fixed drawing bug that caused only one hazard to be drawn at a
  *                                      time, regardless of how many should have been displayed.
  * Nov 10, 2015 12762      Chris.Golden Added support for use of new recommender manager.
+ * Mar 16, 2016 15676      Chris.Golden Changed to make visual features work. Will be refactored to
+ *                                      remove numerous existing kludges.
+ * Mar 24, 2016 15676      Chris.Golden Numerous bug fixes for handlebar points with respect to multiple
+ *                                      selection, selection itself of non-editable/movable shapes,
+ *                                      visual feature stuff, etc. For the most part, what worked prior
+ *                                      to visual features should now work again, with some enhancements
+ *                                      in terms of better handlebar point usage and selectability of
+ *                                      immutable shapes.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -196,7 +225,263 @@ public class SpatialDisplay extends
         IContextMenuContributor, IToolChangedListener, IResourceDataChanged,
         IOriginator {
 
-    public static final String DEFAULT_NAME = "Hazard Services";
+    // Private Classes
+
+    /**
+     * Vector element container, a replacement for its superclass that creates
+     * objects of type {@link AlphaCapableLineDisplayElement} instead of
+     * {@link LineDisplayElement}.
+     */
+    private class DefaultVectorElementContainer extends DefaultElementContainer {
+
+        // Private Variables
+
+        /**
+         * Display element factory customized for spatial display needs,
+         * including lines that may have alpha transparency.
+         */
+        private PgenDisplayElementFactory factory;
+
+        /**
+         * Saved display properties, if any; copied from superclass since it is
+         * inaccessible to this class's
+         * {@link #draw(IGraphicsTarget, PaintProperties, DisplayProperties, boolean)}
+         * method.
+         */
+        private DisplayProperties saveProps = null;
+
+        /**
+         * Zoom level, copied from superclass since it is inaccessible to this
+         * class's
+         * {@link #draw(IGraphicsTarget, PaintProperties, DisplayProperties, boolean)}
+         * method.
+         */
+        private float zoomLevel = 0;
+
+        // Public Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param element
+         *            Element to be contained.
+         * @param mapDescriptor
+         *            Map descriptor.
+         * @param target
+         *            Target on which the contained element will be drawn.
+         */
+        public DefaultVectorElementContainer(DrawableElement element,
+                IMapDescriptor mapDescriptor, IGraphicsTarget target) {
+            super(element, mapDescriptor, target);
+            factory = new PgenDisplayElementFactory(target, mapDescriptor);
+        }
+
+        // Public Methods
+
+        @Override
+        public void setMapDescriptor(IMapDescriptor mapDescriptor) {
+            super.setMapDescriptor(mapDescriptor);
+            factory = new PgenDisplayElementFactory(target, mapDescriptor);
+        }
+
+        /*
+         * Copied from superclass, with only modification being the use of the
+         * customized factory.
+         */
+        @Override
+        public void draw(IGraphicsTarget target, PaintProperties paintProps,
+                DisplayProperties dprops, boolean needsCreate) {
+
+            /*
+             * For ghost drawing - "needsCreate && dprops == null" - It is
+             * always on the active layer so DisplayProperties' "filled" should
+             * be true while "monoColor" should be false (using the element's
+             * color).
+             */
+            if (dprops == null) {
+                dprops = new DisplayProperties(false, null, true);
+            }
+
+            if (needsCreate) {
+                dprops.setLayerMonoColor(false);
+                dprops.setLayerFilled(true);
+            }
+
+            /*
+             * For normal drawing........
+             */
+            if ((displayEls == null) || paintProps.isZooming()) {
+                needsCreate = true;
+
+                /*
+                 * TTR971 - needs to set display properties, otherwise the layer
+                 * color may not take effect (e.g., after switching projection)
+                 */
+                factory.setLayerDisplayAttributes(dprops.getLayerMonoColor(),
+                        dprops.getLayerColor(), dprops.getLayerFilled());
+            }
+
+            if (paintProps.getZoomLevel() != zoomLevel) {
+                needsCreate = true;
+                zoomLevel = paintProps.getZoomLevel();
+            }
+
+            if ((dprops != null) && !dprops.equals(saveProps)) {
+                factory.setLayerDisplayAttributes(dprops.getLayerMonoColor(),
+                        dprops.getLayerColor(), dprops.getLayerFilled());
+                needsCreate = true;
+            } else if (element instanceof IMidCloudText
+                    || element instanceof IAvnText
+                    || (element instanceof IText && ((IText) element)
+                            .getDisplayType().equals(DisplayType.BOX))
+                    || element instanceof IGfa || isCCFPArrow(element)) {
+                if (PgenSession.getInstance().getPgenResource()
+                        .isNeedsDisplay()) {
+                    needsCreate = true;
+                }
+            }
+
+            if (needsCreate) {
+                createDisplayables(paintProps);
+            }
+
+            saveProps = dprops;
+
+            for (IDisplayable each : displayEls) {
+                each.draw(target, paintProps);
+            }
+
+        }
+
+        // Protected Methods
+
+        @Override
+        protected void createDisplayables(PaintProperties paintProps) {
+            displayEls = createDisplayablesForElementContainer(displayEls,
+                    factory, element, mapDescriptor, paintProps);
+        }
+    }
+
+    /**
+     * Raster element container, a replacement for its superclass that creates
+     * objects of type {@link AlphaCapableLineDisplayElement} instead of
+     * {@link LineDisplayElement}.
+     */
+    private class DefaultRasterElementContainer extends RasterElementContainer {
+
+        // Private Variables
+
+        /**
+         * Display element factory customized for spatial display needs,
+         * including lines that may have alpha transparency.
+         */
+        private PgenDisplayElementFactory factory;
+
+        /**
+         * Saved display properties, if any; copied from superclass since it is
+         * inaccessible to this class's
+         * {@link #draw(IGraphicsTarget, PaintProperties, DisplayProperties, boolean)}
+         * method.
+         */
+        private DisplayProperties saveProps = null;
+
+        // Public Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param element
+         *            Element to be contained.
+         * @param mapDescriptor
+         *            Map descriptor.
+         * @param target
+         *            Target on which the contained element will be drawn.
+         */
+        public DefaultRasterElementContainer(DrawableElement element,
+                IMapDescriptor mapDescriptor, IGraphicsTarget target) {
+            super(element, mapDescriptor, target);
+            factory = new PgenDisplayElementFactory(target, mapDescriptor);
+        }
+
+        // Public Methods
+
+        @Override
+        public void setMapDescriptor(IMapDescriptor mapDescriptor) {
+            super.setMapDescriptor(mapDescriptor);
+            factory = new PgenDisplayElementFactory(target, mapDescriptor);
+        }
+
+        /*
+         * Copied from superclass, with only modification being the use of the
+         * customized factory.
+         */
+        @Override
+        public void draw(IGraphicsTarget target, PaintProperties paintProps,
+                DisplayProperties dprops, boolean needsCreate) {
+
+            if (displayEls == null) {
+                needsCreate = true;
+
+                /*
+                 * TTR971 - needs to set display properties, otherwise the layer
+                 * color may not take effect (e.g., after switching projection)
+                 */
+                factory.setLayerDisplayAttributes(dprops.getLayerMonoColor(),
+                        dprops.getLayerColor(), dprops.getLayerFilled());
+            }
+
+            if ((dprops != null) && !dprops.equals(saveProps)) {
+                factory.setLayerDisplayAttributes(dprops.getLayerMonoColor(),
+                        dprops.getLayerColor(), dprops.getLayerFilled());
+                needsCreate = true;
+            }
+
+            if (needsCreate) {
+                createDisplayables(paintProps);
+            }
+
+            saveProps = dprops;
+
+            for (IDisplayable each : displayEls) {
+                each.draw(target, paintProps);
+            }
+        }
+
+        // Protected Methods
+
+        @Override
+        protected void createDisplayables(PaintProperties paintProps) {
+            displayEls = createDisplayablesForElementContainer(displayEls,
+                    factory, element, mapDescriptor, paintProps);
+        }
+    }
+
+    // Package Static Constants
+
+    /**
+     * Layer name.
+     */
+    static final String LAYER_NAME = "Hazard Services";
+
+    // Private Static Constants
+
+    /**
+     * Pattern to be used for fills.
+     */
+    private static final String GL_PATTERN_VERTICAL_DOTTED = "VERTICAL_DOTTED";
+
+    /**
+     * Distance in pixels of "slop" used when testing for hits on clickable
+     * elements.
+     */
+    private static final int HIT_TEST_SLOP_DISTANCE_PIXELS = (int) SelectionAction.SELECTION_DISTANCE_PIXELS;
+
+    /**
+     * Relative size of the handlebars drawn on selected hazards.
+     */
+    private static final float HANDLEBAR_MAGNIFICATION = 1.5f;
+
+    // Private Static Variables
 
     /**
      * Logging mechanism.
@@ -204,83 +489,98 @@ public class SpatialDisplay extends
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SpatialDisplay.class);
 
-    private static final String GL_PATTERN_VERTICAL_DOTTED = "VERTICAL_DOTTED";
-
-    private static final int HIT_TEST_SLOP_DISTANCE_PIXELS = (int) SelectionAction.SELECTION_DISTANCE_PIXELS;
+    // Private Variables
 
     /**
-     * Controls the relative size of the handlebars drawn on selected hazards.
-     */
-    private static final float HANDLEBAR_MAGNIFICATION = 1.5f;
-
-    /**
-     * A reference to an instance of app builder.
+     * App builder.
      */
     private HazardServicesAppBuilder appBuilder;
 
     /**
-     * Not pulling in ElementCollectionFilter due to restriction on NCEP PGEN UI
-     * package.
+     * Map of drawable elements to the containers of their displayables.
      */
-
     private final ConcurrentMap<AbstractDrawableComponent, AbstractElementContainer> displayMap;
 
     /**
-     * Ghost for pgen element.
+     * Drawable element used when an element is being created or modified; this
+     * one allows the changes to occur, while the original is left as it was
+     * pre-edit until the edit is complete.
      */
-    private AbstractDrawableComponent ghost = null;
+    private AbstractDrawableComponent elementEditedGhost;
 
     /**
-     * Variable used to determine if a frame time change needs to be sent to the
-     * IHIS Layer.
+     * Drawable element currently being edited in some way.
      */
+    private AbstractDrawableComponent elementEdited;
 
-    /*
-     * Elements selected
+    /**
+     * Selected elements; these are elements that are part of selected hazard
+     * events (whether as base geometries or visual features).
      */
-    private final List<AbstractDrawableComponent> elSelected;
+    private final Set<AbstractDrawableComponent> selectedElements = new HashSet<>();
 
-    private AbstractDrawableComponent selectedHazardLayer = null;
-
+    /**
+     * Geometry factory, used for creating points during hit-testing.
+     */
     private final GeometryFactory geometryFactory;
 
-    // Flag indicating whether or not to draw the handlebars
-    // on the selected element.
-    private boolean drawSelectedHandleBars = false;
+    /**
+     * Selected element over which the cursor is currently hovering, if any.
+     */
+    private AbstractDrawableComponent hoverElement;
 
-    // Builder for the various possible hazard geometries
-    private HazardServicesDrawableBuilder drawableBuilder = null;
+    /**
+     * Builder for the various possible hazard geometries.
+     */
+    private HazardServicesDrawableBuilder drawableBuilder;
 
-    // Data manager for displayed geometries.
-    private SpatialDisplayDataManager dataManager = null;
+    /**
+     * PGEN layer manager.
+     */
+    private final PgenLayerManager pgenLayerManager;
 
-    private boolean timeMatchBasis = false;
+    /**
+     * Flag indicating whether or not this viz resource is acting as the basis
+     * for time matching.
+     */
+    private boolean timeMatchBasis;
 
-    private boolean prevTimeMatchBasis = false;
+    /**
+     * Flag indicating whether or not this viz resource was previously acting as
+     * the basis for time matching.
+     */
+    private boolean prevTimeMatchBasis;
 
-    private int maximumFrameCount = -1;
+    /**
+     * Current frame count.
+     */
+    private int frameCount = -1;
 
-    // Mouse action handler. There are several different mouse modes
-    // for hazard services. We need to use a strategy pattern to
-    // control the mouse behavior in this tool layer.
+    /**
+     * Mouse action handler. There are several different mouse modes for Hazard
+     * Services. This class uses a strategy pattern to control the mouse
+     * behavior in this viz resource.
+     */
     private IInputHandler mouseHandler = null;
 
-    private boolean allowDisposeMessage = true;
+    /**
+     * Flag indicating whether or not a dispose notification should be generated
+     * when this tool layer is disposed of.
+     */
+    private boolean generateDisposeMessage = true;
 
-    /*
-     * reference to eventBus singleton instance
+    /**
+     * Event bus used to fire off notifications.
      */
     private BoundedReceptionEventBus<Object> eventBus = null;
 
     /**
-     * Spatial view.
+     * Spatial view that manages this object.
      */
     private SpatialView spatialView;
 
-    /*
-     * Color of the selection handlebars. Since PGEN uses AWT colors, there are
-     * areas in this module which use the AWT Color class. Hence, I needed to
-     * specify the full package here for the SWT Color class.
+    /**
+     * Color of the hover element's handle bars.
      */
     private org.eclipse.swt.graphics.Color handleBarColor;
 
@@ -289,14 +589,13 @@ public class SpatialDisplay extends
      */
     private boolean perspectiveChanging = false;
 
-    /*
-     * Contains the vertices of the currently selected hazard converted to world
-     * pixels. This recomputed once per change in selected hazard for
-     * efficiency.
+    /**
+     * Vertices of the current hover element converted to world pixels. This
+     * recomputed once per change in the hover element for efficiency.
      */
     private final List<double[]> handleBarPoints = new ArrayList<>();
 
-    /*
+    /**
      * Contains a map in which each entry contains a unique identifier and a
      * list of shapes. These are not events, and they are persisted across zoom,
      * pan and time change operations. It is up to the client to remove them
@@ -387,16 +686,15 @@ public class SpatialDisplay extends
             Calendar simulatedDate = TimeUtil.newCalendar(TimeZone
                     .getTimeZone("UTC"));
             simulatedDate.setTime(date);
-            // SimulatedTime.getSystemTime().setFrozen(true);
-            SimulatedTime.getSystemTime().setFrozen(false);
+            SimulatedTime.getSystemTime().setFrozen(true);
+            // SimulatedTime.getSystemTime().setFrozen(false);
             SimulatedTime.getSystemTime().setTime(simulatedDate.getTime());
         }
 
         displayMap = new ConcurrentHashMap<>();
-        elSelected = new ArrayList<>();
         geometryFactory = new GeometryFactory();
 
-        dataManager = new SpatialDisplayDataManager();
+        pgenLayerManager = new PgenLayerManager();
         persistentShapeMap = new HashMap<>();
         hatchedAreas = new ArrayList<>();
         hatchedAreaAnnotations = new ArrayList<>();
@@ -464,7 +762,7 @@ public class SpatialDisplay extends
      */
     @Override
     public String getName() {
-        return DEFAULT_NAME;
+        return LAYER_NAME;
     }
 
     /**
@@ -547,10 +845,6 @@ public class SpatialDisplay extends
             AbstractDrawableComponent object,
             AbstractMovableToolLayer.SelectionStatus status)
             throws VizException {
-
-        /*
-         * Draw the hazard event
-         */
         drawProduct(target, paintProps, object);
     }
 
@@ -588,18 +882,20 @@ public class SpatialDisplay extends
          */
         drawHatchedAreas(target, paintProps);
 
-        if (ghost != null) {
-            drawGhost(target, paintProps);
+        if (elementEditedGhost != null) {
+            drawGhostOfElementBeingEdited(target, paintProps);
         }
 
         super.paintInternal(target, paintProps);
 
-        /*
-         * Draw the selected polygon
-         */
-        if (selectedHazardLayer != null) {
-            drawSelected(target, paintProps);
+        for (AbstractDrawableComponent visualFeatureDrawable : visualFeatureDrawables) {
+            drawProduct(target, paintProps, visualFeatureDrawable);
         }
+
+        /*
+         * Draw the hover elements.
+         */
+        drawHover(target, paintProps);
     }
 
     @Override
@@ -689,11 +985,11 @@ public class SpatialDisplay extends
              * We only want to calculate more data times if the user has
              * selected more frames than there have been in the past.
              */
-            if (this.descriptor.getNumberOfFrames() > this.maximumFrameCount) {
+            if (this.descriptor.getNumberOfFrames() > this.frameCount) {
                 int variance = this.descriptor.getNumberOfFrames()
-                        - this.maximumFrameCount;
+                        - this.frameCount;
 
-                this.maximumFrameCount = this.descriptor.getNumberOfFrames();
+                this.frameCount = this.descriptor.getNumberOfFrames();
 
                 DataTime earliestTime = this.dataTimes.get(0);
                 this.fillDataTimeArray(earliestTime, variance);
@@ -777,15 +1073,13 @@ public class SpatialDisplay extends
             Map<String, Boolean> forModifyingStormTrack,
             Map<String, Boolean> eventEditability,
             boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed) {
-        clearEvents();
-        selectedHazardLayer = null;
+        clearDrawables();
+        setHoverElement(null);
 
         hatchedAreas.clear();
         hatchedAreaAnnotations.clear();
 
         Layer activeLayer = getActiveLayer();
-        List<AbstractDrawableComponent> activeLayerDrawables = activeLayer
-                .getDrawables();
         for (ObservedHazardEvent hazardEvent : events) {
 
             /*
@@ -794,18 +1088,6 @@ public class SpatialDisplay extends
             String eventID = hazardEvent.getEventID();
             Boolean isSelected = (Boolean) hazardEvent
                     .getHazardAttribute(HAZARD_EVENT_SELECTED);
-
-            /*
-             * Removing the AbstractDrawableComponents for the events here. New
-             * Components that are valid are added below.
-             */
-            for (AbstractDrawableComponent adc : new ArrayList<AbstractDrawableComponent>(
-                    activeLayerDrawables)) {
-                String id = eventIDForElement(adc);
-                if (hazardEvent.getEventID().equals(id)) {
-                    activeLayer.remove(adc);
-                }
-            }
 
             drawableBuilder.buildDrawableComponents(this, hazardEvent,
                     eventOverlapSelectedTime.get(eventID), activeLayer,
@@ -820,11 +1102,71 @@ public class SpatialDisplay extends
 
         }
 
-        List<AbstractDrawableComponent> drawables = dataManager
-                .getActiveLayer().getDrawables();
+        List<AbstractDrawableComponent> drawables = new ArrayList<>(
+                pgenLayerManager.getActiveLayer().getDrawables());
+        Iterator<AbstractDrawableComponent> drawableIterator = drawables
+                .iterator();
+        while (drawableIterator.hasNext()) {
+            AbstractDrawableComponent element = drawableIterator.next();
+            if ((element instanceof IHazardServicesShape)
+                    && ((IHazardServicesShape) element).isVisualFeature()) {
+                drawableIterator.remove();
+            }
+        }
         repositionTextComponents(drawables);
         hatchedAreaAnnotations.addAll(drawables);
         setObjects(hatchedAreaAnnotations);
+        issueRefresh();
+    }
+
+    /**
+     * List of visual feature drawables.
+     */
+    private final List<AbstractDrawableComponent> visualFeatureDrawables = new ArrayList<>();
+
+    /**
+     * Draw the specified spatial entities.
+     * 
+     * @param spatialEntities
+     *            Spatial entities to be drawn.
+     * @param selectedEventIdentifiers
+     *            Identifiers of hazard events that are currently selected.
+     */
+    public void drawSpatialEntities(
+            List<SpatialEntity<VisualFeatureSpatialIdentifier>> spatialEntities,
+            Set<String> selectedEventIdentifiers) {
+
+        visualFeatureDrawables.clear();
+
+        /*
+         * NOTE: It is assumed this this call is always preceded by a
+         * drawEvents() call, as no elements are cleared out of the PGEN layer.
+         */
+
+        setHoverElement(null);
+
+        Layer activeLayer = getActiveLayer();
+        for (SpatialEntity<VisualFeatureSpatialIdentifier> spatialEntity : spatialEntities) {
+            drawableBuilder.buildDrawableComponents(this, spatialEntity,
+                    activeLayer, selectedEventIdentifiers
+                            .contains(spatialEntity.getIdentifier()
+                                    .getHazardEventIdentifier()));
+        }
+
+        List<AbstractDrawableComponent> drawables = new ArrayList<>(
+                pgenLayerManager.getActiveLayer().getDrawables());
+        Iterator<AbstractDrawableComponent> drawableIterator = drawables
+                .iterator();
+        while (drawableIterator.hasNext()) {
+            AbstractDrawableComponent element = drawableIterator.next();
+            if ((element instanceof IHazardServicesShape == false)
+                    || (((IHazardServicesShape) element).isVisualFeature() == false)) {
+                drawableIterator.remove();
+            }
+        }
+
+        visualFeatureDrawables.addAll(drawables);
+
         issueRefresh();
     }
 
@@ -921,23 +1263,21 @@ public class SpatialDisplay extends
                 .buildStormTrackDotComponent(getActiveLayer(), eventType);
         List<AbstractDrawableComponent> drawableComponents = Lists
                 .newArrayList(shapeComponent);
-        addElement(shapeComponent);
+        addElement(shapeComponent, true);
         drawableComponents.add(shapeComponent);
         drawableBuilder.addTextComponent(this, HazardConstants.DRAG_DROP_DOT,
                 drawableComponents, shapeComponent);
 
         trackPersistentShapes(HazardConstants.DRAG_DROP_DOT, drawableComponents);
-        setObjects(dataManager.getActiveLayer().getDrawables());
+        setObjects(pgenLayerManager.getActiveLayer().getDrawables());
         issueRefresh();
     }
 
     /**
      * Removes the ghost line from the PGEN drawing layer.
      */
-    public void removeGhostLine() {
-
-        this.ghost = null;
-
+    public void removeGhostOfElementBeingEdited() {
+        elementEditedGhost = null;
     }
 
     /**
@@ -946,9 +1286,16 @@ public class SpatialDisplay extends
      * 
      * @param de
      *            The DrawableElement being added.
+     * @param selected
+     *            Flag indicating whether or not the element is part of a hazard
+     *            event (whether base geometry or visual feature) that is
+     *            selected.
      */
-    public void addElement(AbstractDrawableComponent de) {
-        dataManager.addElement(de);
+    public void addElement(AbstractDrawableComponent de, boolean selected) {
+        pgenLayerManager.addElement(de);
+        if (selected) {
+            selectedElements.add(de);
+        }
     }
 
     /**
@@ -960,7 +1307,9 @@ public class SpatialDisplay extends
      * @return
      */
     public void removeElement(AbstractDrawableComponent de) {
-        dataManager.removeElement(de);
+        pgenLayerManager.removeElement(de);
+
+        selectedElements.remove(de);
 
         AbstractElementContainer elementContainer = displayMap.remove(de);
 
@@ -976,17 +1325,17 @@ public class SpatialDisplay extends
      * @return Layer
      */
     public Layer getActiveLayer() {
-        return dataManager.getActiveLayer();
+        return pgenLayerManager.getActiveLayer();
     }
 
     /**
-     * Sets the ghost line for the PGEN drawing layer.
+     * Sets the ghost of the element being edited to that specified.
      * 
      * @param ghost
-     *            The ghost to display.
+     *            New ghost of the element being edited.
      */
-    public void setGhostLine(AbstractDrawableComponent ghost) {
-        this.ghost = ghost;
+    public void setGhostOfElementBeingEdited(AbstractDrawableComponent ghost) {
+        this.elementEditedGhost = ghost;
     }
 
     /**
@@ -997,8 +1346,8 @@ public class SpatialDisplay extends
      *            The identifier of the event.
      */
     public void removeEvent(String eventID) {
-        List<AbstractDrawableComponent> deList = dataManager.getActiveLayer()
-                .getDrawables();
+        List<AbstractDrawableComponent> deList = pgenLayerManager
+                .getActiveLayer().getDrawables();
 
         AbstractDrawableComponent[] deArray = deList
                 .toArray(new AbstractDrawableComponent[10]);
@@ -1080,8 +1429,7 @@ public class SpatialDisplay extends
      * @return
      */
     public void multipleElementsClicked(Set<String> eventIDs) {
-        getAppBuilder().getSpatialPresenter().updateSelectedEventIds(
-                eventIDs.toArray(new String[eventIDs.size()]));
+        getAppBuilder().getSpatialPresenter().updateSelectedEventIds(eventIDs);
     }
 
     /**
@@ -1095,7 +1443,7 @@ public class SpatialDisplay extends
 
         if (eventID != null) {
 
-            List<AbstractDrawableComponent> deList = dataManager
+            List<AbstractDrawableComponent> deList = pgenLayerManager
                     .getActiveLayer().getDrawables();
 
             AbstractDrawableComponent[] deArray = deList
@@ -1117,18 +1465,22 @@ public class SpatialDisplay extends
     }
 
     /**
-     * Returns the selected element.
+     * Get the element currently being edited.
      * 
-     * @return DrawableElement
+     * @return Element currently being edited.
      */
-    public DrawableElement getSelectedDE() {
+    public DrawableElement getElementBeingEdited() {
+        return (elementEdited == null ? null : elementEdited.getPrimaryDE());
+    }
 
-        if (elSelected.isEmpty()) {
-            return null;
-        } else {
-            return elSelected.get(0).getPrimaryDE();
-        }
-
+    /**
+     * Sets the element that is being edited to that specified.
+     * 
+     * @param element
+     *            Element that is now being edited.
+     */
+    public void setElementBeingEdited(AbstractDrawableComponent element) {
+        elementEdited = element;
     }
 
     /**
@@ -1151,7 +1503,7 @@ public class SpatialDisplay extends
          */
         double minDist = Double.MAX_VALUE;
 
-        Iterator<AbstractDrawableComponent> iterator = dataManager
+        Iterator<AbstractDrawableComponent> iterator = pgenLayerManager
                 .getActiveLayer().getComponentIterator();
 
         Point clickScreenPoint = geometryFactory.createPoint(new Coordinate(
@@ -1208,7 +1560,7 @@ public class SpatialDisplay extends
      */
     public AbstractDrawableComponent getContainingComponent(Coordinate point,
             int x, int y) {
-        Iterator<AbstractDrawableComponent> iterator = dataManager
+        Iterator<AbstractDrawableComponent> iterator = pgenLayerManager
                 .getActiveLayer().getComponentIterator();
 
         /**
@@ -1259,7 +1611,7 @@ public class SpatialDisplay extends
      */
     public List<AbstractDrawableComponent> getContainingComponents(
             Coordinate point, int x, int y) {
-        Iterator<AbstractDrawableComponent> iterator = dataManager
+        Iterator<AbstractDrawableComponent> iterator = pgenLayerManager
                 .getActiveLayer().getComponentIterator();
 
         /**
@@ -1297,41 +1649,6 @@ public class SpatialDisplay extends
          * easier for applications to find the top-most containing element.
          */
         return Lists.reverse(containingSymbolsList);
-    }
-
-    /**
-     * Replace one drawable element in the product list with another drawable
-     * element.
-     * 
-     * @param old
-     *            Element to replace
-     * @param newde
-     *            new drawable element
-     */
-    public void replaceElement(AbstractDrawableComponent old,
-            AbstractDrawableComponent newde) {
-
-        /*
-         * displose of resources held by old componenet
-         */
-        // resetADC(old);
-
-        dataManager.replaceElement(old, newde);
-    }
-
-    /**
-     * Sets the selected element to the input element.
-     * 
-     * @param comp
-     */
-    public void setSelectedDE(AbstractDrawableComponent comp) {
-
-        elSelected.clear();
-
-        if (comp != null) {
-            elSelected.add(comp);
-        }
-
     }
 
     /**
@@ -1407,20 +1724,36 @@ public class SpatialDisplay extends
     }
 
     /**
-     * Sets the selected hazard.
+     * Get the selected elements.
+     * 
+     * @return Selected elements.
+     */
+    public Set<AbstractDrawableComponent> getSelectedElements() {
+        return Collections.unmodifiableSet(selectedElements);
+    }
+
+    /**
+     * Get the element over which the cursor is currently hovering.
+     * 
+     * @return Element over which the cursor is currently hovering, or
+     *         <code>null</code> if it is not hovering over any selected
+     *         element.
+     */
+    public AbstractDrawableComponent getHoverElement() {
+        return hoverElement;
+    }
+
+    /**
+     * Set the element over which the cursor is currently hovering.
      * 
      * @param comp
-     *            The selected hazard.
-     * @return
+     *            New hover element.
      */
-    public void setSelectedHazardLayer(AbstractDrawableComponent comp) {
-
-        selectedHazardLayer = comp;
+    public void setHoverElement(AbstractDrawableComponent comp) {
+        hoverElement = comp;
 
         /*
-         * Update the list of world pixels associated with this hazard. We only
-         * need to do this computation once. This is especially useful for
-         * drawing hazard selection handlebars.
+         * Update the list of world pixels associated with this element.
          */
         handleBarPoints.clear();
 
@@ -1431,61 +1764,31 @@ public class SpatialDisplay extends
                 handleBarPoints.add(pixelPoint);
             }
         }
-    }
 
-    /**
-     * Retrieves the selected hazard.
-     * 
-     * @param
-     * @return The selected hazard.
-     */
-    public AbstractDrawableComponent getSelectedHazardLayer() {
-        return selectedHazardLayer;
-    }
-
-    /**
-     * Sets flag indicating whether or not to draw handle bars.
-     * 
-     * @param drawSelectedHandleBars
-     *            true - draw handle bars; false - do not draw handlebars.
-     * @return
-     */
-    public void setDrawSelectedHandleBars(boolean drawSelectedHandleBars) {
-        this.drawSelectedHandleBars = drawSelectedHandleBars;
         issueRefresh();
     }
 
-    public double[] getSelectedHazardCenterPoint() {
-        AbstractDrawableComponent comp = getSelectedHazardLayer();
-        Point centerPoint = null;
-
-        if ((comp != null) && !(comp instanceof Text)) {
-
-            if (comp instanceof DECollection
-                    && !((DECollection) comp).isEmpty()) {
-                comp = ((DECollection) comp).getItemAt(0);
-            }
-
-            Geometry p = ((IHazardServicesShape) comp).getGeometry();
-
-            if (p != null) {
-                centerPoint = p.getCentroid();
-            }
+    /**
+     * Rebuild handlebar points from the specified points.
+     * 
+     * @param points
+     *            Points from which to rebuild handlebar points.
+     */
+    public void useAsHandlebarPoints(Coordinate[] points) {
+        handleBarPoints.clear();
+        for (Coordinate point : points) {
+            double[] pixelPoint = descriptor.worldToPixel(new double[] {
+                    point.x, point.y });
+            handleBarPoints.add(pixelPoint);
         }
-
-        if (centerPoint != null) {
-            return new double[] { centerPoint.getX(), centerPoint.getY() };
-        }
-
-        return null;
-
+        issueRefresh();
     }
 
     /**
      * @return the dataManager
      */
-    public SpatialDisplayDataManager getDataManager() {
-        return dataManager;
+    public PgenLayerManager getDataManager() {
+        return pgenLayerManager;
     }
 
     /**
@@ -1497,11 +1800,151 @@ public class SpatialDisplay extends
     }
 
     /**
-     * @param allowDisposeMessage
-     *            the allowDisposeMessage to set
+     * Set the flag indicating whether or not a dispose notification should be
+     * generated when this tool layer is disposed of.
+     * 
+     * @param generateDisposeMessage
+     *            Flag indicating whether or not a dispose notification should
+     *            be generated when this tool layer is disposed of.
      */
-    public void setAllowDisposeMessage(boolean allowDisposeMessage) {
-        this.allowDisposeMessage = allowDisposeMessage;
+    public void setGenerateDisposeMessage(boolean generateDisposeMessage) {
+        this.generateDisposeMessage = generateDisposeMessage;
+    }
+
+    /**
+     * Create displayables for an element container.
+     * 
+     * @param displayElements
+     *            Leftover display elements from before, or <code>null</code>.
+     * @param factory
+     *            Display element factory, used to create the actual display
+     *            elements.
+     * @param element
+     *            Drawable element for which display elements are to be created.
+     * @param mapDescriptor
+     *            Map descriptor to be used.
+     * @param paintProperties
+     *            Paint properties to be used.
+     * @return List of displayables for the specified element's container.
+     */
+    private List<IDisplayable> createDisplayablesForElementContainer(
+            List<IDisplayable> displayElements,
+            PgenDisplayElementFactory factory, DrawableElement element,
+            IMapDescriptor mapDescriptor, PaintProperties paintProperties) {
+
+        /*
+         * Clean up after any leftover displayable elements.
+         */
+        if ((displayElements != null) && (displayElements.isEmpty() == false)) {
+            factory.reset();
+        }
+
+        /*
+         * Set the range for this element.
+         */
+        setDrawableElementRange(element, factory, mapDescriptor,
+                paintProperties);
+
+        /*
+         * Create displayables.
+         */
+        boolean handled = false;
+        if (element instanceof IText) {
+            handled = true;
+            displayElements = factory.createDisplayElements((IText) element,
+                    paintProperties);
+        } else if (element instanceof ISymbol) {
+            handled = true;
+            displayElements = factory.createDisplayElements((ISymbol) element,
+                    paintProperties);
+        } else if (element instanceof IMultiPoint) {
+            if (element instanceof IArc) {
+                handled = true;
+                displayElements = factory.createDisplayElements((IArc) element,
+                        paintProperties);
+            } else if (element instanceof ILine) {
+                handled = true;
+                displayElements = factory.createDisplayElements(
+                        (ILine) element, paintProperties, true);
+            }
+        }
+        if (handled == false) {
+            statusHandler.error("Unexpected DrawableElement of type "
+                    + element.getClass().getSimpleName()
+                    + "; do not know how to create its displayables.",
+                    new IllegalStateException());
+            return Collections.emptyList();
+        }
+        return displayElements;
+    }
+
+    /**
+     * Set a text element's range record. This method's implementation is copied
+     * from {@link AbstractElementContainer} since it is inaccessible to this
+     * subclass, with the only changes being that parameters are passed in that
+     * in the original implementation are accessible as member variables.
+     */
+    private void setDrawableElementRange(DrawableElement element,
+            PgenDisplayElementFactory factory, IMapDescriptor mapDescriptor,
+            PaintProperties paintProperties) {
+        if (element instanceof ISinglePoint) {
+            PgenRangeRecord rng = null;
+            if (element instanceof IText) {
+                rng = factory
+                        .findTextBoxRange((IText) element, paintProperties);
+            } else if (element instanceof ISymbol) {
+                rng = factory.findSymbolRange((ISymbol) element,
+                        paintProperties);
+            }
+            if (rng != null) {
+                element.setRange(rng);
+            }
+        } else if (element instanceof IMultiPoint) {
+            double[][] pixels = PgenUtil.latlonToPixel(
+                    ((IMultiPoint) element).getLinePoints(), mapDescriptor);
+            double[][] smoothpts = pixels;
+            float density;
+
+            /*
+             * Apply parametric smoothing on pixel coordinates, if required.
+             * 
+             * Note: 1. NMAP2 range calculation does not do smoothing though. 2.
+             * Tcm and WatchBox is IMultiPoint but not ILine.
+             */
+            boolean smoothIt = true;
+            if (smoothIt && element instanceof ILine
+                    && ((ILine) element).getSmoothFactor() > 0) {
+                if (((ILine) element).getSmoothFactor() > 0) {
+                    float devScale = 50.0f;
+                    if (((ILine) element).getSmoothFactor() == 1) {
+                        density = devScale / 1.0f;
+                    } else {
+                        density = devScale / 5.0f;
+                    }
+
+                    smoothpts = CurveFitter.fitParametricCurve(pixels, density);
+                }
+            }
+
+            Coordinate[] pts = new Coordinate[smoothpts.length];
+
+            for (int ii = 0; ii < smoothpts.length; ii++) {
+                pts[ii] = new Coordinate(smoothpts[ii][0], smoothpts[ii][1]);
+            }
+
+            boolean closed = false;
+            if (element instanceof ILine) {
+                closed = ((ILine) element).isClosedLine();
+            }
+
+            element.createRange(pts, closed);
+
+        } else {
+            statusHandler.error("Unexpected DrawableElement of type "
+                    + element.getClass().getSimpleName()
+                    + "; do not know how to set its range record.",
+                    new IllegalStateException());
+        }
     }
 
     /**
@@ -1512,7 +1955,7 @@ public class SpatialDisplay extends
      * @return
      */
     private void fireSpatialDisplayDisposedActionOccurred() {
-        if (allowDisposeMessage) {
+        if (generateDisposeMessage) {
             final SpatialDisplayAction action = new SpatialDisplayAction(
                     SpatialDisplayAction.ActionType.DISPLAY_DISPOSED);
             eventBus.publishAsync(action);
@@ -1529,14 +1972,19 @@ public class SpatialDisplay extends
      */
     private void drawProduct(IGraphicsTarget target,
             PaintProperties paintProps, AbstractDrawableComponent el) {
-        Layer layer = dataManager.getActiveLayer();
+        Layer layer = pgenLayerManager.getActiveLayer();
 
         DisplayProperties dprops = buildDisplayProperties(layer);
 
         AbstractElementContainer container = displayMap.get(el);
         if (container == null) {
-            container = ElementContainerFactory.createContainer(
-                    (DrawableElement) el, descriptor, target);
+            if (el instanceof Symbol) {
+                container = new DefaultRasterElementContainer(
+                        (DrawableElement) el, descriptor, target);
+            } else {
+                container = new DefaultVectorElementContainer(
+                        (DrawableElement) el, descriptor, target);
+            }
             displayMap.put(el, container);
         }
 
@@ -1588,12 +2036,13 @@ public class SpatialDisplay extends
     }
 
     /**
-     * Clear all events from the spatial display. Takes into account events that
-     * need to be persisted such as a storm track dot.
+     * Clear all drawables for base geometries and visual features from the
+     * spatial display. Takes into account events that need to be persisted such
+     * as a storm track dot.
      */
-    private void clearEvents() {
-        List<AbstractDrawableComponent> deList = dataManager.getActiveLayer()
-                .getDrawables();
+    private void clearDrawables() {
+        List<AbstractDrawableComponent> deList = pgenLayerManager
+                .getActiveLayer().getDrawables();
 
         // Needed to use an array to prevent concurrency issues.
         AbstractDrawableComponent[] deArray = deList
@@ -1601,12 +2050,13 @@ public class SpatialDisplay extends
 
         for (AbstractDrawableComponent de : deArray) {
             if (de == null) {
-                break;
+                continue;
             }
 
-            String eventID = ((IHazardServicesShape) de).getID();
+            IHazardServicesShape shape = (IHazardServicesShape) de;
+            String eventId = shape.getID();
             List<AbstractDrawableComponent> persistentDrawables = persistentShapeMap
-                    .get(eventID);
+                    .get(eventId);
 
             if (persistentDrawables == null
                     || !persistentDrawables.contains(de)) {
@@ -1637,47 +2087,31 @@ public class SpatialDisplay extends
 
     /**
      * Draws the ghost of an event that is being created or modified. For
-     * instance, if an event is moved, then ghost of the event is drawn to show
-     * where the event will end up when dropped on the map.
+     * instance, if an event is moved, then the ghost of the event is drawn to
+     * show where the event will end up when dropped on the map.
      * 
      * @param target
-     *            The target which will receive drawables
-     * @param paintProps
-     *            describes how drawables will be displayed
-     * @return
+     *            Target which will receive drawables.
+     * @param paintProperties
+     *            Paint properties associated with the target.
      */
-    private void drawGhost(IGraphicsTarget target, PaintProperties paintProps) {
+    private void drawGhostOfElementBeingEdited(IGraphicsTarget target,
+            PaintProperties paintProperties) {
 
-        Iterator<DrawableElement> iterator = ghost.createDEIterator();
+        Iterator<DrawableElement> iterator = elementEditedGhost
+                .createDEIterator();
 
         while (iterator.hasNext()) {
-            drawElement(target, paintProps, iterator.next());
+
+            DrawableElement element = iterator.next();
+            AbstractElementContainer dispEl = new DefaultVectorElementContainer(
+                    element, descriptor, target);
+
+            Layer layer = pgenLayerManager.getActiveLayer();
+            DisplayProperties dprops = buildDisplayProperties(layer);
+            dispEl.draw(target, paintProperties, dprops);
+            dispEl.dispose();
         }
-    }
-
-    /**
-     * Used by the drawGhost method. Ghosts are transient, so they are not
-     * preserved once they are drawn.
-     * 
-     * @param target
-     *            The target to draw on.
-     * @param paintProps
-     *            Describes how elements are displayed
-     * @param el
-     *            The PGEN drawable to be displayed.
-     * @return
-     */
-    private void drawElement(IGraphicsTarget target,
-            PaintProperties paintProps, DrawableElement el) {
-
-        AbstractElementContainer dispEl = null;
-
-        dispEl = new DefaultElementContainer(el, descriptor, target);
-
-        Layer layer = dataManager.getActiveLayer();
-        DisplayProperties dprops = buildDisplayProperties(layer);
-        dispEl.draw(target, paintProps, dprops);
-        dispEl.dispose();
     }
 
     private DisplayProperties buildDisplayProperties(Layer layer) {
@@ -1708,14 +2142,11 @@ public class SpatialDisplay extends
      *             An exception was encountered while drawing the handle bar
      *             points on the target graphic
      */
-    private void drawSelected(IGraphicsTarget target, PaintProperties paintProps)
+    private void drawHover(IGraphicsTarget target, PaintProperties paintProps)
             throws VizException {
-
-        if ((selectedHazardLayer != null) && (drawSelectedHandleBars)) {
-            if ((selectedHazardLayer instanceof IHazardServicesShape)
-                    && ((IHazardServicesShape) selectedHazardLayer)
-                            .isEditable()) {
-                rebuildHandleBarPoints(selectedHazardLayer);
+        if (hoverElement != null) {
+            if ((hoverElement instanceof IHazardServicesShape)
+                    && ((IHazardServicesShape) hoverElement).isEditable()) {
                 if (!handleBarPoints.isEmpty()) {
                     target.drawPoints(handleBarPoints, handleBarColor.getRGB(),
                             PointStyle.DISC, HANDLEBAR_MAGNIFICATION);
@@ -1724,7 +2155,12 @@ public class SpatialDisplay extends
         }
     }
 
-    private void rebuildHandleBarPoints(AbstractDrawableComponent comp) {
+    /*
+     * TODO: This method seems expensive; why not only rebuild them when
+     * handleBarPoints is null, and set the latter to null whenever the selected
+     * element changes?
+     */
+    public void rebuildHandleBarPoints(AbstractDrawableComponent comp) {
         if (comp == null) {
             return;
         }
@@ -1787,7 +2223,7 @@ public class SpatialDisplay extends
                 }
 
                 hatchedAreaShadedShape = target.createShadedShape(false,
-                        descriptor.getGridGeometry(), true);
+                        descriptor.getGridGeometry());
                 JTSCompiler groupCompiler = new JTSCompiler(
                         hatchedAreaShadedShape, null, descriptor);
 
@@ -1796,12 +2232,13 @@ public class SpatialDisplay extends
                         if (hatchedArea.getClass() == HazardServicesPolygon.class) {
                             HazardServicesPolygon hazardServicesPolygon = (HazardServicesPolygon) hatchedArea;
                             Color[] colors = hazardServicesPolygon.getColors();
-                            Color fillColor = colors[0];
+                            JTSGeometryData data = groupCompiler
+                                    .createGeometryData();
+                            data.setGeometryColor(new RGB(colors[0].getRed(),
+                                    colors[0].getGreen(), colors[0].getBlue()));
                             groupCompiler.handle(
                                     (Geometry) hazardServicesPolygon
-                                            .getGeometry().clone(),
-                                    new RGB(fillColor.getRed(), fillColor
-                                            .getGreen(), fillColor.getBlue()));
+                                            .getGeometry().clone(), data);
                         }
                     }
 

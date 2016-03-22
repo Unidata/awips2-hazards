@@ -7,11 +7,10 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SelectionRectangleDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.SelectionRectangleDrawingAttributes;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.TrackExtrapPointInfoDlg;
-import gov.noaa.nws.ncep.ui.pgen.display.ILine;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableType;
@@ -70,8 +69,6 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(RectangleMultiSelectionAction.class);
 
-    protected Line attrDlg = null;
-
     private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
     public RectangleMultiSelectionAction(
@@ -127,7 +124,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
         /*
          * Drawing attributes for this rectangle
          */
-        private ILine drawingAttributes = null;
+        private SelectionRectangleDrawingAttributes drawingAttributes = null;
 
         private final DrawableElementFactory def = new DrawableElementFactory();
 
@@ -214,7 +211,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                 if (isSelectByArea) {
 
                     handleSelectByArea(loc);
-                } else if (getSpatialDisplay().getSelectedDE() == null)
+                } else if (getSpatialDisplay().getElementBeingEdited() == null)
 
                 {
 
@@ -288,7 +285,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
          */
         private void handleSelectByArea(Coordinate loc) {
             if (anchorCorner == null || dragCorner == null) {
-                getSpatialDisplay().removeGhostLine();
+                getSpatialDisplay().removeGhostOfElementBeingEdited();
                 anchorCorner = null;
                 dragCorner = null;
 
@@ -305,7 +302,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
                 Envelope envelope = new Envelope(anchorCorner, dragCorner);
 
                 Geometry polygon = geometryFactory.toGeometry(envelope);
-                getSpatialDisplay().removeGhostLine();
+                getSpatialDisplay().removeGhostOfElementBeingEdited();
 
                 anchorCorner = null;
                 dragCorner = null;
@@ -401,7 +398,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
 
                 ((Line) ghost).setLinePoints(ghostPts);
 
-                getSpatialDisplay().setGhostLine(ghost);
+                getSpatialDisplay().setGhostOfElementBeingEdited(ghost);
                 getSpatialDisplay().issueRefresh();
             }
 

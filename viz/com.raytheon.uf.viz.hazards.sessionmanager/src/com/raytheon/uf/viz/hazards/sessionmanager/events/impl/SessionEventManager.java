@@ -80,6 +80,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEventFirstClassAttribute;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.RecommenderTriggerOrigin;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Significance;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
@@ -345,6 +346,14 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  * Mar 03, 2016   14004    Chris.Golden Changed to pass originator when merging hazard events, and to
  *                                      only run event-triggered recommenders when they are not triggered
  *                                      by modifications to events caused by those same recommenders.
+ * Mar 06, 2016   15676    Chris.Golden Added specification of origin ("user" or "other") to recommender
+ *                                      execution context, so that recommenders know when they are triggered
+ *                                      by a hazard event modification whether the user made the change or
+ *                                      not.
+ * Mar 24, 2016   15676    Chris.Golden Fixed bug that caused null pointer exceptions if no visible sites
+ *                                      were specified in the settings (but rather, in the startup config).
+ *                                      Also changed setModifiedEventGeometry() to return true if it succeeds
+ *                                      in changing the geometry, false otherwise.
  * </pre>
  * 
  * @author bsteffen
@@ -660,16 +669,16 @@ public class SessionEventManager implements
     }
 
     @Override
-    public void setModifiedEventGeometry(String eventID, Geometry geometry,
-            boolean checkGeometryValidity) {
+    public boolean setModifiedEventGeometry(String eventID, Geometry geometry,
+            boolean checkValidity) {
         ObservedHazardEvent event = this.getEventById(eventID);
-        setModifiedEventGeometry(event, geometry, checkGeometryValidity);
+        return setModifiedEventGeometry(event, geometry, checkValidity);
     }
 
-    private void setModifiedEventGeometry(ObservedHazardEvent event,
-            Geometry geometry, boolean checkGeometryValidity) {
+    private boolean setModifiedEventGeometry(ObservedHazardEvent event,
+            Geometry geometry, boolean checkValidity) {
         if (event != null) {
-            if (isValidGeometryChange(geometry, event, checkGeometryValidity)) {
+            if (isValidGeometryChange(geometry, event, checkValidity)) {
                 if (userConfirmationAsNecessary(event)) {
                     makeHighResolutionVisible(event);
                     event.setGeometry(geometry);
@@ -685,7 +694,10 @@ public class SessionEventManager implements
                      */
                     hazardEventModified(new SessionEventGeometryModified(this,
                             event, Originator.OTHER));
+                    return false;
                 }
+            } else {
+                return false;
             }
             if (event.getHazardType() == null) {
                 // Send Notification of geometry change, this is not done
@@ -693,7 +705,9 @@ public class SessionEventManager implements
                 hazardEventModified(new SessionEventGeometryModified(this,
                         event, Originator.OTHER));
             }
+            return true;
         }
+        return false;
     }
 
     private boolean userConfirmationAsNecessary(ObservedHazardEvent event) {
@@ -1291,12 +1305,16 @@ public class SessionEventManager implements
         if ((recommenderIdentifier != null)
                 && ((originator instanceof RecommenderOriginator == false) || (recommenderIdentifier
                         .equals(((RecommenderOriginator) originator).getName()) == false))) {
-            sessionManager.getRecommenderManager().runRecommender(
-                    recommenderIdentifier,
-                    RecommenderExecutionContext
-                            .getHazardEventModificationContext(
+            sessionManager
+                    .getRecommenderManager()
+                    .runRecommender(
+                            recommenderIdentifier,
+                            RecommenderExecutionContext.getHazardEventModificationContext(
                                     event.getEventID(),
-                                    Sets.newHashSet(attribute.toString())));
+                                    Sets.newHashSet(attribute.toString()),
+                                    ((originator instanceof RecommenderOriginator)
+                                            || (originator instanceof Originator) ? RecommenderTriggerOrigin.OTHER
+                                            : RecommenderTriggerOrigin.USER)));
         }
     }
 
@@ -1356,7 +1374,8 @@ public class SessionEventManager implements
                             eventId).get(identifier),
                     RecommenderExecutionContext
                             .getHazardEventModificationContext(eventId,
-                                    Sets.newHashSet(identifier)));
+                                    Sets.newHashSet(identifier),
+                                    RecommenderTriggerOrigin.USER));
         } else if (editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
                 .containsKey(event.getEventID())
                 && editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
@@ -1684,7 +1703,8 @@ public class SessionEventManager implements
              * by changes caused by the earlier runs of those same recommenders.
              */
             String cause = null;
-            if (change.getOriginator() instanceof RecommenderOriginator) {
+            IOriginator originator = change.getOriginator();
+            if (originator instanceof RecommenderOriginator) {
                 cause = ((RecommenderOriginator) change.getOriginator())
                         .getName();
             }
@@ -1732,12 +1752,17 @@ public class SessionEventManager implements
              */
             for (Map.Entry<String, Set<String>> entry : triggerSetsForRecommenders
                     .entrySet()) {
-                sessionManager.getRecommenderManager().runRecommender(
-                        entry.getKey(),
-                        RecommenderExecutionContext
-                                .getHazardEventModificationContext(change
-                                        .getEvent().getEventID(), entry
-                                        .getValue()));
+                sessionManager
+                        .getRecommenderManager()
+                        .runRecommender(
+                                entry.getKey(),
+                                RecommenderExecutionContext
+                                        .getHazardEventModificationContext(
+                                                change.getEvent().getEventID(),
+                                                entry.getValue(),
+                                                ((originator instanceof RecommenderOriginator)
+                                                        || (originator instanceof Originator) ? RecommenderTriggerOrigin.OTHER
+                                                        : RecommenderTriggerOrigin.USER)));
             }
         } else if ((editRiseCrestFallTriggeringIdentifiers != null)
                 && (Sets.intersection(editRiseCrestFallTriggeringIdentifiers,
@@ -2157,9 +2182,17 @@ public class SessionEventManager implements
 
         ObservedSettings settings = configManager.getSettings();
 
-        Set<String> visibleSites = configManager.getSettings()
-                .getVisibleSites();
+        Set<String> visibleSites = configManager.getSettingsValue(
+                SETTING_HAZARD_SITES, configManager.getSettings());
+
+        /*
+         * If modifying the visible sites, make a copy first, as the original is
+         * from the configuration manager.
+         * 
+         * TODO: Better defensive copying elsewhere!
+         */
         if (visibleSites.contains(configManager.getSiteID()) == false) {
+            visibleSites = new HashSet<>(visibleSites);
             visibleSites.add(configManager.getSiteID());
             configManager.getSettings().setVisibleSites(visibleSites,
                     Originator.OTHER);

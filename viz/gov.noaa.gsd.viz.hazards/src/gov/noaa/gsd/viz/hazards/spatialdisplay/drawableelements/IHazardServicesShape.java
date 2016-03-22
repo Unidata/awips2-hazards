@@ -7,8 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
-
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -24,6 +22,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
  *                                             points.
  * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
+ * Mar 16, 2016 15676      Chris.Golden        Added code to support visual features.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -65,6 +64,17 @@ public interface IHazardServicesShape {
     public Geometry getGeometry();
 
     /**
+     * @return True if part of a visual feature, false otherwise.
+     */
+    public boolean isVisualFeature();
+
+    /**
+     * Set the flag indicating whether or not this shape is part of a visual
+     * feature.
+     */
+    public void setVisualFeature(boolean visualFeature);
+
+    /**
      * @return True if the user can edit this shape.
      */
     public boolean isEditable();
@@ -77,10 +87,10 @@ public interface IHazardServicesShape {
     /**
      * Set the editable status of this shape.
      * 
-     * @param isEditable
+     * @param editable
      *            true if this shape is editable.
      */
-    public void setIsEditable(boolean isEditable);
+    public void setEditable(boolean editable);
 
     /**
      * Set the movable status of this shape.
@@ -88,6 +98,5 @@ public interface IHazardServicesShape {
      * @param isMovable
      *            true if this shape is movable.
      */
-    public void setMovable(boolean isMovable);
-
+    public void setMovable(boolean movable);
 }

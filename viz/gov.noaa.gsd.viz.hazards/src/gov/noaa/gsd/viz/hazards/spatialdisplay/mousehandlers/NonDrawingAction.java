@@ -7,16 +7,13 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
-import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.tools.InputHandlerDefaultImpl;
 
 import java.awt.Color;
-import java.util.Iterator;
 import java.util.List;
 
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
@@ -41,9 +38,14 @@ import com.vividsolutions.jts.geom.Point;
  *                                            on click point versus geometry
  *                                            centroid.
  * Jul 15, 2013      585   Chris.Golden       Changed to no longer be a singleton.
- * Jul 18, 2013     1264     Chris.Golden     Added support for drawing lines and
+ * Jul 18, 2013     1264   Chris.Golden       Added support for drawing lines and
  *                                            points.
  * Apr 02, 2015     6542   Robert.Blum        Changed to set to prevLoc if null.
+ * Mar 24, 2016    15676   Chris.Golden       Added use of hover element, and
+ *                                            commented out method bodies that
+ *                                            are not being used, replacing them
+ *                                            with unsupported operation exception
+ *                                            generation.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -152,7 +154,7 @@ public class NonDrawingAction extends AbstractMouseHandler {
             // at this time send a message to the IHIS Layer.
             if (button == 1) {
 
-                if (getSpatialDisplay().getSelectedDE() == null) {
+                if (getSpatialDisplay().getElementBeingEdited() == null) {
                     /*
                      * Get the nearest element and set it as the selected
                      * element. Note: for Contours, we should select the nearest
@@ -160,7 +162,7 @@ public class NonDrawingAction extends AbstractMouseHandler {
                      */
                     AbstractDrawableComponent nadc = getSpatialDisplay()
                             .getContainingComponent(loc, anX, aY);
-                    getSpatialDisplay().setSelectedDE(nadc);
+                    getSpatialDisplay().setElementBeingEdited(nadc);
 
                     // Remove the label associated with the element.
                     getSpatialDisplay().removeElementLabel(nadc);
@@ -204,7 +206,7 @@ public class NonDrawingAction extends AbstractMouseHandler {
             }
 
             AbstractDrawableComponent elSelected = getSpatialDisplay()
-                    .getSelectedDE();
+                    .getElementBeingEdited();
 
             Color ghostColor = new java.awt.Color(255, 255, 255);
             double distanceToSelect = 20;
@@ -247,7 +249,8 @@ public class NonDrawingAction extends AbstractMouseHandler {
                         if (distance < distanceToSelect) {
                             ptSelected = new Coordinate(clickPoint.getX(),
                                     clickPoint.getY());
-                            ghostEl = getSpatialDisplay().getSelectedDE().copy();
+                            ghostEl = getSpatialDisplay()
+                                    .getElementBeingEdited().copy();
 
                         }
                     }
@@ -283,7 +286,9 @@ public class NonDrawingAction extends AbstractMouseHandler {
                         ghostEl.setColors(new Color[] { ghostColor,
                                 new java.awt.Color(255, 255, 255) });
 
-                        getSpatialDisplay().setGhostLine(ghostEl);
+                        getSpatialDisplay().setGhostOfElementBeingEdited(
+                                ghostEl);
+                        getSpatialDisplay().setHoverElement(ghostEl);
                         getSpatialDisplay().issueRefresh();
                     }
 
@@ -303,58 +308,60 @@ public class NonDrawingAction extends AbstractMouseHandler {
         @Override
         public boolean handleMouseUp(int x, int y, int button) {
 
-            if (ghostEl != null) {
-
-                // reset color for the el and add it to PGEN resource
-
-                Iterator<DrawableElement> iterator1 = ghostEl
-                        .createDEIterator();
-                Iterator<DrawableElement> iterator2 = getSpatialDisplay()
-                        .getSelectedDE().createDEIterator();
-
-                while (iterator1.hasNext() && iterator2.hasNext()) {
-                    iterator1.next().setColors(iterator2.next().getColors());
-                }
-
-                getSpatialDisplay().addElement(ghostEl);
-
-                getSpatialDisplay().removeGhostLine();
-                ghostEl = null;
-                getSpatialDisplay().setSelectedDE(null);
-                getSpatialDisplay().issueRefresh();
-
-            }
-
-            return true;
+            throw new UnsupportedOperationException();
+            // if (ghostEl != null) {
+            //
+            // // reset color for the el and add it to PGEN resource
+            //
+            // Iterator<DrawableElement> iterator1 = ghostEl
+            // .createDEIterator();
+            // Iterator<DrawableElement> iterator2 = getSpatialDisplay()
+            // .getElementBeingEdited().createDEIterator();
+            //
+            // while (iterator1.hasNext() && iterator2.hasNext()) {
+            // iterator1.next().setColors(iterator2.next().getColors());
+            // }
+            //
+            // getSpatialDisplay().addElement(ghostEl, true);
+            //
+            // getSpatialDisplay().removeGhostOfElementBeingEdited();
+            // ghostEl = null;
+            // getSpatialDisplay().setElementBeingEdited(null);
+            // getSpatialDisplay().issueRefresh();
+            //
+            // }
+            //
+            // return true;
 
         }
 
         @Override
         public boolean handleMouseMove(int x, int y) {
-            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor());
-            Coordinate loc = editor.translateClick(x, y);
-
-            if (loc != null) {
-                AbstractDrawableComponent nadc = getSpatialDisplay()
-                        .getContainingComponent(loc, x, y);
-
-                // There is a selected element. Is the
-                // mouse over it?
-                if (nadc != null) {
-                    // Set the mouse cursor to a move symbol
-                    getSpatialPresenter().getView().setCursor(
-                            SpatialViewCursorTypes.MOVE_SHAPE_CURSOR);
-
-                } else {
-                    // Set the mouse cursor to an arrow
-                    getSpatialPresenter().getView().setCursor(
-                            SpatialViewCursorTypes.ARROW_CURSOR);
-                }
-
-            }
-
-            return false;
+            throw new UnsupportedOperationException();
+            // AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
+            // .getInstance().getActiveEditor());
+            // Coordinate loc = editor.translateClick(x, y);
+            //
+            // if (loc != null) {
+            // AbstractDrawableComponent nadc = getSpatialDisplay()
+            // .getContainingComponent(loc, x, y);
+            //
+            // // There is a selected element. Is the
+            // // mouse over it?
+            // if (nadc != null) {
+            // // Set the mouse cursor to a move symbol
+            // getSpatialPresenter().getView().setCursor(
+            // SpatialViewCursorTypes.MOVE_SHAPE_CURSOR);
+            //
+            // } else {
+            // // Set the mouse cursor to an arrow
+            // getSpatialPresenter().getView().setCursor(
+            // SpatialViewCursorTypes.ARROW_CURSOR);
+            // }
+            //
+            // }
+            //
+            // return false;
         }
 
     }

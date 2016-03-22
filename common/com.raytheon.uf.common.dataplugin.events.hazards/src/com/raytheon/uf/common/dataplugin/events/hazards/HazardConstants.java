@@ -47,11 +47,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    More constants to help tidy the code
- * Dec 2, 2013  1472      bkowal     subtype is now subType
- * 
- *  
  * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
- * 
+ * Dec 2, 2013  1472      bkowal     subtype is now subType
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
  * Mar 3, 2014  3034    bkowal      Added a constant for the gfe interoperability flag
  * Jun 17, 2014  3982     Chris.Golden  Changed megawidget "side effects" to "interdependencies".
@@ -85,6 +82,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Jan 28, 2016 12762     Chris.Golden  Changed constant for attribute identifiers when running
  *                                      tools to reflect that it now means identifiers plural,
  *                                      not a single identifier.
+ * Mar 01, 2016 15676     Chris.Golden  Changed to support visual features.
  * </pre>
  * 
  * @author mnash
@@ -127,19 +125,25 @@ public final class HazardConstants {
 
     public static final String RECOMMENDER_TRIGGER_ATTRIBUTE_IDENTIFIERS = "attributeIdentifiers";
 
+    public static final String RECOMMENDER_TRIGGER_ORIGIN = "origin";
+
     // Recommender metadata keys.
 
     public static final String RECOMMENDER_METADATA_TOOL_NAME = "toolName";
 
     public static final String RECOMMENDER_METADATA_BACKGROUND = "background";
 
+    public static final String RECOMMENDER_METADATA_ONLY_INCLUDE_TRIGGER_EVENT = "onlyIncludeTriggerEvent";
+
+    public static final String RECOMMENDER_METADATA_INCLUDE_EVENT_TYPES = "includeEventTypes";
+
     /**
      * Types of changes or events that may trigger a recommender execution.
      */
     public enum Trigger {
         NONE("none"), HAZARD_TYPE_FIRST("hazardTypeFirst"), HAZARD_EVENT_MODIFICATION(
-                "hazardEventModification"), HAZARD_EVENT_DECORATION_CHANGE(
-                "hazardEventDecorationChange"), TIME_INTERVAL("timeInterval");
+                "hazardEventModification"), HAZARD_EVENT_VISUAL_FEATURE_CHANGE(
+                "hazardEventVisualFeatureChange"), TIME_INTERVAL("timeInterval");
 
         // Private Variables
 
@@ -169,12 +173,45 @@ public final class HazardConstants {
     }
 
     /**
+     * Possible origins of a triggered recommender execution.
+     */
+    public enum RecommenderTriggerOrigin {
+        USER("user"), OTHER("other");
+
+        // Private Variables
+
+        /**
+         * Identifier of the type.
+         */
+        private final String identifier;
+
+        // Private Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param identifier
+         *            Identifier of the type.
+         */
+        private RecommenderTriggerOrigin(String identifier) {
+            this.identifier = identifier;
+        }
+
+        // Public Methods
+
+        @Override
+        public String toString() {
+            return identifier;
+        }
+    }
+
+    /**
      * First-class attributes of hazard events.
      */
     public enum HazardEventFirstClassAttribute {
         TIME_RANGE(HAZARD_EVENT_TIME_RANGE), GEOMETRY(HazardConstants.GEOMETRY), STATUS(
-                HAZARD_EVENT_STATUS), GEOMETRY_DECORATION(
-                HazardConstants.GEOMETRY_DECORATION);
+                HAZARD_EVENT_STATUS), VISUAL_FEATURE(
+                HAZARD_EVENT_VISUAL_FEATURE);
 
         // Private Static Constants
 
@@ -341,10 +378,14 @@ public final class HazardConstants {
     }
 
     /**
-     * Enumeration of all types of changes that may occur within the model.
+     * Enumeration of all types of changes that may occur within the model. This
+     * is deprecated, and values are being removed from the enum as refactoring
+     * goes on and the Model-View-Presenter architecture is more fully
+     * implemented.
      */
+    @Deprecated
     public static enum Element {
-        EVENTS, CAVE_TIME, CURRENT_TIME, SELECTED_TIME_RANGE, VISIBLE_TIME_DELTA, VISIBLE_TIME_RANGE, SETTINGS, CURRENT_SETTINGS, TOOLS, SITE;
+        EVENTS, SELECTED_TIME_RANGE, VISIBLE_TIME_DELTA, SETTINGS, CURRENT_SETTINGS, SITE;
     }
 
     /**
@@ -474,6 +515,10 @@ public final class HazardConstants {
 
     public static final String LOW_RESOLUTION_GEOMETRY = "lowResolutionGeometry";
 
+    public static final String BASE_VISUAL_FEATURES = "baseVisualFeatures";
+
+    public static final String SELECTED_VISUAL_FEATURES = "selectedVisualFeatures";
+
     public static final String SYMBOL_NEW_LAT_LON = "newLatLon";
 
     public static final String PHENOMENON = "phenomenon";
@@ -575,9 +620,9 @@ public final class HazardConstants {
     public static final String HAZARD_EVENT_TIME_RANGE = "timeRange";
 
     /**
-     * Geometry decoration.
+     * Visual feature.
      */
-    public static final String GEOMETRY_DECORATION = "geometryDecoration";
+    public static final String HAZARD_EVENT_VISUAL_FEATURE = "visualFeature";
 
     /**
      * Start time key in hazard
@@ -704,6 +749,8 @@ public final class HazardConstants {
     public static final String SESSION_DICT = "sessionDict";
 
     public static final String CURRENT_TIME = "currentTime";
+
+    public static final String SELECTED_TIME = "selectedTime";
 
     public static final String BACKUP_SITEID = "backupSiteID";
 

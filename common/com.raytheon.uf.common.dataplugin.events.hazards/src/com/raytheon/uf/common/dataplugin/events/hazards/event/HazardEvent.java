@@ -19,6 +19,10 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+import gov.noaa.gsd.common.visuals.VisualFeaturesListAdapter;
+import gov.noaa.gsd.common.visuals.VisualFeaturesListSlotConverter;
+
 import java.io.Serializable;
 import java.util.Date;
 import java.util.HashMap;
@@ -74,6 +78,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * Jul 31, 2015 7458      Robert.Blum   Added new userName and workstation fields.
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Mar 01, 2016 15676      Chris.Golden Added visual features to hazard event.
  * </pre>
  * 
  * @author mnash
@@ -187,6 +192,28 @@ public class HazardEvent implements IHazardEvent, IValidator {
     private Geometry geometry;
 
     /**
+     * Base visual features list of the hazard, to be shown anytime the hazard
+     * event is visible on the spatial display.
+     */
+    @DynamicSerializeElement
+    @XmlJavaTypeAdapter(value = VisualFeaturesListAdapter.class)
+    @XmlAttribute
+    @SlotAttribute(HazardConstants.BASE_VISUAL_FEATURES)
+    @SlotAttributeConverter(VisualFeaturesListSlotConverter.class)
+    private VisualFeaturesList baseVisualFeatures;
+
+    /**
+     * Selected visual features list of the hazard, to be shown anytime the
+     * hazard event is visible and selected on the spatial display.
+     */
+    @DynamicSerializeElement
+    @XmlJavaTypeAdapter(value = VisualFeaturesListAdapter.class)
+    @XmlAttribute
+    @SlotAttribute(HazardConstants.SELECTED_VISUAL_FEATURES)
+    @SlotAttributeConverter(VisualFeaturesListSlotConverter.class)
+    private VisualFeaturesList selectedVisualFeatures;
+
+    /**
      * The time this hazard was inserted into the repository
      */
     @DynamicSerializeElement
@@ -242,6 +269,8 @@ public class HazardEvent implements IHazardEvent, IValidator {
         setStartTime(event.getStartTime());
         setCreationTime(event.getCreationTime());
         setGeometry(event.getGeometry());
+        setVisualFeatures(event.getBaseVisualFeatures(),
+                event.getSelectedVisualFeatures());
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
         setSubType(event.getSubType());
@@ -490,6 +519,33 @@ public class HazardEvent implements IHazardEvent, IValidator {
         this.geometry = geometry;
     }
 
+    @Override
+    public VisualFeaturesList getBaseVisualFeatures() {
+        return baseVisualFeatures;
+    }
+
+    @Override
+    public void setBaseVisualFeatures(VisualFeaturesList visualFeatures) {
+        this.baseVisualFeatures = visualFeatures;
+    }
+
+    @Override
+    public VisualFeaturesList getSelectedVisualFeatures() {
+        return selectedVisualFeatures;
+    }
+
+    @Override
+    public void setSelectedVisualFeatures(VisualFeaturesList visualFeatures) {
+        this.selectedVisualFeatures = visualFeatures;
+    }
+
+    @Override
+    public void setVisualFeatures(VisualFeaturesList baseVisualFeatures,
+            VisualFeaturesList selectedVisualFeatures) {
+        this.baseVisualFeatures = baseVisualFeatures;
+        this.selectedVisualFeatures = selectedVisualFeatures;
+    }
+
     /**
      * @return the hazardAttributes
      */
@@ -588,6 +644,14 @@ public class HazardEvent implements IHazardEvent, IValidator {
         result = prime * result + ((eventID == null) ? 0 : eventID.hashCode());
         result = prime * result
                 + ((geometry == null) ? 0 : geometry.hashCode());
+        result = prime
+                * result
+                + ((baseVisualFeatures == null) ? 0 : baseVisualFeatures
+                        .hashCode());
+        result = prime
+                * result
+                + ((selectedVisualFeatures == null) ? 0
+                        : selectedVisualFeatures.hashCode());
         result = prime * result
                 + ((attributes == null) ? 0 : attributes.hashCode());
         result = prime * result
@@ -658,6 +722,20 @@ public class HazardEvent implements IHazardEvent, IValidator {
                 return false;
             }
         } else if (!geometry.equals(other.geometry)) {
+            return false;
+        }
+        if (baseVisualFeatures == null) {
+            if (other.baseVisualFeatures != null) {
+                return false;
+            }
+        } else if (!baseVisualFeatures.equals(other.baseVisualFeatures)) {
+            return false;
+        }
+        if (selectedVisualFeatures == null) {
+            if (other.selectedVisualFeatures != null) {
+                return false;
+            }
+        } else if (!selectedVisualFeatures.equals(other.selectedVisualFeatures)) {
             return false;
         }
         if (attributes == null) {

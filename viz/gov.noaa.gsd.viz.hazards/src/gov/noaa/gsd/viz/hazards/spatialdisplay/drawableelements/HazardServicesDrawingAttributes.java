@@ -7,12 +7,13 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.viz.hazards.spatialdisplay;
+package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SHAPES;
 import gov.noaa.nws.ncep.ui.pgen.display.FillPatternList.FillPattern;
-import gov.noaa.nws.ncep.ui.pgen.elements.Line;
+import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
+import gov.noaa.nws.ncep.ui.pgen.display.ILine;
 
 import java.awt.Color;
 import java.io.Serializable;
@@ -50,11 +51,15 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Feb 03, 2015    3865    Chris.Cody          Check for valid Active Editor class
  * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * Aug 03, 2015 8836       Chris.Cody          Changes for a configurable Event Id
+ * Mar 16, 2016 15676      Chris.Golden        Changed to not be a subclass of a PGEN class,
+ *                                             and modified to work with spatial entities.
+ * Mar 24, 2016 15676      Chris.Golden        Added dotted line style and varying fill patterns.
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
-public abstract class HazardServicesDrawingAttributes extends Line {
+public abstract class HazardServicesDrawingAttributes implements IAttribute,
+        ILine {
 
     public enum BorderStyles {
         SOLID, DASHED, DOTTED, NONE
@@ -77,6 +82,14 @@ public abstract class HazardServicesDrawingAttributes extends Line {
 
     protected LineStyle lineStyle;
 
+    private float lineWidth = 1.0f;
+
+    private boolean closed = false;
+
+    private boolean filled = false;
+
+    private FillPattern fillPattern = FillPattern.FILL_PATTERN_5;
+
     private IDescriptor descriptor;
 
     protected AbstractEditor editor;
@@ -84,7 +97,6 @@ public abstract class HazardServicesDrawingAttributes extends Line {
     public HazardServicesDrawingAttributes(
             ISessionConfigurationManager<ObservedSettings> configurationManager)
             throws VizException {
-        super();
         this.configurationManager = configurationManager;
         editor = EditorUtil.getActiveEditorAs(AbstractEditor.class);
         if (editor != null) {
@@ -97,6 +109,8 @@ public abstract class HazardServicesDrawingAttributes extends Line {
     public void setString(String[] label) {
         this.label = label;
     }
+
+    public abstract void setDottedLineStyle();
 
     public abstract void setDashedLineStyle();
 
@@ -146,7 +160,6 @@ public abstract class HazardServicesDrawingAttributes extends Line {
         return colors;
     }
 
-    @Override
     public void setColors(Color[] colors) {
         this.colors = colors;
     }
@@ -156,7 +169,6 @@ public abstract class HazardServicesDrawingAttributes extends Line {
         return lineWidth;
     }
 
-    @Override
     public void setLineWidth(float lineWidth) {
         this.lineWidth = lineWidth;
     }
@@ -168,6 +180,31 @@ public abstract class HazardServicesDrawingAttributes extends Line {
     public boolean isSelected() {
         return selected;
     }
+
+    @Override
+    public Boolean isClosedLine() {
+        return closed;
+    }
+
+    public boolean isClosed() {
+        return closed;
+    }
+
+    public void setClosed(boolean closed) {
+        this.closed = closed;
+    }
+
+    @Override
+    public Boolean isFilled() {
+        return filled;
+    }
+
+    public void setFilled(Boolean filled) {
+        this.filled = filled;
+    }
+
+    @Override
+    public abstract double getSizeScale();
 
     protected void setLabel(IHazardEvent hazardEvent) {
         String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
@@ -196,31 +233,27 @@ public abstract class HazardServicesDrawingAttributes extends Line {
         case SOLID:
             setSolidLineStyle();
             break;
+        case DOTTED:
+            setDottedLineStyle();
+            break;
         case DASHED:
             setDashedLineStyle();
-            break;
-        case NONE:
-            // Nothing to do at the moment.
-            break;
-        case DOTTED:
             break;
         default:
             break;
         }
     }
 
-    /**
+    /*
      * TODO Keep a serialization of the Color object in the configuration.
-     * 
-     * @param
-     * @return
      */
     public Color[] buildHazardEventColors(IHazardEvent hazardEvent,
             ISessionConfigurationManager<ObservedSettings> configManager) {
         com.raytheon.uf.common.colormap.Color color = configManager
                 .getColor(hazardEvent);
         Color fillColor = new Color((int) (color.getRed() * 255),
-                (int) (color.getGreen() * 255), (int) (color.getBlue() * 255));
+                (int) (color.getGreen() * 255), (int) (color.getBlue() * 255),
+                (int) (color.getAlpha() * 255));
         Color[] colors = new Color[] { fillColor, fillColor };
         return colors;
     }
@@ -267,32 +300,45 @@ public abstract class HazardServicesDrawingAttributes extends Line {
         setPointID(pointTime);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see gov.noaa.nws.ncep.ui.pgen.elements.Line#getSmoothFactor()
-     */
     @Override
     public int getSmoothFactor() {
         return DEFAULT_SMOOTH_FACTOR;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see gov.noaa.nws.ncep.ui.pgen.elements.Line#getFillPattern()
-     */
     @Override
     public FillPattern getFillPattern() {
-        return FillPattern.FILL_PATTERN_5;
+        return fillPattern;
+    }
+
+    public void setFillPattern(FillPattern pattern) {
+        this.fillPattern = pattern;
     }
 
     public void setSolidLineStyle() {
         this.lineStyle = LineStyle.LINE_SOLID;
     }
 
-    public gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle getLineStyle() {
+    public LineStyle getLineStyle() {
         return lineStyle;
     }
 
+    /*
+     * This method is only implemented to fulfill the ILine interface; it will
+     * never be called, since instances of this class are only used to hold
+     * attributes, not geometries.
+     */
+    @Override
+    public Coordinate[] getLinePoints() {
+        return null;
+    }
+
+    /*
+     * This method is only implemented to fulfill the ILine interface; it will
+     * never be called, since instances of this class are only used to hold
+     * attributes, not geometries.
+     */
+    @Override
+    public String getPatternName() {
+        return null;
+    }
 }

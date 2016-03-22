@@ -61,6 +61,8 @@ import com.raytheon.uf.common.util.FileUtil;
  * Feb 18, 2015    5071    Robert.Blum  Added productTextUtilPath and hazardCategoriesPath 
  *                                      to the include path.
  * May 13, 2015    8161    mduff        Change for Jep upgrade.
+ * Mar 01, 2016   15676    Chris.Golden Added visual feature handler functionality to
+ *                                      to the include path.
  * </pre>
  * 
  * @author Chris.Golden
@@ -120,6 +122,9 @@ public class ConfigScriptFactory extends
                     "import json",
                     "import JUtil",
                     "import HazardServicesMetaDataRetriever",
+                    "from VisualFeaturesHandler import javaVisualFeaturesToPyVisualFeatures, pyVisualFeaturesToJavaVisualFeatures",
+                    "JUtil.registerJavaToPython(javaVisualFeaturesToPyVisualFeatures)",
+                    "JUtil.registerPythonToJava(pyVisualFeaturesToJavaVisualFeatures)",
                     "from HazardEventHandler import javaHazardEventToPyHazardEvent, pyHazardEventToJavaHazardEvent",
                     "JUtil.registerJavaToPython(javaHazardEventToPyHazardEvent)",
                     "JUtil.registerPythonToJava(pyHazardEventToJavaHazardEvent)",

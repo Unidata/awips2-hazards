@@ -93,9 +93,9 @@ public class DragDropAction extends NonDrawingAction {
                 getSpatialPresenter().publish(action);
                 getSpatialPresenter().getView().drawingActionComplete();
 
-                getSpatialDisplay().removeGhostLine();
+                getSpatialDisplay().removeGhostOfElementBeingEdited();
                 getSpatialDisplay().removeEvent("DragDropDot");
-                getSpatialDisplay().setSelectedDE(null);
+                getSpatialDisplay().setElementBeingEdited(null);
                 ghostEl = null;
 
                 // We are done dragging the storm dot. Switch back
@@ -121,7 +121,7 @@ public class DragDropAction extends NonDrawingAction {
             boolean mouseActionHandled = super.handleMouseDown(anX, aY, button);
 
             AbstractDrawableComponent elSelected = getSpatialDisplay()
-                    .getSelectedDE();
+                    .getElementBeingEdited();
 
             if (elSelected != null) {
                 return mouseActionHandled;
@@ -134,7 +134,7 @@ public class DragDropAction extends NonDrawingAction {
         public boolean handleMouseDownMove(int anX, int aY, int button) {
 
             AbstractDrawableComponent elSelected = getSpatialDisplay()
-                    .getSelectedDE();
+                    .getElementBeingEdited();
 
             if (elSelected != null) {
                 return super.handleMouseDownMove(anX, aY, button);

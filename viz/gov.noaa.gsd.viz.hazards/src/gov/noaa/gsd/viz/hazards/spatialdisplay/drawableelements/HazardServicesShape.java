@@ -9,8 +9,10 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
+import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
+
+import java.awt.Color;
 
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -25,6 +27,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Aug 23, 2013   1264      daniel.s.schaffer@noaa.gov      Initial creation
  * 
  * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
+ * Mar 16, 2016 15676      Chris.Golden        Added code to support visual features.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -35,9 +38,11 @@ public abstract class HazardServicesShape extends Line implements
 
     private String id;
 
-    private boolean isEditable = true;
+    private boolean visualFeature = false;
 
-    private boolean isMovable = true;
+    private boolean editable = true;
+
+    private boolean movable = true;
 
     private final HazardServicesDrawingAttributes drawingAttributes;
 
@@ -66,23 +71,50 @@ public abstract class HazardServicesShape extends Line implements
     public abstract Geometry getGeometry();
 
     @Override
-    public boolean isEditable() {
-        return isEditable;
+    public boolean isVisualFeature() {
+        return visualFeature;
     }
 
     @Override
-    public void setIsEditable(boolean isEditable) {
-        this.isEditable = isEditable;
+    public void setVisualFeature(boolean visualFeature) {
+        this.visualFeature = visualFeature;
+    }
+
+    @Override
+    public boolean isEditable() {
+        return editable;
+    }
+
+    @Override
+    public void setEditable(boolean editable) {
+        this.editable = editable;
     }
 
     @Override
     public boolean isMovable() {
-        return isMovable;
+        return movable;
     }
 
     @Override
-    public void setMovable(boolean isMovable) {
-        this.isMovable = isMovable;
+    public void setMovable(boolean movable) {
+        this.movable = movable;
     }
 
+    /*
+     * Overridden to ensure that colors' alpha components are copied as well, as
+     * the superclass does not do this; it only copies the RGB components of the
+     * colors.
+     */
+    @Override
+    public DrawableElement copy() {
+        Line copy = (Line) super.copy();
+        Color[] colors = new Color[getColors().length];
+        for (int j = 0; j < getColors().length; j++) {
+            colors[j] = new Color(getColors()[j].getRed(),
+                    getColors()[j].getGreen(), getColors()[j].getBlue(),
+                    getColors()[j].getAlpha());
+        }
+        copy.setColors(colors);
+        return copy;
+    }
 }

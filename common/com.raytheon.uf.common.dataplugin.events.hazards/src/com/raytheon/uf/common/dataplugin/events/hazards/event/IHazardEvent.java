@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Date;
@@ -49,6 +51,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                     SORT_BY_PERSIST_TIME to use insert time
  * Jul 31, 2015 7458       Robert.Blum Added new userName and workstation methods.
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Mar 01, 2016 15676      Chris.Golden Added visual features to hazard event.
  * </pre>
  * 
  * @author mnash
@@ -69,6 +72,17 @@ public interface IHazardEvent extends IEvent {
     public Geometry getGeometry();
 
     public Geometry getProductGeometry();
+
+    public VisualFeaturesList getBaseVisualFeatures();
+
+    public void setBaseVisualFeatures(VisualFeaturesList visualFeatures);
+
+    public VisualFeaturesList getSelectedVisualFeatures();
+
+    public void setSelectedVisualFeatures(VisualFeaturesList visualFeatures);
+
+    public void setVisualFeatures(VisualFeaturesList baseVisualFeatures,
+            VisualFeaturesList selectedVisualFeatures);
 
     public String getSiteID();
 

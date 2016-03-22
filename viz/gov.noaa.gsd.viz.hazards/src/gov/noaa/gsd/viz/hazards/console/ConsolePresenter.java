@@ -102,6 +102,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Nov 18, 2015   13279    Chris.Golden      Fixed bug that caused temporal display's
  *                                           event time range sliders to not always
  *                                           have the correct possible-value boundaries.
+ * Mar 15, 2015   15676    Chris.Golden      Removed visible time range reaction, as
+ *                                           the notification is obsolete.
  * </pre>
  * 
  * @author Chris.Golden
@@ -222,18 +224,10 @@ public class ConsolePresenter extends
     @Override
     @Deprecated
     public final void modelChanged(EnumSet<HazardConstants.Element> changed) {
-        ISessionTimeManager timeManager = getModel().getTimeManager();
         if (changed.contains(HazardConstants.Element.VISIBLE_TIME_DELTA)) {
             Long timeDelta = getModel().getConfigurationManager().getSettings()
                     .getDefaultTimeDisplayDuration();
             getView().updateVisibleTimeDelta(timeDelta);
-        }
-        if (changed.contains(HazardConstants.Element.VISIBLE_TIME_RANGE)) {
-            Long earliestTime = timeManager.getVisibleTimeRange().getStart()
-                    .getTime();
-            Long latestTime = timeManager.getVisibleTimeRange().getEnd()
-                    .getTime();
-            getView().updateVisibleTimeRange(earliestTime, latestTime);
         }
         if (changed.contains(HazardConstants.Element.SETTINGS)) {
             getView()

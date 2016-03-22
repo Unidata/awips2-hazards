@@ -9,7 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 
 import java.util.List;

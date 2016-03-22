@@ -7,13 +7,12 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SelectionRectangleDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.SelectionRectangleDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.TrackExtrapPointInfoDlg;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
-import gov.noaa.nws.ncep.ui.pgen.display.ILine;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableType;
@@ -73,8 +72,6 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(FreeHandMultiSelectionAction.class);
 
-    protected Line drawingAttributes = null;
-
     private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
     public FreeHandMultiSelectionAction(
@@ -114,7 +111,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
         /*
          * Drawing attributes for the lasso line.
          */
-        private ILine drawingAttributes = null;
+        private SelectionRectangleDrawingAttributes drawingAttributes = null;
 
         /**
          * Attribute dialog for displaying track points info
@@ -203,7 +200,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
                 if (isSelectByArea) {
 
                     handleSelectByArea(loc);
-                } else if (getSpatialDisplay().getSelectedDE() == null) {
+                } else if (getSpatialDisplay().getElementBeingEdited() == null) {
                     points.clear();
 
                     // Is any event selected?
@@ -274,7 +271,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
          */
         private void handleSelectByArea(Coordinate loc) {
             if (points.size() < 2) {
-                getSpatialDisplay().removeGhostLine();
+                getSpatialDisplay().removeGhostOfElementBeingEdited();
                 points.clear();
 
                 getSpatialDisplay().issueRefresh();
@@ -300,7 +297,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
                 Geometry polygon = new GeometryFactory().createPolygon(
                         linearRing, null);
 
-                getSpatialDisplay().removeGhostLine();
+                getSpatialDisplay().removeGhostOfElementBeingEdited();
 
                 points.clear();
 
@@ -392,7 +389,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
                             points);
                     ((Line) ghost).setLinePoints(ghostPts);
 
-                    getSpatialDisplay().setGhostLine(ghost);
+                    getSpatialDisplay().setGhostOfElementBeingEdited(ghost);
                     getSpatialDisplay().issueRefresh();
                 }
             }

@@ -34,6 +34,7 @@
 #    05/26/15        8112          Chris.Cody     Add get handling for 0 values
 #    07/31/15        7458          Robert.Blum    Added username and workstation.
 #    08/03/15        8836          Chris.Cody     Changes for a configurable Event Id
+#    03/01/17       15676          Chris.Golden   Added visual features to hazard event.
 # 
 #
 
@@ -41,6 +42,10 @@ import JUtil, datetime
 from shapely import wkt
 
 from Event import Event
+
+from VisualFeaturesHandler import pyVisualFeaturesToJavaVisualFeatures, javaVisualFeaturesToPyVisualFeatures
+JUtil.registerPythonToJava(pyVisualFeaturesToJavaVisualFeatures)
+JUtil.registerJavaToPython(javaVisualFeaturesToPyVisualFeatures)
 
 from java.util import Date
 from com.raytheon.uf.common.dataplugin.events.hazards import HazardConstants
@@ -150,7 +155,22 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def setGeometry(self, geometry):
         if geometry is not None :
             self.jobj.setGeometry(JUtil.pyValToJavaObj(geometry))
+
+    def getBaseVisualFeatures(self):
+        return JUtil.javaObjToPyVal(self.jobj.getBaseVisualFeatures())
     
+    def setBaseVisualFeatures(self, visualFeatures):
+        self.jobj.setBaseVisualFeatures(JUtil.pyValToJavaObj(visualFeatures))
+
+    def getSelectedVisualFeatures(self):
+        return JUtil.javaObjToPyVal(self.jobj.getSelectedVisualFeatures())
+    
+    def setSelectedVisualFeatures(self, visualFeatures):
+        self.jobj.setSelectedVisualFeatures(JUtil.pyValToJavaObj(visualFeatures))
+    
+    def setVisualFeatures(self, baseVisualFeatures, selectedVisualFeatures):
+        self.jobj.setVisualFeatures(JUtil.pyValToJavaObj(baseVisualFeatures, selectedVisualFeatures))
+
     def getHazardMode(self):
         if self.jobj.getHazardMode() is not None :
             return self.jobj.getHazardMode().name()

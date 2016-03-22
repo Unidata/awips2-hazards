@@ -85,7 +85,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommend
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
-import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
 import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
 
 /**
@@ -220,6 +219,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            removing a bunch of recommender-managing code that
  *                                            didn't belong here and thus continuing the trend of
  *                                            shrinking this class.
+ * Mar 16, 2016 15676      Chris.Golden       Removed obsolete notifications.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -297,16 +297,6 @@ public final class HazardServicesMessageHandler {
     }
 
     // Methods
-
-    /**
-     * Updates the CAVE selected time.
-     * 
-     * @return
-     */
-    private void updateCaveSelectedTime() {
-        appBuilder.notifyModelChanged(EnumSet
-                .of(HazardConstants.Element.CAVE_TIME));
-    }
 
     @Handler
     public void handleProductGenerationCompletion(
@@ -428,13 +418,8 @@ public final class HazardServicesMessageHandler {
 
         sessionConfigurationManager.changeSettings(settingID, originator);
 
-        appBuilder.notifyModelChanged(eventsChanged ? EnumSet.of(
+        appBuilder.notifyModelChanged(EnumSet.of(
                 HazardConstants.Element.SETTINGS,
-                HazardConstants.Element.TOOLS,
-                HazardConstants.Element.VISIBLE_TIME_DELTA,
-                HazardConstants.Element.CURRENT_SETTINGS) : EnumSet.of(
-                HazardConstants.Element.SETTINGS,
-                HazardConstants.Element.TOOLS,
                 HazardConstants.Element.VISIBLE_TIME_DELTA,
                 HazardConstants.Element.CURRENT_SETTINGS));
 
@@ -956,17 +941,6 @@ public final class HazardServicesMessageHandler {
     }
 
     /**
-     * This will no longer be needed once presenters listen directly for session
-     * events.
-     */
-    @Handler
-    @Deprecated
-    public void visibleTimeRangeChanged(VisibleTimeRangeChanged change) {
-        appBuilder.notifyModelChanged(EnumSet
-                .of(HazardConstants.Element.VISIBLE_TIME_RANGE));
-    }
-
-    /**
      * Handle a received spatial display action. This method is called
      * implicitly by the event bus when actions of this type are sent across the
      * latter.
@@ -1114,7 +1088,6 @@ public final class HazardServicesMessageHandler {
         case SELECTED_TIME_RANGE_CHANGED:
             updateSelectedTimeRange(consoleAction.getStartTime(),
                     consoleAction.getEndTime());
-            updateCaveSelectedTime();
             break;
 
         case CHECK_BOX: {

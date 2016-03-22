@@ -107,6 +107,8 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict["version"] = "1.0"
         metaDict["description"] = "Ingests convective cell identification and attributes from automated source"
         metaDict["eventState"] = "Potential"
+        metaDict['includeEventTypes'] = [ "Prob_Severe", "Prob_Tornado" ]
+        metaDict['background'] = True
         return metaDict
 
     def defineDialog(self, eventSet):
@@ -146,6 +148,14 @@ class Recommender(RecommenderTemplate.Recommender):
         
         @return: A list of potential events. 
         """
+
+        import sys
+        sys.stderr.write("Running convective recommender.\n    trigger:    " +
+                         str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
+                         str(eventSet.getAttribute("eventType")) + "\n    origin:     " + 
+                         str(eventSet.getAttribute("origin")) + "\n    hazard ID:  " +
+                         str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute:  " +
+                         str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
         
         sessionAttributes = eventSet.getAttributes()
         if sessionAttributes:

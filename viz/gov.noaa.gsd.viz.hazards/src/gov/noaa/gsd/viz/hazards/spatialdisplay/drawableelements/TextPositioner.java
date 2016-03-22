@@ -5,7 +5,7 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.viz.hazards.spatialdisplay;
+package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -21,6 +21,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * 4/11/12                 Bryon.Lawrence    Initial creation
  * Feb 03, 2015    3865    Chris.Cody        Check for valid Active Editor class
  * Feb 12, 2015 4959       Dan Schaffer      Modify MB3 add/remove UGCs to match Warngen
+ * Mar 16, 2016 15676      Chris.Golden      Moved to more appropriate location.
  * </pre>
  * 
  * @author Bryon.Lawrence

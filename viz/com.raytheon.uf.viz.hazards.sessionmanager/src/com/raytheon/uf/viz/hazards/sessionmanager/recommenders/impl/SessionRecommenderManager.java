@@ -19,14 +19,17 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Trigger;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -65,6 +68,10 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Mar 04, 2016   15933    Chris.Golden Added ability to run multiple recommenders
  *                                      in sequence in response to a time interval
  *                                      trigger, instead of just one recommender.
+ * Mar 06, 2016   15676    Chris.Golden Added more contextual information for
+ *                                      recommender triggering, and changed the
+ *                                      the recommender input EventSet to only
+ *                                      include the events the recommender desires.
  * </pre>
  * 
  * @author Chris.Golden
@@ -256,26 +263,46 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      * This method should be private, and thus is marked deprecated; see
      * interface for details.
      */
+    @SuppressWarnings("unchecked")
     @Override
-    @Deprecated
     public void runRecommender(final String recommenderIdentifier,
             final RecommenderExecutionContext context,
             Map<String, Serializable> spatialInfo,
             Map<String, Serializable> dialogInfo) {
 
         /*
-         * Create the event set, and add events to it.
+         * Get the recommender metadata, and decide what events are to be
+         * included in the event set based upon its values.
          */
-        EventSet<IEvent> eventSet = new EventSet<>();
-        Collection<ObservedHazardEvent> hazardEvents = sessionManager
-                .getEventManager().getEvents();
+        Map<String, Serializable> metadata = recommenderEngine
+                .getScriptMetadata(recommenderIdentifier);
+        Boolean onlyIncludeTriggerEvent = (Boolean) metadata
+                .get(HazardConstants.RECOMMENDER_METADATA_ONLY_INCLUDE_TRIGGER_EVENT);
+        List<String> includeEventTypesList = (List<String>) metadata
+                .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_EVENT_TYPES);
+        Set<String> includeEventTypes = (includeEventTypesList != null ? new HashSet<>(
+                includeEventTypesList) : null);
 
         /*
-         * Convert the observed hazard events to base hazard events.
+         * Create the event set, determine which events are to be added to it
+         * based upon the recommender metadata retrieved above, and add a copy
+         * of each such event to the set.
          */
-        for (IHazardEvent event : hazardEvents) {
-            BaseHazardEvent baseHazardEvent = new BaseHazardEvent(event);
-            eventSet.add(baseHazardEvent);
+        EventSet<IEvent> eventSet = new EventSet<>();
+        if (Boolean.TRUE.equals(onlyIncludeTriggerEvent)
+                && ((context.getTrigger() == Trigger.HAZARD_EVENT_VISUAL_FEATURE_CHANGE) || (context
+                        .getTrigger() == Trigger.HAZARD_EVENT_MODIFICATION))) {
+            eventSet.add(new BaseHazardEvent(sessionManager.getEventManager()
+                    .getEventById(context.getEventIdentifier())));
+        } else {
+            Collection<ObservedHazardEvent> hazardEvents = sessionManager
+                    .getEventManager().getEvents();
+            for (IHazardEvent event : hazardEvents) {
+                if ((includeEventTypes == null)
+                        || includeEventTypes.contains(event.getHazardType())) {
+                    eventSet.add(new BaseHazardEvent(event));
+                }
+            }
         }
 
         /*
@@ -288,6 +315,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          */
         eventSet.addAttribute(HazardConstants.CURRENT_TIME, sessionManager
                 .getTimeManager().getCurrentTime().getTime());
+        eventSet.addAttribute(HazardConstants.SELECTED_TIME, sessionManager
+                .getTimeManager().getSelectedTime().getLowerBound());
         eventSet.addAttribute(HazardConstants.FRAMES_INFO,
                 getFramesInfoAsDictionary());
         eventSet.addAttribute(HazardConstants.SITE_ID, sessionManager
@@ -302,8 +331,6 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         /*
          * Get the engine to initiate the execution of the recommender.
          */
-        Map<String, Serializable> metadata = recommenderEngine
-                .getScriptMetadata(recommenderIdentifier);
         final String toolName = (String) metadata
                 .get(HazardConstants.RECOMMENDER_METADATA_TOOL_NAME);
         Boolean background = (Boolean) metadata
@@ -410,6 +437,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         eventSet.addAttribute(
                 HazardConstants.RECOMMENDER_TRIGGER_ATTRIBUTE_IDENTIFIERS,
                 context.getAttributeIdentifiers());
+        eventSet.addAttribute(HazardConstants.RECOMMENDER_TRIGGER_ORIGIN,
+                context.getOrigin().toString());
     }
 
     /**

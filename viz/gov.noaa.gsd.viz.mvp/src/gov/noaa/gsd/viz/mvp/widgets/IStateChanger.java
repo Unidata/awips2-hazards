@@ -56,8 +56,8 @@ public interface IStateChanger<I, S> extends IWidget<I> {
      * Get the values of the specified state.
      * 
      * @param identifier
-     *            Identifier of the stateful widget to have its state set. This
-     *            may be <code>null</code> if this object only handles one
+     *            Identifier of the stateful widget to have its state retrieved.
+     *            This may be <code>null</code> if this object only handles one
      *            particular state.
      * @return Value for the specified state.
      */

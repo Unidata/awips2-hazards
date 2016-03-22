@@ -7,9 +7,8 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
-import gov.noaa.nws.ncep.ui.pgen.display.ILine;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.PolygonDrawingAttributes;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableType;
@@ -63,7 +62,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(FreeHandHazardDrawingAction.class);
 
-    protected ILine freeLine = null;
+    protected PolygonDrawingAttributes freeLine = null;
 
     public FreeHandHazardDrawingAction(
             ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager) {
@@ -122,7 +121,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                 return false;
             }
 
-            getSpatialDisplay().removeGhostLine();
+            getSpatialDisplay().removeGhostOfElementBeingEdited();
 
             points.add(loc);
 
@@ -159,7 +158,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                 List<Coordinate> ghostPts = Lists.newArrayList(points);
                 ((Line) ghost).setLinePoints(ghostPts);
 
-                getSpatialDisplay().setGhostLine(ghost);
+                getSpatialDisplay().setGhostOfElementBeingEdited(ghost);
                 getSpatialDisplay().issueRefresh();
             }
 

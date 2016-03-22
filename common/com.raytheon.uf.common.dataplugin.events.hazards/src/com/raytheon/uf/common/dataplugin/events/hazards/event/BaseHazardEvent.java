@@ -21,6 +21,7 @@ package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -57,6 +58,7 @@ import com.vividsolutions.jts.io.WKTReader;
  * Feb 22, 2015 6561       mpduff      Override getInsertTime and update toString
  * Jul 31, 2015 7458       Robert.Blum Added new userName and workstation fields.
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Mar 01, 2016 15676      Chris.Golden Added visual features to hazard event.
  * </pre>
  * 
  * @author mnash
@@ -72,6 +74,10 @@ public class BaseHazardEvent implements IHazardEvent {
     private Date endTime;
 
     private Geometry geometry;
+
+    private VisualFeaturesList baseVisualFeatures;
+
+    private VisualFeaturesList selectedVisualFeatures;
 
     private String site;
 
@@ -111,6 +117,8 @@ public class BaseHazardEvent implements IHazardEvent {
         setStartTime(event.getStartTime());
         setCreationTime(event.getCreationTime());
         setGeometry(event.getGeometry());
+        setVisualFeatures(event.getBaseVisualFeatures(),
+                event.getSelectedVisualFeatures());
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
         setSubType(event.getSubType());
@@ -147,6 +155,16 @@ public class BaseHazardEvent implements IHazardEvent {
             statusHandler.handle(Priority.ERROR,
                     "Unable to read in geometry text", e);
         }
+    }
+
+    @Override
+    public VisualFeaturesList getBaseVisualFeatures() {
+        return baseVisualFeatures;
+    }
+
+    @Override
+    public VisualFeaturesList getSelectedVisualFeatures() {
+        return selectedVisualFeatures;
     }
 
     @Override
@@ -271,6 +289,23 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     @Override
+    public void setBaseVisualFeatures(VisualFeaturesList visualFeatures) {
+        this.baseVisualFeatures = visualFeatures;
+    }
+
+    @Override
+    public void setSelectedVisualFeatures(VisualFeaturesList visualFeatures) {
+        this.selectedVisualFeatures = visualFeatures;
+    }
+
+    @Override
+    public void setVisualFeatures(VisualFeaturesList baseVisualFeatures,
+            VisualFeaturesList selectedVisualFeatures) {
+        this.baseVisualFeatures = baseVisualFeatures;
+        this.selectedVisualFeatures = selectedVisualFeatures;
+    }
+
+    @Override
     public ProductClass getHazardMode() {
         return hazardMode;
     }
@@ -339,6 +374,14 @@ public class BaseHazardEvent implements IHazardEvent {
         result = prime * result + ((eventId == null) ? 0 : eventId.hashCode());
         result = prime * result
                 + ((geometry == null) ? 0 : geometry.hashCode());
+        result = prime
+                * result
+                + ((baseVisualFeatures == null) ? 0 : baseVisualFeatures
+                        .hashCode());
+        result = prime
+                * result
+                + ((selectedVisualFeatures == null) ? 0
+                        : selectedVisualFeatures.hashCode());
         result = prime * result
                 + ((hazardMode == null) ? 0 : hazardMode.hashCode());
         result = prime * result
@@ -399,6 +442,20 @@ public class BaseHazardEvent implements IHazardEvent {
                 return false;
             }
         } else if (!geometry.equals(other.geometry)) {
+            return false;
+        }
+        if (baseVisualFeatures == null) {
+            if (other.baseVisualFeatures != null) {
+                return false;
+            }
+        } else if (!baseVisualFeatures.equals(other.baseVisualFeatures)) {
+            return false;
+        }
+        if (selectedVisualFeatures == null) {
+            if (other.selectedVisualFeatures != null) {
+                return false;
+            }
+        } else if (!selectedVisualFeatures.equals(other.selectedVisualFeatures)) {
             return false;
         }
         if (hazardMode != other.hazardMode) {

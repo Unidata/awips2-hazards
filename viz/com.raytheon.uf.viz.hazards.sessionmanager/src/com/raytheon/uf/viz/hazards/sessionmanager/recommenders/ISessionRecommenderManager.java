@@ -78,10 +78,6 @@ public interface ISessionRecommenderManager {
     /**
      * Run the specified recommender in the specified context and with the
      * specified user-provided dialog parameters.
-     * <p>
-     * TODO: This method should drop the <code>spatialInfo</code> parameter once
-     * the special-case code for running the storm track recommender has been
-     * replaced with the hazard event visual decoration manipulation code.
      * 
      * @param recommenderIdentifier
      *            The identifier of the recommender to be run.

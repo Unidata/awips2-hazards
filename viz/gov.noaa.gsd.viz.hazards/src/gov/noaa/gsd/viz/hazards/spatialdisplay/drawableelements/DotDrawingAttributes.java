@@ -7,9 +7,10 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.viz.hazards.spatialdisplay;
+package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
-import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_DASHED_4;
+import static gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.LineStyle.LINE_DASHED_2;
+import static gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.LineStyle.LINE_DASHED_4;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.exception.VizException;
@@ -32,6 +33,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Dec 05, 2014 4124       Chris.Golden        Changed to work with newly parameterized
  *                                             config manager.
  * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
+ * Mar 16, 2016 15676      Chris.Golden        Moved to more appropriate location.
+ * Mar 24, 2016 15676      Chris.Golden        Added dotted line style.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -44,8 +47,13 @@ public class DotDrawingAttributes extends HazardServicesDrawingAttributes {
             ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager)
             throws VizException {
         super(sessionManager.getConfigurationManager());
-        this.filled = true;
-        this.closed = true;
+        setClosed(true);
+        setFilled(true);
+    }
+
+    @Override
+    public void setDottedLineStyle() {
+        this.lineStyle = LINE_DASHED_2;
     }
 
     @Override

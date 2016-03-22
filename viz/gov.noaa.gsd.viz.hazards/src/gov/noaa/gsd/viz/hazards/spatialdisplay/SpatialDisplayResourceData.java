@@ -96,7 +96,7 @@ public class SpatialDisplayResourceData extends
      *            serialized object.
      */
     private SpatialDisplayResourceData(boolean instantiatedViaDeserialization) {
-        super(SpatialDisplay.DEFAULT_NAME, SpatialDisplay.class);
+        super(SpatialDisplay.LAYER_NAME, SpatialDisplay.class);
         this.instantiatedViaDeserialization = instantiatedViaDeserialization;
     }
 
