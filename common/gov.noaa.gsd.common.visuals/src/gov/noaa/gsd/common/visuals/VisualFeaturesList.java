@@ -21,6 +21,7 @@ import java.util.ArrayList;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Feb 16, 2016   15676    Chris.Golden Initial creation.
+ * Mar 26, 2016   15676    Chris.Golden Added convenience lookup methods.
  * </pre>
  * 
  * @author Chris.Golden
@@ -28,8 +29,46 @@ import java.util.ArrayList;
  */
 public class VisualFeaturesList extends ArrayList<VisualFeature> {
 
+    // Private Static Constants
+
     /**
      * Serialization version UID.
      */
     private static final long serialVersionUID = -2655616243967777587L;
+
+    // Public Methods
+
+    /**
+     * Get a copy of the visual feature with the specified identifier.
+     * 
+     * @param identifier
+     *            Identifier of the desired visual feature.
+     * @return Visual feature, or <code>null</code> if none is found with the
+     *         specified identifier.
+     */
+    public VisualFeature getByIdentifier(String identifier) {
+        for (VisualFeature visualFeature : this) {
+            if (visualFeature.getIdentifier().equals(identifier)) {
+                return new VisualFeature(visualFeature);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get the index of the the visual feature with the specified identifier.
+     * 
+     * @param identifier
+     *            Identifier of the desired visual feature.
+     * @return Index of the visual feature, or <code>-1</code> if none is found
+     *         with the specified identifier.
+     */
+    public int indexOfByIdentifier(String identifier) {
+        for (int j = 0; j < size(); j++) {
+            if (get(j).getIdentifier().equals(identifier)) {
+                return j;
+            }
+        }
+        return -1;
+    }
 }

@@ -140,6 +140,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygonal;
+import com.vividsolutions.jts.operation.valid.IsValidOp;
 
 /**
  * This is the AbstractVizResource used for the display of hazards. This
@@ -216,6 +217,10 @@ import com.vividsolutions.jts.geom.Polygonal;
  *                                      to visual features should now work again, with some enhancements
  *                                      in terms of better handlebar point usage and selectability of
  *                                      immutable shapes.
+ * Mar 26, 2016 15676      Chris.Golden Added method to check Geometry objects' validity, and method
+ *                                      to allow the display to be notified of changes made by the user
+ *                                      to visual features. Also fixed selection-tracking bug causing
+ *                                      handlebars to appear around deselected hazard event geometries.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1074,6 +1079,7 @@ public class SpatialDisplay extends
             Map<String, Boolean> eventEditability,
             boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed) {
         clearDrawables();
+        selectedElements.clear();
         setHoverElement(null);
 
         hatchedAreas.clear();
@@ -1123,6 +1129,27 @@ public class SpatialDisplay extends
      * List of visual feature drawables.
      */
     private final List<AbstractDrawableComponent> visualFeatureDrawables = new ArrayList<>();
+
+    /**
+     * Handle user modification of the geometry of the specified hazard event's
+     * specified visual feature.
+     * 
+     * @param eventIdentifier
+     *            Identifier of the hazard event with which the visual feature
+     *            is associated.
+     * @param featureIdentifier
+     *            Visual feature identifier.
+     * @param selectedTime
+     *            Selected time for which the geometry is to be changed.
+     * @param newGeometry
+     *            New geometry to be used by the visual feature.
+     */
+    public void handleUserModificationOfVisualFeature(String eventIdentifier,
+            String featureIdentifier, Date selectedTime, Geometry newGeometry) {
+        getAppBuilder().getSpatialPresenter()
+                .handleUserModificationOfVisualFeature(eventIdentifier,
+                        featureIdentifier, selectedTime, newGeometry);
+    }
 
     /**
      * Draw the specified spatial entities.
@@ -1809,6 +1836,26 @@ public class SpatialDisplay extends
      */
     public void setGenerateDisposeMessage(boolean generateDisposeMessage) {
         this.generateDisposeMessage = generateDisposeMessage;
+    }
+
+    /**
+     * Determine whether the specified geometry is valid or not, outputting a
+     * warning message if it is not.
+     * 
+     * @param geometry
+     *            Geometry to be checked for validity via the
+     *            {@link Geometry#isValid()} method.
+     * @return True if the geometry is valid, false otherwise.
+     */
+    public boolean checkGeometryValidity(Geometry geometry) {
+        if (geometry.isValid() == false) {
+            IsValidOp op = new IsValidOp(geometry);
+            statusHandler.warn("Invalid geometry: "
+                    + op.getValidationError().getMessage()
+                    + ". Geometry modification ignored.");
+            return false;
+        }
+        return true;
     }
 
     /**

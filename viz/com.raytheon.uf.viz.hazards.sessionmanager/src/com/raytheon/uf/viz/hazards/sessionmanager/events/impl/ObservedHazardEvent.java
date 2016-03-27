@@ -104,7 +104,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      type, status, start and end time at
  *                                      last issuance, etc.
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
- * Feb 22, 2015   6561     mpduff       Override get and get/setInsertTime
+ * Feb 22, 2015 6561       mpduff       Override get and get/setInsertTime
  * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
  * Jul 31, 2015 7458       Robert.Blum  Added new userName and workstation methods.
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id.
@@ -122,6 +122,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      attribute values is null.
  * Mar 03, 2016 14004      Chris.Golden Added missing setGeometry() method.
  * Mar 06, 2016 15676      Chris.Golden Added visual features.
+ * Mar 26, 2016 15676      Chris.Golden Added more methods to get and set
+ *                                      individual visual features.
  * </pre>
  * 
  * @author bsteffen
@@ -191,8 +193,18 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
+    public VisualFeature getBaseVisualFeature(String identifier) {
+        return delegate.getBaseVisualFeature(identifier);
+    }
+
+    @Override
     public VisualFeaturesList getBaseVisualFeatures() {
         return delegate.getBaseVisualFeatures();
+    }
+
+    @Override
+    public VisualFeature getSelectedVisualFeature(String identifier) {
+        return delegate.getSelectedVisualFeature(identifier);
     }
 
     @Override
@@ -403,8 +415,18 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
+    public boolean setBaseVisualFeature(VisualFeature visualFeature) {
+        return setBaseVisualFeature(visualFeature, true, Originator.OTHER);
+    }
+
+    @Override
     public void setBaseVisualFeatures(VisualFeaturesList visualFeatures) {
         setBaseVisualFeatures(visualFeatures, true, Originator.OTHER);
+    }
+
+    @Override
+    public boolean setSelectedVisualFeature(VisualFeature visualFeature) {
+        return setSelectedVisualFeature(visualFeature, true, Originator.OTHER);
     }
 
     @Override
@@ -509,9 +531,19 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         setGeometry(geom, true, originator);
     }
 
+    public boolean setBaseVisualFeature(VisualFeature visualFeature,
+            IOriginator originator) {
+        return setBaseVisualFeature(visualFeature, true, originator);
+    }
+
     public void setBaseVisualFeatures(VisualFeaturesList visualFeatures,
             IOriginator originator) {
         setBaseVisualFeatures(visualFeatures, true, originator);
+    }
+
+    public boolean setSelectedVisualFeature(VisualFeature visualFeature,
+            IOriginator originator) {
+        return setSelectedVisualFeature(visualFeature, true, originator);
     }
 
     public void setSelectedVisualFeatures(VisualFeaturesList visualFeatures,
@@ -724,6 +756,38 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     /**
+     * Replace the base visual feature with the same identifier as the specified
+     * visual feature with the latter.
+     * 
+     * @param visualFeature
+     *            New visual feature.
+     * @param notify
+     *            Flag indicating whether or not to send out a notification of
+     *            any change that results.
+     * @param originator
+     *            Originator of the change.
+     * @return True if the new visual feature replaced the old one, false if no
+     *         base visual feature with the given identifier was found.
+     */
+    public boolean setBaseVisualFeature(VisualFeature visualFeature,
+            boolean notify, IOriginator originator) {
+        if (changed(visualFeature,
+                getBaseVisualFeature(visualFeature.getIdentifier()))) {
+            boolean result = delegate.setBaseVisualFeature(visualFeature);
+            if (result && notify) {
+                eventManager
+                        .hazardEventModified(new SessionEventVisualFeaturesModified(
+                                eventManager, this, Sets
+                                        .newHashSet(visualFeature
+                                                .getIdentifier()), Collections
+                                        .<String> emptySet(), originator));
+            }
+            return result;
+        }
+        return false;
+    }
+
+    /**
      * Set the base visual features to those specified.
      * 
      * @param visualFeatures
@@ -753,6 +817,38 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
             return changedIdentifiers;
         }
         return null;
+    }
+
+    /**
+     * Replace the selected visual feature with the same identifier as the
+     * specified visual feature with the latter.
+     * 
+     * @param visualFeature
+     *            New visual feature.
+     * @param notify
+     *            Flag indicating whether or not to send out a notification of
+     *            any change that results.
+     * @param originator
+     *            Originator of the change.
+     * @return True if the new visual feature replaced the old one, false if no
+     *         selected visual feature with the given identifier was found.
+     */
+    public boolean setSelectedVisualFeature(VisualFeature visualFeature,
+            boolean notify, IOriginator originator) {
+        if (changed(visualFeature,
+                getSelectedVisualFeature(visualFeature.getIdentifier()))) {
+            boolean result = delegate.setSelectedVisualFeature(visualFeature);
+            if (result && notify) {
+                eventManager
+                        .hazardEventModified(new SessionEventVisualFeaturesModified(
+                                eventManager, this, Collections
+                                        .<String> emptySet(), Sets
+                                        .newHashSet(visualFeature
+                                                .getIdentifier()), originator));
+            }
+            return result;
+        }
+        return false;
     }
 
     /**

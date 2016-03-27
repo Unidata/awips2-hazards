@@ -24,10 +24,10 @@ import com.vividsolutions.jts.geom.Geometry;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 23, 2013   1264      daniel.s.schaffer@noaa.gov      Initial creation
- * 
+ * Aug 23, 2013   1264      daniel.s.schaffer  Initial creation
  * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * Mar 16, 2016 15676      Chris.Golden        Added code to support visual features.
+ * Mar 26, 2016 15676      Chris.Golden        Added visual feature identifier.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -38,7 +38,7 @@ public abstract class HazardServicesShape extends Line implements
 
     private String id;
 
-    private boolean visualFeature = false;
+    private String visualFeatureIdentifier;
 
     private boolean editable = true;
 
@@ -72,12 +72,17 @@ public abstract class HazardServicesShape extends Line implements
 
     @Override
     public boolean isVisualFeature() {
-        return visualFeature;
+        return (visualFeatureIdentifier != null);
     }
 
     @Override
-    public void setVisualFeature(boolean visualFeature) {
-        this.visualFeature = visualFeature;
+    public String getVisualFeatureIdentifier() {
+        return visualFeatureIdentifier;
+    }
+
+    @Override
+    public void setVisualFeatureIdentifier(String visualFeatureIdentifier) {
+        this.visualFeatureIdentifier = visualFeatureIdentifier;
     }
 
     @Override

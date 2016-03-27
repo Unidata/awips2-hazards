@@ -69,9 +69,10 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Sep 16, 2014 3786      Robert.Blum         Added user feedback when simplifying polygons.
  * Dec 05, 2014 4124      Chris.Golden        Changed to work with newly parameterized
  *                                            config manager.
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
- * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
- * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
+ * Dec 13, 2014 4959       Dan Schaffer       Spatial Display cleanup and other bug fixes
+ * Jan 26, 2015 5952       Dan Schaffer       Fix incorrect hazard area designation.
+ * Mar 13, 2015 6090       Dan Schaffer       Relaxed geometry validity check.
+ * Mar 26, 2016 15676      Chris.Golden       Changed use of method with new parameter list.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -381,7 +382,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
                                 hazardGeometryList.put(eventID,
                                         selectedGeometryCopy);
                                 eventManager.setModifiedEventGeometry(eventID,
-                                        selectedGeometry, false);
+                                        selectedGeometry);
 
                             }
 

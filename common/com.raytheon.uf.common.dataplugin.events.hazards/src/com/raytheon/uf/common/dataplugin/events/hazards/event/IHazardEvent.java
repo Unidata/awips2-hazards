@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
+import gov.noaa.gsd.common.visuals.VisualFeature;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
 import java.io.Serializable;
@@ -52,6 +53,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * Jul 31, 2015 7458       Robert.Blum Added new userName and workstation methods.
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * Mar 01, 2016 15676      Chris.Golden Added visual features to hazard event.
+ * Mar 26, 2016 15676      Chris.Golden Added more methods to get and set
+ *                                      individual visual features.
  * </pre>
  * 
  * @author mnash
@@ -73,9 +76,35 @@ public interface IHazardEvent extends IEvent {
 
     public Geometry getProductGeometry();
 
+    public VisualFeature getBaseVisualFeature(String identifier);
+
+    /**
+     * Replace the base visual feature with the same identifier as the specified
+     * visual feature with the latter.
+     * 
+     * @param visualFeature
+     *            New visual feature.
+     * @return True if the new visual feature replaced the old one, false if no
+     *         base visual feature with the given identifier was found.
+     */
+    public boolean setBaseVisualFeature(VisualFeature visualFeature);
+
     public VisualFeaturesList getBaseVisualFeatures();
 
     public void setBaseVisualFeatures(VisualFeaturesList visualFeatures);
+
+    public VisualFeature getSelectedVisualFeature(String identifier);
+
+    /**
+     * Replace the selected visual feature with the same identifier as the
+     * specified visual feature with the latter.
+     * 
+     * @param visualFeature
+     *            New visual feature.
+     * @return True if the new visual feature replaced the old one, false if no
+     *         selected visual feature with the given identifier was found.
+     */
+    public boolean setSelectedVisualFeature(VisualFeature visualFeature);
 
     public VisualFeaturesList getSelectedVisualFeatures();
 

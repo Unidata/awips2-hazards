@@ -12,6 +12,7 @@ package gov.noaa.gsd.common.visuals;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeMap;
@@ -26,6 +27,9 @@ import com.google.common.collect.TreeRangeMap;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Feb 12, 2016   15676    Chris.Golden Initial creation.
+ * Mar 26, 2016   15676    Chris.Golden Added method to set the property for
+ *                                      whichever time range encompasses a
+ *                                      given timestamp.
  * </pre>
  * 
  * @author Chris.Golden
@@ -156,6 +160,35 @@ class TemporallyVariantProperty<P> {
             propertiesForTimeRanges = TreeRangeMap.create();
         }
         propertiesForTimeRanges.put(timeRange, property);
+    }
+
+    /**
+     * Add the specified property for the time range that encompasses the
+     * specified time.
+     * 
+     * @param time
+     *            Time that is encompassed by the time range for which the
+     *            property is to be set.
+     * @param property
+     *            Property value associated with the time range encompassing the
+     *            specified time; must not be <code>null</code>.
+     * @return True if the property was added, false otherwise. Reasons that the
+     *         property would not be added include the method
+     *         {@link #addPropertyForTimeRange(Range, Object)} has not been
+     *         called at least once on this object, or it has been called, but
+     *         <code>time</code> does not fall within any time range specified
+     *         by such calls.
+     */
+    boolean addPropertyForTimeRangeEncompassingTime(Date time, P property) {
+        if (propertiesForTimeRanges == null) {
+            return false;
+        }
+        Entry<Range<Date>, P> entry = propertiesForTimeRanges.getEntry(time);
+        if (entry == null) {
+            return false;
+        }
+        propertiesForTimeRanges.put(entry.getKey(), property);
+        return true;
     }
 
     /**

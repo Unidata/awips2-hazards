@@ -18,12 +18,13 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSy
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
-import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
-import gov.noaa.nws.ncep.ui.pgen.elements.Line;
+import gov.noaa.nws.ncep.ui.pgen.elements.MultiPointElement;
+import gov.noaa.nws.ncep.ui.pgen.elements.SinglePointElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -88,6 +89,8 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      the most part, what worked prior to visual features should now
  *                                      work again, with some enhancements in terms of selectability
  *                                      of immutable shapes.
+ * Mar 26, 2016 15676      Chris.Golden Fixed bugs with editing and moving of hazard event geometries,
+ *                                      and added ability to edit and move spatial entity geometries.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -296,9 +299,9 @@ public class SelectionAction extends NonDrawingAction {
                      * uneditable and unmovable, in case it needs to be selected
                      * during mouse-up later.
                      * 
-                     * TODO: We need a better way of determining which
-                     * containing component of multiple components to chose as
-                     * the selected.
+                     * TODO: May need a better way of determining which
+                     * containing component of multiple components to choose as
+                     * the selected?
                      */
                     if (nadc == null) {
                         for (AbstractDrawableComponent comp : containingComponentsList) {
@@ -315,7 +318,9 @@ public class SelectionAction extends NonDrawingAction {
                     /*
                      * If something was found to be editable, but nothing was
                      * set for the drawable element under the mouse down, set
-                     * the latter to the former.
+                     * the latter to the former. This way, if nothing occurs
+                     * except for a mouse up, an unselected element may be
+                     * selected by the click.
                      */
                     if (drawableElementUnderMouseDown == null) {
                         drawableElementUnderMouseDown = nadc;
@@ -350,16 +355,22 @@ public class SelectionAction extends NonDrawingAction {
             } else if (isVertexMove) {
                 handleVertexMove();
             } else if (ghostEl != null) {
-                DrawableElement editedElement = getSpatialDisplay()
+                AbstractDrawableComponent editedElement = getSpatialDisplay()
                         .getElementBeingEdited();
                 if (editedElement != null) {
-                    Class<?> selectedDEclass = editedElement.getClass();
-                    if (selectedDEclass.equals(HazardServicesSymbol.class)) {
-                        handleStormTrackModification(editedElement);
-                    } else {
-                        handleShapeMove((IHazardServicesShape) editedElement,
-                                selectedDEclass);
-                    }
+                    /*
+                     * TODO: For now, storm track modification is removed, since
+                     * it cannot be assumed that any HazardServicesSymbol object
+                     * is part of a storm track. This code won't be needed
+                     * anywway when refactoring the spatial display to allow for
+                     * generic visual features to take the place of hardcoded
+                     * storm track stuff.
+                     */
+                    // if (selectedDEclass.equals(HazardServicesSymbol.class)) {
+                    // handleStormTrackModification(editedElement);
+                    // } else {
+                    handleShapeMove((IHazardServicesShape) editedElement);
+                    // }
                 }
             } else if (drawableElementUnderMouseDown != null) {
                 boolean multipleSelection = shiftKeyIsDown || ctrlKeyIsDown;
@@ -382,22 +393,30 @@ public class SelectionAction extends NonDrawingAction {
             return loc;
         }
 
-        private void handleShapeMove(IHazardServicesShape origShape,
-                Class<?> selectedDEclass) {
-            if ((selectedDEclass.equals(HazardServicesPolygon.class))
-                    || (selectedDEclass.equals(HazardServicesLine.class))) {
-                List<Coordinate> coords = ((Line) ghostEl).getPoints();
-
-                Geometry modifiedGeometry = buildModifiedGeometry(origShape,
-                        coords);
+        private void handleShapeMove(IHazardServicesShape origShape) {
+            List<Coordinate> coords = (ghostEl instanceof MultiPointElement ? ((MultiPointElement) ghostEl)
+                    .getPoints() : ((SinglePointElement) ghostEl).getPoints());
+            Geometry modifiedGeometry = buildModifiedGeometry(origShape, coords);
+            if (origShape.isVisualFeature()) {
+                getSpatialDisplay().handleUserModificationOfVisualFeature(
+                        origShape.getID(),
+                        origShape.getVisualFeatureIdentifier(),
+                        getSelectedTime(), modifiedGeometry);
+                getSpatialDisplay().setHoverElement(null);
+            } else {
                 if (eventManager.setModifiedEventGeometry(origShape.getID(),
-                        modifiedGeometry, true)) {
+                        modifiedGeometry)) {
                     getSpatialDisplay().setHoverElement(null);
                 } else {
                     getSpatialPresenter().updateDisplayables();
                 }
-                getSpatialDisplay().issueRefresh();
             }
+            getSpatialDisplay().issueRefresh();
+        }
+
+        private Date getSelectedTime() {
+            return new Date(getSpatialPresenter().getSessionManager()
+                    .getTimeManager().getSelectedTime().getLowerBound());
         }
 
         private Geometry buildModifiedGeometry(IHazardServicesShape origShape,
@@ -477,7 +496,8 @@ public class SelectionAction extends NonDrawingAction {
                 String hazardID = ((IHazardServicesShape) hazard).getID();
 
                 if (eventID.equals(hazardID)) {
-                    if (hazardClass.equals(HazardServicesPolygon.class)) {
+                    if (hazardClass.equals(HazardServicesPolygon.class)
+                            || hazardClass.equals(HazardServicesLine.class)) {
                         Geometry geometry = ((IHazardServicesShape) hazard)
                                 .getGeometry();
                         result.add(geometry);
@@ -501,7 +521,8 @@ public class SelectionAction extends NonDrawingAction {
             return geometry;
         }
 
-        private void handleStormTrackModification(DrawableElement selectedDE) {
+        private void handleStormTrackModification(
+                AbstractDrawableComponent selectedDE) {
             Symbol movedSymbol = (Symbol) ghostEl;
 
             HazardServicesSymbol origSymbol = (HazardServicesSymbol) selectedDE;
@@ -540,9 +561,20 @@ public class SelectionAction extends NonDrawingAction {
                 IHazardServicesShape eventShape = (IHazardServicesShape) editedElement;
                 Geometry modifiedGeometry = buildModifiedGeometry(eventShape,
                         editedElement.getPoints());
-                if (eventManager.setModifiedEventGeometry(eventShape.getID(),
-                        modifiedGeometry, true)) {
-                    getSpatialDisplay().setHoverElement(null);
+                if (getSpatialDisplay().checkGeometryValidity(modifiedGeometry)) {
+                    if (eventShape.isVisualFeature()) {
+                        getSpatialDisplay()
+                                .handleUserModificationOfVisualFeature(
+                                        eventShape.getID(),
+                                        eventShape.getVisualFeatureIdentifier(),
+                                        getSelectedTime(), modifiedGeometry);
+                        getSpatialDisplay().setHoverElement(null);
+                    } else if (eventManager.setModifiedEventGeometry(
+                            eventShape.getID(), modifiedGeometry)) {
+                        getSpatialDisplay().setHoverElement(null);
+                    } else {
+                        getSpatialPresenter().updateDisplayables();
+                    }
                 } else {
                     getSpatialPresenter().updateDisplayables();
                 }
@@ -760,7 +792,6 @@ public class SelectionAction extends NonDrawingAction {
                                     .contains(getSpatialDisplay()
                                             .eventIDForElement(comp))
                             && (isComponentEditable(comp) || isComponentMovable(comp))) {
-
                         nadc = comp;
                     }
                 }
@@ -953,9 +984,17 @@ public class SelectionAction extends NonDrawingAction {
                     }
                     Geometry modifiedGeometry = buildModifiedGeometry(
                             eventShape, coordsAsList);
-                    eventManager.setModifiedEventGeometry(eventShape.getID(),
-                            modifiedGeometry, true);
 
+                    if (eventShape.isVisualFeature()) {
+                        getSpatialDisplay()
+                                .handleUserModificationOfVisualFeature(
+                                        eventShape.getID(),
+                                        eventShape.getVisualFeatureIdentifier(),
+                                        getSelectedTime(), modifiedGeometry);
+                    } else {
+                        eventManager.setModifiedEventGeometry(
+                                eventShape.getID(), modifiedGeometry);
+                    }
                     getSpatialDisplay().useAsHandlebarPoints(
                             modifiedGeometry.getCoordinates());
 
@@ -994,9 +1033,16 @@ public class SelectionAction extends NonDrawingAction {
                     IHazardServicesShape eventShape = (IHazardServicesShape) selectedElement;
                     Geometry modifiedGeometry = buildModifiedGeometry(
                             eventShape, coords);
-                    eventManager.setModifiedEventGeometry(eventShape.getID(),
-                            modifiedGeometry, true);
-
+                    if (eventShape.isVisualFeature()) {
+                        getSpatialDisplay()
+                                .handleUserModificationOfVisualFeature(
+                                        eventShape.getID(),
+                                        eventShape.getVisualFeatureIdentifier(),
+                                        getSelectedTime(), modifiedGeometry);
+                    } else {
+                        eventManager.setModifiedEventGeometry(
+                                eventShape.getID(), modifiedGeometry);
+                    }
                     getSpatialDisplay().useAsHandlebarPoints(
                             modifiedGeometry.getCoordinates());
 

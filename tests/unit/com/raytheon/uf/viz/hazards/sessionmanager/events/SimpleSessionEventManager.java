@@ -312,7 +312,7 @@ public class SimpleSessionEventManager implements
 
     @Override
     public boolean isValidGeometryChange(Geometry geometry,
-            ObservedHazardEvent hazardEvent, boolean checkGeometryValidity) {
+            ObservedHazardEvent hazardEvent) {
         throw new UnsupportedOperationException();
     }
 

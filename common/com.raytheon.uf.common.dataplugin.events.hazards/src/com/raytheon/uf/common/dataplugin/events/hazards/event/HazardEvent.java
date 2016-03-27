@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
+import gov.noaa.gsd.common.visuals.VisualFeature;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 import gov.noaa.gsd.common.visuals.VisualFeaturesListAdapter;
 import gov.noaa.gsd.common.visuals.VisualFeaturesListSlotConverter;
@@ -79,6 +80,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * Jul 31, 2015 7458      Robert.Blum   Added new userName and workstation fields.
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * Mar 01, 2016 15676      Chris.Golden Added visual features to hazard event.
+ * Mar 26, 2016 15676      Chris.Golden Added more methods to get and set
+ *                                      individual visual features.
  * </pre>
  * 
  * @author mnash
@@ -520,8 +523,19 @@ public class HazardEvent implements IHazardEvent, IValidator {
     }
 
     @Override
+    public VisualFeature getBaseVisualFeature(String identifier) {
+        return (baseVisualFeatures == null ? null : baseVisualFeatures
+                .getByIdentifier(identifier));
+    }
+
+    @Override
     public VisualFeaturesList getBaseVisualFeatures() {
         return baseVisualFeatures;
+    }
+
+    @Override
+    public boolean setBaseVisualFeature(VisualFeature visualFeature) {
+        return setVisualFeatureInList(visualFeature, baseVisualFeatures);
     }
 
     @Override
@@ -530,8 +544,19 @@ public class HazardEvent implements IHazardEvent, IValidator {
     }
 
     @Override
+    public VisualFeature getSelectedVisualFeature(String identifier) {
+        return (selectedVisualFeatures == null ? null : selectedVisualFeatures
+                .getByIdentifier(identifier));
+    }
+
+    @Override
     public VisualFeaturesList getSelectedVisualFeatures() {
         return selectedVisualFeatures;
+    }
+
+    @Override
+    public boolean setSelectedVisualFeature(VisualFeature visualFeature) {
+        return setVisualFeatureInList(visualFeature, selectedVisualFeatures);
     }
 
     @Override
@@ -855,5 +880,32 @@ public class HazardEvent implements IHazardEvent, IValidator {
     @Override
     public String getWorkStation() {
         return workStation;
+    }
+
+    // Private Methods
+
+    /**
+     * Replace the visual feature with the same identifier as the specified
+     * visual feature with the latter in the specified list.
+     * 
+     * @param visualFeature
+     *            New visual feature.
+     * @param list
+     *            List in which to replace the visual feature.
+     * @return True if the new visual feature replaced the old one, false if no
+     *         visual feature with the given identifier was found in the given
+     *         list.
+     */
+    private boolean setVisualFeatureInList(VisualFeature visualFeature,
+            VisualFeaturesList list) {
+        if (list == null) {
+            return false;
+        }
+        int index = list.indexOfByIdentifier(visualFeature.getIdentifier());
+        if (index == -1) {
+            return false;
+        }
+        list.set(index, visualFeature);
+        return true;
     }
 }

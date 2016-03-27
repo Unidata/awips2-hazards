@@ -11,7 +11,9 @@ package gov.noaa.gsd.common.visuals;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
+import com.google.common.collect.Range;
 import com.raytheon.uf.common.colormap.Color;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -33,6 +35,9 @@ import com.vividsolutions.jts.geom.Geometry;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Feb 12, 2016   15676    Chris.Golden Initial creation.
+ * Mar 26, 2016   15676    Chris.Golden Added copy constructor, and a method
+ *                                      to set the geometry for whichever time
+ *                                      range encompasses a given timestamp.
  * </pre>
  * 
  * @author Chris.Golden
@@ -423,6 +428,52 @@ public class VisualFeature {
      */
     private TemporallyVariantProperty<Boolean> scaleable;
 
+    // Public Constructors
+
+    /**
+     * Construct a standard instance that is as copy of the specified visual
+     * feature.
+     * 
+     * @param original
+     *            Visual feature to be copied.
+     */
+    public VisualFeature(VisualFeature original) {
+
+        /*
+         * All immutable properties of the original feature are simply
+         * referenced by this new object, since their immutability guarantees
+         * that sharing the objects will not cause problems.
+         */
+        this.identifier = original.identifier;
+        this.templates = original.templates;
+        this.borderColor = original.borderColor;
+        this.fillColor = original.fillColor;
+        this.borderThickness = original.borderThickness;
+        this.borderStyle = original.borderStyle;
+        this.diameter = original.diameter;
+        this.label = original.label;
+        this.textOffsetLength = original.textOffsetLength;
+        this.textOffsetDirection = original.textOffsetDirection;
+        this.textSize = original.textSize;
+        this.textColor = original.textColor;
+        this.dragCapability = original.dragCapability;
+        this.rotatable = original.rotatable;
+        this.scaleable = original.scaleable;
+
+        /*
+         * Mutable properties must be copied down to the point where immutable
+         * components are encountered. Geometries for all practical purposes
+         * immutable.
+         */
+        this.geometry = new TemporallyVariantProperty<>(
+                original.geometry.getDefaultProperty());
+        for (Map.Entry<Range<Date>, Geometry> entry : original.geometry
+                .getPropertiesForTimeRanges().entrySet()) {
+            this.geometry.addPropertyForTimeRange(entry.getKey(),
+                    entry.getValue());
+        }
+    }
+
     // Package Constructors
 
     /**
@@ -745,6 +796,25 @@ public class VisualFeature {
         spatialEntity.setRotatable(isRotatable(time));
         spatialEntity.setScaleable(isScaleable(time));
         return spatialEntity;
+    }
+
+    /**
+     * Set the geometry for the specified time. Note that this method only
+     * succeeds in setting the geometry if this object has a geometry for a time
+     * range encompassing the given time; if it does not, but a template from
+     * which this object inherits geometry does, this method will fail.
+     * 
+     * @param time
+     *            Time for which to set the geometry of this object.
+     * @param geometry
+     *            New geometry to be used.
+     * @return True if the geometry was set successfully, false otherwise. The
+     *         latter will occur if <code>time</code> does not fall within a
+     *         time range for which a geometry has already been defined.
+     */
+    public boolean setGeometry(Date time, Geometry geometry) {
+        return this.geometry.addPropertyForTimeRangeEncompassingTime(time,
+                geometry);
     }
 
     // Package Methods

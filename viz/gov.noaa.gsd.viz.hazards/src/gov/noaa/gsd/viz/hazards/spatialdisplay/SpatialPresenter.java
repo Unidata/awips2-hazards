@@ -119,6 +119,9 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  *                                           Ugly and brute-force, but pretty much how it was done up
  *                                           until now with base geometries anyway. Future refactor
  *                                           will definitely make this more efficient.
+ * Mar 26, 2016 15676      Chris.Golden      Added check of Geometry objects' validity, and also method
+ *                                           to allow the presenter to be notified of changes made by
+ *                                           the user to visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -274,6 +277,55 @@ public class SpatialPresenter extends
     public void updateDisplayables() {
         updateAllBaseGeometryDisplayables();
         updateAllVisualFeatureDisplayables();
+    }
+
+    /**
+     * Handle user modification of the geometry of the specified hazard event's
+     * specified visual feature.
+     * 
+     * @param eventIdentifier
+     *            Identifier of the hazard event with which the visual feature
+     *            is associated.
+     * @param featureIdentifier
+     *            Visual feature identifier.
+     * @param selectedTime
+     *            Selected time for which the geometry is to be changed.
+     * @param newGeometry
+     *            New geometry to be used by the visual feature.
+     */
+    public void handleUserModificationOfVisualFeature(String eventIdentifier,
+            String featureIdentifier, Date selectedTime, Geometry newGeometry) {
+        ISessionEventManager<ObservedHazardEvent> eventManager = getModel()
+                .getEventManager();
+        ObservedHazardEvent event = eventManager.getEventById(eventIdentifier);
+        if (event != null) {
+            boolean selected = false;
+            VisualFeature feature = getVisualFeature(
+                    event.getBaseVisualFeatures(), featureIdentifier);
+            if (feature == null) {
+                feature = getVisualFeature(event.getSelectedVisualFeatures(),
+                        featureIdentifier);
+                selected = true;
+            }
+            if (feature != null) {
+                feature.setGeometry(selectedTime, newGeometry);
+                if (selected) {
+                    event.setSelectedVisualFeature(feature,
+                            UIOriginator.SPATIAL_DISPLAY);
+                } else {
+                    event.setBaseVisualFeature(feature,
+                            UIOriginator.SPATIAL_DISPLAY);
+                }
+            }
+        }
+    }
+
+    private VisualFeature getVisualFeature(VisualFeaturesList list,
+            String identifier) {
+        if (list == null) {
+            return null;
+        }
+        return list.getByIdentifier(identifier);
     }
 
     /**
@@ -683,8 +735,11 @@ public class SpatialPresenter extends
             Utilities.closeCoordinatesIfNecessary(newCoordinates);
             Geometry newGeometry = hazardEventBuilder
                     .geometryFromCoordinates(newCoordinates);
-            sessionEventManager.setModifiedEventGeometry(
-                    hazardEvent.getEventID(), newGeometry, true);
+            if (getView().getSpatialDisplay()
+                    .checkGeometryValidity(newGeometry)) {
+                sessionEventManager.setModifiedEventGeometry(
+                        hazardEvent.getEventID(), newGeometry);
+            }
         }
 
     }

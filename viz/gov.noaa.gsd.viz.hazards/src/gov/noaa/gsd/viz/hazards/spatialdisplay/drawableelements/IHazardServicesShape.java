@@ -23,6 +23,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                             points.
  * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * Mar 16, 2016 15676      Chris.Golden        Added code to support visual features.
+ * Mar 26, 2016 15676      Chris.Golden        Added visual feature identifier.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -64,15 +65,29 @@ public interface IHazardServicesShape {
     public Geometry getGeometry();
 
     /**
-     * @return True if part of a visual feature, false otherwise.
+     * Get the visual feature identifier, if any.
+     * 
+     * @return Visual feature identifier, or <code>null</code> if not a visual
+     *         feature.
+     */
+    public String getVisualFeatureIdentifier();
+
+    /**
+     * Determine whether or not this is a visual feature. This determination is
+     * made by checking to see if a visual feature identifier has been set to
+     * something other than <code>null</code> with the
+     * {@link #setVisualFeatureIdentifier(String)} method.
      */
     public boolean isVisualFeature();
 
     /**
-     * Set the flag indicating whether or not this shape is part of a visual
-     * feature.
+     * Set the visual feature identifier.
+     * 
+     * @param visualFeatureIdentifier
+     *            Visual feature identifier, or <code>null</code> if not a
+     *            visual feature.
      */
-    public void setVisualFeature(boolean visualFeature);
+    public void setVisualFeatureIdentifier(String visualFeatureIdentifier);
 
     /**
      * @return True if the user can edit this shape.

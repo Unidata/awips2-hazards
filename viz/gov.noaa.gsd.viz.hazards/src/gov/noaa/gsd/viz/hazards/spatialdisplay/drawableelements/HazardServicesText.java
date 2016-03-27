@@ -32,6 +32,7 @@ import com.vividsolutions.jts.geom.Point;
  * Mar 16, 2016 15676      Chris.Golden        Added code to support visual features.
  * Mar 24, 2016 15676      Chris.Golden        Added ability to change font size and
  *                                             specify color directly.
+ * Mar 26, 2016 15676      Chris.Golden        Added visual feature identifier.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -49,7 +50,7 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
      */
     private final Coordinate textCoordinate;
 
-    private boolean visualFeature;
+    private String visualFeatureIdentifier;
 
     public HazardServicesText(
             HazardServicesDrawingAttributes drawingAttributes, String text,
@@ -194,12 +195,17 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
 
     @Override
     public boolean isVisualFeature() {
-        return visualFeature;
+        return (visualFeatureIdentifier != null);
     }
 
     @Override
-    public void setVisualFeature(boolean visualFeature) {
-        this.visualFeature = visualFeature;
+    public String getVisualFeatureIdentifier() {
+        return visualFeatureIdentifier;
+    }
+
+    @Override
+    public void setVisualFeatureIdentifier(String visualFeatureIdentifier) {
+        this.visualFeatureIdentifier = visualFeatureIdentifier;
     }
 
     @Override

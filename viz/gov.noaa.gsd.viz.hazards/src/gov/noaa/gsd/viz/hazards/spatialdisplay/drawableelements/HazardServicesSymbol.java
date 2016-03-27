@@ -39,6 +39,7 @@ import com.vividsolutions.jts.geom.Point;
  *                                             points.
  * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * Mar 16, 2016 15676      Chris.Golden        Added code to support visual features.
+ * Mar 26, 2016 15676      Chris.Golden        Added visual feature identifier.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -63,7 +64,7 @@ public class HazardServicesSymbol extends Symbol implements
      */
     private final long pointID;
 
-    private boolean visualFeature;
+    private String visualFeatureIdentifier;
 
     /**
      * Flag indicating whether or not this symbol is movable.
@@ -204,12 +205,17 @@ public class HazardServicesSymbol extends Symbol implements
 
     @Override
     public boolean isVisualFeature() {
-        return visualFeature;
+        return (visualFeatureIdentifier != null);
     }
 
     @Override
-    public void setVisualFeature(boolean visualFeature) {
-        this.visualFeature = visualFeature;
+    public String getVisualFeatureIdentifier() {
+        return visualFeatureIdentifier;
+    }
+
+    @Override
+    public void setVisualFeatureIdentifier(String visualFeatureIdentifier) {
+        this.visualFeatureIdentifier = visualFeatureIdentifier;
     }
 
     /**

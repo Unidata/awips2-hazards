@@ -82,6 +82,10 @@ import com.vividsolutions.jts.geom.Geometry;
  * Sep 15, 2015 7629       Robert.Blum  Added method that persists a list of events.
  * Mar 24, 2016 15676      Chris.Golden Changed setModifiedEventGeometry() to return true if it
  *                                      succeeds in changing the geometry, false otherwise.
+ * Mar 26, 2016 15676      Chris.Golden Removed geometry validity checks (that is, checks to see
+ *                                      if Geometry objects pass the isValid() test), as the
+ *                                      session event manager shouldn't be policing this; it should
+ *                                      assume it gets valid geometries.
  * </pre>
  * 
  * @author bsteffen
@@ -578,14 +582,19 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public boolean isSelected(E event);
 
     /**
+     * Determine whether the specified hazard event may accept the specified
+     * geometry as its new geometry. It is assumed that the geometry is valid,
+     * i.e. {@link Geometry#isValid()} returns <code>true</code>.
+     * 
      * @param geometry
+     *            Geometry to be used.
      * @param hazardEvent
-     * @param checkGeometryValidity
-     * @return true if the geometry of the given hazardEvent can be modified to
-     *         the given geometry
+     *            Hazard event to have its geometry changed.
+     * @return True if the geometry of the given hazard event can be modified to
+     *         the given geometry, false otherwise,.
      */
     public boolean isValidGeometryChange(Geometry geometry,
-            ObservedHazardEvent hazardEvent, boolean checkGeometryValidity);
+            ObservedHazardEvent hazardEvent);
 
     /**
      * Find a UGC enclosing the given location. If that UGC is included in the
@@ -611,20 +620,18 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public void updateHazardAreas(IHazardEvent hazardEvent);
 
     /**
-     * Set the specified event's geometry to be as specified.
+     * Set the specified event's geometry to be as specified. It is assumed that
+     * the geometry is valid, that is, that {@link Geometry#isValid()} would
+     * return <code>true</code>.
      * 
      * @param eventID
      *            Identifier of the event that is to have its geometry modified.
      * @param geometry
      *            New geometry.
-     * @param checkValidity
-     *            Flag indicating whether or not geometry validity should be
-     *            checked before using it.
      * @return True if the geometry was set, false if it was not (for example,
-     *         if a validity check on the geometry failed).
+     *         the geometry of the specified event cannot be modified).
      */
-    public boolean setModifiedEventGeometry(String eventID, Geometry geometry,
-            boolean checkValidity);
+    public boolean setModifiedEventGeometry(String eventID, Geometry geometry);
 
     public void saveEvents(List<IHazardEvent> events);
 }

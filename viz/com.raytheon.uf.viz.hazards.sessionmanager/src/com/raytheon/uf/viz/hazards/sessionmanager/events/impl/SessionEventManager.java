@@ -125,6 +125,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventScriptExtra
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventVisualFeaturesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionLastChangedEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventConflictsModified;
@@ -150,7 +151,6 @@ import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.TopologyException;
-import com.vividsolutions.jts.operation.valid.IsValidOp;
 
 /**
  * Implementation of ISessionEventManager
@@ -354,6 +354,11 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  *                                      were specified in the settings (but rather, in the startup config).
  *                                      Also changed setModifiedEventGeometry() to return true if it succeeds
  *                                      in changing the geometry, false otherwise.
+ * Mar 26, 2016   15676    Chris.Golden Removed geometry validity checks (that is, checks to see if Geometry
+ *                                      objects pass the isValid() test), as the session event manager
+ *                                      shouldn't be policing this; it should assume it gets valid geometries.
+ *                                      Also added handler for visual feature change notifications to trigger
+ *                                      recommenders if appropriate.
  * </pre>
  * 
  * @author bsteffen
@@ -669,16 +674,15 @@ public class SessionEventManager implements
     }
 
     @Override
-    public boolean setModifiedEventGeometry(String eventID, Geometry geometry,
-            boolean checkValidity) {
+    public boolean setModifiedEventGeometry(String eventID, Geometry geometry) {
         ObservedHazardEvent event = this.getEventById(eventID);
-        return setModifiedEventGeometry(event, geometry, checkValidity);
+        return setModifiedEventGeometry(event, geometry);
     }
 
     private boolean setModifiedEventGeometry(ObservedHazardEvent event,
-            Geometry geometry, boolean checkValidity) {
+            Geometry geometry) {
         if (event != null) {
-            if (isValidGeometryChange(geometry, event, checkValidity)) {
+            if (isValidGeometryChange(geometry, event)) {
                 if (userConfirmationAsNecessary(event)) {
                     makeHighResolutionVisible(event);
                     event.setGeometry(geometry);
@@ -1801,6 +1805,38 @@ public class SessionEventManager implements
                 false);
         triggerRecommenderForFirstClassAttributeChange(change.getEvent(),
                 HazardEventFirstClassAttribute.GEOMETRY, change.getOriginator());
+    }
+
+    @Handler(priority = 1)
+    public void hazardVisualFeatureChanged(
+            SessionEventVisualFeaturesModified change) {
+
+        /*
+         * Get the recommender identifier that is to be triggered by visual
+         * feature changes; if there is one, and it is not the same as the
+         * recommender (if any) that caused the change, run that recommender.
+         */
+        String recommenderIdentifier = configManager
+                .getRecommenderTriggeredByChange(change.getEvent(),
+                        HazardEventFirstClassAttribute.VISUAL_FEATURE);
+        IOriginator originator = change.getOriginator();
+        if ((recommenderIdentifier != null)
+                && ((originator instanceof RecommenderOriginator == false) || (recommenderIdentifier
+                        .equals(((RecommenderOriginator) originator).getName()) == false))) {
+            sessionManager
+                    .getRecommenderManager()
+                    .runRecommender(
+                            recommenderIdentifier,
+                            RecommenderExecutionContext
+                                    .getHazardEventVisualFeatureChangeContext(
+                                            change.getEvent().getEventID(),
+                                            Sets.union(
+                                                    change.getBaseVisualFeatureIdentifiers(),
+                                                    change.getSelectedVisualFeatureIdentifiers()),
+                                            ((originator instanceof RecommenderOriginator)
+                                                    || (originator instanceof Originator) ? RecommenderTriggerOrigin.OTHER
+                                                    : RecommenderTriggerOrigin.USER)));
+        }
     }
 
     @Override
@@ -3861,45 +3897,28 @@ public class SessionEventManager implements
 
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
-     * #isValidGeometryChange(com.vividsolutions.jts.geom.Geometry,
-     * com.raytheon.
-     * uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent, boolean)
-     */
     @Override
+    @SuppressWarnings("unchecked")
     public boolean isValidGeometryChange(Geometry geometry,
-            ObservedHazardEvent hazardEvent, boolean checkGeometryValidity) {
+            ObservedHazardEvent hazardEvent) {
         boolean result = true;
-        if (checkGeometryValidity && !geometry.isValid()) {
-            IsValidOp op = new IsValidOp(geometry);
-            statusHandler.warn("Invalid Geometry: "
-                    + op.getValidationError().getMessage()
-                    + ": Geometry modification undone");
-            result = false;
-
-        } else if (hasEverBeenIssued(hazardEvent)) {
+        if (hasEverBeenIssued(hazardEvent)) {
             HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes()
                     .get(HazardEventUtilities.getHazardType(hazardEvent));
-            if (hazardTypeEntry != null) {
-                if (!hazardTypeEntry.isAllowAreaChange()) {
-                    @SuppressWarnings("unchecked")
-                    List<String> oldUGCs = (List<String>) hazardEvent
-                            .getHazardAttribute(HazardConstants.UGCS);
-                    ObservedHazardEvent eventWithNewGeometry = new ObservedHazardEvent(
-                            hazardEvent, this);
-                    eventWithNewGeometry.setGeometry(geometry);
-                    List<String> newUGCs = updateUGCs(eventWithNewGeometry);
-                    newUGCs.removeAll(oldUGCs);
+            if ((hazardTypeEntry != null)
+                    && (hazardTypeEntry.isAllowAreaChange() == false)) {
+                List<String> oldUGCs = (List<String>) hazardEvent
+                        .getHazardAttribute(HazardConstants.UGCS);
+                BaseHazardEvent eventWithNewGeometry = new BaseHazardEvent(
+                        hazardEvent);
+                eventWithNewGeometry.setGeometry(geometry);
+                List<String> newUGCs = updateUGCs(eventWithNewGeometry);
+                newUGCs.removeAll(oldUGCs);
 
-                    if (!newUGCs.isEmpty()) {
-                        statusHandler
-                                .warn("This hazard event cannot be expanded in area.  Please create a new hazard event for the new areas.");
-                        result = false;
-                    }
+                if (!newUGCs.isEmpty()) {
+                    statusHandler
+                            .warn("This hazard event cannot be expanded in area.  Please create a new hazard event for the new areas.");
+                    result = false;
                 }
             }
         }

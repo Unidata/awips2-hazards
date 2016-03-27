@@ -342,6 +342,7 @@ class Recommender(RecommenderTemplate.Recommender):
                                               "textSize": "eventType",
                                               "label": str(event.get('objectID')) + " " + event.getHazardType(),
                                               "textColor": "eventType",
+                                              "dragCapability": "all",
                                               "geometry": { (VisualFeatures.datetimeToEpochTimeMillis(event.getStartTime()),
                                                              VisualFeatures.datetimeToEpochTimeMillis(event.getEndTime())): poly }
                                               }

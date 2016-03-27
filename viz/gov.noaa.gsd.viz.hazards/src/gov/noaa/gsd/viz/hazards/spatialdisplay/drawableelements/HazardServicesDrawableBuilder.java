@@ -7,7 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
 import gov.noaa.gsd.common.visuals.BorderStyle;
@@ -93,6 +92,10 @@ import com.vividsolutions.jts.geom.Puntal;
  * Nov 10, 2015 12762      Chris.Golden Added support for use of new recommender manager.
  * Mar 16, 2016 15676      Chris.Golden Added support for spatial entities.
  * Mar 22, 2016 15676      Chris.Golden Fixed bugs in spatial entity drawable building.
+ * Mar 26, 2016 15676      Chris.Golden Fixed bugs with creation of hazard event and
+ *                                      spatial entity drawables, and added ability to
+ *                                      have spatial entities be moved and edited by the
+ *                                      user.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -167,7 +170,8 @@ public class HazardServicesDrawableBuilder {
                     drawingAttributes, symbol, symbol, points, activeLayer,
                     spatialEntity.getIdentifier().getHazardEventIdentifier(),
                     true);
-            outerPoint.setVisualFeature(true);
+            outerPoint.setVisualFeatureIdentifier(spatialEntity.getIdentifier()
+                    .getVisualFeatureIdentifier());
             outerPoint
                     .setMovable(spatialEntity.getDragCapability() != DragCapability.NONE);
             collectionComponent.add(outerPoint);
@@ -187,7 +191,8 @@ public class HazardServicesDrawableBuilder {
                     drawingAttributes, symbol, symbol, points, activeLayer,
                     spatialEntity.getIdentifier().getHazardEventIdentifier(),
                     false);
-            innerPoint.setVisualFeature(true);
+            innerPoint.setVisualFeatureIdentifier(spatialEntity.getIdentifier()
+                    .getVisualFeatureIdentifier());
             innerPoint.setMovable(false);
             collectionComponent.add(innerPoint);
 
@@ -201,7 +206,7 @@ public class HazardServicesDrawableBuilder {
     }
 
     public AbstractDrawableComponent buildPoint(IHazardEvent hazardEvent,
-            int shapeNum, Layer activeLayer, String symbol) {
+            int shapeNum, Layer activeLayer, String symbol, boolean movable) {
         DECollection collectionComponent = new DECollection();
         try {
             drawingAttributes = new PointDrawingAttributes(sessionManager,
@@ -211,17 +216,21 @@ public class HazardServicesDrawableBuilder {
             List<Coordinate> points = buildPointCoordinates(shapeNum,
                     hazardEvent);
 
-            collectionComponent.add(new HazardServicesPoint(drawingAttributes,
-                    symbol, symbol, points, activeLayer, hazardEvent
-                            .getEventID(), true));
+            HazardServicesPoint outerPoint = new HazardServicesPoint(
+                    drawingAttributes, symbol, symbol, points, activeLayer,
+                    hazardEvent.getEventID(), true);
+            outerPoint.setMovable(movable);
+            collectionComponent.add(outerPoint);
 
             HazardServicesDrawingAttributes drawingAttributes = new PointDrawingAttributes(
                     sessionManager, PointDrawingAttributes.Element.INNER);
             drawingAttributes.setAttributes(shapeNum, hazardEvent);
 
-            collectionComponent.add(new HazardServicesPoint(drawingAttributes,
-                    symbol, symbol, points, activeLayer, hazardEvent
-                            .getEventID(), false));
+            HazardServicesPoint innerPoint = new HazardServicesPoint(
+                    drawingAttributes, symbol, symbol, points, activeLayer,
+                    hazardEvent.getEventID(), false);
+            innerPoint.setMovable(false);
+            collectionComponent.add(innerPoint);
 
         } catch (VizException e) {
             statusHandler.error(
@@ -273,7 +282,8 @@ public class HazardServicesDrawableBuilder {
                     drawingAttributes.getLineStyle().toString(), points,
                     activeLayer, spatialEntity.getIdentifier()
                             .getHazardEventIdentifier());
-            drawableComponent.setVisualFeature(true);
+            drawableComponent.setVisualFeatureIdentifier(spatialEntity
+                    .getIdentifier().getVisualFeatureIdentifier());
             DragCapability dragCapability = spatialEntity.getDragCapability();
             drawableComponent
                     .setEditable((dragCapability == DragCapability.PART)
@@ -396,7 +406,8 @@ public class HazardServicesDrawableBuilder {
                     (Geometry) spatialEntity.getGeometry().clone(),
                     activeLayer, spatialEntity.getIdentifier()
                             .getHazardEventIdentifier());
-            drawableComponent.setVisualFeature(true);
+            drawableComponent.setVisualFeatureIdentifier(spatialEntity
+                    .getIdentifier().getVisualFeatureIdentifier());
             DragCapability dragCapability = spatialEntity.getDragCapability();
             drawableComponent
                     .setEditable((dragCapability == DragCapability.PART)
@@ -581,7 +592,10 @@ public class HazardServicesDrawableBuilder {
                             drawable.setEditable(isEventEditable);
                         }
 
-                        drawable.setMovable(isEventEditable);
+                        if ((drawable instanceof HazardServicesSymbol == false)
+                                || (deCollection.size() == 1)) {
+                            drawable.setMovable(isEventEditable);
+                        }
 
                     }
 
@@ -691,17 +705,9 @@ public class HazardServicesDrawableBuilder {
      */
     private List<Coordinate> buildPointCoordinates(int shapeNum,
             IHazardEvent hazardEvent) {
-        Boolean selected = (Boolean) hazardEvent
-                .getHazardAttribute(HAZARD_EVENT_SELECTED);
-        double radius = 3.0;
-        if (selected) {
-            radius = 5.0;
-        }
         Coordinate centerPointInWorld = visibleGeometry(hazardEvent)
                 .getGeometryN(shapeNum).getCoordinate();
-
-        List<Coordinate> result = drawingAttributes.buildCircleCoordinates(
-                radius, centerPointInWorld);
+        List<Coordinate> result = Lists.newArrayList(centerPointInWorld);
         return result;
     }
 
@@ -990,7 +996,13 @@ public class HazardServicesDrawableBuilder {
         Class<?> geometryClass = geometry.getClass();
 
         if (geometryClass.equals(Point.class)) {
-            result = buildPoint(hazardEvent, shapeNum, activeLayer, DOT);
+
+            /*
+             * Assume that if the point to be built is the first shape in the
+             * hazard event, it should be movable; otherwise, it should not.
+             */
+            result = buildPoint(hazardEvent, shapeNum, activeLayer, DOT,
+                    (visibleGeometry(hazardEvent).getNumGeometries() == 1));
         } else if (geometryClass.equals(LineString.class)) {
             result = buildLine(hazardEvent, shapeNum, activeLayer);
 
@@ -1012,13 +1024,16 @@ public class HazardServicesDrawableBuilder {
      *            Spatial entity that is to be given a text component.
      */
     public void addTextComponentAtGeometryCenterPoint(
-            SpatialDisplay spatialDisplay, SpatialEntity<?> spatialEntity) {
+            SpatialDisplay spatialDisplay,
+            SpatialEntity<VisualFeatureSpatialIdentifier> spatialEntity) {
         if (spatialEntity.getLabel() != null
                 && spatialEntity.getLabel().isEmpty() == false) {
 
             AbstractDrawableComponent text = buildText(spatialEntity, null,
                     spatialDisplay.getActiveLayer());
-            ((HazardServicesText) text).setVisualFeature(true);
+            ((HazardServicesText) text)
+                    .setVisualFeatureIdentifier(spatialEntity.getIdentifier()
+                            .getVisualFeatureIdentifier());
             spatialDisplay.addElement(text, false);
         }
     }
