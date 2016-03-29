@@ -137,6 +137,7 @@ import com.raytheon.viz.ui.cmenu.IContextMenuContributor;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygonal;
@@ -1661,8 +1662,27 @@ public class SpatialDisplay extends
                 Geometry p = ((IHazardServicesShape) comp).getGeometry();
 
                 if (p != null) {
-                    boolean contains = (p instanceof Polygonal ? clickPoint
-                            .within(p) : clickPointWithSlop.intersects(p));
+                    boolean contains = false;
+                    if (p instanceof GeometryCollection) {
+                        GeometryCollection geometryCollection = (GeometryCollection) p;
+                        for (int j = 0; j < geometryCollection
+                                .getNumGeometries(); j++) {
+                            Geometry geometry = geometryCollection
+                                    .getGeometryN(j);
+                            if (geometry instanceof Polygonal) {
+                                contains = clickPoint.within(geometry);
+                            } else {
+                                contains = clickPointWithSlop
+                                        .intersects(geometry);
+                            }
+                            if (contains) {
+                                break;
+                            }
+                        }
+                    } else {
+                        contains = (p instanceof Polygonal ? clickPoint
+                                .within(p) : clickPointWithSlop.intersects(p));
+                    }
                     if (contains) {
                         containingSymbolsList.add(comp);
                     }
