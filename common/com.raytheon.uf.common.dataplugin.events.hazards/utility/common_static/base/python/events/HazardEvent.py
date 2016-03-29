@@ -43,9 +43,23 @@ from shapely import wkt
 
 from Event import Event
 
+from VisualFeatures import VisualFeatures
 from VisualFeaturesHandler import pyVisualFeaturesToJavaVisualFeatures, javaVisualFeaturesToPyVisualFeatures
-JUtil.registerPythonToJava(pyVisualFeaturesToJavaVisualFeatures)
-JUtil.registerJavaToPython(javaVisualFeaturesToPyVisualFeatures)
+
+# This is a kludge. It turns out that (at least with the Java-object-to-Python-value
+# conversions) the Java objects of type VisualFeaturesList are converted as standard
+# lists, which means that their elements (VisualFeature instances) are not converted
+# at all. The reason is that the Java-to-Python conversion handlers are called in the
+# order they are registered, and thus the handler provided here for VisualFeaturesList
+# objects is never used. For now, since JUtil cannot be changed as it's part of the
+# AWIPS2 baseline, the (ugly) solution is to directly access its lists of handlers and
+# prepend the visual feature conversion handlers to them.
+#
+# TODO: Come up with something better! Perhaps get rid of the VisualFeaturesList and
+# just use a standard list, and then register handlers to convert to and from Java
+# VisualFeature objects. 
+JUtil.pythonHandlers.insert(0, pyVisualFeaturesToJavaVisualFeatures)
+JUtil.javaHandlers.insert(0, javaVisualFeaturesToPyVisualFeatures)
 
 from java.util import Date
 from com.raytheon.uf.common.dataplugin.events.hazards import HazardConstants
@@ -157,13 +171,25 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             self.jobj.setGeometry(JUtil.pyValToJavaObj(geometry))
 
     def getBaseVisualFeatures(self):
-        return JUtil.javaObjToPyVal(self.jobj.getBaseVisualFeatures())
+        
+        # This may return a list, and not a VisualFeatures object (which is a
+        # list subclass), so build one of the latter out of the former.
+        visualFeatures = JUtil.javaObjToPyVal(self.jobj.getBaseVisualFeatures())
+        if visualFeatures is not None:
+            visualFeatures = VisualFeatures(visualFeatures)
+        return visualFeatures
     
     def setBaseVisualFeatures(self, visualFeatures):
         self.jobj.setBaseVisualFeatures(JUtil.pyValToJavaObj(visualFeatures))
 
     def getSelectedVisualFeatures(self):
-        return JUtil.javaObjToPyVal(self.jobj.getSelectedVisualFeatures())
+        
+        # This may return a list, and not a VisualFeatures object (which is a
+        # list subclass), so build one of the latter out of the former.
+        visualFeatures = JUtil.javaObjToPyVal(self.jobj.getSelectedVisualFeatures())
+        if visualFeatures is not None:
+            visualFeatures = VisualFeatures(visualFeatures)
+        return visualFeatures
     
     def setSelectedVisualFeatures(self, visualFeatures):
         self.jobj.setSelectedVisualFeatures(JUtil.pyValToJavaObj(visualFeatures))

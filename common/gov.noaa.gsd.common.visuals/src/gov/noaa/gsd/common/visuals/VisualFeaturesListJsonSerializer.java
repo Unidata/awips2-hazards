@@ -38,7 +38,7 @@ import com.vividsolutions.jts.io.WKTWriter;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Feb 24, 2016   15676    Chris.Golden Initial creation.
- * 
+ * Mar 29, 2016   15676    Chris.Golden Altered to allow
  * </pre>
  * 
  * @author Chris.Golden
@@ -485,7 +485,7 @@ class VisualFeaturesListJsonSerializer {
     // Package Static Methods
 
     /**
-     * Sserialize the specified visual features list as JSON using the specified
+     * Serialize the specified visual features list as JSON using the specified
      * generator.
      * 
      * @param visualFeatures
@@ -711,10 +711,10 @@ class VisualFeaturesListJsonSerializer {
                 for (Map.Entry<Range<Date>, P> entry : propertiesForTimeRanges
                         .entrySet()) {
                     Range<Date> timeRange = entry.getKey();
-                    generator.writeFieldName(formatTimestamp(timeRange
-                            .lowerEndpoint())
+                    generator.writeFieldName(timeRange.lowerEndpoint()
+                            .getTime()
                             + " "
-                            + formatTimestamp(timeRange.upperEndpoint()));
+                            + timeRange.upperEndpoint().getTime());
                     serializer.serializeProperty(entry.getValue(), generator,
                             identifier);
                 }
@@ -733,19 +733,6 @@ class VisualFeaturesListJsonSerializer {
                             + "\" could not be serialized due to an unexpected problem",
                     e);
         }
-    }
-
-    /**
-     * Format the specified timestamp as a string using the format specified by
-     * {@link VisualFeaturesListJsonConverter#TIMESTAMP_FORMAT_PATTERN}.
-     * 
-     * @param timestamp
-     *            Timestamp to be formatted as a string.
-     * @return String holding formatted timestamp.
-     */
-    private static String formatTimestamp(Date timestamp) {
-        return VisualFeaturesListJsonConverter.timestampFormat.get().format(
-                timestamp);
     }
 
     /**
