@@ -122,6 +122,10 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Mar 26, 2016 15676      Chris.Golden      Added check of Geometry objects' validity, and also method
  *                                           to allow the presenter to be notified of changes made by
  *                                           the user to visual features.
+ * Mar 29, 2016 15676      Chris.Golden      Fixed bug inherited from H.S. operational causing pending
+ *                                           events to never be filtered out of the spatial display
+ *                                           due to their time ranges not intersecting with the current
+ *                                           selected time.
  * </pre>
  * 
  * @author Chris.Golden
@@ -820,11 +824,10 @@ public class SpatialPresenter extends
 
             /*
              * Unissued storm track operations should not be filtered by the
-             * selected time, but anything else that is not pending should be.
+             * selected time, but everything else should be.
              */
-            if ((event.getStatus() != HazardStatus.PENDING)
-                    && ((event.getHazardAttribute(HazardConstants.TRACK_POINTS) == null) || HazardStatus
-                            .hasEverBeenIssued(event.getStatus()))) {
+            if ((event.getHazardAttribute(HazardConstants.TRACK_POINTS) == null)
+                    || HazardStatus.hasEverBeenIssued(event.getStatus())) {
                 if (doesEventOverlapSelectedTime(event, selectedTime) == false) {
                     it.remove();
                 }
