@@ -15,35 +15,38 @@
     #"eventIdDisplayType" : "PROG_ON_DIFF",
 
 
-Prob_WFO = {
-    "settingsID" : "Prob_WFO",
-    "perspectiveIDs" : ["com.raytheon.viz.hydro.HydroPerspective",
-                        "com.raytheon.viz.mpe.ui.MPEPerspective",
-                        "com.raytheon.uf.viz.d2d.ui.perspectives.D2D5Pane",
-                        "com.raytheon.viz.ui.GFEPerspective"],
-    "displayName": "Probabilistic Convective",
+Prob_StormPrediction = {
+    "settingsID" : "Prob_StormPrediction",
+    "perspectiveIDs" : [],
+    "displayName": "Probabilistic Storm Prediction",
     "possibleSites": ["National"],
     "visibleSites": ["National"],
-    
+
     "visibleTypes": [
-        "Prob_Tornado",
-        "Prob_Severe",
+         "Prob_Convection",'Prob_Convection.Thunderstorms', 'Prob_Convection.Marginal',
+         'Prob_Convection.Slight','Prob_Convection.Enhanced','Prob_Convection.Moderate','Prob_Convection.High',
+#        "Prob_Rainfall",'Prob_Rainfall.SeeText', 'Prob_Rainfall.Slight','Prob_Rainfall.Moderate',
+#        'Prob_Rainfall.High',
     ],
     "hazardCategoriesAndTypes": [
         {
-        "displayString": "Prob Convective",
+        "displayString": "Prob Weather Prediction",
         "children": [
-        "Prob_Tornado",
-        "Prob_Severe",
+        "Prob_Rainfall",
+        ]
+        },
+        {
+        "displayString": "Prob Storm Prediction",
+        "children": [
+        "Prob_Convection",
         ]
         }
     ],
-    "defaultTimeDisplayDuration": 10000000, #14400000,  # 172800000,
-    "defaultCategory" : "Prob Convective",
+    "defaultTimeDisplayDuration": 172800000,
+    "defaultCategory" : "Prob Storm Prediction",
     "defaultDuration": 28800000,
     "visibleColumns": [
         "Event ID",
-        "Object ID",
         "Hazard Type",
         "Status",
         "Start Time",
@@ -127,33 +130,43 @@ Prob_WFO = {
             "fieldName": "siteID",
             "sortDir": "none"
         },
-        #=======================================================================
-        # "VTEC Codes": {
-        #     "type": "string",
-        #     "fieldName": "vtecCodes",
-        #     "sortDir": "none"
-        # },
-        # "ETNs": {
-        #     "type": "string",
-        #     "fieldName": "etns",
-        #     "sortDir": "none"
-        # },
-        # "PILs": {
-        #     "type": "string",
-        #     "fieldName": "pils",
-        #     "sortDir": "none"
-        # },
-        #=======================================================================
+        "VTEC Codes": {
+            "type": "string",
+            "fieldName": "vtecCodes",
+            "sortDir": "none"
+        },
+        "ETNs": {
+            "type": "string",
+            "fieldName": "etns",
+            "sortDir": "none"
+        },
+        "PILs": {
+            "type": "string",
+            "fieldName": "pils",
+            "sortDir": "none"
+        },
         "Time to Expiration": {
             "sortDir": "none",
             "fieldName": "alert",
             "type": "countdown"
         },
-        "Object ID": {
+        "Point ID": {
             "sortDir": "none",
-            "fieldName": "objectID",
+            "fieldName": "pointID",
             "type": "string"
-            },
+        },
+        "River Mile": {
+            "sortPriority": 2,
+            "sortDir": "ascending",
+            "fieldName": "riverMile",
+            "type": "number"
+        },
+        "Stream": {
+            "sortPriority": 1,
+            "sortDir": "ascending",
+            "fieldName": "streamName",
+            "type": "string"
+        },
         "Workstation": {
             "sortDir": "none",
             "fieldName": "workStation", 
@@ -166,17 +179,12 @@ Prob_WFO = {
         },
     },
     "toolbarTools": [
-        {
-            "toolName": "ConvectiveRecommender",
-            "displayName": "Convective Recommender (PHI)",
-            "toolType": "RECOMMENDER",
-            "visible":True,
-        },
-        {
-            "toolName": "PHI_GridRecommender",
-            "displayName": "PHI Grid Recommender",
-            "toolType": "RECOMMENDER",
-            "visible":True,
-        }
+#         {
+#             "toolName": "DamBreakFloodRecommender",
+#             "displayName": "Dam/Levee Break Flood Recommender",
+#             "toolType": "RECOMMENDER",
+#             "visible":True,
+#         },
+#        }
     ],
 }

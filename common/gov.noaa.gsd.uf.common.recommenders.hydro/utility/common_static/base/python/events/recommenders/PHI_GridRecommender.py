@@ -1,5 +1,5 @@
 '''
-Swath recommender for probabilistic hazard types.
+PHI Grid recommender for probabilistic hazard types.
 '''
 import datetime, math
 import EventFactory, EventSetFactory, GeometryFactory
@@ -96,10 +96,9 @@ class Recommender(RecommenderTemplate.Recommender):
         sys.stderr.flush()
         
         swathRec = SwathRecommender()
+        eventSet.addAttribute('origin',"PHI_GridRecommender")
         swathRecEventSet = swathRec.execute(eventSet, None, None)
-        
-        
-        
+               
         self.processEvents(swathRecEventSet)
         return 
 
@@ -122,8 +121,8 @@ class Recommender(RecommenderTemplate.Recommender):
                 
                 ### Get polygon (swath)
                 ### get initial polygon
-                poly = event.getHazardAttributes().get('downStreamPolygons')
-                if poly is None:
+                polys = event.getHazardAttributes().get('downstreamPolys')
+                if polys is None:
                     continue
                 
                 ### Get probabilities
@@ -135,12 +134,12 @@ class Recommender(RecommenderTemplate.Recommender):
                 if startTime > timeStamp:
                     timeStamp = startTime
                 duration_seconds = (endTime-startTime).total_seconds()
-                numIvals = int(duration_seconds/60.0)
+                numIvals = int(duration_seconds/float(self._timeStep()))
                 probTrend = []
                 for i in range(numIvals):
                     probTrend.append(100-(i*100/numIvals))
 
-                probGrid = self.makeGrid(poly, probTrend, lons, lats, xMin1, xMax1, yMax1, yMin1)
+                probGrid = self.makeGrid(polys, probTrend, lons, lats, xMin1, xMax1, yMax1, yMin1)
                 probList.append(probGrid)
                     
         if len(probList):
@@ -289,4 +288,13 @@ class Recommender(RecommenderTemplate.Recommender):
         
     def __str__(self):
         return 'PHI Grid Recommender'
+
+    #########################################
+    ### OVERRIDES
+        
+    def _timeStep(self):
+        # Time step for downstream polygons and track points
+        return 60 # secs
+
+    #########################################
 

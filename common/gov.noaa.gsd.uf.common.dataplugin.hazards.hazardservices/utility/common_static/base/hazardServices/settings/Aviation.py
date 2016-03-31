@@ -18,7 +18,7 @@ Aviation = {
     "settingsID" : "Aviation",
     "perspectiveIDs" : [
                         ],
-    "displayName": "Aviation",
+    "displayName": "", #"Aviation",
     "visibleTypes": [
         "SIGMET.W",
     ],

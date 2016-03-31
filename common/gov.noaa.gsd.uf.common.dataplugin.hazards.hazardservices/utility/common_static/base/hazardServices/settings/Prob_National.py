@@ -17,7 +17,7 @@
 Prob_National = {
     "settingsID" : "Prob_National",
     "perspectiveIDs" : [],
-    "displayName": "Probabilistic National",
+    "displayName": "", #"Probabilistic National",
     "visibleTypes": [
         "Prob_Convection",'Prob_Convection.Thunderstorms', 'Prob_Convection.Marginal',
         'Prob_Convection.Slight','Prob_Convection.Enhanced','Prob_Convection.Moderate','Prob_Convection.High',

@@ -115,32 +115,29 @@ class Product(Prob_Generator.Product):
             else:
                 phensig = phen
             if phensig in ["Prob_Tornado",'Prob_Severe']:
-                probHazardEvents.append(hazardEvent)
-                
+                probHazardEvents.append(hazardEvent)                
 
         if not probHazardEvents:
             return [], []
 
-        # Update this with correct hazards
         self._inputHazardEvents = probHazardEvents
-        if probHazardEvents:
+        productDicts = []
+        for hazardEvent in probHazardEvents:
             self._WFO = 'XXX'
-            hazardEvent = probHazardEvents[0]
             hazardEvent.set('issueTime', self._issueTime)
+            # Set expire time. This should coincide with the zero probability.
+            # TO DO --convert hazard end time to millis
+            hazardEvent.set('expirationTime', int(self._datetimeToMs(hazardEvent.getEndTime())))
             hazardAttrs = hazardEvent.getHazardAttributes()
             self._objectID = hazardEvent.get('objectID') if hazardEvent.get('objectID') else hazardEvent.getDisplayEventID()
-            probAttrs = hazardEvent.get("probSeverAttrs")
-            self._automated = True
-            if not probAttrs:
-                probAttrs = {}
-                self._automated = False
-            self._percentage = probAttrs.get('probabilities', '54')
+            self._userOwned = hazardEvent.get('userOwned', False)
+            self._percentage = hazardEvent.get('probabilities', '54')
             # Convert to a string
-            self._direction = self._convertDirection(probAttrs.get('convectiveObjectDir', 270))
+            self._direction = self._convertDirection(hazardEvent.get('convectiveObjectDir', 270))
             # Convert to mph
             self._speed = round(hazardAttrs.get('convectiveObjectSpdKts', 32)  * 1.15)
-            st = float(time.mktime(hazardEvent.getStartTime().timetuple())) * 1000
-            et = float(time.mktime(hazardEvent.getEndTime().timetuple())) * 1000
+            st =  self._datetimeToMs(hazardEvent.getStartTime())
+            et =  self._datetimeToMs(hazardEvent.getEndTime())
             self._startTime = self._timeFormat(st)
             self._endTime = self._timeFormat(et)
             self._headline = hazardAttrs.get('headline', 'Probabilistic Severe')
@@ -151,24 +148,27 @@ class Product(Prob_Generator.Product):
             #print "    start, end time, issueTime", hazardEvent.getStartTime(), hazardEvent.getEndTime(), hazardEvent.get('issueTime')
             self.flush()
                            
-        productDict = collections.OrderedDict()
-        self._initializeProductDict(productDict, eventSetAttributes)
-        productDict['productText'] =  self._getDummyText()
-        productDict['issueTime'] = self._issueTime
-        productDicts = [productDict]
+            productDict = collections.OrderedDict()
+            self._initializeProductDict(productDict, eventSetAttributes)
+            productDict['productText'] =  self._getText()
+            productDict['issueTime'] = self._issueTime
+            productDicts.append(productDict)
 
         #productDicts, hazardEvents = self._makeProducts_FromHazardEvents(probHazardEvents, eventSetAttributes)
 
-        return productDicts, [hazardEvent]
+        return productDicts, probHazardEvents
+    
+    def _datetimeToMs(self, datetime):
+        return float(time.mktime(datetime.timetuple())) * 1000
 
-    def _getDummyText(self):
+    def _getText(self):
         fcst =  '''
         Probabilistic Hazard Information Bulletin        
         '''
         fcst = fcst + '''
         WHAT:  ''' + self._headline + '    '   + `self._percentage` + '%'
         fcst = fcst + '''
-           Thread ID: ''' + self._objectID + '  Automated Threat: ' + str(self._automated)
+           Thread ID: ''' + self._objectID + '  User-Owned Threat: ' + str(self._userOwned)
         fcst = fcst + '''
            
         WHEN: 

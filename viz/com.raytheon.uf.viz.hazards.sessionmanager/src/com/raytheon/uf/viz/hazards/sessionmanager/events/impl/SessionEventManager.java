@@ -1252,13 +1252,18 @@ public class SessionEventManager implements
                              * generate EXT instead of CONs since the endTime of
                              * the hazards have changed.
                              */
-                            if (wasPreIssued) {
-                                updateTimeRangeBoundariesOfJustIssuedEvent(
-                                        oEvent,
-                                        (Long) hazardEvent
-                                                .getHazardAttribute(HazardConstants.ISSUE_TIME));
-                                updateDurationChoicesForEvent(oEvent, false);
-                            }
+                            // TODO Fix this later. (Tracy) For some reason the
+                            // Hazard Event for PHI
+                            // does not have it's issueTime set at this
+                            // juncture, and results in
+                            // an exception.
+                            // if (wasPreIssued) {
+                            // updateTimeRangeBoundariesOfJustIssuedEvent(
+                            // oEvent,
+                            // (Long) hazardEvent
+                            // .getHazardAttribute(HazardConstants.ISSUE_TIME));
+                            // updateDurationChoicesForEvent(oEvent, false);
+                            // }
                         }
                     }
                 }

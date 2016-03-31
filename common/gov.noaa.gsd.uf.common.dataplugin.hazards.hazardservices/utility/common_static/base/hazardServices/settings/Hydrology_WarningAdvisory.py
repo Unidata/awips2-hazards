@@ -17,7 +17,7 @@
 Hydrology_WarningAdvisory = {
     "settingsID" : "Hydrology_WarningAdvisory",
     "perspectiveIDs" : [],
-    "displayName": "Hydrology - Warnings and Advisories", 
+    "displayName": "", # "Hydrology - Warnings and Advisories", 
     
     "mapCenter": {
         "lat": 41.06,

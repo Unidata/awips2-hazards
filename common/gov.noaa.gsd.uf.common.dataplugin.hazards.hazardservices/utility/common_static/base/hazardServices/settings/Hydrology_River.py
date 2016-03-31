@@ -17,7 +17,7 @@
 Hydrology_River = {
     "settingsID" : "Hydrology_River",
     "perspectiveIDs" : [],
-    "displayName": "Hydrology - River", 
+    "displayName": "", # "Hydrology - River", 
     
     "mapCenter": {
         "lat": 41.06,

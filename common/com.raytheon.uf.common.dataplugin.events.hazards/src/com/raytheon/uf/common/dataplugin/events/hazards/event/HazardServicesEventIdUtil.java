@@ -45,14 +45,12 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 03, 2015 8836       Chris.Cody  Initial creation
- * <<<<<<< HEAD
- * =======
+ *  
  * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through request server
  * Oct 27, 2015 12077    Ben.Phillippe Removed unnecessary status message
  * Jan 20, 2016 14980      kbisanz     Fixed string compare issue in
  *                                     getDisplayId() causing the full ID to
  *                                     be returned
- * >>>>>>> 88336ec... Issue #14980 Fix full ID incorrectly displayed when FULL_ON_DIFF set.
  * </pre>
  * 
  * @author Chris.Cody

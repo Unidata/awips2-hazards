@@ -52,10 +52,7 @@ MILLIS_PER_SECOND = 1000
 DEFAULT_DURATION_IN_SECS = 2700 # 45 minutes
 #DEFAULT_DURATION_IN_SECS = 120
 PROBABILITY_FILTER = 40 # filter our any objects less than this.
-SOURCEPATH = '/awips2/edex/data/hdf5/convectprob'
-
-DEFAULT_WDIR = 270
-DEFAULT_WSPD = 32     
+SOURCEPATH = '/awips2/edex/data/hdf5/convectprob'    
 
 class Recommender(RecommenderTemplate.Recommender):
 
@@ -79,8 +76,7 @@ class Recommender(RecommenderTemplate.Recommender):
             Column8: Comma separated list of lats and lons. "Lat1, Lon1,...,Lat(n),Lon(n),Lat1,Lon1. Lat1 and Lon1 pair are at the end of the list, too, in order to close the polygon
             Column9: ObjectID (long)
             Column10: mean motion east, in m/s (float)
-            Column11: mean motcan't multiply sequence by non-int of type 'float'
-    at /home/hansen/caveData/common/base/python/events/recommenders/SwathRecommender.downStream(SwathRecommion south, in m/s (float)
+            Column11: mean motion south, in m/s (float)
         """
 
     #===========================================================================
@@ -168,13 +164,18 @@ class Recommender(RecommenderTemplate.Recommender):
         
         currentEvents = self.getCurrentEvents(eventSet)        
         recommendedEventDict = self.getRecommendedEvents(currentTime, latestCurrentTime)
+        recommendedEventDict = self.filterForUserOwned(currentEvents, recommendedEventDict)
                 
         mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventDict, currentTime)
         
         #for evt in mergedEventSet:
-        #    print 'ME:', evt.getHazardAttributes().get('removeEvent'), evt.getHazardAttributes().get('probSeverAttrs').get(OBJECT_ID), evt.getCreationTime(), evt.getStartTime(), evt.getEndTime()
+        #    print 'ME:', evt.getHazardAttributes().get('removeEvent')
+        #    #  Tracy -- Not sure about this -- does probSeverAttrs really have an OBJECT_ID entry?
+        #    #   It thought it only had wdir and wspd
+        #    print evt.getHazardAttributes().get('probSeverAttrs').get(OBJECT_ID) 
+        #    print evt.getCreationTime(), evt.getStartTime(), evt.getEndTime()
         
-#        ### REMOVE ME!! This is to automate the PHIGRidRecommender following
+#        ### REMOVE ME!! This is to automate the PHI_GridRecommender following
 #        ### execution of the Convective recommender until we find a better 
 #        ### way to implement this  
 #        pgr = PHIGridRecommender()
@@ -191,8 +192,8 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def _uvToSpdDir(self, motionEasts, motionSouths):
         if motionEasts is None or motionSouths is None:
-            wdir = DEFAULT_WDIR
-            wspd = DEFAULT_WSPD #kts
+            wdir = self._defaultWindDir()
+            wspd = self._defaultWindSpeed() #kts
         else:
             u = float(motionEasts)
             v = -1.*float(motionSouths)
@@ -335,13 +336,12 @@ class Recommender(RecommenderTemplate.Recommender):
         hazardEvent.setHazardStatus("potential")
         hazardEvent.setHazardMode("O")        
         
-        
-        
-
         hazardEvent.setPhenomenon("Prob_Severe")
         
         polygon = loads(values.pop('polygons'))
         hazardEvent.setGeometry(polygon)
+        hazardEvent.set('convectiveObjectDir', values.get('wdir'))
+        hazardEvent.set('convectiveObjectSpdKts', values.get('wspd'))
         hazardEvent.set('probSeverAttrs',values)
         hazardEvent.set('objectID', ID)
         
@@ -353,16 +353,16 @@ class Recommender(RecommenderTemplate.Recommender):
         psEndTime = psStartTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
         event.set('probSevereEndTime', self._getMillis(psEndTime)) 
         # Current time rounded to nearest minute
-        startTime = self.roundTime(currentTime) 
+        startTime = self._roundTime(currentTime) 
         endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
         event.setStartTime(startTime)
         event.setEndTime(endTime)
             
     def mergeHazardEvents(self, currentEventsList, recommendedEventDict, currentTime):    
-        ### if no recommended events, return current events
+        ### if no recommended events
         if len(recommendedEventDict) == 0:
-            #print '[1] No NEW records, returning CURRENT events...'
-            return currentEventsList
+            #print '[1] No NEW records, returning no events
+            return [] # We only want to return events we have changed
         
         mergedEvents = EventSet(None)
         ### recommended events but no current events
@@ -373,25 +373,19 @@ class Recommender(RecommenderTemplate.Recommender):
                 mergedEvents.add(recommendedEvent)
             return mergedEvents
 
-        nonManualCurrentEvents = EventSet(None)
-        manualCurrentEvents = EventSet(None)
+        # Do not change UserOwned currentEvents
+        nonUserOwnedCurrentEvents = EventSet(None)
         for c in currentEventsList:
-            if c.get('objectID'):
-                if not c.get('objectID').startswith('M'):
-                    nonManualCurrentEvents.add(c)
-                else:
-                    manualCurrentEvents.add(c)
-                    mergedEvents.add(c)
-            else:
-                mergedEvents.add(c)
-                
+            if not c.get('userOwned'): 
+                nonUserOwnedCurrentEvents.add(c)
+                            
         recEventObjectIDs = sorted(recommendedEventDict.keys())
         
         ### Manual Events are filtered out, so now only need to worry about merging/comparing automated events
-        nonManualCurrEventObjectIDs = list(set([c.get('objectID') for c in nonManualCurrentEvents]))
+        nonUserOwnedObjectIDs = list(set([c.get('objectID') for c in nonUserOwnedCurrentEvents]))
                 
         ### Using set difference, obtain new recommended objects and add
-        newRecs = list(set(recEventObjectIDs).difference(set(nonManualCurrEventObjectIDs)))
+        newRecs = list(set(recEventObjectIDs).difference(set(nonUserOwnedObjectIDs)))
         for newRec in newRecs:
             #print '[3] Adding NEW event', newRec, ' to mergedEvents'            
             recommendedEvent = self.makeHazardEvent(newRec, recommendedEventDict[newRec], currentTime)
@@ -424,10 +418,10 @@ class Recommender(RecommenderTemplate.Recommender):
                 mergedEvents.add(recommendedEvent)
                             
         ### Using set difference, obtain expired (recommended event ID no longer present) IDs and set hazardEvent to 'ended'
-        expiredRecs = list(set(nonManualCurrEventObjectIDs).difference(set(recEventObjectIDs)))
+        expiredRecs = list(set(nonUserOwnedObjectIDs).difference(set(recEventObjectIDs)))
         for expiredRec in expiredRecs:
             #print '[4] Found event', expiredRec, ' to potentially be removed...'
-            for currentEvent in nonManualCurrentEvents:
+            for currentEvent in nonUserOwnedObjectIDs:
                 if currentEvent.get('objectID') == expiredRec:
                     if currentEvent.getStatus() != 'ISSUED' and currentEvent.get('objectID'):
                         currentEvent.set('vtecCodes', ['CAN'])
@@ -436,8 +430,8 @@ class Recommender(RecommenderTemplate.Recommender):
                         mergedEvents.add(currentEvent)
         
         ### Using set intersection, update current events with recommended event attributes
-        updates = list(set(recEventObjectIDs).intersection(set(nonManualCurrEventObjectIDs)))
-        for currentEvent in nonManualCurrentEvents:
+        updates = list(set(recEventObjectIDs).intersection(set(nonUserOwnedObjectIDs)))
+        for currentEvent in nonUserOwnedCurrentEvents:
             currID = currentEvent.get('objectID')
             #print '[5] Potentially updating event', currID, ' (status', currentEvent.getStatus(), ')'
             if currID not in expiredRecs and currID in recommendedEventDict:
@@ -447,8 +441,10 @@ class Recommender(RecommenderTemplate.Recommender):
                 try:
                     currentEvent.setGeometry(recommendedEvent.pop('polygons'))
                 except:
-                    print 'WHAT\'S WRONG WITH THIS POLYGON?', type(recommendedEvent.get('polygons')) 
+                    print 'ConvectiveRecommender: WHAT\'S WRONG WITH THIS POLYGON?', currID, type(recommendedEvent.get('polygons')) 
                     
+                currentEvent.set('convectiveObjectDir', recommendedEvent.get('wdir'))
+                currentEvent.set('convectiveObjectSpdKts', recommendedEvent.get('wspd'))
                 currentEvent.set('probSeverAttrs',recommendedEvent)
                 mergedEvents.add(currentEvent)
                             
@@ -457,8 +453,24 @@ class Recommender(RecommenderTemplate.Recommender):
 #             print evt.get('objectID'), evt.getStatus()
 #         print '=== Done ==='        
         return mergedEvents
+    
+    def filterForUserOwned(self, currentEvents, recommendedEventDict):
+        newDict = {}
+        # Check the overlap of each recommended event with any "userOwned" currentEvent
+        #  If there is an overlap, do not include it
+        for ID, recommendedEvent in recommendedEventDict.iteritems():
+            overlap = False
+            for event in currentEvents:
+                if event.get('userOwned'):
+                    polygon = loads(recommendedEvent.pop('polygons'))
+                    if GeometryFactory.createPolygon(polygon).overlaps(event.getGeometry()):
+                        overlap = True
+            if not overlap:
+                newDict[ID] = recommendedEvent
+        return newDict
+
                             
-    def roundTime(self, dt=None, dateDelta=datetime.timedelta(minutes=1)):
+    def _roundTime(self, dt=None, dateDelta=datetime.timedelta(minutes=1)):
         """Round a datetime object to a multiple of a timedelta
         dt : datetime.datetime object, default now.
         dateDelta : timedelta object, we round to a multiple of this, default 1 minute.
@@ -477,8 +489,22 @@ class Recommender(RecommenderTemplate.Recommender):
         epoch = datetime.datetime.utcfromtimestamp(0)
         delta = dt - epoch
         return delta.total_seconds() * 1000.0
-                
+
     def flush(self):
         import os
         os.sys.__stdout__.flush()
+        
+        
+    #########################################
+    ### OVERRIDES
+    
+    def _defaultWindSpeed(self):
+        return 32
+    
+    def _defaultWindDir(self):
+        return 270
+
+    #########################################
+                
+
 

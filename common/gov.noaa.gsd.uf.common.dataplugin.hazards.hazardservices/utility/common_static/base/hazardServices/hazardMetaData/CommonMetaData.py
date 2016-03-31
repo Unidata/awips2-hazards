@@ -1811,19 +1811,21 @@ class MetaData(object):
 
     def convectiveGetAttrs(self):
         attrs = self.hazardEvent.getHazardAttributes()
-        probSeverAttrs = attrs.get('probSeverAttrs')
+        wdir = attrs.get('convectiveObjectDir')
+        wspd = attrs.get('convectiveObjectSpdKts')
         
-        vals = [['N/A', 'N/A']]
+        vals = []
         
-        if probSeverAttrs:
-            vals = [list((k, v)) for k, v in probSeverAttrs.iteritems()]
-            
-        #print "CommonMetaData convectiveGetAttrs probSeverAttrs, vals", probSeverAttrs, vals
-        #self.flush()
-            
+        if wdir:
+            vals.append(['wdir',wdir])
+        if wspd:
+            vals.append(['wspd',wspd])
+        if not wdir and not wspd:
+            vals.append(['N/A', 'N/A'])
+                        
         tbl = {
             "fieldType": "Table",
-            "fieldName": "probSvrAttrs",
+            "fieldName": "convectiveGetAttrs",
             "label": "Cell Attributes:",
             "lines": 4,
             "columnHeaders": [ "Category", "Value"],
@@ -1836,8 +1838,9 @@ class MetaData(object):
         mws = []
         # ThreatID
         mws.append(self._getConvectiveCellId())
-        # Threat Type
-        mws.append(self._getConvectiveThreatType())
+        # Threat Type  - Done by choosing Hazard Type Prob_Severe or Prob_Tornado
+        #mws.append(self._getConvectiveThreatType())
+        mws.append(self._getUserOwned())
         # Motion Vector
         mws.append(self._getConvectiveMotionVector())
         # Hazard Type (Svr/Tor)
@@ -1856,9 +1859,7 @@ class MetaData(object):
         mws.append(self._getConvectiveSwathPresets())
         # preview slider
         mws.append(self._getConvectivePreview())
-        
-        
-        
+                
         grp = {
             "fieldType": "Group",
             "fieldName": "convectiveGroup",
@@ -1870,10 +1871,22 @@ class MetaData(object):
             "expandHorizontally": True,
             "expandVertically": True,
             "fields": mws
-        }
-
-        
+        }        
         return grp
+    
+    def _getUserOwned(self):
+        if self.hazardEvent.get('userOwned'):
+            value = True
+        else:
+            value = False
+        print "CommonMetaData userOwned", value
+        self.flush()
+        return {
+            "fieldType": "CheckBox",
+            "fieldName": "convectiveUserOwned",
+            "label": "User Owned",
+            "values": value
+            }
     
     def _getConvectiveThreatType(self):
         threatType = {
@@ -1929,12 +1942,13 @@ class MetaData(object):
         
         return chars
         
-    def _getConvectiveCellId(self):
-        
+    def _getConvectiveCellId(self):        
         # ## For manually drawn hazards, go with hazard event ID as it should be unique
-        objectID = self.hazardEvent.get('objectID') if self.hazardEvent.get('objectID') else 'M' + self.hazardEvent.getDisplayEventID()
+        #  Manually drawn hazards are always userOwned
         if self.hazardEvent.get('objectID') is None:
-            self.hazardEvent.set('objectID', objectID)
+            self.hazardEvent.set('objectID',  'M' + self.hazardEvent.getDisplayEventID())
+            self.hazardEvent.set('userOwned', True)
+        objectID = self.hazardEvent.get('objectID')
         
         grp = {
             "fieldType": "Composite",
@@ -1966,13 +1980,8 @@ class MetaData(object):
 
 
     def _getConvectiveMotionVector(self):
-        probSvrAttrs = self.hazardEvent.get('probSeverAttrs')
-        if probSvrAttrs is not None:
-            wdir = probSvrAttrs.get('wdir') 
-            wspd = probSvrAttrs.get('wspd') 
-        else:
-            wdir = 270
-            wspd = 32  # kts
+        wdir = self.hazardEvent.get('convectiveObjectDir', 270)
+        wspd = self.hazardEvent.get('convectiveObjectSpdKts', 32) 
         
         grp = {
             "fieldType": "Composite",
@@ -2009,7 +2018,7 @@ class MetaData(object):
                         "label": "deg @",
                         "sendEveryChange": False,
                         "minValue": 0,
-                        "maxValue": 75,
+                        "maxValue": 500,
                         "values": int(wspd),
                         "showScale": False,
                         "modifyRecommender": "SwathRecommender"
@@ -2037,7 +2046,7 @@ class MetaData(object):
                         "label": "Speed Uncertainty (kts)",
                         "sendEveryChange": False,
                         "minValue": 0,
-                        "maxValue": 40,
+                        "maxValue": 200,
                         "values": 10,
                         "showScale": False,
                         "modifyRecommender": "SwathRecommender"

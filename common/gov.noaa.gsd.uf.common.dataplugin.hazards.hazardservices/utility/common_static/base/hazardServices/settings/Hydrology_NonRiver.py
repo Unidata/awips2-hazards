@@ -17,7 +17,7 @@
 Hydrology_NonRiver = {
     "settingsID" : "Hydrology_NonRiver",
     "perspectiveIDs" : [],
-    "displayName": "Hydrology - Non River", 
+    "displayName": "", #"Hydrology - Non River", 
 
     "mapCenter": {
         "lat": 41.06,
