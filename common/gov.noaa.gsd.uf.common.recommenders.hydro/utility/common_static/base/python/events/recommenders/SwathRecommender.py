@@ -270,7 +270,10 @@ class Recommender(RecommenderTemplate.Recommender):
                                                 
             # Create Interval Polygons -- Input is motion vector and current time polygon
             self._createIntervalPolys(event, eventSetAttrs, timeDirection="downstream")
-            if self._firstTimeHazard:
+            
+            # Check if "first time pending hazard"
+            self._pendingHazard = event.getStatus() in ["PENDING", "POTENTIAL"]
+            if self._pendingHazard:
                 self._createIntervalPolys(event, eventSetAttrs, timeDirection="upstream")
                                             
             self._setVisualFeatures(event)
@@ -288,15 +291,12 @@ class Recommender(RecommenderTemplate.Recommender):
         # Initialize with current time polygon
         mvPolys = event.get('motionVectorPolys')
         if not mvPolys:
-            self._firstTimeHazard = True
             mvPolys = [event.getGeometry()]
             st = self._convertFeatureTime(self._currentTime, 0)
             et = self._convertFeatureTime(self._currentTime, self._timeStep())
             mvTimes = [(st, et)]
             event.set('motionVectorPolys', mvPolys)
             event.set('motionVectorTimes', mvTimes)
-        else:
-            self._firstTimeHazard = False
             
     def _advanceDownstreamPolys(self, event):
         ''' 
@@ -309,9 +309,6 @@ class Recommender(RecommenderTemplate.Recommender):
         if not downstreamPolys or not downstreamTimes:
             return
         index = 0
-        print "downstreamPolys", downstreamPolys
-        print "downstreamTimes", downstreamTimes
-        self.flush()
         for i in range(len(downstreamTimes)):
             st, et = downstreamTimes[i]
             if st >= self._currentTime:
@@ -324,6 +321,14 @@ class Recommender(RecommenderTemplate.Recommender):
         historyTimes = event.get('historyTimes', [])
         newHistPolys = historyPolys + downstreamPolys[:index]
         newHistTimes = historyTimes + downstreamTimes[:index]
+        
+        # Truncate historyPolys if there is a maximum limit set
+        maxHistory = self._historySteps()
+        if maxHistory and len(newHistPolys) > maxHistory:
+            index = len(newHistPolys) - maxHistory
+            newHistPolys = newHistPolys[index:]
+            newHistTimes = newHistTimes[index:]
+
         event.set('historyPolys', newHistPolys)
         event.set('historyTimes', newHistTimes)
          
@@ -423,65 +428,6 @@ class Recommender(RecommenderTemplate.Recommender):
                 ### Use default motionVector. 
                 ### Note, need to invert dir since Meteorological winds
                 ### by definition are entered in as *from*
-                u, v = self.get_uv(defaultSpeed, (180+defaultDir)%360)
-                speed = defaultSpeed
-            else: ### use i, i-1 pair
-                p1 = sortedPolys[i-1][0]
-                t1 = sortedPolys[i-1][1]
-                p2 = sortedPolys[i][0]
-                t2 = sortedPolys[i][1]
-                dist = self.getHaversineDistance(p1, p2)
-                speed = dist/ ((t2-t1)/ 1000)
-                bearing = self.getBearing(p1, p2)
-                u, v = self.get_uv(speed, bearing)
-
-            uList.append(u)
-            vList.append(v)
-
-
-        uStatsDict = self.weightedAvgAndStdDev(uList)
-        vStatsDict = self.weightedAvgAndStdDev(vList)
-
-        meanU = uStatsDict['weightedAverage']
-        stdU = uStatsDict['stdDev']
-
-        meanV = vStatsDict['weightedAverage']
-        stdV = vStatsDict['stdDev']
-
-        meanDir = 270 - (atan2(meanV,meanU) * (180 / math.pi))
-        meanSpd = math.sqrt(meanU**2 + meanV**2)
-
-        stdDir = atan2(stdV,stdU) * (180 / math.pi)
-        stdSpd = math.sqrt(stdU**2 + stdV**2)
-
-        return {
-                'convectiveObjectDir' : meanDir,
-                'convectiveObjectDirUnc' : stdDir,
-                'convectiveObjectSpdKts' : meanSpd*1.94384,
-                'convectiveObjectSpdKtsUnc' : stdSpd*1.94384
-                }
-
-
-         
-    def XX_computeMotionVector(self, polygonTuples, currentTime, defaultSpeed=32, defaultDir=270):
-        '''
-        polygonTuples is a list of tuples expected as:
-        [(poly1, startTime1), (poly2, startTime2),,,,(polyN, startTimeN)]
-        '''
-        meanU = None
-        meanV = None
-        uList = []
-        vList = []
-
-        ### Sort polygonTuples by startTime
-        sortedPolys = sorted(polygonTuples, key=lambda tup: tup[1])
-
-        ### Get create sorted list of u's & v's
-        for i in range(len(sortedPolys)):
-            if i == 0:
-                ### Use default motionVector. 
-                ### Note, need to invert dir since Meteorological winds
-                ### by definition are entered in as *from*
                 speed = defaultSpeed*0.514444
                 bearing = (180+defaultDir)%360
                 u, v = self.get_uv(speed, bearing)
@@ -497,7 +443,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
             uList.append(u)
             vList.append(v)
-
+            
         uStatsDict = self.weightedAvgAndStdDev(uList)
         vStatsDict = self.weightedAvgAndStdDev(vList)
 
@@ -507,17 +453,17 @@ class Recommender(RecommenderTemplate.Recommender):
         meanV = vStatsDict['weightedAverage']
         stdV = vStatsDict['stdDev']
 
-        meanDir = 270 - (atan2(meanV,meanU) * (180 / math.pi))
+        meanDir = atan2(-1*meanU,-1*meanV) * (180 / math.pi)
         meanSpd = math.sqrt(meanU**2 + meanV**2)
 
-        stdDir = atan2(stdV,stdU) * (180 / math.pi)
+        stdDir = atan2(stdV, stdU) * (180 / math.pi)
         stdSpd = math.sqrt(stdU**2 + stdV**2)
 
         return {
-                'convectiveObjectDir' : meanDir,
-                'convectiveObjectDirUnc' : stdDir,
+                'convectiveObjectDir' : meanDir%360,
+                'convectiveObjectDirUnc' : (stdDir%360)/2,
                 'convectiveObjectSpdKts' : meanSpd*1.94384,
-                'convectiveObjectSpdKtsUnc' : stdSpd*1.94384
+                'convectiveObjectSpdKtsUnc' : (stdSpd*1.94384)/2
                 }    
 
     def weightedAvgAndStdDev(self, xList):
@@ -526,13 +472,13 @@ class Recommender(RecommenderTemplate.Recommender):
         weightedAvg = np.average(arr, weights=weights)
         weightedVar = np.average((arr-weightedAvg)**2, weights=weights)
         return {'weightedAverage':weightedAvg, 'stdDev': math.sqrt(weightedVar)}
-        return (180+bearing) % 360 ### Wind comes *from*
 
     def get_uv(self, Spd, DirGeo):
         '''
         from https://www.eol.ucar.edu/content/wind-direction-quick-reference
         '''
         RperD = (math.pi / 180)
+        DirGeo = (180+DirGeo)%360
         Ugeo = (-1*Spd) * sin(DirGeo * RperD)
         Vgeo = (-1*Spd) * cos(DirGeo * RperD)
         return Ugeo, Vgeo
@@ -542,13 +488,22 @@ class Recommender(RecommenderTemplate.Recommender):
         denomenator = 0
         for i, val in enumerate(xList):
             numerator += ((i+1)*val)
-            #print '\tnum:', numerator, val
             denomenator += (i+1)
-        #print 'Num:', numerator
-        #print 'Den:', denomenator
         return numerator/denomenator
 
+    def getBearing(self, poly1, poly2):
+        lat1 = poly1.centroid.y
+        lon1 = poly1.centroid.x
+        lat2 = poly2.centroid.y
+        lon2 = poly2.centroid.x
+        # convert decimal degrees to radians 
+        lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
 
+        bearing = atan2(sin(lon2-lon1)*cos(lat2), cos(lat1)*sin(lat2)-sin(lat1)*cos(lat2)*cos(lon2-lon1))
+        bearing = degrees(bearing)
+        bearing = bearing % 360
+        return bearing
+    
     def getHaversineDistance(self, poly1, poly2):
         """
         Calculate the great circle distance between two points 
@@ -567,28 +522,6 @@ class Recommender(RecommenderTemplate.Recommender):
         c = 2 * math.asin(math.sqrt(a))
         meters = 6367000 * c # 6367000 Earth's radius in meters
         return meters
-
-    def getBearing(self, poly1, poly2):
-        lat1 = poly1.centroid.y
-        lon1 = poly1.centroid.x
-        lat2 = poly2.centroid.y
-        lon2 = poly2.centroid.x
-        # convert decimal degrees to radians 
-        lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
-
-        bearing = atan2(sin(lon2-lon1)*cos(lat2), cos(lat1)*sin(lat2)-sin(lat1)*cos(lat2)*cos(lon2-lon1))
-        bearing = degrees(bearing)
-        bearing = (bearing + 360) % 360
-        return bearing
-
-    def get_uv(self, speed, direction):
-        """
-        Given speed and direction (degrees oceanographic),
-        return u (zonal) and v (meridional) components.
-        """
-        u = speed * self.sind(direction)
-        v = speed * self.cosd(direction)
-        return u, v
 
     def sind(self, x):
         return sin(radians(x))
@@ -823,7 +756,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 #  changed feature and replace it 
                 found = False
                 for histPoly, histSt, histEt in motionVectorTuples:
-                    if abs(histSt-featureSt) <= 50*1000:                        
+                    if abs(histSt-featureSt) <= self._timeDelta_ms():                        
                         newMotionVector.append((featurePoly, histSt, histEt))
                         found = True
                         if histSt == eventSt_ms:
@@ -842,10 +775,6 @@ class Recommender(RecommenderTemplate.Recommender):
         
         # Make sure they are in time order
         newMotionVector.sort(self._sortPolys)
-        print "SR adjust new motionVector, found", found
-        for poly, st, et, in newMotionVector:
-            print "    ", st, et
-        self.flush()
         # Convert back to parallel lists for storing in event attributes
         motionVectorPolys = [poly for poly, st, et in newMotionVector]
         motionVectorTimes = [(st,et) for poly, st, et in newMotionVector]            
@@ -864,17 +793,48 @@ class Recommender(RecommenderTemplate.Recommender):
         downstreamPolys = event.get('downstreamPolys')
         if not downstreamPolys:
             return
-        downstreamTimes = event.get('downstreamTimes')
-    
+        
         baseVisualFeatures = [] 
         selectedVisualFeatures = [] 
-        geometry = event.getGeometry() 
         eventSt_ms = long(self._datetimeToMs(event.getStartTime()))
         upstreamSt_ms = eventSt_ms - (self._timeStep() * 1000 * self._upstreamTimeSteps())
-
-        #print 'SR eventSt_ms', eventSt_ms
-        #self.flush()
         
+        # Down Stream Features -- polygons, track points, relocated last motionVector
+        dsBaseVisualFeatures, dsSelectedVisualFeatures = self._downstreamVisualFeatures(
+                                    event, eventSt_ms, upstreamSt_ms)
+        baseVisualFeatures += dsBaseVisualFeatures
+        selectedVisualFeatures += dsSelectedVisualFeatures
+        
+        # Swath
+        swathFeature = self._swathFeature(event, upstreamSt_ms, downstreamPolys)                
+        selectedVisualFeatures.append(swathFeature)      
+        
+        # Previous Time Features
+        previousFeatures = self._previousTimeVisualFeatures(event, eventSt_ms)
+        selectedVisualFeatures += previousFeatures
+                            
+        if baseVisualFeatures:
+            event.setBaseVisualFeatures(VisualFeatures(baseVisualFeatures))
+        if selectedVisualFeatures:
+            event.setSelectedVisualFeatures(VisualFeatures(selectedVisualFeatures))
+            
+        if self._printVisualFeatures:
+             self._printFeatures(event, "Base Visual Features", baseVisualFeatures)
+             self._printFeatures(event, "Selected Visual Features", selectedVisualFeatures)
+
+
+    def _downstreamVisualFeatures(self, event, eventSt_ms, upstreamSt_ms):
+        downstreamPolys = event.get('downstreamPolys')
+        if not downstreamPolys:
+            return
+        downstreamTimes = event.get('downstreamTimes')
+        geometry = event.getGeometry() 
+
+        print 'SR eventSt_ms', eventSt_ms
+        self.flush()
+        
+        selectedVisualFeatures = []
+        baseVisualFeatures = []
         # Downstream Polygons, Track Points, Relocated Downstream 
         numIntervals = len(downstreamPolys)        
         for i in range(numIntervals):
@@ -905,7 +865,7 @@ class Recommender(RecommenderTemplate.Recommender):
                
             # Track Points 
             centroid = poly.centroid
-            color = self._getProbTrendColor(i, numIntervals)
+            color = self._getProbTrendColor(event, i, numIntervals)
             trackPointFeature = {
               "identifier": "trackPoint_"+str(polySt_ms),
               "borderColor": color,
@@ -932,31 +892,10 @@ class Recommender(RecommenderTemplate.Recommender):
                        }
                 }
                 selectedVisualFeatures.append(relocatedFeature)
- 
-        # History Polygons
-        historyPolys = event.get('historyPolys', [])
-        historyTimes = event.get('historyTimes', [])
-        numIntervals = len(historyPolys)        
-        for i in range(numIntervals):
-            poly = historyPolys[i]
-            polySt_ms, polyEt_ms = historyTimes[i]
-            polyEnd = polyEt_ms - 60*1000 # Take a minute off
-                 
-            historyFeature = {
-              "identifier": "history_"+str(polySt_ms),
-              "borderColor": "eventType",
-              "borderThickness": "eventType",
-              "borderStyle": "eventType",
-              "textSize": "eventType",
-              "label": str(event.get('objectID')) + " " + event.getHazardType(),
-              "textColor": "eventType",
-              "dragCapability": dragCapability, 
-              "geometry": {
-                   (polySt_ms, polyEnd): poly
-                  }
-                }
-            baseVisualFeatures.append(historyFeature)
-        
+                
+        return baseVisualFeatures, selectedVisualFeatures
+
+    def _swathFeature(self, event, upstreamSt_ms, downstreamPolys):
         envelope = shapely.ops.cascaded_union(downstreamPolys)
         swath = {
               "identifier": "swath",
@@ -969,51 +908,84 @@ class Recommender(RecommenderTemplate.Recommender):
                    envelope
                }
               }
-        selectedVisualFeatures.append(swath)        
-               
-        # Upstream polygons -- prior to current time
-        # Only shown for initial brand new hazard
-        if self._firstTimeHazard:
-            #print "\nDoing Upstream polys"
-            for i in range(self._upstreamTimeSteps()):
-                poly = self._upstreamPolys[i]
-                polySt_ms, polyEt_ms = self._upstreamTimes[i]
-                polyEt_ms = polySt_ms + ((self._timeStep()-60)*1000)
-                
-                # TODO Remove this once we're sure it's not needed i.e. can only nudge upstream for brand new only
-    #             for i in range(len(motionVectorPolys)):
-    #                 histPoly = motionVectorPolys[i]
-    #                 histSt_ms, histEt_ms = motionVectorTimes[i]
-    #                 if polySt_ms == histSt_ms:
-    #                     #print "SR Found previous motionVector"
-    #                     poly = histPoly
-                        
-                upstreamFeature = {              
-                  "identifier": "upstream_"+str(polySt_ms),
-                  "borderColor":  { "red": 1, "green": 1, "blue": 0 }, #"eventType", 
-                  "borderThickness": "eventType",
-                  "borderStyle": "eventType",
-                  "dragCapability": "all",
-                  "textSize": "eventType",
-                  "label": str(event.get('objectID')) + " " + event.getHazardType(),
-                  "textColor": "eventType",
-                  "geometry": {
-                      (polySt_ms, polyEt_ms): poly
-                   }
-                  }
-                selectedVisualFeatures.append(upstreamFeature)
+        return swath
 
-        #print ' ---- BASE VISUAL FEATURES FOR ', event.getEventID(), " = ", str(len(baseVisualFeatures)), ' ----'
-        #print ' ---- SELECTED VISUAL FEATURES FOR ', event.getEventID(), " = ", str(len(selectedVisualFeatures)), ' ----'
-                            
-        if baseVisualFeatures:
-            event.setBaseVisualFeatures(VisualFeatures(baseVisualFeatures))
-        if selectedVisualFeatures:
-            event.setSelectedVisualFeatures(VisualFeatures(selectedVisualFeatures))
+    def _previousTimeVisualFeatures(self, event, eventSt_ms):    
+        # Previous time polygons -- prior to current time
+        #
+        # If time has marched forward from the initial creation of the hazard, we could have
+        #  motionVectorPolys, historyPolys, and upstreamPolys (IF still pending)
+        #
+        # Choose to use in this order of preference:
+        #      motionVector polygon
+        #      then the history polygon
+        #      then if the hazard is pending
+        #         the upstream polygon
+        #
+        # All are editable if the hazard has not been issued yet.
+        # 
+        #print "\nDoing Previous time polys"
+        historyPolys = event.get('historyPolys', [])
+        historyTimes = event.get('historyTimes', [])
+        motionVectorPolys = event.get('motionVectorPolys', []) 
+        motionVectorTimes = event.get('motionVectorTimes', [])
+        previousFeatures = []
+        
+        #print "SR motionVector, history", motionVectorTimes, historyTimes
+        #if self._pendingHazard: print "Upstream", self._upstreamTimes
+        #self.flush()
+        
+        timeSteps = max(self._upstreamTimeSteps(), len(historyPolys))
+        if self._pendingHazard:
+            dragCapability = 'whole'
+            color = { "red": 1, "green": 1, "blue": 0 }
+        else:
+            dragCapability = 'none'
+            color = "eventType"
             
-#         if self._printVisualFeatures:
-#             self._printVisualFeatures("\nBase Visual Features", baseVisualFeatures)
-#             self._printVisualFeatures("\nSelected Visual Features", selectedVisualFeatures)
+        for i in range(timeSteps):
+            # Work backwards from current time
+            polySt_ms = eventSt_ms - (i+1)*self._timeStep()*1000
+            poly = self._findPreviousPoly(polySt_ms,
+                                          motionVectorPolys, motionVectorTimes, 
+                                          historyPolys, historyTimes)
+            if not poly:
+                continue
+            polyEt_ms = polySt_ms + ((self._timeStep()-60)*1000)
+                                
+            previousFeature = {              
+              "identifier": "previous_"+str(polySt_ms),
+              "borderColor":  color, #{ "red": 1, "green": 1, "blue": 0 }, #"eventType", 
+              "borderThickness": "eventType",
+              "borderStyle": "eventType",
+              "dragCapability": dragCapability,
+              "textSize": "eventType",
+              "label": str(event.get('objectID')) + " " + event.getHazardType(),
+              "textColor": "eventType",
+              "geometry": {
+                  (polySt_ms, polyEt_ms): poly
+               }
+              }
+            previousFeatures.append(previousFeature)
+        return previousFeatures
+
+
+    def _findPreviousPoly(self, polySt_ms, motionVectorPolys, motionVectorTimes, historyPolys, historyTimes):
+        for i in range(len(motionVectorTimes)):
+            st, et = motionVectorTimes[i]
+            if abs(st-polySt_ms) < self._timeDelta_ms():
+                return motionVectorPolys[i]
+        for i in range(len(historyTimes)):
+            st, et = historyTimes[i]
+            if abs(st-polySt_ms) < self._timeDelta_ms():
+                return historyPolys[i]
+        if not self._pendingHazard:
+            return None
+        for i in range(len(self._upstreamTimes)):
+            st, et = self._upstreamTimes[i]
+            if abs(st-polySt_ms) < self._timeDelta_ms():
+                return self._upstreamPolys[i]
+        return None
 
     ###############################
     # Helper methods              #
@@ -1057,8 +1029,12 @@ class Recommender(RecommenderTemplate.Recommender):
         # // is a floor division, not a comment on following line:
         rounding = (seconds+roundTo/2) // roundTo * roundTo
         return dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)
-    
-    def _getProbTrendColor(self, interval, numIvals):
+
+    def _timeDelta_ms(self):
+        # A tolerance for comparing millisecond times
+        return 50*1000
+        
+    def _getProbTrendColor(self, event, interval, numIvals):
         '''
         (range: color) e.g. ((0,20), { "red": 0, "green": 1, "blue": 0 } ), 
                           ((20,40), { "red": 1, "green": 1, "blue": 0 }),
@@ -1069,41 +1045,26 @@ class Recommender(RecommenderTemplate.Recommender):
             print "Invalid interval greater than numIntervals"
             return None
 
-        ### FIXME: will want probTrend list from probTrend megawidget
         probTrend = []
         for i in range(numIvals):
             probTrend.append(100-(i*100/numIvals))
-
-
         prob = probTrend[interval]
+        
+#         probTrendGraph = event.get('convectiveProbTrendGraph', [])
+#         if probTrendGraph:
+#             for d in probTrendGraph:
+#                 t1 = d.get('x')
+#                 if interval >= t1:
+#                     prob = d.get('y')
+#                     break 
+#         print "SR prob", prob
+#         self.flush()    
 
-        ### Should match PHI Prototype Tool
-        colors =  {
-            (0,20): { "red": 102/255.0, "green": 224/255.0, "blue": 102/255.0 }, 
-            (20,40): { "red": 255/255.0, "green": 255/255.0, "blue": 102/255.0 }, 
-            (40,60): { "red": 255/255.0, "green": 179/255.0, "blue": 102/255.0 }, 
-            (60,80): { "red": 255/255.0, "green": 102/255.0, "blue": 102/255.0 }, 
-            (80,101): { "red": 255/255.0, "green": 102/255.0, "blue": 255/255.0 }
-        }
-
-
+        colors = self._probTrendColors(event)
         for k, v in colors.iteritems():
             if prob in range(k[0], k[1]):
                 return v
-            
-#     def _getProbTrendColor(self, i, intervals):
-#         '''
-#         (range: color) e.g. ((0,20): { "red": 0, "green": 1, "blue": 0 } ), 
-#                           ((20,40), { "red": 1, "green": 1, "blue": 0 }), 
-# 
-#         '''
-# #         for range, color in self._probTrendColors():
-# #             min, max = range
-# #             if t_ms >= min and t_ms < max:
-# #                 return color
-# #         # default
-#         return { "red": 0, "green": 1, "blue": 0 }
-    
+                
     def _sortPolys(self, p1, p2):
         # Sort polygon tuples by start time
         poly1, st1, et1 = p1
@@ -1114,10 +1075,11 @@ class Recommender(RecommenderTemplate.Recommender):
             return 1
         return 0
             
-    def _printVisualFeatures(self, label, features):
-        print label
-        for feature in features:
-            print feature
+    def _printFeatures(self, event, label, features):
+        print label, event.getEventID(), " = ", str(len(features)), ' ----'
+        self.flush()
+        #for feature in features:
+        #    print feature
 
     def _printEventSet(self, label, eventSet, eventLevel=1):            
         print label
@@ -1182,25 +1144,27 @@ class Recommender(RecommenderTemplate.Recommender):
     def _upstreamTimeSteps(self):
         # Number of time steps for upstream polygons
         return 10 
-    
+
+    def _historySteps(self):
+        # Maximum number of history polygons to store
+        # Older polygons are dropped off as time progresses
+        return None
             
-    def _probTrendColors(self, interval, numIvals):
+    def _probTrendColors(self, event):
         '''
+        Should match PHI Prototype Tool
         (range: color) e.g. ((0,20), { "red": 0, "green": 1, "blue": 0 } ), 
                           ((20,40), { "red": 1, "green": 1, "blue": 0 }),
         
-        '''
-        probTrend = []
-        for i in range(numIntervals):
-            probTrend.append(100-(i*100/numIvals))
-            
-        colors =  [
-            ((0,20), { "red": 0, "green": 1, "blue": 0 }), 
-            ((20,40), { "red": 0, "green": 1, "blue": 0 }), 
-            ((40,60), { "red": 0, "green": 1, "blue": 0 }), 
-            ((60,80), { "red": 0, "green": 1, "blue": 0 }), 
-            ((80,101), { "red": 0, "green": 1, "blue": 0 }), 
-            ]
+        '''            
+        colors = {
+            (0,20): { "red": 102/255.0, "green": 224/255.0, "blue": 102/255.0 }, 
+            (20,40): { "red": 255/255.0, "green": 255/255.0, "blue": 102/255.0 }, 
+            (40,60): { "red": 255/255.0, "green": 179/255.0, "blue": 102/255.0 }, 
+            (60,80): { "red": 255/255.0, "green": 102/255.0, "blue": 102/255.0 }, 
+            (80,101): { "red": 255/255.0, "green": 102/255.0, "blue": 255/255.0 }
+        }
+        return colors
         
     # TO DO:  The Recommender should access HazardTypes.py for this 
     #   information
@@ -1208,7 +1172,7 @@ class Recommender(RecommenderTemplate.Recommender):
         return 20
     
     def _setPrintFlags(self):
-        self._printVisualFeatures = True
+        self._printVisualFeatures = False
         self._printEventSetAttributes = True
         self._printEventSetEvents = True
         self._printEvents = True
