@@ -66,8 +66,6 @@ import org.eclipse.swt.widgets.Widget;
  *                                           package, updated Javadoc and other
  *                                           comments.
  * Jun 24, 2014   4009     Chris.Golden      Added extra data functionality.
- * May 14, 2015   7560     mpduff            Added a debug statement for performance monitoring.
- * 
  * </pre>
  * 
  * @author Chris.Golden

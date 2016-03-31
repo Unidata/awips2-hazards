@@ -1,0 +1,26 @@
+[
+ {
+  "fieldType": "Graph",
+  "fieldName": "graph1",
+  "label": "Probability Over Time:",
+  "yMinimum": 0,
+  "yMaximum": 100,
+  "xHatchInterval": 5,
+  "yHatchInterval": 10,
+  "yLabelSuffix": "%",
+  "yColors": [
+              { "red": 1, "green": 1, "blue": 0 },
+              { "red": 1, "green": 0.9, "blue": 0 },
+              { "red": 1, "green": 0.8, "blue": 0 },
+              { "red": 1, "green": 0.7, "blue": 0 },
+              { "red": 1, "green": 0.6, "blue": 0 }
+             ],
+  "values": [{"x": -10, "y": 20, "editable": true}, {"x": 2, "y": 50, "editable": true}, {"x": 23, "y": 100, "editable": true}, {"x": 40, "y": 0, "editable": false}]
+ },
+ {
+  "fieldType": "CheckBox",
+  "fieldName": "editability",
+  "label": "Editable",
+  "values": true
+ }
+]

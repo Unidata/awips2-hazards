@@ -213,7 +213,7 @@ public abstract class StatefulMegawidgetSpecifier extends MegawidgetSpecifier
                 parameters, MEGAWIDGET_STATE_LABELS, "string", classes, "",
                 null, null, true);
 
-        /**
+        /*
          * Ensure that the only-for-interdependency flag, if present, is
          * acceptable.
          */
