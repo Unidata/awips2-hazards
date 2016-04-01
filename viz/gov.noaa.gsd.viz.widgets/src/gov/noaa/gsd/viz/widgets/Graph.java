@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
@@ -36,6 +37,9 @@ import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
+
 /**
  * Graph widget, allowing the display and manipulation of one or more plotted
  * points.
@@ -46,6 +50,8 @@ import org.eclipse.swt.widgets.Display;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Mar 30, 2016   15931    Chris.Golden Initial creation.
+ * Apr 01, 2016   15931    Chris.Golden Added capability to have user 
+ *                                      edit the points via dragging them.
  * </pre>
  * 
  * @author Chris.Golden
@@ -223,6 +229,11 @@ public class Graph extends Canvas {
     private int bottomInset;
 
     /**
+     * Last Y coordinate from a drag operation.
+     */
+    private int lastDragY;
+
+    /**
      * Specifier of the plotted point currently being dragged, or
      * <code>null</code> if none is being dragged.
      */
@@ -301,6 +312,14 @@ public class Graph extends Canvas {
      * List of upper Y boundaries for each color in {@link #rowColors}.
      */
     private final List<Integer> rowColorUpperBounds = new ArrayList<>();
+
+    /**
+     * Bidirectional map pairing rectangular boundaries for plotted points on
+     * the graph with the corresponding plotted points (the latter being
+     * references to those found in the {@link #plottedPoints} list).
+     */
+    private final BiMap<Rectangle, PlottedPoint> plottedPointsForPlottedPointBoundaries = HashBiMap
+            .create();
 
     // Public Constructors
 
@@ -704,7 +723,7 @@ public class Graph extends Canvas {
      * Set the plotted points.
      * 
      * @param points
-     *            New list of plotted points.
+     *            New list of plotted points; may be an empty list.
      * @return True if the points are set, false otherwise. They will not be set
      *         if any of them have duplicate X values.
      */
@@ -730,7 +749,8 @@ public class Graph extends Canvas {
 
         /*
          * Get the new minimum and maximum visible X values; if they have
-         * changed, recalculate display measurements.
+         * changed, recalculate display measurements. Otherwise, cancel any
+         * ongoing drag, since the new values trump anything the user was doing.
          */
         int minimumX = (plottedPoints.isEmpty() ? 0 : plottedPoints.get(0)
                 .getX());
@@ -741,6 +761,8 @@ public class Graph extends Canvas {
             minimumVisibleValueX = minimumX;
             maximumVisibleValueX = maximumX;
             computePreferredSize(true);
+        } else {
+            cancelOngoingDrag();
         }
 
         /*
@@ -1097,6 +1119,11 @@ public class Graph extends Canvas {
             sampleGC.dispose();
 
             /*
+             * Cancel any ongoing drag.
+             */
+            cancelOngoingDrag();
+
+            /*
              * Recompute the display measurements.
              */
             computeDisplayMeasurements();
@@ -1188,6 +1215,14 @@ public class Graph extends Canvas {
          * Calculate the upper Y boundaries of the color rows.
          */
         computeColorRowHeights();
+
+        /*
+         * Compute the rectangular boundaries for the plotted points.
+         */
+        plottedPointsForPlottedPointBoundaries.clear();
+        for (PlottedPoint point : plottedPoints) {
+            computePlottedPointBounds(point);
+        }
     }
 
     /**
@@ -1207,6 +1242,67 @@ public class Graph extends Canvas {
             totalSoFar += pixelsPerColorRow;
         }
         rowColorUpperBounds.add(graphHeight);
+    }
+
+    /**
+     * Compute the rectangular boundaries for the specified plotted point.
+     * 
+     * @param plottedPoint
+     *            Plotted point for which to compute the boundaries.
+     */
+    private void computePlottedPointBounds(PlottedPoint plottedPoint) {
+
+        /*
+         * Calculate the plotted point pixel values differently depending upon
+         * whether a coordinate happens to be on one of the hatch marks for its
+         * axis. If it is, calculating it this way ensures that no rounding
+         * errors cause the bounding box to be slightly off. Otherwise,
+         * calculate in a more straightforward manner using pixels per unit.
+         */
+        int x, y;
+        if ((pixelsPerHatchX != 0)
+                && ((plottedPoint.getX() - minimumVisibleValueX)
+                        % intervalHatchX == 0)) {
+            x = ((plottedPoint.getX() - minimumVisibleValueX) / intervalHatchX)
+                    * pixelsPerHatchX;
+        } else {
+            x = (int) (((plottedPoint.getX() - minimumVisibleValueX) * pixelsPerUnitX) + 0.5);
+        }
+        if ((pixelsPerHatchY != 0)
+                && ((plottedPoint.getY() - minimumVisibleValueY)
+                        % intervalHatchY == 0)) {
+            y = ((plottedPoint.getY() - minimumVisibleValueY) / intervalHatchY)
+                    * pixelsPerHatchY;
+        } else {
+            y = (int) (((plottedPoint.getY() - minimumVisibleValueY) * pixelsPerUnitY) + 0.5);
+        }
+        Point offset = getPixelOffsetsToGraph(getClientArea());
+        x += offset.x - (POINT_DIAMETER / 2);
+        y = offset.y + graphHeight - (y + (POINT_DIAMETER / 2));
+
+        /*
+         * Remove any mapping between the plotted point and a rectangle from
+         * earlier, and put in the new rectangle instead. The former has to be
+         * removed because with a BiMap, a value cannot be added that has an
+         * equivalent already existing as another entry's value.
+         */
+        plottedPointsForPlottedPointBoundaries.inverse().remove(plottedPoint);
+        plottedPointsForPlottedPointBoundaries.put(new Rectangle(x, y,
+                POINT_DIAMETER, POINT_DIAMETER), plottedPoint);
+    }
+
+    /**
+     * Get the pixel offset from the edge of the widget to the graph on each
+     * axis.
+     * 
+     * @param clientArea
+     *            Client area of the widget.
+     * @return Point holding the pixel offsets in each axis.
+     */
+    private Point getPixelOffsetsToGraph(Rectangle clientArea) {
+        return new Point((yLabelWidth == 0 ? 0 : yLabelWidth
+                + Y_AXIS_LABEL_BUFFER)
+                + clientArea.x, clientArea.y);
     }
 
     /**
@@ -1230,13 +1326,12 @@ public class Graph extends Canvas {
          */
         computePreferredSize(false);
         Rectangle clientArea = getClientArea();
-        int xOffset = (yLabelWidth == 0 ? 0 : yLabelWidth + Y_AXIS_LABEL_BUFFER)
-                + clientArea.x;
-        int yOffset = clientArea.y;
+        Point offset = getPixelOffsetsToGraph(clientArea);
 
         /*
-         * Get the default colors, as they are needed later.
+         * Get the default line width and colors, as they are needed later.
          */
+        int lineWidth = e.gc.getLineWidth();
         Color background = e.gc.getBackground();
         Color foreground = e.gc.getForeground();
 
@@ -1254,7 +1349,7 @@ public class Graph extends Canvas {
             int lastUpperBound = 0;
             for (int j = 0; j < rowColors.size(); j++) {
                 int upperBound = rowColorUpperBounds.get(j);
-                Rectangle colorArea = new Rectangle(xOffset, yOffset
+                Rectangle colorArea = new Rectangle(offset.x, offset.y
                         + graphHeight - upperBound, graphWidth, upperBound
                         - lastUpperBound);
                 e.gc.setBackground(rowColors.get(j));
@@ -1270,8 +1365,8 @@ public class Graph extends Canvas {
             e.gc.setForeground(Display.getDefault().getSystemColor(
                     SWT.COLOR_DARK_GRAY));
             for (int x = 0; x <= graphWidth; x += pixelsPerHatchX) {
-                e.gc.drawLine(x + xOffset, yOffset + graphHeight, x + xOffset,
-                        yOffset);
+                e.gc.drawLine(x + offset.x, offset.y + graphHeight, x
+                        + offset.x, offset.y);
             }
         }
 
@@ -1282,8 +1377,8 @@ public class Graph extends Canvas {
             e.gc.setForeground(Display.getDefault().getSystemColor(
                     SWT.COLOR_DARK_GRAY));
             for (int y = 0; y <= graphHeight; y += pixelsPerHatchY) {
-                e.gc.drawLine(xOffset, yOffset + graphHeight - y, xOffset
-                        + graphWidth, yOffset + graphHeight - y);
+                e.gc.drawLine(offset.x, offset.y + graphHeight - y, offset.x
+                        + graphWidth, offset.y + graphHeight - y);
             }
         }
 
@@ -1297,15 +1392,15 @@ public class Graph extends Canvas {
             int lastEndpoint = -10000;
             for (int x = 0, value = minimumVisibleValueX; x <= graphWidth; x += (intervalLabelX / intervalHatchX)
                     * pixelsPerHatchX, value += intervalLabelX) {
-                if (lastEndpoint > x + xOffset - xLabelWidth) {
+                if (lastEndpoint > x + offset.x - xLabelWidth) {
                     continue;
                 }
                 String label = Integer.toString(value)
                         + (suffixLabelX == null ? "" : suffixLabelX);
                 Point extent = e.gc.stringExtent(label);
-                e.gc.drawString(label, x + xOffset - (extent.x / 2), yOffset
+                e.gc.drawString(label, x + offset.x - (extent.x / 2), offset.y
                         + graphHeight + X_AXIS_LABEL_BUFFER, true);
-                lastEndpoint = x + xOffset + xLabelWidth;
+                lastEndpoint = x + offset.x + xLabelWidth;
             }
         }
 
@@ -1319,16 +1414,16 @@ public class Graph extends Canvas {
             int lastEndpoint = -10000;
             for (int y = 0, value = minimumVisibleValueY; y <= graphHeight; y += (intervalLabelY / intervalHatchY)
                     * pixelsPerHatchY, value += intervalLabelY) {
-                if (lastEndpoint > y + yOffset - yLabelHeight) {
+                if (lastEndpoint > y + offset.y - yLabelHeight) {
                     continue;
                 }
                 String label = Integer.toString(value)
                         + (suffixLabelY == null ? "" : suffixLabelY);
                 Point extent = e.gc.stringExtent(label);
-                e.gc.drawString(label, xOffset
-                        - (extent.x + Y_AXIS_LABEL_BUFFER), yOffset
+                e.gc.drawString(label, offset.x
+                        - (extent.x + Y_AXIS_LABEL_BUFFER), offset.y
                         + graphHeight - (y + (yLabelHeight / 2)), true);
-                lastEndpoint = y + yOffset + yLabelHeight;
+                lastEndpoint = y + offset.y + yLabelHeight;
             }
         }
 
@@ -1337,46 +1432,50 @@ public class Graph extends Canvas {
          */
         e.gc.setForeground(Display.getDefault().getSystemColor(
                 SWT.COLOR_DARK_GRAY));
-        Rectangle borderRect = new Rectangle(xOffset, yOffset, graphWidth,
+        Rectangle borderRect = new Rectangle(offset.x, offset.y, graphWidth,
                 graphHeight);
         e.gc.drawRectangle(borderRect);
 
         /*
-         * Draw the points, if any, and the line connecting them together.
+         * Draw the points, if any, and the line connecting them together. If
+         * one of the points is active, draw a halo around it after doing the
+         * points themselves and the connecting line.
          */
+        BiMap<PlottedPoint, Rectangle> boundariesForPlottedPoints = plottedPointsForPlottedPointBoundaries
+                .inverse();
         if (plottedPoints.isEmpty() == false) {
             e.gc.setBackground(Display.getDefault().getSystemColor(
                     SWT.COLOR_BLACK));
             int[] polyLineCoords = new int[plottedPoints.size() * 2];
+            Rectangle activePointBounds = null;
             for (int j = 0; j < plottedPoints.size(); j++) {
-                PlottedPoint point = plottedPoints.get(j);
-                int x, y;
-                if ((point.getX() - minimumVisibleValueX) % intervalHatchX == 0) {
-                    x = ((point.getX() - minimumVisibleValueX) / intervalHatchX)
-                            * pixelsPerHatchX;
-                } else {
-                    x = (int) (((point.getX() - minimumVisibleValueX) * pixelsPerUnitX) + 0.5);
+                PlottedPoint plottedPoint = plottedPoints.get(j);
+                Rectangle bounds = boundariesForPlottedPoints.get(plottedPoint);
+                polyLineCoords[j * 2] = bounds.x + (bounds.width / 2);
+                polyLineCoords[(j * 2) + 1] = bounds.y + (bounds.height / 2);
+                e.gc.fillOval(bounds.x, bounds.y, bounds.width, bounds.height);
+                if ((activePoint == plottedPoint)
+                        || (draggingPoint == plottedPoint)) {
+                    activePointBounds = bounds;
                 }
-                if ((point.getY() - minimumVisibleValueY) % intervalHatchY == 0) {
-                    y = ((point.getY() - minimumVisibleValueY) / intervalHatchY)
-                            * pixelsPerHatchY;
-                } else {
-                    y = (int) (((point.getY() - minimumVisibleValueY) * pixelsPerUnitY) + 0.5);
-                }
-                polyLineCoords[j * 2] = xOffset + x;
-                polyLineCoords[(j * 2) + 1] = yOffset + graphHeight - y;
-                e.gc.fillOval(xOffset + x - (POINT_DIAMETER / 2), yOffset
-                        + graphHeight - (y + (POINT_DIAMETER / 2)),
-                        POINT_DIAMETER, POINT_DIAMETER);
             }
             e.gc.setForeground(Display.getDefault().getSystemColor(
                     SWT.COLOR_BLACK));
+            e.gc.setLineWidth(2);
             e.gc.drawPolyline(polyLineCoords);
+            if (activePointBounds != null) {
+                e.gc.setForeground(Display.getDefault().getSystemColor(
+                        SWT.COLOR_WHITE));
+                e.gc.setLineWidth(4);
+                e.gc.drawOval(activePointBounds.x, activePointBounds.y,
+                        activePointBounds.width, activePointBounds.height);
+            }
         }
 
         /*
-         * Reset the colors.
+         * Reset the line width and colors.
          */
+        e.gc.setLineWidth(lineWidth);
         e.gc.setBackground(background);
         e.gc.setForeground(foreground);
     }
@@ -1394,10 +1493,12 @@ public class Graph extends Canvas {
      *         within an editable plotted point.
      */
     private PlottedPoint getEditablePointForCoordinates(int x, int y) {
-
-        /*
-         * TODO: Fill in.
-         */
+        for (Map.Entry<Rectangle, PlottedPoint> entry : plottedPointsForPlottedPointBoundaries
+                .entrySet()) {
+            if (entry.getValue().isEditable() && entry.getKey().contains(x, y)) {
+                return entry.getValue();
+            }
+        }
         return null;
     }
 
@@ -1463,6 +1564,7 @@ public class Graph extends Canvas {
         if ((draggingPoint != newDraggingPoint)
                 && ((draggingPoint == null) || (draggingPoint
                         .equals(newDraggingPoint) == false))) {
+            lastDragY = e.y;
             draggingPoint = newDraggingPoint;
             redraw();
         }
@@ -1576,8 +1678,106 @@ public class Graph extends Canvas {
             boolean dragEnded) {
 
         /*
-         * TODO: Fill in.
+         * Get the boundary box for the plotted point being dragged, and adjust
+         * it by the delta of vertical movement since the last drag mouse event.
          */
+        Rectangle bounds = plottedPointsForPlottedPointBoundaries.inverse()
+                .get(point);
+        int lastBoundsY = bounds.y;
+        bounds.y += e.y - lastDragY;
+
+        /*
+         * Ensure that the center of the plotted point in pixels has not been
+         * relocated beyond the Y axis lower and upper boundaries.
+         */
+        Rectangle clientArea = getClientArea();
+        int y = e.y;
+        if (bounds.y + (bounds.height / 2) < clientArea.y) {
+            int delta = clientArea.y - (bounds.y + (bounds.height / 2));
+            y += delta;
+            bounds.y += delta;
+        } else if (bounds.y + (bounds.height / 2) > clientArea.y + graphHeight) {
+            int delta = clientArea.y + graphHeight
+                    - (bounds.y + (bounds.height / 2));
+            y += delta;
+            bounds.y += delta;
+        }
+
+        /*
+         * If nothing has changed as as result of the drag, do nothing more in
+         * terms of plotted point adjustment; if the drag ended, just send a
+         * notification and recompute the bounding box of the plotted point.
+         */
+        if (bounds.y == lastBoundsY) {
+            if (dragEnded) {
+                notifyListeners(ChangeSource.USER_GUI_INTERACTION_COMPLETE);
+            }
+            recomputePlottedPointBoundsIfDragEnded(dragEnded, point);
+            return;
+        }
+
+        /*
+         * Remember the new center point in pixels for the next drag mouse
+         * event.
+         */
+        lastDragY = y;
+
+        /*
+         * Determine the new Y coordinate of the plotted point.
+         */
+        int pixelOffsetFromBottom = clientArea.y + graphHeight
+                - (bounds.y + (bounds.height / 2));
+        int pointY;
+        if ((pixelsPerHatchY != 0)
+                && (pixelOffsetFromBottom % pixelsPerHatchY == 0)) {
+            pointY = ((pixelOffsetFromBottom / pixelsPerHatchY) * intervalHatchY)
+                    + minimumVisibleValueY;
+        } else {
+            pointY = ((int) ((pixelOffsetFromBottom / pixelsPerUnitY) + 0.5))
+                    + minimumVisibleValueY;
+        }
+
+        /*
+         * If the new Y coordinate is different from the old one, replace the
+         * old with the new, and notify the listeners.
+         */
+        if (pointY != point.getY()) {
+            point.setY(pointY);
+            notifyListeners(dragEnded ? ChangeSource.USER_GUI_INTERACTION_COMPLETE
+                    : ChangeSource.USER_GUI_INTERACTION_ONGOING);
+        }
+
+        /*
+         * Recompute the plotted point boundaries if the drag has ended.
+         */
+        recomputePlottedPointBoundsIfDragEnded(dragEnded, point);
+    }
+
+    /**
+     * Cancel any ongoing drag.
+     */
+    private void cancelOngoingDrag() {
+        if (draggingPoint != null) {
+            draggingPoint = null;
+            notifyListeners(ChangeSource.USER_GUI_INTERACTION_COMPLETE);
+        }
+    }
+
+    /*
+     * If the drag has ended, recalculate the bounding box for the point, since
+     * multiple bounding boxes may correspond to a single Y value (if there are
+     * more vertical pixels than vertical plotted point units). This gives the
+     * point its "canonical" position.
+     * 
+     * @param dragEnded Flag indicating whether or not the drag ended.
+     * 
+     * @param point Plotted point to have its bounds recomputed if necessary.
+     */
+    private void recomputePlottedPointBoundsIfDragEnded(boolean dragEnded,
+            PlottedPoint point) {
+        if (dragEnded) {
+            computePlottedPointBounds(point);
+        }
     }
 
     /**

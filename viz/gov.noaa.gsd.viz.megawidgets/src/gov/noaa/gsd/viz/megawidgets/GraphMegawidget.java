@@ -11,12 +11,16 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.viz.megawidgets.validators.GraphValidator;
 import gov.noaa.gsd.viz.widgets.Graph;
+import gov.noaa.gsd.viz.widgets.Graph.ChangeSource;
+import gov.noaa.gsd.viz.widgets.IGraphListener;
 import gov.noaa.gsd.viz.widgets.PlottedPoint;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
@@ -27,6 +31,8 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 
+import com.google.common.collect.ImmutableSet;
+
 /**
  * Description: Graph megawidget.
  * 
@@ -36,12 +42,104 @@ import org.eclipse.swt.widgets.Label;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Mar 31, 2016   15931    Chris.Golden Initial creation.
+ * Apr 01, 2016   15931    Chris.Golden Added capability to have user 
+ *                                      edit the points via dragging them.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class GraphMegawidget extends StatefulMegawidget implements IControl {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = new HashSet<>(
+                StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
+        names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
+    };
+
+    // Private Classes
+
+    /**
+     * Listener for the graph.
+     */
+    private class GraphListener implements IGraphListener {
+
+        @Override
+        public void plottedPointsChanged(Graph widget, ChangeSource source) {
+
+            /*
+             * If the change source is not user-GUI interaction, do nothing.
+             */
+            if (source == Graph.ChangeSource.METHOD_INVOCATION) {
+                return;
+            }
+
+            /*
+             * If only ending state changes are to result in notifications, and
+             * this is the first of an ongoing set of state changes, then copy
+             * the state before this change is processed.
+             */
+            if (onlySendEndStateChanges
+                    && (source == Graph.ChangeSource.USER_GUI_INTERACTION_ONGOING)
+                    && (lastForwardedState == null)) {
+                lastForwardedState = getStateCopy();
+            }
+
+            /*
+             * Compile the new state.
+             */
+            state.clear();
+            for (PlottedPoint point : graph.getPlottedPoints()) {
+                Map<String, Object> map = new HashMap<>(3, 1.0f);
+                map.put(GraphValidator.PLOT_POINT_X, point.getX());
+                map.put(GraphValidator.PLOT_POINT_Y, point.getY());
+                map.put(GraphValidator.PLOT_POINT_EDITABLE, point.isEditable());
+                state.add(map);
+            }
+
+            /*
+             * If all state changes are to result in notifications, or if this
+             * is an ending state change and no ongoing state changes occurred
+             * beforehand, notify the listener of the change. Otherwise, if only
+             * ending state changes are to result in notifications, this is an
+             * ending state change, and at least one ongoing state change
+             * occurred right before it, see if the state is now different from
+             * what it was before the preceding set of ongoing state changes
+             * occurred, and if so, notify the listener.
+             */
+            if ((onlySendEndStateChanges == false)
+                    || ((lastForwardedState == null) && (source == Graph.ChangeSource.USER_GUI_INTERACTION_COMPLETE))) {
+                notifyListener(getSpecifier().getIdentifier(), state);
+            } else if ((lastForwardedState != null)
+                    && (source == Graph.ChangeSource.USER_GUI_INTERACTION_COMPLETE)) {
+
+                /*
+                 * Send a notification if the state has changed since the last
+                 * forwarded state. By only doing it in this case, the
+                 * megawidget avoids sending a notification when the ending
+                 * state change brings the state right back to what it was
+                 * before.
+                 */
+                if (state.equals(lastForwardedState) == false) {
+                    notifyListener(getSpecifier().getIdentifier(), state);
+                }
+
+                /*
+                 * Forget about the last forwarded state, as it are not needed
+                 * unless another set of ongoing state changes occurs, in which
+                 * case it will be recreated at that time.
+                 */
+                lastForwardedState = null;
+            }
+        }
+    }
 
     // Private Variables
 
@@ -66,9 +164,21 @@ public class GraphMegawidget extends StatefulMegawidget implements IControl {
     private final List<Map<String, Object>> state;
 
     /**
+     * Last state that was forwarded to any listener, or last state set
+     * programmatically, whichever happened last.
+     */
+    private List<Map<String, Object>> lastForwardedState;
+
+    /**
      * State validator.
      */
     private final GraphValidator stateValidator;
+
+    /**
+     * Flag indicating whether state changes that occur as a result of an
+     * ongoing plotted point drag should be forwarded or not.
+     */
+    private final boolean onlySendEndStateChanges;
 
     // Protected Constructors
 
@@ -91,6 +201,7 @@ public class GraphMegawidget extends StatefulMegawidget implements IControl {
         state = (List<Map<String, Object>>) specifier
                 .getStartingState(specifier.getIdentifier());
         stateValidator = specifier.getStateValidator();
+        onlySendEndStateChanges = (specifier.isSendingEveryChange() == false);
 
         /*
          * Create a panel in which to place the widgets and a label, if
@@ -133,7 +244,6 @@ public class GraphMegawidget extends StatefulMegawidget implements IControl {
                     }
                 }
             });
-
         }
         graph.setEnabled(specifier.isEnabled());
         GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
@@ -148,12 +258,44 @@ public class GraphMegawidget extends StatefulMegawidget implements IControl {
         }
 
         /*
+         * Set the graph widget's listener so that state changes will be
+         * recorded and notifications to any state change listener sent along.
+         */
+        graph.addGraphListener(new GraphListener());
+
+        /*
          * Synchronize user-facing widgets to the starting state.
          */
         synchronizeComponentWidgetsToState();
     }
 
     // Public Methods
+
+    @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            return isEditable();
+        }
+        return super.getMutableProperty(name);
+    }
+
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
 
     @Override
     public final boolean isEditable() {
@@ -196,11 +338,7 @@ public class GraphMegawidget extends StatefulMegawidget implements IControl {
 
     @Override
     protected Object doGetState(String identifier) {
-        List<Map<String, Object>> copy = new ArrayList<>(state.size());
-        for (Map<String, Object> map : state) {
-            copy.add(new HashMap<>(map));
-        }
-        return copy;
+        return getStateCopy();
     }
 
     @Override
@@ -218,6 +356,14 @@ public class GraphMegawidget extends StatefulMegawidget implements IControl {
         }
         this.state.clear();
         this.state.addAll(newState);
+
+        /*
+         * Remember this as the last forwarded state if ongoing state changes
+         * are occurring.
+         */
+        if (lastForwardedState != null) {
+            lastForwardedState = getStateCopy();
+        }
 
         /*
          * Synchronize the widgets to the new state.
@@ -297,6 +443,19 @@ public class GraphMegawidget extends StatefulMegawidget implements IControl {
      */
     private int getColorComponent(Map<String, Double> map, String key) {
         return (int) ((map.get(key) * 255.0) + 0.5);
+    }
+
+    /**
+     * Get a deep copy of the current state.
+     * 
+     * @return Copy of the current state.
+     */
+    private List<Map<String, Object>> getStateCopy() {
+        List<Map<String, Object>> copy = new ArrayList<>(state.size());
+        for (Map<String, Object> map : state) {
+            copy.add(new HashMap<>(map));
+        }
+        return copy;
     }
 
     /**

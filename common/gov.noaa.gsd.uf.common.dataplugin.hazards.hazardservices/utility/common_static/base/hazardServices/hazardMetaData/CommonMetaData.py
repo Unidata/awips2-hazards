@@ -2153,6 +2153,7 @@ class MetaData(object):
                         "yLabelInterval": 20,
                         "yLabelSuffix": "%",
                         "drawnPointsInterval": 5,
+                        "sendEveryChange": False,
                         "yColors": [
                                     { "red": 1, "green": 1, "blue": 0 },
                                     { "red": 1, "green": 0.9, "blue": 0 },
