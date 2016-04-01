@@ -1158,14 +1158,10 @@ public class Graph extends Canvas {
                 pixelsPerUnitX = ((double) widthWithoutLabels)
                         / (double) xRange;
                 graphWidth = widthWithoutLabels;
-                // System.err.println("Setting graph width the cheesy way to "
-                // + graphWidth);
             } else {
                 pixelsPerUnitX = ((double) pixelsPerHatchX)
                         / (double) intervalHatchX;
                 graphWidth = pixelsPerHatchX * (xRange / intervalHatchX);
-                // System.err.println("Setting graph width the excellent way to "
-                // + graphWidth);
             }
         } else {
             pixelsPerHatchX = 0;
@@ -1178,14 +1174,10 @@ public class Graph extends Canvas {
                 pixelsPerUnitY = ((double) heightWithoutLabels)
                         / (double) yRange;
                 graphHeight = heightWithoutLabels;
-                // System.err.println("Setting graph height the cheesy way to "
-                // + graphHeight);
             } else {
                 pixelsPerUnitY = ((double) pixelsPerHatchY)
                         / (double) intervalHatchY;
                 graphHeight = pixelsPerHatchY * (yRange / intervalHatchY);
-                // System.err.println("Setting graph height the excellent way to "
-                // + graphHeight);
             }
         } else {
             pixelsPerHatchY = 0;
@@ -1333,9 +1325,6 @@ public class Graph extends Canvas {
                 String label = Integer.toString(value)
                         + (suffixLabelY == null ? "" : suffixLabelY);
                 Point extent = e.gc.stringExtent(label);
-                // System.err.println("Extent width for " + label + " is "
-                // + extent.x + ", label width for Y axis is "
-                // + yLabelWidth);
                 e.gc.drawString(label, xOffset
                         - (extent.x + Y_AXIS_LABEL_BUFFER), yOffset
                         + graphHeight - (y + (yLabelHeight / 2)), true);

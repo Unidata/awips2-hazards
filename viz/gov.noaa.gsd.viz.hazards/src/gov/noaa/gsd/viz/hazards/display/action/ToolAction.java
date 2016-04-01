@@ -39,6 +39,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  * Feb 05, 2015 2331       Chris.Golden      Removed unused and ideologically suspect method.
  * Feb 15, 2015 2271       Dan Schaffer      Incur recommender/product generator init costs immediately
  * Nov 10, 2015 12762      Chris.Golden      Added support for use of new recommender manager.
+ * Apr 01, 2016 16225      Chris.Golden      Added ability to cancel tasks that are scheduled to run
+ *                                           at regular intervals.
  * </pre>
  * 
  * @author Chris Golden
@@ -49,7 +51,7 @@ public class ToolAction {
      * Recommender actions
      */
     public enum RecommenderActionEnum {
-        RUN_RECOMMENDER_WITH_PARAMETERS, RUN_RECOMENDER, RECOMMENDATIONS
+        RUN_RECOMMENDER_WITH_PARAMETERS, RUN_RECOMENDER, RECOMMENDATIONS, ENABLE_EVENT_DRIVEN_TOOLS
     };
 
     // Private Variables
@@ -58,6 +60,8 @@ public class ToolAction {
      * Identifier of the action that occurred.
      */
     private RecommenderActionEnum recommenderActionType;
+
+    private final boolean enable;
 
     private final String toolIdentifier;
 
@@ -101,6 +105,7 @@ public class ToolAction {
         this.toolIdentifier = toolIdentifier;
         this.toolType = toolType;
         this.context = context;
+        this.enable = false;
     }
 
     /**
@@ -117,6 +122,7 @@ public class ToolAction {
         this.toolIdentifier = toolIdentifier;
         this.toolType = toolType;
         this.context = RecommenderExecutionContext.getEmptyContext();
+        this.enable = false;
     }
 
     /**
@@ -139,6 +145,24 @@ public class ToolAction {
         this.toolType = toolType;
         this.auxiliaryDetails = auxiliarlyDetails;
         this.context = context;
+        this.enable = false;
+    }
+
+    /**
+     * Construct a standard instance for enabling or disabling the running of
+     * event-driven tools at regular intervals.
+     * 
+     * @param enable
+     *            Flag indicating whether or not the running of event-driven
+     *            tools should be enabled.
+     */
+    public ToolAction(boolean enable) {
+        this.recommenderActionType = RecommenderActionEnum.ENABLE_EVENT_DRIVEN_TOOLS;
+        this.toolIdentifier = null;
+        this.toolType = ToolType.RECOMMENDER;
+        this.auxiliaryDetails = null;
+        this.context = null;
+        this.enable = enable;
     }
 
     // Public Methods
@@ -150,6 +174,13 @@ public class ToolAction {
      */
     public RecommenderActionEnum getRecommenderActionType() {
         return recommenderActionType;
+    }
+
+    /**
+     * Determine whether the enable flag is true.
+     */
+    public boolean isEnabled() {
+        return enable;
     }
 
     /**

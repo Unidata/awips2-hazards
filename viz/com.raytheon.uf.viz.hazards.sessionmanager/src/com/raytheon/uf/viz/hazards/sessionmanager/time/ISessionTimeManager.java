@@ -48,6 +48,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      time ranges.
  * Nov 10, 2015 12762      Chris.Golden Added ability to schedule arbitrary
  *                                      tasks to run at regular intervals.
+ * Apr 01, 2016 16225      Chris.Golden Added ability to cancel tasks that
+ *                                      are scheduled to run at regular
+ *                                      intervals.
  * </pre>
  * 
  * @author bsteffen
@@ -178,6 +181,16 @@ public interface ISessionTimeManager {
      *            Interval in milliseconds between executions.
      */
     public void runAtRegularIntervals(Runnable task, long intervalInMillis);
+
+    /**
+     * Cancel the execution at regular intervals of the specified runnable, the
+     * latter of which was previously scheduled using the
+     * {@link #runAtRegularIntervals(Runnable, long)} method.
+     * 
+     * @param task
+     *            Task to have its regular execution cancelled.
+     */
+    public void cancelRunAtRegularIntervals(Runnable task);
 
     /**
      * Execute any shutdown needed.

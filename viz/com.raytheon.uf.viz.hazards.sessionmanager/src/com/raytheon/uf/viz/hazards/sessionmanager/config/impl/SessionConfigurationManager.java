@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -210,6 +211,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      instead of just one recommender.
  * Mar 22, 2016 15676      Chris.Golden Changed line styles returned to make more sense
  *                                      (dotted was referred to as dashed).
+ * Apr 01, 2016 16225      Chris.Golden Added ability to cancel tasks that are scheduled
+ *                                      to run at regular intervals.
  * </pre>
  * 
  * @author bsteffen
@@ -336,6 +339,10 @@ public class SessionConfigurationManager implements
 
     private Set<String> typesRequiringPointIds;
 
+    private Map<Runnable, Integer> minuteIntervalsForEventDrivenToolExecutors;
+
+    private boolean runRecommendersAtRegularIntervals;
+
     SessionConfigurationManager() {
 
     }
@@ -419,43 +426,44 @@ public class SessionConfigurationManager implements
 
         /*
          * Load any event-driven tool specifications from configuration, and
-         * schedule them to run at the specified intervals.
+         * create the executors for them, saving them along with their minute
+         * intervals. Then schedule them to run at the specified intervals if
+         * appropriate.
          */
         file = pathManager
                 .getStaticLocalizationFile(HazardsConfigurationConstants.EVENT_DRIVEN_TOOLS_PY);
         eventDrivenTools = new ConfigLoader<EventDrivenTools>(file,
                 EventDrivenTools.class);
         loaderPool.schedule(eventDrivenTools);
-        for (final EventDrivenToolEntry entry : eventDrivenTools.getConfig()) {
-            timeManager.runAtRegularIntervals(
-                    new Runnable() {
+        EventDrivenTools tools = eventDrivenTools.getConfig();
+        minuteIntervalsForEventDrivenToolExecutors = new IdentityHashMap<>(
+                tools.size());
+        for (final EventDrivenToolEntry entry : tools) {
+            minuteIntervalsForEventDrivenToolExecutors.put(new Runnable() {
 
-                        @Override
-                        public void run() {
-                            List<String> identifiers = entry.getIdentifiers();
-                            Set<String> setOfIdentifiers = new HashSet<>(
-                                    identifiers);
-                            if (setOfIdentifiers.size() != entry
-                                    .getIdentifiers().size()) {
-                                statusHandler
-                                        .warn("List of recommenders to be executed sequentially ("
-                                                + Joiner.on(", ").join(
-                                                        identifiers)
-                                                + ") at regular time intervals cannot include "
-                                                + "any duplicate entries; these recommenders "
-                                                + "will not be executed.");
-                            } else {
-                                SessionConfigurationManager.this.sessionManager.runTools(
-                                        entry.getType(),
-                                        entry.getIdentifiers(),
+                @Override
+                public void run() {
+                    List<String> identifiers = entry.getIdentifiers();
+                    Set<String> setOfIdentifiers = new HashSet<>(identifiers);
+                    if (setOfIdentifiers.size() != entry.getIdentifiers()
+                            .size()) {
+                        statusHandler
+                                .warn("List of recommenders to be executed sequentially ("
+                                        + Joiner.on(", ").join(identifiers)
+                                        + ") at regular time intervals cannot include "
+                                        + "any duplicate entries; these recommenders "
+                                        + "will not be executed.");
+                    } else {
+                        SessionConfigurationManager.this.sessionManager
+                                .runTools(entry.getType(), entry
+                                        .getIdentifiers(),
                                         RecommenderExecutionContext
                                                 .getTimeIntervalContext());
-                            }
-                        }
-                    },
-                    ISessionTimeManager.MINUTE_AS_MILLISECONDS
-                            * entry.getIntervalMinutes());
+                    }
+                }
+            }, entry.getIntervalMinutes());
         }
+        setEventDrivenToolRunningEnabled(true);
 
         // Add observer to base file
         file = pathManager.getLocalizationFile(commonStaticBase,
@@ -1075,6 +1083,30 @@ public class SessionConfigurationManager implements
     @Override
     public EventDrivenTools getEventDrivenTools() {
         return eventDrivenTools.getConfig();
+    }
+
+    @Override
+    public boolean isEventDrivenToolRunningEnabled() {
+        return runRecommendersAtRegularIntervals;
+    }
+
+    @Override
+    public void setEventDrivenToolRunningEnabled(boolean enable) {
+        if (enable == runRecommendersAtRegularIntervals) {
+            return;
+        }
+        runRecommendersAtRegularIntervals = enable;
+        for (Map.Entry<Runnable, Integer> entry : minuteIntervalsForEventDrivenToolExecutors
+                .entrySet()) {
+            if (enable) {
+                timeManager.runAtRegularIntervals(
+                        entry.getKey(),
+                        ISessionTimeManager.MINUTE_AS_MILLISECONDS
+                                * entry.getValue());
+            } else {
+                timeManager.cancelRunAtRegularIntervals(entry.getKey());
+            }
+        }
     }
 
     @Override

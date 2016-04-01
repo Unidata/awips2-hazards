@@ -9,9 +9,9 @@ package gov.noaa.gsd.viz.hazards.tools;
 
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
+import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +60,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  * Feb 15, 2015   2271     Dan Schaffer      Incur recommender/product generator init costs immediately
  * Jun 02, 2015   7138     Robert.Blum       Changed to use new Enums for Product Generators.
  * Nov 10, 2015  12762     Chris.Golden      Added support for use of new recommender manager.
+ * Apr 01, 2016  16225     Chris.Golden      Added ability to cancel tasks that are scheduled to run
+ *                                           at regular intervals.
  * </pre>
  * 
  * @author Chris.Golden
@@ -86,6 +88,11 @@ public class ToolsView implements
      * Tools toolbar button tooltip text.
      */
     private static final String TOOLS_TOOLBAR_BUTTON_TOOLTIP_TEXT = "Tools";
+
+    /**
+     * Enable run event driven tools menu item text.
+     */
+    private static final String TOOLS_MENU_ITEM_RUN_EVENT_DRIVEN_TOOLS_TEXT = "Run Tools at Regular Intervals";
 
     // Private Classes
 
@@ -275,8 +282,18 @@ public class ToolsView implements
         if (type == RCPMainUserInterfaceElement.TOOLBAR) {
             toolsPulldownAction = new ToolsPulldownAction();
             return Lists.newArrayList(toolsPulldownAction);
+        } else {
+            Action enableEventDrivenToolsExecutionAction = new BasicAction(
+                    TOOLS_MENU_ITEM_RUN_EVENT_DRIVEN_TOOLS_TEXT, null,
+                    Action.AS_CHECK_BOX, null) {
+                @Override
+                public void run() {
+                    presenter.publish(new ToolAction(isChecked()));
+                }
+            };
+            enableEventDrivenToolsExecutionAction.setChecked(true);
+            return Lists.newArrayList(enableEventDrivenToolsExecutionAction);
         }
-        return Collections.emptyList();
     }
 
     @Override

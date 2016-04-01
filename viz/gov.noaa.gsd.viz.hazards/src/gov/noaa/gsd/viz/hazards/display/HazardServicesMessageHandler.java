@@ -220,6 +220,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            didn't belong here and thus continuing the trend of
  *                                            shrinking this class.
  * Mar 16, 2016 15676      Chris.Golden       Removed obsolete notifications.
+ * Apr 01, 2016 16225      Chris.Golden       Added ability to cancel tasks that are scheduled to
+ *                                            run at regular intervals.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -1314,6 +1316,11 @@ public final class HazardServicesMessageHandler {
                         null, toolAction.getAuxiliaryDetails());
                 break;
 
+            case ENABLE_EVENT_DRIVEN_TOOLS:
+                sessionManager.getConfigurationManager()
+                        .setEventDrivenToolRunningEnabled(
+                                toolAction.isEnabled());
+                break;
             default:
                 statusHandler.debug("Unrecognized tool action :"
                         + toolAction.getRecommenderActionType());

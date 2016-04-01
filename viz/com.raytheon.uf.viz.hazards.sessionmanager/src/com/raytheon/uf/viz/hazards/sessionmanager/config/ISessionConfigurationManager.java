@@ -77,6 +77,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Nov 10, 2015 12762      Chris.Golden Added recommender running in response to
  *                                      hazard event metadata changes, as well as the
  *                                      use of the new recommender manager.
+ * Apr 01, 2016 16225      Chris.Golden Added ability to cancel tasks that are
+ *                                      scheduled to run at regular intervals.
  * </pre>
  * 
  * @author bsteffen
@@ -384,6 +386,17 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * Get the event-driven tools.
      */
     public EventDrivenTools getEventDrivenTools();
+
+    /**
+     * Determine whether or not the event-driven tool running is currently
+     * enabled.
+     */
+    public boolean isEventDrivenToolRunningEnabled();
+
+    /**
+     * Enable or disable event-driven tool running.
+     */
+    public void setEventDrivenToolRunningEnabled(boolean enable);
 
     /**
      * Execute any shutdown needed.

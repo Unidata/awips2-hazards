@@ -88,6 +88,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                      event end time is UNTIL FURTHER NOTICE
  * Nov 10, 2015 12762      Chris.Golden Added ability to schedule arbitrary
  *                                      tasks to run at regular intervals.
+ * Apr 01, 2016 16225      Chris.Golden Added ability to cancel tasks that are
+ *                                      scheduled to run at regular intervals.
  * </pre>
  * 
  * @author bsteffen
@@ -338,6 +340,11 @@ public class SessionTimeManager implements ISessionTimeManager {
          * intervals if the current CAVE time is not frozen.
          */
         runAndScheduleTask(task);
+    }
+
+    @Override
+    public void cancelRunAtRegularIntervals(Runnable task) {
+        intervalsMillisForTasks.remove(task);
     }
 
     /**

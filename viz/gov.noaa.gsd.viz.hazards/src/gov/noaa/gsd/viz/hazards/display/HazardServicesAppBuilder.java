@@ -226,6 +226,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Jul 30, 2015 9681       Robert.Blum         Added new method to display the product viewer.
  * Nov 10, 2015 12762      Chris.Golden        Added support for use of new recommender manager.
  * Mar 15, 2016 15676      Chris.Golden        Updated to use new method names.
+ * Apr 01, 2016 16225      Chris.Golden        Added ability to cancel tasks that are scheduled to run
+ *                                             at regular intervals.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -871,6 +873,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         List<IMainUiContributor<Action, RCPMainUserInterfaceElement>> contributors = Lists
                 .newArrayList();
         contributors.add(consoleView);
+        contributors.add((ToolsView) toolsPresenter.getView());
         if (appBuilderMenubarContributor != null) {
             contributors.add(appBuilderMenubarContributor);
         }
