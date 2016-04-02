@@ -52,6 +52,13 @@ import com.google.common.collect.HashBiMap;
  * Mar 30, 2016   15931    Chris.Golden Initial creation.
  * Apr 01, 2016   15931    Chris.Golden Added capability to have user 
  *                                      edit the points via dragging them.
+ * Apr 01, 2016   15931    Chris.Golden Fixed bug that caused a null pointer
+ *                                      exception when the plotted points
+ *                                      were set to a new list of the same
+ *                                      length as the old one, and added
+ *                                      antialiasing when drawing circles
+ *                                      and diagonal lines to smooth the
+ *                                      widget's pixel jaggies out.
  * </pre>
  * 
  * @author Chris.Golden
@@ -750,7 +757,8 @@ public class Graph extends Canvas {
         /*
          * Get the new minimum and maximum visible X values; if they have
          * changed, recalculate display measurements. Otherwise, cancel any
-         * ongoing drag, since the new values trump anything the user was doing.
+         * ongoing drag, since the new values trump anything the user was doing,
+         * and recompute the plotted points' boundaries.
          */
         int minimumX = (plottedPoints.isEmpty() ? 0 : plottedPoints.get(0)
                 .getX());
@@ -763,6 +771,7 @@ public class Graph extends Canvas {
             computePreferredSize(true);
         } else {
             cancelOngoingDrag();
+            computePlottedPointBounds();
         }
 
         /*
@@ -1219,10 +1228,7 @@ public class Graph extends Canvas {
         /*
          * Compute the rectangular boundaries for the plotted points.
          */
-        plottedPointsForPlottedPointBoundaries.clear();
-        for (PlottedPoint point : plottedPoints) {
-            computePlottedPointBounds(point);
-        }
+        computePlottedPointBounds();
     }
 
     /**
@@ -1242,6 +1248,16 @@ public class Graph extends Canvas {
             totalSoFar += pixelsPerColorRow;
         }
         rowColorUpperBounds.add(graphHeight);
+    }
+
+    /**
+     * Compute the rectangular boundaries for all the plotted points.
+     */
+    private void computePlottedPointBounds() {
+        plottedPointsForPlottedPointBoundaries.clear();
+        for (PlottedPoint point : plottedPoints) {
+            computePlottedPointBounds(point);
+        }
     }
 
     /**
@@ -1437,6 +1453,14 @@ public class Graph extends Canvas {
         e.gc.drawRectangle(borderRect);
 
         /*
+         * Save the antialiasing flag, and turn on antialiasing so that the
+         * circles and potentially diagonal lines drawn next will have less
+         * jaggies.
+         */
+        int antialias = e.gc.getAntialias();
+        e.gc.setAntialias(SWT.ON);
+
+        /*
          * Draw the points, if any, and the line connecting them together. If
          * one of the points is active, draw a halo around it after doing the
          * points themselves and the connecting line.
@@ -1473,11 +1497,12 @@ public class Graph extends Canvas {
         }
 
         /*
-         * Reset the line width and colors.
+         * Reset the line width, colors, and antialiasing flag.
          */
         e.gc.setLineWidth(lineWidth);
         e.gc.setBackground(background);
         e.gc.setForeground(foreground);
+        e.gc.setAntialias(antialias);
     }
 
     /**
