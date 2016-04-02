@@ -2153,21 +2153,10 @@ class MetaData(object):
                         "yLabelInterval": 20,
                         "yLabelSuffix": "%",
                         "drawnPointsInterval": 5,
-                        "sendEveryChange": False,
-                        "yColors": [
-                                    { "red": 1, "green": 1, "blue": 0 },
-                                    { "red": 1, "green": 0.9, "blue": 0 },
-                                    { "red": 1, "green": 0.8, "blue": 0 },
-                                    { "red": 1, "green": 0.7, "blue": 0 },
-                                    { "red": 1, "green": 0.6, "blue": 0 }
-                                   ],
-                        "values": [{"x": 0, "y": 82, "editable": True},
-                                   {"x": 5, "y": 71, "editable": True},
-                                   {"x": 10, "y": 60, "editable": True},
-                                   {"x": 15, "y": 47, "editable": True},
-                                   {"x": 20, "y": 35, "editable": True},
-                                   {"x": 25, "y": 15, "editable": True},
-                                   {"x": 30, "y": 0, "editable": False}]
+                        "modifyRecommender": "SwathRecommender",
+                        "sendEveryChange":False,
+                        "yColors": colors,
+                        "values": probVals,
                         }
                     ]
             }

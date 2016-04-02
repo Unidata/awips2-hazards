@@ -44,6 +44,16 @@ import com.google.common.collect.ImmutableSet;
  * Mar 31, 2016   15931    Chris.Golden Initial creation.
  * Apr 01, 2016   15931    Chris.Golden Added capability to have user 
  *                                      edit the points via dragging them.
+ * Apr 02, 2016   15931    Chris.Golden Changed reference to starting state
+ *                                      from specifier to be a copy of the
+ *                                      starting state, because the reference
+ *                                      meant that the state object was being
+ *                                      shared with the source (in this case,
+ *                                      an ObservedHazardEvent, meaning
+ *                                      updates to the event did not pass the
+ *                                      changed() test and thus did not
+ *                                      result in attributes-modified
+ *                                      notifications.
  * </pre>
  * 
  * @author Chris.Golden
@@ -116,7 +126,7 @@ public class GraphMegawidget extends StatefulMegawidget implements IControl {
              */
             if ((onlySendEndStateChanges == false)
                     || ((lastForwardedState == null) && (source == Graph.ChangeSource.USER_GUI_INTERACTION_COMPLETE))) {
-                notifyListener(getSpecifier().getIdentifier(), state);
+                notifyListener(getSpecifier().getIdentifier(), getStateCopy());
             } else if ((lastForwardedState != null)
                     && (source == Graph.ChangeSource.USER_GUI_INTERACTION_COMPLETE)) {
 
@@ -128,7 +138,8 @@ public class GraphMegawidget extends StatefulMegawidget implements IControl {
                  * before.
                  */
                 if (state.equals(lastForwardedState) == false) {
-                    notifyListener(getSpecifier().getIdentifier(), state);
+                    notifyListener(getSpecifier().getIdentifier(),
+                            getStateCopy());
                 }
 
                 /*
@@ -198,8 +209,9 @@ public class GraphMegawidget extends StatefulMegawidget implements IControl {
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
         controlHelper = new ControlComponentHelper(specifier);
-        state = (List<Map<String, Object>>) specifier
-                .getStartingState(specifier.getIdentifier());
+        state = new ArrayList<Map<String, Object>>(
+                (List<Map<String, Object>>) specifier
+                        .getStartingState(specifier.getIdentifier()));
         stateValidator = specifier.getStateValidator();
         onlySendEndStateChanges = (specifier.isSendingEveryChange() == false);
 
