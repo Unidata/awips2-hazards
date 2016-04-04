@@ -160,13 +160,13 @@ class Recommender(RecommenderTemplate.Recommender):
             spatialMap = JUtil.pyDictToJavaMap(spatialInputMap)
             
         currentTime = datetime.datetime.fromtimestamp(long(sessionAttributes["currentTime"])/1000)
-        latestCurrentTime = self.getLatestTimestampOfCurrentEvents(eventSet)
+        latestCurrentEventTime = self.getLatestTimestampOfCurrentEvents(eventSet)
         
         currentEvents = self.getCurrentEvents(eventSet)        
-        recommendedEventDict = self.getRecommendedEvents(currentTime, latestCurrentTime)
-        recommendedEventDict = self.filterForUserOwned(currentEvents, recommendedEventDict)
+        recommendedEventsDict = self.getRecommendedEventsDict(currentTime, latestCurrentEventTime)
+        recommendedEventsDict = self.filterForUserOwned(currentEvents, recommendedEventsDict)
                 
-        mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventDict, currentTime)
+        mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventsDict, currentTime)
         
         #for evt in mergedEventSet:
         #    print 'ME:', evt.getHazardAttributes().get('removeEvent')
@@ -184,11 +184,10 @@ class Recommender(RecommenderTemplate.Recommender):
         return mergedEventSet
     
 
-    def getRecommendedEvents(self, currentTime, latestDatetime):
+    def getRecommendedEventsDict(self, currentTime, latestDatetime):
         hdfFilesList = self._getLatestProbSevereDataHDFFileList(latestDatetime)
-        eventList = self._eventSetFromHDFFile(hdfFilesList, currentTime, latestDatetime)
-        
-        return eventList
+        eventsDict = self._eventSetFromHDFFile(hdfFilesList, currentTime, latestDatetime)
+        return eventsDict
 
     def _uvToSpdDir(self, motionEasts, motionSouths):
         if motionEasts is None or motionSouths is None:
@@ -215,7 +214,7 @@ class Recommender(RecommenderTemplate.Recommender):
             try:
                 hFile = h5py.File(hdfFilename, 'r')
             except:
-                print 'Unable to open', latestFile, ' in h5py. Skipping...'
+                print 'Convective Recommender Warning: Unable to open', latestFile, ' in h5py. Skipping...'
                 
             if hFile:
                 for group in hFile.values():
@@ -267,7 +266,7 @@ class Recommender(RecommenderTemplate.Recommender):
             fileList = sorted(glob.glob(os.path.join(SOURCEPATH,'*.h5')), 
                           reverse=True)
         except:
-            print 'Could not obtain list of convectprob*.h5 files at:', os.path.join(SOURCEPATH,'*.h5')
+            print 'Convective Recommender Warning: Could not obtain list of convectprob*.h5 files at:', os.path.join(SOURCEPATH,'*.h5')
             print 'Returning:', fileList
             return fileList
         
@@ -328,10 +327,10 @@ class Recommender(RecommenderTemplate.Recommender):
                 eventIDs.append(event.getEventID())
         return currentEvents
 
-    def makeHazardEvent(self, ID, values, currentTime):
+    def makeHazardEvent(self, ID, values, currentTime):        
         hazardEvent = EventFactory.createEvent()
         hazardEvent.setCreationTime(currentTime)
-        self.setEventTimes(hazardEvent, values, currentTime)
+        self.setEventTimes(hazardEvent, values)
         
         hazardEvent.setHazardStatus("potential")
         hazardEvent.setHazardMode("O")        
@@ -347,20 +346,33 @@ class Recommender(RecommenderTemplate.Recommender):
         
         return hazardEvent
 
-    def setEventTimes(self, event, values, currentTime):
+    def setEventTimes(self, event, values):
         psStartTime = values.pop('startTime')
         event.set('probSevereStartTime', self._getMillis(psStartTime))
         psEndTime = psStartTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
         event.set('probSevereEndTime', self._getMillis(psEndTime)) 
-        # Current time rounded to nearest minute
-        startTime = self._roundTime(currentTime) 
-        endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+        
+        #  Set the start / end times of the new event
+        #     (Kind of klunky due to the methods we have for rounding)
+        #  We set the event start time to the probSevereStartTime and then round it
+        #  Similarly for the end time. 
+        event.setStartTime(psStartTime)
+        startTime = self._roundTime(event.getStartTime()) 
         event.setStartTime(startTime)
+        
+        endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
         event.setEndTime(endTime)
+        endTime = self._roundTime(event.getEndTime())                
+        event.setEndTime(endTime)
+        
+#         startTime = self._roundTime(currentTime) 
+#         endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+#         event.setStartTime(startTime)
+#         event.setEndTime(endTime)
             
-    def mergeHazardEvents(self, currentEventsList, recommendedEventDict, currentTime):    
+    def mergeHazardEvents(self, currentEventsList, recommendedEventsDict, currentTime):    
         ### if no recommended events
-        if len(recommendedEventDict) == 0:
+        if len(recommendedEventsDict) == 0:
             #print '[1] No NEW records, returning no events
             return [] # We only want to return events we have changed
         
@@ -368,18 +380,22 @@ class Recommender(RecommenderTemplate.Recommender):
         ### recommended events but no current events
         if len(currentEventsList) == 0:
             #print '[2] No CURRENT records, making and returning NEW events...'
-            for ID, recommendedEvent in recommendedEventDict.iteritems():
-                recommendedEvent = self.makeHazardEvent(ID, recommendedEvent, currentTime)
+            for ID, recommendedValues in recommendedEventsDict.iteritems():
+                recommendedEvent = self.makeHazardEvent(ID, recommendedValues, currentTime)
                 mergedEvents.add(recommendedEvent)
             return mergedEvents
 
         # Do not change UserOwned currentEvents
+        #   NOTE: This is redundant since we've already filtered out
+        #      the recommended events that would coincide with 
+        #      User Owned current events.
+        #  However, filtering them out from the merge will save a bit of time.
         nonUserOwnedCurrentEvents = EventSet(None)
         for c in currentEventsList:
             if not c.get('userOwned'): 
                 nonUserOwnedCurrentEvents.add(c)
                             
-        recEventObjectIDs = sorted(recommendedEventDict.keys())
+        recEventObjectIDs = sorted(recommendedEventsDict.keys())
         
         ### Manual Events are filtered out, so now only need to worry about merging/comparing automated events
         nonUserOwnedObjectIDs = list(set([c.get('objectID') for c in nonUserOwnedCurrentEvents]))
@@ -388,7 +404,7 @@ class Recommender(RecommenderTemplate.Recommender):
         newRecs = list(set(recEventObjectIDs).difference(set(nonUserOwnedObjectIDs)))
         for newRec in newRecs:
             #print '[3] Adding NEW event', newRec, ' to mergedEvents'            
-            recommendedEvent = self.makeHazardEvent(newRec, recommendedEventDict[newRec], currentTime)
+            recommendedEvent = self.makeHazardEvent(newRec, recommendedEventsDict[newRec], currentTime)
             
             recGeom = recommendedEvent.getGeometry()
             intersects = False
@@ -421,7 +437,7 @@ class Recommender(RecommenderTemplate.Recommender):
         expiredRecs = list(set(nonUserOwnedObjectIDs).difference(set(recEventObjectIDs)))
         for expiredRec in expiredRecs:
             #print '[4] Found event', expiredRec, ' to potentially be removed...'
-            for currentEvent in nonUserOwnedObjectIDs:
+            for currentEvent in nonUserOwnedCurrentEvents:
                 if currentEvent.get('objectID') == expiredRec:
                     if currentEvent.getStatus() != 'ISSUED' and currentEvent.get('objectID'):
                         currentEvent.set('vtecCodes', ['CAN'])
@@ -434,18 +450,18 @@ class Recommender(RecommenderTemplate.Recommender):
         for currentEvent in nonUserOwnedCurrentEvents:
             currID = currentEvent.get('objectID')
             #print '[5] Potentially updating event', currID, ' (status', currentEvent.getStatus(), ')'
-            if currID not in expiredRecs and currID in recommendedEventDict:
+            if currID not in expiredRecs and currID in recommendedEventsDict:
                 #print '\t[5.5] Yep, now updating ', currID
-                recommendedEvent = recommendedEventDict[currID]
-                self.setEventTimes(currentEvent, recommendedEvent, currentTime)
+                recommendedEventValues = recommendedEventsDict[currID]
+                self.setEventTimes(currentEvent, recommendedEventValues)
                 try:
-                    currentEvent.setGeometry(recommendedEvent.pop('polygons'))
+                    currentEvent.setGeometry(recommendedEventValues.pop('polygons'))
                 except:
-                    print 'ConvectiveRecommender: WHAT\'S WRONG WITH THIS POLYGON?', currID, type(recommendedEvent.get('polygons')) 
+                    print 'ConvectiveRecommender: WHAT\'S WRONG WITH THIS POLYGON?', currID, type(recommendedEventValues.get('polygons')) 
                     
-                currentEvent.set('convectiveObjectDir', recommendedEvent.get('wdir'))
-                currentEvent.set('convectiveObjectSpdKts', recommendedEvent.get('wspd'))
-                currentEvent.set('probSeverAttrs',recommendedEvent)
+                currentEvent.set('convectiveObjectDir', recommendedEventValues.get('wdir'))
+                currentEvent.set('convectiveObjectSpdKts', recommendedEventValues.get('wspd'))
+                currentEvent.set('probSeverAttrs',recommendedEventValues)
                 mergedEvents.add(currentEvent)
                             
 #         print 'Returning...'
@@ -454,19 +470,30 @@ class Recommender(RecommenderTemplate.Recommender):
 #         print '=== Done ==='        
         return mergedEvents
     
-    def filterForUserOwned(self, currentEvents, recommendedEventDict):
+    def filterForUserOwned(self, currentEvents, recommendedEventsDict):
         newDict = {}
-        # Check the overlap of each recommended event with any "userOwned" currentEvent
-        #  If there is an overlap, do not include it
-        for ID, recommendedEvent in recommendedEventDict.iteritems():
+        # Check the object ID match or polygon overlap of each recommended event values 
+        #    with any "userOwned" currentEvent
+        #  If there is an overlap, throw it out. 
+        for ID, recommendedEventValues in recommendedEventsDict.iteritems():
             overlap = False
             for event in currentEvents:
                 if event.get('userOwned'):
-                    polygon = loads(recommendedEvent.pop('polygons'))
-                    if GeometryFactory.createPolygon(polygon).overlaps(event.getGeometry()):
+                    if event.get(OBJECT_ID) == ID:
                         overlap = True
+                        break
+                    # TODO fix this -- Sometimes we get a KeyError here
+                    #     DO recommendedEventValues always have polygons?
+                    try:  
+                        polygon = loads(recommendedEventValues.pop('polygons'))
+                        if GeometryFactory.createPolygon(polygon).overlaps(event.getGeometry()):
+                            overlap = True
+                            break
+                    except:
+                        pass
             if not overlap:
-                newDict[ID] = recommendedEvent
+                newDict[ID] = recommendedEventValues
+        self.flush()
         return newDict
 
                             

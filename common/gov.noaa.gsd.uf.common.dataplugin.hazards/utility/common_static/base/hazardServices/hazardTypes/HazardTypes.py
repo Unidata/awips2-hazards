@@ -1957,6 +1957,9 @@ HazardTypes = {
               'allowAreaChange': False,
               'allowTimeChange': True,
               'expirationTime': (-30, 30),
+              'durationChoiceList': [str(i)+" min" for i in range(5, 101, 1)],
+              'defaultDuration': 45 * MINUTES,
+              'durationIncrement': 5,
               'hazardConflictList': [],
               'warngenHatching': False,
               'pointBased': False,
@@ -1967,8 +1970,6 @@ HazardTypes = {
               'inclusionFraction': 0.1,
               'inclusionAreaTest' : True,
               'inclusionAreaInSqKm' : 1.0,
-              'defaultDuration': 1 * HOURS,
-              'durationIncrement': 60,
               'allowUntilFurtherNotice': True,
               'modifyRecommenders': {
                                      'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status' ]
@@ -1982,9 +1983,9 @@ HazardTypes = {
               'allowAreaChange': False,
               'allowTimeChange': True,
               'expirationTime': (-30, 30),
-              'durationChoiceList': [str(i+1)+" min" for i in range(100)],
+              'durationChoiceList': [str(i)+" min" for i in range(5, 101, 1)],
               'defaultDuration': 45 * MINUTES,
-              'durationIncrement': 1,
+              'durationIncrement': 5,
 
               'hazardConflictList': [],
               'warngenHatching': False,

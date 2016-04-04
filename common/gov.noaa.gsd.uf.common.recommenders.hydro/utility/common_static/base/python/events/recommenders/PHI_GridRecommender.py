@@ -290,7 +290,9 @@ class Recommender(RecommenderTemplate.Recommender):
         return 'PHI Grid Recommender'
 
     #########################################
-    ### OVERRIDES
+    ### OVERRIDES -- 
+    # TODO -- This needs to be on one override file used by all the 
+    #   Prob Convective Recommenders 
         
     def _timeStep(self):
         # Time step for downstream polygons and track points

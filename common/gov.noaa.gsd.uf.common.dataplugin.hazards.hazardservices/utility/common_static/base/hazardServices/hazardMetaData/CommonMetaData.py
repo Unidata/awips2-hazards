@@ -34,6 +34,9 @@ from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
 from com.raytheon.uf.common.hazards.hydro import RiverForecastGroup
 from RiverForecastUtils import *
 
+import numpy as np
+import datetime, math
+
 import VTECConstants
 from LocalizationInterface import LocalizationInterface
 from HazardConstants import *
@@ -1879,7 +1882,7 @@ class MetaData(object):
             value = True
         else:
             value = False
-        print "CommonMetaData userOwned", value
+        print "CommonMetaData objectID, userOwned", self.hazardEvent.get('objectID'), value
         self.flush()
         return {
             "fieldType": "CheckBox",
@@ -2057,6 +2060,43 @@ class MetaData(object):
         
         return grp
         
+    def _getProbTrendColor(self, prob):
+        ### Should match PHI Prototype Tool
+        colors =  {
+            (0,20): { "red": 102/255.0, "green": 224/255.0, "blue": 102/255.0 }, 
+            (20,40): { "red": 255/255.0, "green": 255/255.0, "blue": 102/255.0 }, 
+            (40,60): { "red": 255/255.0, "green": 179/255.0, "blue": 102/255.0 }, 
+            (60,80): { "red": 255/255.0, "green": 102/255.0, "blue": 102/255.0 }, 
+            (80,101): { "red": 255/255.0, "green": 102/255.0, "blue": 255/255.0 }
+        }
+        
+        
+        for k, v in colors.iteritems():
+            if float(k[0]) <= prob and prob < float(k[1]):
+                return v
+
+        return { "red": 1, "green": 1, "blue": 1 }
+        
+    def _calcEventDuration(self):
+        startTime = self._roundTime(self.hazardEvent.getStartTime())
+        endTime = self._roundTime(self.hazardEvent.getEndTime())
+        durationMinutes = int((endTime-startTime).total_seconds()/60)
+        return durationMinutes
+    
+    def _roundTime(self, dt=None, dateDelta=datetime.timedelta(minutes=1)):
+        """Round a datetime object to a multiple of a timedelta
+        dt : datetime.datetime object, default now.
+        dateDelta : timedelta object, we round to a multiple of this, default 1 minute.
+        Author: Thierry Husson 2012 - Use it as you want but don't blame me.
+                Stijn Nevens 2014 - Changed to use only datetime objects as variables
+        """
+        roundTo = dateDelta.total_seconds()    
+        if dt is None : dt = datetime.datetime.now()
+        seconds = (dt - dt.min).seconds
+        # // is a floor division, not a comment on following line:
+        rounding = (seconds+roundTo/2) // roundTo * roundTo
+        return dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)
+           
     def _getConvectiveProbabilityTrend(self):
 
         trends = {
@@ -2115,6 +2155,21 @@ class MetaData(object):
                        ]
         }
 
+        
+        probVals = []
+        duration = self._calcEventDuration()
+        probInc = 5
+        ### Round up for some context
+        for i in range(0, duration+probInc+1, probInc):
+            y = 100-(i*100/int(duration))
+            y = 0 if i >= duration else y
+            editable = 1 if y != 0 else 0
+            probVals.append({"x":i, "y":y, "editable": editable})
+            
+        colors = [self._getProbTrendColor(y) for y in range(0,100, 20)]
+        
+        
+
         probs = {
             "fieldType": "Composite",
             "fieldName": "convectiveProbGroup",
@@ -2127,6 +2182,11 @@ class MetaData(object):
             # "expandVertically": True,
             "numColumns":3,
             "fields": [
+                        {
+                         "fieldType": "HiddenField",
+                         "fieldName": "convectiveProbabilityTrendIncrement",
+                         "values": probInc
+                         },
                         {
                          "fieldType": "HiddenField",
                          "fieldName": "convectiveProbabilityTrend",
@@ -2185,7 +2245,7 @@ class MetaData(object):
         simTimeMils = SimulatedTime.getSystemTime().getMillis()
         currentTime = datetime.datetime.fromtimestamp(simTimeMils / 1000)
         
-        textVals = currentTime.strftime("[%m-%d-%Y %H:%M:%S]  ")
+        textVals = currentTime.strftime("[%m-%d-%Y %H:%M:00]  ")
         if previousText:
             textVals += previousText
 
@@ -2284,7 +2344,6 @@ class MetaData(object):
         
         return presets
         
-
 def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     
     returnDict = {}
@@ -2292,48 +2351,161 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     def convectiveFilter(myIterable, prefix):
         return [tf for tf in myIterable if tf.startswith(prefix)]
 
+    def updateProbtrend(convectiveProbTrendGraphVals, interp):
+        '''
+        Logic taken from NSSL Prototype PHI tool http://www.nssl.noaa.gov/projects/facets/phi/prob_chart.js
+        and 'pythonized'.  Probably a way to speed things up with numpy when there's time to refactor
+        '''
+        if interp not in ['convectiveProbTrendBell', 'convectiveProbTrendLinear', 'convectiveProbTrendExp1',
+                          'convectiveProbTrendExp2', 'convectiveProbTrendPlus5', 'convectiveProbTrendMinus5']:
+            return convectiveProbTrendGraphVals
+        
+        probs = [entry.get('y') for entry in convectiveProbTrendGraphVals]
+        probsArr = np.array(probs)
+        firstVal = probsArr[0]
+        lastVal = probsArr[-1]
+        end = float(len(probsArr))
+        diff = (lastVal - firstVal) / len(probsArr)
+        newProbs = []
+        if(interp == 'convectiveProbTrendBell'):
+            maxVal = np.amax(probsArr)
+            hitMaxVal = False
+            end2 = float(np.argmax(probsArr))
+    
+        for i in range(len(probsArr)):
+            newVal = np.nan
+            if(i <= end):
+                if(interp == 'convectiveProbTrendLinear'):
+                    newVal = firstVal + (i * diff)
+    
+                elif(interp == 'convectiveProbTrendExp1'):
+                    disNorm = (i / end)
+                    newVal = ((lastVal - firstVal) * (disNorm * disNorm)) + firstVal
+    
+                elif(interp == 'convectiveProbTrendExp2'):
+                    disNorm = 1 - (i / end)
+                    newVal = ((firstVal - lastVal) * (disNorm * disNorm)) + lastVal
+    
+                elif(interp == 'convectiveProbTrendPlus5'):
+                    newVal = probsArr[i] + 5
+    
+                elif(interp == 'convectiveProbTrendMinus5'):
+                    newVal = probsArr[i] - 5
+    
+                elif(interp == 'convectiveProbTrendBell'):
+                    if(probsArr[i] == maxVal):
+                        hitMaxVal = True
+                        newVal = probsArr[i]
+    
+                    elif(hitMaxVal):
+                        disNorm = ((i - end2) / (end - end2))
+                        newVal = ((lastVal - maxVal) * (disNorm * disNorm)) + maxVal
+    
+                    else:
+                        disNorm = 1 - (i / end2)
+                        newVal = ((firstVal - maxVal) * (disNorm * disNorm)) + maxVal
+    
+                if(newVal > 100):
+                    newVal = 100
+    
+                if(newVal < 0):
+                    newVal = 0
+    
+                newProbs.append(newVal)
+                if(i == end):
+                    probDiff = newVal - newProbs[len(newProbs) - 2]
+    
+    
+            else:
+                newVal = newVal + probDiff
+                if(newVal > 100):
+                    newVal = 100
+    
+                if(newVal < 0):
+                    newVal = 0
+    
+                newProbs.append(newVal)
+                
+        if len(newProbs) == len(convectiveProbTrendGraphVals):
+            ### To satisfy end always ending at 0, also since
+            ### we have an extra point to extend the graph
+            newProbs[-1] = 0
+            newProbs[-2] = 0
+
+            for i in range(len(newProbs)):
+               convectiveProbTrendGraphVals[i]['y'] = newProbs[i]
+        else:
+            sys.stderr.write('New probs length does not match old probs length. No change')
+
+        return convectiveProbTrendGraphVals
+
     if triggerIdentifiers:
         convectTriggers = convectiveFilter(triggerIdentifiers, 'convective')
         convectMutables = convectiveFilter(mutableProperties, 'convective')
         
-        
-        #=======================================================================
-        # pprint.pprint(triggerIdentifiers)
-        # print '@@@'
-        # pprint.pprint(mutableProperties)
-        # print '###'
-        # print pprint.pprint(convectTriggers)
-        # print '+++'
-        # print pprint.pprint(convectMutables)
-        # os.sys.__stdout__.flush() 
-        #=======================================================================       
-        #print pprint.pprint(convectTriggers)
-        #print '***'
-        #print pprint.pprint(mutableProperties[convectTriggers[0]]['values'])
-        
+        ######################################################
+        ## Discussion Box
+        ######################################################
+        simTimeMils = SimulatedTime.getSystemTime().getMillis()
+        currentTime = datetime.datetime.fromtimestamp(simTimeMils / 1000)
+        currentTimeText = currentTime.strftime("[%m-%d-%Y %H:%M:00]  ")
+        delimeter = u'\u2063\n'
+
         discussion = mutableProperties['convectiveWarningDecisionDiscussion']['values']
-        discLines = discussion.split('\n\n')
-        if len(discLines[0]) > 0:
-            latestTimestampMatch = re.match('\[\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}\]  ', discLines[0])
+        discLines = discussion.split(delimeter)
+        ### Seems to work!
+        sortedDisclines = filter(None, sorted(discLines))[::-1]
+
+        if len(sortedDisclines[0]) > 0:
+            latestTimestampMatch = re.match('\[\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}\]  ', sortedDisclines[0])
             if latestTimestampMatch:
                 latestTimestamp = latestTimestampMatch.group(0)
+
                 hailVal0 = mutableProperties['convectiveStormCharsHail']['values']
-                hailVal = 'Hail: '+hailVal0 if hailVal0 != "None" else ''
                 windVal0 = mutableProperties['convectiveStormCharsWind']['values']
-                windVal = 'Winds: '+windVal0 if windVal0 != "None" else ''
                 tornVal0 = mutableProperties['convectiveStormCharsTorn']['values']
+                
+                freeTextList = sortedDisclines[0].split(' :: ')
+                freeText = ''
+                if len(freeTextList) > 1 and len(freeTextList[-1]) > 1:
+                    freeText = freeTextList[-1]
+                
+
+                if latestTimestamp != currentTimeText:
+                    sortedDisclines.insert(0, currentTimeText+'  ')
+                    returnDict['convectiveStormCharsHail'] = { 'values' : "None"}
+                    returnDict['convectiveStormCharsWind'] = { 'values' : "None"}
+                    returnDict['convectiveStormCharsTorn'] = { 'values' : "None"}
+                    hailVal0 = "None"
+                    windVal0 = "None"
+                    tornVal0 = "None"
+                    freeText = ''
+
+                hailVal = 'Hail: '+hailVal0 if hailVal0 != "None" else ''
+                windVal = 'Winds: '+windVal0 if windVal0 != "None" else ''
                 tornVal = 'Tornado: '+tornVal0 if tornVal0 != "None" else ''
-                updateLine = ' '.join([latestTimestamp, hailVal, windVal, tornVal])
-                discLines[0] = updateLine
-                discussion = '\n\n'.join(discLines)                        
-        
+                updateLine = ' '.join([currentTimeText, windVal, hailVal, tornVal, ' :: ', freeText.lstrip()])
+                sortedDisclines[0] = updateLine
+                discussion = delimeter.join(sortedDisclines)
+
         returnDict['convectiveWarningDecisionDiscussion'] = { 'values' : discussion}
         
+        ######################################################
+        ## Graph Megawidget Algorithm Buttons
+        ######################################################
         
-        os.sys.__stdout__.flush() 
-        
-    
-
+        convectiveProbTrendTriggers = [x for x in convectTriggers if x.startswith('convectiveProbTrend') ]
+        if len(convectiveProbTrendTriggers) > 0:
+            probVals = mutableProperties['convectiveProbTrendGraph']['values']
+            trigger = convectiveProbTrendTriggers[0]
+            execMethodName = trigger
+            updatedProbTrend = updateProbtrend(probVals, trigger)
+            
+            returnDict['convectiveProbTrendGraph'] = {'values' : updatedProbTrend}
+            
+        sys.stdout.flush()
+            
+            
     return returnDict
 
 def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
