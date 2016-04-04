@@ -55,8 +55,7 @@ Prob_WFO = {
         "pending",
         "issued",
         "elapsed",
-        "ending",
-        "ended"
+        "ending"
     ],
     "columns": {
         "Event ID": {

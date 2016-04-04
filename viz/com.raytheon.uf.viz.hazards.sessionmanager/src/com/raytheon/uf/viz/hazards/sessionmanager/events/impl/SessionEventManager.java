@@ -359,6 +359,9 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      shouldn't be policing this; it should assume it gets valid geometries.
  *                                      Also added handler for visual feature change notifications to trigger
  *                                      recommenders if appropriate.
+ * Apr 04, 2016   17467    Chris.Golden Fixed public addEvent() method to no longer filter out added/modified
+ *                                      events by current settings filters, and changed the other addEvent()
+ *                                      to give its second parameter a more reasonable name than "localEvent".
  * </pre>
  * 
  * @author bsteffen
@@ -2121,17 +2124,8 @@ public class SessionEventManager implements
         HazardStatus status = event.getStatus();
         if (status == null || status == HazardStatus.PENDING) {
             return addEvent(event, true, originator);
-        } else if (status == HazardStatus.POTENTIAL) {
-            return addEvent(event, false, originator);
         } else {
-            List<IHazardEvent> list = new ArrayList<IHazardEvent>();
-            list.add(event);
-            filterEventsForConfig(list);
-            if (!list.isEmpty()) {
-                return addEvent(event, false, originator);
-            } else {
-                return null;
-            }
+            return addEvent(event, false, originator);
         }
     }
 
@@ -2143,9 +2137,20 @@ public class SessionEventManager implements
      * logic (method calls, etc.) may therefore be added to this method's
      * implementation as necessary if said logic must be run whenever an event
      * is added.
+     * </p>
+     * 
+     * @param event
+     *            Event to be added (or if the event has an identifier that is
+     *            already in use by an existing event, to be used in place of
+     *            the existing event).
+     * @param select
+     *            Flag indicating whether or not it should be selected.
+     * @param originator
+     *            Originator of the addition.
+     * @return Event that was added or modified.
      */
-    protected ObservedHazardEvent addEvent(IHazardEvent event,
-            boolean localEvent, IOriginator originator) {
+    protected ObservedHazardEvent addEvent(IHazardEvent event, boolean select,
+            IOriginator originator) {
         ObservedHazardEvent oevent = new ObservedHazardEvent(event, this);
 
         /*
@@ -2303,7 +2308,7 @@ public class SessionEventManager implements
         }
         oevent.setHazardMode(productClass, false, originator);
         synchronized (events) {
-            if (localEvent && !Boolean.TRUE.equals(settings.getAddToSelected())) {
+            if (select && !Boolean.TRUE.equals(settings.getAddToSelected())) {
                 for (IHazardEvent e : events) {
                     e.addHazardAttribute(HAZARD_EVENT_SELECTED, false);
                 }
@@ -2318,7 +2323,7 @@ public class SessionEventManager implements
                 HazardStatus.issuedButNotEndedOrElapsed(oevent.getStatus()),
                 false, originator);
 
-        if (localEvent) {
+        if (select) {
             oevent.addHazardAttribute(HAZARD_EVENT_SELECTED, true, false);
         }
         oevent.addHazardAttribute(HAZARD_EVENT_CHECKED, true);
