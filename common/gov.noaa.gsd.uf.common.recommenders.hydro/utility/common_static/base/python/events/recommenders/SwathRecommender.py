@@ -293,8 +293,8 @@ class Recommender(RecommenderTemplate.Recommender):
         mvPolys = event.get('motionVectorPolys')
         if not mvPolys:
             mvPolys = [event.getGeometry()]
-            st = self._convertFeatureTime(event, 0)
-            et = self._convertFeatureTime(event, self._timeStep())
+            st = self._convertFeatureTime(0)
+            et = self._convertFeatureTime(self._timeStep())
             mvTimes = [(st, et)]
             event.set('motionVectorPolys', mvPolys)
             event.set('motionVectorTimes', mvTimes)
@@ -327,8 +327,8 @@ class Recommender(RecommenderTemplate.Recommender):
         self._setEventGeometry(event, downstreamPolys[0])
         historyPolys = event.get('historyPolys', [])
         historyTimes = event.get('historyTimes', [])
-        newHistPolys = historyPolys + downstreamPolys[:index]
-        newHistTimes = historyTimes + downstreamTimes[:index]
+        newHistPolys = historyPolys #+ downstreamPolys[:index]
+        newHistTimes = historyTimes #+ downstreamTimes[:index]
         
         # Truncate historyPolys if there is a maximum limit set
         maxHistory = self._historySteps()
@@ -643,8 +643,8 @@ class Recommender(RecommenderTemplate.Recommender):
             intervalPoly = so.transform(self._c3857t4326, gglDownstream)
             intervalPoly = self._reducePolygon(intervalPoly)
             intervalPolys.append(intervalPoly)
-            st = self._convertFeatureTime(event, secs)
-            et = self._convertFeatureTime(event, secs+self._timeStep())
+            st = self._convertFeatureTime(secs)
+            et = self._convertFeatureTime(secs+self._timeStep())
             intervalTimes.append((st, et))
                     
         if timeDirection == 'downstream':
@@ -758,15 +758,19 @@ class Recommender(RecommenderTemplate.Recommender):
             
         selectedFeatures = event.getSelectedVisualFeatures()
         baseFeatures = event.getBaseVisualFeatures()
+        if not selectedFeatures: selectedFeatures = []
+        if not baseFeatures: baseFeatures = []
         features = selectedFeatures + baseFeatures
         # We are only changing one attribute per SwathRecommender execution
-        featureChanged = list(eventSetAttrs.get('attributeIdentifiers'))[0]
+        changedIdentifier = list(eventSetAttrs.get('attributeIdentifiers'))[0]
+        if changedIdentifier.find('swathRec_') != 0:
+            return
 
         newMotionVector = []
         for feature in features:
             featureIdentifier = feature.get('identifier')
             # Find the feature that has changed
-            if featureIdentifier == featureChanged:
+            if featureIdentifier == changedIdentifier:
                 newMotionVector = []
                 # Get feature polygon
                 polyDict = feature["geometry"]
@@ -821,6 +825,7 @@ class Recommender(RecommenderTemplate.Recommender):
         baseVisualFeatures = [] 
         selectedVisualFeatures = [] 
         upstreamSt_ms = self._eventSt_ms - (self._timeStep() * 1000 * self._upstreamTimeSteps())
+        upstreamSt_ms = self._roundTime_ms(upstreamSt_ms)
         
         # Down Stream Features -- polygons, track points, relocated last motionVector
         dsBaseVisualFeatures, dsSelectedVisualFeatures = self._downstreamVisualFeatures(
@@ -835,17 +840,34 @@ class Recommender(RecommenderTemplate.Recommender):
         # Previous Time Features
         previousFeatures = self._previousTimeVisualFeatures(event)
         selectedVisualFeatures += previousFeatures
-                            
+                  
+        # Replace Visual Features                   
         if baseVisualFeatures:
+            existingFeatures = self._screenFeatures(event.getBaseVisualFeatures(), "swathRec_")
+            if existingFeatures:
+                baseVisualFeatures = baseVisualFeatures + existingFeatures
             event.setBaseVisualFeatures(VisualFeatures(baseVisualFeatures))
         if selectedVisualFeatures:
+            existingFeatures = self._screenFeatures(event.getSelectedVisualFeatures(), "swathRec_")
+            if existingFeatures:
+                selectedVisualFeatures = selectedVisualFeatures  + existingFeatures
             event.setSelectedVisualFeatures(VisualFeatures(selectedVisualFeatures))
             
         if self._printVisualFeatures:
              self._printFeatures(event, "Base Visual Features", baseVisualFeatures)
              self._printFeatures(event, "Selected Visual Features", selectedVisualFeatures)
 
-
+    def _screenFeatures(self, features, identifierStr):
+        # Screen out the features containing the identifierStr as a prefix
+        existingFeatures = []
+        if features is None:
+            return existingFeatures
+        for feature in features:
+            index = feature.get('identifier').find(identifierStr)
+            if index != 0:
+                existingFeatures.append(feature)
+        return existingFeatures
+        
     def _downstreamVisualFeatures(self, event, upstreamSt_ms):
         downstreamPolys = event.get('downstreamPolys')
         if not downstreamPolys:
@@ -863,13 +885,13 @@ class Recommender(RecommenderTemplate.Recommender):
             polyEnd = polyEt_ms - 60*1000 # Take a minute off
    
             # First downstream polygon is at current time and always editable
-            if polySt_ms == self._eventSt_ms:
+            if i == 0:
                 dragCapability = "all"
             else:
                 dragCapability = "none"
               
             downstreamFeature = {
-              "identifier": "downstream_"+str(polySt_ms),
+              "identifier": "swathRec_downstream_"+str(polySt_ms),
               "borderColor": "eventType",
               "borderThickness": "eventType",
               "borderStyle": "eventType",
@@ -882,15 +904,12 @@ class Recommender(RecommenderTemplate.Recommender):
                   }
                 }
             baseVisualFeatures.append(downstreamFeature)
-            if i == 0:
-                print "SR downstream feature", poly, downstreamFeature
-                self.flush() 
                
             # Track Points 
             centroid = poly.centroid
             color = self._getInterpolatedProbTrendColor(event, i, numIntervals)
             trackPointFeature = {
-              "identifier": "trackPoint_"+str(polySt_ms),
+              "identifier": "swathRec_trackPoint_"+str(polySt_ms),
               "borderColor": color,
               "borderThickness": 2,
               "diameter": 5,
@@ -906,7 +925,7 @@ class Recommender(RecommenderTemplate.Recommender):
             if polySt_ms > self._eventSt_ms:
                 relocatedPoly = self._relocatePolygon(centroid, geometry)
                 relocatedFeature = {
-                  "identifier": "relocated_"+str(polySt_ms),
+                  "identifier": "swathRec_relocated_"+str(polySt_ms),
                   "borderColor": "eventType",
                   "borderThickness": "eventType",
                   "borderStyle": "dashed",
@@ -922,7 +941,7 @@ class Recommender(RecommenderTemplate.Recommender):
     def _swathFeature(self, event, upstreamSt_ms, downstreamPolys):
         envelope = shapely.ops.cascaded_union(downstreamPolys)
         swath = {
-              "identifier": "swath",
+              "identifier": "swathRec_swath",
               "borderColor": { "red": 1, "green": 1, "blue": 0 },
               "borderThickness": 3,
               "borderStyle": "dotted",
@@ -954,11 +973,7 @@ class Recommender(RecommenderTemplate.Recommender):
         motionVectorPolys = event.get('motionVectorPolys', []) 
         motionVectorTimes = event.get('motionVectorTimes', [])
         previousFeatures = []
-        
-        #print "SR motionVector, history", motionVectorTimes, historyTimes
-        #if self._pendingHazard: print "Upstream", self._upstreamTimes
-        #self.flush()
-        
+                
         timeSteps = max(self._upstreamTimeSteps(), len(historyPolys))
         if self._pendingHazard:
             dragCapability = 'whole'
@@ -970,6 +985,7 @@ class Recommender(RecommenderTemplate.Recommender):
         for i in range(timeSteps):
             # Work backwards from current time
             polySt_ms = self._eventSt_ms - (i+1)*self._timeStep()*1000
+            polySt_ms = self._roundTime_ms(polySt_ms)
             poly = self._findPreviousPoly(polySt_ms,
                                           motionVectorPolys, motionVectorTimes, 
                                           historyPolys, historyTimes)
@@ -978,7 +994,7 @@ class Recommender(RecommenderTemplate.Recommender):
             polyEt_ms = polySt_ms + ((self._timeStep()-60)*1000)
                                 
             previousFeature = {              
-              "identifier": "previous_"+str(polySt_ms),
+              "identifier": "swathRec_previous_"+str(polySt_ms),
               "borderColor":  color, #{ "red": 1, "green": 1, "blue": 0 }, #"eventType", 
               "borderThickness": "eventType",
               "borderStyle": "eventType",
@@ -1030,11 +1046,11 @@ class Recommender(RecommenderTemplate.Recommender):
     def _datetimeToMs(self, datetime):
         return float(time.mktime(datetime.timetuple())) * 1000
     
-    def _convertFeatureTime(self, event, secs):
+    def _convertFeatureTime(self, secs):
         # Return millis given the event start time and secs offset
-        # TODO: Round to minutes -- because our time step is 60 secs 
-        #   this should be ok for now
-        return long(self._eventSt_ms + secs * 1000 )
+        # Round to minutes
+        millis = long(self._eventSt_ms + secs * 1000 )
+        return self._roundTime_ms(millis)
 
     def _convertMsToSecsOffset(self, time_ms, baseTime_ms=0):
         result = time_ms - baseTime_ms
@@ -1053,10 +1069,15 @@ class Recommender(RecommenderTemplate.Recommender):
         # // is a floor division, not a comment on following line:
         rounding = (seconds+roundTo/2) // roundTo * roundTo
         return dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)
+    
+    def _roundTime_ms(self, ms):
+        dt = datetime.datetime.fromtimestamp(ms/1000.0)
+        dt = self._roundTime(dt)
+        return VisualFeatures.datetimeToEpochTimeMillis(dt)
 
     def _timeDelta_ms(self):
         # A tolerance for comparing millisecond times
-        return 50*1000
+        return 40*1000
     
     def _displayMsTime(self, time_ms):
         return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time_ms))
