@@ -254,7 +254,7 @@ class Recommender(RecommenderTemplate.Recommender):
             # Set userOwned and round start / end times to nearest minute
             #   This event will subsequently be ignored by the ConvectiveRecommender
             if eventSetAttrs.get('origin') == 'user':
-                event.set('userOwned', True)                
+                event.set('convectiveUserOwned', True)                
             self._eventSt_ms = long(self._datetimeToMs(event.getStartTime()))
             self._roundEventTimes(event)
             
@@ -882,6 +882,9 @@ class Recommender(RecommenderTemplate.Recommender):
                   }
                 }
             baseVisualFeatures.append(downstreamFeature)
+            if i == 0:
+                print "SR downstream feature", poly, downstreamFeature
+                self.flush() 
                
             # Track Points 
             centroid = poly.centroid
@@ -1139,7 +1142,7 @@ class Recommender(RecommenderTemplate.Recommender):
             if eventLevel >=1:
                 print event.getEventID(), event.get('objectID')
                 print "start, end", event.getStartTime(), event.getEndTime()
-                print "userOwned", event.get('userOwned')
+                print "userOwned", event.get('convectiveUserOwned')
             if eventLevel >= 2:
                 print '=== attrs ==='
                 pprint.pprint(event.getHazardAttributes())

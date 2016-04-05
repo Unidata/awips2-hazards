@@ -392,7 +392,7 @@ class Recommender(RecommenderTemplate.Recommender):
         #  However, filtering them out from the merge will save a bit of time.
         nonUserOwnedCurrentEvents = EventSet(None)
         for c in currentEventsList:
-            if not c.get('userOwned'): 
+            if not c.get('convectiveUserOwned'): 
                 nonUserOwnedCurrentEvents.add(c)
                             
         recEventObjectIDs = sorted(recommendedEventsDict.keys())
@@ -478,7 +478,7 @@ class Recommender(RecommenderTemplate.Recommender):
         for ID, recommendedEventValues in recommendedEventsDict.iteritems():
             overlap = False
             for event in currentEvents:
-                if event.get('userOwned'):
+                if event.get('convectiveUserOwned'):
                     if event.get(OBJECT_ID) == ID:
                         overlap = True
                         break

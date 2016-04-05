@@ -1878,12 +1878,10 @@ class MetaData(object):
         return grp
     
     def _getUserOwned(self):
-        if self.hazardEvent.get('userOwned'):
+        if self.hazardEvent.get('convectiveUserOwned'):
             value = True
         else:
             value = False
-        print "CommonMetaData objectID, userOwned", self.hazardEvent.get('objectID'), value
-        self.flush()
         return {
             "fieldType": "CheckBox",
             "fieldName": "convectiveUserOwned",
@@ -1950,7 +1948,7 @@ class MetaData(object):
         #  Manually drawn hazards are always userOwned
         if self.hazardEvent.get('objectID') is None:
             self.hazardEvent.set('objectID',  'M' + self.hazardEvent.getDisplayEventID())
-            self.hazardEvent.set('userOwned', True)
+            self.hazardEvent.set('convectiveUserOwned', True)
         objectID = self.hazardEvent.get('objectID')
         
         grp = {
@@ -2053,6 +2051,15 @@ class MetaData(object):
                         "values": 10,
                         "showScale": False,
                         "modifyRecommender": "SwathRecommender"
+                        },
+                       {
+                        "fieldType": "CheckBox",
+                        "fieldName": "showGrid",
+                        "label": "Preview Grid",
+                        "sendEveryChange": False,
+                        "showScale": False,
+                        "values": False,
+                        "modifyRecommender": "PreviewGridRecommender"
                         },
                        ]
         }
