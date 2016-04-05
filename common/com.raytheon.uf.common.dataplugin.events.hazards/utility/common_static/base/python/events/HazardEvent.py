@@ -34,7 +34,11 @@
 #    05/26/15        8112          Chris.Cody     Add get handling for 0 values
 #    07/31/15        7458          Robert.Blum    Added username and workstation.
 #    08/03/15        8836          Chris.Cody     Changes for a configurable Event Id
-#    03/01/17       15676          Chris.Golden   Added visual features to hazard event.
+#    03/01/16       15676          Chris.Golden   Added visual features to hazard event.
+#    04/05/16       15676          Chris.Golden   Ensured that the getXxxxVisualFeatures()
+#                                                 methods never return None; they now always
+#                                                 return a VisualFeatures (list) object,
+#                                                 empty or otherwise.
 # 
 #
 
@@ -175,9 +179,9 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         # This may return a list, and not a VisualFeatures object (which is a
         # list subclass), so build one of the latter out of the former.
         visualFeatures = JUtil.javaObjToPyVal(self.jobj.getBaseVisualFeatures())
-        if visualFeatures is not None:
-            visualFeatures = VisualFeatures(visualFeatures)
-        return visualFeatures
+        if visualFeatures is None:
+            return VisualFeatures([])
+        return VisualFeatures(visualFeatures)
     
     def setBaseVisualFeatures(self, visualFeatures):
         self.jobj.setBaseVisualFeatures(JUtil.pyValToJavaObj(visualFeatures))
@@ -187,9 +191,9 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         # This may return a list, and not a VisualFeatures object (which is a
         # list subclass), so build one of the latter out of the former.
         visualFeatures = JUtil.javaObjToPyVal(self.jobj.getSelectedVisualFeatures())
-        if visualFeatures is not None:
-            visualFeatures = VisualFeatures(visualFeatures)
-        return visualFeatures
+        if visualFeatures is None:
+            return VisualFeatures([])
+        return VisualFeatures(visualFeatures)
     
     def setSelectedVisualFeatures(self, visualFeatures):
         self.jobj.setSelectedVisualFeatures(JUtil.pyValToJavaObj(visualFeatures))

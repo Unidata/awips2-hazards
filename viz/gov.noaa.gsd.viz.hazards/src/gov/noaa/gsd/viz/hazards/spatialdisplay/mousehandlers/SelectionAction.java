@@ -91,6 +91,10 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      of immutable shapes.
  * Mar 26, 2016 15676      Chris.Golden Fixed bugs with editing and moving of hazard event geometries,
  *                                      and added ability to edit and move spatial entity geometries.
+ * Apr 05, 2016 15676      Chris.Golden Fixed bug that caused the code to fixate on the first vertex
+ *                                      it found when checking distance from vertices to the mouse
+ *                                      cursor, instead of looking for the one with the least distance
+ *                                      between the two.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -869,7 +873,6 @@ public class SelectionAction extends NonDrawingAction {
                                     moveType = MoveType.SINGLE_POINT;
                                     movePointIndex = i;
                                     minDistance = dist;
-                                    break;
                                 }
                             }
                         }

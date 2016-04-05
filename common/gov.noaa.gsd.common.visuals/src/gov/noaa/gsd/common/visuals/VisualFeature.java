@@ -38,6 +38,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Mar 26, 2016   15676    Chris.Golden Added copy constructor, and a method
  *                                      to set the geometry for whichever time
  *                                      range encompasses a given timestamp.
+ * Apr 05, 2016   15676    Chris.Golden Added toString() method for debugging.
  * </pre>
  * 
  * @author Chris.Golden
@@ -815,6 +816,43 @@ public class VisualFeature {
     public boolean setGeometry(Date time, Geometry geometry) {
         return this.geometry.addPropertyForTimeRangeEncompassingTime(time,
                 geometry);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(identifier + " (");
+        boolean never = false;
+        if (geometry != null) {
+            if (geometry.getDefaultProperty() != null) {
+                stringBuilder.append("always visible");
+            } else {
+                Map<Range<Date>, Geometry> geometriesForTimeRanges = geometry
+                        .getPropertiesForTimeRanges();
+                if (geometriesForTimeRanges.isEmpty()) {
+                    never = true;
+                } else {
+                    stringBuilder.append("visible ");
+                    boolean first = true;
+                    for (Range<Date> range : geometriesForTimeRanges.keySet()) {
+                        if (first) {
+                            first = false;
+                        } else {
+                            stringBuilder.append(", ");
+                        }
+                        stringBuilder.append(range.lowerEndpoint() + " to "
+                                + range.upperEndpoint());
+                    }
+                }
+            }
+        } else {
+            never = true;
+        }
+        if (never) {
+            stringBuilder.append("never visible");
+        }
+        stringBuilder.append(")");
+        return stringBuilder.toString();
     }
 
     // Package Methods

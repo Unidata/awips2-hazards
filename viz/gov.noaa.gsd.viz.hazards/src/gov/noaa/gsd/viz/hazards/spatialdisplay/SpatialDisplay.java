@@ -222,6 +222,11 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  *                                      to allow the display to be notified of changes made by the user
  *                                      to visual features. Also fixed selection-tracking bug causing
  *                                      handlebars to appear around deselected hazard event geometries.
+ * Apr 05, 2016 15676      Chris.Golden Made finding all geometries "containing" a point more relaxed
+ *                                      about what containment entails; there is now slop distance
+ *                                      when looking for a point in a polygon, so that if the point
+ *                                      lies slightly outside of the polygon, it still "contains" it.
+ *                                      This makes editing polygons much easier.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1669,19 +1674,30 @@ public class SpatialDisplay extends
                                 .getNumGeometries(); j++) {
                             Geometry geometry = geometryCollection
                                     .getGeometryN(j);
-                            if (geometry instanceof Polygonal) {
-                                contains = clickPoint.within(geometry);
-                            } else {
-                                contains = clickPointWithSlop
-                                        .intersects(geometry);
-                            }
+
+                            /*
+                             * Commented out this code, as it made editing
+                             * polygons difficult; seems like it's much better
+                             * to simply use the click point with slop and check
+                             * for intersection.
+                             */
+                            // if (geometry instanceof Polygonal) {
+                            // contains = clickPoint.within(geometry);
+                            // } else {
+                            contains = clickPointWithSlop.intersects(geometry);
+                            // }
                             if (contains) {
                                 break;
                             }
                         }
                     } else {
-                        contains = (p instanceof Polygonal ? clickPoint
-                                .within(p) : clickPointWithSlop.intersects(p));
+
+                        /*
+                         * Same comment as above concerning why commented out.
+                         */
+                        // contains = (p instanceof Polygonal ? clickPoint
+                        // .within(p) : clickPointWithSlop.intersects(p));
+                        contains = clickPointWithSlop.intersects(p);
                     }
                     if (contains) {
                         containingSymbolsList.add(comp);

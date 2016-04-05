@@ -55,7 +55,9 @@ import com.vividsolutions.jts.io.WKTReader;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Feb 19, 2016   15676    Chris.Golden Initial creation.
- * 
+ * Apr 05, 2016   15676    Chris.Golden Changed to detect invalid geometries
+ *                                      and to warn about time range boundaries
+ *                                      that do not lie on minute boundaries.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1192,6 +1194,22 @@ class VisualFeaturesListJsonDeserializer {
                 }
 
                 /*
+                 * Log a warning if the time range boundaries are not rounded to
+                 * minutes (i.e. they should be 18:36:00, not 18:36:23).
+                 */
+                if ((timeRange.lowerEndpoint().getTime() % 60000L != 0L)
+                        || (timeRange.upperEndpoint().getTime() % 60000L != 0L)) {
+                    System.err
+                            .println("WARNING: visual feature \""
+                                    + identifier
+                                    + "\" has property \""
+                                    + propertyName
+                                    + "\" with range "
+                                    + timeRange
+                                    + ", at least one end of which is not on a minute boundary.");
+                }
+
+                /*
                  * Deserialize the value that goes with this time range, and if
                  * this results in a non-null value, add the time range and the
                  * value to the temporally variant property.
@@ -1477,14 +1495,20 @@ class VisualFeaturesListJsonDeserializer {
      */
     private static Geometry deserializeGeometry(JsonNode node,
             String identifier, String propertyName) throws JsonParseException {
+        Geometry geometry;
         try {
-            return wktReader.get().read(
+            geometry = wktReader.get().read(
                     VisualFeaturesListJsonConverter.CONVERTER.readValue(node,
                             String.class));
         } catch (IOException | ParseException e) {
             throw createValueDeserializationException(identifier, propertyName,
                     "geometry in Well-Known Text format", node, e);
         }
+        if (geometry.isValid() == false) {
+            throw createValueDeserializationException(identifier, propertyName,
+                    "valid geometry", node, null);
+        }
+        return geometry;
     }
 
     /**
@@ -1566,7 +1590,7 @@ class VisualFeaturesListJsonDeserializer {
             Throwable cause) {
         return new JsonParseException("visual feature \"" + identifier
                 + "\": expected time range for property \"" + propertyName
-                + "\" to be string holding two timestamps (lower and"
+                + "\" to be string holding two timestamps (lower and "
                 + "upper boundaries, each of the form of either a "
                 + "number giving epoch time in milliseconds, or else "
                 + VisualFeaturesListJsonConverter.TIMESTAMP_FORMAT_PATTERN
