@@ -90,6 +90,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                      tasks to run at regular intervals.
  * Apr 01, 2016 16225      Chris.Golden Added ability to cancel tasks that are
  *                                      scheduled to run at regular intervals.
+ * Apr 05, 2016 16225      Chris.Golden Fixed bug that caused tasks that had been
+ *                                      set up to run at regular intervals, and
+ *                                      then canceled, to continue to run at those
+ *                                      intervals.
  * </pre>
  * 
  * @author bsteffen
@@ -165,6 +169,14 @@ public class SessionTimeManager implements ISessionTimeManager {
      * milliseconds.
      */
     private final Map<Runnable, Long> intervalsMillisForTasks = new IdentityHashMap<>();
+
+    /**
+     * Map of tasks to be executed at regular intervals to their associated
+     * timer tasks, if they are currently scheduled. This is needed so that the
+     * timer tasks may be accessed later if there is a need to cancel their
+     * execution.
+     */
+    private final Map<Runnable, TimerTask> timerTasksForTasks = new IdentityHashMap<>();
 
     /**
      * Simulated time change listener, used to receive notifications that the
@@ -345,6 +357,10 @@ public class SessionTimeManager implements ISessionTimeManager {
     @Override
     public void cancelRunAtRegularIntervals(Runnable task) {
         intervalsMillisForTasks.remove(task);
+        TimerTask timerTask = timerTasksForTasks.remove(task);
+        if (timerTask != null) {
+            timerTask.cancel();
+        }
     }
 
     /**
@@ -488,12 +504,15 @@ public class SessionTimeManager implements ISessionTimeManager {
              * for the call of the same timer method in
              * scheduleTimerNotifications() for caveats.
              */
-            timer.scheduleAtFixedRate(new TimerTask() {
+            TimerTask timerTask = new TimerTask() {
                 @Override
                 public void run() {
                     RUNNABLE_ASYNC_SCHEDULER.schedule(task);
                 }
-            }, 0L, intervalsMillisForTasks.get(task));
+            };
+            timerTasksForTasks.put(task, timerTask);
+            timer.scheduleAtFixedRate(timerTask, 0L,
+                    intervalsMillisForTasks.get(task));
         }
     }
 

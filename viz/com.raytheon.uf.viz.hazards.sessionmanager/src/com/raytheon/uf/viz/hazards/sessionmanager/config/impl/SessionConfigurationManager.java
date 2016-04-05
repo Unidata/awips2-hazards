@@ -341,7 +341,7 @@ public class SessionConfigurationManager implements
 
     private Map<Runnable, Integer> minuteIntervalsForEventDrivenToolExecutors;
 
-    private boolean runRecommendersAtRegularIntervals;
+    private boolean runRecommendersAtRegularIntervals = true;
 
     SessionConfigurationManager() {
 
@@ -463,7 +463,7 @@ public class SessionConfigurationManager implements
                 }
             }, entry.getIntervalMinutes());
         }
-        setEventDrivenToolRunningEnabled(true);
+        setEventDrivenToolRunningEnabled(false);
 
         // Add observer to base file
         file = pathManager.getLocalizationFile(commonStaticBase,
