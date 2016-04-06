@@ -83,6 +83,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  *                                      tools to reflect that it now means identifiers plural,
  *                                      not a single identifier.
  * Mar 01, 2016 15676     Chris.Golden  Changed to support visual features.
+ * Apr 05, 2016 16885     Chris.Golden  Added definitions for boolean column type in temporal
+ *                                      display.
  * </pre>
  * 
  * @author mnash
@@ -944,6 +946,12 @@ public final class HazardConstants {
      * dictionary.
      */
     public static final String SETTING_COLUMN_TYPE_NUMBER = "number";
+
+    /**
+     * Boolean column type value in column definition dictionary in setting
+     * dictionary.
+     */
+    public static final String SETTING_COLUMN_TYPE_BOOLEAN = "boolean";
 
     /**
      * Countdown column type value in column definition dictionary in setting

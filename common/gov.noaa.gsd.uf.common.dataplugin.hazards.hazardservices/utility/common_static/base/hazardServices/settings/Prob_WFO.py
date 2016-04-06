@@ -46,6 +46,7 @@ Prob_WFO = {
         "Object ID",
         "Hazard Type",
         "Status",
+        "User-Owned",
         "Start Time",
         "End Time",
     ],
@@ -152,7 +153,12 @@ Prob_WFO = {
             "sortDir": "none",
             "fieldName": "objectID",
             "type": "string"
-            },
+        },
+        "User-Owned": {
+            "sortDir": "none",
+            "fieldName": "convectiveUserOwned",
+            "type": "boolean"
+        },
         "Workstation": {
             "sortDir": "none",
             "fieldName": "workStation", 

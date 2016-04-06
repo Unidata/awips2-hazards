@@ -21,6 +21,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.S
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_SORT_DIRECTION_DESCENDING;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_SORT_DIRECTION_NONE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_SORT_PRIORITY_NONE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_BOOLEAN;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_COUNTDOWN;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_DATE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_NUMBER;
@@ -268,6 +269,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Jun 23, 2015 8566     Benjamin.Phillippe  Fixed extremely rare situation where table data is 
  *                                           trying to be updated before being populated
  * Jul 23, 2015 4245       Chris.Golden      Simplified time zooming.
+ * Apr 05, 2016 16885      Chris.Golden      Added support for boolean column values.
  * </pre>
  * 
  * @author Chris.Golden
@@ -405,6 +407,21 @@ class TemporalDisplay {
      * Date-time format string.
      */
     private static final String DATE_TIME_FORMAT_STRING = "HH:mm'Z' dd-MMM-yy";
+
+    /**
+     * Text to be displayed in a cell of a boolean column with no value.
+     */
+    private static final String BOOLEAN_COLUMN_NULL_TEXT = "N/A";
+
+    /**
+     * Text to be displayed in a cell of a boolean column with a value of true.
+     */
+    private static final String BOOLEAN_COLUMN_TRUE_TEXT = "yes";
+
+    /**
+     * Text to be displayed in a cell of a boolean column with a value of false.
+     */
+    private static final String BOOLEAN_COLUMN_FALSE_TEXT = "no";
 
     /**
      * Filter menu name.
@@ -2920,6 +2937,8 @@ class TemporalDisplay {
             } else if (sortByType.equals(SETTING_COLUMN_TYPE_DATE)
                     || sortByType.equals(SETTING_COLUMN_TYPE_NUMBER)) {
                 comparator = Ordering.<Double> natural();
+            } else if (sortByType.equals(SETTING_COLUMN_TYPE_BOOLEAN)) {
+                comparator = Ordering.<Boolean> natural();
             } else if (sortByType.equals(SETTING_COLUMN_TYPE_COUNTDOWN)) {
 
                 /*
@@ -4957,6 +4976,14 @@ class TemporalDisplay {
                 // no time defined, return empty String, not 0 milliseconds
                 return EMPTY_STRING;
             }
+        } else if (columnDefinition.getType().equals(
+                SETTING_COLUMN_TYPE_BOOLEAN)) {
+            Boolean bool = (value instanceof Number ? (((Number) value)
+                    .intValue() != 0 ? Boolean.TRUE : Boolean.FALSE)
+                    : (Boolean) value);
+            return (bool == null ? BOOLEAN_COLUMN_NULL_TEXT : (Boolean.TRUE
+                    .equals(bool) ? BOOLEAN_COLUMN_TRUE_TEXT
+                    : BOOLEAN_COLUMN_FALSE_TEXT));
         } else if (value != null) {
             return value.toString();
         } else {
@@ -5674,6 +5701,9 @@ class TemporalDisplay {
     private String getEmptyFieldText(Column columnDefinition) {
         if (columnDefinition.getDisplayEmptyAs() != null) {
             return columnDefinition.getDisplayEmptyAs();
+        } else if (columnDefinition.getType().equals(
+                SETTING_COLUMN_TYPE_BOOLEAN)) {
+            return BOOLEAN_COLUMN_NULL_TEXT;
         } else {
             return EMPTY_STRING;
         }

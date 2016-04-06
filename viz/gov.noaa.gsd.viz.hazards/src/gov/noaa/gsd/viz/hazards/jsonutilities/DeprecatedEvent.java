@@ -75,6 +75,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * Oct 14, 2015 12494      Chris Golden Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
+ * Apr 05, 2016 16885      Chris Golden Added support for "user-owned" boolean attribute.
  * </pre>
  * 
  * @author bsteffen
@@ -159,6 +160,8 @@ public class DeprecatedEvent {
 
     private String workStation;
 
+    private Boolean convectiveUserOwned;
+
     public DeprecatedEvent() {
     }
 
@@ -166,6 +169,7 @@ public class DeprecatedEvent {
         Map<String, Serializable> attr = event.getHazardAttributes();
 
         objectID = (String) attr.get("objectID");
+        convectiveUserOwned = (Boolean) attr.get("convectiveUserOwned");
         eventID = event.getEventID();
         displayEventID = event.getDisplayEventID();
         pointID = (String) event.getHazardAttribute(HazardConstants.POINTID);
@@ -362,6 +366,14 @@ public class DeprecatedEvent {
 
     public void setEndTimeUntilFurtherNotice(Boolean endTimeUntilFurtherNotice) {
         this.endTimeUntilFurtherNotice = endTimeUntilFurtherNotice;
+    }
+
+    public Boolean isConvectiveUserOwned() {
+        return convectiveUserOwned;
+    }
+
+    public void setConvectiveUserOwned(Boolean convectiveUserOwned) {
+        this.convectiveUserOwned = convectiveUserOwned;
     }
 
     public String getSiteID() {
