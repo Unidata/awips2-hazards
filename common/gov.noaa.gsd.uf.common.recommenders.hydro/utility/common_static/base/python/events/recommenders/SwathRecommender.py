@@ -1290,4 +1290,3 @@ class Recommender(RecommenderTemplate.Recommender):
 # #             #print 'SwathRec Automated...', dirVal, speedVal, event.get('probSeverAttrs')
 
                 
-

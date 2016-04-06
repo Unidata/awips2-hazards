@@ -10,6 +10,7 @@ import matplotlib
 from matplotlib import path as mPath
 from scipy import ndimage
 from shapely.geometry import Polygon
+from scipy.io import netcdf
 
 OUTPUTDIR = '/scratch/PHIGridTesting'
 ### FIXME: need better (dynamic or configurable) way to set domain corner

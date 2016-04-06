@@ -109,195 +109,100 @@ class Recommender(RecommenderTemplate.Recommender):
         for event in eventSet:
             if event.getHazardAttributes().get('showGrid') == True:
                 selectedVisualFeatures = []
-                polyDict = {}
-                print "PreviewGridRec: show preview grid"
                 probGrid, lons, lats = ProbUtils().getProbGrid(event)
-                
-                #print "probDict back in previewgridrecommender: ", probGrid, lons, lats #Operable through this line
-                
-                levels = np.linspace(0,100,6)
-
-                X, Y = np.meshgrid(lons, lats)
-                plt.figure()
-                CS = plt.contour(X, Y, probGrid, levels=levels)
-                plt.clabel(CS, inline=1, fontsize=10)
-                plt.title('PHI Prob Contours at 2015-11-11T18:36:37')
-                #plt.show()
-
-                numContours = range(len(CS.levels))
-                for c in range(0,(len(CS.levels) - 1)):
-                    contourVal = CS.levels[c]
-                    coords = CS.collections[c].get_paths()
-                    
-                    #print "Contour Interval: ", contourVal
-        
-                    #for x in range(0,len(coords)):
-                        #print "Polygon Index: ", x, ": ", coords[x].vertices
-            
-                points = coords[0].vertices
-                poly = Polygon(points)
-                poly = GeometryFactory.createPolygon(poly)
-                print "PreviewGridRec: bounds: ", poly.bounds
-                
-                #ProbUtils.createPolygons(self,cumProbs)
-                #self.createPolygons(cumProbs)
-                #self._outputPreviewGrid(cumProbs, lats, lons, timeStamp)
-                
-                        ### Should match PHI Prototype Tool
-                #colors =  {
-                #(0,20): { "red": 102/255.0, "green": 224/255.0, "blue": 102/255.0 }, 
-                #(20,40): { "red": 255/255.0, "green": 255/255.0, "blue": 102/255.0 }, 
-                #(40,60): { "red": 255/255.0, "green": 179/255.0, "blue": 102/255.0 }, 
-                #(60,80): { "red": 255/255.0, "green": 102/255.0, "blue": 102/255.0 }, 
-                #(80,101): { "red": 255/255.0, "green": 102/255.0, "blue": 255/255.0 }
-                #}
-                
-                #------testing
-                colorDict = { "red": 255/255.0, "green": 102/255.0, "blue": 255/255.0 }
-                
-                gridPreviewPoly = {
-                   "identifier": "gridPreview_" + str(10),
-                    "borderColor": colorDict,
-                    "fillColor": colorDict,
-                    "geometry": {
-                        (VisualFeatures.datetimeToEpochTimeMillis(event.getStartTime()), VisualFeatures.datetimeToEpochTimeMillis(event.getEndTime())): poly
-                    }
-                }
-                selectedFeatures = event.getSelectedVisualFeatures()
-                print "PreviewGridRec: Selected Features before appending polygons: ", selectedFeatures
-                selectedFeatures.append(gridPreviewPoly)
-                event.setSelectedVisualFeatures(VisualFeatures(selectedFeatures))
-                print "PreviewGridRec: Selected Features after appending polygons: ", selectedFeatures
-                
+                polyTupleDict = self.createPolygons(probGrid, lons, lats)
+                event = self.addVisualFeatures(event, polyTupleDict)
+                                    
             elif event.getHazardAttributes().get('showGrid', False) == False:
-                pass
-            
-                #  Nate -- FYI - it is helpful to include a source in a print statement
-                #     to make it easy to find an remove later :)
-                
-                #print "PreviewGridRecommender -- do not show preview grid"
-                #selectedVisualFeatures = event.getSelectedVisualFeatures()
-                #newFeatures = []
-                #for feature in selectedVisualFeatures:
-                #    if not feature.get('identifier').find('grid')>=0:
-                #        newFeatures.append(feature)
-                #        
-                #event.setSelectedVisualFeatures(newFeatures)                
-        return
-
-    def createPolygons(self, pathFile, cumProbs, lats, lons):
+                try:
+                    event = self.removeVisualFeatures(event)
+                except TypeError:
+                    pass
+                               
+        return eventSet
     
-        from scipy.io import netcdf
-        import numpy as np
-        import matplotlib
-        import numpy as np
-        import matplotlib.cm as cm
-        import matplotlib.mlab as mlab
-        import matplotlib.pyplot as plt
-        from VisualFeatures import VisualFeatures
+    def removeVisualFeatures(self, event):
+        selectedVisualFeatures = event.getSelectedVisualFeatures()
+        newFeatures = []
+        for feature in selectedVisualFeatures:
+            if not feature.get('identifier').find('grid')>=0:
+                newFeatures.append(feature)
+                        
+        event.setSelectedVisualFeatures(VisualFeatures(newFeatures))   
 
-        #print "PreviewGridRec: ", pathFile
-        #dataFile = netcdf.netcdf_file('/scratch/PHIGridTesting/20160331_16/PHIGrid_2015-11-11T18:36:00.nc', 'r')
-        dataFile = netcdf.netcdf_file(pathFile, 'r')
-
-        latsVar = dataFile.variables['lats']
-        lonsVar = dataFile.variables['lons']
-        probsVar = dataFile.variables['PHIprobs']
-
-        latsArr = latsVar[:].copy()
-        lonsArr = lonsVar[:].copy()
-        probsArr = probsVar[:].copy()[0]
-
-        #print probsArr
-
+        return event
+         
+    def addVisualFeatures(self, event, polyTupleDict):
+        for tuple in polyTupleDict:  
+            if tuple == '0':
+                poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['20']])  
+            elif tuple == '20':
+                poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['40']])
+            elif tuple == '40':
+                poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['60']])                        
+            elif tuple == '60':
+                poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['80']])                       
+            else:
+                poly = GeometryFactory.createPolygon(polyTupleDict[tuple])
+                
+            ### Should match PHI Prototype Tool
+            colorFill =  {
+                '0': { "red": 102/255.0, "green": 224/255.0, "blue": 102/255.0, "alpha": 0.4 }, 
+                '20': { "red": 255/255.0, "green": 255/255.0, "blue": 102/255.0, "alpha": 0.4 }, 
+                '40': { "red": 255/255.0, "green": 179/255.0, "blue": 102/255.0, "alpha": 0.4 }, 
+                '60': { "red": 255/255.0, "green": 102/255.0, "blue": 102/255.0, "alpha": 0.4 }, 
+                '80': { "red": 255/255.0, "green": 102/255.0, "blue": 255/255.0, "alpha": 0.4 }
+                }
+                    
+            gridPreviewPoly = {
+                "identifier": "gridPreview_" + tuple,
+                "borderColor": colorFill[tuple],
+                "fillColor": colorFill[tuple],
+                "geometry": {
+                    (VisualFeatures.datetimeToEpochTimeMillis(event.getStartTime()), VisualFeatures.datetimeToEpochTimeMillis(event.getEndTime())): poly
+                }
+            }
+                
+            selectedFeatures = event.getSelectedVisualFeatures()
+            selectedFeatures.append(gridPreviewPoly)
+            event.setSelectedVisualFeatures(VisualFeatures(selectedFeatures))
+            
+        return event        
+    
+    def createPolygons(self, probGrid, lons, lats):
+        polyDict = {}
+        
+        #probGrid, lons, lats = ProbUtils().getProbGrid(event)
+                
         levels = np.linspace(0,100,6)
 
-        X, Y = np.meshgrid(lonsArr, latsArr)
+        X, Y = np.meshgrid(lons, lats)
         plt.figure()
-        CS = plt.contour(X, Y, probsArr, levels=levels)
-        plt.clabel(CS, inline=1, fontsize=10)
-        plt.title('PHI Prob Contours at 2015-11-11T18:36:37')
-        #plt.show()
+        CS = plt.contour(X, Y, probGrid, levels=levels)
 
-        numContours = range(len(CS.levels))
+        prob = ['0', '20', '40', '60', '80']
+        polyTupleDict = {}
+
         for c in range(0,(len(CS.levels) - 1)):
             contourVal = CS.levels[c]
             coords = CS.collections[c].get_paths()
-            #print "Contour Interval: ", contourVal
-        
-            #for x in range(0,len(coords)):
-                #print "Polygon Index: ", x, ": ", coords[x].vertices
-            
-        points = coords[0].vertices
-        poly = Polygon(points)
-        print "PreviewGridRec: bounds: ", poly.bounds
-    
-        return 
+            points = coords[0].vertices
+                
+            longitudes = []
+            latitudes = []
+                
+            for point in range(0, len(points)):
+                longitudes.append(points[point][0])
+                latitudes.append(points[point][1])
+                    
+            polyTupleDict[prob[c]] = zip(longitudes, latitudes)
+                               
+        return polyTupleDict
     
     def flush(self):
         import os
         os.sys.__stdout__.flush()
+    
                       
-"""
-    def _outputPreviewGrid(self, cumProbs, lats, lons, timeStamp):
-        '''
-        Creates an output netCDF file in OUTPUTDIR (set near top)
-        '''
-        epoch = (timeStamp-datetime.datetime.fromtimestamp(0)).total_seconds()
-        nowTime = datetime.datetime.fromtimestamp(time.time())
-        outDir = os.path.join(OUTPUTDIR, nowTime.strftime("%Y%m%d_%H"))
-        outputFilename = 'PreviewGrid_' + timeStamp.isoformat() + '.nc'
-        if not os.path.exists(outDir):
-            try:
-                os.makedirs(outDir)
-            except:
-                sys.stderr.write('Could not create PHI grids output directory:' +outDir+ '.  No output written')
-
-        pathFile = os.path.join(outDir,outputFilename)
-        
-        try:
-            f = netcdf.netcdf_file(pathFile,'w')
-            f.title = 'Probabilistic Hazards Information grid'
-            f.institution = 'NOAA Hazardous Weather Testbed; ESRL Global Systems Division and National Severe Storms Laboratory'
-            f.source = 'AWIPS2 Hazard Services'
-            f.history = 'Initially created ' + nowTime.isoformat()
-            f.comment = 'These data are experimental'
-            f.time_origin = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
-            
-            f.createDimension('lats', len(lats))
-            f.createDimension('lons', len(lons))
-            f.createDimension('time', 1)
-            
-            timeVar = f.createVariable('time', 'f8', ('time',))
-            timeVar.time = 'time'
-            timeVar.units = 'seconds since 1970-1-1 0:0:0'
-            timeVar[:] = epoch
-            
-            latVar = f.createVariable('lats', 'f', ('lats',))
-            latVar.long_name = "latitude"
-            latVar.units = "degrees_north"
-            latVar.standard_name = "latitude"
-            latVar[:] = lats
-            
-            lonVar = f.createVariable('lons', 'f', ('lons',))
-            lonVar.long_name = "longitude"
-            lonVar.units = "degrees_east"
-            lonVar.standard_name = "longitude"
-            lonVar[:] = lons
-            
-            probsVar = f.createVariable('PHIprobs', 'f', ('time', 'lats', 'lons'))
-            probsVar.long_name = "Probabilistic Hazard Information grid probabilities"
-            probsVar.units = "%"
-            probsVar.coordinates = "time lat lon"
-            probsVar[:] = cumProbs
-
-            f.close()
-            
-        except:
-            sys.stderr.write('Unable to open PHI Grid Netcdf file for output:'+pathFile)
-            
-            
-        return
-"""       
 def __str__(self):
     return 'Preview Grid Recommender'
