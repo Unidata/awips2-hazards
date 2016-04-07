@@ -9,18 +9,24 @@
  */
 package gov.noaa.gsd.viz.widgets;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.jface.resource.FontDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
+import org.eclipse.swt.events.FocusEvent;
+import org.eclipse.swt.events.FocusListener;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.MouseListener;
 import org.eclipse.swt.events.MouseMoveListener;
@@ -39,6 +45,8 @@ import org.eclipse.swt.widgets.Display;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 
 /**
  * Graph widget, allowing the display and manipulation of one or more plotted
@@ -59,6 +67,17 @@ import com.google.common.collect.HashBiMap;
  *                                      antialiasing when drawing circles
  *                                      and diagonal lines to smooth the
  *                                      widget's pixel jaggies out.
+ * Apr 06, 2016   15931    Chris.Golden Added ability to allow the user
+ *                                      to draw points via a click, drag,
+ *                                      and release mouse operation, if
+ *                                      the graph is empty of points. Also
+ *                                      fixed behavior of the widget if it
+ *                                      loses focus while the user is in
+ *                                      the midst of drawing points or
+ *                                      moving a point. Also added use of
+ *                                      different cursors depending upon
+ *                                      the mode of the widget and where the
+ *                                      mouse is hovering.
  * </pre>
  * 
  * @author Chris.Golden
@@ -84,6 +103,13 @@ public class Graph extends Canvas {
      * in pixels.
      */
     private static final int Y_AXIS_LABEL_BUFFER = 8;
+
+    /**
+     * Prompt text to tell the user to draw points in an empty graph.
+     */
+    private static final List<String> DRAW_POINTS_PROMPT_TEXT = ImmutableList
+            .copyOf(Lists.newArrayList("Click and drag", "from left to right",
+                    "to plot new points."));
 
     // Public Enumerated Types
 
@@ -111,14 +137,14 @@ public class Graph extends Canvas {
     // Private Variables
 
     /**
-     * Minimum visible X value; this is derived from the smallest X coordinate
-     * found in the {@link #plottedPoints} list.
+     * Minimum visible X value from the last time that the
+     * {@link #plottedPoints} list was not empty, if ever.
      */
     private int minimumVisibleValueX;
 
     /**
-     * Maximum visible X value; this is derived from the largest X coordinate
-     * found in the {@link #plottedPoints} list.
+     * Maximum visible X value from the last time that the
+     * {@link #plottedPoints} list was not empty, if ever.
      */
     private int maximumVisibleValueX;
 
@@ -169,6 +195,21 @@ public class Graph extends Canvas {
      * <code>null</code>.
      */
     private String suffixLabelY;
+
+    /**
+     * <p>
+     * X interval between points drawn by the user via click-drag-release mouse
+     * operations; must be a non-negative number. If <code>0</code>, the drawing
+     * capability is disabled. If a positive integer, it tells the graph how
+     * long an interval in X axis units to place between points taken from the
+     * user's sketch.
+     * </p>
+     * <p>
+     * Note that even if this is a positive integer, drawing is only possible
+     * when the {@link #plottedPoints} list is empty.
+     * </p>
+     */
+    private int intervalDrawnPointsX;
 
     /**
      * List of plotted points, ordered by X value.
@@ -304,6 +345,11 @@ public class Graph extends Canvas {
     private int pixelsPerHatchY;
 
     /**
+     * Number of pixels per interval between user-drawn points along the X axis.
+     */
+    private double pixelsPerDrawnPointX;
+
+    /**
      * Graph width in pixels, not including the width of labels along the Y axis
      * if any.
      */
@@ -327,6 +373,18 @@ public class Graph extends Canvas {
      */
     private final BiMap<Rectangle, PlottedPoint> plottedPointsForPlottedPointBoundaries = HashBiMap
             .create();
+
+    /**
+     * Version of the graph's current font to be used for rendering prompting
+     * text.
+     */
+    private Font promptTextFont = null;
+
+    /**
+     * List of points making up the path that the user has drawn during a
+     * user-drawing-of-points operation.
+     */
+    private final Deque<Point> userDrawnPoints = new ArrayDeque<>();
 
     // Public Constructors
 
@@ -403,6 +461,14 @@ public class Graph extends Canvas {
          * Let the superclass do its work.
          */
         super.setFont(font);
+
+        /*
+         * Dispose of the prompt text version of the old font, if any.
+         */
+        if (promptTextFont != null) {
+            promptTextFont.dispose();
+            promptTextFont = null;
+        }
 
         /*
          * Recalculate the preferred size and the active point, and redraw.
@@ -662,6 +728,47 @@ public class Graph extends Canvas {
     }
 
     /**
+     * Get the X interval between points drawn by the user via
+     * click-drag-release mouse operations.
+     * 
+     * @return Non-negative X interval between points drawn by the user. If
+     *         <code>0</code>, the drawing capability is disabled. If a positive
+     *         integer, it tells the graph how long an interval in X axis units
+     *         to place between points taken from the user's sketch. Note that
+     *         even if this is a positive integer, drawing is only possible when
+     *         {@link #getPlottedPoints()} returns an empty list.
+     */
+    public final int getIntervalDrawnPointsX() {
+        return intervalDrawnPointsX;
+    }
+
+    /**
+     * Set the X interval between points drawn by the user via
+     * click-drag-release mouse operations.
+     * 
+     * @param intervalDrawnPointsX
+     *            Non-negative X interval between points drawn by the user. If
+     *            <code>0</code>, the drawing capability will be disabled. If a
+     *            positive integer, it tells the graph how long an interval in X
+     *            axis units to place between points taken from the user's
+     *            sketch. Note that even if this is a positive integer, drawing
+     *            is only possible when {@link #getPlottedPoints()} returns an
+     *            empty list.
+     */
+    public final void setIntervalDrawnPointsX(int intervalDrawnPointsX) {
+        if (intervalDrawnPointsX < 0) {
+            throw new IllegalArgumentException(
+                    "drawn points interval must be non-negative");
+        }
+        boolean modeChange = (((intervalDrawnPointsX == 0) || (this.intervalDrawnPointsX == 0)) && (intervalDrawnPointsX != this.intervalDrawnPointsX));
+        this.intervalDrawnPointsX = intervalDrawnPointsX;
+        if (modeChange) {
+            updateCursor();
+            redraw();
+        }
+    }
+
+    /**
      * Get the suffix to be appended to any labels along the X axis.
      * 
      * @return Suffix to be appended to any labels along the X axis; may be
@@ -747,38 +854,9 @@ public class Graph extends Canvas {
         }
 
         /*
-         * Remember the new plotted points.
+         * Remember the new points.
          */
-        plottedPoints.clear();
-        for (PlottedPoint point : points) {
-            plottedPoints.add(new PlottedPoint(point));
-        }
-
-        /*
-         * Get the new minimum and maximum visible X values; if they have
-         * changed, recalculate display measurements. Otherwise, cancel any
-         * ongoing drag, since the new values trump anything the user was doing,
-         * and recompute the plotted points' boundaries.
-         */
-        int minimumX = (plottedPoints.isEmpty() ? 0 : plottedPoints.get(0)
-                .getX());
-        int maximumX = (plottedPoints.isEmpty() ? 0 : plottedPoints.get(
-                plottedPoints.size() - 1).getX());
-        if ((minimumX != minimumVisibleValueX)
-                || (maximumX != maximumVisibleValueX)) {
-            minimumVisibleValueX = minimumX;
-            maximumVisibleValueX = maximumX;
-            computePreferredSize(true);
-        } else {
-            cancelOngoingDrag();
-            computePlottedPointBounds();
-        }
-
-        /*
-         * Notify listeners of the change and redraw.
-         */
-        notifyListeners(ChangeSource.METHOD_INVOCATION);
-        redraw();
+        setPlottedPoints(points, ChangeSource.METHOD_INVOCATION);
         return true;
     }
 
@@ -952,6 +1030,9 @@ public class Graph extends Canvas {
             public void widgetDisposed(DisposeEvent e) {
                 draggingPoint = null;
                 activePoint = null;
+                if (promptTextFont != null) {
+                    promptTextFont.dispose();
+                }
             }
         });
 
@@ -970,7 +1051,12 @@ public class Graph extends Canvas {
             @Override
             public void mouseDown(MouseEvent e) {
                 if ((e.button == 1) && isVisible() && isEnabled()) {
-                    mousePressOverWidget(e);
+                    forceFocus();
+                    if (isReadyForUserDrawingOfPoints()) {
+                        addUserDrawnPoint(new Point(e.x, e.y));
+                    } else {
+                        mousePressOverWidget(e);
+                    }
                 }
             }
 
@@ -978,6 +1064,9 @@ public class Graph extends Canvas {
             public void mouseUp(MouseEvent e) {
                 if (draggingPoint != null) {
                     plottedPointDragEnded(e);
+                } else if (userDrawnPoints.isEmpty() == false) {
+                    addUserDrawnPoint(new Point(e.x, e.y));
+                    finishUserDrawingOfPoints();
                 } else if ((e.button == 1) && isVisible() && isEnabled()) {
                     mouseOverWidget(e.x, e.y);
                 }
@@ -988,6 +1077,9 @@ public class Graph extends Canvas {
             public void mouseMove(MouseEvent e) {
                 if (draggingPoint != null) {
                     plottedPointDragged(e);
+                } else if (userDrawnPoints.isEmpty() == false) {
+                    addUserDrawnPoint(new Point(e.x, e.y));
+                    redraw();
                 } else if (isVisible() && isEnabled()) {
                     mouseOverWidget(e.x, e.y);
                 }
@@ -1005,6 +1097,7 @@ public class Graph extends Canvas {
             public void mouseExit(MouseEvent e) {
                 if (activePoint != null) {
                     activePoint = null;
+                    updateCursor();
                     redraw();
                 }
             }
@@ -1015,6 +1108,37 @@ public class Graph extends Canvas {
                 /*
                  * No action.
                  */
+            }
+        });
+
+        /*
+         * Add a focus listener to cancel ongoing operations when focus is lost.
+         */
+        addFocusListener(new FocusListener() {
+
+            @Override
+            public void focusGained(FocusEvent e) {
+
+                /*
+                 * No action.
+                 */
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (userDrawnPoints.isEmpty() == false) {
+                    userDrawnPoints.clear();
+                }
+                if (draggingPoint != null) {
+                    plottedPointDragEnded(null);
+                }
+                if (activePoint != null) {
+                    activePoint = null;
+                    updateCursor();
+                }
+                if (isDisposed() == false) {
+                    redraw();
+                }
             }
         });
     }
@@ -1185,7 +1309,8 @@ public class Graph extends Canvas {
          * assume no hatch marks, and calculate the pixels per unit exactly,
          * since no hatch marks means no concern over uneven-looking intervals.
          * Otherwise, calculate the pixels per unit by dividing the pixels per
-         * hatch by the hatch interval.
+         * hatch by the hatch interval. Also calculate the pixels per drawn
+         * point interval, in case the user draws points.
          */
         if (xRange > 0) {
             pixelsPerHatchX = (int) (((double) (widthWithoutLabels * intervalHatchX)) / (double) xRange);
@@ -1199,8 +1324,11 @@ public class Graph extends Canvas {
                         / (double) intervalHatchX;
                 graphWidth = pixelsPerHatchX * (xRange / intervalHatchX);
             }
+            pixelsPerDrawnPointX = ((double) (graphWidth * intervalDrawnPointsX))
+                    / (double) xRange;
         } else {
             pixelsPerHatchX = 0;
+            pixelsPerDrawnPointX = 0.0;
             graphWidth = widthWithoutLabels;
         }
         if (yRange > 0) {
@@ -1322,6 +1450,56 @@ public class Graph extends Canvas {
     }
 
     /**
+     * Set the plotted points to those specified.
+     * 
+     * @param points
+     *            New plotted points.
+     * @param source
+     *            Source of the points.
+     */
+    private void setPlottedPoints(List<PlottedPoint> points, ChangeSource source) {
+
+        /*
+         * Remember the new plotted points.
+         */
+        plottedPoints.clear();
+        for (PlottedPoint point : points) {
+            plottedPoints.add(new PlottedPoint(point));
+        }
+
+        /*
+         * Get the new minimum and maximum visible X values; if they have
+         * changed, recalculate display measurements. Otherwise, cancel any
+         * ongoing drag, since the new values trump anything the user was doing,
+         * and recompute the plotted points' boundaries.
+         */
+        int minimumX = (plottedPoints.isEmpty() ? 0 : plottedPoints.get(0)
+                .getX());
+        int maximumX = (plottedPoints.isEmpty() ? 0 : plottedPoints.get(
+                plottedPoints.size() - 1).getX());
+        if ((minimumX != maximumX)
+                && ((minimumX != minimumVisibleValueX) || (maximumX != maximumVisibleValueX))) {
+            minimumVisibleValueX = minimumX;
+            maximumVisibleValueX = maximumX;
+            computePreferredSize(true);
+        } else {
+            cancelOngoingDrag();
+            computePlottedPointBounds();
+        }
+
+        /*
+         * Set the cursor appropriately.
+         */
+        updateCursor();
+
+        /*
+         * Notify listeners of the change and redraw.
+         */
+        notifyListeners(source);
+        redraw();
+    }
+
+    /**
      * Paint the widget.
      * 
      * @param e
@@ -1402,7 +1580,7 @@ public class Graph extends Canvas {
          * Draw any X axis labels needed. Any that might be too close to the
          * previous one is skipped.
          */
-        if (xLabelWidth != 0) {
+        if ((xLabelWidth != 0) && (pixelsPerHatchX != 0)) {
             e.gc.setForeground(Display.getDefault().getSystemColor(
                     SWT.COLOR_BLACK));
             int lastEndpoint = -10000;
@@ -1424,7 +1602,7 @@ public class Graph extends Canvas {
          * Draw any Y axis labels needed. Any that might be too close to the
          * previous one is skipped.
          */
-        if (yLabelWidth != 0) {
+        if ((yLabelWidth != 0) && (pixelsPerHatchY != 0)) {
             e.gc.setForeground(Display.getDefault().getSystemColor(
                     SWT.COLOR_BLACK));
             int lastEndpoint = -10000;
@@ -1461,13 +1639,80 @@ public class Graph extends Canvas {
         e.gc.setAntialias(SWT.ON);
 
         /*
-         * Draw the points, if any, and the line connecting them together. If
-         * one of the points is active, draw a halo around it after doing the
-         * points themselves and the connecting line.
+         * If in user-drawing-of-points mode, display prompting text and, if the
+         * user has started drawing, the line drawn so far. Otherwise, if there
+         * are plotted points, draw them and the line connecting them.
          */
-        BiMap<PlottedPoint, Rectangle> boundariesForPlottedPoints = plottedPointsForPlottedPointBoundaries
-                .inverse();
-        if (plottedPoints.isEmpty() == false) {
+        Font font = e.gc.getFont();
+        Rectangle clippingRect = e.gc.getClipping();
+        if (isUserDrawingOfPointsMode()) {
+
+            /*
+             * If the prompt text font has not been created yet for the current
+             * control font, do so.
+             */
+            if (promptTextFont == null) {
+                FontDescriptor boldDescriptor = FontDescriptor.createFrom(font)
+                        .setStyle(SWT.BOLD | SWT.ITALIC);
+                promptTextFont = boldDescriptor
+                        .createFont(Display.getDefault());
+            }
+            e.gc.setFont(promptTextFont);
+
+            /*
+             * Use the previously-set color for the prompt text if drawing
+             * already, otherwise use black.
+             */
+            if (isReadyForUserDrawingOfPoints()) {
+                e.gc.setForeground(Display.getDefault().getSystemColor(
+                        SWT.COLOR_BLACK));
+            }
+
+            /*
+             * Iterate through the lines of text, getting their extents, and
+             * then draw them one above the next in the center of the graph.
+             */
+            List<Point> promptTextExtents = new ArrayList<>(
+                    DRAW_POINTS_PROMPT_TEXT.size());
+            int textHeight = 0;
+            for (String text : DRAW_POINTS_PROMPT_TEXT) {
+                Point extent = e.gc.stringExtent(text);
+                textHeight += extent.y;
+                promptTextExtents.add(extent);
+            }
+            for (int y = offset.y + (graphHeight / 2) - (textHeight / 2), j = 0; j < DRAW_POINTS_PROMPT_TEXT
+                    .size(); y += promptTextExtents.get(j).y, j++) {
+                e.gc.drawString(DRAW_POINTS_PROMPT_TEXT.get(j), offset.x
+                        + (graphWidth / 2) - (promptTextExtents.get(j).x / 2),
+                        y, true);
+            }
+
+            /*
+             * If any points have been drawn yet, paint those as a path.
+             */
+            if (userDrawnPoints.isEmpty() == false) {
+                e.gc.setClipping(offset.x, offset.y, graphWidth, graphHeight);
+                int[] polyLineCoords = new int[userDrawnPoints.size() * 2];
+                Iterator<Point> iterator = userDrawnPoints.descendingIterator();
+                for (int j = 0; iterator.hasNext(); j++) {
+                    Point point = iterator.next();
+                    polyLineCoords[j * 2] = point.x;
+                    polyLineCoords[(j * 2) + 1] = point.y;
+                }
+                e.gc.setForeground(Display.getDefault().getSystemColor(
+                        SWT.COLOR_BLACK));
+                e.gc.setLineWidth(2);
+                e.gc.drawPolyline(polyLineCoords);
+            }
+        } else if (plottedPoints.isEmpty() == false) {
+
+            /*
+             * Draw the points, if any, and the line connecting them together.
+             * If one of the points is active, draw a halo around it after doing
+             * the points themselves and the connecting line.
+             */
+            BiMap<PlottedPoint, Rectangle> boundariesForPlottedPoints = plottedPointsForPlottedPointBoundaries
+                    .inverse();
             e.gc.setBackground(Display.getDefault().getSystemColor(
                     SWT.COLOR_BLACK));
             int[] polyLineCoords = new int[plottedPoints.size() * 2];
@@ -1497,12 +1742,36 @@ public class Graph extends Canvas {
         }
 
         /*
-         * Reset the line width, colors, and antialiasing flag.
+         * Reset the graphics context to its original parameters.
          */
         e.gc.setLineWidth(lineWidth);
         e.gc.setBackground(background);
         e.gc.setForeground(foreground);
+        e.gc.setFont(font);
+        e.gc.setClipping(clippingRect);
         e.gc.setAntialias(antialias);
+    }
+
+    /**
+     * Determine whether or not the graph is currently ready for the user to
+     * draw points by clicking, dragging, and releasing the mouse, but has not
+     * started doing so.
+     * 
+     * @return True if the graph is ready for drawing, false otherwise.
+     */
+    private boolean isReadyForUserDrawingOfPoints() {
+        return (isUserDrawingOfPointsMode() && userDrawnPoints.isEmpty());
+    }
+
+    /**
+     * Determine whether or not the graph is currently in user-drawing-of-points
+     * mode, meaning it is waiting for the user to do so, or the user has
+     * started this process but has not yet completed it.
+     * 
+     * @return True if in user-drawing-of-points mode, false otherwise.
+     */
+    private boolean isUserDrawingOfPointsMode() {
+        return ((intervalDrawnPointsX > 0) && plottedPoints.isEmpty() && (minimumVisibleValueX != maximumVisibleValueX));
     }
 
     /**
@@ -1623,6 +1892,7 @@ public class Graph extends Canvas {
             dragPlottedPointToPoint(point, e, true);
             if (isDisposed() == false) {
                 activePoint = getEditablePointForCoordinates(e.x, e.y);
+                updateCursor();
             }
         }
         if (isDisposed() == false) {
@@ -1684,8 +1954,122 @@ public class Graph extends Canvas {
         if ((activePoint != newPoint)
                 && ((activePoint == null) || (activePoint.equals(newPoint) == false))) {
             activePoint = newPoint;
+            updateCursor();
             redraw();
         }
+    }
+
+    /**
+     * Add the specified user-drawn point to the stack of such points.
+     * 
+     * @param point
+     *            Point to be added.
+     */
+    private void addUserDrawnPoint(Point point) {
+
+        /*
+         * Remove any points that are to the right of, or have the same X as,
+         * the new point.
+         */
+        while (userDrawnPoints.isEmpty() == false) {
+            Point previousPoint = userDrawnPoints.peek();
+            if (previousPoint.x < point.x) {
+                break;
+            }
+            userDrawnPoints.pop();
+            if (previousPoint.x == point.x) {
+                break;
+            }
+        }
+
+        /*
+         * Add the new point.
+         */
+        userDrawnPoints.push(point);
+    }
+
+    /**
+     * Complete a user-drawing-of-points operation, converting the specified
+     * points into plotted points.
+     */
+    private void finishUserDrawingOfPoints() {
+
+        /*
+         * If there is only one point, or the interval between drawn points has
+         * been reset since the start of the drawing operation, do nothing.
+         */
+        if ((userDrawnPoints.size() < 2) || (intervalDrawnPointsX == 0)) {
+            userDrawnPoints.clear();
+            return;
+        }
+
+        /*
+         * Iterate through the line segments lying between each pair of adjacent
+         * points drawn by the user, using each to calculate the needed plotted
+         * points lying to the left that segment's rightmost X boundary (or all
+         * remaining ones, if it is the last segment).
+         */
+        Rectangle clientArea = getClientArea();
+        List<PlottedPoint> points = new ArrayList<>();
+        Iterator<Point> iterator = userDrawnPoints.descendingIterator();
+        Point lastPoint = iterator.next();
+        int pointX = minimumVisibleValueX;
+        double pixelX = getPixelOffsetsToGraph(clientArea).x;
+        while (iterator.hasNext()) {
+            Point point = iterator.next();
+
+            /*
+             * Determine the last plotted point X value at which the line
+             * between this point and the previous point should be used to
+             * determine plotted point locations. If there are no more points
+             * after this, then the line should be used for all remaining
+             * plotted points; otherwise, it should be used for any plotted
+             * points not yet calculated with X values up to and including the
+             * plotted point X value of this point.
+             */
+            double endpointX = (iterator.hasNext() ? translatePixelToPlottedPointX(
+                    point.x, clientArea) : maximumVisibleValueX);
+
+            /*
+             * If the next plotted point that is needed has an X value that is
+             * less than or equal to the above-calculated last plotted point X
+             * value, compute the slope and offset of the line between the point
+             * and the previous point, and iterate through needed plotted
+             * points, calculating each one's Y value so that it lies along the
+             * line, then translating that to a plotted point Y value and
+             * creating a plotted point. Stop when the next needed plotted
+             * point's X value is greater than the last plotted point X value
+             * for which this line is to be used.
+             */
+            if (pointX <= endpointX) {
+                double m = ((double) (point.y - lastPoint.y))
+                        / (double) (point.x - lastPoint.x);
+                double b = point.y - (m * point.x);
+                while (pointX <= endpointX) {
+                    int pointY = translatePixelToPlottedPointY(
+                            (int) (((m * pixelX) + b) + 0.5), clientArea);
+                    if (pointY < minimumVisibleValueY) {
+                        pointY = minimumVisibleValueY;
+                    } else if (pointY > maximumVisibleValueY) {
+                        pointY = maximumVisibleValueY;
+                    }
+                    points.add(new PlottedPoint(pointX, pointY, true));
+                    pointX += intervalDrawnPointsX;
+                    pixelX += pixelsPerDrawnPointX;
+                }
+            }
+            if (pointX > maximumVisibleValueX) {
+                break;
+            }
+            lastPoint = point;
+        }
+
+        /*
+         * Get rid of the user-drawn points, as they are no longer needed, and
+         * then save the plotted points.
+         */
+        userDrawnPoints.clear();
+        setPlottedPoints(points, ChangeSource.USER_GUI_INTERACTION_COMPLETE);
     }
 
     /**
@@ -1731,13 +2115,17 @@ public class Graph extends Canvas {
         /*
          * If nothing has changed as as result of the drag, do nothing more in
          * terms of plotted point adjustment; if the drag ended, just send a
-         * notification and recompute the bounding box of the plotted point.
+         * notification and recompute the bounding box of the plotted point. The
+         * latter is done because multiple bounding boxes may correspond to a
+         * single Y value (if there are more vertical pixels than vertical
+         * plotted point units). By recomputing the point's bounding box, the
+         * latter is given its "canonical" position.
          */
         if (bounds.y == lastBoundsY) {
             if (dragEnded) {
                 notifyListeners(ChangeSource.USER_GUI_INTERACTION_COMPLETE);
+                computePlottedPointBounds(point);
             }
-            recomputePlottedPointBoundsIfDragEnded(dragEnded, point);
             return;
         }
 
@@ -1750,17 +2138,8 @@ public class Graph extends Canvas {
         /*
          * Determine the new Y coordinate of the plotted point.
          */
-        int pixelOffsetFromBottom = clientArea.y + graphHeight
-                - (bounds.y + (bounds.height / 2));
-        int pointY;
-        if ((pixelsPerHatchY != 0)
-                && (pixelOffsetFromBottom % pixelsPerHatchY == 0)) {
-            pointY = ((pixelOffsetFromBottom / pixelsPerHatchY) * intervalHatchY)
-                    + minimumVisibleValueY;
-        } else {
-            pointY = ((int) ((pixelOffsetFromBottom / pixelsPerUnitY) + 0.5))
-                    + minimumVisibleValueY;
-        }
+        int pointY = translatePixelToPlottedPointY(bounds.y
+                + (bounds.height / 2), clientArea);
 
         /*
          * If the new Y coordinate is different from the old one, replace the
@@ -1773,9 +2152,15 @@ public class Graph extends Canvas {
         }
 
         /*
-         * Recompute the plotted point boundaries if the drag has ended.
+         * Recompute the plotted point boundaries if the drag has ended. This is
+         * done because multiple bounding boxes may correspond to a single Y
+         * value (if there are more vertical pixels than vertical plotted point
+         * units). By recomputing the point's bounding box, the latter is given
+         * its "canonical" position.
          */
-        recomputePlottedPointBoundsIfDragEnded(dragEnded, point);
+        if (dragEnded) {
+            computePlottedPointBounds(point);
+        }
     }
 
     /**
@@ -1788,21 +2173,61 @@ public class Graph extends Canvas {
         }
     }
 
-    /*
-     * If the drag has ended, recalculate the bounding box for the point, since
-     * multiple bounding boxes may correspond to a single Y value (if there are
-     * more vertical pixels than vertical plotted point units). This gives the
-     * point its "canonical" position.
+    /**
+     * Translate the specified pixel X value to a plotted point X value.
      * 
-     * @param dragEnded Flag indicating whether or not the drag ended.
-     * 
-     * @param point Plotted point to have its bounds recomputed if necessary.
+     * @param pixelX
+     *            Pixel X value to be translated.
+     * @param clientArea
+     *            Client area of the graph.
+     * @return Plotted point X value, unrounded for purposes of accuracy, since
+     *         this method is used to find the first line segment that has a
+     *         right boundary greater than or equal to a particular plotted
+     *         point X value.
      */
-    private void recomputePlottedPointBoundsIfDragEnded(boolean dragEnded,
-            PlottedPoint point) {
-        if (dragEnded) {
-            computePlottedPointBounds(point);
+    private double translatePixelToPlottedPointX(int pixelX,
+            Rectangle clientArea) {
+        int pixelOffsetFromLeft = pixelX - getPixelOffsetsToGraph(clientArea).x;
+        if ((pixelsPerHatchX != 0)
+                && (Math.abs(pixelOffsetFromLeft) % pixelsPerHatchX == 0)) {
+            return ((pixelOffsetFromLeft / pixelsPerHatchX) * intervalHatchX)
+                    + minimumVisibleValueX;
+        } else {
+            return (pixelOffsetFromLeft / pixelsPerUnitX)
+                    + minimumVisibleValueX;
         }
+    }
+
+    /**
+     * Translate the specified pixel Y value to a plotted point Y value.
+     * 
+     * @param pixelY
+     *            Pixel Y value to be translated.
+     * @param clientArea
+     *            Client area of the graph.
+     * @return Plotted point Y value.
+     */
+    private int translatePixelToPlottedPointY(int pixelY, Rectangle clientArea) {
+        int pixelOffsetFromBottom = clientArea.y + graphHeight - pixelY;
+        if ((pixelsPerHatchY != 0)
+                && (pixelOffsetFromBottom % pixelsPerHatchY == 0)) {
+            return ((pixelOffsetFromBottom / pixelsPerHatchY) * intervalHatchY)
+                    + minimumVisibleValueY;
+        } else {
+            return ((int) ((pixelOffsetFromBottom / pixelsPerUnitY) + 0.5))
+                    + minimumVisibleValueY;
+        }
+    }
+
+    /**
+     * Update the cursor as appropriate to the current mode.
+     */
+    private void updateCursor() {
+        setCursor(isEnabled() && (isDisposed() == false) ? (isUserDrawingOfPointsMode() ? Display
+                .getDefault().getSystemCursor(SWT.CURSOR_CROSS)
+                : (activePoint != null ? Display.getDefault().getSystemCursor(
+                        SWT.CURSOR_SIZENS) : null))
+                : null);
     }
 
     /**

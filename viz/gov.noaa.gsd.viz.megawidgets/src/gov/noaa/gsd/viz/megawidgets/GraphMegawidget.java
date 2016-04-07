@@ -54,6 +54,10 @@ import com.google.common.collect.ImmutableSet;
  *                                      changed() test and thus did not
  *                                      result in attributes-modified
  *                                      notifications.
+ * Apr 06, 2016   15931    Chris.Golden Added ability to allow the user
+ *                                      to draw points via a click, drag,
+ *                                      and release mouse operation, if
+ *                                      the graph is empty of points.
  * </pre>
  * 
  * @author Chris.Golden
@@ -235,6 +239,7 @@ public class GraphMegawidget extends StatefulMegawidget implements IControl {
                 specifier.getIntervalLabelY());
         graph.setLabelSuffixes(specifier.getSuffixLabelX(),
                 specifier.getSuffixLabelY());
+        graph.setIntervalDrawnPointsX(specifier.getDrawnPointsInterval());
         List<Map<String, Double>> colorMaps = specifier.getVerticalColors();
         if (colorMaps.isEmpty() == false) {
             final List<Color> rowColors = new ArrayList<>(colorMaps.size());

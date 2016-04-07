@@ -26,6 +26,10 @@ import com.google.common.collect.ImmutableList;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Mar 28, 2016   15931    Chris.Golden Initial creation.
+ * Apr 06, 2016   15931    Chris.Golden Added ability to allow the user
+ *                                      to draw points via a click, drag,
+ *                                      and release mouse operation, if
+ *                                      the graph is empty of points.
  * </pre>
  * 
  * @author Chris.Golden
@@ -116,12 +120,20 @@ public class GraphSpecifier extends StatefulMegawidgetSpecifier implements
     public static final String MEGAWIDGET_VERTICAL_COLORS = "yColors";
 
     /**
+     * <p>
      * X interval for drawn points parameter name; a megawidget may include a
      * non-negative integer for this parameter, indicating the interval between
      * points that are drawn by the user. Note that drawing only may occur if
      * there are no plotted points, and the user clicks, drags, and release the
      * mouse over the graph's body. If <code>0</code>, the drawing capability is
      * disabled. Defaults to <code>0</code>.
+     * </p>
+     * <p>
+     * Note that the megawidget cannot have any points drawn unless it has at
+     * least once, prior to having an empty list of points as its state, had a
+     * non-empty list. This is because it determines what the X range of the
+     * points being drawn is from the previous range.
+     * </p>
      */
     public static final String MEGAWIDGET_DRAWN_POINTS_INTERVAL = "drawnPointsInterval";
 
