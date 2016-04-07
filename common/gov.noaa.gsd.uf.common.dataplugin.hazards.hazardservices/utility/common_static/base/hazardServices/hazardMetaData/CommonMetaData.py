@@ -2126,7 +2126,8 @@ class MetaData(object):
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendDraw",
-                        "label": "Draw"
+                        "label": "Draw",
+                        "enable": False
                         },
                         {
                         "fieldType": "Button",
@@ -2363,6 +2364,8 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         Logic taken from NSSL Prototype PHI tool http://www.nssl.noaa.gov/projects/facets/phi/prob_chart.js
         and 'pythonized'.  Probably a way to speed things up with numpy when there's time to refactor
         '''
+        if interp == 'convectiveProbTrendDraw':
+            return []
         if interp not in ['convectiveProbTrendBell', 'convectiveProbTrendLinear', 'convectiveProbTrendExp1',
                           'convectiveProbTrendExp2', 'convectiveProbTrendPlus5', 'convectiveProbTrendMinus5']:
             return convectiveProbTrendGraphVals

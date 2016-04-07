@@ -30,6 +30,10 @@ import java.util.Set;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Mar 28, 2016   15931    Chris.Golden Initial creation.
+ * Apr 06, 2016   15931    Chris.Golden Fixed bug that caused empty lists
+ *                                      to be incorrectly flagged as illegal
+ *                                      when presented as potential state
+ *                                      values.
  * </pre>
  * 
  * @author Chris.Golden
@@ -97,56 +101,62 @@ public class GraphValidator extends
             return new ArrayList<>();
         }
         List<?> listObject = (object instanceof List ? (List<?>) object : null);
-        if ((listObject != null) && (listObject.isEmpty() == false)) {
-            boolean success = true;
-            List<Map<String, Object>> list = new ArrayList<Map<String, Object>>(
-                    listObject.size());
-            Set<Integer> plottedXs = new HashSet<>();
-            for (Object itemObject : listObject) {
-                if ((itemObject instanceof Map) == false) {
-                    success = false;
-                    break;
-                }
-                Map<?, ?> mapObject = (Map<?, ?>) itemObject;
-                Integer x = null, y = null;
-                boolean editable = true;
-                for (Map.Entry<?, ?> entry : mapObject.entrySet()) {
-                    if (entry.getKey().equals(PLOT_POINT_X)
-                            || entry.getKey().equals(PLOT_POINT_Y)) {
-                        if (entry.getValue() instanceof Number == false) {
-                            success = false;
-                            break;
-                        }
-                        int value = ((Number) entry.getValue()).intValue();
-                        if (entry.getKey().equals(PLOT_POINT_X)) {
-                            x = value;
-                            if (plottedXs.contains(x)) {
+        if (listObject != null) {
+            if (listObject.isEmpty()) {
+                return new ArrayList<>();
+            } else {
+                boolean success = true;
+                List<Map<String, Object>> list = new ArrayList<Map<String, Object>>(
+                        listObject.size());
+                Set<Integer> plottedXs = new HashSet<>();
+                for (Object itemObject : listObject) {
+                    if ((itemObject instanceof Map) == false) {
+                        success = false;
+                        break;
+                    }
+                    Map<?, ?> mapObject = (Map<?, ?>) itemObject;
+                    Integer x = null, y = null;
+                    boolean editable = true;
+                    for (Map.Entry<?, ?> entry : mapObject.entrySet()) {
+                        if (entry.getKey().equals(PLOT_POINT_X)
+                                || entry.getKey().equals(PLOT_POINT_Y)) {
+                            if (entry.getValue() instanceof Number == false) {
                                 success = false;
                                 break;
                             }
-                            plottedXs.add(x);
-                        } else {
-                            y = value;
-                        }
-                    } else if (entry.getKey().equals(PLOT_POINT_EDITABLE)) {
-                        if (entry.getValue() instanceof Number) {
-                            editable = (((Number) entry.getValue()).intValue() != 0);
-                        } else if (entry.getValue() instanceof Boolean) {
-                            editable = (Boolean) entry.getValue();
+                            int value = ((Number) entry.getValue()).intValue();
+                            if (entry.getKey().equals(PLOT_POINT_X)) {
+                                x = value;
+                                if (plottedXs.contains(x)) {
+                                    success = false;
+                                    break;
+                                }
+                                plottedXs.add(x);
+                            } else {
+                                y = value;
+                            }
+                        } else if (entry.getKey().equals(PLOT_POINT_EDITABLE)) {
+                            if (entry.getValue() instanceof Number) {
+                                editable = (((Number) entry.getValue())
+                                        .intValue() != 0);
+                            } else if (entry.getValue() instanceof Boolean) {
+                                editable = (Boolean) entry.getValue();
+                            }
                         }
                     }
+                    if ((success == false) || (x == null) || (y == null)) {
+                        break;
+                    }
+                    Map<String, Object> map = new HashMap<>(mapObject.size(),
+                            1.0f);
+                    map.put(PLOT_POINT_X, x);
+                    map.put(PLOT_POINT_Y, y);
+                    map.put(PLOT_POINT_EDITABLE, editable);
+                    list.add(map);
                 }
-                if ((success == false) || (x == null) || (y == null)) {
-                    break;
+                if (success) {
+                    return list;
                 }
-                Map<String, Object> map = new HashMap<>(mapObject.size(), 1.0f);
-                map.put(PLOT_POINT_X, x);
-                map.put(PLOT_POINT_Y, y);
-                map.put(PLOT_POINT_EDITABLE, editable);
-                list.add(map);
-            }
-            if (success) {
-                return list;
             }
         }
         throw new MegawidgetStateException(getIdentifier(), getType(), object,

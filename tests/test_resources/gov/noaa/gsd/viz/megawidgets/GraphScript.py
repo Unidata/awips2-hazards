@@ -12,5 +12,12 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
       }
     }
 
+  elif "draw" in triggerIdentifiers:
+    return {
+      "graph1": {
+        "values": []
+      }
+    }
+
   else:
     return None

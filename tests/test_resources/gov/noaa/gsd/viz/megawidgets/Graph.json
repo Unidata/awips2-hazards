@@ -1,5 +1,10 @@
 [
  {
+  "fieldType": "Button",
+  "fieldName": "draw",
+  "label": "Draw"
+ },
+ {
   "fieldType": "Graph",
   "fieldName": "graph1",
   "label": "Probability Over Time:",
@@ -10,6 +15,7 @@
   "xLabelInterval": 10,
   "yLabelInterval": 20,
   "yLabelSuffix": "%",
+  "drawnPointsInterval": 5,
   "sendEveryChange": false,
   "yColors": [
               { "red": 1, "green": 1, "blue": 0 },
