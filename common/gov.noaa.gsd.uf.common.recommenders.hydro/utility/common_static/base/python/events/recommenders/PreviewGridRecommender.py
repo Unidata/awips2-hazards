@@ -114,18 +114,22 @@ class Recommender(RecommenderTemplate.Recommender):
                 event = self.addVisualFeatures(event, polyTupleDict)
                                     
             elif event.getHazardAttributes().get('showGrid', False) == False:
-                try:
-                    event = self.removeVisualFeatures(event)
-                except TypeError:
-                    pass
+                #try:
+                event = self.removeVisualFeatures(event)
+                #except TypeError:
+                #    pass
                                
         return eventSet
     
     def removeVisualFeatures(self, event):
         selectedVisualFeatures = event.getSelectedVisualFeatures()
+        
+        if not selectedVisualFeatures:
+            return event
+        
         newFeatures = []
         for feature in selectedVisualFeatures:
-            if not feature.get('identifier').find('grid')>=0:
+            if not feature.get('identifier').find('gridPreview')>=0:
                 newFeatures.append(feature)
                         
         event.setSelectedVisualFeatures(VisualFeatures(newFeatures))   
@@ -135,13 +139,25 @@ class Recommender(RecommenderTemplate.Recommender):
     def addVisualFeatures(self, event, polyTupleDict):
         for tuple in polyTupleDict:  
             if tuple == '0':
-                poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['20']])  
+                try:
+                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['20']])
+                except KeyError:
+                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple])                       
             elif tuple == '20':
-                poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['40']])
+                try: 
+                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['40']])
+                except KeyError:
+                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple])                     
             elif tuple == '40':
-                poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['60']])                        
+                try:
+                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['60']]) 
+                except KeyError:
+                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple])                                            
             elif tuple == '60':
-                poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['80']])                       
+                try:
+                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['80']])                   
+                except KeyError:
+                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple])                       
             else:
                 poly = GeometryFactory.createPolygon(polyTupleDict[tuple])
                 
@@ -181,22 +197,30 @@ class Recommender(RecommenderTemplate.Recommender):
         CS = plt.contour(X, Y, probGrid, levels=levels)
 
         prob = ['0', '20', '40', '60', '80']
+        probIndex = [0.0, 20.0, 40.0, 60.0, 80.0]
         polyTupleDict = {}
 
         for c in range(0,(len(CS.levels) - 1)):
             contourVal = CS.levels[c]
             coords = CS.collections[c].get_paths()
-            points = coords[0].vertices
+
+            print "contourval: ", contourVal
+            print "coords length?: ", len(coords)
+            if len(coords):
+                points = coords[0].vertices
                 
-            longitudes = []
-            latitudes = []
+                longitudes = []
+                latitudes = []
                 
-            for point in range(0, len(points)):
-                longitudes.append(points[point][0])
-                latitudes.append(points[point][1])
+                for point in range(0, len(points)):
+                    longitudes.append(points[point][0])
+                    latitudes.append(points[point][1])
+                
+                print "is contourval in prob?: ", contourVal in probIndex
+                if contourVal in probIndex:    
+                    polyTupleDict[prob[c]] = zip(longitudes, latitudes)
                     
-            polyTupleDict[prob[c]] = zip(longitudes, latitudes)
-                               
+        print "polytupledict: ", polyTupleDict                       
         return polyTupleDict
     
     def flush(self):
