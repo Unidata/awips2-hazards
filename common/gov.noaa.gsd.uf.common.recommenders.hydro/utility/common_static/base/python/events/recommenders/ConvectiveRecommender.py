@@ -482,15 +482,10 @@ class Recommender(RecommenderTemplate.Recommender):
                     if event.get(OBJECT_ID) == ID:
                         overlap = True
                         break
-                    # TODO fix this -- Sometimes we get a KeyError here
-                    #     DO recommendedEventValues always have polygons?
-                    try:  
-                        polygon = loads(recommendedEventValues.pop('polygons'))
-                        if GeometryFactory.createPolygon(polygon).overlaps(event.getGeometry()):
-                            overlap = True
-                            break
-                    except:
-                        pass
+                    polygon = loads(recommendedEventValues.get('polygons'))
+                    if GeometryFactory.createPolygon(polygon).overlaps(event.getGeometry()):
+                        overlap = True
+                        break
             if not overlap:
                 newDict[ID] = recommendedEventValues
         self.flush()
