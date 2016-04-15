@@ -19,8 +19,10 @@ OUTPUTDIR = '/scratch/PHIGridTesting'
 buff = 1.
 lonPoints = 1200
 latPoints = 1000
-ulLat = 44.5 + buff
-ulLon = -104.0 - buff
+ulLat = 37.0 + buff
+ulLon = -103.0 - buff
+#ulLat = 44.5 + buff
+#ulLon = -104.0 - buff
 
 class ProbUtils(object):
     def __init__(self):
@@ -48,15 +50,15 @@ class ProbUtils(object):
             hazardType = event.getHazardType()
             start = time.time()
             probsDict = self.getOutputProbGrids(event)
-            print "[0] Took %.2f seconds" % (time.time()-start)
+            print hazardType + " [0] Took %.2f seconds" % (time.time()-start)
             if hazardType == 'Prob_Severe':
                 for tm in probsDict:
                     swathDictSvr[tm].append(probsDict[tm].get('swath'))
                     snapDictSvr[tm].append(probsDict[tm].get('snap'))
             if hazardType == 'Prob_Tornado':
                 for tm in probsDict:
-                    swathDictSvr[tm].append(probsDict[tm].get('swath'))
-                    snapDictSvr[tm].append(probsDict[tm].get('snap'))
+                    swathDictTor[tm].append(probsDict[tm].get('swath'))
+                    snapDictTor[tm].append(probsDict[tm].get('snap'))
 
         for tm in swathDictSvr:
             swathDictSvr[tm] = np.max(np.array(swathDictSvr[tm]), axis=0)
@@ -70,10 +72,11 @@ class ProbUtils(object):
         if writeToFile:
             if len(swathDictSvr) > 0:
                 start = time.time()
-                self._output(snapDictSvr, swathDictSvr, timeStamp, 'Prob_Severe')         
+                self._output(snapDictSvr, swathDictSvr, timeStamp, 'Severe')         
                 print "[1] Took %.2f seconds" % (time.time()-start)
             if len(swathDictTor) > 0:
-                self._output(snapDictTor, swathDictTor, timeStamp, 'Prob_Tornado')         
+                self._output(snapDictTor, swathDictTor, timeStamp, 'Tornado')         
+                print "[2] Took %.2f seconds" % (time.time()-start)
 
         return 1
 
@@ -253,6 +256,7 @@ class ProbUtils(object):
             pathFile = os.path.join(outDir,outputFilename)
         
             try:
+                
                 f = netcdf.netcdf_file(pathFile,'w')
                 f.title = 'Probabilistic Hazards Information grid'
                 f.hazard_type = eventType
@@ -260,7 +264,8 @@ class ProbUtils(object):
                 f.source = 'AWIPS2 Hazard Services'
                 f.history = 'Initially created ' + nowTime.isoformat()
                 f.comment = 'These data are experimental'
-                f.time_origin = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
+                #f.time_origin = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
+                f.time_origin = timeStepDateTime.strftime("%Y-%m-%d %H:%M:%S")
                 f.time_valid = timeStepDateTime.strftime("%Y-%m-%d %H:%M:%S")
                 
                 f.createDimension('lats', len(self._lats))
@@ -284,23 +289,29 @@ class ProbUtils(object):
                 timeVar.units = 'seconds since 1970-01-01 00:00:00'
                 timeVar.time_origin = '1970-01-01 00:00:00'
                 timeVar[:] = timeStepEpoch/1000
+
+                #===============================================================
+                # tauVar = f.createVariable('tau', 'i4', ('time',))
+                # tauVar.long_name  = 'Tau'
+                # tauVar.units = 'minutes since analysis'
+                # tauVar.time_origin = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
+                # tauVar[:] = minuteStep
+                #===============================================================
                 
-                tauVar = f.createVariable('tau', 'i4', ('time',))
-                tauVar.long_name  = 'Tau'
-                tauVar.units = 'minutes since analysis'
-                tauVar.time_origin = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
-                tauVar[:] = minuteStep
-                
-                snapProbsVar = f.createVariable('PHIprobsSnapshot', 'f', ('time', 'lats', 'lons'))
+                snapProbsVar = f.createVariable('PHIprobsSnapshot'+eventType, 'f', ('time', 'lats', 'lons'))
+                #snapProbsVar = f.createVariable('PHIprobsSnapshot'+eventType, 'f', ('lats', 'lons'))
                 snapProbsVar.long_name = "Probabilistic Hazard Information grid probabilities at the given time"
                 snapProbsVar.units = "%"
                 snapProbsVar.coordinates = "time lat lon"
+                #snapProbsVar.coordinates = "lat lon"
                 snapProbsVar[:] = snap
         
-                swathProbsVar = f.createVariable('PHIprobsSwath', 'f', ('time', 'lats', 'lons'))
+                swathProbsVar = f.createVariable('PHIprobsSwath'+eventType, 'f', ('time', 'lats', 'lons'))
+                #swathProbsVar = f.createVariable('PHIprobsSwath'+eventType, 'f', ('lats', 'lons'))
                 swathProbsVar.long_name = "Probabilistic Hazard Information grid probability swaths starting at the given time"
                 swathProbsVar.units = "%"
                 swathProbsVar.coordinates = "time lat lon"
+                #swathProbsVar.coordinates = "lat lon"
                 swathProbsVar[:] = swath
         
                 f.close()

@@ -254,7 +254,9 @@ class Recommender(RecommenderTemplate.Recommender):
             # Set userOwned and round start / end times to nearest minute
             #   This event will subsequently be ignored by the ConvectiveRecommender
             if eventSetAttrs.get('origin') == 'user':
-                event.set('convectiveUserOwned', True)                
+                event.set('convectiveUserOwned', True)
+                if event.get('objectID') and not event.get('objectID').startswith('M'):
+                    event.set('objectID',  'M' + event.get('objectID'))
             self._eventSt_ms = long(self._datetimeToMs(event.getStartTime()))
             self._roundEventTimes(event)
             
@@ -268,7 +270,11 @@ class Recommender(RecommenderTemplate.Recommender):
                 continue
             if trigger == 'hazardEventVisualFeatureChange':                 
                 self._adjustForVisualFeatureChange(event, eventSetAttrs)
-                                                
+            else:
+                ### Want to turn off Preview grid whenever Swath Recommender updates since we
+                ### need to toggle it off and on again to see updated version
+                event.set('showGrid', False)
+            
             # Create Interval Polygons -- Input is motion vector and current time polygon
             self._createIntervalPolys(event, eventSetAttrs, timeDirection="downstream")
             
@@ -405,7 +411,8 @@ class Recommender(RecommenderTemplate.Recommender):
         probInc = event.get('convectiveProbabilityTrendIncrement', 5)
         duration = self._calcEventDuration(event)
         ### Round up for some context
-        for i in range(0, duration+probInc+1, probInc):
+        for i in range(0, duration+1, probInc):
+        #for i in range(0, duration+probInc+1, probInc):
             y = 100-(i*100/int(duration))
             y = 0 if i >= duration else y
             #editable = True if y != 0 else False
@@ -481,8 +488,15 @@ class Recommender(RecommenderTemplate.Recommender):
         meanDir = atan2(-1*meanU,-1*meanV) * (180 / math.pi)
         meanSpd = math.sqrt(meanU**2 + meanV**2)
 
+        ### Default Uncertainties
+        if len(uList) == 1:
+            stdDir = 12
+            stdSpd = 2.16067
+            
         stdDir = atan2(stdV, stdU) * (180 / math.pi)
+        stdDir = 12 if stdDir < 12 else stdDir
         stdSpd = math.sqrt(stdU**2 + stdV**2)
+        stdSpd = 2.16067 if stdSpd < 2.16067 else stdSpd
 
         return {
                 'convectiveObjectDir' : meanDir%360,
@@ -584,7 +598,7 @@ class Recommender(RecommenderTemplate.Recommender):
         if dirUVal:
             dirUVal = int(dirUVal)
         else:
-            dirUVal = 10
+            dirUVal = 12
         ### get speed
         speedVal = attrs.get('convectiveObjectSpdKts')
         if not speedVal:
@@ -595,7 +609,7 @@ class Recommender(RecommenderTemplate.Recommender):
         if spdUVal:
             spdUVal = int(spdUVal)
         else:
-            spdUVal = 10
+            spdUVal = int(2.16067*1.94384)
                             
         ### Get initial polygon.  
         # This represents the polygon at the current time resulting from the last nudge.
@@ -626,21 +640,24 @@ class Recommender(RecommenderTemplate.Recommender):
         intervalTimes = []
         self.flush()
         for step in range(numIvals):
+            origDirVal = dirVal
             if timeDirection == 'upstream':
                 increment = -1*(step + 1)
+                secs = increment * self._timeStep()
+                upstreamCentroid = self.computeUpstreamCentroid(poly.centroid, dirVal, speedVal, secs)
+                intervalPoly = self._relocatePolygon(upstreamCentroid, poly)
             else:
                 increment = step
-            origDirVal = dirVal
-            presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, step, numIvals)
-            secs = increment * self._timeStep()
-            gglDownstream = self._downstream(secs,
+                presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, step, numIvals)
+                secs = increment * self._timeStep()
+                gglDownstream = self._downstream(secs,
                                             presetResults['speedVal'],
                                             presetResults['dirVal'],
                                             presetResults['spdUVal'],
                                             presetResults['dirUVal'],
                                             origDirVal,
                                             gglPoly)
-            intervalPoly = so.transform(self._c3857t4326, gglDownstream)
+                intervalPoly = so.transform(self._c3857t4326, gglDownstream)
             intervalPoly = self._reducePolygon(intervalPoly)
             intervalPolys.append(intervalPoly)
             st = self._convertFeatureTime(secs)
@@ -654,6 +671,21 @@ class Recommender(RecommenderTemplate.Recommender):
             self._upstreamPolys = intervalPolys
             self._upstreamTimes = intervalTimes      
         #print '[', fi_filename, getframeinfo(currentframe()).lineno,'] === FINAL took ', time.time()-total, 'seconds for ', event.get('objectID'), ' ==='
+
+    def computeUpstreamCentroid(self, centroid, dirDeg, spdKts, time):
+        diffSecs = abs(time)
+        d = (spdKts*0.514444*diffSecs)/1000
+        R = 6378.1 #Radius of the Earth
+
+        brng = radians(dirDeg)
+        lon1, lat1 = centroid.coords[0]
+
+        lat2 = math.degrees((d/R) * math.cos(brng)) + lat1
+        lon2 = math.degrees((d/(R*math.sin(math.radians(lat2)))) * math.sin(brng)) + lon1
+
+        newCentroid = shapely.geometry.point.Point(lon2, lat2)
+        return newCentroid
+
 
     def _downstream(self, secs, speedVal, dirVal, spdUVal, dirUVal, origDirVal, threat):
         speedVal = float(speedVal)
@@ -1197,7 +1229,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def _upstreamTimeSteps(self):
         # Number of time steps for upstream polygons
-        return 10 
+        return 30 
 
     def _historySteps(self):
         # Maximum number of history polygons to store

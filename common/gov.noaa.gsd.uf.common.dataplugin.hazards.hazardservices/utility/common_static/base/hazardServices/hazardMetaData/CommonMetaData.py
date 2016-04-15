@@ -1829,7 +1829,7 @@ class MetaData(object):
         tbl = {
             "fieldType": "Table",
             "fieldName": "convectiveGetAttrs",
-            "label": "Cell Attributes:",
+            "label": "Cell Attributes (only automated objects):",
             "lines": 4,
             "columnHeaders": [ "Category", "Value"],
             "values": vals,
@@ -1855,13 +1855,13 @@ class MetaData(object):
         # Warning Discussion
         mws.append(self._getConvectiveDiscussion())
         # Activate
-        mws.append(self._getConvectiveActivate())
+        #mws.append(self._getConvectiveActivate())
         # Redraw # Reset History # Preview grid
-        mws.append(self._getConvectiveAuxControls())
+        #mws.append(self._getConvectiveAuxControls())
         # Path/shape "recommender"
         mws.append(self._getConvectiveSwathPresets())
         # preview slider
-        mws.append(self._getConvectivePreview())
+        #mws.append(self._getConvectivePreview())
                 
         grp = {
             "fieldType": "Group",
@@ -2036,7 +2036,7 @@ class MetaData(object):
                         "sendEveryChange": False,
                         "minValue": 0,
                         "maxValue": 180,
-                        "values": 10,
+                        "values": 12,
                         "incrementDelta": 5,
                         "showScale": False,
                         "modifyRecommender": "SwathRecommender"
@@ -2048,7 +2048,7 @@ class MetaData(object):
                         "sendEveryChange": False,
                         "minValue": 0,
                         "maxValue": 200,
-                        "values": 10,
+                        "values": int(4.2),
                         "showScale": False,
                         "modifyRecommender": "SwathRecommender"
                         },
@@ -2168,7 +2168,8 @@ class MetaData(object):
         duration = self._calcEventDuration()
         probInc = 5
         ### Round up for some context
-        for i in range(0, duration+probInc+1, probInc):
+        for i in range(0, duration+1, probInc):
+#        for i in range(0, duration+probInc+1, probInc):
             y = 100-(i*100/int(duration))
             y = 0 if i >= duration else y
             editable = 1 if y != 0 else 0
@@ -2200,16 +2201,28 @@ class MetaData(object):
                          "fieldName": "convectiveProbabilityTrend",
                          "values": [100, 80, 60, 40, 20, 10]
                          },
-                        {
-                        "fieldType": "Button",
-                        "fieldName": "convectiveProbTrendUndo",
-                        "label": "Undo"
-                        },
-                        {
-                        "fieldType": "Button",
-                        "fieldName": "convectiveProbTrendRedo",
-                        "label": "Redo"
-                        },
+                        #=======================================================
+                        # {
+                        # "fieldType": "Button",
+                        # "fieldName": "convectiveProbTrendUndo",
+                        # "label": "Undo",
+                        # },
+                        # {
+                        # "fieldType": "HiddenField",
+                        # "fieldName": "convectiveProbTrendUndoValues",
+                        # "values": probVals
+                        # },
+                        # {
+                        # "fieldType": "Button",
+                        # "fieldName": "convectiveProbTrendRedo",
+                        # "label": "Redo",
+                        # },
+                        # {
+                        # "fieldType": "HiddenField",
+                        # "fieldName": "convectiveProbTrendRedoValues",
+                        # "values": probVals
+                        # },
+                        #=======================================================
                         {
                         "fieldType": "Graph",
                         "fieldName": "convectiveProbTrendGraph",
@@ -2437,10 +2450,8 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
                 newProbs.append(newVal)
                 
         if len(newProbs) == len(convectiveProbTrendGraphVals):
-            ### To satisfy end always ending at 0, also since
-            ### we have an extra point to extend the graph
+            ### To satisfy end always ending at 0
             newProbs[-1] = 0
-            newProbs[-2] = 0
 
             for i in range(len(newProbs)):
                convectiveProbTrendGraphVals[i]['y'] = newProbs[i]
@@ -2507,14 +2518,53 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         convectiveProbTrendTriggers = [x for x in convectTriggers if x.startswith('convectiveProbTrend') ]
         if len(convectiveProbTrendTriggers) > 0:
             probVals = mutableProperties['convectiveProbTrendGraph']['values']
+            
+            #===================================================================
+            # print 'INITIAL...'
+            # print 'Graph:', mutableProperties['convectiveProbTrendGraph']['values']
+            # print 'Undo:', mutableProperties['convectiveProbTrendUndoValues']['values']
+            # print 'Redo:', mutableProperties['convectiveProbTrendRedoValues']['values']
+            # print '....'
+            # sys.stdout.flush()
+            # ### Ensure we save the old state of GMW before making any changes
+            # returnDict['convectiveProbTrendRedoValues'] = {"values": probVals}
+            #===================================================================
+            
             trigger = convectiveProbTrendTriggers[0]
-            execMethodName = trigger
+            #===================================================================
+            # #print 'Trigger:', trigger
+            # sys.stdout.flush()
+            # if trigger == 'convectiveProbTrendUndo':
+            #     #print 'convectiveProbTrendUndo'
+            #     returnDict['convectiveProbTrendGraph'] = {'values' : mutableProperties['convectiveProbTrendUndoValues']['values']}
+            #     #print returnDict['convectiveProbTrendGraph']
+            #     #sys.stdout.flush()
+            # elif trigger == 'convectiveProbTrendRedo':
+            #     #print 'convectiveProbTrendRedo'
+            #     returnDict['convectiveProbTrendGraph'] = {'values' : mutableProperties['convectiveProbTrendRedoValues']['values']}
+            #     #print returnDict['convectiveProbTrendGraph']
+            #     #sys.stdout.flush()
+            # else: 
+            #     updatedProbTrend = updateProbtrend(probVals, trigger)
+            # 
+            #     ### Set new state of GMW with updated trend
+            #     returnDict['convectiveProbTrendRedoValues'] = {"values": updatedProbTrend}
+            #     returnDict['convectiveProbTrendGraph'] = {'values' : updatedProbTrend}
+            #===================================================================
+
             updatedProbTrend = updateProbtrend(probVals, trigger)
-            
+            ### Set new state of GMW with updated trend
             returnDict['convectiveProbTrendGraph'] = {'values' : updatedProbTrend}
-            
-        sys.stdout.flush()
-            
+
+
+            #===================================================================
+            # returnDict['convectiveProbTrendUndoValues'] = {"values": probVals}
+            # print 'Final...'
+            # print 'Graph:', returnDict['convectiveProbTrendGraph']
+            # print 'Undo:', returnDict['convectiveProbTrendUndoValues']
+            # print 'Redo:', returnDict['convectiveProbTrendRedoValues']
+            # sys.stdout.flush()
+            #===================================================================
             
     return returnDict
 

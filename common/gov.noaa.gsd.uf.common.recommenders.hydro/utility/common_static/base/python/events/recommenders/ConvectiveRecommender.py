@@ -29,7 +29,7 @@ import pprint
 from collections import defaultdict
 from shapely.wkt import loads
 
-from PHIGridRecommender import Recommender as PHIGridRecommender
+from PHI_GridRecommender import Recommender as PHIGridRecommender
 #from MapsDatabaseAccessor import MapsDatabaseAccessor
 
 from HazardConstants import *

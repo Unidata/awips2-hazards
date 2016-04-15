@@ -5,6 +5,7 @@ import collections, time
 import Prob_Generator
 import HazardDataAccess
 #from PHI_GridRecommender import Recommender as PHI_GridRecommender
+from ProbUtils import ProbUtils
 
 class Product(Prob_Generator.Product):
 
@@ -156,9 +157,10 @@ class Product(Prob_Generator.Product):
             productDicts.append(productDict)
             
         if self._issueFlag:
-            pass
             #phiGridRecommender = PHI_GridRecommender()
             #phiGridRecommenderRec.execute(eventSet, None, None)
+            pu = ProbUtils()
+            pu.processEvents(eventSet, writeToFile=True)
 
         #productDicts, hazardEvents = self._makeProducts_FromHazardEvents(probHazardEvents, eventSetAttributes)
 

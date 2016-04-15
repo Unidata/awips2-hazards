@@ -204,8 +204,6 @@ class Recommender(RecommenderTemplate.Recommender):
             contourVal = CS.levels[c]
             coords = CS.collections[c].get_paths()
 
-            print "contourval: ", contourVal
-            print "coords length?: ", len(coords)
             if len(coords):
                 points = coords[0].vertices
                 
@@ -216,11 +214,9 @@ class Recommender(RecommenderTemplate.Recommender):
                     longitudes.append(points[point][0])
                     latitudes.append(points[point][1])
                 
-                print "is contourval in prob?: ", contourVal in probIndex
                 if contourVal in probIndex:    
                     polyTupleDict[prob[c]] = zip(longitudes, latitudes)
                     
-        print "polytupledict: ", polyTupleDict                       
         return polyTupleDict
     
     def flush(self):
