@@ -260,13 +260,25 @@ class Recommender(RecommenderTemplate.Recommender):
             self._eventSt_ms = long(self._datetimeToMs(event.getStartTime()))
             self._roundEventTimes(event)
             
-            #self._printEvent("Before Update", event) 
+            attributeIdentifiers = eventSetAttrs.get('attributeIdentifiers')
 
-            self._initializeMotionVectorPolys(event)
-            self._advanceDownstreamPolys(event)                       
+            #self._printEvent("Before Update", event) 
+            
+            # If this execution was triggered by the user initiating a "draw new
+            # points on graph" action, make a note of this; otherwise, initialize
+            # motion vector polygons and advance the downstream polygons.
+            beginGraphDraw = False
+            if trigger == 'hazardEventModification' and len(attributeIdentifiers) is 1 and \
+                    'convectiveProbTrendGraph' in attributeIdentifiers and \
+                    event.get('convectiveProbTrendGraph', []) == []:
+                beginGraphDraw = True
+            else:
+                self._initializeMotionVectorPolys(event)
+                self._advanceDownstreamPolys(event)                       
+
             # Make updates to motion vector, duration due to user adjustments to 
             #  hazard attributes or visual features
-            if trigger == 'hazardEventModification' and not self._needUpdate(event): 
+            if trigger == 'hazardEventModification' and not self._needUpdate(event, beginGraphDraw): 
                 continue
             if trigger == 'hazardEventVisualFeatureChange':                 
                 self._adjustForVisualFeatureChange(event, eventSetAttrs)
@@ -274,16 +286,19 @@ class Recommender(RecommenderTemplate.Recommender):
                 ### Want to turn off Preview grid whenever Swath Recommender updates since we
                 ### need to toggle it off and on again to see updated version
                 event.set('showGrid', False)
+
+            if not beginGraphDraw:
+                
+                # Create Interval Polygons -- Input is motion vector and current time polygon
+                self._createIntervalPolys(event, eventSetAttrs, timeDirection="downstream")
+                
+                # Check if "first time pending hazard"
+                self._pendingHazard = event.getStatus() in ["PENDING", "POTENTIAL"]
+                if self._pendingHazard:
+                    self._createIntervalPolys(event, eventSetAttrs, timeDirection="upstream")
+                                                
+                self._setVisualFeatures(event)
             
-            # Create Interval Polygons -- Input is motion vector and current time polygon
-            self._createIntervalPolys(event, eventSetAttrs, timeDirection="downstream")
-            
-            # Check if "first time pending hazard"
-            self._pendingHazard = event.getStatus() in ["PENDING", "POTENTIAL"]
-            if self._pendingHazard:
-                self._createIntervalPolys(event, eventSetAttrs, timeDirection="upstream")
-                                            
-            self._setVisualFeatures(event)
             resultEventSet.add(event)                    
             #self._printEvent("After Update", event)  
                                                                         
@@ -376,7 +391,7 @@ class Recommender(RecommenderTemplate.Recommender):
     # Check for Update of Attributes #
     ##################################
 
-    def _needUpdate(self, event):
+    def _needUpdate(self, event, beginGraphDraw):
         update = False
         
         # Compare the previous values to the new values to determine if any changes are necessary.  
@@ -384,6 +399,10 @@ class Recommender(RecommenderTemplate.Recommender):
         triggerCheckList = ['convectiveObjectSpdKtsUnc', 'convectiveObjectDirUnc', 'convectiveProbTrendGraph',
                             'convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveSwathPresets', 
                             'duration']
+        
+        if beginGraphDraw:
+            event.set('preDraw_convectiveProbTrendGraph', event.get('prev_convectiveProbTrendGraph'))
+        
         attrs = event.getHazardAttributes()
         
         newTriggerAttrs = {t:attrs.get(t) for t in triggerCheckList}
@@ -395,16 +414,30 @@ class Recommender(RecommenderTemplate.Recommender):
         for t in triggerCheckList:
             prevName = "prev_"+t
             prevVal = event.get(prevName)
+            if t == 'convectiveProbTrendGraph' and prevVal is None:
+                prevVal = []
             newVal = newTriggerAttrs.get(t)
+            if t == 'convectiveProbTrendGraph' and newVal is None:
+                newVal = []
             # Test to see if there is a change
             if prevVal != newVal:
                 update = True
                 if t == 'duration':
                     self._updateGraphProbsBasedOnDuration(event)
+                elif t == 'convectiveProbTrendGraph':
+                    self._ensureLastGraphProbZeroAndUneditable(event)
             # Update previous value
             event.set(prevName, newVal)
-                    
-        return update
+            
+        # Only return true if updating should occur, and ensure that if updating is to occur, there are
+        # valid probability trend graph points ready for calculations. There could be none currently
+        # because the user had previously commenced a "draw points on graph" action, but did not complete
+        # it.
+        if update:
+            if not beginGraphDraw and attrs.get('convectiveProbTrendGraph') == []:
+                event.set('convectiveProbTrendGraph', event.get('preDraw_convectiveProbTrendGraph'))
+            return True
+        return False
 
     def _updateGraphProbsBasedOnDuration(self, event):
         probVals = []
@@ -419,6 +452,15 @@ class Recommender(RecommenderTemplate.Recommender):
             editable = 1 if y != 0 else 0
             probVals.append({"x":i, "y":y, "editable": editable})
         event.set('convectiveProbTrendGraph', probVals)
+
+    def _ensureLastGraphProbZeroAndUneditable(self, event):
+        probVals = event.get('convectiveProbTrendGraph', [])
+        if len(probVals) == 0:
+            return
+        lastPoint = probVals[-1]
+        if lastPoint["y"] != 0 or lastPoint["editable"]:
+            probVals[-1] = { "x": lastPoint["x"], "y": 0, "editable": False }
+            event.set('convectiveProbTrendGraph', probVals)
 
     def _calcEventDuration(self, event):
         # This will round to the nearest minute
@@ -1121,7 +1163,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
         '''
         duration = self._calcEventDuration(event)
-        colorsList = event.get('convectiveProbTrendGraph', [])
+        colorsList = event.get('convectiveProbTrendGraph', event.get('preDraw_convectiveProbTrendGraph', []))
         probTrend = [entry.get('y') for entry in colorsList]
         
         probTrendTimeInterval = event.get('convectiveProbabilityTrendIncrement', 5 )

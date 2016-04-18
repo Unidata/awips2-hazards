@@ -6,6 +6,7 @@ import Prob_Generator
 import HazardDataAccess
 #from PHI_GridRecommender import Recommender as PHI_GridRecommender
 from ProbUtils import ProbUtils
+import json, pickle
 
 class Product(Prob_Generator.Product):
 
@@ -161,7 +162,19 @@ class Product(Prob_Generator.Product):
             #phiGridRecommenderRec.execute(eventSet, None, None)
             pu = ProbUtils()
             pu.processEvents(eventSet, writeToFile=True)
-
+            
+            
+            ## Dump just this event to disk since only one hazard in events set?
+            attrKeys = ['site', 'status', 'phenomenon', 'significance', 'subtype',
+                        'creationtime', 'endtime', 'starttime', 'geometry', 'eventid',
+                        'username', 'workstation', 'attributes']
+            outDict = {}
+            for hazardEvent in probHazardEvents:
+                outDict = {k:hazardEvent.__getitem__(k) for k in attrKeys}
+            
+                filename = outDict.get('phenomenon') + '_' + outDict.get('eventid') + '_' + (outDict.get('creationtime')).isoformat()
+                pickle.dump( outDict, open('/scratch/PHIGridTesting/'+filename, 'wb'))
+                
         #productDicts, hazardEvents = self._makeProducts_FromHazardEvents(probHazardEvents, eventSetAttributes)
 
         return productDicts, probHazardEvents

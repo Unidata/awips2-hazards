@@ -2126,8 +2126,7 @@ class MetaData(object):
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendDraw",
-                        "label": "Draw",
-                        "enable": False
+                        "label": "Draw"
                         },
                         {
                         "fieldType": "Button",

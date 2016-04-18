@@ -306,7 +306,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def __getitem__(self, key):
         lowerKey = key.lower()
         if lowerKey == 'site':
-            return getSiteID()
+            return self.getSiteID()
         elif lowerKey == 'status':
             return self.getStatus()
         elif lowerKey == 'phenomenon' or lowerKey == 'phen':
