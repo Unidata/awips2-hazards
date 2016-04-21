@@ -291,7 +291,7 @@ public class ToolsView implements
                     presenter.publish(new ToolAction(isChecked()));
                 }
             };
-            enableEventDrivenToolsExecutionAction.setChecked(false);
+            enableEventDrivenToolsExecutionAction.setChecked(true);
             return Lists.newArrayList(enableEventDrivenToolsExecutionAction);
         }
     }

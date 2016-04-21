@@ -762,7 +762,7 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                     SHOW_HATCHED_AREAS_MENU_TEXT, null, Action.AS_CHECK_BOX,
                     null, ConsoleAction.ActionType.CHANGE_MODE,
                     ConsoleAction.SHOW_HATCHED_AREA);
-            showHatchedAreaAction.setChecked(true);
+            showHatchedAreaAction.setChecked(false);
 
             Action reviewAction = new ReviewAction(presenter);
             Action viewProductsAction = new ViewProductAction(presenter);

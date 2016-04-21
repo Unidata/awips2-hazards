@@ -24,5 +24,6 @@
 #   frozen), or whenever the CAVE time is changed, frozen, or unfrozen.
 #
 EventDrivenTools = [
-                   { "type": "RECOMMENDER", "identifiers": ["ConvectiveRecommender"], "intervalMinutes": 5 }
+                   #{ "type": "RECOMMENDER", "identifiers": ["ConvectiveRecommender", "SwathRecommender"], "intervalMinutes": 1 },
+                   { "type": "RECOMMENDER", "identifiers": ["SwathRecommender"], "intervalMinutes": 1 },
                    ]

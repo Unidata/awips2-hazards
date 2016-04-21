@@ -105,38 +105,55 @@ class Recommender(RecommenderTemplate.Recommender):
         #testing
         #self._trigger = {'trigger':eventSet.getAttribute("trigger"), 'attrs':eventSet.getAttribute("attributeIdentifiers")}
         sys.stderr.flush()
-                
+        
+        # Iterate through the events that were passed in, processing each in turn
+        # by first removing all preview-grid-related visual features (if any are
+        # found), since even if generating them, any old ones need to be removed
+        # first; and then, if the "show grid" flag has been set to true, generating
+        # new ones.
+        changed = False        
         for event in eventSet:
+            changed = (self.removeVisualFeatures(event) or changed)
             if event.getHazardAttributes().get('showGrid') == True:
                 selectedVisualFeatures = []
                 probGrid, lons, lats = ProbUtils().getProbGrid(event)
                 polyTupleDict = self.createPolygons(probGrid, lons, lats)
-                event = self.addVisualFeatures(event, polyTupleDict)
-                                    
-            elif event.getHazardAttributes().get('showGrid', False) == False:
-                #try:
-                event = self.removeVisualFeatures(event)
-                #except TypeError:
-                #    pass
-                               
-        return eventSet
+                changed = (self.addVisualFeatures(event, polyTupleDict) or changed)
+               
+        # Return nothing unless something was changed, since returning nothing
+        # tells Hazard Services no changes were made by the recommender.
+        if changed:
+            return eventSet
+        return None
     
+    # Remove any visual features generated as part of preview grids previously,
+    # returning True if this results in changes to the hazard event, and False
+    # otherwise.
     def removeVisualFeatures(self, event):
         selectedVisualFeatures = event.getSelectedVisualFeatures()
         
         if not selectedVisualFeatures:
-            return event
+            return False
         
         newFeatures = []
+        changed = False
         for feature in selectedVisualFeatures:
             if not feature.get('identifier').find('gridPreview')>=0:
                 newFeatures.append(feature)
-                        
-        event.setSelectedVisualFeatures(VisualFeatures(newFeatures))   
+            else:
+                changed = True
+                
+        if changed:        
+            event.setSelectedVisualFeatures(VisualFeatures(newFeatures))   
 
-        return event
+        return changed
          
+    # Generate and add preview-grid-related visual features, returning True if
+    # this results in changes to the hazard event, and False otherwise.
     def addVisualFeatures(self, event, polyTupleDict):
+                
+        selectedFeatures = event.getSelectedVisualFeatures()
+        
         for tuple in polyTupleDict:  
             if tuple == '0':
                 try:
@@ -178,12 +195,12 @@ class Recommender(RecommenderTemplate.Recommender):
                     (VisualFeatures.datetimeToEpochTimeMillis(event.getStartTime()), VisualFeatures.datetimeToEpochTimeMillis(event.getEndTime())): poly
                 }
             }
-                
-            selectedFeatures = event.getSelectedVisualFeatures()
+
             selectedFeatures.append(gridPreviewPoly)
-            event.setSelectedVisualFeatures(VisualFeatures(selectedFeatures))
             
-        return event        
+        event.setSelectedVisualFeatures(VisualFeatures(selectedFeatures))
+
+        return True      
     
     def createPolygons(self, probGrid, lons, lats):
         polyDict = {}

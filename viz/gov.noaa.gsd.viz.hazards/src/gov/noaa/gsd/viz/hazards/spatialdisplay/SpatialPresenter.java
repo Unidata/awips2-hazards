@@ -23,6 +23,7 @@ import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
@@ -36,6 +37,8 @@ import java.util.Set;
 import net.engio.mbassy.listener.Enveloped;
 import net.engio.mbassy.listener.Handler;
 import net.engio.mbassy.subscription.MessageEnvelope;
+
+import org.apache.commons.lang.time.DateUtils;
 
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -126,6 +129,9 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  *                                           events to never be filtered out of the spatial display
  *                                           due to their time ranges not intersecting with the current
  *                                           selected time.
+ * Apr 18, 2016 15676      Chris.Golden      Fixed bug with selected time not being rounded down to
+ *                                           closest minute, which prevented visual features from
+ *                                           showing up.
  * </pre>
  * 
  * @author Chris.Golden
@@ -516,6 +522,11 @@ public class SpatialPresenter extends
             Date selectedTime, Color hazardColor, double hazardBorderWidth,
             BorderStyle hazardBorderStyle, double hazardPointDiameter,
             int hazardTextPointSize) {
+
+        /*
+         * Round the selected time down to the nearest minute.
+         */
+        selectedTime = DateUtils.truncate(selectedTime, Calendar.MINUTE);
 
         /*
          * If there are visual features in the list, iterate through them,

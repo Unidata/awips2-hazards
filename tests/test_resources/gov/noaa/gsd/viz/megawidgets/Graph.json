@@ -24,7 +24,19 @@
               { "red": 1, "green": 0.7, "blue": 0 },
               { "red": 1, "green": 0.6, "blue": 0 }
              ],
-  "values": [{"x": -10, "y": 20, "editable": true}, {"x": 2, "y": 50, "editable": true}, {"x": 23, "y": 100, "editable": true}, {"x": 40, "y": 0, "editable": false}]
+  "values": [
+             {"x": -10, "y": 20, "editable": true},
+             {"x": -5, "y": 50, "editable": true},
+             {"x": 0, "y": 70, "editable": true},
+             {"x": 5, "y": 76, "editable": true},
+             {"x": 10, "y": 71, "editable": true},
+             {"x": 15, "y": 60, "editable": true},
+             {"x": 20, "y": 50, "editable": true},
+             {"x": 25, "y": 45, "editable": true},
+             {"x": 30, "y": 40, "editable": true},
+             {"x": 35, "y": 42, "editable": true},
+             {"x": 40, "y": 37, "editable": true}
+            ]
  },
  {
   "fieldType": "CheckBox",

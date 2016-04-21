@@ -147,6 +147,7 @@ class Recommender(RecommenderTemplate.Recommender):
         metadata['description'] = '''
         '''
         metadata['eventState'] = 'Pending'
+        metadata['includeEventTypes'] = [ "Prob_Severe", "Prob_Tornado" ]
         metadata['onlyIncludeTriggerEvent'] = True
         
         # This tells Hazard Services to not notify the user when the recommender
@@ -206,7 +207,7 @@ class Recommender(RecommenderTemplate.Recommender):
                There will be exactly one event in the eventSet to process
            - "hazardVisualFeatureChange" with origin of User
                There will be exactly one event in the eventSet to process
-           - "timeInterval" with origin of PHI_GridRecommender  
+           - "timeInterval" at each minute to update moving forward in time
                There can be multiple events in the eventSet to process  
                
         Data structures kept for each hazard event :  parallel lists of [poly] and [startTime, endTime]
@@ -222,7 +223,7 @@ class Recommender(RecommenderTemplate.Recommender):
                  the motionVectorPolys if it is nudged by the user.
             
         All times are in millis past the epoch.
-        The current time polygon is also stored in first class event geometry. 
+        The last (latest in time) nudged polygon is also stored in first class event geometry. 
   
         '''
                 
@@ -241,8 +242,8 @@ class Recommender(RecommenderTemplate.Recommender):
             #  Need this set in order to Issue                               
             event.set('issueTime', self._currentTime)
              
-            # If called from PHI_GridRecommender cycle through all events, 
-            #  otherwise we are just processing one event
+            # If called via "timeInterval", we are processing multiple events, 
+            #  otherwise we are just looking for one event:            
             if trigger in ['hazardEventModification', 'hazardEventVisualFeatureChange']:
                 eventIdentifier = eventSetAttrs.get('eventIdentifier')            
                 if eventIdentifier and eventIdentifier != event.getEventID():
@@ -250,15 +251,26 @@ class Recommender(RecommenderTemplate.Recommender):
                 
             if event.getStatus() in ['ELAPSED', 'ENDED']:
                 continue
-                        
-            # Set userOwned and round start / end times to nearest minute
-            #   This event will subsequently be ignored by the ConvectiveRecommender
+
+            # Round start / end times to nearest minute
+            self._eventSt_ms = long(self._datetimeToMs(event.getStartTime()))
+            self._roundEventTimes(event)
+            self._pendingHazard = event.getStatus() in ["PENDING", "POTENTIAL"] 
+                       
+            # If the trigger was time interval, then the objective of running the
+            # recommender is simply to update issued hazard events' polygons. 
+            if trigger == 'timeInterval':
+                if event.getStatus() == 'ISSUED':
+                    self._processTimeTrigger(event)
+                    resultEventSet.add(event)
+                continue
+  
+            # Set userOwned; this event will subsequently be ignored by the
+            # ConvectiveRecommender
             if eventSetAttrs.get('origin') == 'user':
                 event.set('convectiveUserOwned', True)
                 if event.get('objectID') and not event.get('objectID').startswith('M'):
                     event.set('objectID',  'M' + event.get('objectID'))
-            self._eventSt_ms = long(self._datetimeToMs(event.getStartTime()))
-            self._roundEventTimes(event)
             
             attributeIdentifiers = eventSetAttrs.get('attributeIdentifiers')
 
@@ -274,13 +286,14 @@ class Recommender(RecommenderTemplate.Recommender):
                 beginGraphDraw = True
             else:
                 self._initializeMotionVectorPolys(event)
-                self._advanceDownstreamPolys(event)                       
+                #self._advanceDownstreamPolys(event)                       
 
             # Make updates to motion vector, duration due to user adjustments to 
             #  hazard attributes or visual features
             if trigger == 'hazardEventModification' and not self._needUpdate(event, beginGraphDraw): 
                 continue
             if trigger == 'hazardEventVisualFeatureChange':                 
+                print 'CALLING _adjustForVisualFeatureChange_...\n'
                 self._adjustForVisualFeatureChange(event, eventSetAttrs)
             else:
                 ### Want to turn off Preview grid whenever Swath Recommender updates since we
@@ -289,21 +302,29 @@ class Recommender(RecommenderTemplate.Recommender):
 
             if not beginGraphDraw:
                 
-                # Create Interval Polygons -- Input is motion vector and current time polygon
+
+                print 'CALLING _createIntervalPolys...\n'
                 self._createIntervalPolys(event, eventSetAttrs, timeDirection="downstream")
                 
-                # Check if "first time pending hazard"
-                self._pendingHazard = event.getStatus() in ["PENDING", "POTENTIAL"]
+                # Check if "first time pending hazard"  -- 
                 if self._pendingHazard:
                     self._createIntervalPolys(event, eventSetAttrs, timeDirection="upstream")
                                                 
                 self._setVisualFeatures(event)
             
+            print 'CALLING [111] _advanceDownstreamPolys...\n'
+            self._advanceDownstreamPolys(event)                       
             resultEventSet.add(event)                    
             #self._printEvent("After Update", event)  
                                                                         
         return resultEventSet
-
+    
+    
+    def _processTimeTrigger(self, event):
+        # Process the marching of time forward
+        print 'CALLING [222] _advanceDownstreamPolys...\n'
+        self._advanceDownstreamPolys(event)  
+        self._setVisualFeatures(event)                     
 
     ##############################################
     # Downstream and current polygon bookkeeping #
@@ -340,16 +361,33 @@ class Recommender(RecommenderTemplate.Recommender):
                 return
             
             st, et = downstreamTimes[i]
-            if st >= self._eventSt_ms:
+            # NOTE: until Issued, the eventSt_ms will equal the current time
+            #  However, after issued, we need to continue to march forward dropping downstream polys
+            print "SR Advance downstream st, currentTime", st >= self._currentTime, st, self._currentTime
+            self.flush()
+            #if st >= motionVectorTimes[-1][0]: # self._currentTime:    
+            if st >= self._currentTime:    
                 index = i
                 break
+        print "SR Advance index", index
+        self.flush()
+        
         event.set('downstreamPolys', downstreamPolys[index:])
         event.set('downstreamTimes', downstreamTimes[index:])
-        self._setEventGeometry(event, downstreamPolys[0])
+        
+        dsP2 = event.get('downstreamPolys', downstreamPolys[index:])
+        dsT2 = event.get('downstreamTimes', downstreamTimes[index:])
+        
+        print "1) SR First Downstream Poly Time", downstreamTimes[0][0], self._displayMsTime(downstreamTimes[0][0])
+        print '1) Num Polys:', len(downstreamPolys)
+        print "2) SR First Downstream Poly Time", dsT2[0][0], self._displayMsTime(dsT2[0][0])
+        print '2) Num Polys:', len(dsP2)
+        self.flush()
+        
         historyPolys = event.get('historyPolys', [])
         historyTimes = event.get('historyTimes', [])
-        newHistPolys = historyPolys #+ downstreamPolys[:index]
-        newHistTimes = historyTimes #+ downstreamTimes[:index]
+        newHistPolys = historyPolys + downstreamPolys[:index]
+        newHistTimes = historyTimes + downstreamTimes[:index]
         
         # Truncate historyPolys if there is a maximum limit set
         maxHistory = self._historySteps()
@@ -627,6 +665,17 @@ class Recommender(RecommenderTemplate.Recommender):
         can be derived.
         
         '''
+
+        
+        ### get duration (in seconds)
+        durationSecs = int(round((event.getEndTime()-event.getStartTime()).total_seconds()))
+        startMS = self._currentTime
+        endMS = startMS+(durationSecs*1000)
+        event.setStartTime(datetime.datetime.fromtimestamp(startMS/1000))
+        event.setEndTime(datetime.datetime.fromtimestamp(endMS/1000))
+        self._eventSt_ms = long(self._datetimeToMs(event.getStartTime()))
+        self._roundEventTimes(event)
+        
         attrs = event.getHazardAttributes()
 
         # Set up direction and speed values
@@ -672,8 +721,6 @@ class Recommender(RecommenderTemplate.Recommender):
         
         ### calc for intervals (default time step) over duration
         if timeDirection == 'downstream':
-            ### get duration (in seconds)
-            durationSecs = int(round((event.getEndTime()-event.getStartTime()).total_seconds()))
             numIvals = int(durationSecs/self._timeStep())
         else:
             numIvals = self._upstreamTimeSteps()
@@ -703,7 +750,10 @@ class Recommender(RecommenderTemplate.Recommender):
             intervalPoly = self._reducePolygon(intervalPoly)
             intervalPolys.append(intervalPoly)
             st = self._convertFeatureTime(secs)
+            print '---INTERVAL POLY: SETTING TIMES (event.getStartTime(), self._eventSt_ms, secs, st)',  event.getStartTime(), self._eventSt_ms, secs, st
             et = self._convertFeatureTime(secs+self._timeStep())
+            #print "SR interval times", timeDirection, secs, self._displayMsTime(st), self._displayMsTime(et)
+            #self.flush()
             intervalTimes.append((st, et))
                     
         if timeDirection == 'downstream':
@@ -821,6 +871,8 @@ class Recommender(RecommenderTemplate.Recommender):
         Event geometry contains current time polygon        
         '''
         # Add the visualFeature change to the history list
+        
+        
         motionVectorPolys = event.get('motionVectorPolys', []) 
         motionVectorTimes = event.get('motionVectorTimes', [])
         # Convert to list of tuples (poly, st, et) for processing 
@@ -861,14 +913,14 @@ class Recommender(RecommenderTemplate.Recommender):
                     if abs(histSt-featureSt) <= self._timeDelta_ms():                        
                         newMotionVector.append((featurePoly, histSt, histEt))
                         found = True
-                        if histSt == self._eventSt_ms:
-                            # Store the current time polygon in the event geometry
-                            event.setGeometry(featurePoly)
-                    if not found: 
+                    else: 
                         newMotionVector.append((histPoly, histSt, histEt))
                 # Otherwise, add a new motionVectorPoly 
                 if not found:                    
                     newMotionVector.append((featurePoly, featureSt, featureEt))
+                    
+        print "SR Feature ST", featureSt, self._displayMsTime(featureSt)
+        self.flush()
         
         if not newMotionVector:
             print "SwathRecommender Warning: Expecting feature change -- feature not found" 
@@ -879,7 +931,11 @@ class Recommender(RecommenderTemplate.Recommender):
         newMotionVector.sort(self._sortPolys)
         # Convert back to parallel lists for storing in event attributes
         motionVectorPolys = [poly for poly, st, et in newMotionVector]
-        motionVectorTimes = [(st,et) for poly, st, et in newMotionVector]            
+        motionVectorTimes = [(st,et) for poly, st, et in newMotionVector]
+        
+        # Store the last motionVectorPoly in the event geometry
+        # NOTE: this is the motionVectorPoly that has the latest start time
+        event.setGeometry(motionVectorPolys[-1])            
         event.set('motionVectorPolys', motionVectorPolys)
         event.set('motionVectorTimes', motionVectorTimes)
         
@@ -908,6 +964,8 @@ class Recommender(RecommenderTemplate.Recommender):
         selectedVisualFeatures += dsSelectedVisualFeatures
         
         # Swath
+        downstreamTimes = event.get('downstreamTimes')
+        print '>>>Calling Swath Draw: dsTime[0], upstreamSt_ms', downstreamTimes[0], upstreamSt_ms
         swathFeature = self._swathFeature(event, upstreamSt_ms, downstreamPolys)                
         selectedVisualFeatures.append(swathFeature)      
         
@@ -952,15 +1010,20 @@ class Recommender(RecommenderTemplate.Recommender):
         selectedVisualFeatures = []
         baseVisualFeatures = []
         # Downstream Polygons, Track Points, Relocated Downstream 
-        numIntervals = len(downstreamPolys)        
+        numIntervals = len(downstreamPolys) 
+        print "SR Number of DS", numIntervals
+        self.flush()       
         for i in range(numIntervals):
             poly = downstreamPolys[i]
             polySt_ms, polyEt_ms = downstreamTimes[i]
             polyEnd = polyEt_ms - 60*1000 # Take a minute off
    
-            # First downstream polygon is at current time and always editable
-            if i == 0:
+            # First downstream polygon is at current time and always editable until Issued
+            if self._pendingHazard and i == 0:
                 dragCapability = "all"
+#                 print "SR Current Time", self._displayMsTime(self._currentTime)
+#                 print "SR First Polygon (editable) time set", self._displayMsTime(polySt_ms), self._displayMsTime(polyEnd)
+#                 self.flush() 
             else:
                 dragCapability = "none"
               
@@ -996,14 +1059,26 @@ class Recommender(RecommenderTemplate.Recommender):
             selectedVisualFeatures.append(trackPointFeature)
              
             # Relocated initial going downstream
-            if polySt_ms > self._eventSt_ms:
-                relocatedPoly = self._relocatePolygon(centroid, geometry)
+            if i == 0:
+                print "SR -- Relocated Polygon check [", str(i), "]: ", polySt_ms > self._eventSt_ms, str(polySt_ms), str(self._eventSt_ms)
+                self.flush()
+            if polySt_ms >= self._eventSt_ms:
+                if not self._pendingHazard and i == 0:
+                    dragCapability = "all"
+                    print "SR EDITABLE First Relocated Polygon time set", str(polySt_ms), self._currentTime
+                    print " poly time, current time", self._displayMsTime(polySt_ms), self._displayMsTime(self._currentTime)
+                    self.flush() 
+                else:
+                    dragCapability = "none"
+                    
+                relocatedPoly = self._reducePolygon(self._relocatePolygon(centroid, geometry))
                 relocatedFeature = {
                   "identifier": "swathRec_relocated_"+str(polySt_ms),
                   "borderColor": "eventType",
                   "borderThickness": "eventType",
                   "borderStyle": "dashed",
                   "textSize": "eventType",
+                  "dragCapability": dragCapability, 
                   "geometry": {
                       (polySt_ms, polyEnd): relocatedPoly
                        }
@@ -1154,7 +1229,7 @@ class Recommender(RecommenderTemplate.Recommender):
         return 40*1000
     
     def _displayMsTime(self, time_ms):
-        return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time_ms))
+        return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time_ms/1000))
         
     def _getInterpolatedProbTrendColor(self, event, interval, numIvals):
         '''
