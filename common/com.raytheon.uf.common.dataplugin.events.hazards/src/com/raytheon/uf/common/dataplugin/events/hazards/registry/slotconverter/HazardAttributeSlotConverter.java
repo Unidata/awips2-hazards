@@ -54,7 +54,9 @@ import com.vividsolutions.jts.geom.Geometry;
  * May 29, 2015    6895    Ben.Phillippe Refactored Hazard Service data access.
  * Mar 03, 2016   16145    Chris.Golden  Added ability to handle Geometry
  *                                       objects found within hazard attributes.
- * 
+ * Apr 23, 2016   18094    Chris.Golden  Changed to avoid performing any slot
+ *                                       conversion on attributes that are not
+ *                                       capable of such conversions.
  * </pre>
  * 
  * @author bphillip
@@ -77,6 +79,9 @@ public class HazardAttributeSlotConverter implements SlotConverter {
         List<SlotType> slotList = new ArrayList<SlotType>(attributes.size());
 
         for (HazardAttribute attr : attributes) {
+            if (attr.isSlottable() == false) {
+                continue;
+            }
             Class<?> valueType = attr.getValueType();
             if (valueType == null) {
                 ValueType val = getValueType(attr.getValue());
@@ -86,7 +91,7 @@ public class HazardAttributeSlotConverter implements SlotConverter {
                 Object valueObject = attr.getValueObject();
                 if (valueObject != null) {
                     if (Geometry.class.isAssignableFrom(valueType)) {
-                        ValueType val = getValueType(attr.getValue());
+                        ValueType val = getValueType(valueObject);
                         SlotType slot = new SlotType(attr.getKey(), val);
                         slotList.add(slot);
                     } else if (HashMap.class.isAssignableFrom(valueType)) {

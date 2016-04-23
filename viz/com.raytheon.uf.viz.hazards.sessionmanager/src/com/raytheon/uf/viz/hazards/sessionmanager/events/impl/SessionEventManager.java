@@ -362,6 +362,8 @@ import com.vividsolutions.jts.geom.TopologyException;
  * Apr 04, 2016   17467    Chris.Golden Fixed public addEvent() method to no longer filter out added/modified
  *                                      events by current settings filters, and changed the other addEvent()
  *                                      to give its second parameter a more reasonable name than "localEvent".
+ * Apr 23, 2016   18094    Chris.Golden Added code to ensure VTEC check does not throw exception if the event
+ *                                      has no VTEC code (e.g. a PHI event).
  * </pre>
  * 
  * @author bsteffen
@@ -2501,7 +2503,7 @@ public class SessionEventManager implements
                 /*
                  * Only deselect if canceled.
                  */
-                if (vtecCodes.contains("CAN")) {
+                if ((vtecCodes != null) && vtecCodes.contains("CAN")) {
                     event.addHazardAttribute(
                             HazardConstants.HAZARD_EVENT_SELECTED, false);
                 }

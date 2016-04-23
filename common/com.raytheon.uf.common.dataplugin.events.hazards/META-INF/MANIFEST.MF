@@ -19,7 +19,9 @@ Require-Bundle: com.raytheon.uf.common.serialization;bundle-version="1.12.1174",
  org.eclipse.core.runtime;bundle-version="3.8.0",
  com.google.guava;bundle-version="18.0.0",
  com.raytheon.uf.common.security;bundle-version="1.14.0",
- gov.noaa.gsd.common.visuals;bundle-version="1.0.0"
+ gov.noaa.gsd.common.visuals;bundle-version="1.0.0",
+ gov.noaa.gsd.common.utilities;bundle-version="1.0.0",
+ org.codehaus.jackson;bundle-version="1.7.3"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-ActivationPolicy: lazy
 Import-Package: com.google.common.base,
