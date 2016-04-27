@@ -213,6 +213,9 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      (dotted was referred to as dashed).
  * Apr 01, 2016 16225      Chris.Golden Added ability to cancel tasks that are scheduled
  *                                      to run at regular intervals.
+ * Apr 25, 2016 18129      Chris.Golden Changed time-interval-triggered tasks to be
+ *                                      triggered close to the instant when the CAVE
+ *                                      current time ticks over to a new minute.
  * </pre>
  * 
  * @author bsteffen
@@ -339,9 +342,9 @@ public class SessionConfigurationManager implements
 
     private Set<String> typesRequiringPointIds;
 
-    private Map<Runnable, Integer> minuteIntervalsForEventDrivenToolExecutors;
+    private final Map<Runnable, Integer> minuteIntervalsForEventDrivenToolExecutors = new IdentityHashMap<>();
 
-    private boolean runRecommendersAtRegularIntervals = false;
+    private boolean runRecommendersAtRegularIntervals;
 
     SessionConfigurationManager() {
 
@@ -436,8 +439,6 @@ public class SessionConfigurationManager implements
                 EventDrivenTools.class);
         loaderPool.schedule(eventDrivenTools);
         EventDrivenTools tools = eventDrivenTools.getConfig();
-        minuteIntervalsForEventDrivenToolExecutors = new IdentityHashMap<>(
-                tools.size());
         for (final EventDrivenToolEntry entry : tools) {
             minuteIntervalsForEventDrivenToolExecutors.put(new Runnable() {
 
@@ -463,6 +464,7 @@ public class SessionConfigurationManager implements
                 }
             }, entry.getIntervalMinutes());
         }
+        runRecommendersAtRegularIntervals = false;
         setEventDrivenToolRunningEnabled(true);
 
         // Add observer to base file
@@ -1099,10 +1101,8 @@ public class SessionConfigurationManager implements
         for (Map.Entry<Runnable, Integer> entry : minuteIntervalsForEventDrivenToolExecutors
                 .entrySet()) {
             if (enable) {
-                timeManager.runAtRegularIntervals(
-                        entry.getKey(),
-                        ISessionTimeManager.MINUTE_AS_MILLISECONDS
-                                * entry.getValue());
+                timeManager.runAtRegularIntervals(entry.getKey(),
+                        entry.getValue());
             } else {
                 timeManager.cancelRunAtRegularIntervals(entry.getKey());
             }

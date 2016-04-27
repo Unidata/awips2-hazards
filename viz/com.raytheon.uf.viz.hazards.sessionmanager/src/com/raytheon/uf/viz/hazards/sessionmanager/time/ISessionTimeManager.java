@@ -51,6 +51,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Apr 01, 2016 16225      Chris.Golden Added ability to cancel tasks that
  *                                      are scheduled to run at regular
  *                                      intervals.
+ * Apr 25, 2016 18129      Chris.Golden Changed time-interval-triggered
+ *                                      tasks to be triggered close to the
+ *                                      instant when the CAVE current time
+ *                                      ticks over to a new minute.
  * </pre>
  * 
  * @author bsteffen
@@ -177,10 +181,10 @@ public interface ISessionTimeManager {
      * 
      * @param task
      *            Task to be executed at regular intervals.
-     * @param intervalInMillis
-     *            Interval in milliseconds between executions.
+     * @param intervalInMinutes
+     *            Interval in minutes between executions.
      */
-    public void runAtRegularIntervals(Runnable task, long intervalInMillis);
+    public void runAtRegularIntervals(Runnable task, int intervalInMinutes);
 
     /**
      * Cancel the execution at regular intervals of the specified runnable, the

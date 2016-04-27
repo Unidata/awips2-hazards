@@ -25,7 +25,8 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
-import java.util.IdentityHashMap;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
@@ -100,12 +101,14 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                      selected. This reverts changes made for issue
  *                                      #6898 (at least two of them unlogged in this
  *                                      list of changes).
+ * Apr 25, 2016 18129      Chris.Golden Changed time-interval-triggered tasks to be
+ *                                      triggered close to the instant when the CAVE
+ *                                      current time ticks over to a new minute.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-
 public class SessionTimeManager implements ISessionTimeManager {
 
     // Private Static Constants
@@ -172,17 +175,17 @@ public class SessionTimeManager implements ISessionTimeManager {
 
     /**
      * Map of tasks to be executed at regular intervals to their intervals in
-     * milliseconds.
+     * minutes. Tasks are executed in the order they are inserted into the map,
+     * since this type of map iterates over its entries in the same order in
+     * which said entries were initially inserted.
      */
-    private final Map<Runnable, Long> intervalsMillisForTasks = new IdentityHashMap<>();
+    private final Map<Runnable, Integer> intervalsMinutesForTasks = new LinkedHashMap<>();
 
     /**
-     * Map of tasks to be executed at regular intervals to their associated
-     * timer tasks, if they are currently scheduled. This is needed so that the
-     * timer tasks may be accessed later if there is a need to cancel their
-     * execution.
+     * Map of tasks to be executed at regular intervals to the number of timer
+     * firings that have occurred since each one was last executed.
      */
-    private final Map<Runnable, TimerTask> timerTasksForTasks = new IdentityHashMap<>();
+    private final Map<Runnable, Integer> minutesSinceExecutionForTasks = new HashMap<>();
 
     /**
      * Simulated time change listener, used to receive notifications that the
@@ -214,11 +217,9 @@ public class SessionTimeManager implements ISessionTimeManager {
             scheduleTimerNotifications();
 
             /*
-             * Run any tasks that have been scheduled to be executed at
-             * intervals, and if the current CAVE time is not frozen, schedule
-             * any future executions of these tasks.
+             * Run any scheduled tasks immediately.
              */
-            runAndScheduleTasks();
+            runScheduledTasks(true);
         }
     };
 
@@ -318,27 +319,24 @@ public class SessionTimeManager implements ISessionTimeManager {
     }
 
     @Override
-    public void runAtRegularIntervals(Runnable task, long intervalInMillis) {
+    public void runAtRegularIntervals(Runnable task, int intervalInMinutes) {
 
         /*
          * Remember this task for the future.
          */
-        intervalsMillisForTasks.put(task, intervalInMillis);
+        intervalsMinutesForTasks.put(task, intervalInMinutes);
+        minutesSinceExecutionForTasks.put(task, 0);
 
         /*
-         * Run the task immediately, and schedule it to be executed at regular
-         * intervals if the current CAVE time is not frozen.
+         * Schedule a running of the task immediately.
          */
-        runAndScheduleTask(task);
+        RUNNABLE_ASYNC_SCHEDULER.schedule(task);
     }
 
     @Override
     public void cancelRunAtRegularIntervals(Runnable task) {
-        intervalsMillisForTasks.remove(task);
-        TimerTask timerTask = timerTasksForTasks.remove(task);
-        if (timerTask != null) {
-            timerTask.cancel();
-        }
+        intervalsMinutesForTasks.remove(task);
+        minutesSinceExecutionForTasks.remove(task);
     }
 
     /**
@@ -439,6 +437,7 @@ public class SessionTimeManager implements ISessionTimeManager {
                     @Override
                     public void run() {
                         publishNotificationOfTimeChange();
+                        runScheduledTasks(false);
                     }
                 });
             }
@@ -446,51 +445,59 @@ public class SessionTimeManager implements ISessionTimeManager {
     }
 
     /**
-     * Run any tasks that have been specified previously, and if the current
-     * CAVE time is not frozen, schedule these tasks to be executed at regular
-     * intervals.
-     * <p>
-     * <strong>Note:</strong> The {@link #timer} object must exist when this
-     * method is called.
-     */
-    private void runAndScheduleTasks() {
-        for (Runnable task : intervalsMillisForTasks.keySet()) {
-            runAndScheduleTask(task);
-        }
-    }
-
-    /**
-     * Run the specified task, and if the current CAVE clock time is not frozen,
-     * schedule it to be executed at the proper interval.
+     * Run any tasks that have been specified previously.
      * 
-     * @param task
-     *            Task to be run and potentially scheduled.
+     * @param forceRun
+     *            Flag indicating whether or not all tasks should be run
+     *            regardless of when they were last run. If <code>false</code>,
+     *            then only those tasks that have had a sufficiently high
+     *            interval of time pass since their last executions will be run.
+     *            Note that if <code>true</code>, the elapsed time counters for
+     *            all tasks are reset to 0.
      */
-    private void runAndScheduleTask(final Runnable task) {
+    private void runScheduledTasks(boolean forceRun) {
 
         /*
-         * Just schedule it to run immediately if there is no timer, as this
-         * means the current CAVE clock time is frozen. Otherwise, schedule
-         * execution to occur immediately and at intervals in the future.
+         * Reset elapsed time counters for all tasks if all tasks are to be run
+         * regardless of elapsed time.
          */
-        if (timer == null) {
-            RUNNABLE_ASYNC_SCHEDULER.schedule(task);
-        } else {
+        if (forceRun) {
+            for (Runnable task : intervalsMinutesForTasks.keySet()) {
+                minutesSinceExecutionForTasks.put(task, 0);
+            }
+        }
+
+        /*
+         * Iterate through the tasks, executing each one if its interval has
+         * elapsed (or if force-run is true).
+         */
+        for (Map.Entry<Runnable, Integer> entry : intervalsMinutesForTasks
+                .entrySet()) {
 
             /*
-             * Schedule execution to occur at a fixed interval. See the comment
-             * for the call of the same timer method in
-             * scheduleTimerNotifications() for caveats.
+             * If force-run is false, then determine whether the number of
+             * minutes have elapsed since last execution that are sufficient to
+             * warrant running this task. If so, reset the counter to 0 for the
+             * next time around; otherwise, increment the counter. Do nothing
+             * more with this task if the latter.
              */
-            TimerTask timerTask = new TimerTask() {
-                @Override
-                public void run() {
-                    RUNNABLE_ASYNC_SCHEDULER.schedule(task);
+            if (forceRun == false) {
+                int minutesSinceExecution = minutesSinceExecutionForTasks
+                        .get(entry.getKey()) + 1;
+                if (minutesSinceExecution >= entry.getValue()) {
+                    minutesSinceExecution = 0;
                 }
-            };
-            timerTasksForTasks.put(task, timerTask);
-            timer.scheduleAtFixedRate(timerTask, 0L,
-                    intervalsMillisForTasks.get(task));
+                minutesSinceExecutionForTasks.put(entry.getKey(),
+                        minutesSinceExecution);
+                if (minutesSinceExecution != 0) {
+                    continue;
+                }
+            }
+
+            /*
+             * Execute the task.
+             */
+            entry.getKey().run();
         }
     }
 
