@@ -114,8 +114,8 @@ class ProbUtils(object):
         colorsList = event.get('convectiveProbTrendGraph', [])
         probTrend = [entry.get('y') for entry in colorsList]
         
-        probTrendTimeInterval = event.get('convectiveProbabilityTrendIncrement')
-        
+        probTrendTimeInterval = event.get('convectiveProbabilityTrendIncrement', 5)
+                
         ### Add 1 to duration to get "inclusive" 
         probTrendTimeIntervals = np.arange(len(probTrend))*probTrendTimeInterval
         oneMinuteTimeIntervals = np.arange(0, probTrendTimeIntervals[-1]+1, 1)

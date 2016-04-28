@@ -52,7 +52,9 @@ MILLIS_PER_SECOND = 1000
 DEFAULT_DURATION_IN_SECS = 2700 # 45 minutes
 #DEFAULT_DURATION_IN_SECS = 120
 PROBABILITY_FILTER = 40 # filter our any objects less than this.
-SOURCEPATH = '/awips2/edex/data/hdf5/convectprob'    
+SOURCEPATH_ARCHIVE = '/awips2/edex/data/hdf5/convectprob'
+SOURCEPATH_REALTIME = '/realtime-a2/hdf5/probsevere'
+    
 
 class Recommender(RecommenderTemplate.Recommender):
 
@@ -263,8 +265,12 @@ class Recommender(RecommenderTemplate.Recommender):
     def _getLatestProbSevereDataHDFFileList(self, latestDatetime=None):
         fileList = None
         try:
-            fileList = sorted(glob.glob(os.path.join(SOURCEPATH,'*.h5')), 
-                          reverse=True)
+            #===================================================================
+            # fileList = sorted(glob.glob(os.path.join(SOURCEPATH,'*.h5')), 
+            #               reverse=True)
+            #===================================================================
+            fileList = sorted(glob.glob(os.path.join(SOURCEPATH_REALTIME,'*.h5')), reverse=True) + \
+                        sorted(glob.glob(os.path.join(SOURCEPATH_ARCHIVE,'*.h5')), reverse=True)
         except:
             print 'Convective Recommender Warning: Could not obtain list of convectprob*.h5 files at:', os.path.join(SOURCEPATH,'*.h5')
             print 'Returning:', fileList

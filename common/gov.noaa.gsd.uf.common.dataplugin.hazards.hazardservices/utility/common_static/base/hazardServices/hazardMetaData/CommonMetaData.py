@@ -2006,7 +2006,7 @@ class MetaData(object):
                         "fieldName": "convectiveObjectDir",
                         "sendEveryChange": False,
                         "label": "",
-                        "minValue": 0,
+                        "minValue": 1,
                         "maxValue": 360,
                         "values": int(wdir),
                         "incrementDelta": 5,
@@ -2019,7 +2019,7 @@ class MetaData(object):
                         "label": "deg @",
                         "sendEveryChange": False,
                         "minValue": 0,
-                        "maxValue": 500,
+                        "maxValue": 200,
                         "values": int(wspd),
                         "showScale": False,
                         "modifyRecommender": "SwathRecommender"
@@ -2035,7 +2035,7 @@ class MetaData(object):
                         "label": "Dir Uncertainty (deg)",
                         "sendEveryChange": False,
                         "minValue": 0,
-                        "maxValue": 180,
+                        "maxValue": 45,
                         "values": 12,
                         "incrementDelta": 5,
                         "showScale": False,
@@ -2047,7 +2047,7 @@ class MetaData(object):
                         "label": "Speed Uncertainty (kts)",
                         "sendEveryChange": False,
                         "minValue": 0,
-                        "maxValue": 200,
+                        "maxValue": 20,
                         "values": int(4.2),
                         "showScale": False,
                         "modifyRecommender": "SwathRecommender"
@@ -2059,7 +2059,7 @@ class MetaData(object):
                         "sendEveryChange": False,
                         "showScale": False,
                         "values": False,
-                        "modifyRecommender": "PreviewGridRecommender"
+                        "modifyRecommender": "SwathRecommender"
                         },
                        ]
         }

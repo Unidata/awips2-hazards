@@ -23,7 +23,11 @@
 #   once. Subsequent executions will occur at the intervals given (if CAVE time is not
 #   frozen), or whenever the CAVE time is changed, frozen, or unfrozen.
 #
+
+
 EventDrivenTools = [
-                   #{ "toolType": "RECOMMENDER", "toolIdentifiers": [ "ConvectiveRecommender" ], "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
-                   { "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], "triggerType": "DATA_LAYER_CHANGE", "dataTypes": [ "RADAR" ] },
+                   #{ "toolType": "RECOMMENDER", "toolIdentifiers": [ "ConvectiveRecommender" ], 
+                   #   "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
+                   { "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
+                       "triggerType": "DATA_LAYER_CHANGE", "dataTypes": [ "RADAR" ] },
                    ]
