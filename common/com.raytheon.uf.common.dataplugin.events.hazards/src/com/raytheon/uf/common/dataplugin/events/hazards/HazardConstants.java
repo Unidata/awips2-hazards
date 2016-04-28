@@ -85,6 +85,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Mar 01, 2016 15676     Chris.Golden  Changed to support visual features.
  * Apr 05, 2016 16885     Chris.Golden  Added definitions for boolean column type in temporal
  *                                      display.
+ * Apr 27, 2016 18266     Chris.Golden  Added support for event-driven tools triggered by data
+ *                                      layer changes.
  * </pre>
  * 
  * @author mnash
@@ -139,13 +141,16 @@ public final class HazardConstants {
 
     public static final String RECOMMENDER_METADATA_INCLUDE_EVENT_TYPES = "includeEventTypes";
 
+    public static final String RECOMMENDER_METADATA_INCLUDE_LATEST_DATA_LAYER_TIME = "includeLatestDataLayerTime";
+
     /**
      * Types of changes or events that may trigger a recommender execution.
      */
     public enum Trigger {
         NONE("none"), HAZARD_TYPE_FIRST("hazardTypeFirst"), HAZARD_EVENT_MODIFICATION(
                 "hazardEventModification"), HAZARD_EVENT_VISUAL_FEATURE_CHANGE(
-                "hazardEventVisualFeatureChange"), TIME_INTERVAL("timeInterval");
+                "hazardEventVisualFeatureChange"), TIME_INTERVAL("timeInterval"), DATA_LAYER_UPDATE(
+                "dataLayerUpdate");
 
         // Private Variables
 
@@ -757,6 +762,8 @@ public final class HazardConstants {
     public static final String BACKUP_SITEID = "backupSiteID";
 
     public static final String TEST_MODE = "testMode";
+
+    public static final String LATEST_DATA_TIME = "latestDataLayerTime";
 
     /*
      * The following are related to product generation.

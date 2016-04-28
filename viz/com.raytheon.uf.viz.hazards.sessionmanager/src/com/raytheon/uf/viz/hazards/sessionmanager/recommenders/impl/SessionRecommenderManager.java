@@ -9,8 +9,6 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.recommenders.impl;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.FILE_PATH_KEY;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 
@@ -42,7 +40,9 @@ import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.DataLayerType;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
@@ -72,6 +72,9 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      recommender triggering, and changed the
  *                                      the recommender input EventSet to only
  *                                      include the events the recommender desires.
+ * Apr 27, 2016   18266    Chris.Golden Added the inclusion of the latest data time
+ *                                      in the recommender input event set if asked
+ *                                      for by the recommender.
  * </pre>
  * 
  * @author Chris.Golden
@@ -236,9 +239,11 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             }
             if (!dialogInput.isEmpty()) {
                 if (!dialogInput.isEmpty()) {
-                    dialogInput.put(FILE_PATH_KEY, recommenderEngine
-                            .getInventory(recommenderIdentifier).getFile()
-                            .getFile().getPath());
+                    dialogInput.put(
+                            HazardConstants.FILE_PATH_KEY,
+                            recommenderEngine
+                                    .getInventory(recommenderIdentifier)
+                                    .getFile().getFile().getPath());
                     messenger.getToolParameterGatherer().getToolParameters(
                             recommenderIdentifier, ToolType.RECOMMENDER,
                             context, dialogInput);
@@ -282,6 +287,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_EVENT_TYPES);
         Set<String> includeEventTypes = (includeEventTypesList != null ? new HashSet<>(
                 includeEventTypesList) : null);
+        Collection<String> latestDataTimeDataLayerTypes = (Collection<String>) metadata
+                .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_LATEST_DATA_LAYER_TIME);
 
         /*
          * Create the event set, determine which events are to be added to it
@@ -313,8 +320,11 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         /*
          * Add session information to event set.
          */
-        eventSet.addAttribute(HazardConstants.CURRENT_TIME, sessionManager
-                .getTimeManager().getCurrentTime().getTime());
+        ISessionConfigurationManager<?> configManager = sessionManager
+                .getConfigurationManager();
+        long currentTime = sessionManager.getTimeManager().getCurrentTime()
+                .getTime();
+        eventSet.addAttribute(HazardConstants.CURRENT_TIME, currentTime);
         eventSet.addAttribute(HazardConstants.SELECTED_TIME, sessionManager
                 .getTimeManager().getSelectedTime().getLowerBound());
         eventSet.addAttribute(HazardConstants.FRAMES_INFO,
@@ -322,17 +332,49 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         eventSet.addAttribute(HazardConstants.SITE_ID, sessionManager
                 .getConfigurationManager().getSiteID());
         eventSet.addAttribute(
-                HAZARD_MODE,
+                HazardConstants.HAZARD_MODE,
                 (CAVEMode.getMode()).toString().equals(
                         CAVEMode.PRACTICE.toString()) ? HazardEventManager.Mode.PRACTICE
                         .toString() : HazardEventManager.Mode.OPERATIONAL
                         .toString());
 
         /*
-         * Get the engine to initiate the execution of the recommender.
+         * If the latest data time is to be included, add that to the event set
+         * as well. Determine the latest time by iterating through the types of
+         * data layers that are to be checked, and finding the latest for each
+         * type in turn, then taking the greatest of these. Use the current time
+         * if no data layers of these types are loaded, or if one or more are
+         * loaded but none of them have any data times.
          */
         final String toolName = (String) metadata
                 .get(HazardConstants.RECOMMENDER_METADATA_TOOL_NAME);
+        if ((latestDataTimeDataLayerTypes != null)
+                && (latestDataTimeDataLayerTypes.isEmpty() == false)) {
+            long latest = 0;
+            for (String typeString : latestDataTimeDataLayerTypes) {
+                DataLayerType type = DataLayerType.valueOf(typeString
+                        .toUpperCase());
+                if (type == null) {
+                    statusHandler.warn("Ignoring data layer type \""
+                            + typeString + "\" specified by " + toolName
+                            + " in list of data layer types to "
+                            + "query for latest data time, "
+                            + "since there is no such type.");
+                    continue;
+                }
+                long thisLatest = configManager
+                        .getLatestDataTimeFromVizResources(type.getClassNames());
+                if (thisLatest > latest) {
+                    latest = thisLatest;
+                }
+            }
+            eventSet.addAttribute(HazardConstants.LATEST_DATA_TIME,
+                    (latest == 0L ? currentTime : latest));
+        }
+
+        /*
+         * Get the engine to initiate the execution of the recommender.
+         */
         Boolean background = (Boolean) metadata
                 .get(HazardConstants.RECOMMENDER_METADATA_BACKGROUND);
         final boolean notify = (Boolean.TRUE.equals(background) == false);
@@ -364,7 +406,9 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                                                     .warnUser(
                                                             toolName,
                                                             toolName
-                                                                    + " completed. No recommendations were generated.");
+                                                                    + " completed. "
+                                                                    + "No recommendations "
+                                                                    + "were generated.");
                                         }
 
                                         /*

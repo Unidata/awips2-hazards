@@ -24,6 +24,6 @@
 #   frozen), or whenever the CAVE time is changed, frozen, or unfrozen.
 #
 EventDrivenTools = [
-                   #{ "type": "RECOMMENDER", "identifiers": ["ConvectiveRecommender", "SwathRecommender"], "intervalMinutes": 1 },
-                   { "type": "RECOMMENDER", "identifiers": ["SwathRecommender"], "intervalMinutes": 1 },
+                   #{ "toolType": "RECOMMENDER", "toolIdentifiers": [ "ConvectiveRecommender" ], "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
+                   { "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], "triggerType": "DATA_LAYER_CHANGE", "dataTypes": [ "RADAR" ] },
                    ]

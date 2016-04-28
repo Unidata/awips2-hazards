@@ -38,6 +38,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Trigger;
  *                                      event modifications and visual feature
  *                                      changes know if the user or the software
  *                                      made the change that triggered it.
+ * Apr 27, 2016   18266    Chris.Golden Added support for event-driven tools triggered
+ *                                      by data layer changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -169,6 +171,16 @@ public class RecommenderExecutionContext {
      */
     public static RecommenderExecutionContext getTimeIntervalContext() {
         return new RecommenderExecutionContext(Trigger.TIME_INTERVAL,
+                RecommenderTriggerOrigin.OTHER, null, null, null);
+    }
+
+    /**
+     * Get a data layer update trigger execution context.
+     * 
+     * @return Context.
+     */
+    public static RecommenderExecutionContext getDataLayerUpdateContext() {
+        return new RecommenderExecutionContext(Trigger.DATA_LAYER_UPDATE,
                 RecommenderTriggerOrigin.OTHER, null, null, null);
     }
 

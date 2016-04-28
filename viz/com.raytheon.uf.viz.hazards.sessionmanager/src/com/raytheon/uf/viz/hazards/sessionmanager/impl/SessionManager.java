@@ -33,6 +33,7 @@ import java.util.Set;
 import com.raytheon.uf.common.activetable.request.ClearPracticeVTECTableRequest;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
@@ -75,6 +76,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.RecommenderOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
@@ -83,6 +85,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommend
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.impl.SessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.impl.SessionTimeManager;
 import com.raytheon.viz.core.mode.CAVEMode;
 
@@ -126,12 +129,14 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Mar 04, 2016 15933      Chris.Golden Added ability to run multiple recommenders in sequence in
  *                                      response to a time interval trigger, instead of just one
  *                                      recommender.
+ * Apr 27, 2016 18266      Chris.Golden Added the setting of the selected time to that specified
+ *                                      by the result of a recommender's execution, if the result
+ *                                      includes a new selected time.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-
 public class SessionManager implements
         ISessionManager<ObservedHazardEvent, ObservedSettings> {
 
@@ -455,6 +460,8 @@ public class SessionManager implements
     @Override
     public void handleRecommenderResult(String recommenderIdentifier,
             EventSet<IEvent> events) {
+        IOriginator originator = new RecommenderOriginator(
+                recommenderIdentifier);
         if (events != null) {
             String eventID = null;
             Set<String> eventIdSet = new HashSet<>(events.size());
@@ -476,8 +483,7 @@ public class SessionManager implements
                     hevent.setUserName(LocalizationManager.getInstance()
                             .getCurrentUser());
                     hevent.setWorkStation(VizApp.getHostName());
-                    eventManager.addEvent(hevent, new RecommenderOriginator(
-                            recommenderIdentifier));
+                    eventManager.addEvent(hevent, originator);
                 }
             }
 
@@ -492,9 +498,30 @@ public class SessionManager implements
                 IHazardEvent event = (IHazardEvent) ievent;
                 visibleTypes.add(HazardEventUtilities.getHazardType(event));
             }
-
             if (startSize != visibleTypes.size()) {
                 configManager.getSettings().setVisibleTypes(visibleTypes);
+            }
+
+            /*
+             * If a selected time has been included in the event set that was
+             * returned, use it.
+             */
+            Object newSelectedTime = events
+                    .getAttribute(HazardConstants.SELECTED_TIME);
+            if (newSelectedTime != null) {
+                SelectedTime selectedTime = null;
+                if (newSelectedTime instanceof List) {
+                    List<?> list = (List<?>) newSelectedTime;
+                    selectedTime = (list.size() > 1 ? new SelectedTime(
+                            ((Number) list.get(0)).longValue(),
+                            ((Number) list.get(1)).longValue())
+                            : new SelectedTime(
+                                    ((Number) list.get(0)).longValue()));
+                } else {
+                    selectedTime = new SelectedTime(
+                            ((Number) newSelectedTime).longValue());
+                }
+                timeManager.setSelectedTime(selectedTime, originator);
             }
         }
     }

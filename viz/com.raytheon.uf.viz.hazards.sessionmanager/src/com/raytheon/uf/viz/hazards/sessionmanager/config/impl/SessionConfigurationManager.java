@@ -91,7 +91,9 @@ import com.raytheon.uf.common.style.StyleRule;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.core.jobs.JobPool;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
+import com.raytheon.uf.viz.core.rsc.AbstractVizResource;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.ResourceDataUpdateDetector;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.AllHazardsFilterStrategy;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardEventExpirationAlertStrategy;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
@@ -105,6 +107,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardCatego
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardMetaData;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.DataLayerType;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.EventDrivenToolEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.EventDrivenTools;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
@@ -115,6 +118,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Page;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.TriggerType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
@@ -216,6 +220,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Apr 25, 2016 18129      Chris.Golden Changed time-interval-triggered tasks to be
  *                                      triggered close to the instant when the CAVE
  *                                      current time ticks over to a new minute.
+ * Apr 27, 2016 18266      Chris.Golden Added support for event-driven tools triggered
+ *                                      by data layer changes.
  * </pre>
  * 
  * @author bsteffen
@@ -346,6 +352,14 @@ public class SessionConfigurationManager implements
 
     private boolean runRecommendersAtRegularIntervals;
 
+    private final Set<String> classNamesTriggeringEventDrivenTools = new HashSet<>();
+
+    private final Map<String, Runnable> dataLayerChangeDrivenToolExecutorsForClassNames = new HashMap<>();
+
+    private final Map<Runnable, Set<String>> classNamesTriggeringEventDrivenToolsForExecutors = new HashMap<>();
+
+    private Map<AbstractVizResource<?, ?>, ResourceDataUpdateDetector> dataUpdateDetectorsForVizResources;
+
     SessionConfigurationManager() {
 
     }
@@ -430,8 +444,7 @@ public class SessionConfigurationManager implements
         /*
          * Load any event-driven tool specifications from configuration, and
          * create the executors for them, saving them along with their minute
-         * intervals. Then schedule them to run at the specified intervals if
-         * appropriate.
+         * intervals or resource class names as appropriate.
          */
         file = pathManager
                 .getStaticLocalizationFile(HazardsConfigurationConstants.EVENT_DRIVEN_TOOLS_PY);
@@ -440,30 +453,68 @@ public class SessionConfigurationManager implements
         loaderPool.schedule(eventDrivenTools);
         EventDrivenTools tools = eventDrivenTools.getConfig();
         for (final EventDrivenToolEntry entry : tools) {
-            minuteIntervalsForEventDrivenToolExecutors.put(new Runnable() {
+            Runnable runnable = new Runnable() {
 
                 @Override
                 public void run() {
-                    List<String> identifiers = entry.getIdentifiers();
+                    List<String> identifiers = entry.getToolIdentifiers();
                     Set<String> setOfIdentifiers = new HashSet<>(identifiers);
-                    if (setOfIdentifiers.size() != entry.getIdentifiers()
+                    if (setOfIdentifiers.size() != entry.getToolIdentifiers()
                             .size()) {
                         statusHandler
                                 .warn("List of recommenders to be executed sequentially ("
                                         + Joiner.on(", ").join(identifiers)
-                                        + ") at regular time intervals cannot include "
+                                        + ") when triggered by events cannot include "
                                         + "any duplicate entries; these recommenders "
                                         + "will not be executed.");
                     } else {
                         SessionConfigurationManager.this.sessionManager
-                                .runTools(entry.getType(), entry
-                                        .getIdentifiers(),
-                                        RecommenderExecutionContext
-                                                .getTimeIntervalContext());
+                                .runTools(
+                                        entry.getToolType(),
+                                        entry.getToolIdentifiers(),
+                                        (entry.getTriggerType() == TriggerType.TIME_INTERVAL ? RecommenderExecutionContext
+                                                .getTimeIntervalContext()
+                                                : RecommenderExecutionContext
+                                                        .getDataLayerUpdateContext()));
                     }
                 }
-            }, entry.getIntervalMinutes());
+            };
+            if (entry.getTriggerType() == TriggerType.TIME_INTERVAL) {
+                minuteIntervalsForEventDrivenToolExecutors.put(runnable,
+                        entry.getIntervalMinutes());
+            } else if (entry.getTriggerType() == TriggerType.DATA_LAYER_CHANGE) {
+                for (DataLayerType dataLayerType : entry.getDataTypes()) {
+                    Set<String> classNames = dataLayerType.getClassNames();
+                    classNamesTriggeringEventDrivenTools.addAll(classNames);
+                    for (String className : classNames) {
+                        dataLayerChangeDrivenToolExecutorsForClassNames.put(
+                                className, runnable);
+                    }
+                }
+            }
         }
+
+        /*
+         * Compile a mapping of executors of resource-data-update-triggered
+         * tools to the class names of resources whose data updates may trigger
+         * them.
+         */
+        for (Map.Entry<String, Runnable> entry : dataLayerChangeDrivenToolExecutorsForClassNames
+                .entrySet()) {
+            Set<String> classNames = classNamesTriggeringEventDrivenToolsForExecutors
+                    .get(entry.getValue());
+            if (classNames == null) {
+                classNames = new HashSet<>();
+                classNamesTriggeringEventDrivenToolsForExecutors.put(
+                        entry.getValue(), classNames);
+            }
+            classNames.add(entry.getKey());
+        }
+
+        /*
+         * Set the flag for running recommenders at regular intervals to the
+         * starting value.
+         */
         runRecommendersAtRegularIntervals = false;
         setEventDrivenToolRunningEnabled(true);
 
@@ -1107,6 +1158,45 @@ public class SessionConfigurationManager implements
                 timeManager.cancelRunAtRegularIntervals(entry.getKey());
             }
         }
+    }
+
+    @Override
+    public boolean isClassNameDataLayerChangeDrivenToolTrigger(String className) {
+        return classNamesTriggeringEventDrivenTools.contains(className);
+    }
+
+    @Override
+    public void triggerDataLayerChangeDrivenTool(String className) {
+        Runnable runnable = dataLayerChangeDrivenToolExecutorsForClassNames
+                .get(className);
+        if (runnable == null) {
+            statusHandler.warn("No tool found to execute in response "
+                    + "to a data update for " + "the loaded resource of type "
+                    + className + ".");
+        } else {
+            runnable.run();
+        }
+    }
+
+    @Override
+    public void setDataUpdateDetectorsForVizResources(
+            Map<AbstractVizResource<?, ?>, ResourceDataUpdateDetector> map) {
+        dataUpdateDetectorsForVizResources = map;
+    }
+
+    @Override
+    public long getLatestDataTimeFromVizResources(Set<String> classNames) {
+        long latest = 0L;
+        for (Map.Entry<AbstractVizResource<?, ?>, ResourceDataUpdateDetector> entry : dataUpdateDetectorsForVizResources
+                .entrySet()) {
+            if (classNames.contains(entry.getKey().getClass().getSimpleName())) {
+                long thisLatest = entry.getValue().getLatestDataTime();
+                if (thisLatest > latest) {
+                    latest = thisLatest;
+                }
+            }
+        }
+        return latest;
     }
 
     @Override

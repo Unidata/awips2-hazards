@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
@@ -23,6 +24,7 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,10 +69,13 @@ import com.raytheon.uf.viz.core.maps.rsc.DbMapResourceData;
 import com.raytheon.uf.viz.core.rsc.AbstractVizResource;
 import com.raytheon.uf.viz.core.rsc.IDisposeListener;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
+import com.raytheon.uf.viz.core.rsc.IResourceGroup;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.ResourceList;
 import com.raytheon.uf.viz.core.rsc.ResourceList.AddListener;
 import com.raytheon.uf.viz.core.rsc.ResourceList.RemoveListener;
+import com.raytheon.uf.viz.hazards.sessionmanager.ResourceDataUpdateDetector;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.EditorUtil;
@@ -108,12 +113,15 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
  * Jun 24, 2015 6601       Chris.Cody        Change Create by Hazard Type display text
  * Jul 21, 2015 2921       Robert.Blum       Changes for multi panel displays.
- * Sep 09, 2015 6603       Chris.Cody        Added isSelectByAreaActive to track "by Area" selection state
+ * Sep 09, 2015 6603       Chris.Cody        Added isSelectByAreaActive to track "by Area"
+ *                                           selection state.
  * Mar 16, 2016 15676      Chris.Golden      Changed to make visual features work.
  *                                           Will be refactored to remove numerous
  *                                           existing kludges.
  * Mar 24, 2016 15676      Chris.Golden      Changed method that draws spatial entities
  *                                           to take another parameter.
+ * Apr 27, 2016 18266      Chris.Golden      Added support for event-driven tools triggered
+ *                                           by data layer changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -140,7 +148,7 @@ public class SpatialView implements
         /**
          * SWT cursor type that goes with this cursor.
          */
-        private int swtType;
+        private final int swtType;
 
         // Private Constructors
 
@@ -167,6 +175,30 @@ public class SpatialView implements
     };
 
     // Private Static Constants
+
+    /**
+     * Scheduler to be used to make runnables get executed on the main thread.
+     * For now, the main thread is the UI thread; when this is changed, this
+     * will be rendered obsolete, as at that point there will need to be a
+     * blocking queue of {@link Runnable} instances available to allow the new
+     * worker thread to be fed jobs. At that point, this should be replaced with
+     * an object that enqueues the <code>Runnable</code>s, probably a singleton
+     * that may be accessed by the various components in
+     * gov.noaa.gsd.viz.hazards and perhaps elsewhere.
+     */
+    @Deprecated
+    private static final IRunnableAsynchronousScheduler RUNNABLE_ASYNC_SCHEDULER = new IRunnableAsynchronousScheduler() {
+
+        @Override
+        public void schedule(Runnable runnable) {
+
+            /*
+             * Since the UI thread is currently the thread being used for nearly
+             * everything, just run any asynchronous tasks there.
+             */
+            VizApp.runAsync(runnable);
+        }
+    };
 
     /**
      * For now, limit the overlays the user can use in Select by Area
@@ -264,28 +296,6 @@ public class SpatialView implements
     private class SelectByAreaMapsPulldownAction extends PulldownAction {
 
         /**
-         * Resource list add listener, for detecting changes in the list of
-         * resources currently displayed.
-         */
-        private final AddListener addListener = new AddListener() {
-            @Override
-            public void notifyAdd(ResourcePair rp) throws VizException {
-                notifyResourceListChanged();
-            }
-        };
-
-        /**
-         * Resource list remove listener, for detecting changes in the list of
-         * resources currently displayed.
-         */
-        private final RemoveListener removeListener = new RemoveListener() {
-            @Override
-            public void notifyRemove(ResourcePair rp) throws VizException {
-                notifyResourceListChanged();
-            }
-        };
-
-        /**
          * Listener for menu item invocations.
          */
         private final SelectionListener listener = new SelectionAdapter() {
@@ -300,9 +310,6 @@ public class SpatialView implements
          */
         private SelectByAreaMapsPulldownAction() {
             super("");
-            if ((this.addListener == null) || (this.removeListener == null)) {
-                return;
-            }
             setImageDescriptor(getImageDescriptorForFile("mapsForSelectByArea.png"));
             setToolTipText("Maps for Select by Area");
 
@@ -310,50 +317,6 @@ public class SpatialView implements
             // loaded maps, building a list of said maps that are
             // appropriate for select by area operations.
             notifyResourceListChanged();
-
-            // Set up listeners for notifications concerning the
-            // addition or removal of resources, which are used to
-            // determine what maps are available, if any, for select
-            // by area operations, and to enable or disable this
-            // action accordingly.
-            if ((this.addListener != null) && (this.removeListener != null)) {
-                AbstractEditor abstractEditor = EditorUtil
-                        .getActiveEditorAs(AbstractEditor.class);
-                if (abstractEditor != null) {
-                    for (IDisplayPane displayPane : abstractEditor
-                            .getDisplayPanes()) {
-                        if (displayPane != null) {
-                            ResourceList resourceList = displayPane
-                                    .getDescriptor().getResourceList();
-                            resourceList.addPostAddListener(this.addListener);
-                            resourceList
-                                    .addPostRemoveListener(this.removeListener);
-                        }
-                    }
-                }
-            }
-        }
-
-        /**
-         * Dispose of the action.
-         */
-        @Override
-        public void dispose() {
-            super.dispose();
-
-            // Remove the listeners for resource list changes.
-            // Only do this if there is an active editor.
-            AbstractEditor abstractEditor = EditorUtil
-                    .getActiveEditorAs(AbstractEditor.class);
-            if (abstractEditor != null) {
-                for (IDisplayPane displayPane : Arrays.asList(abstractEditor
-                        .getDisplayPanes())) {
-                    ResourceList resourceList = displayPane.getDescriptor()
-                            .getResourceList();
-                    resourceList.removePostAddListener(addListener);
-                    resourceList.removePostRemoveListener(removeListener);
-                }
-            }
         }
 
         /**
@@ -443,7 +406,7 @@ public class SpatialView implements
          * Respond to a possible change in the available maps for select by area
          * operations.
          */
-        private void notifyResourceListChanged() {
+        public void notifyResourceListChanged() {
 
             // Load the list of viz resources associated with it,
             // and iterate through the resource pairs, looking
@@ -500,10 +463,75 @@ public class SpatialView implements
     // Private Variables
 
     /**
+     * Resource list add listener, for detecting changes in the list of
+     * resources currently displayed.
+     */
+    private final AddListener addListener = new AddListener() {
+        @Override
+        public void notifyAdd(final ResourcePair resourcePair)
+                throws VizException {
+            RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
+
+                @Override
+                public void run() {
+                    setUpDataUpdateDetectorsForResource(presenter
+                            .getSessionManager().getConfigurationManager(),
+                            resourcePair.getResource());
+                }
+            });
+            VizApp.runAsync(new Runnable() {
+
+                @Override
+                public void run() {
+                    if (selectByAreaMapsPulldownAction != null) {
+                        selectByAreaMapsPulldownAction
+                                .notifyResourceListChanged();
+                    }
+                }
+            });
+        }
+    };
+
+    /**
+     * Resource list remove listener, for detecting changes in the list of
+     * resources currently displayed.
+     */
+    private final RemoveListener removeListener = new RemoveListener() {
+        @Override
+        public void notifyRemove(final ResourcePair resourcePair)
+                throws VizException {
+            RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
+
+                @Override
+                public void run() {
+                    removeDataUpdateDetectorsForResource(resourcePair
+                            .getResource());
+                }
+            });
+            VizApp.runAsync(new Runnable() {
+
+                @Override
+                public void run() {
+                    if (selectByAreaMapsPulldownAction != null) {
+                        selectByAreaMapsPulldownAction
+                                .notifyResourceListChanged();
+                    }
+                }
+            });
+        }
+    };
+
+    /**
      * Map of cursor types to the corresponding cursors.
      */
     private final Map<SpatialViewCursorTypes, Cursor> cursorsForCursorTypes = Maps
             .newEnumMap(SpatialViewCursorTypes.class);
+
+    /**
+     * Map pairing viz resources with the data update detectors associated with
+     * them.
+     */
+    private final Map<AbstractVizResource<?, ?>, ResourceDataUpdateDetector> dataUpdateDetectorsForVizResources = new HashMap<>();
 
     /**
      * The current mouse handler. The mouse handler selection is driven by the
@@ -577,7 +605,7 @@ public class SpatialView implements
     /**
      * Maps for select by area pulldown action.
      */
-    private Action selectByAreaMapsPulldownAction;
+    private SelectByAreaMapsPulldownAction selectByAreaMapsPulldownAction;
 
     /**
      * Add geometry to selected event action.
@@ -591,7 +619,9 @@ public class SpatialView implements
      */
     private SelectByAreaDbMapResource selectableGeometryDisplay;
 
-    // Mouse handler factory.
+    /*
+     * Mouse handler factory.
+     */
     private MouseHandlerFactory mouseFactory;
 
     // Public Constructors
@@ -657,14 +687,35 @@ public class SpatialView implements
                     idesc.addFrameChangedListener(this);
                 }
             }
+
+            createListeners(abstractEditor);
         }
 
-        // Create the cursors that will be used by Hazard Services.
+        /*
+         * Create the cursors that will be used by Hazard Services.
+         */
         Display display = Display.getCurrent();
         for (SpatialViewCursorTypes cursor : SpatialViewCursorTypes.values()) {
             cursorsForCursorTypes.put(cursor,
                     display.getSystemCursor(cursor.getSwtType()));
         }
+
+        /*
+         * Give the configuration manager a read-only view the map of viz
+         * resources to their corresponding data update detectors, so that it
+         * can use it to query the detectors for latest times.
+         * 
+         * TODO: This is a kludge. The map being passed to the configuration
+         * manager should probably be owned by the latter. This is being done
+         * for expediency's sake, but should be altered when the spatial display
+         * is refactored.
+         */
+        presenter
+                .getSessionManager()
+                .getConfigurationManager()
+                .setDataUpdateDetectorsForVizResources(
+                        Collections
+                                .unmodifiableMap(dataUpdateDetectorsForVizResources));
     }
 
     /**
@@ -672,13 +723,16 @@ public class SpatialView implements
      */
     @Override
     public final void dispose() {
-        removeListeners();
+
+        AbstractEditor abstractEditor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        removeListeners(abstractEditor);
 
         setMouseHandler(null);
 
-        // Unload from all panes
-        AbstractEditor abstractEditor = EditorUtil
-                .getActiveEditorAs(AbstractEditor.class);
+        /*
+         * Unload from all panes
+         */
         if (abstractEditor != null) {
             for (IDisplayPane displayPane : Arrays.asList(abstractEditor
                     .getDisplayPanes())) {
@@ -777,9 +831,6 @@ public class SpatialView implements
     public final List<? extends Action> contributeToMainUI(
             RCPMainUserInterfaceElement type) {
         if (type == RCPMainUserInterfaceElement.TOOLBAR) {
-
-            // Remove any old listeners first.
-            removeListeners();
 
             // Create the actions.
             undoCommandAction = new BasicSpatialAction("", "undo.png",
@@ -1428,17 +1479,129 @@ public class SpatialView implements
     }
 
     /**
-     * Remove listeners.
+     * Set up data update detectors for the specified resource and any child
+     * resources it has if said resources' data updates are of interest.
+     * 
+     * @param configManager
+     *            Session configuration manager.
+     * @param resource
+     *            Resource for which to set up data detectors for it and its
+     *            children as appropriate.
      */
-    private void removeListeners() {
+    private void setUpDataUpdateDetectorsForResource(
+            ISessionConfigurationManager<?> configManager,
+            AbstractVizResource<?, ?> resource) {
 
-        // Dispose of the select-by-area maps pulldown action, so as
-        // to remove its listeners.
-        if (selectByAreaMapsPulldownAction != null) {
-            ((SelectByAreaMapsPulldownAction) selectByAreaMapsPulldownAction)
-                    .dispose();
+        /*
+         * If this resource is one whose data updates are of interest, create a
+         * detector for its data updates.
+         */
+        if (configManager.isClassNameDataLayerChangeDrivenToolTrigger(resource
+                .getClass().getSimpleName())) {
+            dataUpdateDetectorsForVizResources.put(resource,
+                    new ResourceDataUpdateDetector(resource, configManager));
         }
 
+        /*
+         * If this resource contains other resources, recursively set up
+         * detectors from them.
+         */
+        if (resource instanceof IResourceGroup) {
+            for (ResourcePair resourcePair : ((IResourceGroup) resource)
+                    .getResourceList()) {
+                setUpDataUpdateDetectorsForResource(configManager,
+                        resourcePair.getResource());
+            }
+        }
+    }
+
+    /**
+     * Remove any data update detectors for the specified resource and any child
+     * resources it has if said resources' data updates had detectors monitoring
+     * them.
+     * 
+     * @param resource
+     *            Resource for which to remove data detectors for it and its
+     *            children as appropriate.
+     */
+    private void removeDataUpdateDetectorsForResource(
+            AbstractVizResource<?, ?> resource) {
+
+        /*
+         * If a detector was in place for this resource, dispose of it.
+         */
+        ResourceDataUpdateDetector detector = dataUpdateDetectorsForVizResources
+                .remove(resource);
+        if (detector != null) {
+            detector.dispose();
+        }
+
+        /*
+         * If this resource contains other resources, recursively remove
+         * detectors from them.
+         */
+        if (resource instanceof IResourceGroup) {
+            for (ResourcePair resourcePair : ((IResourceGroup) resource)
+                    .getResourceList()) {
+                removeDataUpdateDetectorsForResource(resourcePair.getResource());
+            }
+        }
+    }
+
+    /**
+     * Create listeners.
+     * 
+     * @param editor
+     *            Editor in which to find display panes with resources.
+     */
+    private void createListeners(AbstractEditor editor) {
+
+        /*
+         * Set up listeners for notifications concerning the addition or removal
+         * of resources, as well as listeners for specific resources whose data
+         * updates are of interest.
+         */
+        ISessionConfigurationManager<?> configManager = presenter
+                .getSessionManager().getConfigurationManager();
+        for (IDisplayPane displayPane : editor.getDisplayPanes()) {
+            if (displayPane != null) {
+                ResourceList resourceList = displayPane.getDescriptor()
+                        .getResourceList();
+                resourceList.addPostAddListener(addListener);
+                resourceList.addPostRemoveListener(removeListener);
+                for (ResourcePair resourcePair : resourceList) {
+                    setUpDataUpdateDetectorsForResource(configManager,
+                            resourcePair.getResource());
+                }
+            }
+        }
+    }
+
+    /**
+     * Remove listeners.
+     */
+    private void removeListeners(AbstractEditor editor) {
+
+        /*
+         * Remove any listeners for specific resource data updates.
+         */
+        for (ResourceDataUpdateDetector detector : dataUpdateDetectorsForVizResources
+                .values()) {
+            detector.dispose();
+        }
+        dataUpdateDetectorsForVizResources.clear();
+
+        /*
+         * Remove the listeners for resource list changes.
+         */
+        if (editor != null) {
+            for (IDisplayPane displayPane : editor.getDisplayPanes()) {
+                ResourceList resourceList = displayPane.getDescriptor()
+                        .getResourceList();
+                resourceList.removePostAddListener(addListener);
+                resourceList.removePostRemoveListener(removeListener);
+            }
+        }
     }
 
     /**

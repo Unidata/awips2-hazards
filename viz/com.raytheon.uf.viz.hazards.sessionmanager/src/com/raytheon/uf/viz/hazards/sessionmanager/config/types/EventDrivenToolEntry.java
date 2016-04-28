@@ -12,8 +12,6 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 import java.util.Collections;
 import java.util.List;
 
-import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
-
 /**
  * Entry in the event-driven tools list.
  * 
@@ -26,6 +24,9 @@ import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
  * Nov 10, 2015   12762    Chris.Golden Initial creation.
  * Mar 04, 2016   15933    Chris.Golden Changed to allow specification of
  *                                      a sequence of tools to be run.
+ * Apr 27, 2016   18266    Chris.Golden Reworked to allow different trigger
+ *                                      types, including the new data
+ *                                      layer changed trigger.
  * </pre>
  * 
  * @author Chris.Golden
@@ -33,27 +34,38 @@ import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
  */
 public class EventDrivenToolEntry {
 
-    @XmlJavaTypeAdapter(ToolTypeAdapter.class)
-    private ToolType type;
+    private ToolType toolType;
 
-    private List<String> identifiers;
+    private List<String> toolIdentifiers;
+
+    private TriggerType triggerType;
 
     private int intervalMinutes;
 
-    public ToolType getType() {
-        return type;
+    private List<DataLayerType> dataTypes;
+
+    public ToolType getToolType() {
+        return toolType;
     }
 
-    public void setType(ToolType type) {
-        this.type = type;
+    public void setToolType(ToolType triggerType) {
+        this.toolType = triggerType;
     }
 
-    public List<String> getIdentifiers() {
-        return Collections.unmodifiableList(identifiers);
+    public List<String> getToolIdentifiers() {
+        return Collections.unmodifiableList(toolIdentifiers);
     }
 
-    public void setIdentifiers(List<String> identifiers) {
-        this.identifiers = identifiers;
+    public void setToolIdentifiers(List<String> toolIdentifiers) {
+        this.toolIdentifiers = toolIdentifiers;
+    }
+
+    public TriggerType getTriggerType() {
+        return triggerType;
+    }
+
+    public void setTriggerType(TriggerType triggerType) {
+        this.triggerType = triggerType;
     }
 
     public int getIntervalMinutes() {
@@ -62,5 +74,13 @@ public class EventDrivenToolEntry {
 
     public void setIntervalMinutes(int intervalMinutes) {
         this.intervalMinutes = intervalMinutes;
+    }
+
+    public List<DataLayerType> getDataTypes() {
+        return Collections.unmodifiableList(dataTypes);
+    }
+
+    public void setDataTypes(List<DataLayerType> dataTypes) {
+        this.dataTypes = dataTypes;
     }
 }
