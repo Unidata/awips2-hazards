@@ -230,8 +230,12 @@ class Recommender(RecommenderTemplate.Recommender):
                 continue
                         
             # Event Modification
-            if self._processEventModification(event, trigger, eventSetAttrs): 
-                #resultEventSet.addAttribute("selectedTime", self._latestDataLayerTime) 
+            changed = self._processEventModification(event, trigger, eventSetAttrs) 
+            # Still need to update visual features if status changes
+            if "status" in self._attributeIdentifiers or "showGrid" in self._attributeIdentifiers:
+                self._setVisualFeatures(event)
+                resultEventSet.add(event)
+            if changed:
                 resultEventSet.add(event)  
                                                                         
         return resultEventSet    
@@ -248,13 +252,12 @@ class Recommender(RecommenderTemplate.Recommender):
         event.set('preDraw_convectiveProbTrendGraph', event.get('prev_convectiveProbTrendGraph'))                      
         
     def _processEventModification(self, event, trigger, eventSetAttrs):
-        self._printEvent("Before Update", event) 
+        # TODO -- Still some refactoring needed to handle all cases more 
+        #  elegantly
+        #self._printEvent("Before Update", event) 
                         
         # Make updates to the event
-        if not self._makeUpdates(event, trigger, eventSetAttrs):
-            # Still need to update visual features if status changes
-            if "status" in self._attributeIdentifiers or "showGrid" in self._attributeIdentifiers:
-                self._setVisualFeatures(event)                
+        if not self._makeUpdates(event, trigger, eventSetAttrs):                                
             return False
         
         # Recalculate the polygons (downstream and upstream)
@@ -374,12 +377,6 @@ class Recommender(RecommenderTemplate.Recommender):
             tolerance += 0.001
             newPoly = initialPoly.simplify(tolerance, preserve_topology=True)
             
-        #print "SR reduce newPoly", type(newPoly)
-        #print "initialoly", type(initialPoly)
-        #self.flush()
-        ########  TESTING REMOVE  ########
-        return initialPoly
-
         return newPoly    
 
     def _relocatePolygon(self, newCentroid, initialPoly):
@@ -853,8 +850,6 @@ class Recommender(RecommenderTemplate.Recommender):
                     featureSt = long(featureSt)
                     featurePoly = geometry
                 # Add the feature to the motionVectorPolys 
-                print "SR updatePolys motionVector"
-                self.flush()
                 motionVectorPolys, motionVectorTimes = self._updatePolys(motionVectorPolys, motionVectorTimes, featurePoly, featureSt, featureEt)
                 event.set('motionVectorPolys', motionVectorPolys)
                 event.set('motionVectorTimes', motionVectorTimes)
@@ -864,8 +859,6 @@ class Recommender(RecommenderTemplate.Recommender):
                 if featureSt < self._eventSt_ms:
                     histPolys = event.get('historyPolys', []) 
                     histTimes = event.get('historyTimes', [])
-                    print "SR updatePolys history"
-                    self.flush()
                     histPolys, histTimes = self._updatePolys(histPolys, histTimes, featurePoly, featureSt, featureEt)
                     event.set('historyPolys', histPolys)
                     event.set('historyTimes', histTimes)
@@ -902,9 +895,6 @@ class Recommender(RecommenderTemplate.Recommender):
         # Add the newPoly to the list of polys and times
         # If one currently exists at the newSt, replace it
         # Keep the lists in time order
-
-        print "SR Update polys", times, newSt, newEt
-        self.flush()
     
         # Convert to tuples
         tuples = []
@@ -928,8 +918,6 @@ class Recommender(RecommenderTemplate.Recommender):
         newTuples.sort(self._sortPolys)                
         newPolys = [poly for poly, st, et in newTuples]
         newTimes = [(st,et) for poly, st, et in newTuples]            
-        print "SR Updated polys", newTimes
-        self.flush()
         return newPolys, newTimes         
 
     def _setVisualFeatures(self, event):
@@ -955,7 +943,7 @@ class Recommender(RecommenderTemplate.Recommender):
         selectedVisualFeatures.append(swathFeature) 
         
         # Motion vector centroids
-        motionVectorFeatures = self._motionVectorFeatures(event)     
+        motionVectorFeatures = self._motionVectorFeatures(event, upstreamSt_ms)     
         selectedVisualFeatures += motionVectorFeatures 
         
         # Previous Time Features
@@ -1049,7 +1037,7 @@ class Recommender(RecommenderTemplate.Recommender):
              
             # Relocated initial going downstream
             if i == 0:
-                print "SR -- Relocated Polygon check [", str(i), "]: ", polySt_ms > self._eventSt_ms, str(polySt_ms), str(self._eventSt_ms)
+                #print "SR -- Relocated Polygon check [", str(i), "]: ", polySt_ms > self._eventSt_ms, str(polySt_ms), str(self._eventSt_ms)
                 self.flush()
             if polySt_ms >= self._eventSt_ms:
                 if i == 0:
@@ -1091,7 +1079,7 @@ class Recommender(RecommenderTemplate.Recommender):
               }
         return swath
 
-    def _motionVectorFeatures(self, event):
+    def _motionVectorFeatures(self, event, upstreamSt_ms):
         motionVectorPolys = event.get('motionVectorPolys', []) 
         motionVectorTimes = event.get('motionVectorTimes', [])
         features = []
@@ -1101,18 +1089,20 @@ class Recommender(RecommenderTemplate.Recommender):
             centroid = poly.centroid
             feature = {
               "identifier": "swathRec_motionVector_"+str(st),
-              "borderColor": { "red": 0, "green": 0, "blue": 0 },
+              "borderColor": { "red": 1, "green": 1, "blue": 1 },
               "borderThickness": 2,
-              "diameter": 5,
+              "diameter": 6,
               "geometry": {
-                  (st, et): centroid
+                  #(st, et): centroid
+                  (upstreamSt_ms,
+                   VisualFeatures.datetimeToEpochTimeMillis(event.getEndTime())):
+                   centroid
                }
             }
             features.append(feature)
         return features
 
     def _getPreviewGridFeatures(self, event, upstreamSt_ms):
-        return []
         if not event.get('showGrid'): 
             return []
         gridFeatures = []            
@@ -1120,30 +1110,16 @@ class Recommender(RecommenderTemplate.Recommender):
         polyTupleDict = self._createPolygons(probGrid, lons, lats)
                 
         # Generate and add preview-grid-related visual features        
-        for tuple in polyTupleDict:  
-            if tuple == '0':
-                try:
-                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['20']])
-                except KeyError:
-                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple])                       
-            elif tuple == '20':
-                try: 
-                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['40']])
-                except KeyError:
-                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple])                     
-            elif tuple == '40':
-                try:
-                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['60']]) 
-                except KeyError:
-                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple])                                            
-            elif tuple == '60':
-                try:
-                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple],[polyTupleDict['80']])                   
-                except KeyError:
-                    poly = GeometryFactory.createPolygon(polyTupleDict[tuple])                       
-            else:
-                poly = GeometryFactory.createPolygon(polyTupleDict[tuple])
+        for key in polyTupleDict: 
+            upperVal = str(int(key) + 20)
+            try:
+                poly = GeometryFactory.createPolygon(polyTupleDict[key],[polyTupleDict[upperVal]])
+            except KeyError:
+                poly = GeometryFactory.createPolygon(polyTupleDict[key])                       
                 
+            print "SR previewGrid poly", type(poly)
+            self.flush()                       
+                                
             ### Should match PHI Prototype Tool
             colorFill =  {
                 '0': { "red": 102/255.0, "green": 224/255.0, "blue": 102/255.0, "alpha": 0.4 }, 
@@ -1152,20 +1128,20 @@ class Recommender(RecommenderTemplate.Recommender):
                 '60': { "red": 255/255.0, "green": 102/255.0, "blue": 102/255.0, "alpha": 0.4 }, 
                 '80': { "red": 255/255.0, "green": 102/255.0, "blue": 255/255.0, "alpha": 0.4 }
                 }
-                   
-            gridPreviewPoly = {
-                "identifier": "gridPreview" + tuple,
-                "borderColor":  colorFill[tuple], # { "red": 1, "green": 1, "blue": 0 },
-                "fillColor": colorFill[tuple],
-                "geometry": {
-                    (upstreamSt_ms,
-                    #(VisualFeatures.datetimeToEpochTimeMillis(event.getStartTime()), 
-                     VisualFeatures.datetimeToEpochTimeMillis(event.getEndTime())): poly
-                }
-            }
-
-            gridFeatures.append(gridPreviewPoly)
             
+            if poly.is_valid:
+                gridPreviewPoly = {
+                    "identifier": "gridPreview_" + key,
+                    "borderColor":  colorFill[key], # { "red": 1, "green": 1, "blue": 0 },
+                    "fillColor": colorFill[key],
+                    "geometry": {
+                        (upstreamSt_ms,
+                        #(VisualFeatures.datetimeToEpochTimeMillis(event.getStartTime()), 
+                         VisualFeatures.datetimeToEpochTimeMillis(event.getEndTime())): poly
+                    }
+                }
+                gridFeatures.append(gridPreviewPoly)
+                            
         return gridFeatures
     
     def _createPolygons(self, probGrid, lons, lats):
