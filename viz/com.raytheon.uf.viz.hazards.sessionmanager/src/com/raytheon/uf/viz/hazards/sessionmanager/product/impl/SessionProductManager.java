@@ -218,6 +218,7 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      raw use of SWT message box with abstract user warning issuance.
  * Oct 14, 2015 12494      Chris Golden Reworked to allow hazard types to include only phenomenon (i.e. no
  *                                      significance) where appropriate.
+ * Apr 28, 2016 18267      Chris.Golden Changed to work with new version of mergeHazardEvents().
  * </pre>
  * 
  * @author bsteffen
@@ -816,8 +817,10 @@ public class SessionProductManager implements ISessionProductManager {
                                 updatedEvent,
                                 (SessionEventManager) eventManager);
 
-                        SessionEventUtilities.mergeHazardEvents(newEvent,
-                                sessionEvent);
+                        SessionEventUtilities
+                                .mergeHazardEvents(eventManager, newEvent,
+                                        sessionEvent, false, Originator.OTHER);
+
                         /*
                          * This ensures that the "replaces" string is removed
                          * for the next generation of a product.

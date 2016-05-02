@@ -43,12 +43,13 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 27, 2013 1257       bsteffen    Initial creation
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jun 27, 2013 1257       bsteffen     Initial creation
  * Aug 16, 2013 1325       daniel.s.schaffer@noaa.gov    Alerts integration
- * Oct 23, 2013 2277       jsanchez    Removed HazardEventConverter from viz.
- * 
+ * Oct 23, 2013 2277       jsanchez     Removed HazardEventConverter from viz.
+ * Apr 28, 2016 18267      Chris.Golden Changed to work with new version of
+ *                                      mergeHazardEvents() method.
  * </pre>
  * 
  * @author bsteffen
@@ -115,7 +116,8 @@ public class SessionHazardNotificationListener implements INotificationObserver 
         case UPDATE:
         case STORE:
             if (oldEvent != null) {
-                SessionEventUtilities.mergeHazardEvents(newEvent, oldEvent);
+                SessionEventUtilities.mergeHazardEvents(manager, newEvent,
+                        oldEvent, true, Originator.OTHER);
                 return;
             }
             manager.addEvent(newEvent, Originator.OTHER);

@@ -222,6 +222,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      current time ticks over to a new minute.
  * Apr 27, 2016 18266      Chris.Golden Added support for event-driven tools triggered
  *                                      by data layer changes.
+ * Apr 28, 2016 18267      Chris.Golden Added support for unrestricted event start
+ *                                      times.
  * </pre>
  * 
  * @author bsteffen
@@ -339,6 +341,8 @@ public class SessionConfigurationManager implements
     private Map<String, String> typeFirstRecommendersForHazardTypes;
 
     private Map<String, Boolean> startTimeIsCurrentTimeForHazardTypes;
+
+    private Map<String, Boolean> allowAnyStartTimeForHazardTypes;
 
     private Map<String, Boolean> allowTimeExpandForHazardTypes;
 
@@ -1360,6 +1364,28 @@ public class SessionConfigurationManager implements
         }
 
         return startTimeIsCurrentTimeForHazardTypes.get(HazardEventUtilities
+                .getHazardType(event));
+    }
+
+    @Override
+    public boolean isAllowAnyStartTime(IHazardEvent event) {
+
+        /*
+         * If the flags for hazard types map has not yet been initialized, do so
+         * now. Include an entry of an empty list for the null hazard type, so
+         * that hazard events without a type have an entry.
+         */
+        if (allowAnyStartTimeForHazardTypes == null) {
+            allowAnyStartTimeForHazardTypes = new HashMap<>();
+            for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
+                    .getConfig().entrySet()) {
+                allowAnyStartTimeForHazardTypes.put(entry.getKey(), entry
+                        .getValue().isAllowAnyStartTime());
+            }
+            allowAnyStartTimeForHazardTypes.put(null, false);
+        }
+
+        return allowAnyStartTimeForHazardTypes.get(HazardEventUtilities
                 .getHazardType(event));
     }
 

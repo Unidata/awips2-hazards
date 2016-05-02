@@ -84,6 +84,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      scheduled to run at regular intervals.
  * Apr 27, 2016 18266      Chris.Golden Added support for event-driven tools triggered
  *                                      by data layer changes.
+ * Apr 28, 2016 18267      Chris.Golden Added support for unrestricted event start
+ *                                      times.
  * </pre>
  * 
  * @author bsteffen
@@ -307,10 +309,19 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * 
      * @param event
      *            Event for which to fetch the flag.
-     * @return True if the (unissued) event's start time should be the CAVE
-     *         current time,
+     * @return True if the event's start time should be the CAVE current time.
      */
     public boolean isStartTimeIsCurrentTime(IHazardEvent event);
+
+    /**
+     * Get the start-time-is-unrestricted flag from the hazard types
+     * configuration file for an event.
+     * 
+     * @param event
+     *            Event for which to fetch the flag.
+     * @return True if the event's start time is unrestricted.
+     */
+    public boolean isAllowAnyStartTime(IHazardEvent event);
 
     /**
      * Get allow-time-to-expand flag from the hazard types configuration file

@@ -63,6 +63,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  *                                      triggered when an event's
  *                                      time range, status, or geometry
  *                                      changes.
+ * Apr 28, 2016 18267      Chris.Golden Added flag indicating whether
+ *                                      or not start time is unrestricted.
  * </pre>
  * 
  * @author bsteffen
@@ -81,6 +83,8 @@ public class HazardTypeEntry {
     private boolean allowTimeChange;
 
     private boolean startTimeIsCurrentTime;
+
+    private boolean allowAnyStartTime;
 
     private boolean allowTimeExpand = true;
 
@@ -174,11 +178,19 @@ public class HazardTypeEntry {
     }
 
     public boolean isStartTimeIsCurrentTime() {
-        return startTimeIsCurrentTime;
+        return (allowAnyStartTime ? false : startTimeIsCurrentTime);
     }
 
     public void setStartTimeIsCurrentTime(boolean startTimeIsCurrentTime) {
         this.startTimeIsCurrentTime = startTimeIsCurrentTime;
+    }
+
+    public boolean isAllowAnyStartTime() {
+        return allowAnyStartTime;
+    }
+
+    public void setAllowAnyStartTime(boolean allowAnyStartTime) {
+        this.allowAnyStartTime = allowAnyStartTime;
     }
 
     public boolean isAllowTimeExpand() {

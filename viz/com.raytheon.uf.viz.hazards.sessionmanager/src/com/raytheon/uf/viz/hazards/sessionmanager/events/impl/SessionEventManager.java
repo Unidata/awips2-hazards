@@ -364,6 +364,9 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      to give its second parameter a more reasonable name than "localEvent".
  * Apr 23, 2016   18094    Chris.Golden Added code to ensure VTEC check does not throw exception if the event
  *                                      has no VTEC code (e.g. a PHI event).
+ * Apr 28, 2016   18267    Chris.Golden Added support for unrestricted event start times. Also cleaned up and
+ *                                      simplified the code handling an event's time range boundaries when
+ *                                      said event is issued.
  * </pre>
  * 
  * @author bsteffen
@@ -450,15 +453,6 @@ public class SessionEventManager implements
     private final Map<String, Range<Long>> startTimeBoundariesForEventIdentifiers = new HashMap<>();
 
     private final Map<String, Range<Long>> endTimeBoundariesForEventIdentifiers = new HashMap<>();
-
-    /**
-     * Map pairing identifiers of issued events with the start times they had
-     * when they were last issued. This information is needed in order to
-     * determine what boundaries to use for the start times of issued events;
-     * the boundaries should be based upon the start time at last issuance, not
-     * what it may have been changed to since issued.
-     */
-    private final Map<String, Long> startTimesForIssuedEventIdentifiers = new HashMap<>();
 
     /**
      * Map pairing identifiers of issued events with either the end times they
@@ -684,6 +678,22 @@ public class SessionEventManager implements
         return setModifiedEventGeometry(event, geometry);
     }
 
+    /**
+     * Determine whether or not the two strings are equivalent; equivalence
+     * includes each string being either <code>null</code> or empty, as well as
+     * both strings having the same characters.
+     * 
+     * @param string1
+     *            First string to compare.
+     * @param string2
+     *            Second string to compare.
+     * @return True if equivalent, false otherwise.
+     */
+    private boolean areEquivalent(String string1, String string2) {
+        return ((((string1 == null) || string1.isEmpty()) && ((string2 == null) || string2
+                .isEmpty())) || ((string1 != null) && string1.equals(string2)));
+    }
+
     private boolean setModifiedEventGeometry(ObservedHazardEvent event,
             Geometry geometry) {
         if (event != null) {
@@ -751,12 +761,21 @@ public class SessionEventManager implements
     @Override
     public boolean setEventType(ObservedHazardEvent event, String phenomenon,
             String significance, String subType, IOriginator originator) {
-        ObservedHazardEvent oldEvent = null;
+
+        /*
+         * If nothing new is being set, do nothing.
+         */
+        if (areEquivalent(event.getPhenomenon(), phenomenon)
+                && areEquivalent(event.getSignificance(), significance)
+                && areEquivalent(event.getSubType(), subType)) {
+            return true;
+        }
 
         /*
          * If the event cannot change type, create a new event with the new
          * type.
          */
+        ObservedHazardEvent oldEvent = null;
         if (!canChangeType(event)) {
             oldEvent = event;
             IHazardEvent baseEvent = new BaseHazardEvent(event);
@@ -1240,35 +1259,32 @@ public class SessionEventManager implements
 
                         /*
                          * If the hazard now has just changed to issued status
-                         * (i.e. it has not just been changed to ended, or been
-                         * reissued), adjust its start and end times and their
-                         * boundaries. Then update its duration choices list, if
-                         * applicable.
+                         * (i.e. it has not just been changed to ended, nor has
+                         * it been reissued), save its end time as it is now in
+                         * case it needs restoration later, and adjust its start
+                         * and end times and their boundaries. Then update its
+                         * duration choices list, if applicable. Note that
+                         * reissued hazard events must not do any of this
+                         * because their time range boundaries and their
+                         * duration choices should not change. If they were to
+                         * change, then the VTEC engine would generate EXTs
+                         * instead of CONs since the end time of the hazard
+                         * would change.
                          */
-                        if (oEvent.getStatus().equals(HazardStatus.ISSUED)
-                                || wasPreIssued) {
+                        if (wasPreIssued) {
                             updateSavedTimesForEventIfIssued(oEvent, false);
+
                             /*
-                             * Do not update the TimeRange for events that have
-                             * already been issued once. This causes the
-                             * startTime to get set to the new issueTime. Then
-                             * then endTime is changed to match the change to
-                             * the startTime. This causes the VTECEngine to
-                             * generate EXT instead of CONs since the endTime of
-                             * the hazards have changed.
+                             * TODO Fix this later. (Tracy) For some reason the
+                             * Hazard Event for PHI does not have it's issue
+                             * time ime set at this juncture, and results in an
+                             * exception.
                              */
-                            // TODO Fix this later. (Tracy) For some reason the
-                            // Hazard Event for PHI
-                            // does not have it's issueTime set at this
-                            // juncture, and results in
-                            // an exception.
-                            // if (wasPreIssued) {
                             // updateTimeRangeBoundariesOfJustIssuedEvent(
                             // oEvent,
                             // (Long) hazardEvent
                             // .getHazardAttribute(HazardConstants.ISSUE_TIME));
                             // updateDurationChoicesForEvent(oEvent, false);
-                            // }
                         }
                     }
                 }
@@ -2166,8 +2182,8 @@ public class SessionEventManager implements
         if (eventID != null && eventID.length() > 0) {
             ObservedHazardEvent existingEvent = getEventById(eventID);
             if (existingEvent != null) {
-                SessionEventUtilities.mergeHazardEvents(oevent, existingEvent,
-                        originator);
+                SessionEventUtilities.mergeHazardEvents(this, oevent,
+                        existingEvent, false, originator);
                 return existingEvent;
             }
         } else {
@@ -2896,10 +2912,10 @@ public class SessionEventManager implements
          * Handle pre-issued hazard events differently from ones that have been
          * issued at least once. Pre-issued ones have their start time marching
          * forward with CAVE clock time, and some allow the start time to be
-         * after the current CAVE clock time, while some do not. End times can
-         * be anything if unissued, but issued ones may be limited by by the
-         * hazard type's contraints Finally, ending and ended hazards cannot
-         * have their times changed.
+         * before or after the current CAVE clock time, while some do not. End
+         * times can be anything if unissued, but issued ones may be limited by
+         * by the hazard type's contraints Finally, ending and ended hazards
+         * cannot have their times changed.
          */
         Range<Long> startTimeRange = null;
         Range<Long> endTimeRange = null;
@@ -2909,48 +2925,19 @@ public class SessionEventManager implements
         case POTENTIAL:
         case PENDING:
         case PROPOSED:
-            startTimeRange = Range.closed(currentTime, (configManager
+            startTimeRange = Range.closed((configManager
+                    .isAllowAnyStartTime(event) ? HazardConstants.MIN_TIME
+                    : currentTime), (configManager
                     .isStartTimeIsCurrentTime(event) ? currentTime
                     : HazardConstants.MAX_TIME));
             endTimeRange = getEndTimeRangeForPreIssuedEvent(endTime);
             break;
         case ISSUED:
-
-            /*
-             * TODO: Sometimes startTimesForIssuedEventIdentifiers does not
-             * include an entry for an issued event. Chris Golden is attempting
-             * to track down the reason why this might occur; it may no longer
-             * be a problem as of the code review being submitted 3/25/2015, as
-             * one possible cause has been fixed, but since Chris was unable to
-             * reproduce the error in any case, it may still be present. In case
-             * of the latter, fallback code has been placed here to use the
-             * current event start time for the "issued" start time so that this
-             * will not leave Hazard Services in a completely broken state. An
-             * error is logged as well so that testers may report when this
-             * occurs.
-             */
-            long startTimeWhenLastIssued;
-            if (startTimesForIssuedEventIdentifiers.containsKey(event
-                    .getEventID())) {
-                startTimeWhenLastIssued = startTimesForIssuedEventIdentifiers
-                        .get(event.getEventID());
-            } else {
-                startTimeWhenLastIssued = event.getStartTime().getTime();
-                statusHandler.error("Issued hazard event " + event.getEventID()
-                        + " with type " + event.getHazardType()
-                        + " has no saved start time from first issuance. "
-                        + "This should not occur; falling back to using "
-                        + "event's current start time as potential time "
-                        + "range boundary instead. If reporting this "
-                        + "error, please include any relevant context to "
-                        + "aid in debugging the problem.");
-            }
             boolean startTimeIsCurrentTime = configManager
                     .isStartTimeIsCurrentTime(event);
-            startTimeRange = Range.closed(
-                    (startTimeIsCurrentTime ? startTimeWhenLastIssued
-                            : HazardConstants.MIN_TIME),
-                    (startTimeIsCurrentTime ? startTimeWhenLastIssued
+            startTimeRange = Range.closed((startTimeIsCurrentTime ? startTime
+                    : HazardConstants.MIN_TIME),
+                    (startTimeIsCurrentTime ? startTime
                             : HazardConstants.MAX_TIME));
             endTimeRange = getEndTimeRangeForIssuedEvent(event, startTime,
                     endTime);
@@ -3012,7 +2999,7 @@ public class SessionEventManager implements
         /*
          * Determine the allowable range for the start time. The minimum must be
          * the issue time from the issuance that occurred (if start time is
-         * always current time) or else practically unlimited. The maximum is
+         * always current time) or else is practically unlimited. The maximum is
          * similar: either the issue time, or unlimited.
          */
         boolean startTimeIsIssueTime = configManager
@@ -3120,7 +3107,7 @@ public class SessionEventManager implements
                 }
             }
 
-            if ((identifiersWithChangedBoundaries.isEmpty() == true)
+            if (identifiersWithChangedBoundaries.isEmpty()
                     && (identifiersWithExpiredTimes.isEmpty() == false)) {
                 postTimeRangeBoundariesModifiedNotification(identifiersWithExpiredTimes);
             }
@@ -3235,11 +3222,8 @@ public class SessionEventManager implements
             boolean removed) {
         String eventId = event.getEventID();
         if (removed) {
-            startTimesForIssuedEventIdentifiers.remove(eventId);
             endTimesOrDurationsForIssuedEventIdentifiers.remove(eventId);
         } else if (event.getStatus() == HazardStatus.ISSUED) {
-            startTimesForIssuedEventIdentifiers.put(eventId, event
-                    .getStartTime().getTime());
             if (configManager.getDurationChoices(event).isEmpty()) {
                 endTimesOrDurationsForIssuedEventIdentifiers.put(eventId, event
                         .getEndTime().getTime());

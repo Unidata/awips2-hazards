@@ -17,9 +17,9 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Set;
 
-import com.google.common.collect.Maps;
+import com.google.common.collect.ImmutableSet;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -50,6 +50,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                      passed to the event so that it can send out the
  *                                      appropriate originator in its notifications.
  * Mar 06, 2016 15676      Chris.Golden Added visual features to merging methods.
+ * Apr 28, 2016 18267      Chris.Golden Removed unneeded version of mergeHazardEvents()
+ *                                      method, and changed remaining method with the
+ *                                      same name to use the event manager to set some
+ *                                      of an event's properties, as well as simplifying
+ *                                      its attribute-setting code. The former needed
+ *                                      to be done so that, for example, event time range
+ *                                      boundaries are respected (the event itself does
+ *                                      not know about these boundaries, but the event
+ *                                      manager does; thus going through the latter is
+ *                                      better).
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -57,117 +67,75 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  */
 public class SessionEventUtilities {
 
-    /**
-     * Merge the contents of the newEvent into the oldEvent
-     * 
-     * TODO. This hopefully can go away once we have the history list. Under
-     * that scenario, we can use the copy constructor to just create a new
-     * hazard and push it on to the history list.
-     */
-    public static void mergeHazardEvents(IHazardEvent newEvent,
-            IHazardEvent oldEvent) {
-        oldEvent.setSiteID(newEvent.getSiteID());
-        oldEvent.setTimeRange(newEvent.getStartTime(), newEvent.getEndTime());
-        oldEvent.setCreationTime(newEvent.getCreationTime());
-        oldEvent.setGeometry(newEvent.getGeometry());
-        oldEvent.setVisualFeatures(newEvent.getBaseVisualFeatures(),
-                newEvent.getSelectedVisualFeatures());
-        oldEvent.setPhenomenon(newEvent.getPhenomenon());
-        oldEvent.setSignificance(newEvent.getSignificance());
-        oldEvent.setSubType(newEvent.getSubType());
-        oldEvent.setHazardMode(newEvent.getHazardMode());
-        Map<String, Serializable> newAttr = newEvent.getHazardAttributes();
-        Map<String, Serializable> oldAttr = oldEvent.getHazardAttributes();
-        if (oldAttr != null) {
-            oldAttr = new HashMap<String, Serializable>(oldAttr);
-        } else {
-            oldAttr = new HashMap<String, Serializable>();
-        }
-
-        if (newAttr != null) {
-            /*
-             * Aggregate the changes so that only one notification will occur.
-             */
-            Map<String, Serializable> modifiedAttributes = Maps.newHashMap();
-            for (Entry<String, Serializable> entry : newAttr.entrySet()) {
-                modifiedAttributes.put(entry.getKey(), entry.getValue());
-                oldAttr.remove(entry.getKey());
-            }
-            oldEvent.addHazardAttributes(modifiedAttributes);
-        } else {
-            newAttr = Collections.emptyMap();
-        }
-        oldAttr.remove(HAZARD_EVENT_CHECKED);
-        oldAttr.remove(HAZARD_EVENT_SELECTED);
-        oldAttr.remove(ISessionEventManager.ATTR_ISSUED);
-
-        for (String key : oldAttr.keySet()) {
-            oldEvent.removeHazardAttribute(key);
-        }
-
-        /*
-         * This is relevant when you set the clock back.
-         */
-        if (isEnded(oldEvent) == false) {
-            if (oldEvent instanceof ObservedHazardEvent) {
-                ObservedHazardEvent obEvent = (ObservedHazardEvent) oldEvent;
-                obEvent.setStatus(newEvent.getStatus(), true, true,
-                        Originator.OTHER);
-            } else {
-                oldEvent.setStatus(newEvent.getStatus());
-            }
-        }
-    }
+    private static final Set<String> ATTRIBUTES_TO_RETAIN = ImmutableSet.of(
+            HAZARD_EVENT_CHECKED, HAZARD_EVENT_SELECTED,
+            ISessionEventManager.ATTR_ISSUED);
 
     /**
      * Merge the contents of the new event into the old event, using the
      * specified originator for any notifications that are sent out as a result.
      * 
-     * TODO. This hopefully can go away once we have the history list. Under
-     * that scenario, we can use the copy constructor to just create a new
-     * hazard and push it on to the history list.
+     * @param eventManager
+     *            Session event manager.
+     * @param newEvent
+     *            Event to be merged into the old event.
+     * @param oldEvent
+     *            Event into which to merge the new event.
+     * @param forceMerge
+     *            If <code>true</code>, the event manager will not be used to
+     *            set time range and hazard type, meaning the values from the
+     *            new event will not be checked for correctness before being
+     *            merged into the old event. If <code>false</code>, such checks
+     *            will occur.
+     * @param originator
+     *            Originator of this action.
      */
-    public static void mergeHazardEvents(IHazardEvent newEvent,
-            ObservedHazardEvent oldEvent, IOriginator originator) {
+    public static void mergeHazardEvents(
+            ISessionEventManager<ObservedHazardEvent> eventManager,
+            IHazardEvent newEvent, ObservedHazardEvent oldEvent,
+            boolean forceMerge, IOriginator originator) {
         oldEvent.setSiteID(newEvent.getSiteID(), originator);
-        oldEvent.setTimeRange(newEvent.getStartTime(), newEvent.getEndTime(),
-                originator);
+        if (forceMerge) {
+            oldEvent.setTimeRange(newEvent.getStartTime(),
+                    newEvent.getEndTime(), originator);
+        } else {
+            eventManager.setEventTimeRange(oldEvent, newEvent.getStartTime(),
+                    newEvent.getEndTime(), originator);
+        }
         oldEvent.setCreationTime(newEvent.getCreationTime(), originator);
         oldEvent.setGeometry(newEvent.getGeometry(), originator);
         oldEvent.setVisualFeatures(newEvent.getBaseVisualFeatures(),
                 newEvent.getSelectedVisualFeatures(), originator);
-        oldEvent.setPhenomenon(newEvent.getPhenomenon(), originator);
-        oldEvent.setSignificance(newEvent.getSignificance(), originator);
-        oldEvent.setSubType(newEvent.getSubType(), originator);
+        if (forceMerge) {
+            oldEvent.setHazardType(newEvent.getPhenomenon(),
+                    newEvent.getSignificance(), newEvent.getSubType(),
+                    originator);
+        } else {
+            eventManager.setEventType(oldEvent, newEvent.getPhenomenon(),
+                    newEvent.getSignificance(), newEvent.getSubType(),
+                    originator);
+        }
         oldEvent.setHazardMode(newEvent.getHazardMode(), originator);
-        Map<String, Serializable> newAttr = newEvent.getHazardAttributes();
+
+        /*
+         * Get a copy of the old attributes, and the new ones, then transfer any
+         * attributes that are to be retained (if they are not already in the
+         * new attributes) from the old to the new. Then set the resulting map
+         * as the old hazard's attributes.
+         */
         Map<String, Serializable> oldAttr = oldEvent.getHazardAttributes();
-        if (oldAttr != null) {
-            oldAttr = new HashMap<String, Serializable>(oldAttr);
-        } else {
-            oldAttr = new HashMap<String, Serializable>();
+        if (oldAttr == null) {
+            oldAttr = Collections.emptyMap();
         }
-
-        if (newAttr != null) {
-            /*
-             * Aggregate the changes so that only one notification will occur.
-             */
-            Map<String, Serializable> modifiedAttributes = Maps.newHashMap();
-            for (Entry<String, Serializable> entry : newAttr.entrySet()) {
-                modifiedAttributes.put(entry.getKey(), entry.getValue());
-                oldAttr.remove(entry.getKey());
+        Map<String, Serializable> newAttr = newEvent.getHazardAttributes();
+        newAttr = (newAttr != null ? new HashMap<>(newAttr)
+                : new HashMap<String, Serializable>());
+        for (String key : ATTRIBUTES_TO_RETAIN) {
+            if ((newAttr.containsKey(key) == false) && oldAttr.containsKey(key)) {
+                newAttr.put(key, oldAttr.get(key));
             }
-            oldEvent.addHazardAttributes(modifiedAttributes, originator);
-        } else {
-            newAttr = Collections.emptyMap();
         }
-        oldAttr.remove(HAZARD_EVENT_CHECKED);
-        oldAttr.remove(HAZARD_EVENT_SELECTED);
-        oldAttr.remove(ISessionEventManager.ATTR_ISSUED);
-
-        for (String key : oldAttr.keySet()) {
-            oldEvent.removeHazardAttribute(key, originator);
-        }
+        oldEvent.setHazardAttributes(newAttr, originator);
 
         /*
          * This is relevant when you set the clock back.

@@ -124,6 +124,9 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Mar 06, 2016 15676      Chris.Golden Added visual features.
  * Mar 26, 2016 15676      Chris.Golden Added more methods to get and set
  *                                      individual visual features.
+ * Apr 28, 2016 18267      Chris.Golden Added missing method for replacing
+ *                                      all hazard attributes, due to a
+ *                                      specified originator.
  * </pre>
  * 
  * @author bsteffen
@@ -510,8 +513,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         setHazardType(phenomenon, significance, subtype, true, originator);
     }
 
-    public void setCreationTime(Date issueTime, IOriginator originator) {
-        setCreationTime(issueTime, true, originator);
+    public void setCreationTime(Date creationTime, IOriginator originator) {
+        setCreationTime(creationTime, true, originator);
     }
 
     public void setEndTime(Date endTime, IOriginator originator) {
@@ -567,6 +570,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     public void setWorkStation(String workStation, IOriginator originator) {
         setWorkStation(workStation, true, originator);
+    }
+
+    public void setHazardAttributes(Map<String, Serializable> attributes,
+            IOriginator originator) {
+        setHazardAttributes(attributes, true, originator);
     }
 
     public void addHazardAttribute(String key, Serializable value,

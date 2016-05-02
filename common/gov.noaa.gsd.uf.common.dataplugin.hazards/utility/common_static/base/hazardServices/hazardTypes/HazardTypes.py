@@ -82,6 +82,11 @@
 #         startTimeIsCurrentTime: Affects unissued and issued; if true, start time is never
 #                                 editable by the user, and must be the current CAVE clock
 #                                 time.  Default is False.
+#         allowAnyStartTime:
+#                          Affects unissued and issued events; if true, start time can be
+#                          before, the same as, or later than the current time. If true and
+#                          "startTimeIsCurrentTime" is false, this overrules the latter.
+#                          Default is False.
 #         allowTimeExpand: Affects issued events only; if true, an event can have its end time
 #                          pulled right (made later than it was). Default is True.
 #         allowTimeShrink: Affects issued events only; if true, an event can have its end time
@@ -1971,6 +1976,7 @@ HazardTypes = {
               'inclusionAreaTest' : True,
               'inclusionAreaInSqKm' : 1.0,
               'allowUntilFurtherNotice': True,
+              'allowAnyStartTime': True,
               'modifyRecommenders': {
                                      'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status' ]
                                      },
@@ -1998,6 +2004,7 @@ HazardTypes = {
               'inclusionAreaTest' : True,
               'inclusionAreaInSqKm' : 1.0,
               'allowUntilFurtherNotice': False,
+              'allowAnyStartTime': True,
               'modifyRecommenders': {
                                      'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status' ]
                                      },

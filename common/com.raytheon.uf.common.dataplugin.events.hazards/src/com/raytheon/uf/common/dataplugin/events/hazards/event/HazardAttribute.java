@@ -93,6 +93,20 @@ import com.vividsolutions.jts.io.WKTReader;
  *                                       may be any of the basic types (String,
  *                                       Integer, Boolean, etc.), or Date, or
  *                                       a subclass of Geometry.
+ * Apr 28, 2016   18267    Chris.Golden  Fixed bug that caused sets and geometries
+ *                                       that were the value of the attribute
+ *                                       (that is, not nested within the value)
+ *                                       to be deserialized incorrectly. Also
+ *                                       fixed bug that caused strings substituted
+ *                                       in for geometries that were the entire
+ *                                       value to not be converted to geometries
+ *                                       upon deserialization. Also made any
+ *                                       collections or maps holding a mix of
+ *                                       null values and non-nulls, the latter all
+ *                                       of the same simple type, to not be
+ *                                       slottable. Finally, changed the validity
+ *                                       check to allow collections/maps with null
+ *                                       entries.
  * </pre>
  * 
  * @author mnash
@@ -293,6 +307,12 @@ public class HazardAttribute implements IValidator, Serializable {
      * <code>List</code> as a value; the 3rd element within the list is a nested
      * <code>Map</code>; and the collection found as the value associated with
      * the key "bar" in this map was originally a <code>Set</code>.
+     * <p>
+     * TODO: Make this a list of lists of strings and indices (perhaps the
+     * sublist should have generic parameter of <code>Serializable</code>)
+     * instead of a list of strings; the latter was done only because it aided
+     * in serialization.
+     * </p>
      */
     @DynamicSerializeElement
     @XmlElement
@@ -309,6 +329,12 @@ public class HazardAttribute implements IValidator, Serializable {
      * <code>List</code>; that the 20th element in said list is a
      * <code>Map</code>; and the {@link String} found as the value associated
      * with the key "baz" in this map was originally a <code>Geometry</code>.
+     * <p>
+     * TODO: Make this a list of lists of strings and indices (perhaps the
+     * sublist should have generic parameter of <code>Serializable</code>)
+     * instead of a list of strings; the latter was done only because it aided
+     * in serialization.
+     * </p>
      */
     @DynamicSerializeElement
     @XmlElement
@@ -356,6 +382,7 @@ public class HazardAttribute implements IValidator, Serializable {
          * If the value type was recorded, then the value is currently
          * serialized as a string, so deserialize and return it.
          */
+        Object result = value;
         if (valueType != null) {
 
             /*
@@ -363,7 +390,6 @@ public class HazardAttribute implements IValidator, Serializable {
              * serialized in a slottable manner; deserialize it accordingly.
              * Otherwise, it was serialized as JSON, so deserialize the latter.
              */
-            Object result = null;
             if (collectionValueType != null) {
                 if (Map.class.isAssignableFrom(valueType)) {
                     result = unmarshalMap(collectionValueType, (String) value);
@@ -378,18 +404,13 @@ public class HazardAttribute implements IValidator, Serializable {
                             "internal error while deserializing JSON", e);
                 }
             }
-
-            /*
-             * Perform any substitutions of geometries for strings, and/or sets
-             * for lists, that are needed, then return the result.
-             */
-            return postprocessValueAfterDeserialization(result);
         }
 
         /*
-         * Return the value itself, since it was not serialized.
+         * Perform any substitutions of geometries for strings, and/or sets for
+         * lists, that are needed, then return the result.
          */
-        return value;
+        return postprocessValueAfterDeserialization(result);
     }
 
     @Override
@@ -919,7 +940,8 @@ public class HazardAttribute implements IValidator, Serializable {
              */
             for (String pathString : paths) {
                 value = substituteForObjectAtPath(value, substitution,
-                        pathString.split("\n"), 0);
+                        (pathString.trim().isEmpty() ? new String[0]
+                                : pathString.split("\n")), 0);
             }
         }
         return value;
@@ -1066,6 +1088,19 @@ public class HazardAttribute implements IValidator, Serializable {
                     return false;
                 }
                 Class<?> elementClass = getSimpleType(element);
+
+                /*
+                 * TODO: This check ensures that if there are any empty strings,
+                 * the value is not considered slottable. This should not really
+                 * be necessary, but for some reason the
+                 * HazardAttributeSlotConverter is turning empty strings into
+                 * null entries when doing the conversion, which results in bad
+                 * behavior when the object is deserialized.
+                 */
+                if ((elementClass == String.class)
+                        && ((String) element).isEmpty()) {
+                    return false;
+                }
                 if (elementClass == null) {
                     return false;
                 } else if (firstElementClass == null) {
@@ -1110,7 +1145,7 @@ public class HazardAttribute implements IValidator, Serializable {
         }
         if (elements != null) {
             for (Object element : elements) {
-                if ((element == null) || (isValueValid(element) == false)) {
+                if ((element != null) && (isValueValid(element) == false)) {
                     return false;
                 }
             }
