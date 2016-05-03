@@ -132,6 +132,9 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Apr 18, 2016 15676      Chris.Golden      Fixed bug with selected time not being rounded down to
  *                                           closest minute, which prevented visual features from
  *                                           showing up.
+ * May 03, 2016 15676      Chris.Golden      Fixed another bug with selected time not being rounded
+ *                                           down to the closest minute when time-matching caused it
+ *                                           to not lie on a minute boundary.
  * </pre>
  * 
  * @author Chris.Golden
@@ -305,10 +308,18 @@ public class SpatialPresenter extends
      */
     public void handleUserModificationOfVisualFeature(String eventIdentifier,
             String featureIdentifier, Date selectedTime, Geometry newGeometry) {
+
+        /*
+         * Find the event that goes with the visual feature.
+         */
         ISessionEventManager<ObservedHazardEvent> eventManager = getModel()
                 .getEventManager();
         ObservedHazardEvent event = eventManager.getEventById(eventIdentifier);
         if (event != null) {
+
+            /*
+             * Find the visual feature itself.
+             */
             boolean selected = false;
             VisualFeature feature = getVisualFeature(
                     event.getBaseVisualFeatures(), featureIdentifier);
@@ -317,8 +328,16 @@ public class SpatialPresenter extends
                         featureIdentifier);
                 selected = true;
             }
+
+            /*
+             * If a visual feature is found, set its geometry to that specified.
+             * Round the selected time down to the nearest minute, since it
+             * could be anything (i.e. not necessarily on a minute boundary).
+             */
             if (feature != null) {
-                feature.setGeometry(selectedTime, newGeometry);
+                feature.setGeometry(
+                        DateUtils.truncate(selectedTime, Calendar.MINUTE),
+                        newGeometry);
                 if (selected) {
                     event.setSelectedVisualFeature(feature,
                             UIOriginator.SPATIAL_DISPLAY);
