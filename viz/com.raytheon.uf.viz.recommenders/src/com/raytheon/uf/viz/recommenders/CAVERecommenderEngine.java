@@ -41,6 +41,10 @@ import com.raytheon.uf.viz.python.VizPythonJob;
  * Mar 06, 2013            mnash        Initial creation
  * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
  *                                      info.
+ * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance
+ *                                      between H.S. sessions in the same CAVE session,
+ *                                      since stopping and starting the Jep instances
+ *                                      when the latter use numpy is dangerous.
  * </pre>
  * 
  * @author mnash
@@ -50,32 +54,46 @@ import com.raytheon.uf.viz.python.VizPythonJob;
 public final class CAVERecommenderEngine extends
         AbstractRecommenderEngine<CAVERecommenderScriptManager> {
 
-    public CAVERecommenderEngine() {
+    // Private Static Constants
+
+    /**
+     * Instance of recommender engine to be used for all Hazard Services
+     * sessions. A single instance is shared, instead of starting up and
+     * shutting down one instance per session, because of bad numpy-Jep
+     * interactions as described <a
+     * href="https://github.com/mrj0/jep/issues/28">here</a>. By keeping a
+     * singleton around, Jep with numpy loaded is never shut down.
+     */
+    private static final CAVERecommenderEngine CAVE_RECOMMENDER_ENGINE = new CAVERecommenderEngine();
+
+    // Public Methods
+
+    /**
+     * Get the singleton instance of this class.
+     * 
+     * @return Singleton instance of this class.
+     */
+    public static CAVERecommenderEngine getInstance() {
+        return CAVE_RECOMMENDER_ENGINE;
+    }
+
+    // Private Constructors
+
+    /**
+     * Construct a standard instance.
+     */
+    private CAVERecommenderEngine() {
         super();
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.common.recommenders.AbstractRecommenderEngine#getCoordinator
-     * ()
-     */
+    // Public Methods
+
     @Override
     protected PythonJobCoordinator<CAVERecommenderScriptManager> getCoordinator() {
         factory = new CAVERecommenderPythonFactory();
         return PythonJobCoordinator.newInstance(factory);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.recommenders.AbstractRecommenderEngine#
-     * runExecuteRecommender(java.lang.String,
-     * com.raytheon.uf.common.dataplugin.events.EventSet, java.util.Map,
-     * java.util.Map,
-     * com.raytheon.uf.common.python.concurrent.IPythonJobListener)
-     */
     @Override
     public void runExecuteRecommender(String recommenderName,
             EventSet<IEvent> eventSet, Map<String, Serializable> spatialInfo,
@@ -87,13 +105,6 @@ public final class CAVERecommenderEngine extends
                 dialogInfo, job);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.recommenders.AbstractRecommenderEngine#
-     * runEntireRecommender(java.lang.String,
-     * com.raytheon.uf.common.python.concurrent.IPythonJobListener)
-     */
     @Override
     public void runEntireRecommender(String recommenderName,
             EventSet<IEvent> eventSet,
@@ -101,5 +112,16 @@ public final class CAVERecommenderEngine extends
         VizPythonJob<EventSet<IEvent>> job = new VizPythonJob<>(
                 recommenderName, listener);
         super.runEntireRecommender(recommenderName, eventSet, job);
+    }
+
+    @Override
+    public void shutdownEngine() {
+
+        /*
+         * Do nothing; since Jep and numpy do not play well together when a Jep
+         * instance is shut down and then another one started that also uses
+         * numpy, this instance needs to be kept around and functional in case
+         * H.S. starts up again.
+         */
     }
 }

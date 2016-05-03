@@ -50,6 +50,10 @@ import com.raytheon.uf.common.util.FileUtil;
  * Nov 05, 2014 4042       Chris.Golden Added new directories to Python include path.
  * Feb 19, 2015 5071       Robert.Blum  Added new directories to include path
  * Feb 26, 2015 6306       mduff        Pass site to product script.
+ * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance between H.S.
+ *                                      sessions in the same CAVE session, since stopping and
+ *                                      starting the Jep instances when the latter use numpy is
+ *                                      dangerous.
  * </pre>
  * 
  * @author jsanchez
@@ -98,9 +102,8 @@ public class ProductScriptFactory extends
     /**
      * Default Constructor.
      */
-    public ProductScriptFactory(String site) {
+    public ProductScriptFactory() {
         this(ProductScript.DEFAULT_PRODUCT_GENERATION_JOB_COORDINATOR, 1);
-        this.site = site;
     }
 
     /**
@@ -111,6 +114,16 @@ public class ProductScriptFactory extends
      */
     private ProductScriptFactory(String name, int maxThreads) {
         super(name, maxThreads);
+    }
+
+    /**
+     * Set the site identifier.
+     * 
+     * @param site
+     *            Site identifier.
+     */
+    public void setSite(String site) {
+        this.site = site;
     }
 
     @Override

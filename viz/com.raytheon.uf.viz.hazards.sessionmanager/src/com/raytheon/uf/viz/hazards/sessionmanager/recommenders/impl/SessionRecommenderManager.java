@@ -49,7 +49,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.recommenders.CAVERecommenderEngine;
-import com.raytheon.uf.viz.recommenders.interactive.InteractiveRecommenderEngine;
 import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
@@ -75,6 +74,11 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Apr 27, 2016   18266    Chris.Golden Added the inclusion of the latest data time
  *                                      in the recommender input event set if asked
  *                                      for by the recommender.
+ * May 03, 2016   18376    Chris.Golden Changed to support reuse of Jep instance
+ *                                      between H.S. sessions in the same CAVE
+ *                                      session, since stopping and starting the
+ *                                      Jep instances when the latter use numpy is
+ *                                      dangerous.
  * </pre>
  * 
  * @author Chris.Golden
@@ -200,8 +204,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             IMessenger messenger, BoundedReceptionEventBus<Object> eventBus) {
         this.sessionManager = sessionManager;
         this.messenger = messenger;
-        recommenderEngine = new CAVERecommenderEngine();
-        recommenderEngine.injectEngine(new InteractiveRecommenderEngine());
+        recommenderEngine = CAVERecommenderEngine.getInstance();
         eventBus.subscribe(recommenderEngine);
     }
 

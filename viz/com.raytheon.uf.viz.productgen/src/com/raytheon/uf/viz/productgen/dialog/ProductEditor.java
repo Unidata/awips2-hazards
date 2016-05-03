@@ -92,6 +92,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.impl.ProductValidation
  *                                      to incorrectly update when products failed validation, since
  *                                      the validation was done after the product generation.
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance between H.S.
+ *                                      sessions in the same CAVE session, since stopping and
+ *                                      starting the Jep instances when the latter use numpy is
+ *                                      dangerous.
  * </pre>
  * 
  * @author jsanchez
@@ -170,7 +174,7 @@ public class ProductEditor extends AbstractProductDialog {
             String siteId) {
         super(parentShell, SWT.RESIZE, CAVE.PERSPECTIVE_INDEPENDENT,
                 generatedProductListStorage);
-        this.productGeneration = new ProductGeneration(siteId);
+        this.productGeneration = ProductGeneration.getInstance(siteId);
 
         /*
          * If these products are editable, save a copy for future use

@@ -67,12 +67,18 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Apr 16, 2015 7579       Robert.Blum  Replace prevDataList with keyinfo object.
  * May 07, 2015 6979       Robert.Blum  Added method to update product dictionaries without
  *                                      running the entire generator again.
+ * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance between H.S.
+ *                                      sessions in the same CAVE session, since stopping and
+ *                                      starting the Jep instances when the latter use numpy is
+ *                                      dangerous.
  * </pre>
  * 
  * @author jsanchez
  * @version 1.0
  */
 public class ProductGeneration implements IDefineDialog, IProvideMetadata {
+
+    // Private Static Constants
 
     private static final String PRODUCT_GENERATOR_RELATIVE_PATH = "python"
             + File.separator + "events" + File.separator + "productgen"
@@ -83,15 +89,50 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductGeneration.class);
 
-    /** Manages ProductScriptExecutor jobs */
-    private PythonJobCoordinator<ProductScript> coordinator;
+    /**
+     * Instance of this class to be used for all Hazard Services sessions. A
+     * single instance is shared, instead of starting up and shutting down one
+     * instance per session, because of bad numpy-Jep interactions as described
+     * <a href="https://github.com/mrj0/jep/issues/28">here</a>. By keeping a
+     * singleton around, Jep with numpy loaded is never shut down.
+     */
+    private static final ProductGeneration PRODUCT_GENERATION = new ProductGeneration();
+
+    // Private Variables
+
+    /**
+     * Manages execution of product script jobs.
+     */
+    private final PythonJobCoordinator<ProductScript> coordinator;
+
+    private final ProductScriptFactory factory;
 
     private final IPathManager pathManager = PathManagerFactory
             .getPathManager();
 
-    public ProductGeneration(String siteId) {
-        coordinator = PythonJobCoordinator
-                .newInstance(new ProductScriptFactory(siteId));
+    // Public Static Methods
+
+    /**
+     * Get the singleton instance of this class using the specified site
+     * identifier.
+     * 
+     * @param site
+     *            Site identifier.
+     * @return Singleton instance of this class.
+     */
+    public static ProductGeneration getInstance(String site) {
+        PRODUCT_GENERATION.setSite(site);
+        return PRODUCT_GENERATION;
+    }
+
+    // Private Constructors
+
+    /**
+     * Construct a standard instance.
+     */
+    private ProductGeneration() {
+        factory = new ProductScriptFactory();
+        coordinator = PythonJobCoordinator.newInstance(factory);
         if (statusHandler.isPriorityEnabled(Priority.DEBUG)) {
             String c = coordinator.toString();
             statusHandler
@@ -100,8 +141,41 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
         }
     }
 
+    // Public Methods
+
     /**
-     * Generates the eventSet into different formats. The job is performed
+     * Set the site identifier. This must be done at least once before any
+     * products are generated.
+     * 
+     * @param site
+     *            Site identifier.
+     */
+    public void setSite(String site) {
+        factory.setSite(site);
+    }
+
+    /**
+     * Shutdown.
+     */
+    public void shutdown() {
+
+        /*
+         * For now, do nothing; since Jep and numpy do not play well together
+         * when a Jep instance is shut down and then another one started that
+         * also uses numpy, this instance needs to be kept around and functional
+         * in case H.S. starts up again.
+         */
+        // if (statusHandler.isPriorityEnabled(Priority.DEBUG)) {
+        // String c = coordinator.toString();
+        // statusHandler
+        // .debug("ProductGeneration.shutdown decrementing reference count for "
+        // + c.substring(c.lastIndexOf('.') + 1));
+        // }
+        // coordinator.shutdown();
+    }
+
+    /**
+     * Generate the event set into different formats. The job is performed
      * asynchronously and will be passed to the session manager.
      * 
      * @param productGeneratorName
@@ -121,7 +195,10 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
             EventSet<IEvent> eventSet, Map<String, Serializable> dialogInfo,
             String[] productFormats,
             IPythonJobListener<GeneratedProductList> listener) {
-        // Validates the parameter values
+
+        /*
+         * Validate the parameter values.
+         */
         validate(productFormats, productGeneratorName, eventSet, listener);
 
         IPythonExecutor<ProductScript, GeneratedProductList> executor = new GenerateProductExecutor(
@@ -135,7 +212,7 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
     }
 
     /**
-     * Accepts an updated data list and passes it to the 'executeFrom' of the
+     * Accept an updated data list and passes it to the 'executeFrom' of the
      * product generator.
      * 
      * @param productGeneratorName
@@ -144,8 +221,8 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      * @param listener
      */
     public void generateFrom(String productGeneratorName,
-            GeneratedProductList generatedProducts,
-            KeyInfo keyInfo, String[] productFormats,
+            GeneratedProductList generatedProducts, KeyInfo keyInfo,
+            String[] productFormats,
             IPythonJobListener<GeneratedProductList> listener) {
         IPythonExecutor<ProductScript, GeneratedProductList> executor = new GenerateProductFromExecutor(
                 productGeneratorName, generatedProducts, keyInfo,
@@ -159,8 +236,8 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
     }
 
     /**
-     * Updates the updatedDataList then passes them to the different formats.
-     * The job is performed asynchronously and will be passed to the session
+     * Update the updated data list, then pass it to the different formats. The
+     * job is performed asynchronously and will be passed to the session
      * manager.
      * 
      * @param productGeneratorName
@@ -169,8 +246,8 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      *            /common_static/base/python/events/productgen/products
      *            directory
      * @param eventSet
-     *            the EventSet<IEvent> object that will provide the information
-     *            for the product generator
+     *            Event set object that will provide the information for the
+     *            product generator.
      * @param updatedDataList
      *            the previously generated dictionaries that will be updated.
      * @param productFormats
@@ -178,12 +255,14 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      * @param listener
      *            the listener to the aysnc job
      */
-    public void update(String productGeneratorName,
-            EventSet<IEvent> eventSet,
+    public void update(String productGeneratorName, EventSet<IEvent> eventSet,
             List<Map<String, Serializable>> updatedDataList,
             String[] productFormats,
             IPythonJobListener<GeneratedProductList> listener) {
-        // Validates the parameter values
+
+        /*
+         * Validate the parameter values.
+         */
         validate(productFormats, productGeneratorName, eventSet, listener);
 
         IPythonExecutor<ProductScript, GeneratedProductList> executor = new UpdateProductExecutor(
@@ -239,6 +318,8 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
         return retVal;
     }
 
+    // Private Methods
+
     /**
      * Validates 1) if 'formats' is not null, 2) if 'product' is not null, and
      * 3) if hazardEvent set is not null and not empty.
@@ -254,24 +335,5 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
         Validate.notNull(product, "'PRODUCT' must be set.");
         Validate.notNull(eventSet, "'HAZARD EVENT SET' must be set");
         Validate.notNull(listener, "'listener' must be set.");
-    }
-
-    /**
-     * Shutdown Python Job Coordinator.
-     */
-    public void shutdown() {
-        if (statusHandler.isPriorityEnabled(Priority.DEBUG)) {
-            String c = coordinator.toString();
-            statusHandler
-                    .debug("ProductGeneration.shutdown decrementing reference count for "
-                            + c.substring(c.lastIndexOf('.') + 1));
-        }
-        coordinator.shutdown();
-    }
-
-    public void setSite(String site) {
-        coordinator.shutdown();
-        coordinator = PythonJobCoordinator
-                .newInstance(new ProductScriptFactory(site));
     }
 }

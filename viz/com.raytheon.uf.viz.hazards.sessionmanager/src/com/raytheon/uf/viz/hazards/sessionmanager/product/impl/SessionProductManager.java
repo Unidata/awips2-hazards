@@ -219,6 +219,9 @@ import com.vividsolutions.jts.geom.Puntal;
  * Oct 14, 2015 12494      Chris Golden Reworked to allow hazard types to include only phenomenon (i.e. no
  *                                      significance) where appropriate.
  * Apr 28, 2016 18267      Chris.Golden Changed to work with new version of mergeHazardEvents().
+ * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance between H.S. sessions in
+ *                                      the same CAVE session, since stopping and starting the Jep
+ *                                      instances when the latter use numpy is dangerous.
  * </pre>
  * 
  * @author bsteffen
@@ -307,7 +310,8 @@ public class SessionProductManager implements ISessionProductManager {
         this.configManager = configManager;
         this.eventManager = eventManager;
         this.notificationSender = notificationSender;
-        this.productGen = new ProductGeneration(configManager.getSiteID());
+        this.productGen = ProductGeneration.getInstance(configManager
+                .getSiteID());
         this.messenger = messenger;
         this.partsOfCounty = new PartsOfGeographicalAreas();
 

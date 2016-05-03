@@ -80,7 +80,7 @@ public abstract class AbstractRecommenderTest {
 
     @Before
     public void setUp() throws JepException {
-        engine = new CAVERecommenderEngine();
+        engine = CAVERecommenderEngine.getInstance();
     }
 
     public EventSet<IEvent> runRecommender(String name,
