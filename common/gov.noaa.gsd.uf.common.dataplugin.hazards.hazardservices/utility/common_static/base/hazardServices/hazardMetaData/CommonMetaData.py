@@ -2171,7 +2171,8 @@ class MetaData(object):
 #        for i in range(0, duration+probInc+1, probInc):
             y = 100-(i*100/int(duration))
             y = 0 if i >= duration else y
-            editable = 1 if y != 0 else 0
+            editable = True if y != 0 else False
+            #editable = 1 if y != 0 else 0
             probVals.append({"x":i, "y":y, "editable": editable})
             
         colors = [self._getProbTrendColor(y) for y in range(0,100, 20)]

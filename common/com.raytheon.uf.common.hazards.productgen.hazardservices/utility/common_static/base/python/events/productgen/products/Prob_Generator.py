@@ -32,6 +32,13 @@ class ProdSegment(object):
         self.segment = segment
         self.vtecRecords = vtecRecords
         self.vtecRecords_ms = vtecRecords
+        
+        try:
+            self._areaDictionary = self.Bridge.getAreaDictionary()
+            self._cityLocation = self.Bridge.getCityLocation()
+        except:
+            self._areaDictionary = {}
+            self._cityLocation = ''
 
     def str(self):
         print '  segment', self.segment 

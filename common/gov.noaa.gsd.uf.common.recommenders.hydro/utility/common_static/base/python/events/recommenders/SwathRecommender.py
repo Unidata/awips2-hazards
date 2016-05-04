@@ -314,7 +314,7 @@ class Recommender(RecommenderTemplate.Recommender):
         else:
             self._roundEventTimes(event)
             self._eventSt_ms = long(self._datetimeToMs(event.getStartTime()))
-        print "SR event start, current", self._eventSt_ms, self._currentTime
+        #print "SR event start, current", self._eventSt_ms, self._currentTime
         self.flush()
                         
     def _advanceDownstreamPolys(self, event):
@@ -337,12 +337,12 @@ class Recommender(RecommenderTemplate.Recommender):
                 return
             
             st, et = downstreamTimes[i]
-            print "SR Advance downstream st, eventSt_ms", st >= self._eventSt_ms, st, self._eventSt_ms
+            #print "SR Advance downstream st, eventSt_ms", st >= self._eventSt_ms, st, self._eventSt_ms
             self.flush() 
             if st >= self._eventSt_ms:    
                 index = i
                 break
-        print "SR Advance index", index
+        #print "SR Advance index", index
         self.flush()
         
         event.set('downstreamPolys', downstreamPolys[index:])
@@ -449,8 +449,8 @@ class Recommender(RecommenderTemplate.Recommender):
         #for i in range(0, duration+probInc+1, probInc):
             y = 100-(i*100/int(duration))
             y = 0 if i >= duration else y
-            #editable = True if y != 0 else False
-            editable = 1 if y != 0 else 0
+            editable = True if y != 0 else False
+            #editable = 1 if y != 0 else 0
             probVals.append({"x":i, "y":y, "editable": editable})
         event.set('convectiveProbTrendGraph', probVals)
 
@@ -987,7 +987,7 @@ class Recommender(RecommenderTemplate.Recommender):
         baseVisualFeatures = []
         # Downstream Polygons, Track Points, Relocated Downstream 
         numIntervals = len(downstreamPolys) 
-        print "SR Number of downstream polys", numIntervals
+        #print "SR Number of downstream polys", numIntervals
         self.flush()       
         for i in range(numIntervals):
             poly = downstreamPolys[i]
@@ -1042,9 +1042,9 @@ class Recommender(RecommenderTemplate.Recommender):
             if polySt_ms >= self._eventSt_ms:
                 if i == 0:
                     dragCapability = "all"
-                    print "SR EDITABLE First Relocated Polygon time set", str(polySt_ms), self._currentTime
-                    print " poly time, current time", self._displayMsTime(polySt_ms), self._displayMsTime(self._currentTime)
-                    self.flush() 
+                    #print "SR EDITABLE First Relocated Polygon time set", str(polySt_ms), self._currentTime
+                    #print " poly time, current time", self._displayMsTime(polySt_ms), self._displayMsTime(self._currentTime)
+                    #self.flush() 
                 else:
                     dragCapability = "none"
                     
@@ -1206,7 +1206,7 @@ class Recommender(RecommenderTemplate.Recommender):
         else:
             dragCapability = 'none'
             color = "eventType"
-        print "SR Previous polys pending, drag", self._pendingHazard, dragCapability
+        #print "SR Previous polys pending, drag", self._pendingHazard, dragCapability
         self.flush()
             
         for i in range(timeSteps):

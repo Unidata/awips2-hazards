@@ -201,7 +201,11 @@ class ProbUtils(object):
             dMax = distances.max()
             if dMax == 0:
                 dMax = 1.
-            probMap = np.ceil(probTrend[k] - probTrend[k] * np.exp((pow(np.array((distances / dMax) * 1475.0),2) / -2.0) / pow(500,2)))
+            
+            try:
+                probMap = np.ceil(probTrend[k] - probTrend[k] * np.exp((pow(np.array((distances / dMax) * 1475.0),2) / -2.0) / pow(500,2)))
+            except:
+                probMap = np.ceil(probTrend[-1] - probTrend[-1] * np.exp((pow(np.array((distances / dMax) * 1475.0),2) / -2.0) / pow(500,2)))
             
             probLocalSwath = np.maximum(probMap, probLocalSwath)
             

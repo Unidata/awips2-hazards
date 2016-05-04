@@ -51,7 +51,7 @@ MILLIS_PER_SECOND = 1000
 ### FIXME
 DEFAULT_DURATION_IN_SECS = 2700 # 45 minutes
 #DEFAULT_DURATION_IN_SECS = 120
-PROBABILITY_FILTER = 40 # filter our any objects less than this.
+PROBABILITY_FILTER = 60 # filter our any objects less than this.
 SOURCEPATH_ARCHIVE = '/awips2/edex/data/hdf5/convectprob'
 SOURCEPATH_REALTIME = '/realtime-a2/hdf5/probsevere'
     
@@ -248,7 +248,7 @@ class Recommender(RecommenderTemplate.Recommender):
             if hFile:
                 hFile.close()
 
-        latestSet = []
+        latestSet = {}
         if len(eventsPerTimestamp):
             latestTimeStamp = sorted(eventsPerTimestamp.keys())[-1]
             latestSet = eventsPerTimestamp[latestTimeStamp]
