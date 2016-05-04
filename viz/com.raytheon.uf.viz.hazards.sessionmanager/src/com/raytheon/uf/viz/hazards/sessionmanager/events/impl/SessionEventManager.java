@@ -367,6 +367,7 @@ import com.vividsolutions.jts.geom.TopologyException;
  * Apr 28, 2016   18267    Chris.Golden Added support for unrestricted event start times. Also cleaned up and
  *                                      simplified the code handling an event's time range boundaries when
  *                                      said event is issued.
+ * May 04, 2016   18411    Chris.Golden Changed to persist reissued hazard events to the database.
  * </pre>
  * 
  * @author bsteffen
@@ -1247,6 +1248,7 @@ public class SessionEventManager implements
                          */
                         HazardStatus hazardStatus = oEvent.getStatus();
                         boolean wasPreIssued = false;
+                        boolean wasReissued = false;
                         if (hazardStatus.equals(HazardStatus.PENDING)
                                 || hazardStatus.equals(HazardStatus.PROPOSED)) {
                             oEvent.setStatus(HazardStatus.ISSUED);
@@ -1255,6 +1257,8 @@ public class SessionEventManager implements
                             wasPreIssued = true;
                         } else if (isChangeToEndedStatusNeeded(hazardEvent)) {
                             oEvent.setStatus(HazardStatus.ENDED);
+                        } else if (hazardStatus.equals(HazardStatus.ISSUED)) {
+                            wasReissued = true;
                         }
 
                         /*
@@ -1269,7 +1273,9 @@ public class SessionEventManager implements
                          * duration choices should not change. If they were to
                          * change, then the VTEC engine would generate EXTs
                          * instead of CONs since the end time of the hazard
-                         * would change.
+                         * would change. However, reissued events do need to be
+                         * stored to the database, since only events that have
+                         * changed status normally get stored after generation.
                          */
                         if (wasPreIssued) {
                             updateSavedTimesForEventIfIssued(oEvent, false);
@@ -1285,6 +1291,8 @@ public class SessionEventManager implements
                             // (Long) hazardEvent
                             // .getHazardAttribute(HazardConstants.ISSUE_TIME));
                             // updateDurationChoicesForEvent(oEvent, false);
+                        } else if (wasReissued) {
+                            persistEvent(oEvent);
                         }
                     }
                 }
@@ -2532,18 +2540,7 @@ public class SessionEventManager implements
                 ;// do nothing.
             }
             if (needsPersist) {
-                try {
-                    IHazardEvent dbEvent = dbManager.createEvent(event);
-                    dbEvent.removeHazardAttribute(ATTR_ISSUED);
-                    dbEvent.removeHazardAttribute(HAZARD_EVENT_SELECTED);
-                    dbEvent.removeHazardAttribute(HAZARD_EVENT_CHECKED);
-                    dbEvent.removeHazardAttribute(ATTR_HAZARD_CATEGORY);
-                    dbManager.storeEvent(dbEvent);
-                    scheduleExpirationTask(event);
-                } catch (Throwable e) {
-                    statusHandler.handle(Priority.PROBLEM,
-                            e.getLocalizedMessage(), e);
-                }
+                persistEvent(event);
             }
         }
 
@@ -2552,6 +2549,26 @@ public class SessionEventManager implements
         notificationSender.postNotificationAsync(notification);
         updateConflictingEventsForSelectedEventIdentifiers(
                 notification.getEvent(), false);
+    }
+
+    /**
+     * Persist the specified event by storing it to the database.
+     * 
+     * @param event
+     *            Event to be persisted.
+     */
+    private void persistEvent(ObservedHazardEvent event) {
+        try {
+            IHazardEvent dbEvent = dbManager.createEvent(event);
+            dbEvent.removeHazardAttribute(ATTR_ISSUED);
+            dbEvent.removeHazardAttribute(HAZARD_EVENT_SELECTED);
+            dbEvent.removeHazardAttribute(HAZARD_EVENT_CHECKED);
+            dbEvent.removeHazardAttribute(ATTR_HAZARD_CATEGORY);
+            dbManager.storeEvent(dbEvent);
+            scheduleExpirationTask(event);
+        } catch (Throwable e) {
+            statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
+        }
     }
 
     /**
