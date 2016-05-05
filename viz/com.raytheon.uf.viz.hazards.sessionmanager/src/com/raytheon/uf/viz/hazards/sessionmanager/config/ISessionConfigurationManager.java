@@ -86,6 +86,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      by data layer changes.
  * Apr 28, 2016 18267      Chris.Golden Added support for unrestricted event start
  *                                      times.
+ * May 04, 2016 18266      Chris.Golden Added passing of data time to method allowing
+ *                                      triggering by data layer change.
  * </pre>
  * 
  * @author bsteffen
@@ -426,13 +428,18 @@ public interface ISessionConfigurationManager<S extends ISettings> {
 
     /**
      * Trigger the appropriate tool for the specified class name, an instance of
-     * which experienced a data update.
+     * which experienced a data update, if the specified latest time is later
+     * than the last data update that triggered the associated tool.
      * 
      * @param className
      *            Name of the class, an instance of which experienced a data
      *            update.
+     * @param dataUpdateTime
+     *            Data time that was updated by the instance of the class, in
+     *            epoch time in millliseconds.
      */
-    public void triggerDataLayerChangeDrivenTool(String className);
+    public void triggerDataLayerChangeDrivenTool(String className,
+            long dataUpdateTime);
 
     /**
      * Give the map of viz resources to their corresponding data update

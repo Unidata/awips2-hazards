@@ -224,6 +224,11 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      by data layer changes.
  * Apr 28, 2016 18267      Chris.Golden Added support for unrestricted event start
  *                                      times.
+ * May 04, 2016 18266      Chris.Golden Added passing of data time to method allowing
+ *                                      triggering by data layer change, and code to
+ *                                      avoid triggering if the data time passed in is
+ *                                      not later than the last data time that triggered
+ *                                      the same tool.
  * </pre>
  * 
  * @author bsteffen
@@ -360,7 +365,7 @@ public class SessionConfigurationManager implements
 
     private final Map<String, Runnable> dataLayerChangeDrivenToolExecutorsForClassNames = new HashMap<>();
 
-    private final Map<Runnable, Set<String>> classNamesTriggeringEventDrivenToolsForExecutors = new HashMap<>();
+    private final Map<Runnable, Long> latestDataTimesTriggeringEventDrivenToolsForExecutors = new HashMap<>();
 
     private Map<AbstractVizResource<?, ?>, ResourceDataUpdateDetector> dataUpdateDetectorsForVizResources;
 
@@ -496,23 +501,6 @@ public class SessionConfigurationManager implements
                     }
                 }
             }
-        }
-
-        /*
-         * Compile a mapping of executors of resource-data-update-triggered
-         * tools to the class names of resources whose data updates may trigger
-         * them.
-         */
-        for (Map.Entry<String, Runnable> entry : dataLayerChangeDrivenToolExecutorsForClassNames
-                .entrySet()) {
-            Set<String> classNames = classNamesTriggeringEventDrivenToolsForExecutors
-                    .get(entry.getValue());
-            if (classNames == null) {
-                classNames = new HashSet<>();
-                classNamesTriggeringEventDrivenToolsForExecutors.put(
-                        entry.getValue(), classNames);
-            }
-            classNames.add(entry.getKey());
         }
 
         /*
@@ -1170,16 +1158,39 @@ public class SessionConfigurationManager implements
     }
 
     @Override
-    public void triggerDataLayerChangeDrivenTool(String className) {
+    public void triggerDataLayerChangeDrivenTool(String className,
+            long dataUpdateTime) {
+
+        /*
+         * Get the runnable associated with this class name.
+         */
         Runnable runnable = dataLayerChangeDrivenToolExecutorsForClassNames
                 .get(className);
         if (runnable == null) {
             statusHandler.warn("No tool found to execute in response "
                     + "to a data update for " + "the loaded resource of type "
                     + className + ".");
-        } else {
-            runnable.run();
+            return;
         }
+
+        /*
+         * See if the provided data time is less than or equal to the last
+         * recorded data time that triggered this runnable; if so, do not
+         * trigger.
+         */
+        Long latestDataUpdateTime = latestDataTimesTriggeringEventDrivenToolsForExecutors
+                .get(runnable);
+        if (((latestDataUpdateTime == null) && (dataUpdateTime == 0L))
+                || ((latestDataUpdateTime != null) && (latestDataUpdateTime >= dataUpdateTime))) {
+            return;
+        }
+
+        /*
+         * Trigger the tool, recording the data time that triggered it.
+         */
+        latestDataTimesTriggeringEventDrivenToolsForExecutors.put(runnable,
+                dataUpdateTime);
+        runnable.run();
     }
 
     @Override

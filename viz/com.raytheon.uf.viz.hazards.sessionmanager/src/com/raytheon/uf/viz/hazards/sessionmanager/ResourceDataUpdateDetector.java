@@ -11,6 +11,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager;
 
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 
+import com.raytheon.uf.common.dataplugin.PluginDataObject;
 import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.rsc.AbstractVizResource;
@@ -26,6 +27,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationMa
  * Date         Ticket#    Engineer      Description
  * ------------ ---------- ------------- --------------------------
  * Apr 27, 2016   18266    Chris.Golden  Initial creation.
+ * May 04, 2016   18266    Chris.Golden  Added additional diagnostics,
+ *                                       and changed to pass data time
+ *                                       that is triggering a tool
+ *                                       execution to the config manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -132,24 +137,33 @@ public class ResourceDataUpdateDetector implements IResourceDataChanged {
 
     @Override
     public void resourceChanged(ChangeType type, Object object) {
-        if ((type == ChangeType.DATA_UPDATE) && updateLatestDataTime()) {
-            System.err
-                    .println("For data-time-triggered recommenders: "
-                            + "Resource data updated: "
-                            + resource.getClass().getSimpleName()
-                            + " ("
-                            + ((resource.getDataTimes() == null)
-                                    || (resource.getDataTimes().length == 0) ? "none"
-                                    : resource.getDataTimes()[resource
-                                            .getDataTimes().length - 1]) + ")");
-            RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
+        if (type == ChangeType.DATA_UPDATE) {
+            DataTime dataTime = (object instanceof PluginDataObject ? ((PluginDataObject) object)
+                    .getDataTime()
+                    : ((object instanceof PluginDataObject[])
+                            && (((PluginDataObject[]) object).length > 0) ? ((PluginDataObject[]) object)[0]
+                            .getDataTime() : null));
+            System.err.println("Resource data updated: "
+                    + resource.getClass().getSimpleName()
+                    + " (updated data time = "
+                    + (dataTime == null ? "none" : dataTime) + ")");
+            if (updateLatestDataTime()) {
+                System.err
+                        .println("    Potential recommender trigger, "
+                                + "since latest data time changed; it is now "
+                                + ((resource.getDataTimes() == null)
+                                        || (resource.getDataTimes().length == 0) ? "none"
+                                        : resource.getDataTimes()[resource
+                                                .getDataTimes().length - 1]));
+                RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
 
-                @Override
-                public void run() {
-                    configManager.triggerDataLayerChangeDrivenTool(resource
-                            .getClass().getSimpleName());
-                }
-            });
+                    @Override
+                    public void run() {
+                        configManager.triggerDataLayerChangeDrivenTool(resource
+                                .getClass().getSimpleName(), latestDataTime);
+                    }
+                });
+            }
         }
     }
 
