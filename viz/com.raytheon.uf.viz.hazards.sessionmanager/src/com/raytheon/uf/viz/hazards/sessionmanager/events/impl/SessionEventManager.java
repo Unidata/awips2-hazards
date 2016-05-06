@@ -1497,7 +1497,7 @@ public class SessionEventManager implements
                         metadata.getRefreshTriggeringMetadataKeys());
         recommendersForTriggerIdentifiersForEventIdentifiers.put(
                 event.getEventID(),
-                metadata.getRcommendersTriggeredForMetadataKeys());
+                metadata.getRecommendersTriggeredForMetadataKeys());
         editRiseCrestFallTriggeringIdentifiersForEventIdentifiers.put(
                 event.getEventID(),
                 metadata.getEditRiseCrestFallTriggeringMetadataKeys());

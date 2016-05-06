@@ -9,7 +9,10 @@
  */
 package gov.noaa.gsd.common.visuals;
 
+import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
+
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -20,10 +23,10 @@ import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.SerializerProvider;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
 import com.google.common.reflect.TypeToken;
-import com.raytheon.uf.common.colormap.Color;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.WKTWriter;
 
@@ -38,7 +41,12 @@ import com.vividsolutions.jts.io.WKTWriter;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Feb 24, 2016   15676    Chris.Golden Initial creation.
- * Mar 29, 2016   15676    Chris.Golden Altered to allow
+ * Mar 29, 2016   15676    Chris.Golden Altered for proper serialization.
+ * May 05, 2016   15676    Chris.Golden Added ability to be serialized to
+ *                                      support Thrift serialiation and
+ *                                      deserialization. This in turn allows
+ *                                      two H.S. instances sharing an edex
+ *                                      to see each other's stored events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -53,7 +61,7 @@ class VisualFeaturesListJsonSerializer {
      * serializer, used to serialize properties of type <code>P</code> for a
      * visual feature.
      */
-    private interface IPropertySerializer<P> {
+    private interface IPropertySerializer<P extends Serializable> {
 
         /**
          * Serialize a property value of the enclosing class's parameterized
@@ -78,7 +86,7 @@ class VisualFeaturesListJsonSerializer {
      * fetcher, used to fetch property values of type <code>P</code> from a
      * visual feature.
      */
-    private interface IPropertyFetcher<P> {
+    private interface IPropertyFetcher<P extends Serializable> {
 
         /**
          * Fetch the value of the property appropriate to the implementation
@@ -101,10 +109,11 @@ class VisualFeaturesListJsonSerializer {
     private static final ImmutableMap<String, IPropertySerializer<?>> SERIALIZERS_FOR_PROPERTIES = ImmutableMap
             .<String, IPropertySerializer<?>> builder()
             .put(VisualFeaturesListJsonConverter.KEY_TEMPLATES,
-                    new IPropertySerializer<List<String>>() {
+                    new IPropertySerializer<ImmutableList<String>>() {
 
                         @Override
-                        public void serializeProperty(List<String> value,
+                        public void serializeProperty(
+                                ImmutableList<String> value,
                                 JsonGenerator generator, String identifier)
                                 throws JsonGenerationException {
                             serializeListOfStrings(
@@ -129,10 +138,10 @@ class VisualFeaturesListJsonSerializer {
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_BORDER_COLOR,
-                    new IPropertySerializer<Color>() {
+                    new IPropertySerializer<SerializableColor>() {
 
                         @Override
-                        public void serializeProperty(Color value,
+                        public void serializeProperty(SerializableColor value,
                                 JsonGenerator generator, String identifier)
                                 throws JsonGenerationException {
                             serializeColor(
@@ -143,10 +152,10 @@ class VisualFeaturesListJsonSerializer {
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_FILL_COLOR,
-                    new IPropertySerializer<Color>() {
+                    new IPropertySerializer<SerializableColor>() {
 
                         @Override
-                        public void serializeProperty(Color value,
+                        public void serializeProperty(SerializableColor value,
                                 JsonGenerator generator, String identifier)
                                 throws JsonGenerationException {
                             serializeColor(
@@ -252,10 +261,10 @@ class VisualFeaturesListJsonSerializer {
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_TEXT_COLOR,
-                    new IPropertySerializer<Color>() {
+                    new IPropertySerializer<SerializableColor>() {
 
                         @Override
-                        public void serializeProperty(Color value,
+                        public void serializeProperty(SerializableColor value,
                                 JsonGenerator generator, String identifier)
                                 throws JsonGenerationException {
                             serializeColor(
@@ -315,20 +324,20 @@ class VisualFeaturesListJsonSerializer {
     private static final ImmutableMap<String, IPropertyFetcher<?>> FETCHERS_FOR_PROPERTIES = ImmutableMap
             .<String, IPropertyFetcher<?>> builder()
             .put(VisualFeaturesListJsonConverter.KEY_TEMPLATES,
-                    new IPropertyFetcher<List<String>>() {
+                    new IPropertyFetcher<ImmutableList<String>>() {
 
                         @Override
-                        public TemporallyVariantProperty<List<String>> fetchPropertyValue(
+                        public TemporallyVariantProperty<ImmutableList<String>> fetchPropertyValue(
                                 VisualFeature visualFeature) {
-                            TemporallyVariantProperty<List<VisualFeature>> features = visualFeature
+                            TemporallyVariantProperty<ImmutableList<VisualFeature>> features = visualFeature
                                     .getTemplates();
                             if (features == null) {
                                 return null;
                             }
-                            TemporallyVariantProperty<List<String>> templates = new TemporallyVariantProperty<>(
+                            TemporallyVariantProperty<ImmutableList<String>> templates = new TemporallyVariantProperty<>(
                                     convertVisualFeaturesToIdentifiers(features
                                             .getDefaultProperty()));
-                            for (Map.Entry<Range<Date>, List<VisualFeature>> entry : features
+                            for (Map.Entry<Range<Date>, ImmutableList<VisualFeature>> entry : features
                                     .getPropertiesForTimeRanges().entrySet()) {
                                 templates.addPropertyForTimeRange(
                                         entry.getKey(),
@@ -348,19 +357,19 @@ class VisualFeaturesListJsonSerializer {
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_BORDER_COLOR,
-                    new IPropertyFetcher<Color>() {
+                    new IPropertyFetcher<SerializableColor>() {
 
                         @Override
-                        public TemporallyVariantProperty<Color> fetchPropertyValue(
+                        public TemporallyVariantProperty<SerializableColor> fetchPropertyValue(
                                 VisualFeature visualFeature) {
                             return visualFeature.getBorderColor();
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_FILL_COLOR,
-                    new IPropertyFetcher<Color>() {
+                    new IPropertyFetcher<SerializableColor>() {
 
                         @Override
-                        public TemporallyVariantProperty<Color> fetchPropertyValue(
+                        public TemporallyVariantProperty<SerializableColor> fetchPropertyValue(
                                 VisualFeature visualFeature) {
                             return visualFeature.getFillColor();
                         }
@@ -429,10 +438,10 @@ class VisualFeaturesListJsonSerializer {
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_TEXT_COLOR,
-                    new IPropertyFetcher<Color>() {
+                    new IPropertyFetcher<SerializableColor>() {
 
                         @Override
-                        public TemporallyVariantProperty<Color> fetchPropertyValue(
+                        public TemporallyVariantProperty<SerializableColor> fetchPropertyValue(
                                 VisualFeature visualFeature) {
                             return visualFeature.getTextColor();
                         }
@@ -565,12 +574,12 @@ class VisualFeaturesListJsonSerializer {
             } else if (type
                     .equals(VisualFeaturesListJsonConverter.TYPE_LIST_OF_STRINGS)) {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
-                        (IPropertyFetcher<List<String>>) fetcher,
-                        (IPropertySerializer<List<String>>) serializer);
+                        (IPropertyFetcher<ImmutableList<String>>) fetcher,
+                        (IPropertySerializer<ImmutableList<String>>) serializer);
             } else if (type.equals(VisualFeaturesListJsonConverter.TYPE_COLOR)) {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
-                        (IPropertyFetcher<Color>) fetcher,
-                        (IPropertySerializer<Color>) serializer);
+                        (IPropertyFetcher<SerializableColor>) fetcher,
+                        (IPropertySerializer<SerializableColor>) serializer);
             } else if (type
                     .equals(VisualFeaturesListJsonConverter.TYPE_GEOMETRY)) {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
@@ -616,7 +625,7 @@ class VisualFeaturesListJsonSerializer {
      * @return List of identifiers, or <code>null</code> if the specified list
      *         was <code>null</code>.
      */
-    private static List<String> convertVisualFeaturesToIdentifiers(
+    private static ImmutableList<String> convertVisualFeaturesToIdentifiers(
             List<VisualFeature> features) {
         List<String> identifiers = null;
         if (features != null) {
@@ -625,7 +634,7 @@ class VisualFeaturesListJsonSerializer {
                 identifiers.add(feature.getIdentifier());
             }
         }
-        return identifiers;
+        return ImmutableList.copyOf(identifiers);
     }
 
     /**
@@ -648,10 +657,10 @@ class VisualFeaturesListJsonSerializer {
      * @throws JsonGenerationException
      *             If an error occurs during deserialization.
      */
-    private static <P> void fetchAndSerializeProperty(JsonGenerator generator,
-            VisualFeature visualFeature, String propertyName,
-            IPropertyFetcher<P> fetcher, IPropertySerializer<P> serializer)
-            throws JsonGenerationException {
+    private static <P extends Serializable> void fetchAndSerializeProperty(
+            JsonGenerator generator, VisualFeature visualFeature,
+            String propertyName, IPropertyFetcher<P> fetcher,
+            IPropertySerializer<P> serializer) throws JsonGenerationException {
 
         /*
          * Get the temporally variant property value from the visual feature; if
@@ -888,8 +897,8 @@ class VisualFeaturesListJsonSerializer {
      * @throws JsonGenerationException
      *             If an error occurs during serialization.
      */
-    private static void serializeColor(Color value, JsonGenerator generator,
-            String identifier, String propertyName)
+    private static void serializeColor(SerializableColor value,
+            JsonGenerator generator, String identifier, String propertyName)
             throws JsonGenerationException {
         try {
             if (value.equals(VisualFeature.COLOR_OF_EVENT_TYPE)) {

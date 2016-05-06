@@ -140,7 +140,7 @@ public class HazardEventMetadata {
      * 
      * @return Map of metadata keys to recommender identifiers.
      */
-    public final Map<String, String> getRcommendersTriggeredForMetadataKeys() {
+    public final Map<String, String> getRecommendersTriggeredForMetadataKeys() {
         return recommendersTriggeredForMetadataKeys;
     }
 

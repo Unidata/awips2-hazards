@@ -9,7 +9,10 @@
  */
 package gov.noaa.gsd.common.visuals;
 
+import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
+
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -36,10 +39,10 @@ import org.codehaus.jackson.type.TypeReference;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
 import com.google.common.reflect.TypeToken;
-import com.raytheon.uf.common.colormap.Color;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKTReader;
@@ -58,6 +61,11 @@ import com.vividsolutions.jts.io.WKTReader;
  * Apr 05, 2016   15676    Chris.Golden Changed to detect invalid geometries
  *                                      and to warn about time range boundaries
  *                                      that do not lie on minute boundaries.
+ * May 05, 2016   15676    Chris.Golden Added ability to be serialized to
+ *                                      support Thrift serialiation and
+ *                                      deserialization. This in turn allows
+ *                                      two H.S. instances sharing an edex
+ *                                      to see each other's stored events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -96,7 +104,7 @@ class VisualFeaturesListJsonDeserializer {
      * assigner, used to assign property values of type <code>P</code> to a
      * visual feature.
      */
-    private interface IPropertyAssigner<P> {
+    private interface IPropertyAssigner<P extends Serializable> {
 
         /**
          * Assign the specified property value to the specified visual feature.
@@ -225,11 +233,12 @@ class VisualFeaturesListJsonDeserializer {
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_BORDER_COLOR,
-                    new IPropertyDeserializer<Color>() {
+                    new IPropertyDeserializer<SerializableColor>() {
 
                         @Override
-                        public Color deserializeProperty(JsonNode node,
-                                String identifier) throws JsonParseException {
+                        public SerializableColor deserializeProperty(
+                                JsonNode node, String identifier)
+                                throws JsonParseException {
                             return deserializeColor(
                                     node,
                                     identifier,
@@ -237,11 +246,12 @@ class VisualFeaturesListJsonDeserializer {
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_FILL_COLOR,
-                    new IPropertyDeserializer<Color>() {
+                    new IPropertyDeserializer<SerializableColor>() {
 
                         @Override
-                        public Color deserializeProperty(JsonNode node,
-                                String identifier) throws JsonParseException {
+                        public SerializableColor deserializeProperty(
+                                JsonNode node, String identifier)
+                                throws JsonParseException {
                             return deserializeColor(
                                     node,
                                     identifier,
@@ -336,11 +346,12 @@ class VisualFeaturesListJsonDeserializer {
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_TEXT_COLOR,
-                    new IPropertyDeserializer<Color>() {
+                    new IPropertyDeserializer<SerializableColor>() {
 
                         @Override
-                        public Color deserializeProperty(JsonNode node,
-                                String identifier) throws JsonParseException {
+                        public SerializableColor deserializeProperty(
+                                JsonNode node, String identifier)
+                                throws JsonParseException {
                             return deserializeColor(
                                     node,
                                     identifier,
@@ -392,11 +403,11 @@ class VisualFeaturesListJsonDeserializer {
     private static final ImmutableMap<String, IPropertyAssigner<?>> ASSIGNERS_FOR_PROPERTIES = ImmutableMap
             .<String, IPropertyAssigner<?>> builder()
             .put(VisualFeaturesListJsonConverter.KEY_TEMPLATES,
-                    new IPropertyAssigner<List<String>>() {
+                    new IPropertyAssigner<ImmutableList<String>>() {
 
                         @Override
                         public void assignPropertyValue(
-                                TemporallyVariantProperty<List<String>> value,
+                                TemporallyVariantProperty<ImmutableList<String>> value,
                                 VisualFeature visualFeature) {
 
                             /*
@@ -441,21 +452,21 @@ class VisualFeaturesListJsonDeserializer {
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_BORDER_COLOR,
-                    new IPropertyAssigner<Color>() {
+                    new IPropertyAssigner<SerializableColor>() {
 
                         @Override
                         public void assignPropertyValue(
-                                TemporallyVariantProperty<Color> value,
+                                TemporallyVariantProperty<SerializableColor> value,
                                 VisualFeature visualFeature) {
                             visualFeature.setBorderColor(value);
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_FILL_COLOR,
-                    new IPropertyAssigner<Color>() {
+                    new IPropertyAssigner<SerializableColor>() {
 
                         @Override
                         public void assignPropertyValue(
-                                TemporallyVariantProperty<Color> value,
+                                TemporallyVariantProperty<SerializableColor> value,
                                 VisualFeature visualFeature) {
                             visualFeature.setFillColor(value);
                         }
@@ -531,11 +542,11 @@ class VisualFeaturesListJsonDeserializer {
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_TEXT_COLOR,
-                    new IPropertyAssigner<Color>() {
+                    new IPropertyAssigner<SerializableColor>() {
 
                         @Override
                         public void assignPropertyValue(
-                                TemporallyVariantProperty<Color> value,
+                                TemporallyVariantProperty<SerializableColor> value,
                                 VisualFeature visualFeature) {
                             visualFeature.setTextColor(value);
                         }
@@ -632,10 +643,10 @@ class VisualFeaturesListJsonDeserializer {
      * able to track the references of visual features to one another separately
      * in order to avoid cross-thread pollution.
      */
-    private static final ThreadLocal<Map<String, TemporallyVariantProperty<List<String>>>> templatesForFeatures = new ThreadLocal<Map<String, TemporallyVariantProperty<List<String>>>>() {
+    private static final ThreadLocal<Map<String, TemporallyVariantProperty<ImmutableList<String>>>> templatesForFeatures = new ThreadLocal<Map<String, TemporallyVariantProperty<ImmutableList<String>>>>() {
 
         @Override
-        protected Map<String, TemporallyVariantProperty<List<String>>> initialValue() {
+        protected Map<String, TemporallyVariantProperty<ImmutableList<String>>> initialValue() {
             return new HashMap<>();
         }
     };
@@ -816,13 +827,19 @@ class VisualFeaturesListJsonDeserializer {
                         (IPropertyAssigner<String>) assigner);
             } else if (type
                     .equals(VisualFeaturesListJsonConverter.TYPE_LIST_OF_STRINGS)) {
-                deserializeAndAssignProperty(node, visualFeature, name,
-                        (IPropertyDeserializer<List<String>>) deserializer,
-                        (IPropertyAssigner<List<String>>) assigner);
+                deserializeAndAssignProperty(
+                        node,
+                        visualFeature,
+                        name,
+                        (IPropertyDeserializer<ImmutableList<String>>) deserializer,
+                        (IPropertyAssigner<ImmutableList<String>>) assigner);
             } else if (type.equals(VisualFeaturesListJsonConverter.TYPE_COLOR)) {
-                deserializeAndAssignProperty(node, visualFeature, name,
-                        (IPropertyDeserializer<Color>) deserializer,
-                        (IPropertyAssigner<Color>) assigner);
+                deserializeAndAssignProperty(
+                        node,
+                        visualFeature,
+                        name,
+                        (IPropertyDeserializer<SerializableColor>) deserializer,
+                        (IPropertyAssigner<SerializableColor>) assigner);
             } else if (type
                     .equals(VisualFeaturesListJsonConverter.TYPE_GEOMETRY)) {
                 deserializeAndAssignProperty(node, visualFeature, name,
@@ -920,7 +937,7 @@ class VisualFeaturesListJsonDeserializer {
          * If execution has made it to this point, then no bad dependencies were
          * found. Thus, fill in the templates for the visual features.
          */
-        for (Map.Entry<String, TemporallyVariantProperty<List<String>>> entry : templatesForFeatures
+        for (Map.Entry<String, TemporallyVariantProperty<ImmutableList<String>>> entry : templatesForFeatures
                 .get().entrySet()) {
 
             /*
@@ -928,13 +945,13 @@ class VisualFeaturesListJsonDeserializer {
              * identifiers to one holding lists of visual features, and assign
              * it.
              */
-            TemporallyVariantProperty<List<String>> templateIdentifiers = entry
+            TemporallyVariantProperty<ImmutableList<String>> templateIdentifiers = entry
                     .getValue();
-            TemporallyVariantProperty<List<VisualFeature>> templates = new TemporallyVariantProperty<>(
+            TemporallyVariantProperty<ImmutableList<VisualFeature>> templates = new TemporallyVariantProperty<>(
                     convertIdentifiersToVisualFeatures(
                             templateIdentifiers.getDefaultProperty(),
                             visualFeaturesForIdentifiers));
-            for (Map.Entry<Range<Date>, List<String>> subEntry : templateIdentifiers
+            for (Map.Entry<Range<Date>, ImmutableList<String>> subEntry : templateIdentifiers
                     .getPropertiesForTimeRanges().entrySet()) {
                 templates.addPropertyForTimeRange(
                         subEntry.getKey(),
@@ -1059,7 +1076,7 @@ class VisualFeaturesListJsonDeserializer {
      * @return List of visual features, or <code>null</code> if the specified
      *         list was <code>null</code>.
      */
-    private static List<VisualFeature> convertIdentifiersToVisualFeatures(
+    private static ImmutableList<VisualFeature> convertIdentifiersToVisualFeatures(
             List<String> identifiers,
             Map<String, VisualFeature> visualFeaturesForIdentifiers) {
         List<VisualFeature> features = null;
@@ -1069,7 +1086,7 @@ class VisualFeaturesListJsonDeserializer {
                 features.add(visualFeaturesForIdentifiers.get(identifier));
             }
         }
-        return features;
+        return ImmutableList.copyOf(features);
     }
 
     /**
@@ -1092,8 +1109,8 @@ class VisualFeaturesListJsonDeserializer {
      * @throws JsonParseException
      *             If an error occurs during deserialization.
      */
-    private static <P> void deserializeAndAssignProperty(JsonNode node,
-            VisualFeature visualFeature, String propertyName,
+    private static <P extends Serializable> void deserializeAndAssignProperty(
+            JsonNode node, VisualFeature visualFeature, String propertyName,
             IPropertyDeserializer<P> deserializer, IPropertyAssigner<P> assigner)
             throws JsonParseException {
 
@@ -1443,8 +1460,8 @@ class VisualFeaturesListJsonDeserializer {
      * @throws JsonParseException
      *             If an error occurs during deserialization.
      */
-    private static Color deserializeColor(JsonNode node, String identifier,
-            String propertyName) throws JsonParseException {
+    private static SerializableColor deserializeColor(JsonNode node,
+            String identifier, String propertyName) throws JsonParseException {
 
         /*
          * If the node is a string specifying the event type color, use that.
@@ -1468,8 +1485,8 @@ class VisualFeaturesListJsonDeserializer {
              * included in the JSON object, set it to 1 if it was not explicitly
              * specified.
              */
-            Color color = VisualFeaturesListJsonConverter.CONVERTER.readValue(
-                    node, Color.class);
+            SerializableColor color = VisualFeaturesListJsonConverter.CONVERTER
+                    .readValue(node, SerializableColor.class);
             if (node.has(COLOR_KEY_ALPHA) == false) {
                 color.setAlpha(1.0f);
             }

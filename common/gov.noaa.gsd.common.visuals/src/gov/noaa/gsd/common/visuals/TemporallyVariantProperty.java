@@ -9,11 +9,16 @@
  */
 package gov.noaa.gsd.common.visuals;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeMap;
 import com.google.common.collect.TreeRangeMap;
@@ -30,19 +35,31 @@ import com.google.common.collect.TreeRangeMap;
  * Mar 26, 2016   15676    Chris.Golden Added method to set the property for
  *                                      whichever time range encompasses a
  *                                      given timestamp.
+ * May 05, 2016   15676    Chris.Golden Added ability to be serialized to
+ *                                      support Thrift serialiation and
+ *                                      deserialization. This in turn allows
+ *                                      two H.S. instances sharing an edex
+ *                                      to see each other's stored events.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-class TemporallyVariantProperty<P> {
+class TemporallyVariantProperty<P extends Serializable> implements Serializable {
+
+    // Private Static Constants
+
+    /**
+     * Serialization version UID.
+     */
+    private static final long serialVersionUID = -6512977547161493713L;
 
     // Private Variables
 
     /**
      * Default property value; may be <code>null</code>.
      */
-    private final P defaultProperty;
+    private P defaultProperty;
 
     /**
      * Map of time ranges to their corresponding property values. It may be
@@ -216,6 +233,51 @@ class TemporallyVariantProperty<P> {
     }
 
     // Private Methods
+
+    /**
+     * Write out the object for serialization purposes. This is required because
+     * {@link #propertiesForTimeRanges} is not serializable.
+     * 
+     * @param stream
+     *            Stream to which to write out the object.
+     * @throws IOException
+     *             If the object cannot be written out.
+     */
+    private void writeObject(ObjectOutputStream stream) throws IOException {
+        stream.writeObject(defaultProperty);
+        if (propertiesForTimeRanges == null) {
+            stream.writeObject(null);
+        } else {
+            ImmutableMap<Range<Date>, P> map = ImmutableMap
+                    .copyOf(propertiesForTimeRanges.asMapOfRanges());
+            stream.writeObject(map);
+        }
+    }
+
+    /**
+     * Read in the object for deserialization purposes. This is required because
+     * {@link #propertiesForTimeRanges} is not serializable.
+     * 
+     * @param stream
+     *            Stream from which to read in the object.
+     * @throws IOException
+     *             If the object cannot be read in.
+     * @throws ClassNotFoundException
+     *             If the class of a serialized object cannot be found.
+     */
+    @SuppressWarnings("unchecked")
+    private void readObject(ObjectInputStream stream) throws IOException,
+            ClassNotFoundException {
+        defaultProperty = (P) stream.readObject();
+        ImmutableMap<Range<Date>, P> map = (ImmutableMap<Range<Date>, P>) stream
+                .readObject();
+        if (map != null) {
+            propertiesForTimeRanges = TreeRangeMap.create();
+            for (Map.Entry<Range<Date>, P> entry : map.entrySet()) {
+                propertiesForTimeRanges.put(entry.getKey(), entry.getValue());
+            }
+        }
+    }
 
     /**
      * Determine whether or not two objects are equivalent while avoiding

@@ -9,13 +9,23 @@
  */
 package gov.noaa.gsd.common.visuals;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.colormap.Color;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.io.ParseException;
+import com.vividsolutions.jts.io.WKBReader;
+import com.vividsolutions.jts.io.WKBWriter;
 
 /**
  * Description: Visual feature, instances of which provide arbitrary drawable,
@@ -39,14 +49,136 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      to set the geometry for whichever time
  *                                      range encompasses a given timestamp.
  * Apr 05, 2016   15676    Chris.Golden Added toString() method for debugging.
+ * May 05, 2016   15676    Chris.Golden Added ability to be serialized to
+ *                                      support Thrift serialiation and
+ *                                      deserialization. This in turn allows
+ *                                      two H.S. instances sharing an edex
+ *                                      to see each other's stored events.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class VisualFeature {
+@DynamicSerialize
+@DynamicSerializeTypeAdapter(factory = VisualFeatureSerializationAdapter.class)
+public class VisualFeature implements Serializable {
 
-    // Private Static Classes
+    // Private Static Constants
+
+    /**
+     * Serialization version UID.
+     */
+    private static final long serialVersionUID = 9083255877893928066L;
+
+    // Package Private Static Classes
+
+    /**
+     * Serializable color.
+     */
+    static class SerializableColor extends Color implements Serializable {
+
+        // Private Static Constants
+
+        /**
+         * Serialization version UID.
+         */
+        private static final long serialVersionUID = 5319722295972192334L;
+
+        // Public Constructors
+
+        /**
+         * Construct a default instance.
+         */
+        public SerializableColor() {
+        }
+
+        /**
+         * Construct an instance that is opaque.
+         * 
+         * @param red
+         *            Red component.
+         * @param green
+         *            Green component.
+         * @param blue
+         *            Blue component.
+         */
+        public SerializableColor(float red, float green, float blue) {
+            super(red, green, blue);
+        }
+
+        /**
+         * Construct an instance.
+         * 
+         * @param red
+         *            Red component.
+         * @param green
+         *            Green component.
+         * @param blue
+         *            Blue component.
+         * @param alpha
+         *            Alpha comnponent.
+         */
+        public SerializableColor(float red, float green, float blue, float alpha) {
+            super(red, green, blue, alpha);
+        }
+
+        /**
+         * Construct an instance based upon an existing color.
+         * 
+         * @param color
+         *            Color to be copied.
+         */
+        public SerializableColor(Color color) {
+            super(color.getRed(), color.getGreen(), color.getBlue(), color
+                    .getAlpha());
+        }
+
+        // Private Methods
+
+        /**
+         * Write out the object for serialization purposes. This is required
+         * because apparently just subclassing a non-serializable class like
+         * {@link Color} with private fields, and not providing custom
+         * serialization and deserialization, causes all the fields to be set to
+         * <code>0.0</code>.
+         * 
+         * @param stream
+         *            Stream to which to write out the object.
+         * @throws IOException
+         *             If the object cannot be written out.
+         */
+        private void writeObject(ObjectOutputStream stream) throws IOException {
+            stream.writeFloat(getRed());
+            stream.writeFloat(getGreen());
+            stream.writeFloat(getBlue());
+            stream.writeFloat(getAlpha());
+        }
+
+        /**
+         * Read in the object for deserialization purposes. This is required
+         * because apparently just subclassing a non-serializable class like
+         * {@link Color} with private fields, and not providing custom
+         * serialization and deserialization, causes all the fields to be set to
+         * <code>0.0</code>.
+         * 
+         * @param stream
+         *            Stream from which to read in the object.
+         * @throws IOException
+         *             If the object cannot be read in.
+         * @throws ClassNotFoundException
+         *             If the class of a serialized object cannot be found.
+         */
+        private void readObject(ObjectInputStream stream) throws IOException,
+                ClassNotFoundException {
+            setRed(stream.readFloat());
+            setGreen(stream.readFloat());
+            setBlue(stream.readFloat());
+            setAlpha(stream.readFloat());
+        }
+
+    }
+
+    // Private Classes
 
     /**
      * Property fetcher, each instance of which is used to fetch particular
@@ -66,13 +198,102 @@ public class VisualFeature {
         P getPropertyValue(VisualFeature visualFeature, Date time);
     }
 
+    /**
+     * Serializable array of bytes.
+     */
+    private class SerializableBytes implements Serializable {
+
+        // Private Static Constants
+
+        /**
+         * Serialization version UID.
+         */
+        private static final long serialVersionUID = -5954561615947845039L;
+
+        // Private Variables
+
+        /**
+         * Array of bytes.
+         */
+        private byte[] bytes;
+
+        // Public Constructors
+
+        /**
+         * Construct an instance.
+         */
+        public SerializableBytes(byte[] bytes) {
+            this.bytes = bytes;
+        }
+
+        // Public Methods
+
+        /**
+         * Get the underlying byte array.
+         * 
+         * @return Byte array.
+         */
+        public byte[] getBytes() {
+            return bytes;
+        }
+
+        // Private Methods
+
+        /**
+         * Write out the object for serialization purposes. The length of the
+         * byte array is written, then the array itself if not zero-length.
+         * 
+         * @param stream
+         *            Stream to which to write out the object.
+         * @throws IOException
+         *             If the object cannot be written out.
+         */
+        private void writeObject(ObjectOutputStream stream) throws IOException {
+            if ((bytes == null) || (bytes.length == 0)) {
+                stream.writeInt(0);
+            } else {
+                stream.writeInt(bytes.length);
+                stream.write(bytes);
+            }
+        }
+
+        /**
+         * Read in the object for deserialization purposes. The length of the
+         * byte array is read, then the array itself if the length is not zero.
+         * 
+         * @param stream
+         *            Stream from which to read in the object.
+         * @throws IOException
+         *             If the object cannot be read in.
+         * @throws ClassNotFoundException
+         *             If the class of a serialized object cannot be found.
+         */
+        private void readObject(ObjectInputStream stream) throws IOException,
+                ClassNotFoundException {
+
+            /*
+             * Read in the length needed, and then if it is greater than zero,
+             * read in the bytes. Multiple passes may be needed to read in the
+             * entire buffer, as the stream's read() methods are not guaranteed
+             * to return all the bytes in one pass.
+             */
+            int length = stream.readInt();
+            bytes = new byte[length];
+            if (length > 0) {
+                for (int count = 0, thisCount = 0; count < length; count += thisCount) {
+                    thisCount = stream.read(bytes, count, length - count);
+                }
+            }
+        }
+    }
+
     // Public Static Constants
 
     /**
      * Special color indicating that the event type's color should be used.
      */
-    public static final Color COLOR_OF_EVENT_TYPE = new Color(-1.0f, -1.0f,
-            -1.0f);
+    public static final SerializableColor COLOR_OF_EVENT_TYPE = new SerializableColor(
+            -1.0f, -1.0f, -1.0f);
 
     /**
      * Special double value indicating that a value appropriate to an event type
@@ -89,13 +310,14 @@ public class VisualFeature {
     /**
      * Default border color.
      */
-    public static final Color DEFAULT_BORDER_COLOR = new Color(1.0f, 1.0f, 1.0f);
+    public static final SerializableColor DEFAULT_BORDER_COLOR = new SerializableColor(
+            1.0f, 1.0f, 1.0f);
 
     /**
      * Default fill color.
      */
-    public static final Color DEFAULT_FILL_COLOR = new Color(0.0f, 0.0f, 0.0f,
-            0.0f);
+    public static final SerializableColor DEFAULT_FILL_COLOR = new SerializableColor(
+            0.0f, 0.0f, 0.0f, 0.0f);
 
     /**
      * Default border thickness.
@@ -130,7 +352,8 @@ public class VisualFeature {
     /**
      * Default text color.
      */
-    public static final Color DEFAULT_TEXT_COLOR = new Color(1.0f, 1.0f, 1.0f);
+    public static final SerializableColor DEFAULT_TEXT_COLOR = new SerializableColor(
+            1.0f, 1.0f, 1.0f);
 
     /**
      * Default drag capability.
@@ -165,11 +388,12 @@ public class VisualFeature {
     /**
      * Border color fetcher.
      */
-    private static final IPropertyFetcher<Color> BORDER_COLOR_FETCHER = new IPropertyFetcher<Color>() {
+    private static final IPropertyFetcher<SerializableColor> BORDER_COLOR_FETCHER = new IPropertyFetcher<SerializableColor>() {
 
         @Override
-        public Color getPropertyValue(VisualFeature visualFeature, Date time) {
-            TemporallyVariantProperty<Color> property = visualFeature
+        public SerializableColor getPropertyValue(VisualFeature visualFeature,
+                Date time) {
+            TemporallyVariantProperty<SerializableColor> property = visualFeature
                     .getBorderColor();
             return (property == null ? null : property.getProperty(time));
         }
@@ -178,11 +402,12 @@ public class VisualFeature {
     /**
      * Fill color fetcher.
      */
-    private static final IPropertyFetcher<Color> FILL_COLOR_FETCHER = new IPropertyFetcher<Color>() {
+    private static final IPropertyFetcher<SerializableColor> FILL_COLOR_FETCHER = new IPropertyFetcher<SerializableColor>() {
 
         @Override
-        public Color getPropertyValue(VisualFeature visualFeature, Date time) {
-            TemporallyVariantProperty<Color> property = visualFeature
+        public SerializableColor getPropertyValue(VisualFeature visualFeature,
+                Date time) {
+            TemporallyVariantProperty<SerializableColor> property = visualFeature
                     .getFillColor();
             return (property == null ? null : property.getProperty(time));
         }
@@ -283,11 +508,12 @@ public class VisualFeature {
     /**
      * Text color fetcher.
      */
-    private static final IPropertyFetcher<Color> TEXT_COLOR_FETCHER = new IPropertyFetcher<Color>() {
+    private static final IPropertyFetcher<SerializableColor> TEXT_COLOR_FETCHER = new IPropertyFetcher<SerializableColor>() {
 
         @Override
-        public Color getPropertyValue(VisualFeature visualFeature, Date time) {
-            TemporallyVariantProperty<Color> property = visualFeature
+        public SerializableColor getPropertyValue(VisualFeature visualFeature,
+                Date time) {
+            TemporallyVariantProperty<SerializableColor> property = visualFeature
                     .getTextColor();
             return (property == null ? null : property.getProperty(time));
         }
@@ -333,12 +559,44 @@ public class VisualFeature {
         }
     };
 
+    // Private Static Variables
+
+    /**
+     * Well-Known Binary reader, used for deserializing geometries. It is
+     * thread-local because <code>WKBReader</code> is not explicitly declared to
+     * be thread-safe. This class's static methods may be called simultaneously
+     * by multiple threads, and each thread must be able to deserialize
+     * geometries separately in order to avoid cross-thread pollution.
+     */
+    private static final ThreadLocal<WKBReader> wkbReader = new ThreadLocal<WKBReader>() {
+
+        @Override
+        protected WKBReader initialValue() {
+            return new WKBReader();
+        }
+    };
+
+    /**
+     * Well-Known Binary writer, used for serializing geometries. It is
+     * thread-local because <code>WKBWriter</code> is not explicitly declared to
+     * be thread-safe. This class's static methods may be called simultaneously
+     * by multiple threads, and each thread must be able to serialize geometries
+     * separately in order to avoid cross-thread pollution.
+     */
+    private static final ThreadLocal<WKBWriter> wkbWriter = new ThreadLocal<WKBWriter>() {
+
+        @Override
+        protected WKBWriter initialValue() {
+            return new WKBWriter();
+        }
+    };
+
     // Private Variables
 
     /**
      * Identifier of this feature.
      */
-    private final String identifier;
+    private String identifier;
 
     /**
      * List of visual features to be treated as templates for this feature, in
@@ -354,7 +612,7 @@ public class VisualFeature {
      * constitute a circular dependency.
      * </p>
      */
-    private TemporallyVariantProperty<List<VisualFeature>> templates;
+    private TemporallyVariantProperty<ImmutableList<VisualFeature>> templates;
 
     /**
      * Geometry; may be <code>null</code>.
@@ -364,12 +622,12 @@ public class VisualFeature {
     /**
      * Border color; may be <code>null</code>.
      */
-    private TemporallyVariantProperty<Color> borderColor;
+    private TemporallyVariantProperty<SerializableColor> borderColor;
 
     /**
      * Fill color; may be <code>null</code>.
      */
-    private TemporallyVariantProperty<Color> fillColor;
+    private TemporallyVariantProperty<SerializableColor> fillColor;
 
     /**
      * Border thickness in pixels; may be <code>null</code>.
@@ -410,7 +668,7 @@ public class VisualFeature {
     /**
      * Text color; may be <code>null</code>.
      */
-    private TemporallyVariantProperty<Color> textColor;
+    private TemporallyVariantProperty<SerializableColor> textColor;
 
     /**
      * Drag capability; may be <code>null</code>.
@@ -864,7 +1122,7 @@ public class VisualFeature {
      * 
      * @return List of visual features; may be <code>null</code>.
      */
-    TemporallyVariantProperty<List<VisualFeature>> getTemplates() {
+    TemporallyVariantProperty<ImmutableList<VisualFeature>> getTemplates() {
         return templates;
     }
 
@@ -882,7 +1140,7 @@ public class VisualFeature {
      * 
      * @return Border color; may be <code>null</code>.
      */
-    TemporallyVariantProperty<Color> getBorderColor() {
+    TemporallyVariantProperty<SerializableColor> getBorderColor() {
         return borderColor;
     }
 
@@ -891,7 +1149,7 @@ public class VisualFeature {
      * 
      * @return Fill color; may be <code>null</code>.
      */
-    TemporallyVariantProperty<Color> getFillColor() {
+    TemporallyVariantProperty<SerializableColor> getFillColor() {
         return fillColor;
     }
 
@@ -964,7 +1222,7 @@ public class VisualFeature {
      * 
      * @return Text color; may be <code>null</code>.
      */
-    TemporallyVariantProperty<Color> getTextColor() {
+    TemporallyVariantProperty<SerializableColor> getTextColor() {
         return textColor;
     }
 
@@ -1005,7 +1263,8 @@ public class VisualFeature {
      * @param templates
      *            New value; may be <code>null</code>.
      */
-    void setTemplates(TemporallyVariantProperty<List<VisualFeature>> templates) {
+    void setTemplates(
+            TemporallyVariantProperty<ImmutableList<VisualFeature>> templates) {
         this.templates = templates;
     }
 
@@ -1025,7 +1284,7 @@ public class VisualFeature {
      * @param borderColor
      *            New value; may be <code>null</code>.
      */
-    void setBorderColor(TemporallyVariantProperty<Color> borderColor) {
+    void setBorderColor(TemporallyVariantProperty<SerializableColor> borderColor) {
         this.borderColor = borderColor;
     }
 
@@ -1035,7 +1294,7 @@ public class VisualFeature {
      * @param fillColor
      *            New value; may be <code>null</code>.
      */
-    void setFillColor(TemporallyVariantProperty<Color> fillColor) {
+    void setFillColor(TemporallyVariantProperty<SerializableColor> fillColor) {
         this.fillColor = fillColor;
     }
 
@@ -1117,7 +1376,7 @@ public class VisualFeature {
      * @param textColor
      *            New value; may be <code>null</code>.
      */
-    void setTextColor(TemporallyVariantProperty<Color> textColor) {
+    void setTextColor(TemporallyVariantProperty<SerializableColor> textColor) {
         this.textColor = textColor;
     }
 
@@ -1153,6 +1412,139 @@ public class VisualFeature {
     }
 
     // Private Methods
+
+    /**
+     * Write out the object for serialization purposes. This is required because
+     * the {@link Geometry} objects found within {@link #geometry} cannot easily
+     * be deserialized (sometimes resulting in
+     * <code>ClassNotFoundException</code> being thrown).
+     * 
+     * @param stream
+     *            Stream to which to write out the object.
+     * @throws IOException
+     *             If the object cannot be written out.
+     */
+    private void writeObject(ObjectOutputStream stream) throws IOException {
+
+        /*
+         * Perform standard serialization for most of the components of this
+         * object.
+         */
+        stream.writeObject(identifier);
+        stream.writeObject(templates);
+        stream.writeObject(borderColor);
+        stream.writeObject(fillColor);
+        stream.writeObject(borderThickness);
+        stream.writeObject(borderStyle);
+        stream.writeObject(diameter);
+        stream.writeObject(label);
+        stream.writeObject(textOffsetLength);
+        stream.writeObject(textOffsetDirection);
+        stream.writeObject(textSize);
+        stream.writeObject(textColor);
+        stream.writeObject(dragCapability);
+        stream.writeObject(rotatable);
+        stream.writeObject(scaleable);
+
+        /*
+         * Convert all Geometry objects to arrays of bytes in Well-Known Binary
+         * format, then write out the resulting container object.
+         */
+        if (geometry == null) {
+            stream.writeObject(null);
+        } else {
+            WKBWriter writer = wkbWriter.get();
+            Geometry defaultGeom = geometry.getDefaultProperty();
+            SerializableBytes bytes = null;
+            if (defaultGeom != null) {
+                bytes = new SerializableBytes(writer.write(defaultGeom));
+            }
+            TemporallyVariantProperty<SerializableBytes> semiSerializedGeometry = new TemporallyVariantProperty<>(
+                    bytes);
+            for (Map.Entry<Range<Date>, Geometry> entry : geometry
+                    .getPropertiesForTimeRanges().entrySet()) {
+                semiSerializedGeometry.addPropertyForTimeRange(entry.getKey(),
+                        new SerializableBytes(writer.write(entry.getValue())));
+            }
+            stream.writeObject(semiSerializedGeometry);
+        }
+    }
+
+    /**
+     * Read in the object for deserialization purposes. This is required because
+     * the {@link Geometry} objects found within {@link #geometry} cannot easily
+     * be deserialized (sometimes resulting in
+     * <code>ClassNotFoundException</code> being thrown).
+     * 
+     * @param stream
+     *            Stream from which to read in the object.
+     * @throws IOException
+     *             If the object cannot be read in.
+     * @throws ClassNotFoundException
+     *             If the class of a serialized object cannot be found.
+     */
+    @SuppressWarnings("unchecked")
+    private void readObject(ObjectInputStream stream) throws IOException,
+            ClassNotFoundException {
+
+        /*
+         * Perform standard deserialization for most of the components of this
+         * object.
+         */
+        identifier = (String) stream.readObject();
+        templates = (TemporallyVariantProperty<ImmutableList<VisualFeature>>) stream
+                .readObject();
+        borderColor = (TemporallyVariantProperty<SerializableColor>) stream
+                .readObject();
+        fillColor = (TemporallyVariantProperty<SerializableColor>) stream
+                .readObject();
+        borderThickness = (TemporallyVariantProperty<Double>) stream
+                .readObject();
+        borderStyle = (TemporallyVariantProperty<BorderStyle>) stream
+                .readObject();
+        diameter = (TemporallyVariantProperty<Double>) stream.readObject();
+        label = (TemporallyVariantProperty<String>) stream.readObject();
+        textOffsetLength = (TemporallyVariantProperty<Double>) stream
+                .readObject();
+        textOffsetDirection = (TemporallyVariantProperty<Double>) stream
+                .readObject();
+        textSize = (TemporallyVariantProperty<Integer>) stream.readObject();
+        textColor = (TemporallyVariantProperty<SerializableColor>) stream
+                .readObject();
+        dragCapability = (TemporallyVariantProperty<DragCapability>) stream
+                .readObject();
+        rotatable = (TemporallyVariantProperty<Boolean>) stream.readObject();
+        scaleable = (TemporallyVariantProperty<Boolean>) stream.readObject();
+
+        /*
+         * Read in the container object holding the geometries in Well-Known
+         * Binary format, then convert the latter to Geometry objects in a new
+         * container object.
+         */
+        TemporallyVariantProperty<SerializableBytes> semiSerializedGeometry = (TemporallyVariantProperty<SerializableBytes>) stream
+                .readObject();
+        if (semiSerializedGeometry == null) {
+            geometry = null;
+        } else {
+            try {
+                WKBReader reader = wkbReader.get();
+                SerializableBytes bytes = semiSerializedGeometry
+                        .getDefaultProperty();
+                Geometry defaultGeom = null;
+                if (bytes != null) {
+                    defaultGeom = reader.read(bytes.getBytes());
+                }
+                geometry = new TemporallyVariantProperty<>(defaultGeom);
+                for (Map.Entry<Range<Date>, SerializableBytes> entry : semiSerializedGeometry
+                        .getPropertiesForTimeRanges().entrySet()) {
+                    geometry.addPropertyForTimeRange(entry.getKey(),
+                            reader.read(entry.getValue().getBytes()));
+                }
+            } catch (ParseException e) {
+                throw new IOException("could not read in geometry", e);
+            }
+        }
+    }
 
     /**
      * Compare the specified objects to see if they are equivalent, or are both
