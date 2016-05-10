@@ -78,6 +78,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * Apr 10, 2015 6898       Chris.Cody   Removed all messaging from data object.
  * May 28, 2015 8401       Chris.Cody   Correct Hazard Filtering issue
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * May 10, 2016 18515      Chris.Golden Added "deselect after issuing" flag.
  * </pre>
  * 
  * @author bsteffen
@@ -271,6 +272,11 @@ public class ObservedSettings implements ISettings {
     }
 
     @Override
+    public Boolean getDeselectAfterIssuing() {
+        return delegate.getDeselectAfterIssuing();
+    }
+
+    @Override
     public Tool getTool(String toolName) {
         return delegate.getTool(toolName);
     }
@@ -371,6 +377,11 @@ public class ObservedSettings implements ISettings {
         setPerspectiveIDs(perspectiveIDs, true, Originator.OTHER);
     }
 
+    @Override
+    public void setDeselectAfterIssuing(Boolean deselectAfterIssuing) {
+        setDeselectAfterIssuing(deselectAfterIssuing, true, Originator.OTHER);
+    }
+
     /**
      * Copy all settings from another Settings object into this one.
      * 
@@ -398,6 +409,8 @@ public class ObservedSettings implements ISettings {
         setAddGeometryToSelected(other.getAddGeometryToSelected(), false,
                 originator);
         setEventIdDisplayType(other.getEventIdDisplayType(), false, originator);
+        setDeselectAfterIssuing(other.getDeselectAfterIssuing(), false,
+                originator);
         if (idChanged) {
             settingsChangedIdentifier(true, originator);
         } else {
@@ -494,6 +507,12 @@ public class ObservedSettings implements ISettings {
             setEventIdDisplayType(update.getEventIdDisplayType(), false, null);
             notify = true;
         }
+        if (!changed(getDeselectAfterIssuing(),
+                persisted.getDeselectAfterIssuing())) {
+            setDeselectAfterIssuing(update.getDeselectAfterIssuing(), false,
+                    null);
+            notify = true;
+        }
 
         if (notify) {
             if (idChanged) {
@@ -584,6 +603,11 @@ public class ObservedSettings implements ISettings {
     public void setPerspectiveIDs(Set<String> perspectiveIDs,
             IOriginator originator) {
         setPerspectiveIDs(perspectiveIDs, true, originator);
+    }
+
+    public void setDeselectAfterIssuing(Boolean deselectAfterIssuing,
+            IOriginator originator) {
+        setDeselectAfterIssuing(deselectAfterIssuing, true, originator);
     }
 
     protected void setSettingsID(String settingsID, boolean notify,
@@ -727,6 +751,14 @@ public class ObservedSettings implements ISettings {
             boolean notify, IOriginator originator) {
         if (changed(perspectiveIDs, getPerspectiveIDs())) {
             delegate.setPerspectiveIDs(getSetCopy(perspectiveIDs));
+            settingsChanged(notify, originator);
+        }
+    }
+
+    public void setDeselectAfterIssuing(Boolean deselectAfterIssuing,
+            boolean notify, IOriginator originator) {
+        if (changed(deselectAfterIssuing, getDeselectAfterIssuing())) {
+            delegate.setDeselectAfterIssuing(deselectAfterIssuing);
             settingsChanged(notify, originator);
         }
     }

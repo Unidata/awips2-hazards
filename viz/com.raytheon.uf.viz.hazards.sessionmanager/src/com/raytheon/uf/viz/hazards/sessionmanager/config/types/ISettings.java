@@ -26,6 +26,7 @@ import java.util.Set;
  * Jan 29, 2015    4375    Dan Schaffer Console initiation of RVS product generation
  * Feb 23, 2015    3618    Chris.Golden Added possible sites to settings.
  * Aug 03, 2015    8836    Chris.Cody   Changes for a configurable Event Id
+ * May 10, 2016   18515    Chris.Golden Added "deselect after issuing" flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -113,4 +114,8 @@ public interface ISettings {
     public String getEventIdDisplayType();
 
     public void setEventIdDisplayType(String eventIdDisplayType);
+
+    public Boolean getDeselectAfterIssuing();
+
+    public void setDeselectAfterIssuing(Boolean deselectAfterIssuing);
 }

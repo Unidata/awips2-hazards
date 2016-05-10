@@ -82,6 +82,14 @@ import com.vividsolutions.jts.geom.Geometry;
  * Mar 01, 2016 15676      Chris.Golden Added visual features to hazard event.
  * Mar 26, 2016 15676      Chris.Golden Added more methods to get and set
  *                                      individual visual features.
+ * May 10, 2016 18515      Chris.Golden Fixed bug that caused duplicate-key hazard
+ *                                      attributes to be kept around, so that a
+ *                                      particular key (e.g. "cta") might have
+ *                                      two or more entries in the attributes
+ *                                      set, each with a different value. This
+ *                                      same bug also caused attributes that were
+ *                                      supposedly removed from the event to not
+ *                                      actually be removed.
  * </pre>
  * 
  * @author mnash
@@ -593,6 +601,16 @@ public class HazardEvent implements IHazardEvent, IValidator {
      */
     @Override
     public void addHazardAttribute(final String key, final Serializable value) {
+
+        /*
+         * Remove the old hazard attribute first, since given that the
+         * attributes are a set of HazardAttribute objects, and HazardAttribute
+         * does not implement equals() and hashCode() to only consider the key
+         * of the object, adding one here will probably cause two hazard
+         * attributes with the same key but different values to be left in the
+         * set otherwise.
+         */
+        removeHazardAttribute(key);
         this.attributes.add(new HazardAttribute(eventID, key, value));
 
     }
@@ -623,7 +641,16 @@ public class HazardEvent implements IHazardEvent, IValidator {
      */
     @Override
     public void removeHazardAttribute(String key) {
-        attributes.remove(key);
+        HazardAttribute attributeToRemove = null;
+        for (HazardAttribute attribute : attributes) {
+            if (attribute.getKey().equals(key)) {
+                attributeToRemove = attribute;
+                break;
+            }
+        }
+        if (attributeToRemove != null) {
+            attributes.remove(attributeToRemove);
+        }
     }
 
     @Override

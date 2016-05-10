@@ -368,6 +368,8 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      simplified the code handling an event's time range boundaries when
  *                                      said event is issued.
  * May 04, 2016   18411    Chris.Golden Changed to persist reissued hazard events to the database.
+ * May 10, 2016   18515    Chris.Golden Changed to optionally deselect a hazard event after the latter is
+ *                                      issued, if the current setting specifies this option.
  * </pre>
  * 
  * @author bsteffen
@@ -1259,6 +1261,21 @@ public class SessionEventManager implements
                             oEvent.setStatus(HazardStatus.ENDED);
                         } else if (hazardStatus.equals(HazardStatus.ISSUED)) {
                             wasReissued = true;
+                        }
+
+                        /*
+                         * TODO: Allow product generators to specify whether the
+                         * (re)issued events are to be selected or not. For now,
+                         * just select or deselect them based upon the current
+                         * setting (Redmine issue #18515).
+                         */
+                        if ((wasPreIssued || wasReissued)
+                                && Boolean.TRUE.equals(configManager
+                                        .getSettings()
+                                        .getDeselectAfterIssuing())) {
+                            oEvent.addHazardAttribute(
+                                    HazardConstants.HAZARD_EVENT_SELECTED,
+                                    false);
                         }
 
                         /*

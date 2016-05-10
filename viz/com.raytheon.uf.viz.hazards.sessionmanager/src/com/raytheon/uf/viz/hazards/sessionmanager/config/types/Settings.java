@@ -51,6 +51,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Feb 23, 2015 3618       Chris.Golden Added possible sites to settings.
  * May 18, 2015 8227       Chris.Cody   Remove NullRecommender
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * May 10, 2016 18515      Chris.Golden Added "deselect after issuing" flag.
  * </pre>
  * 
  * @author bsteffen
@@ -171,6 +172,8 @@ public class Settings implements ISettings {
      */
     private String eventIdDisplayType;
 
+    private Boolean deselectAfterIssuing;
+
     public Settings() {
 
     }
@@ -204,6 +207,7 @@ public class Settings implements ISettings {
         setAddGeometryToSelected(other.getAddGeometryToSelected());
         setPerspectiveIDs(other.getPerspectiveIDs());
         setEventIdDisplayType(other.getEventIdDisplayType());
+        setDeselectAfterIssuing(other.getDeselectAfterIssuing());
     }
 
     @Override
@@ -384,6 +388,16 @@ public class Settings implements ISettings {
     @Override
     public void setEventIdDisplayType(String eventIdDisplayType) {
         this.eventIdDisplayType = eventIdDisplayType;
+    }
+
+    @Override
+    public Boolean getDeselectAfterIssuing() {
+        return deselectAfterIssuing;
+    }
+
+    @Override
+    public void setDeselectAfterIssuing(Boolean deselectAfterIssuing) {
+        this.deselectAfterIssuing = deselectAfterIssuing;
     }
 
     @Override

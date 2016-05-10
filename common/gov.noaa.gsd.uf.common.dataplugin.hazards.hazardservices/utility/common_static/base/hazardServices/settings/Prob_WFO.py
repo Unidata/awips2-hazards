@@ -25,6 +25,8 @@ Prob_WFO = {
     "possibleSites": ["National"],
     "visibleSites": ["National"],
     
+    "deselectAfterIssuing": True,
+    
     "visibleTypes": [
         "Prob_Tornado",
         "Prob_Severe",
