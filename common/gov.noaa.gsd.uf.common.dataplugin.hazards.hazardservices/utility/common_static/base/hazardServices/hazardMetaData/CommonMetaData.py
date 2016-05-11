@@ -34,6 +34,7 @@ from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
 from com.raytheon.uf.common.hazards.hydro import RiverForecastGroup
 from RiverForecastUtils import *
 
+from ProbUtils import ProbUtils
 import numpy as np
 import datetime, math
 
@@ -60,6 +61,7 @@ class MetaData(object):
         self._riverForecastUtils = None
         self._riverForecastManager = None
         self._riverForecastPoint = None
+        self._probUtils = ProbUtils()
 
     def editableWhenNew(self):
         return self.hazardStatus == "pending"
@@ -2083,27 +2085,7 @@ class MetaData(object):
                 return v
 
         return { "red": 1, "green": 1, "blue": 1 }
-        
-    def _calcEventDuration(self):
-        startTime = self._roundTime(self.hazardEvent.getStartTime())
-        endTime = self._roundTime(self.hazardEvent.getEndTime())
-        durationMinutes = int((endTime-startTime).total_seconds()/60)
-        return durationMinutes
-    
-    def _roundTime(self, dt=None, dateDelta=datetime.timedelta(minutes=1)):
-        """Round a datetime object to a multiple of a timedelta
-        dt : datetime.datetime object, default now.
-        dateDelta : timedelta object, we round to a multiple of this, default 1 minute.
-        Author: Thierry Husson 2012 - Use it as you want but don't blame me.
-                Stijn Nevens 2014 - Changed to use only datetime objects as variables
-        """
-        roundTo = dateDelta.total_seconds()    
-        if dt is None : dt = datetime.datetime.now()
-        seconds = (dt - dt.min).seconds
-        # // is a floor division, not a comment on following line:
-        rounding = (seconds+roundTo/2) // roundTo * roundTo
-        return dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)
-           
+                      
     def _getConvectiveProbabilityTrend(self):
 
         trends = {
@@ -2161,24 +2143,12 @@ class MetaData(object):
 
                        ]
         }
-
         
-        probVals = []
-        duration = self._calcEventDuration()
         probInc = 5
-        ### Round up for some context
-        for i in range(0, duration+1, probInc):
-#        for i in range(0, duration+probInc+1, probInc):
-            y = 100-(i*100/int(duration))
-            y = 0 if i >= duration else y
-            editable = True if y != 0 else False
-            #editable = 1 if y != 0 else 0
-            probVals.append({"x":i, "y":y, "editable": editable})
-            
+        self.hazardEvent.set('convectiveProbabilityTrendIncrement', probInc)
+        graphProbs = self._probUtils._getGraphProbs(self.hazardEvent)  
         colors = [self._getProbTrendColor(y) for y in range(0,100, 20)]
         
-        
-
         probs = {
             "fieldType": "Composite",
             "fieldName": "convectiveProbGroup",
@@ -2237,7 +2207,7 @@ class MetaData(object):
                         "modifyRecommender": "SwathRecommender",
                         "sendEveryChange":False,
                         "yColors": colors,
-                        "values": probVals,
+                        "values": graphProbs,
                         }
                     ]
             }

@@ -80,7 +80,7 @@ class Recommender(RecommenderTemplate.Recommender):
             Column10: mean motion east, in m/s (float)
             Column11: mean motion south, in m/s (float)
         """
-
+        self._probUtils = ProbUtils()
     #===========================================================================
     # def defineSpatialInfo(self):
     #     '''
@@ -354,24 +354,24 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def setEventTimes(self, event, values):
         psStartTime = values.pop('startTime')
-        event.set('probSevereStartTime', self._getMillis(psStartTime))
+        event.set('probSevereStartTime', self._probUtils._getMillis(psStartTime))
         psEndTime = psStartTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
-        event.set('probSevereEndTime', self._getMillis(psEndTime)) 
+        event.set('probSevereEndTime', self._probUtils._getMillis(psEndTime)) 
         
         #  Set the start / end times of the new event
         #     (Kind of klunky due to the methods we have for rounding)
         #  We set the event start time to the probSevereStartTime and then round it
         #  Similarly for the end time. 
         event.setStartTime(psStartTime)
-        startTime = self._roundTime(event.getStartTime()) 
+        startTime = self._probUtils._roundTime(event.getStartTime()) 
         event.setStartTime(startTime)
         
         endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
         event.setEndTime(endTime)
-        endTime = self._roundTime(event.getEndTime())                
+        endTime = self._probUtils._roundTime(event.getEndTime())                
         event.setEndTime(endTime)
         
-#         startTime = self._roundTime(currentTime) 
+#         startTime = self._probUtils._roundTime(currentTime) 
 #         endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
 #         event.setStartTime(startTime)
 #         event.setEndTime(endTime)
@@ -497,27 +497,7 @@ class Recommender(RecommenderTemplate.Recommender):
         self.flush()
         return newDict
 
-                            
-    def _roundTime(self, dt=None, dateDelta=datetime.timedelta(minutes=1)):
-        """Round a datetime object to a multiple of a timedelta
-        dt : datetime.datetime object, default now.
-        dateDelta : timedelta object, we round to a multiple of this, default 1 minute.
-        Author: Thierry Husson 2012 - Use it as you want but don't blame me.
-                Stijn Nevens 2014 - Changed to use only datetime objects as variables
-        """
-        roundTo = dateDelta.total_seconds()
-    
-        if dt == None : dt = datetime.datetime.now()
-        seconds = (dt - dt.min).seconds
-        # // is a floor division, not a comment on following line:
-        rounding = (seconds+roundTo/2) // roundTo * roundTo
-        return dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)
-    
-    def _getMillis(self, dt):
-        epoch = datetime.datetime.utcfromtimestamp(0)
-        delta = dt - epoch
-        return delta.total_seconds() * 1000.0
-
+                                
     def flush(self):
         import os
         os.sys.__stdout__.flush()

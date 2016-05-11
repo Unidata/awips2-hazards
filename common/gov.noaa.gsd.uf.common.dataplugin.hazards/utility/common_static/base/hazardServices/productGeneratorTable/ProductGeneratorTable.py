@@ -25,7 +25,7 @@ ProductGeneratorTable = {
              ('Prob_Rainfall.High',"Prob"),
              ],
             "previewFormatters": ["ProbabilisticFormatter"],
-            "issueFormatters": ["ProbabilisticFormatter"],
+            "issueFormatters": [],
             "generatorType": "HAZARD_PRODUCT_GENERATOR",                                                
         },
                          
@@ -40,7 +40,7 @@ ProductGeneratorTable = {
              ('Prob_Convection.High',"Prob"),
              ],
             "previewFormatters": ["ProbabilisticFormatter"],
-            "issueFormatters": ["ProbabilisticFormatter"],
+            "issueFormatters": [],
             "generatorType": "HAZARD_PRODUCT_GENERATOR",                                                
         },
 
@@ -50,7 +50,7 @@ ProductGeneratorTable = {
              ('Prob_Severe',"Prob"),
              ],
             "previewFormatters": ["ProbabilisticFormatter"],
-            "issueFormatters": ["ProbabilisticFormatter"],
+            "issueFormatters": [],
             "generatorType": "HAZARD_PRODUCT_GENERATOR",                                                
         },
 
@@ -64,7 +64,7 @@ ProductGeneratorTable = {
             #('VASIGMET.W.Eruption', 'Aviation'),    
             ],
             "previewFormatters": ["Legacy_SIGMET_Formatter"],
-            "issueFormatters": ["Legacy_SIGMET_Formatter"],
+            "issueFormatters": [],
         },               
                          
         # WFO Legacy                                           

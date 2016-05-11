@@ -135,8 +135,8 @@ class Recommender(RecommenderTemplate.Recommender):
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'SwathRecommender', level=logging.INFO))
         self.logger.setLevel(logging.INFO)
+        self._probUtils = ProbUtils()
         
-
     def defineScriptMetadata(self):
         '''
         @return: A dictionary containing information about this
@@ -189,11 +189,19 @@ class Recommender(RecommenderTemplate.Recommender):
         self._setPrintFlags()
         self._printEventSet("\nRunning SwathRecommender", eventSet, eventLevel=1)
                 
+        t1 = time.time()
+        
         self.sp = SwathPreset()        
         eventSetAttrs = eventSet.getAttributes()
         trigger = eventSetAttrs.get('trigger')
         self._currentTime = long(eventSetAttrs.get("currentTime"))
-        self._latestDataLayerTime = eventSetAttrs.get("latestDataLayerTime", self._currentTime)
+        
+        self._latestDataLayerTime = self._probUtils._roundTime_ms(
+                    eventSetAttrs.get("latestDataLayerTime", self._currentTime))
+        print 'latestDataLayerTime', self._probUtils._displayMsTime(self._latestDataLayerTime)
+        print 'currentTime', self._probUtils._displayMsTime(self._currentTime)
+        self.flush()
+        
         self._attributeIdentifiers = eventSetAttrs.get('attributeIdentifiers')
 
         resultEventSet = EventSetFactory.createEventSet(None)
@@ -219,13 +227,18 @@ class Recommender(RecommenderTemplate.Recommender):
 
             # Event Bookkeeping
             self._pendingHazard = event.getStatus() in ["PENDING", "POTENTIAL"] 
+            self._selectedHazard = event.get('selected')
+            print "SR Event status", event.getStatus()
+            print "SR Event selected", event.get('selected')
+            self.flush()
+            
             self._initializeEvent(event)                      
             if eventSetAttrs.get('origin') == 'user':
                 self._setUserOwned(event)
                        
             # Data Layer Update 
             if trigger == 'dataLayerUpdate':
-                self._processDataLayerUpdate(event)
+                self._processDataLayerUpdate(event, eventSetAttrs)
                 resultEventSet.add(event)
                 continue
                         
@@ -237,12 +250,19 @@ class Recommender(RecommenderTemplate.Recommender):
                 resultEventSet.add(event)
             if changed:
                 resultEventSet.add(event)  
-                                                                        
+        
+        print '\n\t=== SwathRecommender:', time.time()-t1
+        self.flush()
         return resultEventSet    
     
-    def _processDataLayerUpdate(self, event):    
-        self._setStartTime(event, self._latestDataLayerTime)                
-        self._advanceDownstreamPolys(event)  
+    def _processDataLayerUpdate(self, event, eventSetAttrs):    
+        self._moveStartTime(event, self._latestDataLayerTime)                
+        self._advanceDownstreamPolys(event)
+        self._createIntervalPolys(event, eventSetAttrs, timeDirection="downstream")            
+        if self._pendingHazard:
+            self._createIntervalPolys(event, eventSetAttrs, timeDirection="upstream")  
+        graphProbs = self._probUtils._getGraphProbs(event)
+        event.set('convectiveProbTrendGraph', graphProbs)
         self._setVisualFeatures(event)   
         
     def _processBeginGraphDraw(self, event, trigger):
@@ -286,15 +306,14 @@ class Recommender(RecommenderTemplate.Recommender):
         if event.get('objectID') and not event.get('objectID').startswith('M'):
             event.set('objectID',  'M' + event.get('objectID'))
 
-    def _setStartTime(self, event, startMS):
-        ### get duration (in seconds)
+    def _moveStartTime(self, event, startMS):
         event.setStartTime(datetime.datetime.fromtimestamp(startMS/1000))
-        if self._pendingHazard:
-            durationSecs = int(round((event.getEndTime()-event.getStartTime()).total_seconds()))
+        if True: # self._pendingHazard or self._selectedHazard:  # move end time with start time changes
+            durationSecs = self._probUtils._getDurationSecs(event)
             endMS = startMS+(durationSecs*1000)
-            event.setEndTime(datetime.datetime.fromtimestamp(endMS/1000))
-        self._roundEventTimes(event)
-        self._eventSt_ms = long(self._datetimeToMs(event.getStartTime()))
+            event.setEndTime(datetime.datetime.fromtimestamp(endMS/1000))            
+        self._probUtils._roundEventTimes(event)
+        self._eventSt_ms = long(self._probUtils._datetimeToMs(event.getStartTime()))
                 
     ##############################################
     # Downstream and current polygon bookkeeping #
@@ -304,16 +323,16 @@ class Recommender(RecommenderTemplate.Recommender):
         # Initialize with event polygon
         mvPolys = event.get('motionVectorPolys')
         if not mvPolys:
-            self._setStartTime(event, self._latestDataLayerTime)                
+            self._moveStartTime(event, self._latestDataLayerTime)                
             mvPolys = [event.getGeometry()]
             st = self._convertFeatureTime(0)
-            et = self._convertFeatureTime(self._timeStep())
+            et = self._convertFeatureTime(self._probUtils._timeStep())
             mvTimes = [(st, et)]
             event.set('motionVectorPolys', mvPolys)
             event.set('motionVectorTimes', mvTimes)
         else:
-            self._roundEventTimes(event)
-            self._eventSt_ms = long(self._datetimeToMs(event.getStartTime()))
+            self._probUtils._roundEventTimes(event)
+            self._eventSt_ms = long(self._probUtils._datetimeToMs(event.getStartTime()))
         #print "SR event start, current", self._eventSt_ms, self._currentTime
         self.flush()
                         
@@ -347,6 +366,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
         event.set('downstreamPolys', downstreamPolys[index:])
         event.set('downstreamTimes', downstreamTimes[index:])
+        self._setEventGeometry(event, downstreamPolys[index])
         
         ######
         #  History Polys        
@@ -407,7 +427,7 @@ class Recommender(RecommenderTemplate.Recommender):
         attrs = event.getHazardAttributes()
         
         newTriggerAttrs = {t:attrs.get(t) for t in triggerCheckList}
-        newTriggerAttrs['duration'] = self._calcEventDuration(event)
+        newTriggerAttrs['duration'] = self._probUtils._getDurationMinutes(event)
         
         # Get the values from the MetaData. These should supercede and update the ones stored in the event
         self._updateConvectiveAttrs(event) 
@@ -424,7 +444,8 @@ class Recommender(RecommenderTemplate.Recommender):
             if prevVal != newVal:
                 update = True
                 if t == 'duration':
-                    self._updateGraphProbsBasedOnDuration(event)
+                    graphProbs = self._probUtils._getGraphProbs(event)
+                    event.set('convectiveProbTrendGraph', graphProbs)
                 elif t == 'convectiveProbTrendGraph':
                     self._ensureLastGraphProbZeroAndUneditable(event)
             # Update previous value
@@ -440,20 +461,6 @@ class Recommender(RecommenderTemplate.Recommender):
             return True
         return False
 
-    def _updateGraphProbsBasedOnDuration(self, event):
-        probVals = []
-        probInc = event.get('convectiveProbabilityTrendIncrement', 5)
-        duration = self._calcEventDuration(event)
-        ### Round up for some context
-        for i in range(0, duration+1, probInc):
-        #for i in range(0, duration+probInc+1, probInc):
-            y = 100-(i*100/int(duration))
-            y = 0 if i >= duration else y
-            editable = True if y != 0 else False
-            #editable = 1 if y != 0 else 0
-            probVals.append({"x":i, "y":y, "editable": editable})
-        event.set('convectiveProbTrendGraph', probVals)
-
     def _ensureLastGraphProbZeroAndUneditable(self, event):
         probVals = event.get('convectiveProbTrendGraph', [])
         if len(probVals) == 0:
@@ -462,14 +469,6 @@ class Recommender(RecommenderTemplate.Recommender):
         if lastPoint["y"] != 0 or lastPoint["editable"]:
             probVals[-1] = { "x": lastPoint["x"], "y": 0, "editable": False }
             event.set('convectiveProbTrendGraph', probVals)
-
-    def _calcEventDuration(self, event):
-        # This will round to the nearest minute
-        startTime = self._roundTime(event.getStartTime())
-        endTime = self._roundTime(event.getEndTime())
-        durationMinutes = int((endTime-startTime).total_seconds()/60)
-        #durationMinutes = int(round((endTime-startTime).total_seconds() / 60))
-        return durationMinutes
     
     def _updateConvectiveAttrs(self, event):
         convectiveAttrs = event.get('convectiveAttrs')
@@ -694,10 +693,13 @@ class Recommender(RecommenderTemplate.Recommender):
         
         ### calc for intervals (default time step) over duration
         if timeDirection == 'downstream':
-            durationSecs = int(round((event.getEndTime()-event.getStartTime()).total_seconds()))
-            numIvals = int(durationSecs/self._timeStep())
+            durationSecs = self._probUtils._getDurationSecs(event, truncateAtZero=True)
+            numIvals = int(durationSecs/self._probUtils._timeStep())
         else:
             numIvals = self._upstreamTimeSteps()
+            
+        print '\n\tSR: NumIVals:', numIvals
+        self.flush()
             
         intervalPolys = []
         intervalTimes = []
@@ -706,7 +708,7 @@ class Recommender(RecommenderTemplate.Recommender):
             origDirVal = dirVal
             if timeDirection == 'upstream':
                 increment = -1*(step + 1)
-                secs = increment * self._timeStep()
+                secs = increment * self._probUtils._timeStep()
                 upstreamCentroid = self.computeUpstreamCentroid(poly.centroid, dirVal, speedVal, secs)
                 intervalPoly = self._relocatePolygon(upstreamCentroid, poly)
             else:
@@ -718,7 +720,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     prevPresetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, step-1, numIvals)
                     dirValLast = prevPresetResults['dirVal']
                 
-                secs = increment * self._timeStep()
+                secs = increment * self._probUtils._timeStep()
                 gglDownstream = self._downstream(secs,
                                             presetResults['speedVal'],
                                             presetResults['dirVal'],
@@ -730,8 +732,8 @@ class Recommender(RecommenderTemplate.Recommender):
             intervalPoly = self._reducePolygon(intervalPoly)
             intervalPolys.append(intervalPoly)
             st = self._convertFeatureTime(secs)
-            et = self._convertFeatureTime(secs+self._timeStep())
-            #print "SR interval times", timeDirection, secs, self._displayMsTime(st), self._displayMsTime(et)
+            et = self._convertFeatureTime(secs+self._probUtils._timeStep())
+            #print "SR interval times", timeDirection, secs, self._probUtils._displayMsTime(st), self._probUtils._displayMsTime(et)
             #self.flush()
             intervalTimes.append((st, et))
                     
@@ -865,11 +867,19 @@ class Recommender(RecommenderTemplate.Recommender):
                     
                 # If the feature is at the event start time, add it to the 
                 #  event geometry
-                if abs(featureSt-self._eventSt_ms) <= self._timeDelta_ms():
+                if abs(featureSt-self._eventSt_ms) <= self._probUtils._timeDelta_ms():
                     event.setGeometry(featurePoly)
+                    # If nudging an issued event, restore the issuedDuration
+                    if not self._pendingHazard:
+                        durationSecs = event.get("durationSecsAtIssuance")
+                        if durationSecs is not None:
+                            endTimeMS = self._probUtils._roundTime_ms(self._eventSt_ms + durationSecs *1000)
+                            event.setEndTime(datetime.datetime.fromtimestamp(endTimeMS/1000))
+                            graphProbs = self._probUtils._getGraphProbsBasedOnDuration(event)
+                            event.set('convectiveProbTrendGraph', graphProbs)
                                         
-        print "SR Feature ST", featureSt, self._displayMsTime(featureSt)
-        self.flush()
+        #print "SR Feature ST", featureSt, self._probUtils._displayMsTime(featureSt)
+        #self.flush()
         
         if len(motionVectorPolys) <= 1:
             return
@@ -906,7 +916,7 @@ class Recommender(RecommenderTemplate.Recommender):
         newTuples = []
         found = False
         for poly, st, et in tuples:
-            if abs(st-newSt) <= self._timeDelta_ms():                        
+            if abs(st-newSt) <= self._probUtils._timeDelta_ms():                        
                 newTuples.append((newPoly, st, et))
                 found = True
             else: 
@@ -927,8 +937,8 @@ class Recommender(RecommenderTemplate.Recommender):
         
         baseVisualFeatures = [] 
         selectedVisualFeatures = [] 
-        upstreamSt_ms = self._eventSt_ms - (self._timeStep() * 1000 * self._upstreamTimeSteps())
-        upstreamSt_ms = self._roundTime_ms(upstreamSt_ms)
+        upstreamSt_ms = self._eventSt_ms - (self._probUtils._timeStep() * 1000 * self._upstreamTimeSteps())
+        upstreamSt_ms = self._probUtils._roundTime_ms(upstreamSt_ms)
         
         # Down Stream Features -- polygons, track points, relocated last motionVector
         dsBaseVisualFeatures, dsSelectedVisualFeatures = self._downstreamVisualFeatures(
@@ -997,8 +1007,8 @@ class Recommender(RecommenderTemplate.Recommender):
 #             # First downstream polygon is at current time and always editable until Issued
 #             if self._pendingHazard and i == 0:
 #                 dragCapability = "all"
-# #                 print "SR Current Time", self._displayMsTime(self._currentTime)
-# #                 print "SR First Polygon (editable) time set", self._displayMsTime(polySt_ms), self._displayMsTime(polyEnd)
+# #                 print "SR Current Time", self._probUtils._displayMsTime(self._currentTime)
+# #                 print "SR First Polygon (editable) time set", self._probUtils._displayMsTime(polySt_ms), self._probUtils._displayMsTime(polyEnd)
 # #                 self.flush() 
 #             else:
 #                 dragCapability = "none"
@@ -1021,7 +1031,7 @@ class Recommender(RecommenderTemplate.Recommender):
                
             # Track Points 
             centroid = poly.centroid
-            color = self._getInterpolatedProbTrendColor(event, i, numIntervals)
+            color = self._probUtils._getInterpolatedProbTrendColor(event, i, numIntervals)
             trackPointFeature = {
               "identifier": "swathRec_trackPoint_"+str(polySt_ms),
               "borderColor": color,
@@ -1043,7 +1053,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 if i == 0:
                     dragCapability = "all"
                     #print "SR EDITABLE First Relocated Polygon time set", str(polySt_ms), self._currentTime
-                    #print " poly time, current time", self._displayMsTime(polySt_ms), self._displayMsTime(self._currentTime)
+                    #print " poly time, current time", self._probUtils._displayMsTime(polySt_ms), self._probUtils._displayMsTime(self._currentTime)
                     #self.flush() 
                 else:
                     dragCapability = "none"
@@ -1089,8 +1099,9 @@ class Recommender(RecommenderTemplate.Recommender):
             centroid = poly.centroid
             feature = {
               "identifier": "swathRec_motionVector_"+str(st),
-              "borderColor": { "red": 1, "green": 1, "blue": 1 },
+              "borderColor": { "red": 0, "green": 0, "blue": 0 },
               "borderThickness": 2,
+              "fillColor": { "red": 1, "green": 1, "blue": 1},
               "diameter": 6,
               "geometry": {
                   #(st, et): centroid
@@ -1117,8 +1128,8 @@ class Recommender(RecommenderTemplate.Recommender):
             except KeyError:
                 poly = GeometryFactory.createPolygon(polyTupleDict[key])                       
                 
-            print "SR previewGrid poly", type(poly)
-            self.flush()                       
+            #print "SR previewGrid poly", type(poly)
+            #self.flush()                       
                                 
             ### Should match PHI Prototype Tool
             colorFill =  {
@@ -1132,7 +1143,7 @@ class Recommender(RecommenderTemplate.Recommender):
             if poly.is_valid:
                 gridPreviewPoly = {
                     "identifier": "gridPreview_" + key,
-                    "borderColor":  colorFill[key], # { "red": 1, "green": 1, "blue": 0 },
+                    "borderColor": { "red": 0, "green": 0, "blue": 0 }, # colorFill[key],
                     "fillColor": colorFill[key],
                     "geometry": {
                         (upstreamSt_ms,
@@ -1211,14 +1222,14 @@ class Recommender(RecommenderTemplate.Recommender):
             
         for i in range(timeSteps):
             # Work backwards from current time
-            polySt_ms = self._eventSt_ms - (i+1)*self._timeStep()*1000
-            polySt_ms = self._roundTime_ms(polySt_ms)
+            polySt_ms = self._eventSt_ms - (i+1)*self._probUtils._timeStep()*1000
+            polySt_ms = self._probUtils._roundTime_ms(polySt_ms)
             poly = self._findPreviousPoly(polySt_ms,
                                           motionVectorPolys, motionVectorTimes, 
                                           historyPolys, historyTimes)
             if not poly:
                 continue
-            polyEt_ms = polySt_ms + ((self._timeStep()-60)*1000)
+            polyEt_ms = polySt_ms + ((self._probUtils._timeStep()-60)*1000)
                                 
             previousFeature = {              
               "identifier": "swathRec_previous_"+str(polySt_ms),
@@ -1240,17 +1251,17 @@ class Recommender(RecommenderTemplate.Recommender):
     def _findPreviousPoly(self, polySt_ms, motionVectorPolys, motionVectorTimes, historyPolys, historyTimes):
         for i in range(len(motionVectorTimes)):
             st, et = motionVectorTimes[i]
-            if abs(st-polySt_ms) < self._timeDelta_ms():
+            if abs(st-polySt_ms) < self._probUtils._timeDelta_ms():
                 return motionVectorPolys[i]
         for i in range(len(historyTimes)):
             st, et = historyTimes[i]
-            if abs(st-polySt_ms) < self._timeDelta_ms():
+            if abs(st-polySt_ms) < self._probUtils._timeDelta_ms():
                 return historyPolys[i]
         if not self._pendingHazard:
             return None
         for i in range(len(self._upstreamTimes)):
             st, et = self._upstreamTimes[i]
-            if abs(st-polySt_ms) < self._timeDelta_ms():
+            if abs(st-polySt_ms) < self._probUtils._timeDelta_ms():
                 return self._upstreamPolys[i]
         return None
 
@@ -1258,94 +1269,12 @@ class Recommender(RecommenderTemplate.Recommender):
     # Helper methods              #
     ###############################
     
-    ## TO DO -- Refactor these into their own module shared by Recommenders
-    def _parseIdentifier(self, baseTime_ms, featureIdentifier):
-        featureSt = featureIdentifier.split('_')[1]
-        return int(featureSt)
-                
-    def _roundEventTimes(self, event):
-        # Current time rounded to nearest minute
-        startTime = self._roundTime(event.getStartTime()) 
-        endTime = self._roundTime(event.getEndTime())        
-        event.setStartTime(startTime)
-        event.setEndTime(endTime)
-
-    def _datetimeToMs(self, datetime):
-        return float(time.mktime(datetime.timetuple())) * 1000
-    
     def _convertFeatureTime(self, secs):
         # Return millis given the event start time and secs offset
         # Round to minutes
         millis = long(self._eventSt_ms + secs * 1000 )
-        return self._roundTime_ms(millis)
-
-    def _convertMsToSecsOffset(self, time_ms, baseTime_ms=0):
-        result = time_ms - baseTime_ms
-        return int(result / 1000)
+        return self._probUtils._roundTime_ms(millis)
     
-    def _roundTime(self, dt=None, dateDelta=datetime.timedelta(minutes=1)):
-        """Round a datetime object to a multiple of a timedelta
-        dt : datetime.datetime object, default now.
-        dateDelta : timedelta object, we round to a multiple of this, default 1 minute.
-        Author: Thierry Husson 2012 - Use it as you want but don't blame me.
-                Stijn Nevens 2014 - Changed to use only datetime objects as variables
-        """
-        roundTo = dateDelta.total_seconds()    
-        if dt is None : dt = datetime.datetime.now()
-        seconds = (dt - dt.min).seconds
-        # // is a floor division, not a comment on following line:
-        rounding = (seconds+roundTo/2) // roundTo * roundTo
-        return dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)
-    
-    def _roundTime_ms(self, ms):
-        dt = datetime.datetime.fromtimestamp(ms/1000.0)
-        dt = self._roundTime(dt)
-        return VisualFeatures.datetimeToEpochTimeMillis(dt)
-
-    def _timeDelta_ms(self):
-        # A tolerance for comparing millisecond times
-        return 40*1000
-    
-    def _displayMsTime(self, time_ms):
-        return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time_ms/1000))
-        
-    def _getInterpolatedProbTrendColor(self, event, interval, numIvals):
-        '''
-        (range: color) e.g. ((0,20), { "red": 0, "green": 1, "blue": 0 } ), 
-                          ((20,40), { "red": 1, "green": 1, "blue": 0 }),
-        
-        '''
-        duration = self._calcEventDuration(event)
-        colorsList = event.get('convectiveProbTrendGraph', event.get('preDraw_convectiveProbTrendGraph', []))
-        probTrend = [entry.get('y') for entry in colorsList]
-        
-        probTrendTimeInterval = event.get('convectiveProbabilityTrendIncrement', 5 )
-        
-        ### Add 1 to duration to get "inclusive" 
-        probTrendTimeIntervals = np.arange(len(probTrend))*probTrendTimeInterval
-        oneMinuteTimeIntervals = np.arange(0, probTrendTimeIntervals[-1]+1, 1)
-        
-        if interval >= len(oneMinuteTimeIntervals):
-            print "SwathRecommender Warning: Oops1: interval >= len(oneMinuteTimeIntervals)", interval, len(oneMinuteTimeIntervals)
-            ### Return white dot
-            return self._getProbTrendColor(-1)
-        
-        oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
-        prob = oneMinuteProbs[interval]
-        
-        return self._getProbTrendColor(prob)
-
-    def _getProbTrendColor(self, prob):
-        ### Should match PHI Prototype Tool
-        colors = self._probTrendColors()
-        
-        for k, v in colors.iteritems():
-            if float(k[0]) <= prob and prob < float(k[1]):
-                return v
-
-        return { "red": 1, "green": 1, "blue": 1 }
-
-                
     def _sortPolys(self, p1, p2):
         # Sort polygon tuples by start time
         poly1, st1, et1 = p1
@@ -1418,10 +1347,6 @@ class Recommender(RecommenderTemplate.Recommender):
     def _defaultWindDir(self):
         return 270
     
-    def _timeStep(self):
-        # Time step for downstream polygons and track points
-        return 60 # secs
-
     def _upstreamTimeSteps(self):
         # Number of time steps for upstream polygons
         return 30 
@@ -1430,23 +1355,7 @@ class Recommender(RecommenderTemplate.Recommender):
         # Maximum number of history polygons to store
         # Older polygons are dropped off as time progresses
         return None
-            
-    def _probTrendColors(self):
-        '''
-        Should match PHI Prototype Tool
-        (range: color) e.g. ((0,20), { "red": 0, "green": 1, "blue": 0 } ), 
-                          ((20,40), { "red": 1, "green": 1, "blue": 0 }),
-        
-        '''            
-        colors = {
-            (0,20): { "red": 102/255.0, "green": 224/255.0, "blue": 102/255.0 }, 
-            (20,40): { "red": 255/255.0, "green": 255/255.0, "blue": 102/255.0 }, 
-            (40,60): { "red": 255/255.0, "green": 179/255.0, "blue": 102/255.0 }, 
-            (60,80): { "red": 255/255.0, "green": 102/255.0, "blue": 102/255.0 }, 
-            (80,101): { "red": 255/255.0, "green": 102/255.0, "blue": 255/255.0 }
-        }
-        return colors
-        
+                    
     # TO DO:  The Recommender should access HazardTypes.py for this 
     #   information
     def _hazardPointLimit(self):
@@ -1458,62 +1367,3 @@ class Recommender(RecommenderTemplate.Recommender):
         self._printEventSetEvents = True
         self._printEvents = True
 
-
-    #########################################
-# REMOVE ME when stable    
-#         # Old code to go over with Kevin
-#         # Set up direction and speed values
-#         trigger = eventSetAttrs.get('trigger')
-#         if trigger == 'hazardEventModification':
-#             ### get dir
-#             dirVal = attrs.get('convectiveObjectDir')
-#             # What if not dirVal?  Then what would we use?
-#             if dirVal:
-#                 dirVal = int(dirVal)
-#                 ### If the user adjusts the DIR, save that adjustment to be picked up by the 
-#                 ### automated call (PHI Grid Recommender)
-#                 # Tracy: Why can't the PHI Grid Recommender just use the convectiveObjectDir directly?
-#                 if probSevereAttrs:
-#                     probSevereAttrs['wdir'] = dirVal
-#                 else:
-#                     probSevereAttrs = {'wdir':dirVal}
-#                 event.set('probSeverAttrs', probSevereAttrs)
-#                 
-#             # There is potential for a bug in this code such that probSevereAttrs only has one or 
-#             # other of the wdir, wspd values and results in a crash somewhere down the road.
-#             
-#             ### get dirUncertainty (degrees)
-#             dirUVal = attrs.get('convectiveObjectDirUnc')
-#             if dirUVal:
-#                 dirUVal = int(dirUVal)
-#             else:
-#                 dirUVal = 10
-#             ### get speed
-#             speedVal = attrs.get('convectiveObjectSpdKts')
-#             if speedVal:
-#                 speedVal = int(speedVal)
-#                 ### If the user adjusts the SPD, save that adjustment to be picked up by the 
-#                 ### automated call (PHI Grid Recommender)
-#                 #  Tracy: Same question as above
-#                 if probSevereAttrs: 
-#                     probSevereAttrs['wspd'] = speedVal
-#                 else:
-#                     probSevereAttrs = {'wspd':speedVal}
-#                 event.set('probSeverAttrs', probSevereAttrs)
-#                 ### get speedUncertainty (kts)
-#             spdUVal = attrs.get('convectiveObjectSpdKtsUnc')
-#             if spdUVal:
-#                 spdUVal = int(spdUVal)
-#             else:
-#                 spdUVal = 10
-#             #print 'SwathRec HandDrawn...', dirVal, speedVal, event.get('probSeverAttrs')
-#             # This is not necessarily handdrawn
-# #         else:  # I don't think this will happen -- 
-# #             dirVal = probSevereAttrs.get('wdir')
-# #             speedVal = probSevereAttrs.get('wspd')
-# #             dirUVal = 10
-# #             spdUVal = 10
-# #             return False
-# #             #print 'SwathRec Automated...', dirVal, speedVal, event.get('probSeverAttrs')
-
-                

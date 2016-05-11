@@ -13,85 +13,87 @@ from shapely.geometry import Polygon
 from scipy.io import netcdf
 from collections import defaultdict
 from shutil import copy2
-
-OUTPUTDIR = '/scratch/PHIGridTesting'
-### FIXME: need better (dynamic or configurable) way to set domain corner
-buff = 1.
-lonPoints = 1200
-latPoints = 1000
-ulLat = 37.0 + buff
-ulLon = -103.0 - buff
-#ulLat = 44.5 + buff
-#ulLon = -104.0 - buff
+import HazardDataAccess
+from VisualFeatures import VisualFeatures
 
 class ProbUtils(object):
     def __init__(self):
+        self.setUpDomainValues()
+        self.setUpDomain()
         
-        # create null grid encompassing floater domain
-        self._xMin1 = ulLon
-        self._xMax1 = self._xMin1 + (0.01 * lonPoints)
-        self._yMax1 = ulLat
-        self._yMin1 = self._yMax1 - (0.01 * latPoints)
-        self._lons = np.arange(self._xMin1,self._xMax1,0.01)
-        self._lats = np.arange(self._yMin1+0.01,self._yMax1+0.01,0.01)
+    def processEvents(self, eventSet, writeToFile=False):
+        if writeToFile and not os.path.exists(self._OUTPUTDIR):
+            try:
+                os.makedirs(self._OUTPUTDIR)
+            except:
+                sys.stderr.write('Could not create PHI grids output directory:' +self._OUTPUTDIR+ '.  No output written')
 
-    def processEvents(self, eventSet, writeToFile=False):        
 
-        probSvrList = []
-        probTorList = []
+        probSvrSnapList = []
+        probSvrSwathList = []
+        probTorSnapList = []
+        probTorSwathList = []
         
-        swathDictSvr = defaultdict(list)
-        snapDictSvr = defaultdict(list)
-        swathDictTor = defaultdict(list)
-        snapDictTor = defaultdict(list)
-
+        timeStamp = (long(eventSet.getAttributes().get("currentTime")))/1000
+        timeStamp = datetime.datetime.fromtimestamp(timeStamp)
+        
+        
+        timeStampList = [event.getStartTime() for event in eventSet if event.getStatus().upper() == 'PENDING']
+        if len(timeStampList) > 0:
+            timeStamp = timeStampList[0]
+        
         for event in eventSet:
-            timeStamp = event.getStartTime()
-            hazardType = event.getHazardType()
-            start = time.time()
-            probsDict = self.getOutputProbGrids(event)
-            print hazardType + " [0] Took %.2f seconds" % (time.time()-start)
-            if hazardType == 'Prob_Severe':
-                for tm in probsDict:
-                    swathDictSvr[tm].append(probsDict[tm].get('swath'))
-                    snapDictSvr[tm].append(probsDict[tm].get('snap'))
-            if hazardType == 'Prob_Tornado':
-                for tm in probsDict:
-                    swathDictTor[tm].append(probsDict[tm].get('swath'))
-                    snapDictTor[tm].append(probsDict[tm].get('snap'))
-
-        for tm in swathDictSvr:
-            swathDictSvr[tm] = np.max(np.array(swathDictSvr[tm]), axis=0)
-        for tm in snapDictSvr:
-            snapDictSvr[tm] = np.max(np.array(snapDictSvr[tm]), axis=0)
-        for tm in swathDictTor:
-            swathDictTor[tm] = np.max(np.array(swathDictTor[tm]), axis=0)
-        for tm in snapDictTor:
-            snapDictTor[tm] = np.max(np.array(snapDictTor[tm]), axis=0)
             
+            hazardType = event.getHazardType()
+            probGridSnap, probGridSwath = self.getOutputProbGrids(event, timeStamp)
+            if hazardType == 'Prob_Severe':
+                probSvrSnapList.append(probGridSnap)
+                probSvrSwathList.append(probGridSwath)
+            if hazardType == 'Prob_Tornado':
+                probTorSnapList.append(probGridSnap)
+                probTorSwathList.append(probGridSwath)
+
         if writeToFile:
-            if len(swathDictSvr) > 0:
-                start = time.time()
-                self._output(snapDictSvr, swathDictSvr, timeStamp, 'Severe')         
-                print "[1] Took %.2f seconds" % (time.time()-start)
-            if len(swathDictTor) > 0:
-                self._output(snapDictTor, swathDictTor, timeStamp, 'Tornado')         
-                print "[2] Took %.2f seconds" % (time.time()-start)
+            if len(probSvrSnapList) > 0:
+                #snapCum = np.array(probSvrSnapList)
+                #probSvrSnap = np.max(snapCum, axis=0)
+                #swathCum = np.array(probSvrSwathList)
+                #probSvrSwath = np.max(swathCum, axis=0)
+                probSvrSnap = np.max(np.array(probSvrSnapList), axis=0)
+                probSvrSwath = np.max(np.array(probSvrSwathList), axis=0)
+                self._output(probSvrSnap, probSvrSwath, timeStamp, 'Severe')         
+            if len(probTorSnapList) > 0:
+                probTorSnap = np.max(np.array(probTorSnapList), axis=0)
+                probTorSwath = np.max(np.array(probTorSwathList), axis=0)
+                self._output(probTorSnap, probTorSwath, timeStamp, 'Tornado')         
 
         return 1
 
 
-    def getOutputProbGrids(self, event):                   
+    def getOutputProbGrids(self, event, currentTime):                   
         downstreamPolys = event.get('downstreamPolys')
         if not downstreamPolys:
             return
         downstreamTimes = event.get('downstreamTimes')
 
-        probTrend = self._getInterpolatedProbTrendColor(event)
-        returnDict = self.makeGrid(downstreamPolys, probTrend, self._lons, self._lats, 
-                                 self._xMin1, self._xMax1, self._yMax1, self._yMin1, downstreamTimes)
+        ###  Only send downstream poly's >= "now"
         
-        return returnDict
+        ### FIXME: downstreamTimes is currently a tuple (st, et).  If ever becomes just "st" (no-tuple) will need to change j[0] to j
+        ### FIXME: might need to round/buffer for event currently being issued.  For now, the event being issued is still 'PENDING', so we'lll use that.
+        firstIdx = 0
+        if event.getStatus().upper() == 'ISSUED': 
+            firstIdx =  next(i for i,j in enumerate(downstreamTimes) if j[0]/1000 >= int(currentTime.strftime('%s')))
+        probTrend = self._getInterpolatedProbTrendColors(event)
+        
+        #print 'PU: firstIdx', firstIdx
+        
+        probGridSwath = self.makeGrid(downstreamPolys[firstIdx:], probTrend[firstIdx:], self._lons, self._lats, 
+                                 self._xMin1, self._xMax1, self._yMax1, self._yMin1)
+        probGridSnap = self.makeGrid(downstreamPolys[firstIdx:], probTrend[firstIdx:], self._lons, self._lats, 
+                                 self._xMin1, self._xMax1, self._yMax1, self._yMin1, accumulate=False)
+        
+        
+        return (probGridSnap, probGridSwath)
        
     def getProbGrid(self, event):
         downstreamPolys = event.get('downstreamPolys')
@@ -99,13 +101,35 @@ class ProbUtils(object):
         if not downstreamPolys:
            return
         
-        probTrend = self._getInterpolatedProbTrendColor(event)
+        probTrend = self._getInterpolatedProbTrendColors(event)
         probGridSwath = self.makeGrid(downstreamPolys, probTrend, self._lons, self._lats, 
                                  self._xMin1, self._xMax1, self._yMax1, self._yMin1)
+        
         return probGridSwath, self._lons, self._lats
         
 
-    def _getInterpolatedProbTrendColor(self, event):
+    #===========================================================================
+    # def _getInterpolatedProbTrendColors(self, event):
+    #     '''
+    #     (range: color) e.g. ((0,20), { "red": 0, "green": 1, "blue": 0 } ), 
+    #                       ((20,40), { "red": 1, "green": 1, "blue": 0 }),
+    #     
+    #     '''
+    #     probVals = event.get('convectiveProbTrendGraph', [])
+    #     probTrend = [entry.get('y') for entry in probVals]
+    #     
+    #     probTrendTimeInterval = event.get('convectiveProbabilityTrendIncrement', 5)
+    #     
+    #     ### Add 1 to duration to get "inclusive" 
+    #     probTrendTimeIntervals = np.arange(len(probTrend))*probTrendTimeInterval
+    #     oneMinuteTimeIntervals = np.arange(0, probTrendTimeIntervals[-1]+1, 1)
+    #     
+    #     oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
+    #     
+    #     return oneMinuteProbs
+    #===========================================================================
+    
+    def _getInterpolatedProbTrendColors(self, event, returnOneMinuteTime=False):
         '''
         (range: color) e.g. ((0,20), { "red": 0, "green": 1, "blue": 0 } ), 
                           ((20,40), { "red": 1, "green": 1, "blue": 0 }),
@@ -113,37 +137,41 @@ class ProbUtils(object):
         '''
         colorsList = event.get('convectiveProbTrendGraph', [])
         probTrend = [entry.get('y') for entry in colorsList]
-        
+
         probTrendTimeInterval = event.get('convectiveProbabilityTrendIncrement', 5)
-                
+
         ### Add 1 to duration to get "inclusive" 
         probTrendTimeIntervals = np.arange(len(probTrend))*probTrendTimeInterval
         oneMinuteTimeIntervals = np.arange(0, probTrendTimeIntervals[-1]+1, 1)
-        
-        oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
-        
-        return oneMinuteProbs
 
-    
-    def makeGrid(self, downstreamPolys, probTrend, x1, y1, xMin1, xMax1, yMax1, yMin1, downstreamTimes=None):
+        oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
+
+        if returnOneMinuteTime:
+            return {'oneMinuteProbs':oneMinuteProbs, 'oneMinuteTimeIntervals': oneMinuteTimeIntervals}
+        else:
+            return oneMinuteProbs
+
+
+    def makeGrid(self, swathPolygon, probTrend, x1, y1, xMin1, xMax1, yMax1, yMin1, accumulate=True):
         '''
         Almost all of the code in this method is pulled from 
         Karstens' (NSSL) PHI Prototype tool code with some minor modifications
         '''
-        
-    
+
+        probability = np.zeros((len(y1), len(x1)))
+
         nx1, ny1 = y1.shape[0], x1.shape[0]
         x2,y2 = np.meshgrid(x1,y1)
         x3, y3 = x2.flatten(), y2.flatten()
         pnts1 = np.vstack((x3,y3)).T
-    
-        union = so.cascaded_union(downstreamPolys)
+
+        union = so.cascaded_union(swathPolygon)
         llLon = (math.floor(union.bounds[0] * 100) / 100.) - 0.01
         llLat = (math.floor(union.bounds[1] * 100) / 100.) - 0.01
         urLon = (math.ceil(union.bounds[2] * 100) / 100.) + 0.01
         urLat = (math.ceil(union.bounds[3] * 100) / 100.) + 0.01
-    
-    
+
+
         # shrink domain if object is on the end
         if llLon < xMin1:
             llLon = xMin1
@@ -153,17 +181,18 @@ class ProbUtils(object):
             llLat = yMin1
         if urLat > yMax1:
             urLat = yMax1
-    
+
         # more fiddling
         unionBounds = [(llLon,llLat),(llLon,urLat),(urLon,urLat),(urLon,llLat)]
         x = np.arange(llLon,urLon,0.01)
         y = np.arange(llLat+0.01,urLat+0.01,0.01)
-    
+        probLocal = np.zeros((len(y), len(x)))
+
         nx, ny = y.shape[0], x.shape[0]
         x2,y2 = np.meshgrid(x,y)
         x3, y3 = x2.flatten(), y2.flatten()
         pnts = np.vstack((x3,y3)).T
-    
+
         obj = map(list,unionBounds)
         pathProjected = mPath.Path(obj) # option 1
         maskBounds = pathProjected.contains_points(pnts1) # option 1
@@ -172,174 +201,366 @@ class ProbUtils(object):
         mask = np.where(maskBounds == True)
         minY = mask[0].min()
         minX = mask[1].min()
-    
+
         # iterate through 1-min interpolated objects
         # perform 2D Gaussian with p(t) on points in polygon
         # save accumulated output
-        #for k in range(objInt,int(gjson.properties['data']['duration']) + 1):
-        
-        ### Having probLocalSwath set to zeros before the k loop AND
-        ### probabilitySwath *reset* to zeros WITHIN the k loop
-        ### is critical for getting "eroding swaths" 
-        probLocalSwath = np.zeros((len(y), len(x)))
-        
-        ### Running the k loop "backwards" so we can get "eroding swaths".
-        ### FIXME: rework this with numpy for snapshot and full swath
-        returnDict = {}
-        for k in range(len(downstreamPolys), 0, -1):
-            probabilitySwath = np.zeros((len(y1), len(x1)))
+        if not accumulate:
+            polys = [swathPolygon[0]]
+        else:
+            polys = swathPolygon
+        for k in range(len(polys)):
             probabilitySnap = np.zeros((len(y1), len(x1)))
-            probLocalSnap = np.zeros((len(y), len(x)))
-            k -= 1
-            obj = map(list,list(downstreamPolys[k].exterior.coords))
+            obj = map(list,list(polys[k].exterior.coords))
             pathProjected = mPath.Path(obj) # option 1
             maskProjected = pathProjected.contains_points(pnts) # option 1
             #maskProjected = points_inside_poly(pnts, obj) # option 2
-    
+
             maskProjected= maskProjected.reshape((nx,ny))
             distances = ndimage.distance_transform_edt(maskProjected)
             dMax = distances.max()
             if dMax == 0:
                 dMax = 1.
-            
             try:
                 probMap = np.ceil(probTrend[k] - probTrend[k] * np.exp((pow(np.array((distances / dMax) * 1475.0),2) / -2.0) / pow(500,2)))
             except:
                 probMap = np.ceil(probTrend[-1] - probTrend[-1] * np.exp((pow(np.array((distances / dMax) * 1475.0),2) / -2.0) / pow(500,2)))
-            
-            probLocalSwath = np.maximum(probMap, probLocalSwath)
-            
-            ### using downstreamTimes as a flag for creating the intermediate grids
-            ### speeds up processing by 50% if downstreamTimes is None hence the 
-            ### odd "repeat" of these "if downstreamTimes" blocks
-            if downstreamTimes is not None:
                 
-                for i in range(len(mask[0])):
-                    iy = mask[0][i] - minY
-                    ix = mask[1][i] - minX
-                    probabilitySwath[mask[0][i]][mask[1][i]] = probLocalSwath[iy][ix]
-                    probabilitySnap[mask[0][i]][mask[1][i]] = probMap[iy][ix]
+            probLocal = np.maximum(probMap, probLocal)
 
-                returnDict[downstreamTimes[k][0]] = {'snap':probabilitySnap, 'swath':probabilitySwath}
+        for i in range(len(mask[0])):
+            iy = mask[0][i] - minY
+            ix = mask[1][i] - minX
+            probability[mask[0][i]][mask[1][i]] = probLocal[iy][ix]
                 
-            
-        if downstreamTimes is None:
-
-            for i in range(len(mask[0])):
-                iy = mask[0][i] - minY
-                ix = mask[1][i] - minX
-                probabilitySwath[mask[0][i]][mask[1][i]] = probLocalSwath[iy][ix]
-                probabilitySnap[mask[0][i]][mask[1][i]] = probMap[iy][ix]
-    
-            return probabilitySwath 
-    
-        return returnDict
+        return probability
       
-    def _output(self, snapProbsDict, swathProbsDict, timeStamp, eventType):
+    def _output(self, snap, swath, timeStamp, eventType):
         '''
         Creates an output netCDF file in OUTPUTDIR (set near top)
         '''
         epoch = (timeStamp-datetime.datetime.fromtimestamp(0)).total_seconds()
         nowTime = datetime.datetime.fromtimestamp(time.time())
-        for timeStepEpoch in sorted(snapProbsDict.keys()):
-            outDir = os.path.join(OUTPUTDIR, nowTime.strftime("%Y%m%d_%H"), eventType, timeStamp.strftime("%Y%m%d_%H%M%S"))
-    
-            if not os.path.exists(outDir):
-                try:
-                    os.makedirs(outDir)
-                except:
-                    sys.stderr.write('Could not create PHI grids output directory:' +outDir+ '.  No output written')
-    
-            timeStepDateTime = datetime.datetime.fromtimestamp(timeStepEpoch/1000)
-            minuteStep = ((timeStepEpoch/1000)-epoch)/60
-            swath = swathProbsDict[timeStepEpoch]
-            snap = snapProbsDict[timeStepEpoch]
-            
-
-            outputFilename = 'PHIGrid_' + eventType + '_' + timeStamp.strftime('%Y%m%d_%H%M%S') + '_f%02d'%minuteStep + '.nc'
-            pathFile = os.path.join(outDir,outputFilename)
         
+        
+        outDir = os.path.join(self._OUTPUTDIR, nowTime.strftime("%Y%m%d_%H"), eventType, timeStamp.strftime("%Y%m%d_%H%M%S"))
+
+        if not os.path.exists(outDir):
             try:
-                
-                f = netcdf.netcdf_file(pathFile,'w')
-                f.title = 'Probabilistic Hazards Information grid'
-                f.hazard_type = eventType
-                f.institution = 'NOAA Hazardous Weather Testbed; ESRL Global Systems Division and National Severe Storms Laboratory'
-                f.source = 'AWIPS2 Hazard Services'
-                f.history = 'Initially created ' + nowTime.isoformat()
-                f.comment = 'These data are experimental'
-                #f.time_origin = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
-                f.time_origin = timeStepDateTime.strftime("%Y-%m-%d %H:%M:%S")
-                f.time_valid = timeStepDateTime.strftime("%Y-%m-%d %H:%M:%S")
-                
-                f.createDimension('lats', len(self._lats))
-                f.createDimension('lons', len(self._lons))
-                f.createDimension('time', 1)
-                
-                latVar = f.createVariable('lats', 'f', ('lats',))
-                latVar.long_name = "latitude"
-                latVar.units = "degrees_north"
-                latVar.standard_name = "latitude"
-                latVar[:] = self._lats
-                
-                lonVar = f.createVariable('lons', 'f', ('lons',))
-                lonVar.long_name = "longitude"
-                lonVar.units = "degrees_east"
-                lonVar.standard_name = "longitude"
-                lonVar[:] = self._lons
-                
-                timeVar = f.createVariable('time', 'f8', ('time',))
-                timeVar.long_name  = 'Valid Time'
-                timeVar.units = 'seconds since 1970-01-01 00:00:00'
-                timeVar.time_origin = '1970-01-01 00:00:00'
-                timeVar[:] = timeStepEpoch/1000
-
-                #===============================================================
-                # tauVar = f.createVariable('tau', 'i4', ('time',))
-                # tauVar.long_name  = 'Tau'
-                # tauVar.units = 'minutes since analysis'
-                # tauVar.time_origin = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
-                # tauVar[:] = minuteStep
-                #===============================================================
-                
-                snapProbsVar = f.createVariable('PHIprobsSnapshot'+eventType, 'f', ('time', 'lats', 'lons'))
-                #snapProbsVar = f.createVariable('PHIprobsSnapshot'+eventType, 'f', ('lats', 'lons'))
-                snapProbsVar.long_name = "Probabilistic Hazard Information grid probabilities at the given time"
-                snapProbsVar.units = "%"
-                snapProbsVar.coordinates = "time lat lon"
-                #snapProbsVar.coordinates = "lat lon"
-                snapProbsVar[:] = snap
-        
-                swathProbsVar = f.createVariable('PHIprobsSwath'+eventType, 'f', ('time', 'lats', 'lons'))
-                #swathProbsVar = f.createVariable('PHIprobsSwath'+eventType, 'f', ('lats', 'lons'))
-                swathProbsVar.long_name = "Probabilistic Hazard Information grid probability swaths starting at the given time"
-                swathProbsVar.units = "%"
-                swathProbsVar.coordinates = "time lat lon"
-                #swathProbsVar.coordinates = "lat lon"
-                swathProbsVar[:] = swath
-        
-                f.close()
-                
+                os.makedirs(outDir)
             except:
-                e = sys.exc_info()[0] # catch *all* exceptions
-                sys.stderr.write('Unable to open PHI Grid Netcdf file for output:'+pathFile)
-                sys.stderr.write('Error stacktrace:\n\n%s' % e)
+                sys.stderr.write('Could not create PHI grids output directory:' +outDir+ '.  No output written')
+
+        outputFilename = 'PHIGrid_' + eventType + '_' + timeStamp.strftime('%Y%m%d_%H%M%S') + '.nc'
+        pathFile = os.path.join(outDir,outputFilename)
+    
+#        try:
             
-            #copy2(pathFile, '/awips2/edex/data/manual')
+        f = netcdf.netcdf_file(pathFile,'w')
+        f.title = 'Probabilistic Hazards Information grid'
+        f.hazard_type = eventType
+        f.institution = 'NOAA Hazardous Weather Testbed; ESRL Global Systems Division and National Severe Storms Laboratory'
+        f.source = 'AWIPS2 Hazard Services'
+        f.history = 'Initially created ' + nowTime.isoformat()
+        f.comment = 'These data are experimental'
+        #f.time_origin = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
+        f.time_origin = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
+        f.time_valid = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
+        
+        f.createDimension('lats', len(self._lats))
+        f.createDimension('lons', len(self._lons))
+        f.createDimension('time', 1)
+        
+        latVar = f.createVariable('lats', 'f', ('lats',))
+        latVar.long_name = "latitude"
+        latVar.units = "degrees_north"
+        latVar.standard_name = "latitude"
+        latVar[:] = self._lats
+        
+        lonVar = f.createVariable('lons', 'f', ('lons',))
+        lonVar.long_name = "longitude"
+        lonVar.units = "degrees_east"
+        lonVar.standard_name = "longitude"
+        lonVar[:] = self._lons
+        
+        timeVar = f.createVariable('time', 'f8', ('time',))
+        timeVar.long_name  = 'Valid Time'
+        timeVar.units = 'seconds since 1970-01-01 00:00:00'
+        timeVar.time_origin = '1970-01-01 00:00:00'
+        timeVar[:] = epoch
+
+        snapProbsVar = f.createVariable('PHIprobsSnapshot'+eventType, 'f', ('time', 'lats', 'lons'))
+        #snapProbsVar = f.createVariable('PHIprobsSnapshot'+eventType, 'f', ('lats', 'lons'))
+        snapProbsVar.long_name = "Probabilistic Hazard Information grid probabilities at the given time"
+        snapProbsVar.units = "%"
+        snapProbsVar.coordinates = "time lat lon"
+        #snapProbsVar.coordinates = "lat lon"
+        snapProbsVar[:] = snap
+
+        swathProbsVar = f.createVariable('PHIprobsSwath'+eventType, 'f', ('time', 'lats', 'lons'))
+        #swathProbsVar = f.createVariable('PHIprobsSwath'+eventType, 'f', ('lats', 'lons'))
+        swathProbsVar.long_name = "Probabilistic Hazard Information grid probability swaths starting at the given time"
+        swathProbsVar.units = "%"
+        swathProbsVar.coordinates = "time lat lon"
+        #swathProbsVar.coordinates = "lat lon"
+        swathProbsVar[:] = swath
+
+        f.close()
+            
+#        except:
+#            e = sys.exc_info()[0] # catch *all* exceptions
+#            sys.stderr.write('Unable to open PHI Grid Netcdf file for output:'+pathFile)
+#            sys.stderr.write('Error stacktrace:\n\n%s' % e)
+        
+        #copy2(pathFile, '/awips2/edex/data/manual')
             
         return pathFile
+
+
+    ###############################
+    # Helper methods              #
+    ###############################
+       
+    def _parseIdentifier(self, baseTime_ms, featureIdentifier):
+        featureSt = featureIdentifier.split('_')[1]
+        return int(featureSt)
+                
+    def _roundEventTimes(self, event):
+        # Current time rounded to nearest minute
+        startTime = self._roundTime(event.getStartTime()) 
+        endTime = self._roundTime(event.getEndTime())        
+        event.setStartTime(startTime)
+        event.setEndTime(endTime)
+        
+    def _getDurationSecs(self, event, truncateAtZero=False):
+        return self._getDurationMinutes(event, truncateAtZero) * 60
+
+    def _getDurationMinutes(self, event, truncateAtZero=False):
+        # This will round down to the nearest minute
+        startTime = self._roundTime(event.getStartTime())
+        endTime = self._roundTime(event.getEndTime())
+        
+        if truncateAtZero:
+            endTime = self._getZeroProbTime_minutes(event, startTime, endTime)
+                    
+        durationMinutes = int((endTime-startTime).total_seconds()/60)
+        return durationMinutes
+
+    def _getZeroProbTime_minutes(self, event, startTime_minutes=None, endTime_minutes=None):
+        # Return the time of the zero probability OR 
+        #   the event end time if there is no zero prob found
+        if not startTime_minutes:
+            startTime_minutes = self._roundTime(event.getStartTime())
+        if not endTime_minutes:
+            endTime_minutes = self._roundTime(event.getEndTime())
+            
+        # Check for zero value prior to endTime
+        graphVals = event.get("convectiveProbTrendGraph")
+        if graphVals is not None:
+            # Determine the zero value to set the endTime 
+            zeroIndex = None
+            for i in range(len(graphVals)):
+                if graphVals[i] < 1:
+                    endIndex = i
+                    break
+            if zeroIndex and zeroIndex != len(graphVals)-1:
+                endTime_minutes = self._roundTime(startTime_minutes + zeroIndex * self._timeStep()/60)
+        return endTime_minutes
+
+    def _datetimeToMs(self, datetime):
+        return float(time.mktime(datetime.timetuple())) * 1000
     
+    def _convertMsToSecsOffset(self, time_ms, baseTime_ms=0):
+        result = time_ms - baseTime_ms
+        return int(result / 1000)
+    
+    def _getGraphProbs(self, event):
+        ### Get difference in minutes and the probability trend
+        issueStart = event.get("eventStartTimeAtIssuance")
+        graphVals = event.get("convectiveProbTrendGraph")
+        currentStart = long(self._datetimeToMs(event.getStartTime()))
+        
+        if graphVals is None:
+            return self._getGraphProbsBasedOnDuration(event)
+        
+
+        if issueStart is None or currentStart is None:
+            return self._getGraphProbsBasedOnDuration(event)
+        
+        issueStart = datetime.datetime.fromtimestamp(issueStart/1000)
+        currentStart = datetime.datetime.fromtimestamp(currentStart/1000)
+        
+        inc = event.get('convectiveProbabilityTrendIncrement', 5)
+        print 'Time Types?'
+        print 'issueStart', type(issueStart), issueStart
+        print 'currentStart', type(currentStart), currentStart
+        minsDiff = (currentStart-issueStart).seconds/60
+        print 'minsDiff', minsDiff
+        self.flush()
+        
+        ### Get interpolated times and probabilities 
+        intervalDict = self._getInterpolatedProbTrendColors(event, returnOneMinuteTime=True)
+        oneMinuteProbs = intervalDict.get('oneMinuteProbs')
+        oneMinuteTimeIntervals = intervalDict.get('oneMinuteTimeIntervals')
+        ### New list of zeros as a placeholder
+        updatedProbs = zeros = np.zeros(len(oneMinuteTimeIntervals), dtype='i4')
+        
+        ### Find where the 1-min times > diff
+        indices = np.where(oneMinuteTimeIntervals>=minsDiff)
+        ### Get the probs corresponding with remaining time
+        remainingProbs = oneMinuteProbs[indices]
+        ### put those remaining probs to FRONT of zeros array
+        updatedProbs[0:len(remainingProbs)] = remainingProbs
+        ### Sample at increment 
+        fiveMinuteUpdatedProbs = updatedProbs[::inc].tolist()
+        
+        ### update original times with shifted probs, if length of arrays match
+        if len(fiveMinuteUpdatedProbs) == len(graphVals):
+            for i in range(len(graphVals)):
+                graphVals[i]['y'] = fiveMinuteUpdatedProbs[i]
+        ### Otherwise, using original inc-times, if we have mismatch in length of probs, 
+        ### inform user and return original
+        else:
+            sys.stderr.write('\n\tError updating ProbTrendGraph. Returning default')
+            self.flush()
+                        
+        probTrend = [entry.get('y') for entry in graphVals]
+        import pprint
+        pprint.pprint(graphVals)
+        print type(probTrend), type(probTrend[0])
+        self.flush()
+        return graphVals
+
+    def _getGraphProbsBasedOnDuration(self, event):
+        probVals = []
+        probInc = event.get('convectiveProbabilityTrendIncrement', 5)
+        duration = self._getDurationMinutes(event)
+        ### Round up for some context
+        for i in range(0, duration+1, probInc):
+        #for i in range(0, duration+probInc+1, probInc):
+            y = 100-(i*100/int(duration))
+            y = 0 if i >= duration else y
+            editable = True if y != 0 else False
+            #editable = 1 if y != 0 else 0
+            probVals.append({"x":i, "y":y, "editable": editable})
+        return probVals
+    
+    def _roundTime(self, dt=None, dateDelta=datetime.timedelta(minutes=1)):
+        """Round a datetime object to a multiple of a timedelta
+        dt : datetime.datetime object, default now.
+        dateDelta : timedelta object, we round to a multiple of this, default 1 minute.
+        Author: Thierry Husson 2012 - Use it as you want but don't blame me.
+                Stijn Nevens 2014 - Changed to use only datetime objects as variables
+        """
+        roundTo = dateDelta.total_seconds()    
+        if dt is None : dt = datetime.datetime.now()
+        seconds = (dt - dt.min).seconds
+        # // is a floor division, not a comment on following line:
+        rounding = ((seconds+roundTo/2) // roundTo) * roundTo
+        return dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)
+    
+    def _roundTime_ms(self, ms):
+        dt = datetime.datetime.fromtimestamp(ms/1000.0)
+        #print "ProbUtils before dt", dt
+        #self.flush()
+        dt = self._roundTime(dt)
+        #print "ProbUtils after dt", dt
+        #self.flush()
+        return VisualFeatures.datetimeToEpochTimeMillis(dt)
+
+    def _timeDelta_ms(self):
+        # A tolerance for comparing millisecond times
+        return 40*1000
+    
+    def _getMillis(self, dt):
+        epoch = datetime.datetime.utcfromtimestamp(0)
+        delta = dt - epoch
+        return delta.total_seconds() * 1000.0
+    
+    def _displayMsTime(self, time_ms):
+        return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time_ms/1000))
+        
+    def _getInterpolatedProbTrendColor(self, event, interval, numIvals):
+        '''
+        (range: color) e.g. ((0,20), { "red": 0, "green": 1, "blue": 0 } ), 
+                          ((20,40), { "red": 1, "green": 1, "blue": 0 }),
+        
+        '''
+        duration = self._getDurationMinutes(event)
+        probVals = event.get('convectiveProbTrendGraph', event.get('preDraw_convectiveProbTrendGraph', []))
+        probTrend = [entry.get('y') for entry in probVals]
+        
+        probTrendTimeInterval = event.get('convectiveProbabilityTrendIncrement', 5 )
+        
+        ### Add 1 to duration to get "inclusive" 
+        probTrendTimeIntervals = np.arange(len(probTrend))*probTrendTimeInterval
+        oneMinuteTimeIntervals = np.arange(0, probTrendTimeIntervals[-1]+1, 1)
+        
+        if interval >= len(oneMinuteTimeIntervals):
+            print "ProbUtils Warning: Oops1: interval >= len(oneMinuteTimeIntervals)", interval, len(oneMinuteTimeIntervals)
+            ### Return white dot
+            return self._getProbTrendColor(-1)
+        
+        oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
+        prob = oneMinuteProbs[interval]
+        
+        return self._getProbTrendColor(prob)
+
+    def _getProbTrendColor(self, prob):
+        ### Should match PHI Prototype Tool
+        colors = self._probTrendColors()
+        
+        for k, v in colors.iteritems():
+            if float(k[0]) <= prob and prob < float(k[1]):
+                return v
+
+        return { "red": 1, "green": 1, "blue": 1 }      
+
+    def setUpDomain(self):                            
+        self._ulLat = self._initial_ulLat + self._buff
+        self._ulLon = self._initial_ulLon - self._buff        
+        self._xMin1 = self._ulLon 
+        self._xMax1 = self._xMin1 + (0.01 * self._lonPoints) 
+        self._yMax1 = self._ulLat 
+        self._yMin1 = self._yMax1 - (0.01 * self._latPoints) 
+        self._lons = np.arange(self._xMin1,self._xMax1,0.01)
+        self._lats = np.arange(self._yMin1+0.01,self._yMax1+0.01,0.01)                
+
     
     def flush(self):
         import os
         os.sys.__stdout__.flush()
 
     
-        #########################################
-    ### OVERRIDES
-        
+    #########################################
+    ### OVERRIDES        
+
     def _timeStep(self):
         # Time step for downstream polygons and track points
         return 60 # secs
 
+    def _probTrendColors(self):
+        '''
+        Should match PHI Prototype Tool
+        (range: color) e.g. ((0,20), { "red": 0, "green": 1, "blue": 0 } ), 
+                          ((20,40), { "red": 1, "green": 1, "blue": 0 }),
+        
+        '''            
+        colors = {
+            (0,20): { "red": 102/255.0, "green": 224/255.0, "blue": 102/255.0 }, 
+            (20,40): { "red": 255/255.0, "green": 255/255.0, "blue": 102/255.0 }, 
+            (40,60): { "red": 255/255.0, "green": 179/255.0, "blue": 102/255.0 }, 
+            (60,80): { "red": 255/255.0, "green": 102/255.0, "blue": 102/255.0 }, 
+            (80,101): { "red": 255/255.0, "green": 102/255.0, "blue": 255/255.0 }
+        }
+        return colors
+
+    def setUpDomainValues(self):
+        self._OUTPUTDIR = '/scratch/PHIGridTesting'
+        self._buff = 1.
+        self._lonPoints = 1200
+        self._latPoints = 1000
+        self._initial_ulLat = 41.0
+        self._initial_ulLon = -107.0
+    
     #########################################

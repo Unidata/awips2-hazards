@@ -28,6 +28,7 @@ class Product(Prob_Generator.Product):
         self._includeCityNames = False
 
         self._vtecProduct = False
+        self._probUtils = ProbUtils()
 
     def defineScriptMetadata(self):
         metadata = collections.OrderedDict()
@@ -128,6 +129,8 @@ class Product(Prob_Generator.Product):
         for hazardEvent in probHazardEvents:
             self._WFO = 'XXX'
             hazardEvent.set('issueTime', self._issueTime)
+            hazardEvent.set('eventStartTimeAtIssuance', long(self._probUtils._datetimeToMs(hazardEvent.getStartTime())))
+            hazardEvent.set('durationSecsAtIssuance', self._probUtils._getDurationSecs(hazardEvent))
             # Set expire time. This should coincide with the zero probability.
             # TO DO --convert hazard end time to millis
             hazardEvent.set('expirationTime', int(self._datetimeToMs(hazardEvent.getEndTime())))
@@ -157,23 +160,20 @@ class Product(Prob_Generator.Product):
             productDict['issueTime'] = self._issueTime
             productDicts.append(productDict)
             
-        if self._issueFlag:
-            #phiGridRecommender = PHI_GridRecommender()
-            #phiGridRecommenderRec.execute(eventSet, None, None)
-            pu = ProbUtils()
-            pu.processEvents(eventSet, writeToFile=True)
-            
-            
+#        if self._issueFlag:
+            # TODO Generate PHI Grids
+            # self._probUtils.processEvents(eventSet, writeToFile=True)
+                        
             ## Dump just this event to disk since only one hazard in events set?
-            attrKeys = ['site', 'status', 'phenomenon', 'significance', 'subtype',
-                        'creationtime', 'endtime', 'starttime', 'geometry', 'eventid',
-                        'username', 'workstation', 'attributes']
-            outDict = {}
-            for hazardEvent in probHazardEvents:
-                outDict = {k:hazardEvent.__getitem__(k) for k in attrKeys}
-            
-                filename = outDict.get('phenomenon') + '_' + outDict.get('eventid') + '_' + (outDict.get('creationtime')).isoformat()
-                pickle.dump( outDict, open('/scratch/PHIGridTesting/'+filename, 'wb'))
+#             attrKeys = ['site', 'status', 'phenomenon', 'significance', 'subtype',
+#                         'creationtime', 'endtime', 'starttime', 'geometry', 'eventid',
+#                         'username', 'workstation', 'attributes']
+#             for hazardEvent in probHazardEvents:
+#                 outDict = {k:hazardEvent.__getitem__(k) for k in attrKeys}
+#             
+#                 filename = outDict.get('phenomenon') + '_' + outDict.get('eventid') + '_' + (outDict.get('creationtime')).isoformat()
+#                 pickle.dump( outDict, open('/scratch/PHIGridTesting/'+filename, 'wb'))
+
                 
         #productDicts, hazardEvents = self._makeProducts_FromHazardEvents(probHazardEvents, eventSetAttributes)
 
