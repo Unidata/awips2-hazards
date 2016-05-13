@@ -374,8 +374,9 @@ class ProbUtils(object):
         result = time_ms - baseTime_ms
         return int(result / 1000)
     
-    def _getGraphProbs(self, event):
+    def _getGraphProbs(self, event, latestDataLayerTime=None):
         ### Get difference in minutes and the probability trend
+        previousDataLaterTime = event.get("previousDataLayerTime")
         issueStart = event.get("eventStartTimeAtIssuance")
         graphVals = event.get("convectiveProbTrendGraph")
         currentStart = long(self._datetimeToMs(event.getStartTime()))
@@ -383,18 +384,38 @@ class ProbUtils(object):
         if graphVals is None:
             return self._getGraphProbsBasedOnDuration(event)
         
-
-        if issueStart is None or currentStart is None:
-            return self._getGraphProbsBasedOnDuration(event)
+        if issueStart is None:
+            issueStart = currentStart
         
-        issueStart = datetime.datetime.fromtimestamp(issueStart/1000)
-        currentStart = datetime.datetime.fromtimestamp(currentStart/1000)
+        
+        ### Need to clean up, but problem with time trend aging off too fast was 
+        ### currentProbTrend-previousProbTrend but timediff was currentTime-issueTime
+        ###So saving previousDataLayerTime so that our timeDiffs match probTrendDiffs
+        
+        #print latestDataLayerTime, previousDataLaterTime, latestDataLayerTime is not None and previousDataLaterTime is not None
+        #self.flush()
+        
+        if latestDataLayerTime is not None and previousDataLaterTime is not None:
+            #print '+++ Using latestDataLayerTime-previousDataLaterTime'
+            #self.flush()
+            previous = datetime.datetime.fromtimestamp(previousDataLaterTime/1000)
+            latest = datetime.datetime.fromtimestamp(latestDataLayerTime/1000)
+        else:
+            #print '--- Using currentStart-issueStart'
+            previous = datetime.datetime.fromtimestamp(issueStart/1000)
+            latest = datetime.datetime.fromtimestamp(currentStart/1000)
+
+        latestDataLayerTime = latestDataLayerTime if latestDataLayerTime is not None else issueStart
+        #print 'Setting previousDataLayerTime', latestDataLayerTime
+        #self.flush()
+        previousDataLaterTime = event.set("previousDataLayerTime", latestDataLayerTime)
+
         
         inc = event.get('convectiveProbabilityTrendIncrement', 5)
         print 'Time Types?'
-        print 'issueStart', type(issueStart), issueStart
-        print 'currentStart', type(currentStart), currentStart
-        minsDiff = (currentStart-issueStart).seconds/60
+        print 'previous', type(previous), previous
+        print 'latest', type(latest), latest
+        minsDiff = (latest-previous).seconds/60
         print 'minsDiff', minsDiff
         self.flush()
         
@@ -426,8 +447,18 @@ class ProbUtils(object):
                         
         probTrend = [entry.get('y') for entry in graphVals]
         import pprint
+#        print 'remainingProbs'
+#        pprint.pprint(remainingProbs)
+#        print '---'
+#        print 'updatedProbs'
+#        pprint.pprint(updatedProbs)
+#        print '---'
+#        print 'fiveMinuteUpdatedProbs'
+#        pprint.pprint(fiveMinuteUpdatedProbs)
+#        print '---'
+        print 'graphVals'
         pprint.pprint(graphVals)
-        print type(probTrend), type(probTrend[0])
+#        print type(probTrend), type(probTrend[0])
         self.flush()
         return graphVals
 
@@ -561,6 +592,6 @@ class ProbUtils(object):
         self._lonPoints = 1200
         self._latPoints = 1000
         self._initial_ulLat = 41.0
-        self._initial_ulLon = -107.0
+        self._initial_ulLon = -103.0
     
     #########################################
