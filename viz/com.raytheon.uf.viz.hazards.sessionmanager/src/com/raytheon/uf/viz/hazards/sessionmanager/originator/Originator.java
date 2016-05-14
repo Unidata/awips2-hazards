@@ -29,13 +29,13 @@ package com.raytheon.uf.viz.hazards.sessionmanager.originator;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 1, 2014            mnash     Initial creation
- * 
+ * Apr 1, 2014            mnash        Initial creation
+ * May 13, 2016   15676   Chris.Golden Added "database" as an originator.
  * </pre>
  * 
  * @author mnash
  * @version 1.0
  */
 public enum Originator implements IOriginator {
-    OTHER
+    DATABASE, OTHER
 }

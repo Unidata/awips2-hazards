@@ -60,6 +60,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                      not know about these boundaries, but the event
  *                                      manager does; thus going through the latter is
  *                                      better).
+ * May 13, 2016 15676      Chris.Golden Changed to not use new event's visual features if
+ *                                      the new event has none in mergeHazardEvents().
+ *                                      This change is necessary because visual features
+ *                                      are not being persisted to the database, and thus
+ *                                      when a database notification arrives with a new
+ *                                      version of a hazard event, merging it in without
+ *                                      considering the visual features like this would
+ *                                      mean the merged event would lose its visual
+ *                                      features for no reason.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -104,8 +113,22 @@ public class SessionEventUtilities {
         }
         oldEvent.setCreationTime(newEvent.getCreationTime(), originator);
         oldEvent.setGeometry(newEvent.getGeometry(), originator);
-        oldEvent.setVisualFeatures(newEvent.getBaseVisualFeatures(),
-                newEvent.getSelectedVisualFeatures(), originator);
+
+        /*
+         * Only use the visual features of the new event if there is at least
+         * one; otherwise, let the old event keep its visual features.
+         */
+        if (((newEvent.getBaseVisualFeatures() != null) && (newEvent
+                .getBaseVisualFeatures().isEmpty() == false))
+                || ((newEvent.getSelectedVisualFeatures() != null) && (newEvent
+                        .getSelectedVisualFeatures().isEmpty() == false))) {
+            oldEvent.setVisualFeatures(newEvent.getBaseVisualFeatures(),
+                    newEvent.getSelectedVisualFeatures(), originator);
+        }
+
+        /*
+         * Set the hazard type via the session manager if not a forced merge.
+         */
         if (forceMerge) {
             oldEvent.setHazardType(newEvent.getPhenomenon(),
                     newEvent.getSignificance(), newEvent.getSubType(),

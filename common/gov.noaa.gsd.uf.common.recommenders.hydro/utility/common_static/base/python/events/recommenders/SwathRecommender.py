@@ -230,9 +230,14 @@ class Recommender(RecommenderTemplate.Recommender):
             print "SR Event selected", event.get('selected')
             self.flush()
             
-            self._initializeEvent(event)                      
-            if eventSetAttrs.get('origin') == 'user':
+            self._initializeEvent(event)
+            origin = eventSetAttrs.get('origin')
+            if origin == 'user':
                 self._setUserOwned(event)
+            elif origin == 'database':
+                self._setVisualFeatures(event)
+                resultEventSet.add(event)
+                continue
                        
             # Data Layer Update 
             if trigger == 'dataLayerUpdate':

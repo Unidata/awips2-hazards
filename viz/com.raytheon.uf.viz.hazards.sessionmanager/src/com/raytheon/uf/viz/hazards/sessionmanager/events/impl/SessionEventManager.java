@@ -370,6 +370,12 @@ import com.vividsolutions.jts.geom.TopologyException;
  * May 04, 2016   18411    Chris.Golden Changed to persist reissued hazard events to the database.
  * May 10, 2016   18515    Chris.Golden Changed to optionally deselect a hazard event after the latter is
  *                                      issued, if the current setting specifies this option.
+ * May 13, 2016   15676    Chris.Golden Changed to strip visual features from the copy of a hazard event that
+ *                                      is being persisted to the database, so that visual features are not
+ *                                      stored (shrinking the size of the hazard events). Also changed to
+ *                                      handle database-sourced event additions by treating them as if they
+ *                                      changed the visual features, so as to trigger recommenders where
+ *                                      appropriate.
  * </pre>
  * 
  * @author bsteffen
@@ -1368,8 +1374,11 @@ public class SessionEventManager implements
                                     event.getEventID(),
                                     Sets.newHashSet(attribute.toString()),
                                     ((originator instanceof RecommenderOriginator)
-                                            || (originator instanceof Originator) ? RecommenderTriggerOrigin.OTHER
-                                            : RecommenderTriggerOrigin.USER)));
+                                            || originator
+                                                    .equals(Originator.OTHER) ? RecommenderTriggerOrigin.OTHER
+                                            : (originator
+                                                    .equals(Originator.DATABASE) ? RecommenderTriggerOrigin.DATABASE
+                                                    : RecommenderTriggerOrigin.USER))));
         }
     }
 
@@ -1816,8 +1825,11 @@ public class SessionEventManager implements
                                                 change.getEvent().getEventID(),
                                                 entry.getValue(),
                                                 ((originator instanceof RecommenderOriginator)
-                                                        || (originator instanceof Originator) ? RecommenderTriggerOrigin.OTHER
-                                                        : RecommenderTriggerOrigin.USER)));
+                                                        || originator
+                                                                .equals(Originator.OTHER) ? RecommenderTriggerOrigin.OTHER
+                                                        : (originator
+                                                                .equals(Originator.DATABASE) ? RecommenderTriggerOrigin.DATABASE
+                                                                : RecommenderTriggerOrigin.USER))));
             }
         } else if ((editRiseCrestFallTriggeringIdentifiers != null)
                 && (Sets.intersection(editRiseCrestFallTriggeringIdentifiers,
@@ -1885,8 +1897,11 @@ public class SessionEventManager implements
                                                     change.getBaseVisualFeatureIdentifiers(),
                                                     change.getSelectedVisualFeatureIdentifiers()),
                                             ((originator instanceof RecommenderOriginator)
-                                                    || (originator instanceof Originator) ? RecommenderTriggerOrigin.OTHER
-                                                    : RecommenderTriggerOrigin.USER)));
+                                                    || originator
+                                                            .equals(Originator.OTHER) ? RecommenderTriggerOrigin.OTHER
+                                                    : (originator
+                                                            .equals(Originator.DATABASE) ? RecommenderTriggerOrigin.DATABASE
+                                                            : RecommenderTriggerOrigin.USER))));
         }
     }
 
@@ -2125,7 +2140,7 @@ public class SessionEventManager implements
                     // already have this one.
                     continue;
                 }
-                event = addEvent(event, false, Originator.OTHER);
+                event = addEvent(event, false, Originator.DATABASE);
                 for (IHazardEvent histEvent : list) {
                     if (HazardStatus.issuedButNotEndedOrElapsed(histEvent
                             .getStatus())) {
@@ -2381,6 +2396,15 @@ public class SessionEventManager implements
          */
         updateEventMetadata(oevent);
 
+        /*
+         * If this event was loaded from the database, it will not have any
+         * visual features; this may need to trigger a recommender.
+         */
+        if (originator == Originator.DATABASE) {
+            this.hazardVisualFeatureChanged(new SessionEventVisualFeaturesModified(
+                    this, oevent, Collections.<String> emptySet(), Collections
+                            .<String> emptySet(), originator));
+        }
         return oevent;
     }
 
@@ -2577,6 +2601,7 @@ public class SessionEventManager implements
     private void persistEvent(ObservedHazardEvent event) {
         try {
             IHazardEvent dbEvent = dbManager.createEvent(event);
+            dbEvent.setVisualFeatures(null, null);
             dbEvent.removeHazardAttribute(ATTR_ISSUED);
             dbEvent.removeHazardAttribute(HAZARD_EVENT_SELECTED);
             dbEvent.removeHazardAttribute(HAZARD_EVENT_CHECKED);

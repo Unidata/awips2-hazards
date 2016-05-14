@@ -87,6 +87,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  *                                      display.
  * Apr 27, 2016 18266     Chris.Golden  Added support for event-driven tools triggered by data
  *                                      layer changes.
+ * May 13, 2016 15676     Chris.Golden  Added database as a recommender trigger origin.
  * </pre>
  * 
  * @author mnash
@@ -183,7 +184,7 @@ public final class HazardConstants {
      * Possible origins of a triggered recommender execution.
      */
     public enum RecommenderTriggerOrigin {
-        USER("user"), OTHER("other");
+        USER("user"), DATABASE("database"), OTHER("other");
 
         // Private Variables
 

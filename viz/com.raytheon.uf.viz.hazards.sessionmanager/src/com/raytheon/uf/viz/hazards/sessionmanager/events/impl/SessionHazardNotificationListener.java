@@ -50,6 +50,10 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Oct 23, 2013 2277       jsanchez     Removed HazardEventConverter from viz.
  * Apr 28, 2016 18267      Chris.Golden Changed to work with new version of
  *                                      mergeHazardEvents() method.
+ * May 13, 2016 15676      Chris.Golden Changed to use "database" as the
+ *                                      originator for any hazard event
+ *                                      additions or merges resulting from
+ *                                      the database.
  * </pre>
  * 
  * @author bsteffen
@@ -110,17 +114,17 @@ public class SessionHazardNotificationListener implements INotificationObserver 
         switch (notification.getType()) {
         case DELETE:
             if (oldEvent != null) {
-                manager.removeEvent(oldEvent, Originator.OTHER);
+                manager.removeEvent(oldEvent, Originator.DATABASE);
             }
             break;
         case UPDATE:
         case STORE:
             if (oldEvent != null) {
                 SessionEventUtilities.mergeHazardEvents(manager, newEvent,
-                        oldEvent, true, Originator.OTHER);
+                        oldEvent, true, Originator.DATABASE);
                 return;
             }
-            manager.addEvent(newEvent, Originator.OTHER);
+            manager.addEvent(newEvent, Originator.DATABASE);
             break;
         }
     }
