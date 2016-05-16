@@ -206,6 +206,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 
         for event in eventSet:                           
             event.set('issueTime', self._currentTime) # Try removing this and see if we can issue
+            self._nudge = False
              
             # Find the one event in the case of modification           
             if trigger in ['hazardEventModification', 'hazardEventVisualFeatureChange']:
@@ -374,8 +375,8 @@ class Recommender(RecommenderTemplate.Recommender):
         # If trigger is visualFeature, then don't do this
         # otherwise do this
         trigger = eventSetAttrs.get('trigger')
-        if not trigger == "hazardEventVisualFeatureChange":
-            self._setEventGeometry(event, downstreamPolys[index])
+        #if not trigger == "hazardEventVisualFeatureChange":
+        #    self._setEventGeometry(event, downstreamPolys[index])
         
         ######
         #  History Polys        
@@ -456,7 +457,7 @@ class Recommender(RecommenderTemplate.Recommender):
             if prevVal != newVal:
                 update = True
                 if t == 'duration':
-                    graphProbs = self._probUtils._getGraphProbsBasedOnDuration(event)
+                    graphProbs = self._probUtils._getGraphProbs(event, self._latestDataLayerTime)
                     event.set('convectiveProbTrendGraph', graphProbs)
                 elif t == 'convectiveProbTrendGraph':
                     self._ensureLastGraphProbZeroAndUneditable(event)
@@ -688,7 +689,14 @@ class Recommender(RecommenderTemplate.Recommender):
                             
         ### Get initial polygon.  
         # This represents the polygon at the current time resulting from the last nudge.
-        poly = event.getGeometry()
+        if self._nudge:
+            poly = event.getGeometry()
+        else:
+            downstreamPolys = event.get('downstreamPolys', [])
+            if downstreamPolys:
+                poly = downstreamPolys[0]
+            else:
+                poly = event.getGeometry()
         
         ### Check if single polygon or iterable -- no longer need this because swath is a
         # visual feature.
@@ -878,6 +886,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 #  event geometry
                 if abs(featureSt-self._eventSt_ms) <= self._probUtils._timeDelta_ms():
                     event.setGeometry(featurePoly)
+                    self._nudge = True
                     # If nudging an issued event, restore the issuedDuration
                     if not self._pendingHazard:
                         durationSecs = event.get("durationSecsAtIssuance")
