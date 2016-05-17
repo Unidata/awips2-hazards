@@ -374,6 +374,22 @@ class ProbUtils(object):
         result = time_ms - baseTime_ms
         return int(result / 1000)
     
+    def _updateGraphValsDuration(self, origGraphVals, newGraphVals):
+        
+        if len(newGraphVals) <= len(origGraphVals):
+            newGraphVals = origGraphVals[0:len(newGraphVals)]
+        else:
+            for entry in newGraphVals:
+                entry['y'] = 0
+            newGraphVals[0:len(origGraphVals)] = origGraphVals
+            
+        newGraphVals[-1]['y'] = 0
+        newGraphVals[-1]['editable'] = False
+            
+        return newGraphVals
+            
+            
+    
     def _getGraphProbs(self, event, latestDataLayerTime=None):
         ### Get difference in minutes and the probability trend
         previousDataLaterTime = event.get("previousDataLayerTime")
@@ -412,11 +428,11 @@ class ProbUtils(object):
 
         
         inc = event.get('convectiveProbabilityTrendIncrement', 5)
-        print 'Time Types?'
-        print 'previous', type(previous), previous
-        print 'latest', type(latest), latest
+        #print 'Time Types?'
+        #print 'previous', type(previous), previous
+        #print 'latest', type(latest), latest
         minsDiff = (latest-previous).seconds/60
-        print 'minsDiff', minsDiff
+        print 'ProbUtils minsDiff', minsDiff
         self.flush()
         
         ### Get interpolated times and probabilities 
@@ -445,7 +461,11 @@ class ProbUtils(object):
             sys.stderr.write('\n\tError updating ProbTrendGraph. Returning default')
             self.flush()
                         
-        probTrend = [entry.get('y') for entry in graphVals]
+        ### Challenge is to get the graph to show the "rounded up" value, but we 
+        ### don't want to muck with the duration, so still uncertain the best way
+        graphVals = self._updateGraphValsDuration(graphVals, self._getGraphProbsBasedOnDuration(event, roundUp=True))
+        #graphVals = self._updateGraphValsDuration(graphVals, self._getGraphProbsBasedOnDuration(event))
+        
         import pprint
 #        print 'remainingProbs'
 #        pprint.pprint(remainingProbs)
@@ -456,17 +476,20 @@ class ProbUtils(object):
 #        print 'fiveMinuteUpdatedProbs'
 #        pprint.pprint(fiveMinuteUpdatedProbs)
 #        print '---'
-        print 'graphVals'
+        print 'ProbUtils graphVals'
         pprint.pprint(graphVals)
 #        print type(probTrend), type(probTrend[0])
         self.flush()
         return graphVals
 
-    def _getGraphProbsBasedOnDuration(self, event):
+    def _getGraphProbsBasedOnDuration(self, event, roundUp=False):
         probVals = []
         probInc = event.get('convectiveProbabilityTrendIncrement', 5)
         duration = self._getDurationMinutes(event)
+        
         ### Round up for some context
+        duration = duration+probInc if roundUp else duration
+        
         for i in range(0, duration+1, probInc):
         #for i in range(0, duration+probInc+1, probInc):
             y = 100-(i*100/int(duration))
