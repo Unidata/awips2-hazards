@@ -66,7 +66,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ConcurrentHashMap;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -451,9 +450,15 @@ public class SessionEventManager implements
 
     private final Deque<String> eventModifications = new LinkedList<String>();
 
-    private Timer eventExpirationTimer = new Timer(true);
-
-    private final Map<String, TimerTask> expirationTasks = new ConcurrentHashMap<String, TimerTask>();
+    /*
+     * TODO: Decide whether expiration is to be done in Java code or not. For
+     * now, this code is commented out; not expiration of events will occur.
+     * This is not a permanent solution.
+     */
+    // private Timer eventExpirationTimer = new Timer(true);
+    //
+    // private final Map<String, TimerTask> expirationTasks = new
+    // ConcurrentHashMap<String, TimerTask>();
 
     private ISimulatedTimeChangeListener timeListener;
 
@@ -2078,8 +2083,6 @@ public class SessionEventManager implements
                 it.remove();
             } else if (!siteIDs.contains(event.getSiteID())) {
                 it.remove();
-            } else if (SessionEventUtilities.isPastExpirationTime(event)) {
-                it.remove();
             } else {
                 String key = HazardEventUtilities.getHazardType(event);
                 /*
@@ -2621,52 +2624,60 @@ public class SessionEventManager implements
      * @param event
      */
     private void scheduleExpirationTask(final ObservedHazardEvent event) {
-        if (eventExpirationTimer != null) {
-            if (HazardStatus.issuedButNotEndedOrElapsed(event.getStatus())) {
-                final String eventId = event.getEventID();
-                TimerTask existingTask = expirationTasks.get(eventId);
-                if (existingTask != null) {
-                    existingTask.cancel();
-                    expirationTasks.remove(eventId);
-                }
-                TimerTask task = new TimerTask() {
-                    @Override
-                    public void run() {
-                        event.setStatus(HazardStatus.ELAPSED, true, true,
-                                Originator.OTHER);
-                        expirationTasks.remove(eventId);
-                    }
-                };
-                Date scheduledTime = event.getEndTime();
-                /*
-                 * TODO: Need to determine what to do with this, somewhere we
-                 * need to be resetting the expiration time if we manually end
-                 * the hazard?
-                 */
-                // if (event.getHazardAttribute(HazardConstants.EXPIRATIONTIME)
-                // != null) {
-                // scheduledTime = new Date(
-                // // TODO, change this when we are getting back
-                // // expiration time as a date
-                // (Long) event
-                // .getHazardAttribute(HazardConstants.EXPIRATIONTIME));
-                // }
 
-                /*
-                 * Round down to the nearest minute, so we see exactly when it
-                 * happens.
-                 */
-                scheduledTime = DateUtils.truncate(scheduledTime,
-                        Calendar.MINUTE);
-                long scheduleTimeMillis = Math.max(0, scheduledTime.getTime()
-                        - SimulatedTime.getSystemTime().getTime().getTime());
-                if (SimulatedTime.getSystemTime().isFrozen() == false
-                        || (SimulatedTime.getSystemTime().isFrozen() && scheduleTimeMillis == 0)) {
-                    eventExpirationTimer.schedule(task, scheduleTimeMillis);
-                    expirationTasks.put(eventId, task);
-                }
-            }
-        }
+        /*
+         * TODO: Decide whether expiration is to be done in Java code or not.
+         * For now, this code is commented out; not expiration of events will
+         * occur. This is not a permanent solution.
+         */
+
+        // if (eventExpirationTimer != null) {
+        // if (HazardStatus.issuedButNotEndedOrElapsed(event.getStatus())) {
+        // final String eventId = event.getEventID();
+        // TimerTask existingTask = expirationTasks.get(eventId);
+        // if (existingTask != null) {
+        // existingTask.cancel();
+        // expirationTasks.remove(eventId);
+        // }
+        // TimerTask task = new TimerTask() {
+        // @Override
+        // public void run() {
+        // event.setStatus(HazardStatus.ELAPSED, true, true,
+        // Originator.OTHER);
+        // expirationTasks.remove(eventId);
+        // }
+        // };
+        // Date scheduledTime = event.getEndTime();
+        // /*
+        // * TODO: Need to determine what to do with this, somewhere we
+        // * need to be resetting the expiration time if we manually end
+        // * the hazard?
+        // */
+        // // if (event.getHazardAttribute(HazardConstants.EXPIRATIONTIME)
+        // // != null) {
+        // // scheduledTime = new Date(
+        // // // TODO, change this when we are getting back
+        // // // expiration time as a date
+        // // (Long) event
+        // // .getHazardAttribute(HazardConstants.EXPIRATIONTIME));
+        // // }
+        //
+        // /*
+        // * Round down to the nearest minute, so we see exactly when it
+        // * happens.
+        // */
+        // scheduledTime = DateUtils.truncate(scheduledTime,
+        // Calendar.MINUTE);
+        // long scheduleTimeMillis = Math.max(0, scheduledTime.getTime()
+        // - SimulatedTime.getSystemTime().getTime().getTime());
+        // if (SimulatedTime.getSystemTime().isFrozen() == false
+        // || (SimulatedTime.getSystemTime().isFrozen() && scheduleTimeMillis ==
+        // 0)) {
+        // eventExpirationTimer.schedule(task, scheduleTimeMillis);
+        // expirationTasks.put(eventId, task);
+        // }
+        // }
+        // }
     }
 
     /**
@@ -2680,14 +2691,21 @@ public class SessionEventManager implements
 
             @Override
             public void timechanged() {
-                for (TimerTask task : expirationTasks.values()) {
-                    task.cancel();
-                    expirationTasks.clear();
-                }
 
-                for (ObservedHazardEvent event : events) {
-                    scheduleExpirationTask(event);
-                }
+                /*
+                 * TODO: Decide whether expiration is to be done in Java code or
+                 * not. For now, this code is commented out; not expiration of
+                 * events will occur. This is not a permanent solution.
+                 */
+
+                // for (TimerTask task : expirationTasks.values()) {
+                // task.cancel();
+                // expirationTasks.clear();
+                // }
+                //
+                // for (ObservedHazardEvent event : events) {
+                // scheduleExpirationTask(event);
+                // }
             }
         };
         return timeListener;
@@ -3646,8 +3664,14 @@ public class SessionEventManager implements
 
     @Override
     public void shutdown() {
-        eventExpirationTimer.cancel();
-        eventExpirationTimer = null;
+
+        /*
+         * TODO: Decide whether expiration is to be done in Java code or not.
+         * For now, this code is commented out; not expiration of events will
+         * occur. This is not a permanent solution.
+         */
+        // eventExpirationTimer.cancel();
+        // eventExpirationTimer = null;
         SimulatedTime.getSystemTime().removeSimulatedTimeChangeListener(
                 timeListener);
     }
