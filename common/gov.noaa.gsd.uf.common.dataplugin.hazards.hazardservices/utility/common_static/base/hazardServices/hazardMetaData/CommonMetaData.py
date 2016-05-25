@@ -1845,9 +1845,11 @@ class MetaData(object):
         mws.append(self._getConvectiveCellId())
         # Threat Type  - Done by choosing Hazard Type Prob_Severe or Prob_Tornado
         #mws.append(self._getConvectiveThreatType())
-        mws.append(self._getUserOwned())
+        #mws.append(self._getUserOwned())
         # Motion Vector
         mws.append(self._getConvectiveMotionVector())
+        # Path/shape "recommender"
+        #mws.append(self._getConvectiveSwathPresets())
         # Hazard Type (Svr/Tor)
         # Duration (see config)
         # Probability Trend
@@ -1856,12 +1858,11 @@ class MetaData(object):
         mws.append(self._getStormCharacteristics())
         # Warning Discussion
         mws.append(self._getConvectiveDiscussion())
+        mws.append(self._getPastConvectiveDiscussion())
         # Activate
         #mws.append(self._getConvectiveActivate())
         # Redraw # Reset History # Preview grid
         #mws.append(self._getConvectiveAuxControls())
-        # Path/shape "recommender"
-        mws.append(self._getConvectiveSwathPresets())
         # preview slider
         #mws.append(self._getConvectivePreview())
                 
@@ -1963,7 +1964,7 @@ class MetaData(object):
             # "bottomMargin": 10,
             # "expandHorizontally": True,
             # "expandVertically": True,
-            "numColumns":2,
+            "numColumns":3,
             "fields": [
                         {
                         "fieldType": "Label",
@@ -1974,7 +1975,8 @@ class MetaData(object):
                         "fieldType": "Label",
                         "fieldName": "convectiveThreatValue",
                         "label": objectID
-                        }
+                        },
+                       self._getUserOwned(),
                        ]
         }
 
@@ -1996,18 +1998,18 @@ class MetaData(object):
             # "bottomMargin": 10,
             # "expandHorizontally": True,
             # "expandVertically": True,
-            "numColumns":4,
+            "numColumns":2,
             "fields": [
-                        {
-                        "fieldType": "Label",
-                        "fieldName": "convectiveObjectMotion",
-                        "label": "Motion Vector:"
-                        },
+                        #{
+                        #"fieldType": "Label",
+                        #"fieldName": "convectiveObjectMotion",
+                        #"label": "Motion Vector:"
+                        #},
                         {
                         "fieldType": "IntegerSpinner",
                         "fieldName": "convectiveObjectDir",
                         "sendEveryChange": False,
-                        "label": "",
+                        "label": "Motion Vector: Dir (deg)",
                         "minValue": 1,
                         "maxValue": 360,
                         "values": int(wdir),
@@ -2018,7 +2020,7 @@ class MetaData(object):
                         {
                         "fieldType": "IntegerSpinner",
                         "fieldName": "convectiveObjectSpdKts",
-                        "label": "deg @",
+                        "label": "Spd (kts)",
                         "sendEveryChange": False,
                         "minValue": 0,
                         "maxValue": 200,
@@ -2026,11 +2028,11 @@ class MetaData(object):
                         "showScale": False,
                         "modifyRecommender": "SwathRecommender"
                         },
-                        {
-                        "fieldType": "Label",
-                        "fieldName": "convectiveObjectMotion2",
-                        "label": "kts"
-                        },
+                        #{
+                        #"fieldType": "Label",
+                        #"fieldName": "convectiveObjectMotion2",
+                        #"label": "kts"
+                        #},
                        {
                         "fieldType": "IntegerSpinner",
                         "fieldName": "convectiveObjectDirUnc",
@@ -2063,6 +2065,7 @@ class MetaData(object):
                         "values": False,
                         "modifyRecommender": "SwathRecommender"
                         },
+                       self._getConvectiveSwathPresets()
                        ]
         }
 
@@ -2232,28 +2235,62 @@ class MetaData(object):
         return grp
 
     def _getConvectiveDiscussion(self):
-        previousText = self.hazardEvent.get("convectiveWarningDecisionDiscussion")
-        simTimeMils = SimulatedTime.getSystemTime().getMillis()
-        currentTime = datetime.datetime.fromtimestamp(simTimeMils / 1000)
         
-        textVals = currentTime.strftime("[%m-%d-%Y %H:%M:00]  ")
-        if previousText:
-            textVals += previousText
-
-        textVals += '\n\n'
-
         text = {
             "fieldType": "Text",
             "fieldName": "convectiveWarningDecisionDiscussion",
             "label": "Warning Decision Discussion",
             "visibleChars": 40,
-            "lines": 10,
+            "lines": 5,
             "expandHorizontally": True,
             "promptText": "Recognized text will be copied here (or type manually).",
-            "values": textVals,
+            #"values": "",
+        }
+        return text
+
+    def _getPastConvectiveDiscussion(self):
+        
+        pastDisc = self.hazardEvent.get('convectivePastWarningDecisionDiscussion', 'Init')
+        
+        text = {
+            "fieldType": "Text",
+            "fieldName": "convectivePastWarningDecisionDiscussion",
+            "label": "Previous Warning Decision Discussion",
+            "visibleChars": 40,
+            "lines": 5,
+            "expandHorizontally": True,
+            "editable": False,
+            #"promptText": "Recognized text will be copied here (or type manually).",
+            "values": pastDisc,
         }
         
         return text
+
+#===============================================================================
+#     def _getConvectiveDiscussion(self):
+#         previousText = self.hazardEvent.get("convectiveWarningDecisionDiscussion")
+#         simTimeMils = SimulatedTime.getSystemTime().getMillis()
+#         currentTime = datetime.datetime.fromtimestamp(simTimeMils / 1000)
+#         
+#         textVals = currentTime.strftime("[%m-%d-%Y %H:%M:00]  ")
+#         if previousText:
+#             textVals += previousText
+# 
+#         textVals += '\n\n'
+# 
+#         text = {
+#             "fieldType": "Text",
+#             "fieldName": "convectiveWarningDecisionDiscussion",
+#             "label": "Warning Decision Discussion",
+#             "visibleChars": 40,
+#             "lines": 10,
+#             "expandHorizontally": True,
+#             "promptText": "Recognized text will be copied here (or type manually).",
+#             "values": textVals,
+#         }
+#         
+#         return text
+#===============================================================================
         
     def _getConvectiveActivate(self):
         butt = {
@@ -2329,7 +2366,7 @@ class MetaData(object):
                         # "CubicSplineInterpolation"
                         ],
             "values": "NoPreset",
-            "expandHorizontally": True,
+            "expandHorizontally": False,
             "modifyRecommender": "SwathRecommender"
         }
         
@@ -2434,52 +2471,59 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         convectTriggers = convectiveFilter(triggerIdentifiers, 'convective')
         convectMutables = convectiveFilter(mutableProperties, 'convective')
         
+        if len(convectTriggers) == 0:
+            return {}
+        
         ######################################################
         ## Discussion Box
         ######################################################
-        simTimeMils = SimulatedTime.getSystemTime().getMillis()
-        currentTime = datetime.datetime.fromtimestamp(simTimeMils / 1000)
-        currentTimeText = currentTime.strftime("[%m-%d-%Y %H:%M:00]  ")
-        delimeter = u'\u2063\n'
-
-        discussion = mutableProperties['convectiveWarningDecisionDiscussion']['values']
-        discLines = discussion.split(delimeter)
-        ### Seems to work!
-        sortedDisclines = filter(None, sorted(discLines))[::-1]
-
-        if len(sortedDisclines[0]) > 0:
-            latestTimestampMatch = re.match('\[\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}\]  ', sortedDisclines[0])
-            if latestTimestampMatch:
-                latestTimestamp = latestTimestampMatch.group(0)
-
-                hailVal0 = mutableProperties['convectiveStormCharsHail']['values']
-                windVal0 = mutableProperties['convectiveStormCharsWind']['values']
-                tornVal0 = mutableProperties['convectiveStormCharsTorn']['values']
-                
-                freeTextList = sortedDisclines[0].split(' :: ')
-                freeText = ''
-                if len(freeTextList) > 1 and len(freeTextList[-1]) > 1:
-                    freeText = freeTextList[-1]
-                
-
-                if latestTimestamp != currentTimeText:
-                    sortedDisclines.insert(0, currentTimeText+'  ')
-                    returnDict['convectiveStormCharsHail'] = { 'values' : "None"}
-                    returnDict['convectiveStormCharsWind'] = { 'values' : "None"}
-                    returnDict['convectiveStormCharsTorn'] = { 'values' : "None"}
-                    hailVal0 = "None"
-                    windVal0 = "None"
-                    tornVal0 = "None"
-                    freeText = ''
-
-                hailVal = 'Hail: '+hailVal0 if hailVal0 != "None" else ''
-                windVal = 'Winds: '+windVal0 if windVal0 != "None" else ''
-                tornVal = 'Tornado: '+tornVal0 if tornVal0 != "None" else ''
-                updateLine = ' '.join([currentTimeText, windVal, hailVal, tornVal, ' :: ', freeText.lstrip()])
-                sortedDisclines[0] = updateLine
-                discussion = delimeter.join(sortedDisclines)
-
-        returnDict['convectiveWarningDecisionDiscussion'] = { 'values' : discussion}
+#===============================================================================
+#         simTimeMils = SimulatedTime.getSystemTime().getMillis()
+#         currentTime = datetime.datetime.fromtimestamp(simTimeMils / 1000)
+#         currentTimeText = currentTime.strftime("[%m-%d-%Y %H:%M:00]  ")
+#         delimeter = u'\u2063\n'
+# 
+#         discussion = mutableProperties.get('convectiveWarningDecisionDiscussion')
+#         if discussion is not None:
+#             discussion = mutableProperties['convectiveWarningDecisionDiscussion']['values']
+#             discLines = discussion.split(delimeter)
+#             ### Seems to work!
+#             sortedDisclines = filter(None, sorted(discLines))[::-1]
+#     
+#             if len(sortedDisclines[0]) > 0:
+#                 latestTimestampMatch = re.match('\[\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}\]  ', sortedDisclines[0])
+#                 if latestTimestampMatch:
+#                     latestTimestamp = latestTimestampMatch.group(0)
+#     
+#                     hailVal0 = mutableProperties['convectiveStormCharsHail']['values']
+#                     windVal0 = mutableProperties['convectiveStormCharsWind']['values']
+#                     tornVal0 = mutableProperties['convectiveStormCharsTorn']['values']
+#                     
+#                     freeTextList = sortedDisclines[0].split(' :: ')
+#                     freeText = ''
+#                     if len(freeTextList) > 1 and len(freeTextList[-1]) > 1:
+#                         freeText = freeTextList[-1]
+#                     
+#     
+#                     if latestTimestamp != currentTimeText:
+#                         sortedDisclines.insert(0, currentTimeText+'  ')
+#                         returnDict['convectiveStormCharsHail'] = { 'values' : "None"}
+#                         returnDict['convectiveStormCharsWind'] = { 'values' : "None"}
+#                         returnDict['convectiveStormCharsTorn'] = { 'values' : "None"}
+#                         hailVal0 = "None"
+#                         windVal0 = "None"
+#                         tornVal0 = "None"
+#                         freeText = ''
+#     
+#                     hailVal = 'Hail: '+hailVal0 if hailVal0 != "None" else ''
+#                     windVal = 'Winds: '+windVal0 if windVal0 != "None" else ''
+#                     tornVal = 'Tornado: '+tornVal0 if tornVal0 != "None" else ''
+#                     updateLine = ' '.join([currentTimeText, windVal, hailVal, tornVal, ' :: ', freeText.lstrip()])
+#                     sortedDisclines[0] = updateLine
+#                     discussion = delimeter.join(sortedDisclines)
+#     
+#             returnDict['convectiveWarningDecisionDiscussion'] = { 'values' : discussion}
+#===============================================================================
         
         ######################################################
         ## Graph Megawidget Algorithm Buttons

@@ -6,7 +6,8 @@ import Prob_Generator
 import HazardDataAccess
 #from PHI_GridRecommender import Recommender as PHI_GridRecommender
 from ProbUtils import ProbUtils
-import json, pickle
+import json, pickle, os
+import datetime
 
 class Product(Prob_Generator.Product):
 
@@ -129,6 +130,21 @@ class Product(Prob_Generator.Product):
         for hazardEvent in probHazardEvents:
             self._WFO = 'XXX'
             hazardEvent.set('issueTime', self._issueTime)
+            
+            ### Capture discussion & threats, timestamp and place in readonly disc box
+            thisDisc = datetime.datetime.fromtimestamp(self._issueTime/1000).strftime('%m/%d/%Y %H:%M :: ')
+            threatFields = ['convectiveStormCharsHail', 'convectiveStormCharsWind', 'convectiveStormCharsTorn']
+            threats = [hazardEvent.get(threat) for threat in threatFields]
+            thisDisc += str(threats) + '  >>>  ' + hazardEvent.get('convectiveWarningDecisionDiscussion', '')
+            pastDisc = hazardEvent.get('convectivePastWarningDecisionDiscussion', '')
+            if len(thisDisc) > 0 or len(pastDisc) > 0:
+                pastDisc = thisDisc + '\n' + pastDisc
+                hazardEvent.set('convectivePastWarningDecisionDiscussion', pastDisc)
+            
+            ### Reset for next time HID appears
+            [hazardEvent.set(threat, None) for threat in threatFields]
+            hazardEvent.set('convectiveWarningDecisionDiscussion', None)
+            
             hazardEvent.set('eventStartTimeAtIssuance', long(self._probUtils._datetimeToMs(hazardEvent.getStartTime())))
             hazardEvent.set('durationSecsAtIssuance', self._probUtils._getDurationSecs(hazardEvent))
             # Set expire time. This should coincide with the zero probability.
@@ -149,7 +165,7 @@ class Product(Prob_Generator.Product):
             self._headline = hazardAttrs.get('headline', 'Probabilistic Severe')
             self._location = self._getLocation(hazardEvent)
             defaultDiscussion = ''' Mesocyclone interacted with line producing brief spin-up. Not confident in enduring tornadoes...but more brief spinups are possible as more interactions occur.'''
-            self._discussion = hazardAttrs.get('convectiveWarningDecisionDiscussion', defaultDiscussion)            
+            self._discussion = thisDisc #hazardAttrs.get('convectiveWarningDecisionDiscussion', defaultDiscussion)            
             #print "Prob Convective PG hazardAttrs", hazardAttrs
             #print "    start, end time, issueTime", hazardEvent.getStartTime(), hazardEvent.getEndTime(), hazardEvent.get('issueTime')
             self.flush()
@@ -160,20 +176,46 @@ class Product(Prob_Generator.Product):
             productDict['issueTime'] = self._issueTime
             productDicts.append(productDict)
             
-#        if self._issueFlag:
-            # TODO Generate PHI Grids
-            # self._probUtils.processEvents(eventSet, writeToFile=True)
-                        
-            ## Dump just this event to disk since only one hazard in events set?
-#             attrKeys = ['site', 'status', 'phenomenon', 'significance', 'subtype',
-#                         'creationtime', 'endtime', 'starttime', 'geometry', 'eventid',
-#                         'username', 'workstation', 'attributes']
-#             for hazardEvent in probHazardEvents:
-#                 outDict = {k:hazardEvent.__getitem__(k) for k in attrKeys}
-#             
-#                 filename = outDict.get('phenomenon') + '_' + outDict.get('eventid') + '_' + (outDict.get('creationtime')).isoformat()
-#                 pickle.dump( outDict, open('/scratch/PHIGridTesting/'+filename, 'wb'))
+        if self._issueFlag:
 
+            siteID = eventSet.getAttributes().get('siteID')
+            mode = eventSet.getAttributes().get('hazardMode', 'PRACTICE').upper()
+            databaseEvents = HazardDataAccess.getHazardEventsBySite(siteID, mode)
+            filteredDBEvents = []
+
+            thisEventSetIDs = [evt.getEventID() for evt in eventSet]
+            print 'DBEvents:'
+            for evt in databaseEvents:
+                if evt.getStatus().lower() in ["elapsed", "ending", "ended"]:
+                    continue
+                if evt.getEventID() not in thisEventSetIDs:
+                  filteredDBEvents.append(evt)  
+
+            eventSet.addAll(filteredDBEvents)
+
+
+            pu = ProbUtils()
+            
+            pu.processEvents(eventSet, writeToFile=True)
+
+
+            ## Dump just this event to disk since only one hazard in events set?
+            attrKeys = ['site', 'status', 'phenomenon', 'significance', 'subtype',
+                        'creationtime', 'endtime', 'starttime', 'geometry', 'eventid',
+                        'username', 'workstation', 'attributes']
+            outDict = {}
+            for hazardEvent in probHazardEvents:
+                outDict = {k:hazardEvent.__getitem__(k) for k in attrKeys}
+
+                filename = outDict.get('phenomenon') + '_' + outDict.get('eventid') + '_' + str(self._issueTime)
+                OUTPUTDIR = os.path.join(pu.getOutputDir(), 'IssuedEventsPickle')
+                if not os.path.exists(OUTPUTDIR):
+                    try:
+                        os.makedirs(OUTPUTDIR)
+                    except:
+                        sys.stderr.write('Could not create PHI grids output directory:' +OUTPUTDIR+ '.  No output written')
+
+                pickle.dump( outDict, open(OUTPUTDIR+'/'+filename, 'wb'))
                 
         #productDicts, hazardEvents = self._makeProducts_FromHazardEvents(probHazardEvents, eventSetAttributes)
 

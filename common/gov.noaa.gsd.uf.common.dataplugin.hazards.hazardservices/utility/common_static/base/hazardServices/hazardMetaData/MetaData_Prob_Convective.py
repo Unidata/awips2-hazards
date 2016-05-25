@@ -8,21 +8,23 @@ class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-#        if self.hazardStatus in ["elapsed", "ending", "ended"]:
-#            metaData = [
-#                    #self.getListOfCities(),
-#                    self.getEndingSynopsis(), 
-#                    ]
+        
+        ### Chris G's fix to mitigate the multi-entry effect seen in the HWT
+        if self.hazardStatus in ["elapsed", "ending", "ended"]:
+            metaData = [
+                    #self.getListOfCities(),
+                    self.getEndingSynopsis(), 
+                    ]
 #        else:
 #            metaData = [
 #                    self.getConvectionCategory(),
 #                    self.basisStatement(),
 #                    ]
-
-        metaData = [
-                    self.convectiveControls(),
-                    self.convectiveGetAttrs()
-                    ]
+        else:
+            metaData = [
+                        self.convectiveControls(),
+                        self.convectiveGetAttrs()
+                        ]
 
         return {
                 METADATA_KEY: metaData,

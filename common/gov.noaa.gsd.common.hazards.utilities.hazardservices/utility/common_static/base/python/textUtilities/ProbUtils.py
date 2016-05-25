@@ -44,6 +44,10 @@ class ProbUtils(object):
         
         for event in eventSet:
             
+            ### Kludgey fix for HWT Week 3
+            if event.getEndTime() <= datetime.datetime.fromtimestamp(eventSet.getAttributes().get("currentTime")/1000):
+                continue
+            
             hazardType = event.getHazardType()
             probGridSnap, probGridSwath = self.getOutputProbGrids(event, timeStamp)
             if hazardType == 'Prob_Severe':
@@ -243,7 +247,8 @@ class ProbUtils(object):
         nowTime = datetime.datetime.fromtimestamp(time.time())
         
         
-        outDir = os.path.join(self._OUTPUTDIR, nowTime.strftime("%Y%m%d_%H"), eventType, timeStamp.strftime("%Y%m%d_%H%M%S"))
+        #outDir = os.path.join(self._OUTPUTDIR, nowTime.strftime("%Y%m%d_%H"), eventType)
+        outDir = self._OUTPUTDIR
 
         if not os.path.exists(outDir):
             try:
@@ -254,63 +259,63 @@ class ProbUtils(object):
         outputFilename = 'PHIGrid_' + eventType + '_' + timeStamp.strftime('%Y%m%d_%H%M%S') + '.nc'
         pathFile = os.path.join(outDir,outputFilename)
     
-#        try:
+        try:
             
-        f = netcdf.netcdf_file(pathFile,'w')
-        f.title = 'Probabilistic Hazards Information grid'
-        f.hazard_type = eventType
-        f.institution = 'NOAA Hazardous Weather Testbed; ESRL Global Systems Division and National Severe Storms Laboratory'
-        f.source = 'AWIPS2 Hazard Services'
-        f.history = 'Initially created ' + nowTime.isoformat()
-        f.comment = 'These data are experimental'
-        #f.time_origin = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
-        f.time_origin = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
-        f.time_valid = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
-        
-        f.createDimension('lats', len(self._lats))
-        f.createDimension('lons', len(self._lons))
-        f.createDimension('time', 1)
-        
-        latVar = f.createVariable('lats', 'f', ('lats',))
-        latVar.long_name = "latitude"
-        latVar.units = "degrees_north"
-        latVar.standard_name = "latitude"
-        latVar[:] = self._lats
-        
-        lonVar = f.createVariable('lons', 'f', ('lons',))
-        lonVar.long_name = "longitude"
-        lonVar.units = "degrees_east"
-        lonVar.standard_name = "longitude"
-        lonVar[:] = self._lons
-        
-        timeVar = f.createVariable('time', 'f8', ('time',))
-        timeVar.long_name  = 'Valid Time'
-        timeVar.units = 'seconds since 1970-01-01 00:00:00'
-        timeVar.time_origin = '1970-01-01 00:00:00'
-        timeVar[:] = epoch
-
-        snapProbsVar = f.createVariable('PHIprobsSnapshot'+eventType, 'f', ('time', 'lats', 'lons'))
-        #snapProbsVar = f.createVariable('PHIprobsSnapshot'+eventType, 'f', ('lats', 'lons'))
-        snapProbsVar.long_name = "Probabilistic Hazard Information grid probabilities at the given time"
-        snapProbsVar.units = "%"
-        snapProbsVar.coordinates = "time lat lon"
-        #snapProbsVar.coordinates = "lat lon"
-        snapProbsVar[:] = snap
-
-        swathProbsVar = f.createVariable('PHIprobsSwath'+eventType, 'f', ('time', 'lats', 'lons'))
-        #swathProbsVar = f.createVariable('PHIprobsSwath'+eventType, 'f', ('lats', 'lons'))
-        swathProbsVar.long_name = "Probabilistic Hazard Information grid probability swaths starting at the given time"
-        swathProbsVar.units = "%"
-        swathProbsVar.coordinates = "time lat lon"
-        #swathProbsVar.coordinates = "lat lon"
-        swathProbsVar[:] = swath
-
-        f.close()
+            f = netcdf.netcdf_file(pathFile,'w')
+            f.title = 'Probabilistic Hazards Information grid'
+            f.hazard_type = eventType
+            f.institution = 'NOAA Hazardous Weather Testbed; ESRL Global Systems Division and National Severe Storms Laboratory'
+            f.source = 'AWIPS2 Hazard Services'
+            f.history = 'Initially created ' + nowTime.isoformat()
+            f.comment = 'These data are experimental'
+            #f.time_origin = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
+            f.time_origin = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
+            f.time_valid = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
             
-#        except:
-#            e = sys.exc_info()[0] # catch *all* exceptions
-#            sys.stderr.write('Unable to open PHI Grid Netcdf file for output:'+pathFile)
-#            sys.stderr.write('Error stacktrace:\n\n%s' % e)
+            f.createDimension('lats', len(self._lats))
+            f.createDimension('lons', len(self._lons))
+            f.createDimension('time', 1)
+            
+            latVar = f.createVariable('lats', 'f', ('lats',))
+            latVar.long_name = "latitude"
+            latVar.units = "degrees_north"
+            latVar.standard_name = "latitude"
+            latVar[:] = self._lats
+            
+            lonVar = f.createVariable('lons', 'f', ('lons',))
+            lonVar.long_name = "longitude"
+            lonVar.units = "degrees_east"
+            lonVar.standard_name = "longitude"
+            lonVar[:] = self._lons
+            
+            timeVar = f.createVariable('time', 'f8', ('time',))
+            timeVar.long_name  = 'Valid Time'
+            timeVar.units = 'seconds since 1970-01-01 00:00:00'
+            timeVar.time_origin = '1970-01-01 00:00:00'
+            timeVar[:] = epoch
+    
+            snapProbsVar = f.createVariable('PHIprobsSnapshot'+eventType, 'f', ('time', 'lats', 'lons'))
+            #snapProbsVar = f.createVariable('PHIprobsSnapshot'+eventType, 'f', ('lats', 'lons'))
+            snapProbsVar.long_name = "Probabilistic Hazard Information grid probabilities at the given time"
+            snapProbsVar.units = "%"
+            snapProbsVar.coordinates = "time lat lon"
+            #snapProbsVar.coordinates = "lat lon"
+            snapProbsVar[:] = snap
+    
+            swathProbsVar = f.createVariable('PHIprobsSwath'+eventType, 'f', ('time', 'lats', 'lons'))
+            #swathProbsVar = f.createVariable('PHIprobsSwath'+eventType, 'f', ('lats', 'lons'))
+            swathProbsVar.long_name = "Probabilistic Hazard Information grid probability swaths starting at the given time"
+            swathProbsVar.units = "%"
+            swathProbsVar.coordinates = "time lat lon"
+            #swathProbsVar.coordinates = "lat lon"
+            swathProbsVar[:] = swath
+    
+            f.close()
+            
+        except:
+            e = sys.exc_info()[0] # catch *all* exceptions
+            sys.stderr.write('Unable to open PHI Grid Netcdf file for output:'+pathFile)
+            sys.stderr.write('Error stacktrace:\n\n%s' % e)
         
         #copy2(pathFile, '/awips2/edex/data/manual')
             
@@ -396,6 +401,11 @@ class ProbUtils(object):
         issueStart = event.get("eventStartTimeAtIssuance")
         graphVals = event.get("convectiveProbTrendGraph")
         currentStart = long(self._datetimeToMs(event.getStartTime()))
+        
+        print '==='
+        print event.getEventID()
+        self.flush()
+        
         
         if graphVals is None:
             return self._getGraphProbsBasedOnDuration(event)
@@ -609,12 +619,15 @@ class ProbUtils(object):
         }
         return colors
 
+    def getOutputDir(self):
+        return self._OUTPUTDIR
+
     def setUpDomainValues(self):
         self._OUTPUTDIR = '/scratch/PHIGridTesting'
         self._buff = 1.
         self._lonPoints = 1200
         self._latPoints = 1000
         self._initial_ulLat = 41.0
-        self._initial_ulLon = -103.0
+        self._initial_ulLon = -98.5
     
     #########################################
