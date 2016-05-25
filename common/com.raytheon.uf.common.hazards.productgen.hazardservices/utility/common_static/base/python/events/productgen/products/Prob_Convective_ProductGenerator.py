@@ -168,7 +168,10 @@ class Product(Prob_Generator.Product):
             self._discussion = thisDisc #hazardAttrs.get('convectiveWarningDecisionDiscussion', defaultDiscussion)            
             #print "Prob Convective PG hazardAttrs", hazardAttrs
             #print "    start, end time, issueTime", hazardEvent.getStartTime(), hazardEvent.getEndTime(), hazardEvent.get('issueTime')
-            self.flush()
+            if hazardEvent.getStatus() in ['ENDING']:
+                print "Prob Convective Product Generator setting status to Ended", hazardEvent.getEventID()
+                self.flush()
+                hazardEvent.setStatus('ENDED')
                            
             productDict = collections.OrderedDict()
             self._initializeProductDict(productDict, eventSetAttributes)
@@ -184,7 +187,7 @@ class Product(Prob_Generator.Product):
             filteredDBEvents = []
 
             thisEventSetIDs = [evt.getEventID() for evt in eventSet]
-            print 'DBEvents:'
+            print 'Prob_Convective Product Generator -- DBEvents:'
             for evt in databaseEvents:
                 if evt.getStatus().lower() in ["elapsed", "ending", "ended"]:
                     continue

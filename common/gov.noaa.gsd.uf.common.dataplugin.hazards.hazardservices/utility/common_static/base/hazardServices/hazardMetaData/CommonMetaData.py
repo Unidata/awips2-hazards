@@ -2005,6 +2005,15 @@ class MetaData(object):
                         #"fieldName": "convectiveObjectMotion",
                         #"label": "Motion Vector:"
                         #},
+                       {
+                        "fieldType": "CheckBox",
+                        "fieldName": "showGrid",
+                        "label": "Preview Grid",
+                        "sendEveryChange": False,
+                        "showScale": False,
+                        "values": False,
+                        "modifyRecommender": "SwathRecommender"
+                        },
                         {
                         "fieldType": "IntegerSpinner",
                         "fieldName": "convectiveObjectDir",
@@ -2056,12 +2065,11 @@ class MetaData(object):
                         "showScale": False,
                         "modifyRecommender": "SwathRecommender"
                         },
-                       {
-                        "fieldType": "CheckBox",
-                        "fieldName": "showGrid",
-                        "label": "Preview Grid",
-                        "sendEveryChange": False,
-                        "showScale": False,
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "resetMotionVector",
+                        "label": "Reset Motion Vector",
+                        #"sendEveryChange": False,
                         "values": False,
                         "modifyRecommender": "SwathRecommender"
                         },

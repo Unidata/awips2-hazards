@@ -31,6 +31,7 @@ from shapely.wkt import loads
 
 from PHI_GridRecommender import Recommender as PHIGridRecommender
 #from MapsDatabaseAccessor import MapsDatabaseAccessor
+from ProbUtils import ProbUtils
 
 from HazardConstants import *
 import HazardDataAccess

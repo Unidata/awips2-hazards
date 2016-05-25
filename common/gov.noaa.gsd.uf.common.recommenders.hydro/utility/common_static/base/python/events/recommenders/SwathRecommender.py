@@ -213,7 +213,14 @@ class Recommender(RecommenderTemplate.Recommender):
                 eventIdentifier = eventSetAttrs.get('eventIdentifier')            
                 if eventIdentifier and eventIdentifier != event.getEventID():
                     continue                
-            if event.getStatus() in ['ELAPSED', 'ENDED']:
+            # Check for end time < current time and end the event
+            eventEndTime_ms = long(self._probUtils._datetimeToMs(event.getEndTime()))
+            if eventEndTime_ms < self._currentTime:
+                event.setStatus('ENDED')
+            print "SR Event status", event.getStatus()
+            print "SR Event selected", event.get('selected')
+            self.flush()
+            if event.getStatus() in ['ELAPSED', 'ENDED']:                
                 continue
             
             # Begin Graph Draw
@@ -225,11 +232,9 @@ class Recommender(RecommenderTemplate.Recommender):
                 continue
 
             # Event Bookkeeping
-            self._pendingHazard = event.getStatus() in ["PENDING", "POTENTIAL"] 
+            self._pendingHazard = event.getStatus() in ["PENDING", "POTENTIAL"]
+            self._showUpstream = self._pendingHazard
             self._selectedHazard = event.get('selected')
-            print "SR Event status", event.getStatus()
-            print "SR Event selected", event.get('selected')
-            self.flush()
             
             self._initializeEvent(event)
             origin = eventSetAttrs.get('origin')
@@ -261,7 +266,7 @@ class Recommender(RecommenderTemplate.Recommender):
         self._moveStartTime(event, self._latestDataLayerTime, moveEndTime=False)                
         self._advanceDownstreamPolys(event, eventSetAttrs)
         self._createIntervalPolys(event, eventSetAttrs, timeDirection="downstream")            
-        if self._pendingHazard:
+        if self._showUpstream:
             self._createIntervalPolys(event, eventSetAttrs, timeDirection="upstream")  
         graphProbs = self._probUtils._getGraphProbs(event, self._latestDataLayerTime)
         event.set('convectiveProbTrendGraph', graphProbs)
@@ -285,7 +290,7 @@ class Recommender(RecommenderTemplate.Recommender):
         # Recalculate the polygons (downstream and upstream)
         self._advanceDownstreamPolys(event, eventSetAttrs)
         self._createIntervalPolys(event, eventSetAttrs, timeDirection="downstream")            
-        if self._pendingHazard:
+        if self._showUpstream:
             self._createIntervalPolys(event, eventSetAttrs, timeDirection="upstream")  
             
         # Update Visual Features                                          
@@ -428,6 +433,23 @@ class Recommender(RecommenderTemplate.Recommender):
     def _needUpdate(self, event):
         update = False
         
+        # Handle Reset Motion Vector
+        if 'resetMotionVector' in self._attributeIdentifiers: 
+            #print "SR True -- resetting motion vector"
+            event.set('convectiveObjectDir', 270)
+            event.set('convectiveObjectSpdKts', 32) 
+            motionVectorPolys = event.get('motionVectorPolys', []) 
+            motionVectorTimes = event.get('motionVectorTimes', [])
+            #print "SR motionVectorPolys", len(motionVectorPolys), motionVectorTimes
+            #self.flush()
+            if motionVectorPolys:
+                motionVectorPolys = [motionVectorPolys[-1]]
+                motionVectorTimes = [motionVectorTimes[-1]]
+                event.set('motionVectorPolys', motionVectorPolys) 
+                event.set('motionVectorTimes', motionVectorTimes) 
+            self._showUpstream = True
+            return True
+        
         # Compare the previous values to the new values to determine if any changes are necessary.  
         # Update the previous values along the way.
         triggerCheckList = ['convectiveObjectSpdKtsUnc', 'convectiveObjectDirUnc', 'convectiveProbTrendGraph',
@@ -440,7 +462,6 @@ class Recommender(RecommenderTemplate.Recommender):
         newTriggerAttrs['duration'] = self._probUtils._getDurationMinutes(event)
         #graphProbs = self._probUtils._getGraphProbs(event, self._latestDataLayerTime)
         #event.set('convectiveProbTrendGraph', graphProbs)
-
         
         # Get the values from the MetaData. These should supercede and update the ones stored in the event
         self._updateConvectiveAttrs(event) 
@@ -723,29 +744,9 @@ class Recommender(RecommenderTemplate.Recommender):
         self.flush()
         for step in range(numIvals):
             origDirVal = dirVal
-            if timeDirection == 'upstream':
-                increment = -1*(step + 1)
-                secs = increment * self._probUtils._timeStep()
-                upstreamCentroid = self.computeUpstreamCentroid(poly.centroid, dirVal, speedVal, secs)
-                intervalPoly = self._relocatePolygon(upstreamCentroid, poly)
-            else:
-                increment = step
-                presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, step, numIvals)
-                
-                dirValLast = presetResults['dirVal']
-                if step > 0:
-                    prevPresetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, step-1, numIvals)
-                    dirValLast = prevPresetResults['dirVal']
-                
-                secs = increment * self._probUtils._timeStep()
-                gglDownstream = self._downstream(secs,
-                                            presetResults['speedVal'],
-                                            presetResults['dirVal'],
-                                            presetResults['spdUVal'],
-                                            presetResults['dirUVal'],
-                                            dirValLast,
-                                            gglPoly)
-                intervalPoly = so.transform(self._c3857t4326, gglDownstream)
+            intervalPoly, secs = self._getIntervalPoly(step, numIvals, poly, gglPoly, 
+                                                       speedVal, dirVal, spdUVal, dirUVal, 
+                                                       timeDirection, presetMethod) 
             intervalPoly = self._reducePolygon(intervalPoly)
             intervalPolys.append(intervalPoly)
             st = self._convertFeatureTime(secs)
@@ -761,6 +762,63 @@ class Recommender(RecommenderTemplate.Recommender):
             self._upstreamPolys = intervalPolys
             self._upstreamTimes = intervalTimes      
         #print '[', fi_filename, getframeinfo(currentframe()).lineno,'] === FINAL took ', time.time()-total, 'seconds for ', event.get('objectID'), ' ==='
+
+    def _getIntervalPoly_old(self, step, numIvals, poly, gglPoly, speedVal, dirVal, spdUVal, dirUVal, 
+                             timeDirection, presetMethod):
+        if timeDirection == 'upstream':
+            increment = -1*(step + 1)
+            secs = increment * self._probUtils._timeStep()
+            upstreamCentroid = self.computeUpstreamCentroid(poly.centroid, dirVal, speedVal, secs)
+            intervalPoly = self._relocatePolygon(upstreamCentroid, poly)
+        else:
+            increment = step
+            presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, step, numIvals)
+            
+            dirValLast = presetResults['dirVal']
+            if step > 0:
+                prevPresetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, step-1, numIvals)
+                dirValLast = prevPresetResults['dirVal']
+            
+            secs = increment * self._probUtils._timeStep()
+            gglDownstream = self._downstream(secs,
+                                        presetResults['speedVal'],
+                                        presetResults['dirVal'],
+                                        presetResults['spdUVal'],
+                                        presetResults['dirUVal'],
+                                        dirValLast,
+                                        gglPoly)
+            intervalPoly = so.transform(self._c3857t4326, gglDownstream)
+        return intervalPoly, secs
+
+    def _getIntervalPoly(self, step, numIvals, poly, gglPoly, speedVal, dirVal, spdUVal, dirUVal, 
+                         timeDirection, presetMethod):
+        if timeDirection == 'upstream':
+            presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, step, numIvals)
+            dirValLast = dirVal
+            increment = -1*(step + 1)
+            secs = increment * self._probUtils._timeStep()
+            #upstreamCentroid = self.computeUpstreamCentroid(poly.centroid, dirVal, speedVal, secs)
+            #intervalPoly = self._relocatePolygon(upstreamCentroid, poly)
+        else:
+            increment = step
+            presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, step, numIvals)
+            
+            dirValLast = presetResults['dirVal']
+            if step > 0:
+                prevPresetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, step-1, numIvals)
+                dirValLast = prevPresetResults['dirVal']
+            speedVal = presetResults['speedVal']
+            dirVal = presetResults['dirVal']
+            spdUVal = presetResults['spdUVal']
+            dirUVal = presetResults['dirUVal']           
+            secs = increment * self._probUtils._timeStep()
+        
+        gglDownstream = self._downstream(secs, speedVal, dirVal, spdUVal, dirUVal,
+                            dirValLast,gglPoly)
+        intervalPoly = so.transform(self._c3857t4326, gglDownstream)
+        if timeDirection == "upstream":
+            intervalPoly = self._relocatePolygon(intervalPoly.centroid, poly)
+        return intervalPoly, secs
 
     def computeUpstreamCentroid(self, centroid, dirDeg, spdKts, time):
         diffSecs = abs(time)
@@ -1231,7 +1289,7 @@ class Recommender(RecommenderTemplate.Recommender):
         previousFeatures = []
                 
         timeSteps = max(self._upstreamTimeSteps(), len(historyPolys))
-        if self._pendingHazard:
+        if self._showUpstream:
             dragCapability = 'whole'
             color = { "red": 1, "green": 1, "blue": 0 }
         else:
@@ -1272,16 +1330,23 @@ class Recommender(RecommenderTemplate.Recommender):
         for i in range(len(motionVectorTimes)):
             st, et = motionVectorTimes[i]
             if abs(st-polySt_ms) < self._probUtils._timeDelta_ms():
+                print "SR upstream using motion vector", i, st
+                self.flush()
                 return motionVectorPolys[i]
-        for i in range(len(historyTimes)):
-            st, et = historyTimes[i]
-            if abs(st-polySt_ms) < self._probUtils._timeDelta_ms():
-                return historyPolys[i]
-        if not self._pendingHazard:
+        # Do not use history polygons -- will leave commented out for now...
+#         for i in range(len(historyTimes)):
+#             st, et = historyTimes[i]
+#             if abs(st-polySt_ms) < self._probUtils._timeDelta_ms():
+#                 print "SR previous history", st
+#                 self.flush()
+#                 return historyPolys[i]
+        if not self._showUpstream:
             return None
         for i in range(len(self._upstreamTimes)):
             st, et = self._upstreamTimes[i]
             if abs(st-polySt_ms) < self._probUtils._timeDelta_ms():
+                #print "SR previous upstream poly", st
+                #self.flush()
                 return self._upstreamPolys[i]
         return None
 
