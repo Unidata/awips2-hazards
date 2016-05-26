@@ -34,13 +34,8 @@ class ProbUtils(object):
         probTorSnapList = []
         probTorSwathList = []
         
-        timeStamp = (long(eventSet.getAttributes().get("currentTime")))/1000
-        timeStamp = datetime.datetime.fromtimestamp(timeStamp)
-        
-        
-        timeStampList = [event.getStartTime() for event in eventSet if event.getStatus().upper() == 'PENDING']
-        if len(timeStampList) > 0:
-            timeStamp = timeStampList[0]
+        ### Note: this is one way to round down minutes... 
+        timeStamp = eventSet.getAttributes().get("issueTime").replace(second=0)
         
         for event in eventSet:
             

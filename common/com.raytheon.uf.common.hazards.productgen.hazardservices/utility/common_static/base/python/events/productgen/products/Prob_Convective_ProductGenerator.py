@@ -195,6 +195,7 @@ class Product(Prob_Generator.Product):
                   filteredDBEvents.append(evt)  
 
             eventSet.addAll(filteredDBEvents)
+            eventSet.addAttribute('issueTime', datetime.datetime.fromtimestamp(self._issueTime/1000))
 
 
             pu = ProbUtils()

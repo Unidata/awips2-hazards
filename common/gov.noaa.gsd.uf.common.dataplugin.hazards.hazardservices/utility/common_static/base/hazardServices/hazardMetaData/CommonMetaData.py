@@ -1874,8 +1874,8 @@ class MetaData(object):
             "rightMargin": 10,
             "topMargin": 10,
             "bottomMargin": 10,
-            "expandHorizontally": True,
-            "expandVertically": True,
+            "expandHorizontally": False,
+            "expandVertically": False,
             "fields": mws
         }        
         return grp
@@ -2000,20 +2000,6 @@ class MetaData(object):
             # "expandVertically": True,
             "numColumns":2,
             "fields": [
-                        #{
-                        #"fieldType": "Label",
-                        #"fieldName": "convectiveObjectMotion",
-                        #"label": "Motion Vector:"
-                        #},
-                       {
-                        "fieldType": "CheckBox",
-                        "fieldName": "showGrid",
-                        "label": "Preview Grid",
-                        "sendEveryChange": False,
-                        "showScale": False,
-                        "values": False,
-                        "modifyRecommender": "SwathRecommender"
-                        },
                         {
                         "fieldType": "IntegerSpinner",
                         "fieldName": "convectiveObjectDir",
@@ -2037,11 +2023,6 @@ class MetaData(object):
                         "showScale": False,
                         "modifyRecommender": "SwathRecommender"
                         },
-                        #{
-                        #"fieldType": "Label",
-                        #"fieldName": "convectiveObjectMotion2",
-                        #"label": "kts"
-                        #},
                        {
                         "fieldType": "IntegerSpinner",
                         "fieldName": "convectiveObjectDirUnc",
@@ -2063,6 +2044,15 @@ class MetaData(object):
                         "maxValue": 20,
                         "values": int(4.2),
                         "showScale": False,
+                        "modifyRecommender": "SwathRecommender"
+                        },
+                       {
+                        "fieldType": "CheckBox",
+                        "fieldName": "showGrid",
+                        "label": "Preview Grid",
+                        "sendEveryChange": False,
+                        "showScale": False,
+                        "values": False,
                         "modifyRecommender": "SwathRecommender"
                         },
                         {
@@ -2230,8 +2220,8 @@ class MetaData(object):
             "fieldType": "Group",
             "fieldName": "convectiveProbabilityGroup",
             "label": "",
-            "expandHorizontally": True,
-            "expandVertically": True,
+            "expandHorizontally": False,
+            "expandVertically": False,
             "numColumns":1,
             "fields": [
                        trends,
@@ -2250,7 +2240,7 @@ class MetaData(object):
             "label": "Warning Decision Discussion",
             "visibleChars": 40,
             "lines": 5,
-            "expandHorizontally": True,
+            "expandHorizontally": False,
             "promptText": "Recognized text will be copied here (or type manually).",
             #"values": "",
         }
@@ -2266,7 +2256,7 @@ class MetaData(object):
             "label": "Previous Warning Decision Discussion",
             "visibleChars": 40,
             "lines": 5,
-            "expandHorizontally": True,
+            "expandHorizontally": False,
             "editable": False,
             #"promptText": "Recognized text will be copied here (or type manually).",
             "values": pastDisc,
@@ -2375,6 +2365,7 @@ class MetaData(object):
                         ],
             "values": "NoPreset",
             "expandHorizontally": False,
+            "width":2,
             "modifyRecommender": "SwathRecommender"
         }
         

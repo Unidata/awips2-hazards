@@ -58,7 +58,7 @@ Prob_WFO = {
         "pending",
         "issued",
         "ending",
-        "ended",
+        #"ended",
         "elapsed",
     ],
     "columns": {
