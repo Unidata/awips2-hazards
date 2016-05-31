@@ -101,6 +101,30 @@ class Recommender(RecommenderTemplate.Recommender):
                 
         ProbUtils().processEvents(eventSet, writeToFile=True)
 
+#===============================================================================
+#         siteID = eventSet.getAttributes().get('siteID')
+#         mode = eventSet.getAttributes().get('hazardMode', 'PRACTICE').upper()
+#         databaseEvents = HazardDataAccess.getHazardEventsBySite(siteID, mode)
+#         filteredDBEvents = []
+# 
+#         thisEventSetIDs = [evt.getEventID() for evt in eventSet]
+#         print 'Prob_Convective Product Generator -- DBEvents:'
+#         for evt in databaseEvents:
+#             if evt.getStatus().lower() in ["elapsed", "ending", "ended"]:
+#                 continue
+#             if evt.getEventID() not in thisEventSetIDs:
+#               filteredDBEvents.append(evt)  
+# 
+#         eventSet.addAll(filteredDBEvents)
+#         eventSet.addAttribute('issueTime', datetime.datetime.fromtimestamp(self._issueTime/1000))
+# 
+# 
+#         pu = ProbUtils()
+#         
+#         pu.processEvents(eventSet, writeToFile=True)
+#===============================================================================
+
+
         return 
     
     def flush(self):

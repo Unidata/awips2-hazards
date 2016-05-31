@@ -132,18 +132,23 @@ class Product(Prob_Generator.Product):
             hazardEvent.set('issueTime', self._issueTime)
             
             ### Capture discussion & threats, timestamp and place in readonly disc box
-            thisDisc = datetime.datetime.fromtimestamp(self._issueTime/1000).strftime('%m/%d/%Y %H:%M :: ')
+            newDisc = datetime.datetime.fromtimestamp(self._issueTime/1000).strftime('%m/%d/%Y %H:%M :: ')
             threatFields = ['convectiveStormCharsHail', 'convectiveStormCharsWind', 'convectiveStormCharsTorn']
             threats = [hazardEvent.get(threat) for threat in threatFields]
-            thisDisc += str(threats) + '  >>>  ' + hazardEvent.get('convectiveWarningDecisionDiscussion', '')
-            pastDisc = hazardEvent.get('convectivePastWarningDecisionDiscussion', '')
-            if len(thisDisc) > 0 or len(pastDisc) > 0:
-                pastDisc = thisDisc + '\n' + pastDisc
-                hazardEvent.set('convectivePastWarningDecisionDiscussion', pastDisc)
-            
+            newDisc += str(threats) + '  >>>  ' 
+            thisDisc = hazardEvent.get('convectiveWarningDecisionDiscussion', '')
+            if len(thisDisc) > 0:
+                thisDiscEntries = thisDisc.split('\n---\n')
+                thisDiscEntries[0] = newDisc + thisDiscEntries[0]
+                thisDiscEntries = [''] + thisDiscEntries
+                newDisc = '\n---\n'.join(thisDiscEntries)
+                
+            else:
+                newDisc += '\n---\n'
+                
             ### Reset for next time HID appears
             [hazardEvent.set(threat, None) for threat in threatFields]
-            hazardEvent.set('convectiveWarningDecisionDiscussion', None)
+            hazardEvent.set('convectiveWarningDecisionDiscussion', newDisc)
             
             hazardEvent.set('eventStartTimeAtIssuance', long(self._probUtils._datetimeToMs(hazardEvent.getStartTime())))
             hazardEvent.set('durationSecsAtIssuance', self._probUtils._getDurationSecs(hazardEvent))
@@ -181,27 +186,29 @@ class Product(Prob_Generator.Product):
             
         if self._issueFlag:
 
-            siteID = eventSet.getAttributes().get('siteID')
-            mode = eventSet.getAttributes().get('hazardMode', 'PRACTICE').upper()
-            databaseEvents = HazardDataAccess.getHazardEventsBySite(siteID, mode)
-            filteredDBEvents = []
-
-            thisEventSetIDs = [evt.getEventID() for evt in eventSet]
-            print 'Prob_Convective Product Generator -- DBEvents:'
-            for evt in databaseEvents:
-                if evt.getStatus().lower() in ["elapsed", "ending", "ended"]:
-                    continue
-                if evt.getEventID() not in thisEventSetIDs:
-                  filteredDBEvents.append(evt)  
-
-            eventSet.addAll(filteredDBEvents)
-            eventSet.addAttribute('issueTime', datetime.datetime.fromtimestamp(self._issueTime/1000))
-
-
+#===============================================================================
+#             siteID = eventSet.getAttributes().get('siteID')
+#             mode = eventSet.getAttributes().get('hazardMode', 'PRACTICE').upper()
+#             databaseEvents = HazardDataAccess.getHazardEventsBySite(siteID, mode)
+#             filteredDBEvents = []
+# 
+#             thisEventSetIDs = [evt.getEventID() for evt in eventSet]
+#             print 'Prob_Convective Product Generator -- DBEvents:'
+#             for evt in databaseEvents:
+#                 if evt.getStatus().lower() in ["elapsed", "ending", "ended"]:
+#                     continue
+#                 if evt.getEventID() not in thisEventSetIDs:
+#                   filteredDBEvents.append(evt)  
+# 
+#             eventSet.addAll(filteredDBEvents)
+#             eventSet.addAttribute('issueTime', datetime.datetime.fromtimestamp(self._issueTime/1000))
+# 
+# 
+#             pu = ProbUtils()
+#             
+#             pu.processEvents(eventSet, writeToFile=True)
+#===============================================================================
             pu = ProbUtils()
-            
-            pu.processEvents(eventSet, writeToFile=True)
-
 
             ## Dump just this event to disk since only one hazard in events set?
             attrKeys = ['site', 'status', 'phenomenon', 'significance', 'subtype',

@@ -1858,7 +1858,7 @@ class MetaData(object):
         mws.append(self._getStormCharacteristics())
         # Warning Discussion
         mws.append(self._getConvectiveDiscussion())
-        mws.append(self._getPastConvectiveDiscussion())
+#        mws.append(self._getPastConvectiveDiscussion())
         # Activate
         #mws.append(self._getConvectiveActivate())
         # Redraw # Reset History # Preview grid
@@ -2237,32 +2237,34 @@ class MetaData(object):
         text = {
             "fieldType": "Text",
             "fieldName": "convectiveWarningDecisionDiscussion",
-            "label": "Warning Decision Discussion",
+            "label": "Warning Decision Discussion  (please type above top most '---')",
             "visibleChars": 40,
             "lines": 5,
             "expandHorizontally": False,
             "promptText": "Recognized text will be copied here (or type manually).",
-            #"values": "",
+            "values": "\n---\n",
         }
         return text
 
-    def _getPastConvectiveDiscussion(self):
-        
-        pastDisc = self.hazardEvent.get('convectivePastWarningDecisionDiscussion', 'Init')
-        
-        text = {
-            "fieldType": "Text",
-            "fieldName": "convectivePastWarningDecisionDiscussion",
-            "label": "Previous Warning Decision Discussion",
-            "visibleChars": 40,
-            "lines": 5,
-            "expandHorizontally": False,
-            "editable": False,
-            #"promptText": "Recognized text will be copied here (or type manually).",
-            "values": pastDisc,
-        }
-        
-        return text
+    #===========================================================================
+    # def _getPastConvectiveDiscussion(self):
+    #     
+    #     pastDisc = self.hazardEvent.get('convectivePastWarningDecisionDiscussion', 'Init')
+    #     
+    #     text = {
+    #         "fieldType": "Text",
+    #         "fieldName": "convectivePastWarningDecisionDiscussion",
+    #         "label": "Previous Warning Decision Discussion",
+    #         "visibleChars": 40,
+    #         "lines": 5,
+    #         "expandHorizontally": False,
+    #         "editable": False,
+    #         #"promptText": "Recognized text will be copied here (or type manually).",
+    #         "values": pastDisc,
+    #     }
+    #     
+    #     return text
+    #===========================================================================
 
 #===============================================================================
 #     def _getConvectiveDiscussion(self):

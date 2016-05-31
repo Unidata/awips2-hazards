@@ -35,12 +35,17 @@ class ProbUtils(object):
         probTorSwathList = []
         
         ### Note: this is one way to round down minutes... 
-        timeStamp = eventSet.getAttributes().get("issueTime").replace(second=0)
+        #timeStamp = eventSet.getAttributes().get("issueTime").replace(second=0)
+        timestamp = (long(eventSet.getAttributes().get("currentTime"))/1000)
+        timestamp = datetime.datetime.fromtimestamp(timestamp)
+        timeStamp = timestamp.replace(second=0)
+
         
         for event in eventSet:
             
             ### Kludgey fix for HWT Week 3
-            if event.getEndTime() <= datetime.datetime.fromtimestamp(eventSet.getAttributes().get("currentTime")/1000):
+            #if event.getEndTime() <= datetime.datetime.fromtimestamp(eventSet.getAttributes().get("currentTime")/1000):
+            if event.getEndTime() <= timestamp:
                 continue
             
             hazardType = event.getHazardType()
@@ -379,6 +384,7 @@ class ProbUtils(object):
         if len(newGraphVals) <= len(origGraphVals):
             newGraphVals = origGraphVals[0:len(newGraphVals)]
         else:
+            origGraphVals[-1]['editable'] = True
             for entry in newGraphVals:
                 entry['y'] = 0
             newGraphVals[0:len(origGraphVals)] = origGraphVals
@@ -468,7 +474,7 @@ class ProbUtils(object):
                         
         ### Challenge is to get the graph to show the "rounded up" value, but we 
         ### don't want to muck with the duration, so still uncertain the best way
-        graphVals = self._updateGraphValsDuration(graphVals, self._getGraphProbsBasedOnDuration(event, roundUp=True))
+        graphVals = self._updateGraphValsDuration(graphVals, self._getGraphProbsBasedOnDuration(event))
         #graphVals = self._updateGraphValsDuration(graphVals, self._getGraphProbsBasedOnDuration(event))
         
         import pprint
@@ -487,13 +493,13 @@ class ProbUtils(object):
         self.flush()
         return graphVals
 
-    def _getGraphProbsBasedOnDuration(self, event, roundUp=False):
+    def _getGraphProbsBasedOnDuration(self, event):
         probVals = []
         probInc = event.get('convectiveProbabilityTrendIncrement', 5)
         duration = self._getDurationMinutes(event)
         
         ### Round up for some context
-        duration = duration+probInc if roundUp else duration
+        duration = duration+probInc if duration%probInc != 0 else duration
         
         for i in range(0, duration+1, probInc):
         #for i in range(0, duration+probInc+1, probInc):
@@ -623,6 +629,6 @@ class ProbUtils(object):
         self._lonPoints = 1200
         self._latPoints = 1000
         self._initial_ulLat = 41.0
-        self._initial_ulLon = -98.5
+        self._initial_ulLon = -106.0
     
     #########################################

@@ -28,6 +28,8 @@
 EventDrivenTools = [
                    #{ "toolType": "RECOMMENDER", "toolIdentifiers": [ "ConvectiveRecommender" ], 
                    #   "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
+                   { "toolType": "RECOMMENDER", "toolIdentifiers": [ "PHI_GridRecommender" ], 
+                      "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
                    { "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
                        "triggerType": "DATA_LAYER_CHANGE", "dataTypes": [ "RADAR" ] },
                    ]
