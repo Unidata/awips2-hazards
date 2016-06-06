@@ -222,6 +222,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Mar 16, 2016 15676      Chris.Golden       Removed obsolete notifications.
  * Apr 01, 2016 16225      Chris.Golden       Added ability to cancel tasks that are scheduled to
  *                                            run at regular intervals.
+ * Jun 06, 2016 19432      Chris.Golden       Added ability to initiate drawing of lines and
+ *                                            points.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -973,10 +975,21 @@ public final class HazardServicesMessageHandler {
                 break;
 
             case DRAW_POLYGON:
-                // Activate the hazard drawing mouse handler.
                 appBuilder.getSpatialPresenter().setEditInProgress(false);
                 requestMouseHandler(HazardServicesMouseHandlers.VERTEX_DRAWING,
                         GeometryType.POLYGON.getValue());
+                break;
+
+            case DRAW_LINE:
+                appBuilder.getSpatialPresenter().setEditInProgress(false);
+                requestMouseHandler(HazardServicesMouseHandlers.VERTEX_DRAWING,
+                        GeometryType.LINE.getValue());
+                break;
+
+            case DRAW_POINT:
+                appBuilder.getSpatialPresenter().setEditInProgress(false);
+                requestMouseHandler(HazardServicesMouseHandlers.VERTEX_DRAWING,
+                        GeometryType.POINT.getValue());
                 break;
 
             case EDIT_POLYGON:

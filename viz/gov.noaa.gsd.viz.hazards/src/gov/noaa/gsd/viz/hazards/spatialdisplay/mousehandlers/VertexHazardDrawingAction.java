@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SequencePosition;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.LineDrawingAttributes;
@@ -63,6 +64,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             config manager.
  * Feb  6, 2015     4375   Dan Schaffer        Slight patch to geometry intersection error message
  * Feb 12, 2015     4959   Dan Schaffer        Modify MB3 add/remove UGCs to match Warngen
+ * Jun 06, 2016    19432   Chris.Golden        Added ability to draw lines and points.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -147,15 +149,19 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
      */
     public class VertexHazardDrawingHandler extends InputHandlerDefaultImpl {
 
-        /*
-         * Points of the new watch box.
+        /**
+         * Count of individual points created thus far, when shapes of type
+         * {@link GeometryType#POINT} are being created.
+         */
+        private int pointCount = 0;
+
+        /**
+         * Points of the new path or polygon.
          */
         private final List<Coordinate> points = new ArrayList<>();
 
-        /*
-         * An instance of DrawableElementFactory, which is used to create a new
-         * watch box. The factory will probably need to have a tornado warning
-         * box added to it.
+        /**
+         * Drawable element factory used to create a new path or polygon.
          */
         private final DrawableElementFactory def = new DrawableElementFactory();
 
@@ -209,23 +215,40 @@ public class VertexHazardDrawingAction extends AbstractMouseHandler {
                 return false;
             }
 
-            addPointIfNotIdenticalToPreviousPoint(loc);
             if (mouseButton == 1) {
+                if (shapeType == GeometryType.POINT) {
+                    getSpatialPresenter().createPointShape(
+                            loc,
+                            (pointCount == 0 ? SequencePosition.FIRST
+                                    : SequencePosition.INTERIOR));
+                } else {
+                    addPointIfNotIdenticalToPreviousPoint(loc);
+                }
                 return true;
             } else if (mouseButton == 3) {
+                List<Coordinate> pointsCopy = null;
+                if (shapeType == GeometryType.POINT) {
+                    getSpatialPresenter().createPointShape(loc,
+                            SequencePosition.LAST);
+                    pointCount = 0;
+                } else {
+
+                    /*
+                     * This is where the ghost object is replaced by the new
+                     * shape. First, delete the ghost line.
+                     */
+                    getSpatialDisplay().removeGhostOfElementBeingEdited();
+
+                    addPointIfNotIdenticalToPreviousPoint(loc);
+                    pointsCopy = new ArrayList<Coordinate>(points);
+                    points.clear();
+                }
 
                 /*
-                 * This is where the ghost object is replaced by the new shape.
-                 * First, delete the ghost line.
+                 * Indicate that this drawing action is done.
                  */
-                getSpatialDisplay().removeGhostOfElementBeingEdited();
-
-                List<Coordinate> pointsCopy = new ArrayList<Coordinate>(points);
-                points.clear();
-
-                // Indicate that this drawing action is done.
-                getSpatialPresenter().drawingActionComplete(
-                        new ArrayList<Coordinate>(pointsCopy));
+                getSpatialPresenter().drawingActionComplete(shapeType,
+                        pointsCopy);
 
                 return true;
             }

@@ -221,11 +221,6 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public boolean buildSelectedHazardProductGeometries() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public boolean canEventAreaBeChanged(ObservedHazardEvent event) {
         throw new UnsupportedOperationException();
     }
@@ -327,28 +322,11 @@ public class SimpleSessionEventManager implements
         throw new UnsupportedOperationException();
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
-     * #buildInitialHatching
-     * (com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent,
-     * java.util.List)
-     */
     @Override
     public Map<String, String> buildInitialHazardAreas(IHazardEvent hazardEvent) {
         throw new UnsupportedOperationException();
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
-     * #updateHazardAreas
-     * (com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent)
-     */
     @Override
     public void updateHazardAreas(IHazardEvent hazardEvent) {
         throw new UnsupportedOperationException();
@@ -370,4 +348,38 @@ public class SimpleSessionEventManager implements
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public void setHighResolutionGeometriesVisibleForSelectedEvents() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean setLowResolutionGeometriesVisibleForSelectedEvents() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setHighResolutionGeometryVisibleForCurrentEvent() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean setLowResolutionGeometryVisibleForCurrentEvent() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean setModifiedEventGeometry(String eventID, Geometry geometry) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void saveEvents(List<IHazardEvent> events) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setAddCreatedEventsToSelected(boolean addCreatedEventsToSelected) {
+        throw new UnsupportedOperationException();
+    }
 }

@@ -42,6 +42,7 @@ import org.apache.commons.lang.time.DateUtils;
 
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -73,6 +74,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
@@ -135,6 +137,7 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * May 03, 2016 15676      Chris.Golden      Fixed another bug with selected time not being rounded
  *                                           down to the closest minute when time-matching caused it
  *                                           to not lie on a minute boundary.
+ * Jun 06, 2016 19432      Chris.Golden      Added ability to draw lines and points.
  * </pre>
  * 
  * @author Chris.Golden
@@ -142,6 +145,14 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  */
 public class SpatialPresenter extends
         HazardServicesPresenter<ISpatialView<?, ?>> implements IOriginator {
+
+    /**
+     * Position of a point within the sequence of one or more points that are in
+     * the process of being created.
+     */
+    public enum SequencePosition {
+        FIRST, INTERIOR, LAST
+    };
 
     /** for logging */
     private final IUFStatusHandler statusHandler = UFStatus
@@ -699,13 +710,35 @@ public class SpatialPresenter extends
         getModel().getEventManager().addOrRemoveEnclosingUGCs(location);
     }
 
-    public void drawingActionComplete(List<Coordinate> points) {
+    /**
+     * Create a point shape using the specified location.
+     * 
+     * @param loc
+     *            Location at which to place the point shape.
+     * @param sequencePosition
+     *            Position of the point in the sequence of one or more points
+     *            being created.
+     */
+    public void createPointShape(Coordinate loc,
+            SequencePosition sequencePosition) {
+        IHazardEvent hazardEvent = hazardEventBuilder
+                .buildPointHazardEvent(loc);
+        hazardEventBuilder.addEvent(hazardEvent, this);
+        if (sequencePosition == SequencePosition.FIRST) {
+            getModel().getEventManager().setAddCreatedEventsToSelected(true);
+        } else if (sequencePosition == SequencePosition.LAST) {
+            getModel().getEventManager().setAddCreatedEventsToSelected(false);
+        }
+    }
+
+    public void drawingActionComplete(GeometryType shapeType,
+            List<Coordinate> points) {
         getView().drawingActionComplete();
         if (isEditInProgress) {
             updateHazardEventFromCollectedPoints(points);
             isEditInProgress = false;
-        } else {
-            buildHazardEventFromCollectedPoints(points);
+        } else if (points != null) {
+            buildHazardEventFromCollectedPoints(shapeType, points);
         }
     }
 
@@ -816,33 +849,53 @@ public class SpatialPresenter extends
     /**
      * Build a {@link IHazardEvent} with the points that have been collected.
      */
-    private void buildHazardEventFromCollectedPoints(List<Coordinate> points) {
-
+    private void buildHazardEventFromCollectedPoints(GeometryType shapeType,
+            List<Coordinate> points) {
         try {
+
             /*
-             * Do nothing if user hasn't drawn enough points to create a polygon
+             * Do nothing if user hasn't drawn enough points to create a path or
+             * polygon.
              */
-            if (points.size() < 3) {
+            if (points.size() < (shapeType == GeometryType.LINE ? 2 : 3)) {
                 return;
             }
-            Utilities.closeCoordinatesIfNecessary(points);
+
             /*
-             * Simplify the number of points in the polygon. This will
+             * Simplify the number of points in the path or polygon. This will
              * eventually need to be user-configurable.
              */
-            LinearRing linearRing = geometryFactory.createLinearRing(points
-                    .toArray(new Coordinate[0]));
+            IHazardEvent hazardEvent = null;
+            if (shapeType == GeometryType.POLYGON) {
+                Utilities.closeCoordinatesIfNecessary(points);
 
-            Geometry polygon = geometryFactory.createPolygon(linearRing, null);
-            Geometry reducedGeometry = TopologyPreservingSimplifier.simplify(
-                    polygon, 0.0001);
-            IHazardEvent hazardEvent = hazardEventBuilder
-                    .buildPolygonHazardEvent(reducedGeometry.getCoordinates());
+                LinearRing linearRing = geometryFactory.createLinearRing(points
+                        .toArray(new Coordinate[0]));
 
+                Geometry polygon = geometryFactory.createPolygon(linearRing,
+                        null);
+                Geometry reducedGeometry = TopologyPreservingSimplifier
+                        .simplify(polygon, 0.0001);
+                hazardEvent = hazardEventBuilder
+                        .buildPolygonHazardEvent(reducedGeometry
+                                .getCoordinates());
+            } else {
+                LineString lineString = geometryFactory.createLineString(points
+                        .toArray(new Coordinate[0]));
+                Geometry reducedGeometry = TopologyPreservingSimplifier
+                        .simplify(lineString, 0.0001);
+                hazardEvent = hazardEventBuilder
+                        .buildLineHazardEvent(reducedGeometry.getCoordinates());
+            }
+
+            /*
+             * Create the event for the path or polygon.
+             */
             hazardEventBuilder.addEvent(hazardEvent, this);
         } catch (InvalidGeometryException e) {
-            statusHandler.handle(Priority.WARN,
-                    "Error drawing vertex polygon: " + e.getMessage(), e);
+            statusHandler.handle(Priority.WARN, "Error drawing vertex "
+                    + (shapeType == GeometryType.LINE ? "path" : "polygon")
+                    + ": " + e.getMessage(), e);
         }
     }
 

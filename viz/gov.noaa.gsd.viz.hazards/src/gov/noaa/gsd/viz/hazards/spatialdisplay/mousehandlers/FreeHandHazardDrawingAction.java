@@ -21,6 +21,7 @@ import java.util.List;
 import org.eclipse.swt.widgets.Event;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.exception.VizException;
@@ -50,6 +51,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Dec 05, 2014 4124       Chris.Golden       Changed to work with newly parameterized
  *                                            config manager.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Jun 06, 2016 19432      Chris.Golden       Added ability to draw lines and points.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -129,7 +131,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
             points.clear();
 
             // Indicate that this drawing action is done.
-            getSpatialPresenter().drawingActionComplete(
+            getSpatialPresenter().drawingActionComplete(GeometryType.POLYGON,
                     new ArrayList<Coordinate>(pointsCopy));
 
             return true;

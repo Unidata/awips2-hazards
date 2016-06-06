@@ -86,6 +86,9 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      if Geometry objects pass the isValid() test), as the
  *                                      session event manager shouldn't be policing this; it should
  *                                      assume it gets valid geometries.
+ * Jun 06, 2016 19432      Chris.Golden Added method to set a flag indicating whether newly-created
+ *                                      (by the user) hazard events should be added to the selected
+ *                                      set or not.
  * </pre>
  * 
  * @author bsteffen
@@ -634,4 +637,13 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public boolean setModifiedEventGeometry(String eventID, Geometry geometry);
 
     public void saveEvents(List<IHazardEvent> events);
+
+    /**
+     * Set the flag indicating whether or not newly user-created events should
+     * be added to the current selection set.
+     * 
+     * @param New
+     *            value.
+     */
+    public void setAddCreatedEventsToSelected(boolean addCreatedEventsToSelected);
 }

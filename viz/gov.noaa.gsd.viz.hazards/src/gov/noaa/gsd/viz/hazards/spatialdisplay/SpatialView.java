@@ -122,6 +122,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                           to take another parameter.
  * Apr 27, 2016 18266      Chris.Golden      Added support for event-driven tools triggered
  *                                           by data layer changes.
+ * Jun 06, 2016 19432      Chris.Golden      Added ability to draw lines and points.
  * </pre>
  * 
  * @author Chris.Golden
@@ -896,6 +897,7 @@ public class SpatialView implements
                     new SeparatorAction(), addToSelectedToggleAction,
                     new SeparatorAction(), moveAndSelectChoiceAction,
                     drawVertexBasedPolygonChoiceAction,
+                    drawVertexPathChoiceAction, drawPointChoiceAction,
                     drawFreehandPolygonChoiceAction,
                     editVertexBasedPolygonChoiceAction,
                     editFreeHandVertexBasedPolygonChoiceAction,
@@ -1422,6 +1424,8 @@ public class SpatialView implements
             moveAndSelectChoiceAction.setChecked(true);
             moveAndSelectChoiceAction.run();
         }
+        presenter.getSessionManager().getEventManager()
+                .setAddCreatedEventsToSelected(false);
 
         drawVertexBasedPolygonChoiceAction.setChecked(false);
         drawFreehandPolygonChoiceAction.setChecked(false);

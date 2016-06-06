@@ -375,6 +375,10 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      handle database-sourced event additions by treating them as if they
  *                                      changed the visual features, so as to trigger recommenders where
  *                                      appropriate.
+ * Jun 06, 2016   19432    Chris.Golden Added method to set a flag indicating whether newly-created (by the
+ *                                      user) hazard events should be added to the selected set or not. This
+ *                                      flag, when set to true, overrides the behavior specified by the
+ *                                      current setting with regard to add-to-selected mode.
  * </pre>
  * 
  * @author bsteffen
@@ -550,6 +554,8 @@ public class SessionEventManager implements
     };
 
     private final RiverForecastManager riverForecastManager;
+
+    private boolean addCreatedEventsToSelected;
 
     // Public Constructors
 
@@ -2369,7 +2375,9 @@ public class SessionEventManager implements
         }
         oevent.setHazardMode(productClass, false, originator);
         synchronized (events) {
-            if (select && !Boolean.TRUE.equals(settings.getAddToSelected())) {
+            if (select
+                    && (addCreatedEventsToSelected == false)
+                    && (Boolean.TRUE.equals(settings.getAddToSelected()) == false)) {
                 for (IHazardEvent e : events) {
                     e.addHazardAttribute(HAZARD_EVENT_SELECTED, false);
                 }
@@ -4460,5 +4468,10 @@ public class SessionEventManager implements
             }
         }
         dbManager.storeEvents(dbEvents);
+    }
+
+    @Override
+    public void setAddCreatedEventsToSelected(boolean addCreatedEventsToSelected) {
+        this.addCreatedEventsToSelected = addCreatedEventsToSelected;
     }
 }

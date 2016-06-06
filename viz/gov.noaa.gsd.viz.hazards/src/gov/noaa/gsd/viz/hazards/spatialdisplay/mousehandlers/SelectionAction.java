@@ -95,6 +95,10 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      it found when checking distance from vertices to the mouse
  *                                      cursor, instead of looking for the one with the least distance
  *                                      between the two.
+ * Jun 07, 2016 19432      Chris.Golden Fixed bug with deleting of vertices (did not allow vertex to
+ *                                      be deleted from polygon if the polygon had four vertices; the
+ *                                      limit needs to be three, not four), and added code to support
+ *                                      proper adding and deleting of vertices from lines.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -846,19 +850,24 @@ public class SelectionAction extends NonDrawingAction {
                                     SpatialViewCursorTypes.DRAW_CURSOR);
                         }
 
-                        // Test to determine if the mouse is close
-                        // to
-                        // one of the hazard's vertices...
+                        /*
+                         * Determine whether or not the mouse position is close
+                         * to one of the hazard's vertices. Do not check the
+                         * last vertex if the shape is a polygon, since the
+                         * first and last vertices are always the same for such
+                         * shapes.
+                         */
                         List<Coordinate> coordList = nadc.getPoints();
                         Coordinate coords[] = coordList
                                 .toArray(new Coordinate[coordList.size()]);
 
                         double minDistance = Double.MAX_VALUE;
-
-                        // Convert to screen coords (pixels)
-                        for (int i = 0; i < coords.length && coords[i] != null; ++i) {
+                        int upperLimit = coords.length
+                                - (nadc instanceof HazardServicesPolygon ? 1
+                                        : 0);
+                        for (int j = 0; (j < upperLimit) && (coords[j] != null); ++j) {
                             double[] screen = editor
-                                    .translateInverseClick(coords[i]);
+                                    .translateInverseClick(coords[j]);
                             Coordinate vertexScreenCoord = new Coordinate(
                                     screen[0], screen[1]);
 
@@ -871,7 +880,7 @@ public class SelectionAction extends NonDrawingAction {
                                             .setCursor(
                                                     SpatialViewCursorTypes.MOVE_VERTEX_CURSOR);
                                     moveType = MoveType.SINGLE_POINT;
-                                    movePointIndex = i;
+                                    movePointIndex = j;
                                     minDistance = dist;
                                 }
                             }
@@ -917,30 +926,34 @@ public class SelectionAction extends NonDrawingAction {
                 IHazardServicesShape shape = ((IHazardServicesShape) selectedElement);
                 Coordinate[] coords = shape.getGeometry().getCoordinates();
 
-                int numCoordPoints = coords.length;
-
                 /*
-                 * The last coordinate may sometimes be equal to the first
-                 * coordinate. In this case, do not consider the last
-                 * coordinate.
+                 * For polygons in which the last coordinate is not equal to the
+                 * first coordinate, ensure that the line segment connecting the
+                 * last coordinate to the first is tested.
                  */
-                if (coords[0].equals(coords[numCoordPoints - 1])) {
-                    --numCoordPoints;
-                }
+                boolean checkLastToFirst = ((shape instanceof HazardServicesPolygon) && (coords[0]
+                        .equals(coords[coords.length - 1]) == false));
 
                 double minDistance = Double.MAX_VALUE;
                 int minPosition = Integer.MIN_VALUE;
 
                 Coordinate coLinearCoord = null;
 
-                for (int i = 1; i <= numCoordPoints; i++) {
+                /*
+                 * Iterate through the line segments, in each case stretching
+                 * from a lower-indexed one to a higher-indexed one (except when
+                 * the lower-indexed one is the last one, in which case the line
+                 * segment to be checked runs between it and the 0th indexed
+                 * point).
+                 */
+                for (int j = 1; j < coords.length + (checkLastToFirst ? 1 : 0); j++) {
                     double screenCoords[] = editor
-                            .translateInverseClick(coords[i - 1]);
+                            .translateInverseClick(coords[j - 1]);
                     Coordinate screenCoordA = new Coordinate(screenCoords[0],
                             screenCoords[1]);
 
-                    if (i < numCoordPoints) {
-                        screenCoords = editor.translateInverseClick(coords[i]);
+                    if (j < coords.length) {
+                        screenCoords = editor.translateInverseClick(coords[j]);
                     } else {
                         screenCoords = editor.translateInverseClick(coords[0]);
                     }
@@ -955,7 +968,7 @@ public class SelectionAction extends NonDrawingAction {
                     if (dist <= SELECTION_DISTANCE_PIXELS) {
                         if (dist < minDistance) {
                             minDistance = dist;
-                            minPosition = i;
+                            minPosition = j;
 
                             coLinearCoord = lineSegment
                                     .closestPoint(clickScreenCoord);
@@ -964,7 +977,7 @@ public class SelectionAction extends NonDrawingAction {
                 }
 
                 if (coLinearCoord != null) {
-                    Coordinate[] coords2 = new Coordinate[numCoordPoints + 1];
+                    Coordinate[] coords2 = new Coordinate[coords.length + 1];
 
                     int k = 0;
 
@@ -1021,15 +1034,26 @@ public class SelectionAction extends NonDrawingAction {
                 List<Coordinate> c2 = selectedElement.getPoints();
                 List<Coordinate> coords = new ArrayList<>(c2);
 
-                // For now, make sure there are at least three points left for
-                // paths, or four points for polygons (since the latter need
-                // to have the last point be identical to the first point).
+                /*
+                 * Ensure there are at least three points left for paths, or
+                 * five points for polygons (since the latter need to have the
+                 * last point be identical to the first point, so they need four
+                 * points at a minimum).
+                 */
                 boolean isPolygon = selectedElement.getClass().equals(
                         HazardServicesPolygon.class);
-                if (coords.size() > (isPolygon ? 4 : 3)) {
-                    coords.remove(movePointIndex);
+                if (coords.size() > (isPolygon ? 4 : 2)) {
 
-                    if (isPolygon) {
+                    /*
+                     * Remove the coordinate at the appropriate index. If the
+                     * first coordinate was removed and the shape is a polygon,
+                     * remove the last one as well, since the last is always a
+                     * copy of the first, and then close the polygon, which will
+                     * add a copy of the new first point at the end.
+                     */
+                    coords.remove(movePointIndex);
+                    if (isPolygon && (movePointIndex == 0)) {
+                        coords.remove(coords.size() - 1);
                         Utilities.closeCoordinatesIfNecessary(coords);
                     }
 
