@@ -16,10 +16,12 @@ import java.util.Set;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 
 import com.google.common.collect.ImmutableSet;
@@ -42,6 +44,7 @@ import com.google.common.collect.ImmutableSet;
  *                                           package, updated Javadoc and other
  *                                           comments.
  * Oct 10, 2014    4042    Chris.Golden      Added "preferredWidth" parameter.
+ * Jun 07, 2016   19464    Chris.Golden      Added "color" parameter.
  * </pre>
  * 
  * @author Chris.Golden
@@ -79,6 +82,11 @@ public class LabelMegawidget extends Megawidget implements IControl {
      */
     private final Font font;
 
+    /**
+     * Color, if a custom color was created.
+     */
+    private final Color color;
+
     // Protected Constructors
 
     /**
@@ -111,14 +119,32 @@ public class LabelMegawidget extends Megawidget implements IControl {
                     (specifier.isBold() ? SWT.BOLD : SWT.NORMAL)
                             + (specifier.isItalic() ? SWT.ITALIC : SWT.NORMAL)));
             label.setFont(font);
+        } else {
+            font = null;
+        }
+        Map<String, Double> colorMap = specifier.getColor();
+        if (colorMap.isEmpty() == false) {
+            color = new Color(Display.getDefault(), getColorComponent(colorMap,
+                    ConversionUtilities.COLOR_AS_MAP_RED), getColorComponent(
+                    colorMap, ConversionUtilities.COLOR_AS_MAP_GREEN),
+                    getColorComponent(colorMap,
+                            ConversionUtilities.COLOR_AS_MAP_BLUE));
+            label.setForeground(color);
+        } else {
+            color = null;
+        }
+        if ((font != null) || (color != null)) {
             label.addDisposeListener(new DisposeListener() {
                 @Override
                 public void widgetDisposed(DisposeEvent e) {
-                    font.dispose();
+                    if (font != null) {
+                        font.dispose();
+                    }
+                    if (color != null) {
+                        color.dispose();
+                    }
                 }
             });
-        } else {
-            font = null;
         }
         label.setEnabled(specifier.isEnabled());
 
@@ -227,5 +253,20 @@ public class LabelMegawidget extends Megawidget implements IControl {
         /*
          * No action.
          */
+    }
+
+    /**
+     * Get the floating-point value (which must be between 0.0 and 1.0
+     * inclusive), in the specified map at the specified key, and convert it to
+     * a color component between 0 and 255 inclusive.
+     * 
+     * @param map
+     *            Map holding the color component.
+     * @param key
+     *            Key under which the value is to be found in the map.
+     * @return Color component value, between 0 and 255 inclusive.
+     */
+    private int getColorComponent(Map<String, Double> map, String key) {
+        return (int) ((map.get(key) * 255.0) + 0.5);
     }
 }

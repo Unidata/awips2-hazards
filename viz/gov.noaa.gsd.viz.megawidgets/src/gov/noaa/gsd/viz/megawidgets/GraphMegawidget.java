@@ -252,7 +252,7 @@ public class GraphMegawidget extends StatefulMegawidget implements IControl {
                         getColorComponent(colorMap,
                                 ConversionUtilities.COLOR_AS_MAP_BLUE)));
             }
-            graph.SetRowColors(rowColors);
+            graph.setRowColors(rowColors);
             graph.addDisposeListener(new DisposeListener() {
                 @Override
                 public void widgetDisposed(DisposeEvent e) {

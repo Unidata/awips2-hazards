@@ -11,8 +11,11 @@ package com.raytheon.uf.viz.productgen.dialog;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.common.utilities.collect.ClassKeyedMap;
+import gov.noaa.gsd.viz.megawidgets.CompositeSpecifier;
+import gov.noaa.gsd.viz.megawidgets.ConversionUtilities;
 import gov.noaa.gsd.viz.megawidgets.ExpandBarSpecifier;
 import gov.noaa.gsd.viz.megawidgets.FractionSpinnerSpecifier;
+import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.IConverter;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
 import gov.noaa.gsd.viz.megawidgets.IStatefulSpecifier;
@@ -35,6 +38,7 @@ import java.util.Map;
 
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 
 import com.google.common.collect.ImmutableMap;
@@ -111,6 +115,7 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
  * Oct 08, 2015   12165    Chris.Golden      Changed to use new borderless option for
  *                                           Text megawidgets that are meant to look like
  *                                           labels.
+ * Jun 07, 2016   19464    Chris.Golden      Added red labels for required fields.
  * </pre>
  * 
  * @author Chris.Golden
@@ -137,7 +142,7 @@ public class ProductParametersEditorFactory {
     static {
         Map<String, Object> map = new HashMap<>();
         map.put(ExpandBarSpecifier.MEGAWIDGET_TYPE, "ExpandBar");
-        map.put(ExpandBarSpecifier.MEGAWIDGET_SPACING, 5);
+        map.put(ExpandBarSpecifier.MEGAWIDGET_SPACING, 10);
         map.put(ExpandBarSpecifier.EXPAND_HORIZONTALLY, true);
         map.put(ExpandBarSpecifier.EXPAND_VERTICALLY, true);
         map.put(ExpandBarSpecifier.LEFT_MARGIN, 0);
@@ -146,6 +151,52 @@ public class ProductParametersEditorFactory {
         map.put(ExpandBarSpecifier.BOTTOM_MARGIN, 2);
 
         DEFAULT_EXPAND_BAR_SPECIFICATION_PARAMETERS = ImmutableMap.copyOf(map);
+    }
+
+    /**
+     * Default specification parameters for two-label header composites.
+     */
+    private static final Map<String, Object> DEFAULT_COMPOSITE_SPECIFICATION_PARAMETERS;
+    static {
+        Map<String, Object> map = new HashMap<>();
+        map.put(CompositeSpecifier.MEGAWIDGET_TYPE, "Composite");
+        map.put(CompositeSpecifier.MEGAWIDGET_SPACING, 10);
+        map.put(CompositeSpecifier.MEGAWIDGET_COLUMN_COUNT, 2);
+        map.put(CompositeSpecifier.COLUMN_SPACING, 0);
+
+        DEFAULT_COMPOSITE_SPECIFICATION_PARAMETERS = ImmutableMap.copyOf(map);
+    }
+
+    /**
+     * Default specification parameters for label megawidgets with standard
+     * color.
+     */
+    private static final Map<String, Object> DEFAULT_LABEL_SPECIFICATION_PARAMETERS;
+    static {
+        Map<String, Object> map = new HashMap<>();
+        map.put(ExpandBarSpecifier.MEGAWIDGET_TYPE, "Label");
+        map.put(ExpandBarSpecifier.MEGAWIDGET_SPACING, 0);
+
+        DEFAULT_LABEL_SPECIFICATION_PARAMETERS = ImmutableMap.copyOf(map);
+    }
+
+    /**
+     * Default specification parameters for label megawidgets for required
+     * fields.
+     */
+    private static final Map<String, Object> DEFAULT_REQUIRED_FIELD_LABEL_SPECIFICATION_PARAMETERS;
+    static {
+        Map<String, Object> map = new HashMap<>();
+        map.put(ExpandBarSpecifier.MEGAWIDGET_TYPE, "Label");
+        map.put(ExpandBarSpecifier.MEGAWIDGET_SPACING, 0);
+        Map<String, Double> colorMap = new HashMap<>();
+        colorMap.put(ConversionUtilities.COLOR_AS_MAP_RED, 1.0);
+        colorMap.put(ConversionUtilities.COLOR_AS_MAP_GREEN, 0.0);
+        colorMap.put(ConversionUtilities.COLOR_AS_MAP_BLUE, 0.0);
+        map.put(LabelSpecifier.LABEL_COLOR, ImmutableMap.copyOf(colorMap));
+
+        DEFAULT_REQUIRED_FIELD_LABEL_SPECIFICATION_PARAMETERS = ImmutableMap
+                .copyOf(map);
     }
 
     /**
@@ -161,7 +212,7 @@ public class ProductParametersEditorFactory {
          */
         Map<String, Object> defaults = new HashMap<>();
         defaults.put(TextSpecifier.MEGAWIDGET_TYPE, "Text");
-        defaults.put(TextSpecifier.MEGAWIDGET_SPACING, 1);
+        defaults.put(TextSpecifier.MEGAWIDGET_SPACING, 6);
         defaults.put(TextSpecifier.EXPAND_HORIZONTALLY, true);
         defaults.put(TextSpecifier.MEGAWIDGET_SEND_EVERY_STATE_CHANGE, false);
         defaults.put(TextSpecifier.SPELLCHECK_ENABLED, true);
@@ -172,7 +223,7 @@ public class ProductParametersEditorFactory {
          */
         defaults = new HashMap<>();
         defaults.put(TextSpecifier.MEGAWIDGET_TYPE, "Text");
-        defaults.put(TextSpecifier.MEGAWIDGET_SPACING, 5);
+        defaults.put(TextSpecifier.MEGAWIDGET_SPACING, 10);
         defaults.put(TextSpecifier.MEGAWIDGET_EDITABLE, false);
         defaults.put(TextSpecifier.SHOW_BORDER, false);
         map.put(LabelSpecifier.class, defaults);
@@ -182,7 +233,7 @@ public class ProductParametersEditorFactory {
          */
         defaults = new HashMap<>();
         defaults.put(IntegerSpinnerSpecifier.MEGAWIDGET_TYPE, "IntegerSpinner");
-        defaults.put(IntegerSpinnerSpecifier.MEGAWIDGET_SPACING, 5);
+        defaults.put(IntegerSpinnerSpecifier.MEGAWIDGET_SPACING, 10);
         defaults.put(IntegerSpinnerSpecifier.EXPAND_HORIZONTALLY, true);
         defaults.put(IntegerSpinnerSpecifier.MEGAWIDGET_MIN_VALUE,
                 Integer.MIN_VALUE);
@@ -201,7 +252,7 @@ public class ProductParametersEditorFactory {
         defaults = new HashMap<>();
         defaults.put(FractionSpinnerSpecifier.MEGAWIDGET_TYPE,
                 "FractionSpinner");
-        defaults.put(FractionSpinnerSpecifier.MEGAWIDGET_SPACING, 5);
+        defaults.put(FractionSpinnerSpecifier.MEGAWIDGET_SPACING, 10);
         defaults.put(FractionSpinnerSpecifier.EXPAND_HORIZONTALLY, true);
         defaults.put(FractionSpinnerSpecifier.MEGAWIDGET_MIN_VALUE,
                 MIN_FRACTION_VALUE);
@@ -221,7 +272,7 @@ public class ProductParametersEditorFactory {
         defaults = new HashMap<>();
         defaults.put(UnboundedListBuilderSpecifier.MEGAWIDGET_TYPE,
                 "UnboundedListBuilder");
-        defaults.put(UnboundedListBuilderSpecifier.MEGAWIDGET_SPACING, 5);
+        defaults.put(UnboundedListBuilderSpecifier.MEGAWIDGET_SPACING, 10);
         defaults.put(UnboundedListBuilderSpecifier.MEGAWIDGET_VISIBLE_LINES, 5);
         map.put(UnboundedListBuilderSpecifier.class, defaults);
 
@@ -230,7 +281,7 @@ public class ProductParametersEditorFactory {
          */
         defaults = new HashMap<>();
         defaults.put(TimeSpecifier.MEGAWIDGET_TYPE, "Time");
-        defaults.put(TimeSpecifier.MEGAWIDGET_SPACING, 5);
+        defaults.put(TimeSpecifier.MEGAWIDGET_SPACING, 10);
         defaults.put(TimeSpecifier.MEGAWIDGET_SEND_EVERY_STATE_CHANGE, false);
         map.put(TimeSpecifier.class, defaults);
 
@@ -312,6 +363,7 @@ public class ProductParametersEditorFactory {
                             parametersForKeys.get(identifier));
                 }
             }, minTime, maxTime, currentTimeProvider);
+            ((GridLayout) parent.getLayout()).verticalSpacing = 0;
         }
 
         // Protected Methods
@@ -758,11 +810,48 @@ public class ProductParametersEditorFactory {
             Map<String, Object> specifier = new HashMap<>(baseSpecifier);
             specifier.put(IStatefulSpecifier.MEGAWIDGET_IDENTIFIER, key);
 
-            if (label.isEmpty() == false && keyinfo.isDisplayLabel()) {
-                if (keyinfo.isRequired() && label.startsWith("*") == false) {
-                    label = "*" + label;
+            /*
+             * If there is a label to display, and it is a required field,
+             * create a composite megawidget holding two labels, one with the
+             * label text itself, and one (in red) indicating that the field is
+             * required. (This is done because megawidgets cannot have
+             * multi-colored labels.) If not a required field, just use the
+             * megawidget's label parameter to give the label.
+             */
+            if ((label.isEmpty() == false) && keyinfo.isDisplayLabel()) {
+                boolean required = keyinfo.isRequired();
+                if (label.startsWith("*")) {
+                    label = label.substring(1);
+                    label = label.trim();
+                    required = true;
                 }
-                specifier.put(IStatefulSpecifier.MEGAWIDGET_LABEL, label + ":");
+                if (required) {
+                    Map<String, Object> baseLabelSpecifier = new HashMap<>(
+                            DEFAULT_LABEL_SPECIFICATION_PARAMETERS);
+                    baseLabelSpecifier.put(ISpecifier.MEGAWIDGET_IDENTIFIER,
+                            key + "---baseLabel");
+                    baseLabelSpecifier.put(ISpecifier.MEGAWIDGET_LABEL, label
+                            + ":");
+                    Map<String, Object> redLabelSpecifier = new HashMap<>(
+                            DEFAULT_REQUIRED_FIELD_LABEL_SPECIFICATION_PARAMETERS);
+                    redLabelSpecifier.put(ISpecifier.MEGAWIDGET_IDENTIFIER, key
+                            + "---colorLabel");
+                    redLabelSpecifier.put(ISpecifier.MEGAWIDGET_LABEL,
+                            " (* required field)");
+                    List<Map<String, Object>> headerFields = new ArrayList<>(2);
+                    headerFields.add(baseLabelSpecifier);
+                    headerFields.add(redLabelSpecifier);
+                    Map<String, Object> headerSpecifier = new HashMap<>(
+                            DEFAULT_COMPOSITE_SPECIFICATION_PARAMETERS);
+                    headerSpecifier.put(ISpecifier.MEGAWIDGET_IDENTIFIER, key
+                            + "---headerComposite");
+                    headerSpecifier.put(CompositeSpecifier.CHILD_MEGAWIDGETS,
+                            headerFields);
+                    specifiers.add(headerSpecifier);
+                    specifier.put(IControlSpecifier.MEGAWIDGET_SPACING, 0);
+                } else {
+                    specifier.put(ISpecifier.MEGAWIDGET_LABEL, label + ":");
+                }
             }
 
             /*

@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -34,6 +35,7 @@ import java.util.Map;
  * Jun 17, 2014    3982    Chris.Golden      Changed "isFullWidthOfColumn"
  *                                           property to "isFullWidthOfDetailPanel".
  * Oct 10, 2014    4042    Chris.Golden      Added "preferredWidth" parameter.
+ * Jun 07, 2016   19464    Chris.Golden      Added "color" parameter.
  * </pre>
  * 
  * @author Chris.Golden
@@ -81,6 +83,15 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
      */
     public static final String LABEL_ITALIC = "italic";
 
+    /**
+     * Color parameter name; a megawidget may include a map holding "red",
+     * "green", and "blue" values ranging between <code>0.0</code> and
+     * <code>1.0</code> inclusive. The specified color is used to render the
+     * text that is part of the label. If not specified, the default value is
+     * the default label color.
+     */
+    public static final String LABEL_COLOR = "color";
+
     // Private Variables
 
     /**
@@ -103,6 +114,13 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
      * Flag indicating whether or not an italic font is to be used.
      */
     private final boolean italic;
+
+    /**
+     * Color of the label as a map holding values under the "red", "green", and
+     * "blue" keys between <code>0.0</code> and <code>1.0</code> inclusive, or
+     * an empty map if the default color is to be used.
+     */
+    private final Map<String, Double> color;
 
     /**
      * Control options manager.
@@ -156,6 +174,13 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
         italic = ConversionUtilities.getSpecifierBooleanValueFromObject(
                 getIdentifier(), getType(), parameters.get(LABEL_ITALIC),
                 LABEL_ITALIC, false);
+
+        /*
+         * Ensure that the color, if present, is acceptable.
+         */
+        color = ConversionUtilities.getSpecifierColorAsMapFromObject(
+                getIdentifier(), getType(), parameters.get(LABEL_COLOR),
+                LABEL_COLOR, Collections.<String, Double> emptyMap());
     }
 
     // Public Methods
@@ -196,6 +221,18 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
      */
     public boolean isItalic() {
         return italic;
+    }
+
+    /**
+     * Get the color of the label as a map holding "red", "green", and "blue"
+     * values between <code>0.0</code> and <code>1.0</code> inclusive, or an
+     * empty map if the default color is to be used.
+     * 
+     * @return Color in map form, or an empty map if the default color is to be
+     *         used.
+     */
+    public Map<String, Double> getColor() {
+        return color;
     }
 
     @Override

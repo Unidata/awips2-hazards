@@ -875,7 +875,7 @@ public class Graph extends Canvas {
      * @param rowColors
      *            New row colors.
      */
-    public final void SetRowColors(List<Color> rowColors) {
+    public final void setRowColors(List<Color> rowColors) {
         this.rowColors.clear();
         if (rowColors != null) {
             this.rowColors.addAll(rowColors);
