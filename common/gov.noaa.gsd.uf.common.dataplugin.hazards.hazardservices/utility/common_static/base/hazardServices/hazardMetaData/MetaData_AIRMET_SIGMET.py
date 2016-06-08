@@ -168,6 +168,7 @@ class MetaData(CommonMetaData.MetaData):
                     "maxValue": 100,
                     "values": 1,
                     "incrementDelta": 5,
+                    "sendEveryChange": False,
                     "expandHorizontally": True,
                     "showScale": False
                  }
@@ -277,6 +278,7 @@ class MetaData(CommonMetaData.MetaData):
                     "minValue": 1,
                     "maxValue": 20,
                     "values": 1,
+                    "sendEveryChange": False,
                     "expandHorizontally": True,
                     "showScale": False,
                     "enable":False

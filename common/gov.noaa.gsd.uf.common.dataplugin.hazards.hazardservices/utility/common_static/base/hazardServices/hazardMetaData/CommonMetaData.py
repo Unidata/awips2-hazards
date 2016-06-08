@@ -363,6 +363,7 @@ class MetaData(object):
                         "fieldName": "rainSoFarLowerBound:rainSoFarUpperBound",
                         "label": "Between",
                         "betweenLabel": "and",
+                        "sendEveryChange": False,
                         "minValue": {
                                      "rainSoFarLowerBound": 0,
                                      "rainSoFarUpperBound": 0
@@ -514,6 +515,7 @@ class MetaData(object):
                              "fieldName": "additionalRainLowerBound:additionalRainUpperBound",
                              "label": "of",
                              "betweenLabel": "to",
+                             "sendEveryChange": False,
                              "minValue": {
                                           "additionalRainLowerBound": 0,
                                           "additionalRainUpperBound": 0
@@ -1252,6 +1254,7 @@ class MetaData(object):
                         "maxValue":-1,
                         "values":-50,
                         "spacing": 5,
+                        "sendEveryChange": False,
                         "expandHorizontally": True,
                         "showScale": True
                     } 
@@ -1309,6 +1312,7 @@ class MetaData(object):
                         "fieldType": "IntegerRange",
                         "fieldName": parm + "StageWindowSpinnerLow:" + parm + "StageWindowSpinnerHi",
                         "label": "",
+                        "sendEveryChange": False,
                         "minValue": {
                                      parm + "StageWindowSpinnerLow": low,
                                      parm + "StageWindowSpinnerHi": low + 1
@@ -1332,6 +1336,7 @@ class MetaData(object):
                         "minValue":-10,
                         "maxValue": 0,
                         "values":-3,
+                        "sendEveryChange": False,
                         "expandHorizontally": True,
                         "showScale": True
                     },
@@ -1349,6 +1354,7 @@ class MetaData(object):
                                     "minValue": 0,
                                     "maxValue": 100,
                                     "values": 10,
+                                    "sendEveryChange": False,
                                     "expandHorizontally": True,
                                     "showScale": False
                                     },
@@ -1359,6 +1365,7 @@ class MetaData(object):
                                     "minValue": 0,
                                     "maxValue": 100,
                                     "values": 10,
+                                    "sendEveryChange": False,
                                     "expandHorizontally": True,
                                     "showScale": False
                                     }
@@ -1371,6 +1378,7 @@ class MetaData(object):
                         "minValue": 0,
                         "maxValue": 100,
                         "values": 10,
+                        "sendEveryChange": False,
                         "expandHorizontally": True,
                         "showScale": False
                     }
@@ -1739,6 +1747,7 @@ class MetaData(object):
             "minValue": 1,
             "maxValue": 100,
             "values": 50,
+            "sendEveryChange": False,
             "expandHorizontally": True,
             "showScale": True,
             }
@@ -2059,7 +2068,6 @@ class MetaData(object):
                         "fieldType": "Button",
                         "fieldName": "resetMotionVector",
                         "label": "Reset Motion Vector",
-                        #"sendEveryChange": False,
                         "values": False,
                         "modifyRecommender": "SwathRecommender"
                         },
@@ -2347,6 +2355,7 @@ class MetaData(object):
             "minValue": 0,
             "maxValue": 60,
             "values": 0,
+            "sendEveryChange": False,
             "showScale": True
         }
         

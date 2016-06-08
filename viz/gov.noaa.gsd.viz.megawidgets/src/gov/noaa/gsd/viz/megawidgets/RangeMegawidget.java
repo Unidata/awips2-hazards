@@ -37,6 +37,16 @@ import com.google.common.collect.Sets;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 06, 2015   4123     Chris.Golden Initial creation.
+ * Jun 08, 2016  14002     Chris.Golden Fixed bug that caused premature
+ *                                      validation of range spinner values
+ *                                      when the user was typing into them
+ *                                      and sendEveryChange was false.  Also
+ *                                      added code to flip the two values if
+ *                                      during validation the lower one is
+ *                                      found to be greater than the upper
+ *                                      one. Finally, fixed bug that caused
+ *                                      a single state change to potentially
+ *                                      result in the wrong notification.
  * </pre>
  * 
  * @author Chris.Golden
@@ -156,14 +166,46 @@ public abstract class RangeMegawidget<T extends Number & Comparable<T>> extends
             }
         }
 
+        @SuppressWarnings("unchecked")
         @Override
         public List<String> setStates(Map<String, T> valuesForIdentifiers) {
+
+            /*
+             * Adjust each of the provided values to fit within their ranges.
+             */
+            RangeSpecifier<T> specifier = (RangeSpecifier<T>) getSpecifier();
+            List<String> stateIdentifiers = specifier.getStateIdentifiers();
+            Map<String, T> adjustedValuesForIdentifiers = new HashMap<>(
+                    valuesForIdentifiers.size(), 1.0f);
+            List<T> newValues = new ArrayList<>(2);
+            for (String identifier : stateIdentifiers) {
+                T adjustedValue = getRangeCorrectedValue(identifier,
+                        valuesForIdentifiers.get(identifier));
+                newValues.add(adjustedValue);
+                adjustedValuesForIdentifiers.put(identifier, adjustedValue);
+            }
+
+            /*
+             * Ensure that the upper value is at least the minimum distance from
+             * the lower value.
+             */
+            T minimumInterval = specifier.getMinimumInterval();
+            if (newValues.get(0).compareTo(
+                    stateValidator.subtract(newValues.get(1), minimumInterval)) > 0) {
+                adjustedValuesForIdentifiers.put(stateIdentifiers.get(1),
+                        stateValidator.add(newValues.get(0), minimumInterval));
+            }
+
+            /*
+             * Iterate through the adjusted values, associating each with its
+             * identifier if the old associated value is different, and making a
+             * record of which identifiers are experiencing a state change.
+             */
             List<String> changedStates = null;
-            for (Map.Entry<String, T> entry : valuesForIdentifiers.entrySet()) {
-                T value = getRangeCorrectedValue(entry.getKey(),
-                        entry.getValue());
-                if (value.equals(statesForIds.get(entry.getKey())) == false) {
-                    statesForIds.put(entry.getKey(), value);
+            for (Map.Entry<String, T> entry : adjustedValuesForIdentifiers
+                    .entrySet()) {
+                if (entry.getValue().equals(statesForIds.get(entry.getKey())) == false) {
+                    statesForIds.put(entry.getKey(), entry.getValue());
                     if (changedStates == null) {
                         changedStates = Lists.newArrayList(entry.getKey());
                     } else {
@@ -177,8 +219,10 @@ public abstract class RangeMegawidget<T extends Number & Comparable<T>> extends
         @Override
         public void notifyListener(List<String> identifiersOfChangedStates) {
             if (identifiersOfChangedStates.size() == 1) {
-                RangeMegawidget.this.notifyListener(getSpecifier()
-                        .getIdentifier(), identifiersOfChangedStates.get(0));
+                String changedStateIdentifier = identifiersOfChangedStates
+                        .get(0);
+                RangeMegawidget.this.notifyListener(changedStateIdentifier,
+                        statesForIds.get(changedStateIdentifier));
             } else {
                 RangeMegawidget.this
                         .notifyListener(new HashMap<>(statesForIds));

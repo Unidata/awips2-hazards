@@ -14,6 +14,7 @@ import gov.noaa.gsd.viz.widgets.MultiValueLinearControl;
 import gov.noaa.gsd.viz.widgets.MultiValueScale;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,7 @@ import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Spinner;
 
@@ -61,9 +63,17 @@ import com.google.common.collect.Range;
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 31, 2015   4123     Chris.Golden      Initial creation.
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jul 31, 2015   4123     Chris.Golden Initial creation.
+ * Jun 08, 2016  14002     Chris.Golden Fixed bug that caused premature
+ *                                      validation of range spinner values
+ *                                      when the user was typing into them
+ *                                      and sendEveryChange was false.  Also
+ *                                      added code to flip the two values if
+ *                                      during validation the lower one is
+ *                                      found to be greater than the upper
+ *                                      one.
  * </pre>
  * 
  * @author Chris.Golden
@@ -129,16 +139,8 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
              * the scale, if any, to match. Then send a notification to the
              * holder if appropriate.
              */
-            T value = convertSpinnerToValue(spinner.getSelection());
-            List<String> identifiersOfChangedStates = null;
-            if (value.equals(holder.getState(identifier)) == false) {
-                identifiersOfChangedStates = holder.setState(identifier, value);
-                spinner.update();
-            }
-            synchronizeComponentWidgetsToState();
-            if ((onlySendEndStateChanges == false)
-                    && (identifiersOfChangedStates != null)) {
-                holder.notifyListener(identifiersOfChangedStates);
+            if (onlySendEndStateChanges == false) {
+                changeState(identifier, spinner);
             }
 
             /*
@@ -344,21 +346,36 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
             spinnerFocusListener = new FocusAdapter() {
                 @Override
                 public void focusLost(FocusEvent e) {
-                    notifyListenerOfEndingStateChange();
+                    Display.getCurrent().asyncExec(new Runnable() {
+                        @Override
+                        public void run() {
+
+                            /*
+                             * Only consider this an ending state change if the
+                             * focus was not placed on another spinner within
+                             * the same megawidget.
+                             */
+                            if (spinnersForStateIdentifiers
+                                    .containsValue(Display.getCurrent()
+                                            .getFocusControl()) == false) {
+                                changeEndingStatesUsingSpinnerValues();
+                            }
+                        }
+                    });
                 }
             };
             spinnerKeyListener = new KeyAdapter() {
                 @Override
                 public void keyReleased(KeyEvent e) {
                     if (UiBuilder.isSpinnerValueChanger(e)) {
-                        notifyListenerOfEndingStateChange();
+                        changeEndingStatesUsingSpinnerValues();
                     }
                 }
             };
             spinnerMouseListener = new MouseAdapter() {
                 @Override
                 public void mouseUp(MouseEvent e) {
-                    notifyListenerOfEndingStateChange();
+                    changeEndingStatesUsingSpinnerValues();
                 }
             };
         } else {
@@ -765,6 +782,98 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
     }
 
     // Private Methods
+
+    /**
+     * Change the state associated with the specified identifier to that
+     * contained within the specified spinner. It is assumed that all state
+     * changes, not just ending ones, are to be sent along.
+     * 
+     * @param identifier
+     *            State identifier for which to make the change.
+     * @param spinner
+     *            Spinner holding the new value.
+     */
+    private void changeState(String identifier, Spinner spinner) {
+
+        /*
+         * Get the raw value from the spinner, and if it is not the current
+         * state value for the associated identifier, assign it.
+         */
+        T value = convertSpinnerToValue(spinner.getSelection());
+        List<String> identifiersOfChangedStates = null;
+        if (value.equals(holder.getState(identifier)) == false) {
+            identifiersOfChangedStates = holder.setState(identifier, value);
+            spinner.update();
+        }
+
+        /*
+         * Ensure all widgets reflect the updated states, and notify the
+         * listener of the changed states.
+         */
+        synchronizeComponentWidgetsToState();
+        if (identifiersOfChangedStates != null) {
+            holder.notifyListener(identifiersOfChangedStates);
+        }
+    }
+
+    /**
+     * Change the states to the values contained within the spinners, treating
+     * the changes as ending state changes. It is assumed that only ending state
+     * changes are to be sent along.
+     */
+    private void changeEndingStatesUsingSpinnerValues() {
+
+        /*
+         * Make a list of the raw values from the spinners, in the order of the
+         * identifiers with which the spinners are associated.
+         */
+        List<T> newValues = new ArrayList<>(stateIdentifiers.size());
+        for (String identifier : stateIdentifiers) {
+            newValues.add(convertSpinnerToValue(spinnersForStateIdentifiers
+                    .get(identifier).getSelection()));
+        }
+
+        /*
+         * If there is more than one state identifier, see if the values are
+         * ordered backwards; if they are, reverse them. This is done so that,
+         * for example, if the user enters "4" and "2" in two spinners, they
+         * will be reversed to be 2 and 4 for the respective values.
+         */
+        if (newValues.size() > 1) {
+            boolean backwards = true;
+            for (int j = 1; j < newValues.size(); j++) {
+                if (backwards
+                        && (newValues.get(j - 1).compareTo(newValues.get(j)) < 0)) {
+                    backwards = false;
+                    break;
+                }
+            }
+            if (backwards) {
+                Collections.reverse(newValues);
+            }
+        }
+
+        /*
+         * Change the states to those specified.
+         */
+        Map<String, T> changedStatesForIdentifiers = new HashMap<>(
+                stateIdentifiers.size(), 1.0f);
+        for (int j = 0; j < stateIdentifiers.size(); j++) {
+            changedStatesForIdentifiers.put(stateIdentifiers.get(j),
+                    newValues.get(j));
+        }
+        List<String> identifiersOfChangedStates = holder
+                .setStates(changedStatesForIdentifiers);
+
+        /*
+         * Ensure all widgets reflect the updated states, and notify the
+         * listener of the changed states.
+         */
+        synchronizeComponentWidgetsToState();
+        if (identifiersOfChangedStates != null) {
+            holder.notifyListener(identifiersOfChangedStates);
+        }
+    }
 
     /**
      * Determine whether or not the last forwarded state has been recorded. This
