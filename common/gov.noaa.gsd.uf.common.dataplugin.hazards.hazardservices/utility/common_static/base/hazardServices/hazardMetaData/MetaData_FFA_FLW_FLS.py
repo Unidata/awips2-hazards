@@ -212,7 +212,7 @@ class MetaData(CommonMetaData.MetaData):
             else:
                 values = ["stayTunedCTA"]
         return {
-                "fieldType":"CheckList",
+                "fieldType":"CheckBoxes",
                 "label":"Calls to Action (1 or more):",
                 "fieldName": "callsToAction_productLevel_"+productLabel,
                 "values": values,

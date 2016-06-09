@@ -621,10 +621,8 @@ class MetaData(object):
     def getCTAs(self, values=None):
  
         pageFields = { 
-                         "fieldType":"CheckList",
-                         "label":"Calls to Action (1 or more):",
+                         "fieldType":"CheckBoxes",
                          "fieldName": "cta",
-                         "showAllNoneButtons" : False,
                          "choices": self.getCTA_Choices()
                      }
          
@@ -639,11 +637,11 @@ class MetaData(object):
                "expandHorizontally": True,
                "pages": [
                             {
-                             "pageName": "Calls to Action",
+                             "pageName": "Calls to Action (1 or more)",
                              "pageFields": [pageFields]
                             }
                          ],
-                "expandedPages": ["Calls to Action"]      
+                "expandedPages": ["Calls to Action (1 or more)"]      
                 }
                        
                        
