@@ -62,6 +62,11 @@ import com.vividsolutions.jts.io.WKTReader;
  * Mar 01, 2016 15676      Chris.Golden Added visual features to hazard event.
  * Mar 26, 2016 15676      Chris.Golden Added more methods to get and set
  *                                      individual visual features.
+ * Jun 10, 2016 19537      Chris.Golden Combined base and selected visual feature
+ *                                      lists for each hazard event into one,
+ *                                      replaced by visibility constraints
+ *                                      based upon selection state to individual
+ *                                      visual features.
  * </pre>
  * 
  * @author mnash
@@ -78,9 +83,7 @@ public class BaseHazardEvent implements IHazardEvent {
 
     private Geometry geometry;
 
-    private VisualFeaturesList baseVisualFeatures;
-
-    private VisualFeaturesList selectedVisualFeatures;
+    private VisualFeaturesList visualFeatures;
 
     private String site;
 
@@ -120,8 +123,7 @@ public class BaseHazardEvent implements IHazardEvent {
         setStartTime(event.getStartTime());
         setCreationTime(event.getCreationTime());
         setGeometry(event.getGeometry());
-        setVisualFeatures(event.getBaseVisualFeatures(),
-                event.getSelectedVisualFeatures());
+        setVisualFeatures(event.getVisualFeatures());
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
         setSubType(event.getSubType());
@@ -161,25 +163,14 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     @Override
-    public VisualFeature getBaseVisualFeature(String identifier) {
-        return (baseVisualFeatures == null ? null : baseVisualFeatures
+    public VisualFeature getVisualFeature(String identifier) {
+        return (visualFeatures == null ? null : visualFeatures
                 .getByIdentifier(identifier));
     }
 
     @Override
-    public VisualFeaturesList getBaseVisualFeatures() {
-        return baseVisualFeatures;
-    }
-
-    @Override
-    public VisualFeature getSelectedVisualFeature(String identifier) {
-        return (selectedVisualFeatures == null ? null : selectedVisualFeatures
-                .getByIdentifier(identifier));
-    }
-
-    @Override
-    public VisualFeaturesList getSelectedVisualFeatures() {
-        return selectedVisualFeatures;
+    public VisualFeaturesList getVisualFeatures() {
+        return visualFeatures;
     }
 
     @Override
@@ -304,30 +295,22 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     @Override
-    public boolean setBaseVisualFeature(VisualFeature visualFeature) {
-        return setVisualFeatureInList(visualFeature, baseVisualFeatures);
+    public boolean setVisualFeature(VisualFeature visualFeature) {
+        if (visualFeatures == null) {
+            return false;
+        }
+        int index = visualFeatures.indexOfByIdentifier(visualFeature
+                .getIdentifier());
+        if (index == -1) {
+            return false;
+        }
+        visualFeatures.set(index, visualFeature);
+        return true;
     }
 
     @Override
-    public void setBaseVisualFeatures(VisualFeaturesList visualFeatures) {
-        this.baseVisualFeatures = visualFeatures;
-    }
-
-    @Override
-    public boolean setSelectedVisualFeature(VisualFeature visualFeature) {
-        return setVisualFeatureInList(visualFeature, selectedVisualFeatures);
-    }
-
-    @Override
-    public void setSelectedVisualFeatures(VisualFeaturesList visualFeatures) {
-        this.selectedVisualFeatures = visualFeatures;
-    }
-
-    @Override
-    public void setVisualFeatures(VisualFeaturesList baseVisualFeatures,
-            VisualFeaturesList selectedVisualFeatures) {
-        this.baseVisualFeatures = baseVisualFeatures;
-        this.selectedVisualFeatures = selectedVisualFeatures;
+    public void setVisualFeatures(VisualFeaturesList visualFeatures) {
+        this.visualFeatures = visualFeatures;
     }
 
     @Override
@@ -399,14 +382,8 @@ public class BaseHazardEvent implements IHazardEvent {
         result = prime * result + ((eventId == null) ? 0 : eventId.hashCode());
         result = prime * result
                 + ((geometry == null) ? 0 : geometry.hashCode());
-        result = prime
-                * result
-                + ((baseVisualFeatures == null) ? 0 : baseVisualFeatures
-                        .hashCode());
-        result = prime
-                * result
-                + ((selectedVisualFeatures == null) ? 0
-                        : selectedVisualFeatures.hashCode());
+        result = prime * result
+                + ((visualFeatures == null) ? 0 : visualFeatures.hashCode());
         result = prime * result
                 + ((hazardMode == null) ? 0 : hazardMode.hashCode());
         result = prime * result
@@ -469,18 +446,11 @@ public class BaseHazardEvent implements IHazardEvent {
         } else if (!geometry.equals(other.geometry)) {
             return false;
         }
-        if (baseVisualFeatures == null) {
-            if (other.baseVisualFeatures != null) {
+        if (visualFeatures == null) {
+            if (other.visualFeatures != null) {
                 return false;
             }
-        } else if (!baseVisualFeatures.equals(other.baseVisualFeatures)) {
-            return false;
-        }
-        if (selectedVisualFeatures == null) {
-            if (other.selectedVisualFeatures != null) {
-                return false;
-            }
-        } else if (!selectedVisualFeatures.equals(other.selectedVisualFeatures)) {
+        } else if (!visualFeatures.equals(other.visualFeatures)) {
             return false;
         }
         if (hazardMode != other.hazardMode) {
@@ -578,32 +548,5 @@ public class BaseHazardEvent implements IHazardEvent {
     @Override
     public String getWorkStation() {
         return workStation;
-    }
-
-    // Private Methods
-
-    /**
-     * Replace the visual feature with the same identifier as the specified
-     * visual feature with the latter in the specified list.
-     * 
-     * @param visualFeature
-     *            New visual feature.
-     * @param list
-     *            List in which to replace the visual feature.
-     * @return True if the new visual feature replaced the old one, false if no
-     *         visual feature with the given identifier was found in the given
-     *         list.
-     */
-    private boolean setVisualFeatureInList(VisualFeature visualFeature,
-            VisualFeaturesList list) {
-        if (list == null) {
-            return false;
-        }
-        int index = list.indexOfByIdentifier(visualFeature.getIdentifier());
-        if (index == -1) {
-            return false;
-        }
-        list.set(index, visualFeature);
-        return true;
     }
 }

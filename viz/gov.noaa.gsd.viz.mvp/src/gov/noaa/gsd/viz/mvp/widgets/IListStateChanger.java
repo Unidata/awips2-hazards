@@ -60,7 +60,7 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
     /**
      * Clear the specified list of any contents.
      * 
-     * @param indentifier
+     * @param identifier
      *            Identifier of the list widget to have its contents retrieved.
      *            This may be <code>null</code> if this object only handles one
      *            particular list.

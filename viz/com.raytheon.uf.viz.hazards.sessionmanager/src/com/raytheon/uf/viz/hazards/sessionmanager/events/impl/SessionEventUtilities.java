@@ -69,6 +69,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                      considering the visual features like this would
  *                                      mean the merged event would lose its visual
  *                                      features for no reason.
+ * Jun 10, 2016 19537      Chris.Golden Combined base and selected visual feature lists
+ *                                      for each hazard event into one, replaced by
+ *                                      visibility constraints based upon selection state
+ *                                      to individual visual features.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -118,12 +122,9 @@ public class SessionEventUtilities {
          * Only use the visual features of the new event if there is at least
          * one; otherwise, let the old event keep its visual features.
          */
-        if (((newEvent.getBaseVisualFeatures() != null) && (newEvent
-                .getBaseVisualFeatures().isEmpty() == false))
-                || ((newEvent.getSelectedVisualFeatures() != null) && (newEvent
-                        .getSelectedVisualFeatures().isEmpty() == false))) {
-            oldEvent.setVisualFeatures(newEvent.getBaseVisualFeatures(),
-                    newEvent.getSelectedVisualFeatures(), originator);
+        if ((newEvent.getVisualFeatures() != null)
+                && (newEvent.getVisualFeatures().isEmpty() == false)) {
+            oldEvent.setVisualFeatures(newEvent.getVisualFeatures(), originator);
         }
 
         /*

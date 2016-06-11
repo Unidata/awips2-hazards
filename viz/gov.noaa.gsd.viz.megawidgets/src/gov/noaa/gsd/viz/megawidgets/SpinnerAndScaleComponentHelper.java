@@ -48,12 +48,12 @@ import com.google.common.collect.Range;
  * This class is used by instantiating it, then invoking, in order,
  * {@link #setHolder(ISpinnerAndScaleComponentHolder)},
  * {@link #buildParentPanelAndLabel(Composite, ISingleLineSpecifier)}, and then
- * {@link #buildSpinner(ISingleLineSpecifier, Number, Number, Number, boolean, String, boolean)}
+ * {@link #buildSpinner(ISingleLineSpecifier, Number, Number, Number, boolean, String)}
  * one or more times, one per state identifier, to create spinners for each such
  * state, with invocations of
  * {@link #buildJoiningLabel(ISingleLineSpecifier, String, String)} interleaved
  * between each call to <code>buildSpinner()</code>, and finally
- * {@link #buildScale(ISingleLineSpecifier, Number, Number, Number, boolean, int)}
+ * {@link #buildScale(ISingleLineSpecifier, Number, Number, Map, Number, Number, boolean)}
  * . This process constructs all the widget components and gets them ready to be
  * managed. Other methods are provided to allow the components' states, value
  * boundaries, and so on to be manipulated after creation in order to keep them

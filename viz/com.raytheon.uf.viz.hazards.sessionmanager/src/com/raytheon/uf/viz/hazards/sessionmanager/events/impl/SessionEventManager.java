@@ -379,6 +379,9 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      user) hazard events should be added to the selected set or not. This
  *                                      flag, when set to true, overrides the behavior specified by the
  *                                      current setting with regard to add-to-selected mode.
+ * Jun 10, 2016   19537    Chris.Golden Combined base and selected visual feature lists for each hazard
+ *                                      event into one, replaced by visibility constraints based upon
+ *                                      selection state to individual visual features.
  * </pre>
  * 
  * @author bsteffen
@@ -2612,7 +2615,7 @@ public class SessionEventManager implements
     private void persistEvent(ObservedHazardEvent event) {
         try {
             IHazardEvent dbEvent = dbManager.createEvent(event);
-            dbEvent.setVisualFeatures(null, null);
+            dbEvent.setVisualFeatures(null);
             dbEvent.removeHazardAttribute(ATTR_ISSUED);
             dbEvent.removeHazardAttribute(HAZARD_EVENT_SELECTED);
             dbEvent.removeHazardAttribute(HAZARD_EVENT_CHECKED);

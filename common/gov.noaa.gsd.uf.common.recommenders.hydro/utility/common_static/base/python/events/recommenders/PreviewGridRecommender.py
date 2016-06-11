@@ -115,7 +115,7 @@ class Recommender(RecommenderTemplate.Recommender):
         for event in eventSet:
             changed = (self.removeVisualFeatures(event) or changed)
             if event.getHazardAttributes().get('showGrid') == True:
-                selectedVisualFeatures = []
+                vsualFeatures = []
                 probGrid, lons, lats = ProbUtils().getProbGrid(event)
                 polyTupleDict = self.createPolygons(probGrid, lons, lats)
                 changed = (self.addVisualFeatures(event, polyTupleDict) or changed)
@@ -130,21 +130,21 @@ class Recommender(RecommenderTemplate.Recommender):
     # returning True if this results in changes to the hazard event, and False
     # otherwise.
     def removeVisualFeatures(self, event):
-        selectedVisualFeatures = event.getSelectedVisualFeatures()
+        visualFeatures = event.getVisualFeatures()
         
-        if not selectedVisualFeatures:
+        if not visualFeatures:
             return False
         
         newFeatures = []
         changed = False
-        for feature in selectedVisualFeatures:
+        for feature in visualFeatures:
             if not feature.get('identifier').find('gridPreview')>=0:
                 newFeatures.append(feature)
             else:
                 changed = True
                 
         if changed:        
-            event.setSelectedVisualFeatures(VisualFeatures(newFeatures))   
+            event.setVisualFeatures(VisualFeatures(newFeatures))   
 
         return changed
          
@@ -152,7 +152,7 @@ class Recommender(RecommenderTemplate.Recommender):
     # this results in changes to the hazard event, and False otherwise.
     def addVisualFeatures(self, event, polyTupleDict):
                 
-        selectedFeatures = event.getSelectedVisualFeatures()
+        features = event.getVisualFeatures()
         
         for tuple in polyTupleDict:  
             if tuple == '0':
@@ -189,6 +189,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     
             gridPreviewPoly = {
                 "identifier": "gridPreview_" + tuple,
+                "visibilityConstraints": "selected",
                 "borderColor": colorFill[tuple],
                 "fillColor": colorFill[tuple],
                 "geometry": {
@@ -196,9 +197,9 @@ class Recommender(RecommenderTemplate.Recommender):
                 }
             }
 
-            selectedFeatures.append(gridPreviewPoly)
+            features.append(gridPreviewPoly)
             
-        event.setSelectedVisualFeatures(VisualFeatures(selectedFeatures))
+        event.setVisualFeatures(VisualFeatures(features))
 
         return True      
     

@@ -41,7 +41,11 @@ import com.vividsolutions.jts.geom.Geometry;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Feb 18, 2016   15676    Chris.Golden Initial creation.
- * 
+ * Jun 10, 2016   19537    Chris.Golden Combined base and selected visual feature
+ *                                      lists for each hazard event into one,
+ *                                      replaced by visibility constraints
+ *                                      based upon selection state to individual
+ *                                      visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -55,6 +59,12 @@ public class VisualFeaturesListJsonConverter {
      * Key for the identifier in a JSON object representing a visual feature.
      */
     public static final String KEY_IDENTIFIER = "identifier";
+
+    /**
+     * Key for the visibility constraints in a JSON object representing a visual
+     * feature.
+     */
+    public static final String KEY_VISIBILITY_CONSTRAINTS = "visibilityConstraints";
 
     /**
      * Key for the templates in a JSON object representing a visual feature.

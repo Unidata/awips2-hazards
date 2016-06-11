@@ -88,6 +88,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Apr 27, 2016 18266     Chris.Golden  Added support for event-driven tools triggered by data
  *                                      layer changes.
  * May 13, 2016 15676     Chris.Golden  Added database as a recommender trigger origin.
+ * Jun 10, 2016 19537     Chris.Golden  Combined base and selected visual feature lists for each
+ *                                      hazard event into one, replaced by visibility constraints
+ *                                      based upon selection state to individual visual features.
  * </pre>
  * 
  * @author mnash
@@ -523,9 +526,7 @@ public final class HazardConstants {
 
     public static final String LOW_RESOLUTION_GEOMETRY = "lowResolutionGeometry";
 
-    public static final String BASE_VISUAL_FEATURES = "baseVisualFeatures";
-
-    public static final String SELECTED_VISUAL_FEATURES = "selectedVisualFeatures";
+    public static final String VISUAL_FEATURES = "visualFeatures";
 
     public static final String SYMBOL_NEW_LAT_LON = "newLatLon";
 

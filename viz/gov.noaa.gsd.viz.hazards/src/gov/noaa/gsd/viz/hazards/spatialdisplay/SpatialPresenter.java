@@ -138,6 +138,9 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  *                                           down to the closest minute when time-matching caused it
  *                                           to not lie on a minute boundary.
  * Jun 06, 2016 19432      Chris.Golden      Added ability to draw lines and points.
+ * Jun 10, 2016 19537      Chris.Golden      Combined base and selected visual feature lists for each
+ *                                           hazard event into one, replaced by visibility constraints
+ *                                           based upon selection state to individual visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -331,14 +334,8 @@ public class SpatialPresenter extends
             /*
              * Find the visual feature itself.
              */
-            boolean selected = false;
-            VisualFeature feature = getVisualFeature(
-                    event.getBaseVisualFeatures(), featureIdentifier);
-            if (feature == null) {
-                feature = getVisualFeature(event.getSelectedVisualFeatures(),
-                        featureIdentifier);
-                selected = true;
-            }
+            VisualFeature feature = getVisualFeature(event.getVisualFeatures(),
+                    featureIdentifier);
 
             /*
              * If a visual feature is found, set its geometry to that specified.
@@ -349,13 +346,7 @@ public class SpatialPresenter extends
                 feature.setGeometry(
                         DateUtils.truncate(selectedTime, Calendar.MINUTE),
                         newGeometry);
-                if (selected) {
-                    event.setSelectedVisualFeature(feature,
-                            UIOriginator.SPATIAL_DISPLAY);
-                } else {
-                    event.setBaseVisualFeature(feature,
-                            UIOriginator.SPATIAL_DISPLAY);
-                }
+                event.setVisualFeature(feature, UIOriginator.SPATIAL_DISPLAY);
             }
         }
     }
@@ -404,7 +395,7 @@ public class SpatialPresenter extends
 
         SelectedTime selectedTime = timeManager.getSelectedTime();
         filterEventsForTime(events, selectedTime);
-        filterEventsForBaseVisualFeatures(events);
+        filterEventsForVisualFeatures(events);
 
         Map<String, Boolean> eventOverlapSelectedTime = new HashMap<>();
         Map<String, Boolean> forModifyingStormTrack = new HashMap<>();
@@ -459,9 +450,8 @@ public class SpatialPresenter extends
 
         /*
          * Iterate through the hazard events, compiling lists of spatial
-         * entities from all events that have visual features, both base and (if
-         * an event is selected) selected ones, that are visible at the current
-         * selected time.
+         * entities from all events that have visual features that are visible
+         * at the current selected time.
          */
         List<SpatialEntity<VisualFeatureSpatialIdentifier>> unselectedSpatialEntities = new ArrayList<>();
         List<SpatialEntity<VisualFeatureSpatialIdentifier>> selectedSpatialEntities = new ArrayList<>();
@@ -473,22 +463,18 @@ public class SpatialPresenter extends
                 .getCheckedEvents()) {
 
             /*
-             * Get the base and selected visual features lists; if either one is
-             * found to be non-empty, compile the various display properties
-             * that will be needed by any visual feature that indicates it must
-             * mimic the look of a base geometry for this hazard event in one or
-             * more ways. Then iterate through the base and/or selected visual
-             * features, compiling lists of their spatial entities as
-             * appropriate to the selected time.
+             * Get the visual features list; if it is found to be non-empty,
+             * compile the various display properties that will be needed by any
+             * visual feature that indicates it must mimic the look of a base
+             * geometry for this hazard event in one or more ways. Then iterate
+             * through the visual features, compiling lists of their spatial
+             * entities as appropriate to the selected time.
              */
             final String eventId = event.getEventID();
             boolean selected = selectedEventIDs.contains(eventId);
-            VisualFeaturesList baseVisualFeaturesList = event
-                    .getBaseVisualFeatures();
-            VisualFeaturesList selectedVisualFeaturesList = (selected ? event
-                    .getSelectedVisualFeatures() : null);
-            if ((baseVisualFeaturesList != null)
-                    || (selectedVisualFeaturesList != null)) {
+            VisualFeaturesList visualFeaturesList = event.getVisualFeatures();
+            if ((visualFeaturesList != null)
+                    && (visualFeaturesList.isEmpty() == false)) {
                 Color hazardColor = configManager.getColor(event);
                 double hazardBorderWidth = configManager.getBorderWidth(event,
                         selected);
@@ -501,31 +487,19 @@ public class SpatialPresenter extends
                 int hazardTextPointSize = HazardServicesText.FONT_SIZE;
 
                 /*
-                 * If there are base visual features, iterate through them,
-                 * creating spatial entities for any that are visible at the
-                 * selected time. Any such created spatial entities are added to
-                 * either the list for unselected hazard events or selected
-                 * hazard events, depending upon whether the event with which
-                 * the entity is associated is selected or not.
+                 * Iterate through the visual features, creating spatial
+                 * entities for any that are visible at the selected time. Any
+                 * such created spatial entities are added to either the list
+                 * for unselected hazard events or selected hazard events,
+                 * depending upon whether the event with which the entity is
+                 * associated is selected or not.
                  */
-                addSpatialEntitiesForVisualFeatures(baseVisualFeaturesList,
+                addSpatialEntitiesForVisualFeatures(visualFeaturesList,
                         (selected ? selectedSpatialEntities
-                                : unselectedSpatialEntities), eventId, false,
-                        selectedTime, hazardColor, hazardBorderWidth,
+                                : unselectedSpatialEntities), eventId,
+                        selected, selectedTime, hazardColor, hazardBorderWidth,
                         hazardBorderStyle, hazardPointDiameter,
                         hazardTextPointSize);
-
-                /*
-                 * If there are selected visual features and the event is
-                 * selected, iterate through said features, again creating
-                 * spatial entities for any that are visible at the selected
-                 * time. Any such created spatial entities are added to the list
-                 * for selected hazard events.
-                 */
-                addSpatialEntitiesForVisualFeatures(selectedVisualFeaturesList,
-                        selectedSpatialEntities, eventId, true, selectedTime,
-                        hazardColor, hazardBorderWidth, hazardBorderStyle,
-                        hazardPointDiameter, hazardTextPointSize);
             }
         }
 
@@ -548,8 +522,8 @@ public class SpatialPresenter extends
     private void addSpatialEntitiesForVisualFeatures(
             VisualFeaturesList visualFeaturesList,
             List<SpatialEntity<VisualFeatureSpatialIdentifier>> spatialEntities,
-            final String eventId, final boolean showWhenSelected,
-            Date selectedTime, Color hazardColor, double hazardBorderWidth,
+            final String eventId, boolean selected, Date selectedTime,
+            Color hazardColor, double hazardBorderWidth,
             BorderStyle hazardBorderStyle, double hazardPointDiameter,
             int hazardTextPointSize) {
 
@@ -573,8 +547,7 @@ public class SpatialPresenter extends
 
                 @Override
                 public VisualFeatureSpatialIdentifier generate(String base) {
-                    return new VisualFeatureSpatialIdentifier(eventId, base,
-                            showWhenSelected);
+                    return new VisualFeatureSpatialIdentifier(eventId, base);
                 }
             };
 
@@ -584,7 +557,7 @@ public class SpatialPresenter extends
              */
             for (VisualFeature visualFeature : visualFeaturesList) {
                 SpatialEntity<VisualFeatureSpatialIdentifier> entity = visualFeature
-                        .getStateAtTime(null, identifierGenerator,
+                        .getStateAtTime(null, identifierGenerator, selected,
                                 selectedTime, hazardColor, hazardBorderWidth,
                                 hazardBorderStyle, hazardPointDiameter, 0, 0,
                                 hazardTextPointSize);
@@ -919,16 +892,15 @@ public class SpatialPresenter extends
     }
 
     /**
-     * Remove any events with base visual features from the specified
-     * collection.
+     * Remove any events with visual features from the specified collection.
      */
-    private void filterEventsForBaseVisualFeatures(
+    private void filterEventsForVisualFeatures(
             Collection<ObservedHazardEvent> events) {
         Iterator<ObservedHazardEvent> it = events.iterator();
         while (it.hasNext()) {
             IHazardEvent event = it.next();
-            if ((event.getBaseVisualFeatures() != null)
-                    && (event.getBaseVisualFeatures().isEmpty() == false)) {
+            if ((event.getVisualFeatures() != null)
+                    && (event.getVisualFeatures().isEmpty() == false)) {
                 it.remove();
             }
         }

@@ -618,7 +618,7 @@ public class Graph extends Canvas {
      * 
      * @param interval
      *            Interval between X axis labels. Must be <code>0</code> if
-     *            {@link #getHatchIntervalX()} yields <code>0</code>; if the
+     *            {@link #getIntervalHatchX()} yields <code>0</code>; if the
      *            latter yields a positive integer, then this interval must be a
      *            multiple of that integer. If <code>0</code>, no labels are
      *            drawn on the X axis.
@@ -655,7 +655,7 @@ public class Graph extends Canvas {
      * 
      * @param interval
      *            Interval between Y axis labels. Must be <code>0</code> if
-     *            {@link #getHatchIntervalY()} yields <code>0</code>; if the
+     *            {@link #getIntervalHatchY()} yields <code>0</code>; if the
      *            latter yields a positive integer, then this interval must be a
      *            multiple of that integer. If <code>0</code>, no labels are
      *            drawn on the Y axis.

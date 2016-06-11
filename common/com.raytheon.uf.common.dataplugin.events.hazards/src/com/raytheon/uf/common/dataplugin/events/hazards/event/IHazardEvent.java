@@ -55,6 +55,11 @@ import com.vividsolutions.jts.geom.Geometry;
  * Mar 01, 2016 15676      Chris.Golden Added visual features to hazard event.
  * Mar 26, 2016 15676      Chris.Golden Added more methods to get and set
  *                                      individual visual features.
+ * Jun 10, 2016 19537      Chris.Golden Combined base and selected visual feature
+ *                                      lists for each hazard event into one,
+ *                                      replaced by visibility constraints
+ *                                      based upon selection state to individual
+ *                                      visual features.
  * </pre>
  * 
  * @author mnash
@@ -76,42 +81,22 @@ public interface IHazardEvent extends IEvent {
 
     public Geometry getProductGeometry();
 
-    public VisualFeature getBaseVisualFeature(String identifier);
+    public VisualFeature getVisualFeature(String identifier);
 
     /**
-     * Replace the base visual feature with the same identifier as the specified
+     * Replace the visual feature with the same identifier as the specified
      * visual feature with the latter.
      * 
      * @param visualFeature
      *            New visual feature.
      * @return True if the new visual feature replaced the old one, false if no
-     *         base visual feature with the given identifier was found.
+     *         visual feature with the given identifier was found.
      */
-    public boolean setBaseVisualFeature(VisualFeature visualFeature);
+    public boolean setVisualFeature(VisualFeature visualFeature);
 
-    public VisualFeaturesList getBaseVisualFeatures();
+    public VisualFeaturesList getVisualFeatures();
 
-    public void setBaseVisualFeatures(VisualFeaturesList visualFeatures);
-
-    public VisualFeature getSelectedVisualFeature(String identifier);
-
-    /**
-     * Replace the selected visual feature with the same identifier as the
-     * specified visual feature with the latter.
-     * 
-     * @param visualFeature
-     *            New visual feature.
-     * @return True if the new visual feature replaced the old one, false if no
-     *         selected visual feature with the given identifier was found.
-     */
-    public boolean setSelectedVisualFeature(VisualFeature visualFeature);
-
-    public VisualFeaturesList getSelectedVisualFeatures();
-
-    public void setSelectedVisualFeatures(VisualFeaturesList visualFeatures);
-
-    public void setVisualFeatures(VisualFeaturesList baseVisualFeatures,
-            VisualFeaturesList selectedVisualFeatures);
+    public void setVisualFeatures(VisualFeaturesList visualFeatures);
 
     public String getSiteID();
 

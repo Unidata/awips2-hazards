@@ -904,11 +904,9 @@ class Recommender(RecommenderTemplate.Recommender):
         motionVectorPolys = event.get('motionVectorPolys', []) 
         motionVectorTimes = event.get('motionVectorTimes', [])
             
-        selectedFeatures = event.getSelectedVisualFeatures()
-        baseFeatures = event.getBaseVisualFeatures()
-        if not selectedFeatures: selectedFeatures = []
-        if not baseFeatures: baseFeatures = []
-        features = selectedFeatures + baseFeatures
+        features = event.getVisualFeatures()
+        if not features: features = []
+
         # We are only changing one attribute per SwathRecommender execution
         changedIdentifier = list(eventSetAttrs.get('attributeIdentifiers'))[0]
         if changedIdentifier.find('swathRec_') != 0:
@@ -1013,8 +1011,8 @@ class Recommender(RecommenderTemplate.Recommender):
         if not downstreamPolys:
             return
         
-        baseVisualFeatures = [] 
-        selectedVisualFeatures = [] 
+        baseVisualFeatures = []
+        selectedVisualFeatures = []
         upstreamSt_ms = self._eventSt_ms - (self._probUtils._timeStep() * 1000 * self._upstreamTimeSteps())
         upstreamSt_ms = self._probUtils._roundTime_ms(upstreamSt_ms)
         
@@ -1043,15 +1041,13 @@ class Recommender(RecommenderTemplate.Recommender):
         selectedVisualFeatures += previewGridFeatures
                     
                 
-        # Replace Visual Features                   
-        if baseVisualFeatures:
-            event.setBaseVisualFeatures(VisualFeatures(baseVisualFeatures))
-        if selectedVisualFeatures:
-            event.setSelectedVisualFeatures(VisualFeatures(selectedVisualFeatures))
+        # Replace Visual Features
+        visualFeatures = baseVisualFeatures + selectedVisualFeatures               
+        if visualFeatures:
+            event.setVisualFeatures(VisualFeatures(visualFeatures))
             
         if self._printVisualFeatures:
-             self._printFeatures(event, "Base Visual Features", baseVisualFeatures)
-             self._printFeatures(event, "Selected Visual Features", selectedVisualFeatures)
+             self._printFeatures(event, "Visual Features", visualFeatures)
 
     def _screenFeatures(self, features, identifierStr):
         # Screen out the features containing the identifierStr as a prefix
@@ -1071,8 +1067,8 @@ class Recommender(RecommenderTemplate.Recommender):
         downstreamTimes = event.get('downstreamTimes')
         geometry = event.getGeometry() 
         
-        selectedVisualFeatures = []
         baseVisualFeatures = []
+        selectedVisualFeatures = []
         # Downstream Polygons, Track Points, Relocated Downstream 
         numIntervals = len(downstreamPolys) 
         #print "SR Number of downstream polys", numIntervals
@@ -1094,6 +1090,7 @@ class Recommender(RecommenderTemplate.Recommender):
               
             downstreamFeature = {
               "identifier": "swathRec_downstream_"+str(polySt_ms),
+              "visibilityConstraints": "always",
               "borderColor": "eventType",
               "borderThickness": "eventType",
               "borderStyle": "eventType",
@@ -1112,6 +1109,7 @@ class Recommender(RecommenderTemplate.Recommender):
             color = self._probUtils._getInterpolatedProbTrendColor(event, i, numIntervals)
             trackPointFeature = {
               "identifier": "swathRec_trackPoint_"+str(polySt_ms),
+              "visibilityConstraints": "selected",
               "borderColor": color,
               "borderThickness": 2,
               "diameter": 5,
@@ -1139,6 +1137,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 relocatedPoly = self._reducePolygon(self._relocatePolygon(centroid, geometry))
                 relocatedFeature = {
                   "identifier": "swathRec_relocated_"+str(polySt_ms),
+                  "visibilityConstraints": "selected",
                   "borderColor": "eventType",
                   "borderThickness": "eventType",
                   "borderStyle": "dashed",
@@ -1156,6 +1155,7 @@ class Recommender(RecommenderTemplate.Recommender):
         envelope = shapely.ops.cascaded_union(downstreamPolys)
         swath = {
               "identifier": "swathRec_swath",
+              "visibilityConstraints": "selected",
               "borderColor": { "red": 1, "green": 1, "blue": 0 },
               "borderThickness": 3,
               "borderStyle": "dotted",
@@ -1177,6 +1177,7 @@ class Recommender(RecommenderTemplate.Recommender):
             centroid = poly.centroid
             feature = {
               "identifier": "swathRec_motionVector_"+str(st),
+              "visibilityConstraints": "selected",
               "borderColor": { "red": 0, "green": 0, "blue": 0 },
               "borderThickness": 2,
               "fillColor": { "red": 1, "green": 1, "blue": 1},
@@ -1221,6 +1222,7 @@ class Recommender(RecommenderTemplate.Recommender):
             if poly.is_valid:
                 gridPreviewPoly = {
                     "identifier": "gridPreview_" + key,
+                    "visibilityConstraints": "selected",
                     "borderColor": { "red": 0, "green": 0, "blue": 0 }, # colorFill[key],
                     "fillColor": colorFill[key],
                     "geometry": {
@@ -1311,6 +1313,7 @@ class Recommender(RecommenderTemplate.Recommender):
                                 
             previousFeature = {              
               "identifier": "swathRec_previous_"+str(polySt_ms),
+              "visibilityConstraints": "selected",
               "borderColor":  color, #{ "red": 1, "green": 1, "blue": 0 }, #"eventType", 
               "borderThickness": "eventType",
               "borderStyle": "eventType",
@@ -1333,13 +1336,12 @@ class Recommender(RecommenderTemplate.Recommender):
                 print "SR upstream using motion vector", i, st
                 self.flush()
                 return motionVectorPolys[i]
-        # Do not use history polygons -- will leave commented out for now...
-#         for i in range(len(historyTimes)):
-#             st, et = historyTimes[i]
-#             if abs(st-polySt_ms) < self._probUtils._timeDelta_ms():
-#                 print "SR previous history", st
-#                 self.flush()
-#                 return historyPolys[i]
+        for i in range(len(historyTimes)):
+            st, et = historyTimes[i]
+            if abs(st-polySt_ms) < self._probUtils._timeDelta_ms():
+                print "SR previous history", st
+                self.flush()
+                return historyPolys[i]
         if not self._showUpstream:
             return None
         for i in range(len(self._upstreamTimes)):

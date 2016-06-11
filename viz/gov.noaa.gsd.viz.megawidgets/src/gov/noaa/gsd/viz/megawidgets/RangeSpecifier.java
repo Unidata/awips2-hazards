@@ -139,10 +139,8 @@ public class RangeSpecifier<T extends Number & Comparable<T>> extends
      *            Map holding the parameters that will be used to configure a
      *            megawidget created by this specifier as a set of key-value
      *            pairs.
-     * @param minimumIntervalKey
-     *            Key in <code>parameters</code> for the minimum interval
-     *            parameter; if <code>null</code>, no minimum interval may be
-     *            specified and it is assumed to be 0.
+     * @param validator
+     *            Validator to be used to check the range specification.
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
      */

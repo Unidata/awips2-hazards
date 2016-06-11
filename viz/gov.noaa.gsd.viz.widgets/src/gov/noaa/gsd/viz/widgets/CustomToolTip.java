@@ -35,7 +35,6 @@ import org.eclipse.swt.widgets.Shell;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 11, 2014 1283       Robert.Blum Initial creation
- * 
  * </pre>
  * 
  * @author Robert.Blum
@@ -44,10 +43,14 @@ import org.eclipse.swt.widgets.Shell;
 
 public class CustomToolTip extends PopupDialog {
 
+    // Private Static Constants
+
     /**
      * Offset value between cursor location and the tooltip.
      */
     private static final int TOOLTIP_OFFSET_FROM_CURSOR = 10;
+
+    // Private Variables
 
     /**
      * Location of the tooltip.
@@ -65,44 +68,45 @@ public class CustomToolTip extends PopupDialog {
      */
     private boolean isVisible = false;
 
+    // Public Constructors
+
     /**
-     * Constructs a new instance of CustomToolTip.
+     * Construct a standard instance.
      * 
      * @param parent
-     *            The parent shell.
+     *            Parent shell.
      * @param style
-     *            The PopupDialog style.
+     *            {@link PopupDialog} style.
      */
     public CustomToolTip(Shell parent, int style) {
         super(parent, style, false, false, false, false, false, null, null);
     }
 
+    // Public Methods
+
     /**
-     * Sets the location of the tooltip.
+     * Set the location of the tooltip.
      * 
      * @param location
-     *            Location to display the tooltip.
+     *            New location.
      */
     public void setLocation(Point location) {
         this.location = location;
     }
 
     /**
-     * Sets the location of the tooltip.
+     * Set the location of the tooltip.
      * 
      * @param x
+     *            X coordinate of new location.
      * @param y
+     *            Y coordinate of new location.
      */
     public void setLocation(int x, int y) {
         Point point = new Point(x, y);
         setLocation(point);
     }
 
-    /**
-     * (non-Javadoc)
-     * 
-     * @see org.eclipse.jface.window.Window#getInitialLocation(org.eclipse.swt.graphics.Point)
-     */
     @Override
     protected Point getInitialLocation(Point initialSize) {
         if (location == null) {
@@ -123,16 +127,26 @@ public class CustomToolTip extends PopupDialog {
     }
 
     /**
-     * Disposes the tooltip.
+     * Dispose of the tooltip.
      */
     public void dispose() {
         close();
     }
 
     /**
-     * Sets whether the tooltip is visible.
+     * Determine whether or not the tooltip is currently visible.
+     * 
+     * @return True if the tooltip is visible, false otherwise.
+     */
+    public boolean isVisible() {
+        return isVisible;
+    }
+
+    /**
+     * Set the visibility of the tooltip.
      * 
      * @param visible
+     *            Flag indicating whether or not the tooltip is to be visible.
      */
     public void setVisible(boolean visible) {
         isVisible = visible;
@@ -146,61 +160,53 @@ public class CustomToolTip extends PopupDialog {
     }
 
     /**
-     * Return a boolean indicating whether this tooltip is currently being
-     * displayed.
+     * Set the text to be shown in the tooltip's info area. This method has no
+     * effect if there was no info text supplied when the dialog was first
+     * opened.
      * 
-     * @return <code>true</code> if the tooltip is displayed, <code>false</code>
-     *         if it is not.
+     * @param text
+     *            Text to be shown when the info area is displayed.
+     * 
      */
-    public boolean isVisible() {
-        return isVisible;
+    public void setMessage(String text) {
+        setInfoText(text);
     }
 
     /**
-     * Set the text to be shown in the tooltip's info area. This message has no
-     * effect if there was no info text supplied when the dialog first opened.
-     * 
-     * @param infoText
-     *            the text to be shown when the info area is displayed.
-     * 
-     */
-    public void setMessage(String infoText) {
-        setInfoText(infoText);
-    }
-
-    /**
-     * Set the text to be shown in the tooltip's title area. This message has no
+     * Set the text to be shown in the tooltip's title area. This method has no
      * effect if there was no title label specified when the dialog was
      * originally opened.
      * 
-     * @param titleText
-     *            the text to be shown when the title area is displayed.
+     * @param text
+     *            Text to be shown when the title area is displayed.
      * 
      */
-    public void setText(String titleText) {
-        if (titleText == null || titleText.equals("")) {
+    public void setText(String text) {
+        if ((text == null) || text.equals("")) {
             setTitleText(null);
         } else {
-            setTitleText(titleText);
+            setTitleText(text);
         }
     }
 
     /**
-     * The rectangle the mouse can hover over to display the tooltip.
+     * Get the rectangle describing the boundaries of the area the mouse can
+     * hover over to display the tooltip.
      * 
-     * @return
+     * @return Bounds.
      */
     public Rectangle getToolTipBounds() {
         return toolTipBounds;
     }
 
     /**
-     * Sets the rectangle the mouse can hover over to display the tooltip.
+     * Set the rectangle describing the boundaries of the area the mouse can
+     * hover over to display the tooltip.
      * 
-     * @param toolTipBounds
-     *            Rectanlge to set the tooltip bounds.
+     * @param bounds
+     *            Bounds.
      */
-    public void setToolTipBounds(Rectangle toolTipBounds) {
-        this.toolTipBounds = toolTipBounds;
+    public void setToolTipBounds(Rectangle bounds) {
+        this.toolTipBounds = bounds;
     }
 }

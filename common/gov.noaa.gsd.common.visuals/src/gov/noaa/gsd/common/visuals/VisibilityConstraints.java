@@ -16,36 +16,43 @@ import java.util.Map;
 import com.google.common.collect.ImmutableList;
 
 /**
- * Description: Possible drag capabilities: None, part (individual parts of the
- * entity may be dragged), whole (the entire entity may be dragged together),
- * and all (either a part of the entity or the entire entity may be dragged).
+ * Description: Visibility constraints, indicating what the state of the object
+ * represented by a visual feature must be in order to have the latter be
+ * visible. <code>NEVER</code> indicates the visual feature is never visible;
+ * this may be used so that a visual feature may be kept but rendered invisible.
+ * <code>UNSELECTED</code> indicates the visual feature should only be visible
+ * if the object it represents is unselected, while <code>SELECTED</code>
+ * indicates the opposite. <code>ALWAYS</code> means that regardless of
+ * selection state of the represented object, the visual feature should be
+ * visible.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
- * Mar 10, 2016   15676    Chris.Golden Initial creation.
+ * Jun 10, 2016   19537    Chris.Golden Initial creation.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public enum DragCapability {
+public enum VisibilityConstraints {
 
     // Values
 
-    NONE("none"), PART("part"), WHOLE("whole"), ALL("all");
+    NEVER("never"), UNSELECTED("unselected"), SELECTED("selected"), ALWAYS(
+            "always");
 
     // Private Static Constants
 
     /**
      * Map of descriptions to instances.
      */
-    private static final Map<String, DragCapability> INSTANCES_FOR_DESCRIPTIONS = new LinkedHashMap<>(
+    private static final Map<String, VisibilityConstraints> INSTANCES_FOR_DESCRIPTIONS = new LinkedHashMap<>(
             4, 1.0f);
     static {
-        for (DragCapability value : DragCapability.values()) {
+        for (VisibilityConstraints value : VisibilityConstraints.values()) {
             INSTANCES_FOR_DESCRIPTIONS.put(value.description, value);
         }
     }
@@ -67,7 +74,7 @@ public enum DragCapability {
      * @return Instance corresponding to the given description, or
      *         <code>null</code> if no such instance is found.
      */
-    public static DragCapability getInstance(String description) {
+    public static VisibilityConstraints getInstance(String description) {
         return INSTANCES_FOR_DESCRIPTIONS.get(description);
     }
 
@@ -88,7 +95,7 @@ public enum DragCapability {
      * @param description
      *            Description.
      */
-    private DragCapability(String description) {
+    private VisibilityConstraints(String description) {
         this.description = description;
     }
 

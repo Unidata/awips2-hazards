@@ -39,6 +39,11 @@
 #                                                 methods never return None; they now always
 #                                                 return a VisualFeatures (list) object,
 #                                                 empty or otherwise.
+#    06/10/16       19537          Chris.Golden   Combined base and selected visual feature
+#                                                 lists for each hazard event into one,
+#                                                 replaced by visibility constraints
+#                                                 based upon selection state to individual
+#                                                 visual features.
 # 
 #
 
@@ -174,32 +179,17 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         if geometry is not None :
             self.jobj.setGeometry(JUtil.pyValToJavaObj(geometry))
 
-    def getBaseVisualFeatures(self):
+    def getVisualFeatures(self):
         
         # This may return a list, and not a VisualFeatures object (which is a
         # list subclass), so build one of the latter out of the former.
-        visualFeatures = JUtil.javaObjToPyVal(self.jobj.getBaseVisualFeatures())
+        visualFeatures = JUtil.javaObjToPyVal(self.jobj.getVisualFeatures())
         if visualFeatures is None:
             return VisualFeatures([])
         return VisualFeatures(visualFeatures)
     
-    def setBaseVisualFeatures(self, visualFeatures):
-        self.jobj.setBaseVisualFeatures(JUtil.pyValToJavaObj(visualFeatures))
-
-    def getSelectedVisualFeatures(self):
-        
-        # This may return a list, and not a VisualFeatures object (which is a
-        # list subclass), so build one of the latter out of the former.
-        visualFeatures = JUtil.javaObjToPyVal(self.jobj.getSelectedVisualFeatures())
-        if visualFeatures is None:
-            return VisualFeatures([])
-        return VisualFeatures(visualFeatures)
-    
-    def setSelectedVisualFeatures(self, visualFeatures):
-        self.jobj.setSelectedVisualFeatures(JUtil.pyValToJavaObj(visualFeatures))
-    
-    def setVisualFeatures(self, baseVisualFeatures, selectedVisualFeatures):
-        self.jobj.setVisualFeatures(JUtil.pyValToJavaObj(baseVisualFeatures, selectedVisualFeatures))
+    def setVisualFeatures(self, visualFeatures):
+        self.jobj.setVisualFeatures(JUtil.pyValToJavaObj(visualFeatures))
 
     def getHazardMode(self):
         if self.jobj.getHazardMode() is not None :

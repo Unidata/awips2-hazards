@@ -90,6 +90,11 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      same bug also caused attributes that were
  *                                      supposedly removed from the event to not
  *                                      actually be removed.
+ * Jun 10, 2016 19537      Chris.Golden Combined base and selected visual feature
+ *                                      lists for each hazard event into one,
+ *                                      replaced by visibility constraints
+ *                                      based upon selection state to individual
+ *                                      visual features.
  * </pre>
  * 
  * @author mnash
@@ -203,26 +208,14 @@ public class HazardEvent implements IHazardEvent, IValidator {
     private Geometry geometry;
 
     /**
-     * Base visual features list of the hazard, to be shown anytime the hazard
-     * event is visible on the spatial display.
+     * Visual features list of the hazard.
      */
     @DynamicSerializeElement
     @XmlJavaTypeAdapter(value = VisualFeaturesListAdapter.class)
     @XmlAttribute
-    @SlotAttribute(HazardConstants.BASE_VISUAL_FEATURES)
+    @SlotAttribute(HazardConstants.VISUAL_FEATURES)
     @SlotAttributeConverter(VisualFeaturesListSlotConverter.class)
-    private VisualFeaturesList baseVisualFeatures;
-
-    /**
-     * Selected visual features list of the hazard, to be shown anytime the
-     * hazard event is visible and selected on the spatial display.
-     */
-    @DynamicSerializeElement
-    @XmlJavaTypeAdapter(value = VisualFeaturesListAdapter.class)
-    @XmlAttribute
-    @SlotAttribute(HazardConstants.SELECTED_VISUAL_FEATURES)
-    @SlotAttributeConverter(VisualFeaturesListSlotConverter.class)
-    private VisualFeaturesList selectedVisualFeatures;
+    private VisualFeaturesList visualFeatures;
 
     /**
      * The time this hazard was inserted into the repository
@@ -280,8 +273,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
         setStartTime(event.getStartTime());
         setCreationTime(event.getCreationTime());
         setGeometry(event.getGeometry());
-        setVisualFeatures(event.getBaseVisualFeatures(),
-                event.getSelectedVisualFeatures());
+        setVisualFeatures(event.getVisualFeatures());
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
         setSubType(event.getSubType());
@@ -531,52 +523,33 @@ public class HazardEvent implements IHazardEvent, IValidator {
     }
 
     @Override
-    public VisualFeature getBaseVisualFeature(String identifier) {
-        return (baseVisualFeatures == null ? null : baseVisualFeatures
+    public VisualFeature getVisualFeature(String identifier) {
+        return (visualFeatures == null ? null : visualFeatures
                 .getByIdentifier(identifier));
     }
 
     @Override
-    public VisualFeaturesList getBaseVisualFeatures() {
-        return baseVisualFeatures;
+    public VisualFeaturesList getVisualFeatures() {
+        return visualFeatures;
     }
 
     @Override
-    public boolean setBaseVisualFeature(VisualFeature visualFeature) {
-        return setVisualFeatureInList(visualFeature, baseVisualFeatures);
+    public boolean setVisualFeature(VisualFeature visualFeature) {
+        if (visualFeatures == null) {
+            return false;
+        }
+        int index = visualFeatures.indexOfByIdentifier(visualFeature
+                .getIdentifier());
+        if (index == -1) {
+            return false;
+        }
+        visualFeatures.set(index, visualFeature);
+        return true;
     }
 
     @Override
-    public void setBaseVisualFeatures(VisualFeaturesList visualFeatures) {
-        this.baseVisualFeatures = visualFeatures;
-    }
-
-    @Override
-    public VisualFeature getSelectedVisualFeature(String identifier) {
-        return (selectedVisualFeatures == null ? null : selectedVisualFeatures
-                .getByIdentifier(identifier));
-    }
-
-    @Override
-    public VisualFeaturesList getSelectedVisualFeatures() {
-        return selectedVisualFeatures;
-    }
-
-    @Override
-    public boolean setSelectedVisualFeature(VisualFeature visualFeature) {
-        return setVisualFeatureInList(visualFeature, selectedVisualFeatures);
-    }
-
-    @Override
-    public void setSelectedVisualFeatures(VisualFeaturesList visualFeatures) {
-        this.selectedVisualFeatures = visualFeatures;
-    }
-
-    @Override
-    public void setVisualFeatures(VisualFeaturesList baseVisualFeatures,
-            VisualFeaturesList selectedVisualFeatures) {
-        this.baseVisualFeatures = baseVisualFeatures;
-        this.selectedVisualFeatures = selectedVisualFeatures;
+    public void setVisualFeatures(VisualFeaturesList visualFeatures) {
+        this.visualFeatures = visualFeatures;
     }
 
     /**
@@ -696,14 +669,8 @@ public class HazardEvent implements IHazardEvent, IValidator {
         result = prime * result + ((eventID == null) ? 0 : eventID.hashCode());
         result = prime * result
                 + ((geometry == null) ? 0 : geometry.hashCode());
-        result = prime
-                * result
-                + ((baseVisualFeatures == null) ? 0 : baseVisualFeatures
-                        .hashCode());
-        result = prime
-                * result
-                + ((selectedVisualFeatures == null) ? 0
-                        : selectedVisualFeatures.hashCode());
+        result = prime * result
+                + ((visualFeatures == null) ? 0 : visualFeatures.hashCode());
         result = prime * result
                 + ((attributes == null) ? 0 : attributes.hashCode());
         result = prime * result
@@ -776,18 +743,11 @@ public class HazardEvent implements IHazardEvent, IValidator {
         } else if (!geometry.equals(other.geometry)) {
             return false;
         }
-        if (baseVisualFeatures == null) {
-            if (other.baseVisualFeatures != null) {
+        if (visualFeatures == null) {
+            if (other.visualFeatures != null) {
                 return false;
             }
-        } else if (!baseVisualFeatures.equals(other.baseVisualFeatures)) {
-            return false;
-        }
-        if (selectedVisualFeatures == null) {
-            if (other.selectedVisualFeatures != null) {
-                return false;
-            }
-        } else if (!selectedVisualFeatures.equals(other.selectedVisualFeatures)) {
+        } else if (!visualFeatures.equals(other.visualFeatures)) {
             return false;
         }
         if (attributes == null) {
@@ -907,32 +867,5 @@ public class HazardEvent implements IHazardEvent, IValidator {
     @Override
     public String getWorkStation() {
         return workStation;
-    }
-
-    // Private Methods
-
-    /**
-     * Replace the visual feature with the same identifier as the specified
-     * visual feature with the latter in the specified list.
-     * 
-     * @param visualFeature
-     *            New visual feature.
-     * @param list
-     *            List in which to replace the visual feature.
-     * @return True if the new visual feature replaced the old one, false if no
-     *         visual feature with the given identifier was found in the given
-     *         list.
-     */
-    private boolean setVisualFeatureInList(VisualFeature visualFeature,
-            VisualFeaturesList list) {
-        if (list == null) {
-            return false;
-        }
-        int index = list.indexOfByIdentifier(visualFeature.getIdentifier());
-        if (index == -1) {
-            return false;
-        }
-        list.set(index, visualFeature);
-        return true;
     }
 }

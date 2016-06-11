@@ -36,8 +36,9 @@ import com.vividsolutions.jts.io.WKBWriter;
  * instance may only be visible within a particular time range, or may have
  * different visual characteristics or geometries at different times. To get a
  * concrete representation of a visual feature at a particular point in time,
- * the {@link #getStateAtTime(SpatialEntity, String, Date)} method is used to
- * generate a {@link SpatialEntity} if appropriate.
+ * the
+ * {@link #getStateAtTime(SpatialEntity, IIdentifierGenerator, boolean, Date, Color, double, BorderStyle, double, double, double, int)}
+ * method is used to generate a {@link SpatialEntity} if appropriate.
  * 
  * <pre>
  * 
@@ -54,6 +55,11 @@ import com.vividsolutions.jts.io.WKBWriter;
  *                                      deserialization. This in turn allows
  *                                      two H.S. instances sharing an edex
  *                                      to see each other's stored events.
+ * Jun 10, 2016   19537    Chris.Golden Combined base and selected visual feature
+ *                                      lists for each hazard event into one,
+ *                                      replaced by visibility constraints
+ *                                      based upon selection state to individual
+ *                                      visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -599,6 +605,11 @@ public class VisualFeature implements Serializable {
     private String identifier;
 
     /**
+     * Visibility constraints.
+     */
+    private VisibilityConstraints visibilityConstraints;
+
+    /**
      * List of visual features to be treated as templates for this feature, in
      * the order in which they should be checked when querying for property
      * values. This list may be <code>null</code>.
@@ -704,6 +715,7 @@ public class VisualFeature implements Serializable {
          * that sharing the objects will not cause problems.
          */
         this.identifier = original.identifier;
+        this.visibilityConstraints = original.visibilityConstraints;
         this.templates = original.templates;
         this.borderColor = original.borderColor;
         this.fillColor = original.fillColor;
@@ -754,6 +766,7 @@ public class VisualFeature implements Serializable {
         }
         VisualFeature otherFeature = (VisualFeature) other;
         return (compare(identifier, otherFeature.identifier)
+                && (visibilityConstraints == otherFeature.visibilityConstraints)
                 && compare(templates, otherFeature.templates)
                 && compare(geometry, otherFeature.geometry)
                 && compare(borderColor, otherFeature.borderColor)
@@ -774,7 +787,8 @@ public class VisualFeature implements Serializable {
 
     @Override
     public int hashCode() {
-        return (int) ((getHashCode(identifier) + getHashCode(templates)
+        return (int) ((getHashCode(identifier)
+                + getHashCode(visibilityConstraints) + getHashCode(templates)
                 + getHashCode(geometry) + getHashCode(borderColor)
                 + getHashCode(fillColor) + getHashCode(borderThickness)
                 + getHashCode(borderStyle) + getHashCode(diameter)
@@ -791,6 +805,15 @@ public class VisualFeature implements Serializable {
      */
     public String getIdentifier() {
         return identifier;
+    }
+
+    /**
+     * Get the visibility constraints.
+     * 
+     * @return Visibility constraints.
+     */
+    public VisibilityConstraints getVisibilityConstraints() {
+        return visibilityConstraints;
     }
 
     /**
@@ -981,6 +1004,9 @@ public class VisualFeature implements Serializable {
      *            Identifier generator, used if <code>spatialEntity</code> is
      *            specified as <code>null</code> to generate the identifier for
      *            the newly-created spatial entity.
+     * @param selected
+     *            Flag indicating whether or not the item represented by this
+     *            object is currently selected. Depending upon the
      * @param time
      *            Time for which to get the state of this object.
      * @param hazardColor
@@ -1020,11 +1046,16 @@ public class VisualFeature implements Serializable {
      *         this method, the flag will be true.
      */
     public <I> SpatialEntity<I> getStateAtTime(SpatialEntity<I> spatialEntity,
-            IIdentifierGenerator<I> identifierGenerator, Date time,
-            Color hazardColor, double hazardBorderThickness,
+            IIdentifierGenerator<I> identifierGenerator, boolean selected,
+            Date time, Color hazardColor, double hazardBorderThickness,
             BorderStyle hazardBorderStyle, double hazardPointDiameter,
             double hazardTextOffsetLength, double hazardTextOffsetDirection,
             int hazardTextSize) {
+        if ((visibilityConstraints == VisibilityConstraints.NEVER)
+                || ((visibilityConstraints == VisibilityConstraints.UNSELECTED) && selected)
+                || ((visibilityConstraints == VisibilityConstraints.SELECTED) && (selected == false))) {
+            return null;
+        }
         Geometry geometry = getGeometry(time);
         if (geometry == null) {
             return null;
@@ -1079,7 +1110,10 @@ public class VisualFeature implements Serializable {
     @Override
     public String toString() {
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(identifier + " (");
+        stringBuilder.append(identifier);
+        stringBuilder.append(" [selection-based visibility: ");
+        stringBuilder.append(visibilityConstraints.getDescription());
+        stringBuilder.append("] (");
         boolean never = false;
         if (geometry != null) {
             if (geometry.getDefaultProperty() != null) {
@@ -1253,6 +1287,13 @@ public class VisualFeature implements Serializable {
      */
     TemporallyVariantProperty<Boolean> getScaleable() {
         return scaleable;
+    }
+
+    /**
+     * Set the visibility constraints for this feature.
+     */
+    void setVisibilityConstraints(VisibilityConstraints visibilityConstraints) {
+        this.visibilityConstraints = visibilityConstraints;
     }
 
     /**
@@ -1431,6 +1472,7 @@ public class VisualFeature implements Serializable {
          * object.
          */
         stream.writeObject(identifier);
+        stream.writeObject(visibilityConstraints);
         stream.writeObject(templates);
         stream.writeObject(borderColor);
         stream.writeObject(fillColor);
@@ -1492,6 +1534,7 @@ public class VisualFeature implements Serializable {
          * object.
          */
         identifier = (String) stream.readObject();
+        visibilityConstraints = (VisibilityConstraints) stream.readObject();
         templates = (TemporallyVariantProperty<ImmutableList<VisualFeature>>) stream
                 .readObject();
         borderColor = (TemporallyVariantProperty<SerializableColor>) stream

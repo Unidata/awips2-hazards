@@ -23,7 +23,11 @@ import gov.noaa.gsd.common.visuals.VisualFeature;
  * ------------ ---------- ------------ --------------------------
  * Mar 15, 2016   15676    Chris.Golden Initial creation.
  * Mar 24, 2016   15676    Chris.Golden Added getXXX() methods.
- * 
+ * Jun 10, 2016   19537    Chris.Golden Combined base and selected visual feature
+ *                                      lists for each hazard event into one,
+ *                                      replaced by visibility constraints
+ *                                      based upon selection state to individual
+ *                                      visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -43,12 +47,6 @@ public class VisualFeatureSpatialIdentifier {
      */
     private final String visualFeatureIdentifier;
 
-    /**
-     * Flag indicating whether or not the visual feature is for display only
-     * when selected.
-     */
-    private final boolean displayOnlyWhenSelected;
-
     // Public Constructors
 
     /**
@@ -58,15 +56,11 @@ public class VisualFeatureSpatialIdentifier {
      *            Hazard event identifier.
      * @param visualFeatureIdentifier
      *            Visual feature identifier.
-     * @param displayOnlyWhenSelected
-     *            Flag indicating whether or not the visual feature is for
-     *            display only when selected.
      */
     public VisualFeatureSpatialIdentifier(String hazardEventIdentifier,
-            String visualFeatureIdentifier, boolean displayOnlyWhenSelected) {
+            String visualFeatureIdentifier) {
         this.hazardEventIdentifier = hazardEventIdentifier;
         this.visualFeatureIdentifier = visualFeatureIdentifier;
-        this.displayOnlyWhenSelected = displayOnlyWhenSelected;
     }
 
     // Public Methods
@@ -89,33 +83,21 @@ public class VisualFeatureSpatialIdentifier {
         return visualFeatureIdentifier;
     }
 
-    /**
-     * Determine whether or not this visual feature is for display only when
-     * selected.
-     * 
-     * @return True if for display only when selected, false otherwise.
-     */
-    public boolean isDisplayOnlyWhenSelected() {
-        return displayOnlyWhenSelected;
-    }
-
     @Override
     public boolean equals(Object other) {
         if (other instanceof VisualFeatureSpatialIdentifier == false) {
             return false;
         }
         VisualFeatureSpatialIdentifier otherIdentifier = (VisualFeatureSpatialIdentifier) other;
-        return ((displayOnlyWhenSelected == otherIdentifier.displayOnlyWhenSelected)
-                && ((hazardEventIdentifier == otherIdentifier.hazardEventIdentifier) || ((hazardEventIdentifier != null) && hazardEventIdentifier
-                        .equals(otherIdentifier.hazardEventIdentifier))) && ((visualFeatureIdentifier == otherIdentifier.visualFeatureIdentifier) || ((visualFeatureIdentifier != null) && visualFeatureIdentifier
+        return (((hazardEventIdentifier == otherIdentifier.hazardEventIdentifier) || ((hazardEventIdentifier != null) && hazardEventIdentifier
+                .equals(otherIdentifier.hazardEventIdentifier))) && ((visualFeatureIdentifier == otherIdentifier.visualFeatureIdentifier) || ((visualFeatureIdentifier != null) && visualFeatureIdentifier
                 .equals(otherIdentifier.visualFeatureIdentifier))));
     }
 
     @Override
     public int hashCode() {
-        return (int) (((displayOnlyWhenSelected ? 1L : 0L)
-                + (hazardEventIdentifier == null ? 0L
-                        : (long) hazardEventIdentifier.hashCode()) + (visualFeatureIdentifier == null ? 0L
-                    : (long) visualFeatureIdentifier.hashCode())) % Integer.MAX_VALUE);
+        return (int) (((hazardEventIdentifier == null ? 0L
+                : (long) hazardEventIdentifier.hashCode()) + (visualFeatureIdentifier == null ? 0L
+                : (long) visualFeatureIdentifier.hashCode())) % Integer.MAX_VALUE);
     }
 }

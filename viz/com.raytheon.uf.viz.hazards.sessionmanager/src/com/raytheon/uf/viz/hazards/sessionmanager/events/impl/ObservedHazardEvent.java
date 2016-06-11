@@ -127,6 +127,11 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Apr 28, 2016 18267      Chris.Golden Added missing method for replacing
  *                                      all hazard attributes, due to a
  *                                      specified originator.
+ * Jun 10, 2016 19537      Chris.Golden Combined base and selected visual feature
+ *                                      lists for each hazard event into one,
+ *                                      replaced by visibility constraints
+ *                                      based upon selection state to individual
+ *                                      visual features.
  * </pre>
  * 
  * @author bsteffen
@@ -196,23 +201,13 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
-    public VisualFeature getBaseVisualFeature(String identifier) {
-        return delegate.getBaseVisualFeature(identifier);
+    public VisualFeature getVisualFeature(String identifier) {
+        return delegate.getVisualFeature(identifier);
     }
 
     @Override
-    public VisualFeaturesList getBaseVisualFeatures() {
-        return delegate.getBaseVisualFeatures();
-    }
-
-    @Override
-    public VisualFeature getSelectedVisualFeature(String identifier) {
-        return delegate.getSelectedVisualFeature(identifier);
-    }
-
-    @Override
-    public VisualFeaturesList getSelectedVisualFeatures() {
-        return delegate.getSelectedVisualFeatures();
+    public VisualFeaturesList getVisualFeatures() {
+        return delegate.getVisualFeatures();
     }
 
     @Override
@@ -418,30 +413,13 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
-    public boolean setBaseVisualFeature(VisualFeature visualFeature) {
-        return setBaseVisualFeature(visualFeature, true, Originator.OTHER);
+    public boolean setVisualFeature(VisualFeature visualFeature) {
+        return setVisualFeature(visualFeature, true, Originator.OTHER);
     }
 
     @Override
-    public void setBaseVisualFeatures(VisualFeaturesList visualFeatures) {
-        setBaseVisualFeatures(visualFeatures, true, Originator.OTHER);
-    }
-
-    @Override
-    public boolean setSelectedVisualFeature(VisualFeature visualFeature) {
-        return setSelectedVisualFeature(visualFeature, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setSelectedVisualFeatures(VisualFeaturesList visualFeatures) {
-        setSelectedVisualFeatures(visualFeatures, true, Originator.OTHER);
-    }
-
-    @Override
-    public void setVisualFeatures(VisualFeaturesList baseVisualFeatures,
-            VisualFeaturesList selectedVisualFeatures) {
-        setVisualFeatures(baseVisualFeatures, selectedVisualFeatures, true,
-                Originator.OTHER);
+    public void setVisualFeatures(VisualFeaturesList visualFeatures) {
+        setVisualFeatures(visualFeatures, true, Originator.OTHER);
     }
 
     @Override
@@ -534,30 +512,14 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         setGeometry(geom, true, originator);
     }
 
-    public boolean setBaseVisualFeature(VisualFeature visualFeature,
+    public boolean setVisualFeature(VisualFeature visualFeature,
             IOriginator originator) {
-        return setBaseVisualFeature(visualFeature, true, originator);
+        return setVisualFeature(visualFeature, true, originator);
     }
 
-    public void setBaseVisualFeatures(VisualFeaturesList visualFeatures,
+    public void setVisualFeatures(VisualFeaturesList visualFeatures,
             IOriginator originator) {
-        setBaseVisualFeatures(visualFeatures, true, originator);
-    }
-
-    public boolean setSelectedVisualFeature(VisualFeature visualFeature,
-            IOriginator originator) {
-        return setSelectedVisualFeature(visualFeature, true, originator);
-    }
-
-    public void setSelectedVisualFeatures(VisualFeaturesList visualFeatures,
-            IOriginator originator) {
-        setSelectedVisualFeatures(visualFeatures, true, originator);
-    }
-
-    public void setVisualFeatures(VisualFeaturesList baseVisualFeatures,
-            VisualFeaturesList selectedVisualFeatures, IOriginator originator) {
-        setVisualFeatures(baseVisualFeatures, selectedVisualFeatures, true,
-                originator);
+        setVisualFeatures(visualFeatures, true, originator);
     }
 
     public void setHazardMode(ProductClass productClass, IOriginator originator) {
@@ -764,7 +726,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     /**
-     * Replace the base visual feature with the same identifier as the specified
+     * Replace the visual feature with the same identifier as the specified
      * visual feature with the latter.
      * 
      * @param visualFeature
@@ -775,13 +737,13 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
      * @param originator
      *            Originator of the change.
      * @return True if the new visual feature replaced the old one, false if no
-     *         base visual feature with the given identifier was found.
+     *         visual feature with the given identifier was found.
      */
-    public boolean setBaseVisualFeature(VisualFeature visualFeature,
+    public boolean setVisualFeature(VisualFeature visualFeature,
             boolean notify, IOriginator originator) {
         if (changed(visualFeature,
-                getBaseVisualFeature(visualFeature.getIdentifier()))) {
-            boolean result = delegate.setBaseVisualFeature(visualFeature);
+                getVisualFeature(visualFeature.getIdentifier()))) {
+            boolean result = delegate.setVisualFeature(visualFeature);
             if (result && notify) {
                 eventManager
                         .hazardEventModified(new SessionEventVisualFeaturesModified(
@@ -796,26 +758,25 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     /**
-     * Set the base visual features to those specified.
+     * Set the visual features to those specified.
      * 
      * @param visualFeatures
-     *            New base visual features.
+     *            New visual features.
      * @param notify
      *            Flag indicating whether or not to send out a notification of
      *            any change that results.
      * @param originator
      *            Originator of the change.
-     * @return Set of identifiers of base visual features that changed as a
-     *         result of this invocation, or <code>null</code> if none changed.
+     * @return Set of identifiers of visual features that changed as a result of
+     *         this invocation, or <code>null</code> if none changed.
      */
-    protected Set<String> setBaseVisualFeatures(
-            VisualFeaturesList visualFeatures, boolean notify,
-            IOriginator originator) {
-        VisualFeaturesList oldVisualFeatures = getBaseVisualFeatures();
+    protected Set<String> setVisualFeatures(VisualFeaturesList visualFeatures,
+            boolean notify, IOriginator originator) {
+        VisualFeaturesList oldVisualFeatures = getVisualFeatures();
         if (listChanged(oldVisualFeatures, visualFeatures)) {
             Set<String> changedIdentifiers = getIdentifiersOfChanged(
                     oldVisualFeatures, visualFeatures);
-            delegate.setBaseVisualFeatures(visualFeatures);
+            delegate.setVisualFeatures(visualFeatures);
             if (notify) {
                 eventManager
                         .hazardEventModified(new SessionEventVisualFeaturesModified(
@@ -825,100 +786,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
             return changedIdentifiers;
         }
         return null;
-    }
-
-    /**
-     * Replace the selected visual feature with the same identifier as the
-     * specified visual feature with the latter.
-     * 
-     * @param visualFeature
-     *            New visual feature.
-     * @param notify
-     *            Flag indicating whether or not to send out a notification of
-     *            any change that results.
-     * @param originator
-     *            Originator of the change.
-     * @return True if the new visual feature replaced the old one, false if no
-     *         selected visual feature with the given identifier was found.
-     */
-    public boolean setSelectedVisualFeature(VisualFeature visualFeature,
-            boolean notify, IOriginator originator) {
-        if (changed(visualFeature,
-                getSelectedVisualFeature(visualFeature.getIdentifier()))) {
-            boolean result = delegate.setSelectedVisualFeature(visualFeature);
-            if (result && notify) {
-                eventManager
-                        .hazardEventModified(new SessionEventVisualFeaturesModified(
-                                eventManager, this, Collections
-                                        .<String> emptySet(), Sets
-                                        .newHashSet(visualFeature
-                                                .getIdentifier()), originator));
-            }
-            return result;
-        }
-        return false;
-    }
-
-    /**
-     * Set the selected visual features to those specified.
-     * 
-     * @param visualFeatures
-     *            New selected visual features.
-     * @param notify
-     *            Flag indicating whether or not to send out a notification of
-     *            any change that results.
-     * @param originator
-     *            Originator of the change.
-     * @return Set of identifiers of selected visual features that changed as a
-     *         result of this invocation, or <code>null</code> if none changed.
-     */
-    protected Set<String> setSelectedVisualFeatures(
-            VisualFeaturesList visualFeatures, boolean notify,
-            IOriginator originator) {
-        VisualFeaturesList oldVisualFeatures = getSelectedVisualFeatures();
-        if (listChanged(oldVisualFeatures, visualFeatures)) {
-            Set<String> changedIdentifiers = getIdentifiersOfChanged(
-                    oldVisualFeatures, visualFeatures);
-            delegate.setSelectedVisualFeatures(visualFeatures);
-            if (notify) {
-                eventManager
-                        .hazardEventModified(new SessionEventVisualFeaturesModified(
-                                eventManager, this, Collections
-                                        .<String> emptySet(),
-                                changedIdentifiers, originator));
-            }
-            return changedIdentifiers;
-        }
-        return null;
-    }
-
-    /**
-     * Set the base and selected visual features to those lists specified.
-     * 
-     * @param baseVisualFeatures
-     *            New base visual features.
-     * @param selectedVisualFeatures
-     *            New selected visual features.
-     * @param notify
-     *            Flag indicating whether or not to send out a notification of
-     *            any change that results.
-     * @param originator
-     *            Originator of the change.
-     */
-    protected void setVisualFeatures(VisualFeaturesList baseVisualFeatures,
-            VisualFeaturesList selectedVisualFeatures, boolean notify,
-            IOriginator originator) {
-        Set<String> changedBaseIdentifiers = setBaseVisualFeatures(
-                baseVisualFeatures, false, originator);
-        Set<String> changedSelectedIdentifiers = setSelectedVisualFeatures(
-                selectedVisualFeatures, false, originator);
-        if (notify
-                && ((changedBaseIdentifiers != null) || (changedSelectedIdentifiers != null))) {
-            eventManager
-                    .hazardEventModified(new SessionEventVisualFeaturesModified(
-                            eventManager, this, changedBaseIdentifiers,
-                            changedSelectedIdentifiers, originator));
-        }
     }
 
     /**

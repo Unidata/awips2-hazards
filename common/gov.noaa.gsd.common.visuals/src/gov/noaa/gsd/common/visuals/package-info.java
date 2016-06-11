@@ -9,6 +9,6 @@
  */
 
 /**
- * Contains visual feature classes, used to describe drawable, interactive objects.
+ * Description: Contains visual feature classes, used to describe drawable, interactive objects.
  */
 package gov.noaa.gsd.common.visuals;

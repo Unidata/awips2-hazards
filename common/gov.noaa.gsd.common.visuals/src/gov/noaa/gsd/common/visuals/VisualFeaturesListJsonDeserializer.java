@@ -66,6 +66,11 @@ import com.vividsolutions.jts.io.WKTReader;
  *                                      deserialization. This in turn allows
  *                                      two H.S. instances sharing an edex
  *                                      to see each other's stored events.
+ * Jun 10, 2016   19537    Chris.Golden Combined base and selected visual feature
+ *                                      lists for each hazard event into one,
+ *                                      replaced by visibility constraints
+ *                                      based upon selection state to individual
+ *                                      visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -771,6 +776,30 @@ class VisualFeaturesListJsonDeserializer {
          * Create the visual feature.
          */
         VisualFeature visualFeature = new VisualFeature(identifier);
+
+        /*
+         * Ensure visibility constraints are supplied.
+         */
+        node = objectNode
+                .get(VisualFeaturesListJsonConverter.KEY_VISIBILITY_CONSTRAINTS);
+        VisibilityConstraints visibilityConstraints = null;
+        if (node instanceof TextNode) {
+            String description = node.getTextValue();
+            visibilityConstraints = VisibilityConstraints
+                    .getInstance(description);
+            if (visibilityConstraints != null) {
+                visualFeature.setVisibilityConstraints(visibilityConstraints);
+            }
+        }
+        if (visibilityConstraints == null) {
+            throw createValueDeserializationException(
+                    identifier,
+                    VisualFeaturesListJsonConverter.KEY_VISIBILITY_CONSTRAINTS,
+                    "one of: "
+                            + Joiner.on(", ").join(
+                                    VisibilityConstraints.getDescriptions()),
+                    node, null);
+        }
 
         /*
          * Iterate through the properties of the object, processing each in
