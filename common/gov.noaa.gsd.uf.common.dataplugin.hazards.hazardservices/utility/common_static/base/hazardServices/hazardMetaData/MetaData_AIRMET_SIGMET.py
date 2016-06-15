@@ -1,5 +1,7 @@
 import CommonMetaData
 from HazardConstants import *
+import HazardDataAccess
+from EventSet import EventSet
 import datetime
 import json
 from com.raytheon.uf.common.time import SimulatedTime
@@ -116,7 +118,7 @@ class MetaData(CommonMetaData.MetaData):
             "enable":False
             }
         
-        return subType
+        return subType      
     
     def getVerticalExtent(self):
         
@@ -327,7 +329,344 @@ class MetaData(CommonMetaData.MetaData):
             }
         
         return aType
+    
+    ###CONVECTIVE SIGMET MEGAWIDGET OPTIONS###
+    def getConvectiveSigmetInputs(self, domain, modifiers):
 
+        specialIssuance = self.getConvectiveSigmetSpecialIssuance()
+        domain = self.getConvectiveSigmetDomain(domain)
+        mode = self.getConvectiveSigmetMode()
+        modifier = self.getConvectiveSigmetModifier(modifiers)
+        motion = self.getConvectiveSigmetMotion()
+        tops = self.getConvectiveSigmetTops()
+        additionalHazards = self.getConvectiveSigmetAdditionalHazards()            
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "convectiveSigmetGroup",
+            "label": "",
+            "expandHorizontally": True,
+            "expandVertically": True,
+            "numColumns":1,
+            "fields": [
+                       specialIssuance,
+                       domain,
+                       mode,
+                       modifier,
+                       motion,
+                       tops,
+                       additionalHazards,                                            
+                       ]
+            }
+                               
+        return grp
+    
+    def getConvectiveSigmetSpecialIssuance(self):
+        specialIssuance = {
+            "fieldType": "Group",
+            "fieldName": "convectiveSigmetSpecialIssuanceGroup",
+            "label": "",
+            "numColumns": 3,
+            "fields": [
+                       {
+                        "fieldType": "CheckBox",
+                        "fieldName": "convectiveSigmetSpecialIssuance",
+                        "label": "Special Issuance?",
+                        "values": False
+                        }
+            ]
+        }
+        
+        return specialIssuance
+    
+    def getConvectiveSigmetDomain(self,domain):
+        domain = {
+            "fieldType": "Group",
+            "fieldName": "convectiveSigmetNumberGroup",
+            "label": "",
+            "numColumns": 3,
+            "fields": [
+                        {
+                        "fieldName": "convectiveSigmetDomain",
+                        "fieldType":"RadioButtons",
+                        "label":"Domain:",
+                        "expandHorizontally": False,
+                        "choices": domain,
+                        "enable": False
+                        }                       
+                       ]
+                  }
+        
+        return domain
+    
+    def getConvectiveSigmetMode(self):
+        mode = {           
+            "fieldType": "DetailedComboBox",
+            "fieldName": "convectiveSigmetMode",
+            "label": "Convective Mode:",
+            "numColumns": 3,
+            "choices": [
+                        {
+                        "identifier": "area",
+                        "displayString": "Area",
+                        "detailFields": [
+                           {
+                           "fieldName": "convectiveSigmetEmbeddedArea",
+                           "fieldType": "CheckBoxes",
+                           "label": "Qualifier:",
+                           "choices": [
+                                       {
+                                       "identifier": "Severe",
+                                       "displayString": "Severe"
+                                       },
+                                       {
+                                       "identifier": "Embedded",
+                                       "displayString": "Embedded"
+                                       },
+                                ]                                                
+                           },                                         
+                         ]
+                        },  
+                        {
+                        "identifier": "line",
+                        "displayString": "Line",
+                        "detailFields": [
+                            {
+                             "fieldType": "IntegerSpinner",
+                             "fieldName": "convectiveSigmetLineWidth",
+                             "label": "Line Half Width (nm)",
+                             "minValue": 10,
+                             "maxValue": 500,
+                             "values": 10,
+                             "incrementDelta": 10,
+                             },
+                             {
+                             "fieldName": "convectiveSigmetEmbeddedLine",
+                             "fieldType": "CheckBoxes",
+                             "label": "Qualifier:",
+                             "choices": [
+                                         {
+                                         "identifier": "Severe",
+                                         "displayString": "Severe"
+                                         },
+                                         {
+                                         "identifier": "Embedded",
+                                         "displayString": "Embedded"
+                                         },
+                                  ]                                                
+                             },                                                                                 
+                            ] 
+                         },
+                         {
+                          "identifier": "isolated",
+                          "displayString": "Isolated",
+                          "detailFields": [
+                            {
+                             "fieldType": "IntegerSpinner",
+                             "fieldName": "convectiveSigmetCellDiameter",
+                             "label": "Cell Diameter (nm)",
+                             "minValue": 10,
+                             "maxValue": 500,
+                             "values": 10,
+                             "incrementDelta": 10,                             
+                            },
+                            {
+                             "fieldName": "convectiveSigmetEmbeddedIsolated",
+                             "fieldType": "CheckBoxes",
+                             "label": "Qualifier:",
+                             "choices": [
+                                         {
+                                         "identifier": "Severe",
+                                         "displayString": "Severe"
+                                         },
+                                         {
+                                         "identifier": "Embedded",
+                                         "displayString": "Embedded"
+                                         },                                         
+                                  ]                                                
+                             },                                                                                   
+                         ]                              
+                        },
+                    ]
+                }
+        return mode
+    
+    def getConvectiveSigmetModifier(self, modifiers):
+        modifier = {
+            "fieldType": "Group",
+            "fieldName": "convectiveSigmetModifierGroup",
+            "label": "",
+            "numColumns": 3,
+            "fields": [
+                        {
+                        "fieldName": "convectiveSigmetModifier",
+                        "fieldType":"ComboBox",
+                        "label":"Modifier:",
+                        "expandHorizontally": False,
+                        "choices": modifiers,
+                        }                       
+                       ],
+            "values": "None of the Above",
+                  }
+        
+        return modifier
+    
+    def getConvectiveSigmetMotion(self):
+        motion = {
+            "fieldType": "Group",
+            "fieldName": "convectiveSigmetMotionGroup",
+            "label": "",
+            "numColumns": 3,
+            "fields": [
+                       {
+                       "fieldName": "convectiveSigmetDirection",
+                       "fieldType":"IntegerSpinner",
+                       "label":"Direction (ddd):",
+                       "minValue": 0,
+                       "maxValue": 355,
+                       "values": 0,
+                       "incrementDelta": 5,
+                       "expandHorizontally": False,
+                       "showScale": False                        
+                       },
+                       {
+                       "fieldName": "convectiveSigmetSpeed",
+                       "fieldType":"IntegerSpinner",
+                       "label":"Speed (kts):",
+                       "minValue": 0,
+                       "maxValue": 100,
+                       "values": 0,
+                       "incrementDelta": 5,
+                       "expandHorizontally": False,
+                       "showScale": False
+                       }                                              
+                       ]
+                  }
+        
+        return motion
+    
+    def getConvectiveSigmetTops(self):
+        tops = {
+            "fieldType": "Group",
+            "fieldName": "convectiveSigmetTopsGroup",
+            "label": "",
+            "numColumns": 3,
+            "fields": [
+                       {
+                       "fieldName": "convectiveSigmetCloudTop",
+                       "fieldType":"RadioButtons",
+                       "label":"Cloud Top Flight Level:",
+                       "choices": [
+                        {
+                         "identifier": "topsAbove",
+                         "displayString": "Tops above FL450",
+                        },
+                        {
+                         "identifier": "topsTo",
+                         "displayString": "Tops to FL",
+                         "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "convectiveSigmetCloudTopText",
+                             "expandHorizontally": False,
+                             "maxChars": 3,
+                             "visibleChars": 3,
+                             "values": "" 
+                            }
+                          ]
+                         },
+                       ],
+                       }                       
+                       ]
+                  }        
+        
+        return tops
+    
+    def getConvectiveSigmetAdditionalHazards(self):
+        additionalHazards = {
+            "fieldType": "Group",
+            "fieldName": "convectiveSigmetAdditionalHazardsGroup",
+            "label": "Additional Hazards:",
+            "numColumns": 1,
+            "fields": [
+                      {
+                        "fieldName": "tornadoesCheckBox",
+                        "fieldType":"CheckBox",
+                        "label":"Tornadoes?",
+                        "expandHorizontally": True,
+                        "values": False,
+                      },
+                      {
+                       "fieldType": "DetailedComboBox",
+                       "fieldName": "hailWindComboBox",
+                       "label": "Hail/Wind?",
+                       "expandHorizontally": True,
+                       "choices": [{
+                                    "identifier": "hailWindNone",
+                                    "displayString": "None"
+                                   },
+                                   {
+                                    "identifier": "hailWindCanned",
+                                    "displayString": "Hail to 1 inch...Wind Gusts to 50 knots",
+                                    "detailFields": [
+                                                     {
+                                                      "fieldName": "hailSpinnerCanned",
+                                                      "fieldType": "IntegerSpinner",
+                                                      "expandHorizontally": False,
+                                                      "minValue": 1,
+                                                      "maxValue": 10,
+                                                      "values": 1,
+                                                      "incrementDelta": 1,
+                                                      "label": "Hail Size (inches)",
+                                                      "enable": False 
+                                                      },
+                                                     {
+                                                      "fieldName": "windSpinnerCanned",
+                                                      "fieldType": "IntegerSpinner",
+                                                      "expandHorizontally": False,
+                                                      "minValue": 50,
+                                                      "maxValue": 150,
+                                                      "values": 50,
+                                                      "incrementDelta": 5,
+                                                      "label": "Wind Speed (knots)",
+                                                      "enable": False 
+                                                      },                                                   
+                                                     ]                   
+                                    },
+                                   {
+                                    "identifier": "hailWindCustom",
+                                    "displayString": "Hail to XX inche(s)...Wind Gusts to XX knots",
+                                    "detailFields": [
+                                                     {
+                                                      "fieldName": "hailSpinner",
+                                                      "fieldType": "IntegerSpinner",
+                                                      "expandHorizontally": False,
+                                                      "minValue": 1,
+                                                      "maxValue": 10,
+                                                      "values": 1,
+                                                      "incrementDelta": 1,
+                                                      "label": "Hail Size (inches)",
+                                                      "enable": True 
+                                                      },
+                                                     {
+                                                      "fieldName": "windSpinner",
+                                                      "fieldType": "IntegerSpinner",
+                                                      "expandHorizontally": False,
+                                                      "minValue": 50,
+                                                      "maxValue": 150,
+                                                      "values": 50,
+                                                      "incrementDelta": 5,
+                                                      "label": "Wind Speed (knots)",
+                                                      "enable": True 
+                                                      },                                                   
+                                                     ]           
+                                    },                                                    
+                                   ]
+                      },
+                    ]
+                }        
+        
+        return additionalHazards                                
     
 ## # Interdependency script entry point.
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
@@ -344,8 +683,7 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
                 sys.stderr.writelines( [str(mutableProperties.get('AAWUSeriesOverride')),'\n'])
                 val = mutableProperties.get('AAWUSeriesOverride')['values']
                 seriesOverride['AAWUAdvisorySeries'] = {"enable":val}
-                seriesOverride['AAWUAdvisoryNumber'] = {"enable":val}
-                
+                seriesOverride['AAWUAdvisoryNumber'] = {"enable":val}            
         
     sys.stderr.writelines(['Override:', str(seriesOverride), '\n\n'])
     return seriesOverride

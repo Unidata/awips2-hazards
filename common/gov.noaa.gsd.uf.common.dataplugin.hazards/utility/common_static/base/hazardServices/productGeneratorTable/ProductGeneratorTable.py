@@ -58,6 +58,7 @@ ProductGeneratorTable = {
         "SIGMET_ProductGenerator": {
             "allowedHazards": [
             ('SIGMET.W', 'Aviation'),
+            #('SIGMET.Convective', 'Aviation'),
             #('AIRMET.Y', 'Aviation'),
             #('VA.Y', 'Aviation'),
             #('VASIGMET.W', 'Aviation'),
@@ -65,7 +66,14 @@ ProductGeneratorTable = {
             ],
             "previewFormatters": ["Legacy_SIGMET_Formatter"],
             "issueFormatters": [],
-        },               
+            },               
+        "Convective_SIGMET_ProductGenerator": {
+            "allowedHazards": [
+            ('SIGMET.Convective', 'Aviation'),
+            ],
+            "previewFormatters": ["Legacy_Convective_SIGMET_Formatter", "Convective_SIGMET_XML_Formatter"],
+            "issueFormatters": ["Legacy_Convective_SIGMET_Formatter", "Convective_SIGMET_XML_Formatter"],                                   
+            },                
                          
         # WFO Legacy                                           
         "FFA_ProductGenerator": {

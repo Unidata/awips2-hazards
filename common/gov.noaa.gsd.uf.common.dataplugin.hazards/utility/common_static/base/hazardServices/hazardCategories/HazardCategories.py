@@ -40,7 +40,7 @@ HazardCategories = collections.OrderedDict(
                                     ('Prob_Rainfall','Moderate'), ('Prob_Rainfall','High')],
         
         ### Aviation
-        "Aviation": [("SIGMET","W")],
+        "Aviation": [("SIGMET","W"),("SIGMET","Convective")],
         
          
         ### WFO Deterministic

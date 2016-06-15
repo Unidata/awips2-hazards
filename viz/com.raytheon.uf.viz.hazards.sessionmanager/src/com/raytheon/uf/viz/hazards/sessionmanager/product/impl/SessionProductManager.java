@@ -73,6 +73,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
+import com.raytheon.uf.common.hazards.productgen.ProductGenerationException;
 import com.raytheon.uf.common.hazards.productgen.ProductUtils;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
@@ -1499,7 +1500,15 @@ public class SessionProductManager implements ISessionProductManager {
         /*
          * Update the UGC information in the Hazard Event
          */
-        eventManager.updateSelectedHazardUGCs();
+        try {
+            eventManager.updateSelectedHazardUGCs();
+        } catch (ProductGenerationException e) {
+            messenger.getWarner().warnUser(
+                    "Product Generation Error",
+                    productGeneratorInformation.getProductGeneratorName()
+                            + " unable to run: " + e.getMessage());
+            return null;
+        }
 
         EventSet<IEvent> events = new EventSet<IEvent>();
         events.addAttribute(HazardConstants.CURRENT_TIME, timeManager
