@@ -247,11 +247,28 @@ class Bridge:
         return areaDictionary.AreaDictionary
     
     def getSiteInfo(self, filter=None):
+
+        natl = {
+         'region': 'CR',
+         'fullStationID': 'KOAX',
+         'wfoCityState': 'OMAHA/VALLEY NE',
+         'wfoCity': 'OMAHA/VALLEY',
+         'state': 'NEBRASKA',
+         }
+        
         siteInfo = self.caveEdexRepo.get('SiteInfo')
         if siteInfo:
+
+            if NATIONAL not in siteInfo:
+               siteInfo[NATIONAL] =  natl
+
             return siteInfo
         
         siteInfo = self._getLocalizationData('SiteCFG.py', self.siteCfgRoot, 'COMMON_STATIC')
+
+        if NATIONAL not in siteInfo.SiteInfo:
+           siteInfo.SiteInfo[NATIONAL] =  natl
+           
         if siteInfo is None:
             msg = 'No data at all for type: SiteInfo'
             self.logger.error(msg)

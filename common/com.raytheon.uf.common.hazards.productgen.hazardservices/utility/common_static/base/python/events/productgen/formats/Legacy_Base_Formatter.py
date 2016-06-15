@@ -191,6 +191,8 @@ class Format(FormatTemplate.Formatter):
     ################# Product Level
 
     def _wmoHeader(self, productDict):
+        if self._siteID == HazardConstants.NATIONAL:
+            self._siteID = 'OAX'
         siteEntry = self._siteInfo.get(self._siteID)
         fullStationID = siteEntry.get('fullStationID')  # KBOU
         ddhhmmTime = self._tpc.getFormattedTime(self._issueTime, '%d%H%M', stripLeading=False)
