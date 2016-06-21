@@ -48,6 +48,9 @@ class ProbUtils(object):
             if event.getEndTime() <= timestamp:
                 continue
             
+            if event.getStatus().upper() != 'ISSUED':
+                continue
+            
             hazardType = event.getHazardType()
             probGridSnap, probGridSwath = self.getOutputProbGrids(event, timeStamp)
             if hazardType == 'Prob_Severe':
@@ -628,7 +631,7 @@ class ProbUtils(object):
         self._buff = 1.
         self._lonPoints = 1200
         self._latPoints = 1000
-        self._initial_ulLat = 41.0
-        self._initial_ulLon = -106.0
+        self._initial_ulLat = 40.0
+        self._initial_ulLon = -80.0
     
     #########################################
