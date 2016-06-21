@@ -152,6 +152,7 @@ class Product(Prob_Generator.Product):
             
             hazardEvent.set('eventStartTimeAtIssuance', long(self._probUtils._datetimeToMs(hazardEvent.getStartTime())))
             hazardEvent.set('durationSecsAtIssuance', self._probUtils._getDurationSecs(hazardEvent))
+            hazardEvent.set('graphProbsAtIssuance', hazardEvent.get('convectiveProbTrendGraph'))
             # Set expire time. This should coincide with the zero probability.
             # TO DO --convert hazard end time to millis
             hazardEvent.set('expirationTime', int(self._datetimeToMs(hazardEvent.getEndTime())))

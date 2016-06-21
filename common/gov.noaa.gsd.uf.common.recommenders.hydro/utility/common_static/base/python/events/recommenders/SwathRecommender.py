@@ -944,12 +944,14 @@ class Recommender(RecommenderTemplate.Recommender):
                     event.setGeometry(featurePoly)
                     self._nudge = True
                     # If nudging an issued event, restore the issuedDuration
-                    if not self._pendingHazard:
+                    if not self._showUpstream:
+                    #if not self._pendingHazard:
                         durationSecs = event.get("durationSecsAtIssuance")
                         if durationSecs is not None:
                             endTimeMS = self._probUtils._roundTime_ms(self._eventSt_ms + durationSecs *1000)
                             event.setEndTime(datetime.datetime.fromtimestamp(endTimeMS/1000))
-                            graphProbs = self._probUtils._getGraphProbsBasedOnDuration(event)
+                            #graphProbs = self._probUtils._getGraphProbsBasedOnDuration(event)
+                            graphProbs = event.get("graphProbsAtIssuance")
                             event.set('convectiveProbTrendGraph', graphProbs)
                                         
         #print "SR Feature ST", featureSt, self._probUtils._displayMsTime(featureSt)
