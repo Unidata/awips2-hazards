@@ -2,7 +2,7 @@
     Description: Product Generator for the Convective SIGMET product.
 """
 import os, types, sys, collections, re
-from HydroProductParts import HydroProductParts
+from HydroProductParts import HydroProductParts 
 import GeometryFactory
 from VisualFeatures import VisualFeatures
 import HydroGenerator
@@ -82,138 +82,124 @@ class Product(HydroGenerator.Product):
         # Extract information for execution
         self._inputHazardEvents = eventSet.getEvents()
         metaDict = eventSet.getAttributes()
+        self._issueFlag = metaDict.get('issueFlag')
         if dialogInputMap:
             self._storeDialogInputMap(dialogInputMap)
         else:
             self._dialogInputMap = {}
            
-        self._specialTime = eventSet.getAttributes().get("currentTime")/1000
+        self._spclTime = eventSet.getAttributes().get("currentTime")/1000
         
-        countEast = 0
-        countCentral = 0
-        countWest = 0 
+        self._countEast = 0
+        self._countCentral = 0
+        self._countWest = 0
+        
+        parts = ['currentTime', 'startTime', 'endTime', 'specialTime', 'startDate', 'endDate', 'states',
+                 'boundingStatement', 'mode', 'modifier', 'embedded', 'motion', 'cloudTop', 'additionalHazards']
+        
+        productDict = {}
+        productDict['productParts'] = parts
+        eventDicts = [] 
           
         for event in self._inputHazardEvents:
-            print 'Convective_SIGMET_ProductGenerator.py Execute \n'
-            print event
-            print '\tType: ', type(event)
-            print '\tAttrs:', event.getHazardAttributes()
-            print '\tPhen:', event.getPhenomenon(), event.getSubType()
-            self._hazGeometry = event.getGeometry()
-            print '\tGeom:', self._hazGeometry
-            for g in self._hazGeometry.geoms:
-                print shapely.geometry.base.dump_coords(g)
-                
-            self._setVariables(event)
-                 
             self._convectiveSigmetSpecialIssuance = event.getHazardAttributes().get('convectiveSigmetSpecialIssuance')
-            event.set('specialIssuance', self._convectiveSigmetSpecialIssuance) 
-
-            self._determineTimeRanges(event)            
-            self._convectiveSigmetDomain = event.getHazardAttributes().get('convectiveSigmetDomain')           
-            self._boundingStatement = event.getHazardAttributes().get('boundingStatement')
+            self._convectiveSigmetDomain = event.getHazardAttributes().get('convectiveSigmetDomain')
             
-            if event.getStatus() in ["PENDING"]:
-                if metaDict.get('issueFlag') == "True":
-                    self._convectiveSigmetNumberStr = self._setConvectiveSigmetNumber(event)
-                else:
-                    self._convectiveSigmetNumberStr = self._getConvectiveSigmetNumber(event)
-                    self._convectiveSigmetNumberStr = self._applyCount(self._convectiveSigmetNumberStr, countEast, countCentral, countWest)                                                        
-            elif event.getStatus() in ["ISSUED"]:
-                self._convectiveSigmetNumberStr = event.get('convectiveSigmetNumberStr')
-            else:
-                self._convectiveSigmetNumberStr = self._getConvectiveSigmetNumber(event)            
+            dict = {}
+            dict['eventID'] = event.getEventID()
+            dict['sigmetNumber'] = self._sigmetNumber(event)
+            dict['domain'] = event.getHazardAttributes().get('convectiveSigmetDomain')
+            dict['specialIssuance'] = event.getHazardAttributes().get('convectiveSigmetSpecialIssuance')
             
-            if event.getStatus() in ["PENDING"]:
-                if metaDict.get('issueFlag') is not "True":
-                    countEast, countCentral, countWest = self._addCount(countEast, countCentral, countWest)
-
-            selectedVisualFeatures = []
-            if event.getStatus() in ["PENDING", "ISSUED"]:
-                event.set('convectiveSigmetNumberStr', self._convectiveSigmetNumberStr)
-                event.set('validTime', self._initTimeZ)    
-                self._formatConvectiveSigmet(event)           
+            partDict = collections.OrderedDict()
+            for partName in parts:
+                exec "partStr = self._" + partName + "(event)"
+                partDict[partName] = partStr
             
-            event.set('convectiveSigmetDomain', self._convectiveSigmetDomain)
+            dict['parts'] = partDict
+            eventDicts.append(dict)
         
-            self._fcst = self._preProcessProduct(event, '', {})        
-            self._fcst = str.upper(self._fcst)            
-            self.flush()
-            
-        productDict = self._outputFormatter(eventSet)
-        self._outputText(productDict)
+        productDict['events'] = eventDicts
+        productDict['productID'] = 'SIGMET.Convective'
+        productDict['productName'] = 'CONVECTIVE SIGMET'         
 
         return [productDict], self._inputHazardEvents
     
-    def _setVariables(self, hazardEvent):
-        attrs = hazardEvent.getHazardAttributes()
-        phen = hazardEvent.getPhenomenon()
-        sig = hazardEvent.getSignificance()
+    def _currentTime(self, hazardEvent):
+        currentTime = time.mktime(hazardEvent.getCreationTime().timetuple())
+        
+        return currentTime
+    
+    def _startTime(self, hazardEvent):
+        epochStartTime = time.mktime(hazardEvent.getStartTime().timetuple())
+        initTimeZ = time.strftime('%d%H%M', time.gmtime(epochStartTime))
+        self._initTimeZ = initTimeZ        
+        
+        return initTimeZ
+    
+    def _endTime(self, hazardEvent):                   
+        epochEndTime = time.mktime(hazardEvent.getEndTime().timetuple())
+        endTimeZ = time.strftime('%d%H%M', time.gmtime(epochEndTime))     
 
-        self._hazardZonesDict = attrs.get('hazardArea')
-        self._hazardHeadline = attrs.get('headline')
-        self._hazardAdvisoryType = attrs.get('AAWUAdvisoryType')
-        self._convectiveSigmetMode = attrs.get('convectiveSigmetMode')
-        self._convectiveSigmetEmbeddedLine = attrs.get('convectiveSigmetEmbeddedLine')
-        self._convectiveSigmetEmbeddedArea = attrs.get('convectiveSigmetEmbeddedArea')
-        self._convectiveSigmetEmbeddedIsolated = attrs.get('convectiveSigmetEmbeddedIsolated')
-        self._convectiveSigmetModifier = attrs.get('convectiveSigmetModifier')
-        self._convectiveSigmetDirection = attrs.get('convectiveSigmetDirection')
-        self._convectiveSigmetSpeed = attrs.get('convectiveSigmetSpeed')
-        self._convectiveSigmetLineWidth = str(attrs.get('convectiveSigmetLineWidth'))
-        self._convectiveSigmetCellDiameter = str(attrs.get('convectiveSigmetCellDiameter'))                
-        self._convectiveSigmetCloudTop = attrs.get('convectiveSigmetCloudTop')
-        self._convectiveSigmetCloudTopText = attrs.get('convectiveSigmetCloudTopText')
-        self._convectiveSigmetTornadoes = attrs.get('tornadoesCheckBox')
-        self._convectiveSigmetHailWind = attrs.get('hailWindComboBox')        
-        self._convectiveSigmetHailSpinner = str(attrs.get('hailSpinner'))        
-        self._convectiveSigmetWindSpinner = str(attrs.get('windSpinner'))
-        
-        return        
+        return endTimeZ
     
-    def _determineTimeRanges(self, hazEvt):
-        self._advisoryName = str.upper(hazEvt.getHazardAttributes().get('AAWUAdvisoryType'))
-        
-        self._cancelV = False
-        if re.search('CANCELLED', self._advisoryName):
-            self._cancelV = True        
-    
-        self._currentTime = time.mktime(hazEvt.getCreationTime().timetuple())
-        
-        epochStartTime = time.mktime(hazEvt.getStartTime().timetuple())
-        epochEndTime = time.mktime(hazEvt.getEndTime().timetuple())
-        
-        self._ddhhmmTime = time.strftime('%d%H%M', time.gmtime(
-            self._currentTime))
-                
-        if self._cancelV:
-            self._initTimeZ = time.strftime('%d%H%M', \
-                time.gmtime(self._currentTime + 5 * 60))
-            self._endTimeZ = time.strftime('%d%H%M', \
-                time.gmtime(self._currentTime + 20 * 60))
-            self._initDateZ = time.strftime('%Y%m%d_%H%M', \
-                time.gmtime(self._currentTime + 5 * 60))
-            self._endDateZ = time.strftime('%Y%m%d_%H%M', \
-                time.gmtime(self._currentTime + 20 * 60))            
-        elif self._convectiveSigmetSpecialIssuance == True:
-            self._initTimeZ = time.strftime('%d%H%M', \
-                time.gmtime(epochStartTime))
-            self._specialTime = time.strftime('%d%H%M', \
-                time.gmtime(self._specialTime))
-            self._endTimeZ = time.strftime('%d%H%M', time.gmtime(epochEndTime))
-            self._initDateZ = time.strftime('%Y%m%d_%H%M', \
-                time.gmtime(epochStartTime))
-            self._endDateZ = time.strftime('%Y%m%d_%H%M', time.gmtime(epochEndTime))            
+    def _specialTime(self, hazardEvent):
+        if self._convectiveSigmetSpecialIssuance == True:
+            specialTime = time.strftime('%d%H%M', \
+                time.gmtime(self._spclTime))            
+            return specialTime
         else:
-            self._initTimeZ = time.strftime('%d%H%M', time.gmtime(epochStartTime))
-            self._endTimeZ = time.strftime('%d%H%M', time.gmtime(epochEndTime))
-            self._initDateZ = time.strftime('%Y%m%d_%H%M', time.gmtime(epochStartTime))
-            self._endDateZ = time.strftime('%Y%m%d_%H%M', time.gmtime(epochEndTime))            
+            return None
+    
+    def _startDate(self, hazardEvent):
+        epochStartTime = time.mktime(hazardEvent.getStartTime().timetuple())
+         
+        if self._convectiveSigmetSpecialIssuance == True:
+            initDateZ = time.strftime('%Y%m%d_%H%M', \
+                time.gmtime(epochStartTime))       
+        else:
+            initDateZ = time.strftime('%Y%m%d_%H%M', time.gmtime(epochStartTime))        
 
-        return
+        return initDateZ
+    
+    def _endDate(self, hazardEvent):
+        epochEndTime = time.mktime(hazardEvent.getEndTime().timetuple())
+
+        if self._convectiveSigmetSpecialIssuance == True:
+            endDateZ = time.strftime('%Y%m%d_%H%M', time.gmtime(epochEndTime))            
+        else:
+            endDateZ = time.strftime('%Y%m%d_%H%M', time.gmtime(epochEndTime))            
+
+        return endDateZ                        
+    
+    def _sigmetNumber(self, hazardEvent):
+        if hazardEvent.getStatus() in ["PENDING"]:
+            if self._issueFlag == "True":
+                convectiveSigmetNumberStr = self._setConvectiveSigmetNumber(hazardEvent)
+            else:
+                convectiveSigmetNumberStr = self._getConvectiveSigmetNumber(hazardEvent)
+                convectiveSigmetNumberStr = self._applyCount(convectiveSigmetNumberStr, self._countEast, self._countCentral, self._countWest)                                                        
+        elif hazardEvent.getStatus() in ["ISSUED"]:
+            convectiveSigmetNumberStr = hazardEvent.get('convectiveSigmetNumberStr')
+        else:
+            convectiveSigmetNumberStr = self._getConvectiveSigmetNumber(hazardEvent)            
+            
+        if hazardEvent.getStatus() in ["PENDING"]:
+            if self._issueFlag is not "True":
+                self._countEast, self._countCentral, self._countWest = self._addCount(self._countEast, self._countCentral, self._countWest)
+                
+        if hazardEvent.getStatus() in ["PENDING", "ISSUED"]:
+            hazardEvent.set('convectiveSigmetNumberStr', convectiveSigmetNumberStr)
+            hazardEvent.set('validTime', self._spclTime)             
+                
+        return convectiveSigmetNumberStr        
     
     def _setConvectiveSigmetNumber(self, hazardEvent):
         import json
+        
+        epochStartTime = time.mktime(hazardEvent.getStartTime().timetuple())
+        initTimeZ = time.strftime('%d%H%M', time.gmtime(epochStartTime))
+        self._initTimeZ = initTimeZ 
         
         if os.path.isfile('/scratch/convectiveSigmetNumber.txt'):
             with open('/scratch/convectiveSigmetNumber.txt') as openFile:
@@ -299,18 +285,15 @@ class Product(HydroGenerator.Product):
             
         return countEast, countCentral, countWest
     
-    def _formatConvectiveSigmet(self, hazardEvent):
-
-        self._getStatesStr(hazardEvent)
-        self._getDomainStr(hazardEvent)
-        self._getModeStr(hazardEvent)
-        self._getModifierStr(hazardEvent)
-        self._getEmbeddedStr(hazardEvent)
-        self._getMotionStr(hazardEvent)
-        self._getCloudTopStr(hazardEvent)
-        self._getAdditionalHazardsStr(hazardEvent)
+    def _boundingStatement(self, hazardEvent):
+        
+        boundingStatement = hazardEvent.getHazardAttributes().get('boundingStatement')
+        
+        return boundingStatement
             
-    def _getStatesStr(self, hazardEvent):           
+    def _states(self, hazardEvent):
+        self._hazardZonesDict = hazardEvent.getHazardAttributes().get('hazardArea')
+                   
         statesList = []
         for key in self._hazardZonesDict:
             states = key[:2]
@@ -318,49 +301,64 @@ class Product(HydroGenerator.Product):
                 pass
             else:
                 statesList.append(states)
-        self._statesListStr = ''
+        statesListStr = ''
         for states in statesList:
-            self._statesListStr += states + ' '
+            statesListStr += states + ' '
             
-        return
+        return statesListStr
     
-    def _getDomainStr(self, hazardEvent):
+    def _domain(self, hazardEvent):        
+        self._convectiveSigmetDomain = hazardEvent.getHazardAttributes().get('convectiveSigmetDomain')
+        hazardEvent.set('convectiveSigmetDomain', self._convectiveSigmetDomain) 
         convectiveSigmetDomainDict = {'East': 'E', 'Central': 'C', 'West': 'W'}
-        self._convectiveSigmetDomainStr = convectiveSigmetDomainDict[self._convectiveSigmetDomain]
+        
+        domainStr = convectiveSigmetDomainDict[self._convectiveSigmetDomain]
                 
-        return
+        return domainStr
     
-    def _getModeStr(self, hazardEvent):
+    def _mode(self, hazardEvent):
+        self._convectiveSigmetMode = hazardEvent.getHazardAttributes().get('convectiveSigmetMode')
         convectiveSigmetModeDict = {'area': 'AREA', 'isolated': 'ISOL', 'line': 'LINE'}
-        self._convectiveSigmetModeStr = convectiveSigmetModeDict[self._convectiveSigmetMode]
-        self._convectiveSigmetModeStr += ' TS'
+        modeStr = convectiveSigmetModeDict[self._convectiveSigmetMode]
+        modeStr += ' TS'
                 
-        return
+        return modeStr
     
-    def _getModifierStr(self, hazardEvent):
-        convectiveSigmetModifierDict = {'Developing': 'DVLPG', 'Intensifying': 'INTSF', 'Diminishing': 'DMSHG', 'None': ''}
-        self._convectiveSigmetModifierStr = convectiveSigmetModifierDict[self._convectiveSigmetModifier]
+    def _modifier(self, hazardEvent):
+        self._convectiveSigmetModifier = hazardEvent.getHazardAttributes().get('convectiveSigmetModifier')
+        convectiveSigmetModifierDict = {'Developing': 'DVLPG ', 'Intensifying': 'INTSF ', 'Diminishing': 'DMSHG ', 'None': ''}
+        modifierStr = convectiveSigmetModifierDict[self._convectiveSigmetModifier]
                 
-        return
+        return modifierStr
     
-    def _getEmbeddedStr(self, hazardEvent):
+    def _embedded(self, hazardEvent):
+        self._convectiveSigmetEmbeddedLine = hazardEvent.getHazardAttributes().get('convectiveSigmetEmbeddedLine')
+        self._convectiveSigmetEmbeddedArea = hazardEvent.getHazardAttributes().get('convectiveSigmetEmbeddedArea')
+        self._convectiveSigmetEmbeddedIsolated = hazardEvent.getHazardAttributes().get('convectiveSigmetEmbeddedIsolated')
+        self._convectiveSigmetLineWidth = str(hazardEvent.getHazardAttributes().get('convectiveSigmetLineWidth'))
+        self._convectiveSigmetCellDiameter = str(hazardEvent.getHazardAttributes().get('convectiveSigmetCellDiameter'))
+        
         hazardEmbeddedDict = {'Severe': 'SEV', 'Embedded': ' EMBD'}
-        self._hazardEmbeddedStr = ""
+        embeddedStr = ""
+        
         if self._convectiveSigmetMode == "line":
             for selection in self._convectiveSigmetEmbeddedLine:
-                self._hazardEmbeddedStr += hazardEmbeddedDict[selection]               
-            self._hazardEmbeddedStr = self._hazardEmbeddedStr + ' ' + self._convectiveSigmetLineWidth + ' NM WIDE'
+                embeddedStr += hazardEmbeddedDict[selection]               
+            embeddedStr = self._hazardEmbeddedStr + ' ' + self._convectiveSigmetLineWidth + ' NM WIDE'
         elif self._convectiveSigmetMode == "area":
             for selection in self._convectiveSigmetEmbeddedArea:
-                self._hazardEmbeddedStr += hazardEmbeddedDict[selection]
+                embeddedStr += hazardEmbeddedDict[selection]
         elif self._convectiveSigmetMode == "isolated":
             for selection in self._convectiveSigmetEmbeddedIsolated:
-                self._hazardEmbeddedStr += hazardEmbeddedDict[selection]
-            self._hazardEmbeddedStr = self._hazardEmbeddedStr + ' ' + self._convectiveSigmetCellDiameter + ' NM WIDE'
+                embeddedStr += hazardEmbeddedDict[selection]
+            embeddedStr = self._hazardEmbeddedStr + ' ' + self._convectiveSigmetCellDiameter + ' NM WIDE'
                     
-        return
+        return embeddedStr
     
-    def _getMotionStr(self, hazardEvent):
+    def _motion(self, hazardEvent):
+        self._convectiveSigmetDirection = hazardEvent.getHazardAttributes().get('convectiveSigmetDirection')
+        self._convectiveSigmetSpeed = hazardEvent.getHazardAttributes().get('convectiveSigmetSpeed')
+        
         if self._convectiveSigmetDirection < 10:
             self._convectiveSigmetDirectionStr = '00' + str(self._convectiveSigmetDirection)
         elif self._convectiveSigmetDirection >= 10 and self._convectiveSigmetDirection < 100:
@@ -373,284 +371,41 @@ class Product(HydroGenerator.Product):
         else:
             self._convectiveSigmetSpeedStr = str(self._convectiveSigmetSpeed)
         
-        self._hazardMotionStr = 'MOV FROM ' + self._convectiveSigmetDirectionStr + self._convectiveSigmetSpeedStr + 'KT.'
+        hazardMotionStr = 'MOV FROM ' + self._convectiveSigmetDirectionStr + self._convectiveSigmetSpeedStr + 'KT.'
         
-        if self._hazardMotionStr == 'MOV FROM 00000KT.':
-            self._hazardMotionStr = 'MOV LTL.'
+        if hazardMotionStr == 'MOV FROM 00000KT.':
+            hazardMotionStr = 'MOV LTL.'
                     
-        return
+        return hazardMotionStr
     
-    def _getCloudTopStr(self, hazardEvent):
+    def _cloudTop(self, hazardEvent):
+        self._convectiveSigmetCloudTop = hazardEvent.getHazardAttributes().get('convectiveSigmetCloudTop')
+        self._convectiveSigmetCloudTopText = hazardEvent.getHazardAttributes().get('convectiveSigmetCloudTopText')
+        
         if self._convectiveSigmetCloudTop == "topsTo":
-            self._convectiveSigmetCloudTopStr = "TOPS TO FL" + str(self._convectiveSigmetCloudTopText) + '.'
+            cloudTopStr = "TOPS TO FL" + str(self._convectiveSigmetCloudTopText) + '.'
         elif self._convectiveSigmetCloudTop == "topsAbove":
-            self._convectiveSigmetCloudTopStr = "TOPS ABV FL450."
+            cloudTopStr = "TOPS ABV FL450."
                     
-        return
+        return cloudTopStr
     
-    def _getAdditionalHazardsStr(self, hazardEvent):
-        self._convectiveSigmetAdditionalHazardsStr = ""
+    def _additionalHazards(self, hazardEvent):
+        self._convectiveSigmetTornadoes = hazardEvent.getHazardAttributes().get('tornadoesCheckBox')
+        self._convectiveSigmetHailWind = hazardEvent.getHazardAttributes().get('hailWindComboBox')        
+        self._convectiveSigmetHailSpinner = str(hazardEvent.getHazardAttributes().get('hailSpinner'))        
+        self._convectiveSigmetWindSpinner = str(hazardEvent.getHazardAttributes().get('windSpinner'))
+        
+        additionalHazardsStr = ""
         if self._convectiveSigmetTornadoes == True:
-            self._convectiveSigmetAdditionalHazardsStr += "TORNADOES..."
+            additionalHazardsStr += "TORNADOES..."
         if self._convectiveSigmetHailWind == "hailWindCanned":
-            self._convectiveSigmetAdditionalHazardsStr += "HAIL TO 1 IN...WIND GUSTS TO 50KT POSS."            
+            additionalHazardsStr += "HAIL TO 1 IN...WIND GUSTS TO 50KT POSS."            
         elif self._convectiveSigmetHailWind == "hailWindCustom":
-            self._convectiveSigmetAdditionalHazardsStr += "HAIL TO " + self._convectiveSigmetHailSpinner + " IN..."
-            self._convectiveSigmetAdditionalHazardsStr += "WIND GUSTS TO " + self._convectiveSigmetWindSpinner + "KTS POSS."
+            additionalHazardsStr += "HAIL TO " + self._convectiveSigmetHailSpinner + " IN..."
+            additionalHazardsStr += "WIND GUSTS TO " + self._convectiveSigmetWindSpinner + "KTS POSS."
                     
-        return
+        return additionalHazardsStr
     
-    def _outputFormatter(self, eventSet):        
-        eastFcstDict, eastFcstSpecialDict, centralFcstDict, centralFcstSpecialDict, westFcstDict, westFcstSpecialDict \
-        = self._createFcstDict(eventSet)
-        
-        eastFcstList, centralFcstList, westFcstList, eastFcstSpecialList, centralFcstSpecialList, westFcstSpecialList \
-        = self._createFcstList(eastFcstDict,eastFcstSpecialDict,centralFcstDict,centralFcstSpecialDict,westFcstDict, \
-                               westFcstSpecialDict)                       
-        
-        headerEast, headerCentral, headerWest = self._createHeader(eastFcstSpecialList, centralFcstSpecialList, westFcstSpecialList)
-        
-        eastFcst, centralFcst, westFcst = self._createFcst(eastFcstList, centralFcstList, westFcstList, eastFcstSpecialList, \
-                                                           centralFcstSpecialList, westFcstSpecialList)                        
-        
-        fcst = headerEast + eastFcst + 'NNNN' + '\n\n'
-        fcst = fcst + headerCentral + centralFcst + 'NNNN' + '\n\n'
-        fcst = fcst + headerWest + westFcst + '\n' 
-        
-        productDict = collections.OrderedDict()        
-        productDict['productID'] = 'SIGMET.Convective'
-        productDict['productName'] = 'CONVECTIVE SIGMET'        
-        productDict['text'] = fcst            
-            
-        return productDict
-    
-    def _createFcstDict(self, eventSet):
-        eastFcstDict = {}
-        centralFcstDict = {}
-        westFcstDict = {}
-        eastFcstSpecialDict = {}
-        centralFcstSpecialDict = {}
-        westFcstSpecialDict = {}
-   
-        for event in eventSet:
-            fcst = event.get('formattedText')
-            domain = event.get('convectiveSigmetDomain')
-            specialIssuance = event.get('specialIssuance')
-            numberStr = event.get('convectiveSigmetNumberStr')
-            number = int(numberStr[:1])
-            
-            if domain == 'East':
-                if specialIssuance == True:
-                    eastFcstSpecialDict[number] = fcst
-                else:
-                    eastFcstDict[number] = fcst
-            elif domain == 'Central':
-                if specialIssuance == True:
-                    centralFcstSpecialDict[number] = fcst
-                else:
-                    centralFcstDict[number] = fcst                    
-            elif domain == 'West':
-                if specialIssuance == True:
-                    westFcstSpecialDict[number] = fcst                    
-                else:
-                    westFcstDict[number] = fcst
-                    
-        eastFcstDict = collections.OrderedDict(sorted(eastFcstDict.items()))
-        centralFcstDict = collections.OrderedDict(sorted(centralFcstDict.items()))
-        westFcstDict = collections.OrderedDict(sorted(westFcstDict.items()))
-        eastFcstSpecialDict = collections.OrderedDict(sorted(eastFcstSpecialDict.items()))
-        centralFcstSpecialDict = collections.OrderedDict(sorted(centralFcstSpecialDict.items()))
-        westFcstSpecialDict = collections.OrderedDict(sorted(westFcstSpecialDict.items()))
-                                                      
-        return eastFcstDict, eastFcstSpecialDict, centralFcstDict, centralFcstSpecialDict, westFcstDict, westFcstSpecialDict
-    
-    def _createFcstList(self,eastFcstDict,eastFcstSpecialDict,centralFcstDict,centralFcstSpecialDict,westFcstDict,westFcstSpecialDict):
-        eastFcstList = []
-        centralFcstList = []
-        westFcstList = []
-        eastFcstSpecialList = []
-        centralFcstSpecialList = []
-        westFcstSpecialList = []
-        
-        for value in eastFcstDict.iteritems():
-            eastFcstList.append(value[1])
-        for value in centralFcstDict.iteritems():
-            centralFcstList.append(value[1])        
-        for value in westFcstDict.iteritems():
-            westFcstList.append(value[1])
-        for value in eastFcstSpecialDict.iteritems():
-            eastFcstSpecialList.append(value[1])
-        for value in centralFcstSpecialDict.iteritems():
-            centralFcstSpecialList.append(value[1])
-        for value in westFcstSpecialDict.iteritems():
-            westFcstSpecialList.append(value[1])                        
-                    
-        return eastFcstList, centralFcstList, westFcstList, eastFcstSpecialList, centralFcstSpecialList, westFcstSpecialList
-    
-    def _createFcst(self,eastFcstList, centralFcstList, westFcstList, eastFcstSpecialList, centralFcstSpecialList, westFcstSpecialList):
-        eastFcst = ''
-        centralFcst = ''
-        westFcst = ''
-        
-        if eastFcstList:
-            for entry in eastFcstList:
-                eastFcst = eastFcst + entry + '\n\n'
-            if eastFcstSpecialList:
-                for entry in eastFcstSpecialList:
-                    eastFcst = entry + '\n\n' + eastFcst
-        else:
-            if eastFcstSpecialList:
-                for entry in eastFcstSpecialList:
-                    eastFcst = eastFcst + entry + '\n\n'
-            else:
-                eastFcst = 'CONVECTIVE SIGMET...NONE\n\n'
-                
-        if centralFcstList:
-            for entry in centralFcstList:
-                centralFcst = centralFcst + entry + '\n\n'
-            if centralFcstSpecialList:
-                for entry in centralFcstSpecialList:
-                    centralFcst = entry + '\n\n' + centralFcst                
-        else:
-            if centralFcstSpecialList:
-                for entry in centralFcstSpecialList:
-                    centralFcst = centralFcst + entry + '\n\n'
-            else:
-                centralFcst = 'CONVECTIVE SIGMET...NONE\n\n'
-            
-        if westFcstList:
-            for entry in westFcstList:
-                westFcst = westFcst + entry + '\n\n'
-            if westFcstSpecialList:
-                for entry in westFcstSpecialList:
-                    westFcst = entry + '\n\n' + westFcst                 
-        else:
-            if westFcstSpecialList:
-                for entry in westFcstSpecialList:
-                    westFcst = westFcst + entry + '\n\n'
-            else:
-                westFcst = 'CONVECTIVE SIGMET...NONE\n\n'        
-        
-        return eastFcst, centralFcst, westFcst         
-    
-    def _createHeader(self, eastFcstSpecialList, centralFcstSpecialList, westFcstSpecialList):
-        
-        fcstSpecialListDict = {'east': eastFcstSpecialList, 'central': centralFcstSpecialList, 'west': westFcstSpecialList}
-        domainDict = {'east': 'E', 'central': 'C', 'west': 'W'}
-        headerList = []
-        
-        for key in domainDict:
-            print "key: ", key
-            header = ''
-            if len(fcstSpecialListDict[key]):
-                header = '%s %s%s %s %s\n' % (self._zczc, self._productLoc, self._pilDict[domainDict[key]],
-                    self._all, self._specialTime)            
-                header = '%s%s %s %s\n' % (header, self._wmoHeaderDict[domainDict[key]], self._fullStationID,
-                    self._specialTime)
-                header = '%s%s%s %s %s' % (header, self._productLoc, domainDict[key],
-                    self._productIdentifier, self._specialTime)
-            else:
-                header = '%s %s%s %s %s\n' % (self._zczc, self._productLoc, self._pilDict[domainDict[key]],
-                    self._all, self._initTimeZ)
-                header = '%s%s %s %s\n' % (header, self._wmoHeaderDict[domainDict[key]], self._fullStationID,
-                    self._initTimeZ)
-                header = '%s%s%s %s %s' % (header, self._productLoc, domainDict[key],
-                    self._productIdentifier, self._initTimeZ)
-            headerList.append(header)
-        
-        for header in headerList:
-            if header[11] == 'E':
-                headerEast = header
-            elif header[11] == 'C':
-                headerCentral = header
-            else:
-                headerWest = header
-     
-        return headerEast, headerCentral, headerWest           
-    
-    def _outputText(self, productDict):              
-        outDirAll = os.path.join(OUTPUTDIR, self._initDateZ)
-        outAllAdvisories = 'convectiveSIGMET_' + self._initDateZ + '.txt'
-        pathAllFile = os.path.join(outDirAll, outAllAdvisories)
-        
-        if not os.path.exists(outDirAll):
-            try:
-                os.makedirs(outDirAll)
-            except:
-                sys.stderr.write('Could not create output directory')
-
-        with open(pathAllFile, 'w') as outFile:
-            outFile.write(productDict['text'])
-    
-        return
-            
-    def _preProcessProduct(self, event, fcst, argDict):
-        fcst = '%s%s %s%s\n' % (fcst, self._SIGMET_ProductName, self._convectiveSigmetNumberStr, self._convectiveSigmetDomainStr)        
-        fcst = fcst + 'VALID UNTIL ' + self._endTimeZ + 'Z\n'
-        fcst = '%s%s\n' % (fcst, self._statesListStr)
-        fcst = '%s%s\n' % (fcst, self._boundingStatement)
-        fcst = '%s%s %s %s %s %s' % (fcst, self._convectiveSigmetModifierStr, self._convectiveSigmetModeStr, self._hazardEmbeddedStr,
-            self._hazardMotionStr, self._convectiveSigmetCloudTopStr)
-        
-        if len(self._convectiveSigmetAdditionalHazardsStr):
-            fcst = '\n%s%s' % (fcst, self._convectiveSigmetAdditionalHazardsStr)
-        
-        fcst = fcst.replace("_", " ")
-
-        print 'Convective_SIGMET_ProductGenerator.py preProcessProduct -- fcst:', fcst        
-        event.set('formattedText', fcst)
-        
-        return fcst
-
-    def _postProcessProduct(self, fcst, argDict):
-        endTimeStr = time.strftime('%b %Y', time.gmtime(
-            self._currentTime))
-      
-        fcst = fcst + '\n' + 'OUTLOOK VALID ' + 'DDHHMM - DDHHMM+4\n' 
-        fcst = fcst + 'TS ARE NOT EXPD TO REQUIRE WST ISSUANCES.\n'
-        fcst = fcst + '\n' + 'NNNN'
-
-        return fcst
-
-    def _wordWrap(self, string, width=66):
-        newstring = ''
-        if len(string) > width:
-            while True:
-                # find position of nearest whitespace char to the left of 'width'
-                marker = width - 1
-                while not string[marker].isspace():
-                    marker = marker - 1
-
-                # remove line from original string and add it to the new string
-                newline = string[0:marker] + '\n'
-                newstring = newstring + newline
-                string = string[marker + 1:]
-
-                # break out of loop when finished
-                if len(string) <= width:
-                    break
-    
-        return newstring + string
-                
-    def _groupSegments(self, segments):
-        '''
-        Group the segments into the products
-        
-         ESF products are not segmented, so make a product from each 'segment' i.e. HY.O event
-        '''        
-        productSegmentGroups = []
-        for segment in segments:
-            vtecRecords = self.getVtecRecords(segment)
-            productSegmentGroups.append(self.createProductSegmentGroup('ESF', self._ESF_ProductName, 'area', self._vtecEngine, 'counties', False,
-                                            [self.createProductSegment(segment, vtecRecords)]))            
-        for productSegmentGroup in productSegmentGroups:
-            self._addProductParts(productSegmentGroup)
-        return productSegmentGroups
-    
-    def _addProductParts(self, productSegmentGroup):
-        productSegments = productSegmentGroup.productSegments
-        productSegmentGroup.setProductParts(self._hydroProductParts._productParts_ESF(productSegments))
-
     def _narrativeForecastInformation(self, segmentDict, productSegmentGroup, productSegment):  
         default = '''
 |* 
