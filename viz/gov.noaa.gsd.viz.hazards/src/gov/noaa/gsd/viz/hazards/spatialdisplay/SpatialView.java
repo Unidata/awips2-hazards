@@ -123,6 +123,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Apr 27, 2016 18266      Chris.Golden      Added support for event-driven tools triggered
  *                                           by data layer changes.
  * Jun 06, 2016 19432      Chris.Golden      Added ability to draw lines and points.
+ * Jun 23, 2016 19537      Chris.Golden      Removed storm-track-specific code.
  * </pre>
  * 
  * @author Chris.Golden
@@ -909,14 +910,11 @@ public class SpatialView implements
 
     @Override
     public void drawEvents(Collection<ObservedHazardEvent> events,
-            Map<String, Boolean> eventOverlapSelectedTime,
-            Map<String, Boolean> forModifyingStormTrack,
             Map<String, Boolean> eventEditability,
-            boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed) {
+            Set<String> hatchedEventIdentifiers) {
         enableAddGeometryToSelected();
-        spatialDisplay.drawEvents(events, eventOverlapSelectedTime,
-                forModifyingStormTrack, eventEditability,
-                toggleAutoHazardChecking, areHatchedAreasDisplayed);
+        spatialDisplay.drawEvents(events, eventEditability,
+                hatchedEventIdentifiers);
     }
 
     @Override
@@ -960,15 +958,6 @@ public class SpatialView implements
 
         case FREEHAND_DRAWING:
             setCursor(SpatialViewCursorTypes.DRAW_CURSOR);
-            break;
-
-        case STORM_TOOL_DRAG_DOT_DRAWING:
-            String hazardType = null;
-            int len = args.length;
-            if (len >= 3) {
-                hazardType = args[2];
-            }
-            spatialDisplay.drawStormTrackDot(hazardType);
             break;
 
         case DRAW_BY_AREA:

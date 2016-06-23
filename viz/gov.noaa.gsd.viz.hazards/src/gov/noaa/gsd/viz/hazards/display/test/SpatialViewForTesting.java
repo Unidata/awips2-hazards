@@ -135,9 +135,8 @@ public class SpatialViewForTesting implements ISpatialView {
     }
 
     @Override
-    public void drawEvents(Collection events, Map eventOverlapSelectedTime,
-            Map forModifyingStormTrack, Map eventEditability,
-            boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed) {
+    public void drawEvents(Collection events, Map eventEditability,
+            Set hatchedEventIdentifiers) {
     }
 
     /*

@@ -9,6 +9,8 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.messenger;
 
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+
 import java.io.Serializable;
 import java.util.Map;
 
@@ -34,6 +36,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  * Nov 10, 2015  12762     Chris.Golden Added tool parameter gatherer inner
  *                                      class to support the new recommender
  *                                      manager.
+ * Jun 23, 2016  19537     Chris.Golden Changed to work with new generic
+ *                                      tool spatial info gathering.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -100,12 +104,6 @@ public interface IMessenger {
 
         /**
          * Get spatial input for the specified tool.
-         * <p>
-         * TODO: This method should not be part of the interface. However, until
-         * the special-case code for running the storm track tool has been
-         * removed, it must be included so that the storm track mouse handler
-         * can be put in place upon request. Once spatial decorations for all
-         * events are implemented, it will no longer be needed.
          * 
          * @param tool
          *            Identifier of the tool for which input is to be requested.
@@ -113,14 +111,13 @@ public interface IMessenger {
          *            Type of the tool.
          * @param context
          *            Context in which the tool is to be run.
-         * @param spatialInput
-         *            Map holding the parameters governing the type of spatial
-         *            input to be requested.
+         * @param visualFeatures
+         *            List of visual features to be used to get spatial input
+         *            from the user.
          */
-        @Deprecated
-        public void requestToolSpatialInput(String tool, ToolType type,
+        public void getToolSpatialInput(String tool, ToolType type,
                 RecommenderExecutionContext context,
-                Map<String, Serializable> spatialInput);
+                VisualFeaturesList visualFeatures);
     }
 
     /**

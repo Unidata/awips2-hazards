@@ -40,6 +40,11 @@ import com.google.common.collect.TreeRangeMap;
  *                                      deserialization. This in turn allows
  *                                      two H.S. instances sharing an edex
  *                                      to see each other's stored events.
+ * Jun 23, 2016   19537    Chris.Golden Changed to allow default property
+ *                                      values to be altered when setting
+ *                                      the property for a specific time
+ *                                      and there are no time-range-specific
+ *                                      properties.
  * </pre>
  * 
  * @author Chris.Golden
@@ -181,7 +186,8 @@ class TemporallyVariantProperty<P extends Serializable> implements Serializable 
 
     /**
      * Add the specified property for the time range that encompasses the
-     * specified time.
+     * specified time, or failing that, use it as the default property if a
+     * default property exists already.
      * 
      * @param time
      *            Time that is encompassed by the time range for which the
@@ -189,23 +195,24 @@ class TemporallyVariantProperty<P extends Serializable> implements Serializable 
      * @param property
      *            Property value associated with the time range encompassing the
      *            specified time; must not be <code>null</code>.
-     * @return True if the property was added, false otherwise. Reasons that the
-     *         property would not be added include the method
-     *         {@link #addPropertyForTimeRange(Range, Object)} has not been
-     *         called at least once on this object, or it has been called, but
-     *         <code>time</code> does not fall within any time range specified
-     *         by such calls.
+     * @return True if the property was added or made the default property,
+     *         false otherwise.
      */
     boolean addPropertyForTimeRangeEncompassingTime(Date time, P property) {
-        if (propertiesForTimeRanges == null) {
-            return false;
+        if (propertiesForTimeRanges != null) {
+            Entry<Range<Date>, P> entry = propertiesForTimeRanges
+                    .getEntry(time);
+            if (entry == null) {
+                return false;
+            }
+            propertiesForTimeRanges.put(entry.getKey(), property);
+            return true;
         }
-        Entry<Range<Date>, P> entry = propertiesForTimeRanges.getEntry(time);
-        if (entry == null) {
-            return false;
+        if (defaultProperty != null) {
+            defaultProperty = property;
+            return true;
         }
-        propertiesForTimeRanges.put(entry.getKey(), property);
-        return true;
+        return false;
     }
 
     /**

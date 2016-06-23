@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.recommenders;
 
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -64,6 +66,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  *                                      return a single recommender.
  * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
  *                                      info.
+ * Jun 23, 2016 19537      Chris.Golden Changed to use visual features for spatial info.
  * </pre>
  * 
  * @author mnash
@@ -112,16 +115,16 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
      * method of a recommender. This method should be called by clients.
      * 
      * @param recommenderName
-     * @param spatialInfo
+     * @param visualFeatures
      * @param dialogInfo
      * @param listener
      */
     public void runExecuteRecommender(String recommenderName,
-            EventSet<IEvent> eventSet, Map<String, Serializable> spatialInfo,
+            EventSet<IEvent> eventSet, VisualFeaturesList visualFeatures,
             Map<String, Serializable> dialogInfo,
             IPythonJobListener<EventSet<IEvent>> listener) {
         IPythonExecutor<P, EventSet<IEvent>> executor = new RecommenderExecutor<P>(
-                recommenderName, eventSet, spatialInfo, dialogInfo);
+                recommenderName, eventSet, visualFeatures, dialogInfo);
         try {
             getCoordinator(recommenderName).submitAsyncJob(executor, listener);
         } catch (Exception e) {
@@ -138,7 +141,11 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
      * from a file if no dialog should be present.
      * 
      * @param recommenderName
-     * @return
+     *            Name of the recommender.
+     * @param eventSet
+     *            Event set providing context for this request.
+     * @return Map holding the description of a dialog to be shown in order to
+     *         get input from the user; if empty, no dialog is needed.
      */
     public Map<String, Serializable> getDialogInfo(String recommenderName,
             EventSet<IEvent> eventSet) {
@@ -155,15 +162,20 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
 
     /**
      * This method may do different things depending on the implementation.
-     * Subclasses retrieve information about the spatial info, or possibly read
-     * from a file if no spatial info should be present.
+     * Subclasses create visual features based upon what the recommender
+     * requests, or possibly read from a file.
      * 
      * @param recommenderName
-     * @return
+     *            Name of the recommender.
+     * @param eventSet
+     *            Event set providing context for this request.
+     * @return List of visual features to be used to get spatial input from the
+     *         user; if empty, no spatial input is needed.
      */
-    public Map<String, Serializable> getSpatialInfo(String recommenderName) {
-        IPythonExecutor<P, Map<String, Serializable>> executor = new RecommenderSpatialInfoExecutor<P>(
-                recommenderName);
+    public VisualFeaturesList getSpatialInfo(String recommenderName,
+            EventSet<IEvent> eventSet) {
+        IPythonExecutor<P, VisualFeaturesList> executor = new RecommenderSpatialInfoExecutor<P>(
+                recommenderName, eventSet);
         try {
             return getCoordinator(recommenderName).submitSyncJob(executor);
         } catch (Exception e) {

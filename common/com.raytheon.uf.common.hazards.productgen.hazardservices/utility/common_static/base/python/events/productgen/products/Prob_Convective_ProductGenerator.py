@@ -5,6 +5,7 @@ import collections, time
 import Prob_Generator
 import HazardDataAccess
 #from PHI_GridRecommender import Recommender as PHI_GridRecommender
+import TimeUtils
 from ProbUtils import ProbUtils
 import json, pickle, os
 import datetime
@@ -132,7 +133,7 @@ class Product(Prob_Generator.Product):
             hazardEvent.set('issueTime', self._issueTime)
             
             ### Capture discussion & threats, timestamp and place in readonly disc box
-            newDisc = datetime.datetime.fromtimestamp(self._issueTime/1000).strftime('%m/%d/%Y %H:%M :: ')
+            newDisc = datetime.datetime.utcfromtimestamp(self._issueTime/1000).strftime('%m/%d/%Y %H:%M :: ')
             threatFields = ['convectiveStormCharsHail', 'convectiveStormCharsWind', 'convectiveStormCharsTorn']
             threats = [hazardEvent.get(threat) for threat in threatFields]
             newDisc += str(threats) + '  >>>  ' 
@@ -150,12 +151,12 @@ class Product(Prob_Generator.Product):
             [hazardEvent.set(threat, None) for threat in threatFields]
             hazardEvent.set('convectiveWarningDecisionDiscussion', newDisc)
             
-            hazardEvent.set('eventStartTimeAtIssuance', long(self._probUtils._datetimeToMs(hazardEvent.getStartTime())))
+            hazardEvent.set('eventStartTimeAtIssuance', long(TimeUtils.datetimeToEpochTimeMillis(hazardEvent.getStartTime())))
             hazardEvent.set('durationSecsAtIssuance', self._probUtils._getDurationSecs(hazardEvent))
             hazardEvent.set('graphProbsAtIssuance', hazardEvent.get('convectiveProbTrendGraph'))
             # Set expire time. This should coincide with the zero probability.
             # TO DO --convert hazard end time to millis
-            hazardEvent.set('expirationTime', int(self._datetimeToMs(hazardEvent.getEndTime())))
+            hazardEvent.set('expirationTime', int(TimeUtils.datetimeToEpochTimeMillis(hazardEvent.getEndTime())))
             hazardAttrs = hazardEvent.getHazardAttributes()
             self._objectID = hazardEvent.get('objectID') if hazardEvent.get('objectID') else hazardEvent.getDisplayEventID()
             self._userOwned = hazardEvent.get('userOwned', False)
@@ -164,8 +165,8 @@ class Product(Prob_Generator.Product):
             self._direction = self._convertDirection(hazardEvent.get('convectiveObjectDir', 270))
             # Convert to mph
             self._speed = round(hazardAttrs.get('convectiveObjectSpdKts', 32)  * 1.15)
-            st =  self._datetimeToMs(hazardEvent.getStartTime())
-            et =  self._datetimeToMs(hazardEvent.getEndTime())
+            st =  TimeUtils.datetimeToEpochTimeMillis(hazardEvent.getStartTime())
+            et =  TimeUtils.datetimeToEpochTimeMillis(hazardEvent.getEndTime())
             self._startTime = self._timeFormat(st)
             self._endTime = self._timeFormat(et)
             self._headline = hazardAttrs.get('headline', 'Probabilistic Severe')
@@ -202,7 +203,7 @@ class Product(Prob_Generator.Product):
 #                   filteredDBEvents.append(evt)  
 # 
 #             eventSet.addAll(filteredDBEvents)
-#             eventSet.addAttribute('issueTime', datetime.datetime.fromtimestamp(self._issueTime/1000))
+#             eventSet.addAttribute('issueTime', datetime.datetime.utcfromtimestamp(self._issueTime/1000))
 # 
 # 
 #             pu = ProbUtils()
@@ -232,9 +233,6 @@ class Product(Prob_Generator.Product):
         #productDicts, hazardEvents = self._makeProducts_FromHazardEvents(probHazardEvents, eventSetAttributes)
 
         return productDicts, probHazardEvents
-    
-    def _datetimeToMs(self, datetime):
-        return float(time.mktime(datetime.timetuple())) * 1000
 
     def _getText(self):
         fcst =  '''

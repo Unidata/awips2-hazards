@@ -31,6 +31,7 @@
 #    01/29/15        3626          Chris.Golden   Added EventSet to arguments for getting dialog info.
 #    11/10/15       12762          Chris.Golden   Added comments about what sort of metadata is
 #                                                 expected from defineScriptMetadata(). 
+#    06/23/16       19537          Chris.Golden   Changed to use visual features for spatial info.
 # 
 #
 
@@ -61,29 +62,29 @@ class Recommender(object):
         @summary: Defines a dialog that will be presented to the user prior to 
         the recommender's execute routine.  Will use python maps to define widgets.  
         Each key within the map will defined a specific attribute for the widget.
-        @param eventSet: A set of event objects that the user can use to help determine 
-        new objects to return 
+        @param eventSet: Attributes providing the execution context of the recommender.
         @return: Python map which correspond to attributes for widgets.
         '''
         return
     
-    def defineSpatialInfo(self):
+    def defineSpatialInfo(self, eventSet):
         '''
         @summary: Determines spatial information needed by the recommender.
-        @return: Unknown
-        @todo: fix comments, further figure out spatial info
+        @param eventSet: Attributes providing the execution context of the recommender.
+        @return: Visual features to be used by the user to provide spatial input;
+        may be empty.
         '''
         return
     
     @abc.abstractmethod
-    def execute(self, eventSet, dialogInputMap, spatialInputMap):
+    def execute(self, eventSet, dialogInputMap, visualFeatures):
         '''
         @param eventSet: A set of event objects that the user can use to help determine 
         new objects to return 
         @param dialogInputMap: A map containing user selections from the dialog created
         by the defineDialog() routine
-        @param spatialInputMap: A map containing spatial input as created by the 
-        definedSpatialInfo() routine
+        @param visualFeatures: List of visual features as created by the defineSpatialInfo()
+        routine and modified as necessary by the user.
         @return: List of objects that will be later converted to Java IEvent objects
         '''
         return

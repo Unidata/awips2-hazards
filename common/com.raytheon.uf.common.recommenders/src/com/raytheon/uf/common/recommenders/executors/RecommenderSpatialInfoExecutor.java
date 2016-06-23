@@ -19,9 +19,10 @@
  **/
 package com.raytheon.uf.common.recommenders.executors;
 
-import java.io.Serializable;
-import java.util.Map;
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 
 /**
@@ -37,6 +38,7 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  * Feb 06, 2013            mnash     Initial creation
  * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
  *                                      info.
+ * Jun 23, 2016 19537      Chris.Golden Changed to use visual features for spatial info.
  * </pre>
  * 
  * @author mnash
@@ -44,17 +46,18 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  */
 
 public class RecommenderSpatialInfoExecutor<P extends AbstractRecommenderScriptManager>
-        extends AbstractRecommenderExecutor<P, Map<String, Serializable>> {
+        extends AbstractRecommenderExecutor<P, VisualFeaturesList> {
 
-    /**
-* 
-*/
-    public RecommenderSpatialInfoExecutor(String recommenderName) {
+    private final EventSet<IEvent> eventSet;
+
+    public RecommenderSpatialInfoExecutor(String recommenderName,
+            EventSet<IEvent> eventSet) {
         super(recommenderName);
+        this.eventSet = eventSet;
     }
 
     @Override
-    public Map<String, Serializable> execute(P script) {
-        return script.getInfo(recommenderName, "getSpatialInfo", null);
+    public VisualFeaturesList execute(P script) {
+        return script.getVisualFeatures(recommenderName, eventSet);
     }
 }

@@ -7,8 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.utilities;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.POINTS;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SPATIAL_INFO;
 import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
@@ -20,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.google.common.collect.Lists;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.localization.IPathManager;
@@ -54,6 +51,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                            utility classes.
  * Nov 29, 2013    2380    Dan Schaffer       More consolidation to {@link HazardConstants}
  * Jan 26, 2015    5952    Dan Schaffer       Fix incorrect hazard area designation.
+ * Jun 23, 2016   19537    Chris.Golden       Removed storm-track-specific code.
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -203,21 +201,5 @@ public class Utilities {
             }
         }
         return result;
-    }
-
-    public static Map<String, Serializable> buildStormStrackToolDraggedPointParameters(
-            double yloc, double xloc, double selectedTime) {
-        Map<String, Serializable> toolParameters = new HashMap<>();
-        HashMap<String, Serializable> pointsDict = new HashMap<>();
-        toolParameters.put(SPATIAL_INFO, pointsDict);
-        ArrayList<Serializable> points = new ArrayList<>();
-        pointsDict.put(POINTS, points);
-        ArrayList<Serializable> outerList = new ArrayList<>();
-        points.add(outerList);
-        ArrayList<Double> xyLoc = Lists.newArrayList(yloc, xloc);
-        Double zLoc = selectedTime;
-        outerList.add(xyLoc);
-        outerList.add(zLoc);
-        return toolParameters;
     }
 }

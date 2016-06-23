@@ -34,7 +34,7 @@ class MetaData(CommonMetaData.MetaData):
         
     
         #millis = SimulatedTime.getSystemTime().getMillis()
-        #currentTime = datetime.datetime.fromtimestamp(millis / 1000)
+        #currentTime = datetime.datetime.utcfromtimestamp(millis / 1000)
 
 
     def getAdvisoryType(self, adv):

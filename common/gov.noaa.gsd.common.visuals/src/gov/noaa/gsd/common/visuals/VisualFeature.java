@@ -23,6 +23,7 @@ import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKBReader;
 import com.vividsolutions.jts.io.WKBWriter;
@@ -60,6 +61,9 @@ import com.vividsolutions.jts.io.WKBWriter;
  *                                      replaced by visibility constraints
  *                                      based upon selection state to individual
  *                                      visual features.
+ * Jun 23, 2016   19537    Chris.Golden Added ability to use "as event" as a
+ *                                      value for label text. Also added new
+ *                                      topmost and symbol shape properties.
  * </pre>
  * 
  * @author Chris.Golden
@@ -314,6 +318,14 @@ public class VisualFeature implements Serializable {
     public static final Integer INTEGER_OF_EVENT_TYPE = -1;
 
     /**
+     * Special string value indicating that a value appropriate to an event type
+     * should be used for a property. The value is irrelevant, and is simply
+     * something that is extremely unlikely to ever be used as a label by a
+     * visual feature.
+     */
+    public static final String STRING_OF_EVENT_TYPE = "!#@$@#$65!#%@%^5623542354^`DAQW%$%afd";
+
+    /**
      * Default border color.
      */
     public static final SerializableColor DEFAULT_BORDER_COLOR = new SerializableColor(
@@ -341,9 +353,14 @@ public class VisualFeature implements Serializable {
     public static final double DEFAULT_DIAMETER = 5.0;
 
     /**
+     * Default symbol shape.
+     */
+    public static final SymbolShape DEFAULT_SYMBOL_SHAPE = SymbolShape.CIRCLE;
+
+    /**
      * Default text offset length.
      */
-    public static final double DEFAULT_TEXT_OFFSET_LENGTH = DEFAULT_DIAMETER;
+    public static final double DEFAULT_TEXT_OFFSET_LENGTH = 0.0;
 
     /**
      * Default text offset direction.
@@ -375,6 +392,11 @@ public class VisualFeature implements Serializable {
      * Default scaleable flag.
      */
     public static final boolean DEFAULT_SCALEABLE = false;
+
+    /**
+     * Default topmost flag.
+     */
+    public static final boolean DEFAULT_TOPMOST = false;
 
     // Private Static Constants
 
@@ -455,6 +477,20 @@ public class VisualFeature implements Serializable {
         public Double getPropertyValue(VisualFeature visualFeature, Date time) {
             TemporallyVariantProperty<Double> property = visualFeature
                     .getDiameter();
+            return (property == null ? null : property.getProperty(time));
+        }
+    };
+
+    /**
+     * Symbol shape fetcher.
+     */
+    private static final IPropertyFetcher<SymbolShape> SYMBOL_SHAPE_FETCHER = new IPropertyFetcher<SymbolShape>() {
+
+        @Override
+        public SymbolShape getPropertyValue(VisualFeature visualFeature,
+                Date time) {
+            TemporallyVariantProperty<SymbolShape> property = visualFeature
+                    .getSymbolShape();
             return (property == null ? null : property.getProperty(time));
         }
     };
@@ -565,6 +601,19 @@ public class VisualFeature implements Serializable {
         }
     };
 
+    /**
+     * Topmost flag fetcher.
+     */
+    private static final IPropertyFetcher<Boolean> TOPMOST_FETCHER = new IPropertyFetcher<Boolean>() {
+
+        @Override
+        public Boolean getPropertyValue(VisualFeature visualFeature, Date time) {
+            TemporallyVariantProperty<Boolean> property = visualFeature
+                    .getTopmost();
+            return (property == null ? null : property.getProperty(time));
+        }
+    };
+
     // Private Static Variables
 
     /**
@@ -656,6 +705,11 @@ public class VisualFeature implements Serializable {
     private TemporallyVariantProperty<Double> diameter;
 
     /**
+     * Symbol shape; may be <code>null</code>.
+     */
+    private TemporallyVariantProperty<SymbolShape> symbolShape;
+
+    /**
      * Text label; may be <code>null</code>.
      */
     private TemporallyVariantProperty<String> label;
@@ -698,6 +752,12 @@ public class VisualFeature implements Serializable {
      */
     private TemporallyVariantProperty<Boolean> scaleable;
 
+    /**
+     * Flag indicating whether or not the feature is topmost; may be
+     * <code>null</code>.
+     */
+    private TemporallyVariantProperty<Boolean> topmost;
+
     // Public Constructors
 
     /**
@@ -722,6 +782,7 @@ public class VisualFeature implements Serializable {
         this.borderThickness = original.borderThickness;
         this.borderStyle = original.borderStyle;
         this.diameter = original.diameter;
+        this.symbolShape = original.symbolShape;
         this.label = original.label;
         this.textOffsetLength = original.textOffsetLength;
         this.textOffsetDirection = original.textOffsetDirection;
@@ -730,6 +791,7 @@ public class VisualFeature implements Serializable {
         this.dragCapability = original.dragCapability;
         this.rotatable = original.rotatable;
         this.scaleable = original.scaleable;
+        this.topmost = original.topmost;
 
         /*
          * Mutable properties must be copied down to the point where immutable
@@ -774,6 +836,7 @@ public class VisualFeature implements Serializable {
                 && compare(borderThickness, otherFeature.borderThickness)
                 && compare(borderStyle, otherFeature.borderStyle)
                 && compare(diameter, otherFeature.diameter)
+                && compare(symbolShape, otherFeature.symbolShape)
                 && compare(label, otherFeature.label)
                 && compare(textOffsetLength, otherFeature.textOffsetLength)
                 && compare(textOffsetDirection,
@@ -781,8 +844,9 @@ public class VisualFeature implements Serializable {
                 && compare(textSize, otherFeature.textSize)
                 && compare(textColor, otherFeature.textColor)
                 && compare(dragCapability, otherFeature.dragCapability)
-                && compare(rotatable, otherFeature.rotatable) && compare(
-                    scaleable, otherFeature.scaleable));
+                && compare(rotatable, otherFeature.rotatable)
+                && compare(scaleable, otherFeature.scaleable) && compare(
+                    topmost, otherFeature.topmost));
     }
 
     @Override
@@ -792,10 +856,11 @@ public class VisualFeature implements Serializable {
                 + getHashCode(geometry) + getHashCode(borderColor)
                 + getHashCode(fillColor) + getHashCode(borderThickness)
                 + getHashCode(borderStyle) + getHashCode(diameter)
-                + getHashCode(label) + getHashCode(textOffsetLength)
+                + getHashCode(symbolShape) + getHashCode(label)
+                + getHashCode(textOffsetLength)
                 + getHashCode(textOffsetDirection) + getHashCode(textSize)
                 + getHashCode(textColor) + getHashCode(dragCapability)
-                + getHashCode(rotatable) + getHashCode(scaleable)) % Integer.MAX_VALUE);
+                + getHashCode(rotatable) + getHashCode(scaleable) + getHashCode(topmost)) % Integer.MAX_VALUE);
     }
 
     /**
@@ -893,11 +958,24 @@ public class VisualFeature implements Serializable {
     }
 
     /**
+     * Get the symbol shape for the specified time.
+     * 
+     * @param time
+     *            Time for which to check.
+     * @return Symbol shape that applies for the specified time.
+     */
+    public SymbolShape getSymbolShape(Date time) {
+        return getValue(SYMBOL_SHAPE_FETCHER, time, DEFAULT_SYMBOL_SHAPE);
+    }
+
+    /**
      * Get the text label for the specified time.
      * 
      * @param time
      *            Time for which to check.
-     * @return Text label that applies for the specified time, if any.
+     * @return Text label that applies for the specified time, if any; may be
+     *         {@link #STRING_OF_EVENT_TYPE}, indicating that the label should
+     *         be the same as what the hazard event would have.
      */
     public String getLabel(Date time) {
         return getValue(LABEL_FETCHER, time, null);
@@ -994,7 +1072,24 @@ public class VisualFeature implements Serializable {
     }
 
     /**
-     * Get the state of this object as a spatial entity for the specified time.
+     * Determine whether the feature is topmost for the specified time.
+     * 
+     * @param time
+     *            Time for which to check.
+     * @return True if the feature is topmost at the specified time, otherwise
+     *         false.
+     */
+    public boolean isTopmost(Date time) {
+        return getValue(TOPMOST_FETCHER, time, DEFAULT_TOPMOST);
+    }
+
+    /**
+     * Get the state of this object as a spatial entity for the specified time,
+     * with values found to be the appropriate <code>XXXX_OF_EVENT_TYPE</code>
+     * constant for the parameter's type being replaced with the appropriate
+     * specified hazard event visual property. For example, if the border color
+     * is found to be {@link #COLOR_OF_EVENT_TYPE}, the color specified by
+     * <code>hazardColor</code> is used.
      * 
      * @param spatialEntity
      *            Spatial entity to be updated to reflect this object's state at
@@ -1006,7 +1101,7 @@ public class VisualFeature implements Serializable {
      *            the newly-created spatial entity.
      * @param selected
      *            Flag indicating whether or not the item represented by this
-     *            object is currently selected. Depending upon the
+     *            object is currently selected.
      * @param time
      *            Time for which to get the state of this object.
      * @param hazardColor
@@ -1025,14 +1120,30 @@ public class VisualFeature implements Serializable {
      *            Point diameter of the hazard type associated with this visual
      *            feature; this is used if the diameter is found to be
      *            {@link #DOUBLE_OF_EVENT_TYPE}.
-     * @param hazardTextOffsetLength
-     *            Text offset length of the hazard type associated with this
-     *            visual feature; this is used if the text offset length is
-     *            found to be {@link #DOUBLE_OF_EVENT_TYPE}.
-     * @param hazardTextOffsetDirection
-     *            Text offset direction of the hazard type associated with this
-     *            visual feature; this is used if the text offset direction is
-     *            found to be {@link #DOUBLE_OF_EVENT_TYPE}.
+     * @param hazardLabel
+     *            Label of the hazard event associated with this visual feature;
+     *            this is used if the label is found to be
+     *            {@link #STRING_OF_EVENT_TYPE}.
+     * @param hazardSinglePointTextOffsetLength
+     *            Single-point text offset length of the hazard type associated
+     *            with this visual feature; this is used if the text offset
+     *            length is found to be {@link #DOUBLE_OF_EVENT_TYPE} and the
+     *            geometry is a single point.
+     * @param hazardSinglePointTextOffsetDirection
+     *            Single-point text offset direction of the hazard type
+     *            associated with this visual feature; this is used if the text
+     *            offset direction is found to be {@link #DOUBLE_OF_EVENT_TYPE}
+     *            and the geometry is a single point.
+     * @param hazardMultiPointTextOffsetLength
+     *            Multi-point text offset length of the hazard type associated
+     *            with this visual feature; this is used if the text offset
+     *            length is found to be {@link #DOUBLE_OF_EVENT_TYPE} and the
+     *            geometry is comprised of multiple points.
+     * @param hazardMultiPointTextOffsetDirection
+     *            Multi-point text offset direction of the hazard type
+     *            associated with this visual feature; this is used if the text
+     *            offset direction is found to be {@link #DOUBLE_OF_EVENT_TYPE}
+     *            and the geometry is comprised of multiple points.
      * @param hazardTextSize
      *            Text size of the hazard type associated with this visual
      *            feature; this is used if the text size is found to be
@@ -1049,8 +1160,10 @@ public class VisualFeature implements Serializable {
             IIdentifierGenerator<I> identifierGenerator, boolean selected,
             Date time, Color hazardColor, double hazardBorderThickness,
             BorderStyle hazardBorderStyle, double hazardPointDiameter,
-            double hazardTextOffsetLength, double hazardTextOffsetDirection,
-            int hazardTextSize) {
+            String hazardLabel, double hazardSinglePointTextOffsetLength,
+            double hazardSinglePointTextOffsetDirection,
+            double hazardMultiPointTextOffsetLength,
+            double hazardMultiPointTextOffsetDirection, int hazardTextSize) {
         if ((visibilityConstraints == VisibilityConstraints.NEVER)
                 || ((visibilityConstraints == VisibilityConstraints.UNSELECTED) && selected)
                 || ((visibilityConstraints == VisibilityConstraints.SELECTED) && (selected == false))) {
@@ -1065,6 +1178,7 @@ public class VisualFeature implements Serializable {
                     identifierGenerator.generate(identifier));
         }
         spatialEntity.setGeometry(geometry);
+        boolean pointGeometry = (geometry instanceof Point);
         spatialEntity
                 .setBorderColor(getColor(getBorderColor(time), hazardColor));
         spatialEntity.setFillColor(getColor(getFillColor(time), hazardColor));
@@ -1074,17 +1188,86 @@ public class VisualFeature implements Serializable {
                 hazardBorderStyle));
         spatialEntity.setDiameter(getDouble(getDiameter(time),
                 hazardPointDiameter));
-        spatialEntity.setLabel(getLabel(time));
+        spatialEntity.setSymbolShape(getSymbolShape(time));
+        spatialEntity.setLabel(getString(getLabel(time), hazardLabel));
         spatialEntity.setTextOffsetLength(getDouble(getTextOffsetLength(time),
-                hazardTextOffsetLength));
+                (pointGeometry ? hazardSinglePointTextOffsetLength
+                        : hazardMultiPointTextOffsetLength)));
         spatialEntity.setTextOffsetDirection(getDouble(
-                getTextOffsetDirection(time), hazardTextOffsetDirection));
+                getTextOffsetDirection(time),
+                (pointGeometry ? hazardSinglePointTextOffsetDirection
+                        : hazardMultiPointTextOffsetDirection)));
         spatialEntity
                 .setTextSize(getInteger(getTextSize(time), hazardTextSize));
         spatialEntity.setTextColor(getColor(getTextColor(time), hazardColor));
         spatialEntity.setDragCapability(getDragCapability(time));
         spatialEntity.setRotatable(isRotatable(time));
         spatialEntity.setScaleable(isScaleable(time));
+        spatialEntity.setTopmost(isTopmost(time));
+        return spatialEntity;
+    }
+
+    /**
+     * Get the state of this object as a spatial entity for the specified time,
+     * with values found to be the appropriate <code>XXXX_OF_EVENT_TYPE</code>
+     * constant for the parameter's type being replaced with the default value
+     * for that parameter. For example, if the border color is found to be
+     * {@link #COLOR_OF_EVENT_TYPE}, then the color specified by
+     * {@link #DEFAULT_BORDER_COLOR} is used.
+     * 
+     * @param spatialEntity
+     *            Spatial entity to be updated to reflect this object's state at
+     *            the given time, or <code>null</code> if a spatial entity is to
+     *            be created if necessary by this invocation.
+     * @param identifierGenerator
+     *            Identifier generator, used if <code>spatialEntity</code> is
+     *            specified as <code>null</code> to generate the identifier for
+     *            the newly-created spatial entity.
+     * @param time
+     *            Time for which to get the state of this object.
+     * @return Spatial entity representing the state of this object at the
+     *         specified time, or <code>null</code> if this object is not
+     *         visible at that time. If a spatial entity is returned, the flag
+     *         returned by its {@link SpatialEntity#checkAndResetModified()}
+     *         will indicate whether the entity was updated in the course of the
+     *         execution of this method; if it was created and/or modified by
+     *         this method, the flag will be true.
+     */
+    public <I> SpatialEntity<I> getStateAtTime(SpatialEntity<I> spatialEntity,
+            IIdentifierGenerator<I> identifierGenerator, Date time) {
+        Geometry geometry = getGeometry(time);
+        if (geometry == null) {
+            return null;
+        }
+        if (spatialEntity == null) {
+            spatialEntity = new SpatialEntity<>(
+                    identifierGenerator.generate(identifier));
+        }
+        spatialEntity.setGeometry(geometry);
+        spatialEntity.setBorderColor(getColor(getBorderColor(time),
+                DEFAULT_BORDER_COLOR));
+        spatialEntity.setFillColor(getColor(getFillColor(time),
+                DEFAULT_FILL_COLOR));
+        spatialEntity.setBorderThickness(getDouble(getBorderThickness(time),
+                DEFAULT_BORDER_THICKNESS));
+        spatialEntity.setBorderStyle(getBorderStyle(getBorderStyle(time),
+                DEFAULT_BORDER_STYLE));
+        spatialEntity
+                .setDiameter(getDouble(getDiameter(time), DEFAULT_DIAMETER));
+        spatialEntity.setSymbolShape(getSymbolShape(time));
+        spatialEntity.setLabel(getLabel(time));
+        spatialEntity.setTextOffsetLength(getDouble(getTextOffsetLength(time),
+                DEFAULT_TEXT_OFFSET_LENGTH));
+        spatialEntity.setTextOffsetDirection(getDouble(
+                getTextOffsetDirection(time), DEFAULT_TEXT_OFFSET_DIRECTION));
+        spatialEntity.setTextSize(getInteger(getTextSize(time),
+                DEFAULT_TEXT_SIZE));
+        spatialEntity.setTextColor(getColor(getTextColor(time),
+                DEFAULT_TEXT_COLOR));
+        spatialEntity.setDragCapability(getDragCapability(time));
+        spatialEntity.setRotatable(isRotatable(time));
+        spatialEntity.setScaleable(isScaleable(time));
+        spatialEntity.setTopmost(isTopmost(time));
         return spatialEntity;
     }
 
@@ -1199,7 +1382,7 @@ public class VisualFeature implements Serializable {
     /**
      * Get the border style.
      * 
-     * @return Border style;; may be <code>null</code>.
+     * @return Border style; may be <code>null</code>.
      */
     TemporallyVariantProperty<BorderStyle> getBorderStyle() {
         return borderStyle;
@@ -1212,6 +1395,15 @@ public class VisualFeature implements Serializable {
      */
     TemporallyVariantProperty<Double> getDiameter() {
         return diameter;
+    }
+
+    /**
+     * Get the symbol shape.
+     * 
+     * @return Symbol shape; may be <code>null</code>.
+     */
+    TemporallyVariantProperty<SymbolShape> getSymbolShape() {
+        return symbolShape;
     }
 
     /**
@@ -1287,6 +1479,16 @@ public class VisualFeature implements Serializable {
      */
     TemporallyVariantProperty<Boolean> getScaleable() {
         return scaleable;
+    }
+
+    /**
+     * Get the flag indicating whether or not the feature is topmost.
+     * 
+     * @return Flag indicating whether or not the feature is topmost; may be
+     *         <code>null</code>.
+     */
+    TemporallyVariantProperty<Boolean> getTopmost() {
+        return topmost;
     }
 
     /**
@@ -1367,6 +1569,16 @@ public class VisualFeature implements Serializable {
      */
     void setDiameter(TemporallyVariantProperty<Double> diameter) {
         this.diameter = diameter;
+    }
+
+    /**
+     * Set the symbol shape.
+     * 
+     * @param symbolShape
+     *            New value; may be <code>null</code>.
+     */
+    void setSymbolShape(TemporallyVariantProperty<SymbolShape> symbolShape) {
+        this.symbolShape = symbolShape;
     }
 
     /**
@@ -1452,6 +1664,16 @@ public class VisualFeature implements Serializable {
         this.scaleable = scaleable;
     }
 
+    /**
+     * Set the flag indicating whether or not the feature is topmost.
+     * 
+     * @param topmost
+     *            New value; may be <code>null</code>.
+     */
+    void setTopmost(TemporallyVariantProperty<Boolean> topmost) {
+        this.topmost = topmost;
+    }
+
     // Private Methods
 
     /**
@@ -1479,6 +1701,7 @@ public class VisualFeature implements Serializable {
         stream.writeObject(borderThickness);
         stream.writeObject(borderStyle);
         stream.writeObject(diameter);
+        stream.writeObject(symbolShape);
         stream.writeObject(label);
         stream.writeObject(textOffsetLength);
         stream.writeObject(textOffsetDirection);
@@ -1487,6 +1710,7 @@ public class VisualFeature implements Serializable {
         stream.writeObject(dragCapability);
         stream.writeObject(rotatable);
         stream.writeObject(scaleable);
+        stream.writeObject(topmost);
 
         /*
          * Convert all Geometry objects to arrays of bytes in Well-Known Binary
@@ -1546,6 +1770,8 @@ public class VisualFeature implements Serializable {
         borderStyle = (TemporallyVariantProperty<BorderStyle>) stream
                 .readObject();
         diameter = (TemporallyVariantProperty<Double>) stream.readObject();
+        symbolShape = (TemporallyVariantProperty<SymbolShape>) stream
+                .readObject();
         label = (TemporallyVariantProperty<String>) stream.readObject();
         textOffsetLength = (TemporallyVariantProperty<Double>) stream
                 .readObject();
@@ -1558,6 +1784,7 @@ public class VisualFeature implements Serializable {
                 .readObject();
         rotatable = (TemporallyVariantProperty<Boolean>) stream.readObject();
         scaleable = (TemporallyVariantProperty<Boolean>) stream.readObject();
+        topmost = (TemporallyVariantProperty<Boolean>) stream.readObject();
 
         /*
          * Read in the container object holding the geometries in Well-Known
@@ -1693,6 +1920,22 @@ public class VisualFeature implements Serializable {
      */
     private double getDouble(Double value, double hazardTypeValue) {
         return (value.equals(DOUBLE_OF_EVENT_TYPE) ? hazardTypeValue : value);
+    }
+
+    /**
+     * Get the specified string, unless said value is equal to
+     * {@link #STRING_OF_EVENT_TYPE}, in which case get the specified hazard
+     * type string.
+     * 
+     * @param value
+     *            Value to be used, unless it is {@link #STRING_OF_EVENT_TYPE}.
+     * @param hazardTypeValue
+     *            Value to be used if <code>value</code> is
+     *            {@link #STRING_OF_EVENT_TYPE}.
+     * @return Value.
+     */
+    private String getString(String value, String hazardTypeValue) {
+        return (STRING_OF_EVENT_TYPE.equals(value) ? hazardTypeValue : value);
     }
 
     /**

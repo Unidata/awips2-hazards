@@ -41,6 +41,7 @@ import com.raytheon.uf.common.dataaccess.impl.DefaultGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -100,6 +101,7 @@ import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
  * Sep 03, 2015 11213      mduff        Fixed performance issue for initial preview.
+ * Jun 23, 2016 19537      Chris.Golden Added support for no-hatching event types.
  * </pre>
  * 
  * @author blawrenc
@@ -580,6 +582,19 @@ public class GeoMapUtilities {
     }
 
     /**
+     * Determine if this is a non-hatching hazard
+     * 
+     * @param hazardEvent
+     * @return true if the hazardEvent is a non-hatching type.
+     */
+    public boolean isNonHatching(IHazardEvent hazardEvent) {
+        HazardTypeEntry hazardTypeEntry = getHazardTypeEntry(hazardEvent);
+
+        return ((hazardTypeEntry != null) && (hazardTypeEntry
+                .getHatchingStyle() == HatchingStyle.NONE));
+    }
+
+    /**
      * Determine if this is a warngen hatching hazard
      * 
      * @param hazardEvent
@@ -588,8 +603,8 @@ public class GeoMapUtilities {
     public boolean isWarngenHatching(IHazardEvent hazardEvent) {
         HazardTypeEntry hazardTypeEntry = getHazardTypeEntry(hazardEvent);
 
-        return ((hazardTypeEntry != null) && hazardTypeEntry
-                .isWarngenHatching());
+        return ((hazardTypeEntry != null) && (hazardTypeEntry
+                .getHatchingStyle() == HatchingStyle.WARNGEN));
     }
 
     /**

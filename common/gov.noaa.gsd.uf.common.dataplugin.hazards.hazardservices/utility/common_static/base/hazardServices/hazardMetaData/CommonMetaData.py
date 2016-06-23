@@ -1454,7 +1454,7 @@ class MetaData(object):
             selectionLabel = "ImpactStg/Flow - Start - End - Tendency"
             
             simTimeMils = SimulatedTime.getSystemTime().getMillis()
-            currentTime = datetime.datetime.fromtimestamp(simTimeMils / 1000)
+            currentTime = datetime.datetime.utcfromtimestamp(simTimeMils / 1000)
             
             impactDataList = self._riverForecastManager.getImpactsDataList(pointID, currentTime.month, currentTime.day)
             plist = JUtilHandler.javaCollectionToPyCollection(impactDataList)
@@ -2276,7 +2276,7 @@ class MetaData(object):
 #     def _getConvectiveDiscussion(self):
 #         previousText = self.hazardEvent.get("convectiveWarningDecisionDiscussion")
 #         simTimeMils = SimulatedTime.getSystemTime().getMillis()
-#         currentTime = datetime.datetime.fromtimestamp(simTimeMils / 1000)
+#         currentTime = datetime.datetime.utcfromtimestamp(simTimeMils / 1000)
 #         
 #         textVals = currentTime.strftime("[%m-%d-%Y %H:%M:00]  ")
 #         if previousText:
@@ -2487,7 +2487,7 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         ######################################################
 #===============================================================================
 #         simTimeMils = SimulatedTime.getSystemTime().getMillis()
-#         currentTime = datetime.datetime.fromtimestamp(simTimeMils / 1000)
+#         currentTime = datetime.datetime.utcfromtimestamp(simTimeMils / 1000)
 #         currentTimeText = currentTime.strftime("[%m-%d-%Y %H:%M:00]  ")
 #         delimeter = u'\u2063\n'
 # 
@@ -2676,7 +2676,7 @@ def applyRiseCrestFallInterdependencies(triggerIdentifiers, mutableProperties):
                 if mutableProperties[identifier]["values"] == MISSING_VALUE:
                     newMutableProperties[identifier + "Description"] = { "values": "missing" }
                 else:
-                    timestamp = datetime.fromtimestamp(mutableProperties[identifier]["values"] / 1000)
+                    timestamp = datetime.utcfromtimestamp(mutableProperties[identifier]["values"] / 1000)
                     newMutableProperties[identifier + "Description"] = { "values": timestamp.strftime("%d-%b-%Y %H:%M") }
             except:
                 return None

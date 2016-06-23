@@ -36,6 +36,7 @@
 #    02/12/15        5071          Robert.Blum    Changed to inherit from the PythonOverriderInterface once
 #                                                 again. This allows the incremental overrides and also editing
 #                                                 without closing Cave.
+#    06/23/16       19537          Chris.Golden   Changed to use visual features for spatial info.
 #
 
 import os
@@ -67,9 +68,9 @@ class RecommenderInterface(PythonOverriderInterface.PythonOverriderInterface):
         javaDialogInput = kwargs['dialogInputMap']
         if javaDialogInput is not None :
             kwargs['dialogInputMap'] = JUtil.javaObjToPyVal(javaDialogInput)
-        javaSpatialInput = kwargs['spatialInputMap']
+        javaSpatialInput = kwargs['visualFeatures']
         if javaSpatialInput is not None :
-            kwargs['spatialInputMap'] = JUtil.javaObjToPyVal(javaSpatialInput)
+            kwargs['visualFeatures'] = JUtil.javaObjToPyVal(javaSpatialInput)
 
         kwargs['eventSet'] = EventSet(kwargs['eventSet'])
         

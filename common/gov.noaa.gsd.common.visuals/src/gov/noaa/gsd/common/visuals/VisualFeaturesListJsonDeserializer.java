@@ -71,6 +71,10 @@ import com.vividsolutions.jts.io.WKTReader;
  *                                      replaced by visibility constraints
  *                                      based upon selection state to individual
  *                                      visual features.
+ * Jun 23, 2016   19537    Chris.Golden Added support for using "as event" as a
+ *                                      value for label text in visual features,
+ *                                      as well as support for new topmost and
+ *                                      symbol shape properties of visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -301,6 +305,18 @@ class VisualFeaturesListJsonDeserializer {
                                     true);
                         }
                     })
+            .put(VisualFeaturesListJsonConverter.KEY_SYMBOL_SHAPE,
+                    new IPropertyDeserializer<SymbolShape>() {
+
+                        @Override
+                        public SymbolShape deserializeProperty(JsonNode node,
+                                String identifier) throws JsonParseException {
+                            return deserializeSymbolShape(
+                                    node,
+                                    identifier,
+                                    VisualFeaturesListJsonConverter.KEY_SYMBOL_SHAPE);
+                        }
+                    })
             .put(VisualFeaturesListJsonConverter.KEY_LABEL,
                     new IPropertyDeserializer<String>() {
 
@@ -398,6 +414,16 @@ class VisualFeaturesListJsonDeserializer {
                                     node,
                                     identifier,
                                     VisualFeaturesListJsonConverter.KEY_SCALEABLE);
+                        }
+                    })
+            .put(VisualFeaturesListJsonConverter.KEY_TOPMOST,
+                    new IPropertyDeserializer<Boolean>() {
+
+                        @Override
+                        public Boolean deserializeProperty(JsonNode node,
+                                String identifier) throws JsonParseException {
+                            return deserializeBoolean(node, identifier,
+                                    VisualFeaturesListJsonConverter.KEY_TOPMOST);
                         }
                     }).build();
 
@@ -506,6 +532,16 @@ class VisualFeaturesListJsonDeserializer {
                             visualFeature.setDiameter(value);
                         }
                     })
+            .put(VisualFeaturesListJsonConverter.KEY_SYMBOL_SHAPE,
+                    new IPropertyAssigner<SymbolShape>() {
+
+                        @Override
+                        public void assignPropertyValue(
+                                TemporallyVariantProperty<SymbolShape> value,
+                                VisualFeature visualFeature) {
+                            visualFeature.setSymbolShape(value);
+                        }
+                    })
             .put(VisualFeaturesListJsonConverter.KEY_LABEL,
                     new IPropertyAssigner<String>() {
 
@@ -584,6 +620,16 @@ class VisualFeaturesListJsonDeserializer {
                                 TemporallyVariantProperty<Boolean> value,
                                 VisualFeature visualFeature) {
                             visualFeature.setScaleable(value);
+                        }
+                    })
+            .put(VisualFeaturesListJsonConverter.KEY_TOPMOST,
+                    new IPropertyAssigner<Boolean>() {
+
+                        @Override
+                        public void assignPropertyValue(
+                                TemporallyVariantProperty<Boolean> value,
+                                VisualFeature visualFeature) {
+                            visualFeature.setTopmost(value);
                         }
                     }).build();
 
@@ -784,12 +830,10 @@ class VisualFeaturesListJsonDeserializer {
                 .get(VisualFeaturesListJsonConverter.KEY_VISIBILITY_CONSTRAINTS);
         VisibilityConstraints visibilityConstraints = null;
         if (node instanceof TextNode) {
-            String description = node.getTextValue();
-            visibilityConstraints = VisibilityConstraints
-                    .getInstance(description);
-            if (visibilityConstraints != null) {
-                visualFeature.setVisibilityConstraints(visibilityConstraints);
-            }
+            visibilityConstraints = VisibilityConstraints.getInstance(node
+                    .getTextValue());
+        } else if (node == null) {
+            visibilityConstraints = VisibilityConstraints.ALWAYS;
         }
         if (visibilityConstraints == null) {
             throw createValueDeserializationException(
@@ -799,6 +843,8 @@ class VisualFeaturesListJsonDeserializer {
                             + Joiner.on(", ").join(
                                     VisibilityConstraints.getDescriptions()),
                     node, null);
+        } else {
+            visualFeature.setVisibilityConstraints(visibilityConstraints);
         }
 
         /*
@@ -879,6 +925,11 @@ class VisualFeaturesListJsonDeserializer {
                 deserializeAndAssignProperty(node, visualFeature, name,
                         (IPropertyDeserializer<BorderStyle>) deserializer,
                         (IPropertyAssigner<BorderStyle>) assigner);
+            } else if (type
+                    .equals(VisualFeaturesListJsonConverter.TYPE_SYMBOL_SHAPE)) {
+                deserializeAndAssignProperty(node, visualFeature, name,
+                        (IPropertyDeserializer<SymbolShape>) deserializer,
+                        (IPropertyAssigner<SymbolShape>) assigner);
             } else if (type
                     .equals(VisualFeaturesListJsonConverter.TYPE_DRAGGABILITY)) {
                 deserializeAndAssignProperty(node, visualFeature, name,
@@ -1447,6 +1498,19 @@ class VisualFeaturesListJsonDeserializer {
      */
     private static String deserializeString(JsonNode node, String identifier,
             String propertyName) throws JsonParseException {
+
+        /*
+         * If the node is a string specifying the event type string, use that.
+         */
+        if (node.isTextual()
+                && VisualFeaturesListJsonConverter.PROPERTY_VALUE_EVENT_TYPE
+                        .equals(node.getTextValue())) {
+            return VisualFeature.STRING_OF_EVENT_TYPE;
+        }
+
+        /*
+         * Expect the value as a string.
+         */
         String value = node.getTextValue();
         return ((value != null) && (value.isEmpty() == false) ? value : null);
     }
@@ -1581,6 +1645,34 @@ class VisualFeaturesListJsonDeserializer {
                     "one of: "
                             + Joiner.on(", ").join(
                                     BorderStyle.getDescriptions()), node, null);
+        }
+        return style;
+    }
+
+    /**
+     * Deserialize the specified node as a symbol shape.
+     * 
+     * @param node
+     *            Node to be deserialized.
+     * @param identifier
+     *            Identifier of the visual feature that is being deserialized.
+     * @param propertyName
+     *            Name of the property for which a value is being deserialized.
+     * @return Symbol shape.
+     * @throws JsonParseException
+     *             If an error occurs during deserialization.
+     */
+    private static SymbolShape deserializeSymbolShape(JsonNode node,
+            String identifier, String propertyName) throws JsonParseException {
+        String description = node.getTextValue();
+        SymbolShape style = SymbolShape.getInstance(description);
+        if (style == null) {
+            throw createValueDeserializationException(
+                    identifier,
+                    propertyName,
+                    "one of: "
+                            + Joiner.on(", ").join(
+                                    SymbolShape.getDescriptions()), node, null);
         }
         return style;
     }

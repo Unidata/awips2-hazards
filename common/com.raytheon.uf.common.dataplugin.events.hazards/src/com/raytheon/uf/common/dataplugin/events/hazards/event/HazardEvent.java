@@ -95,6 +95,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      replaced by visibility constraints
  *                                      based upon selection state to individual
  *                                      visual features.
+ * Jun 23, 2016 19537      Chris.Golden Changed to use new visual feature list
+ *                                      method for visual feature replacement.
  * </pre>
  * 
  * @author mnash
@@ -538,13 +540,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
         if (visualFeatures == null) {
             return false;
         }
-        int index = visualFeatures.indexOfByIdentifier(visualFeature
-                .getIdentifier());
-        if (index == -1) {
-            return false;
-        }
-        visualFeatures.set(index, visualFeature);
-        return true;
+        return visualFeatures.replace(visualFeature);
     }
 
     @Override

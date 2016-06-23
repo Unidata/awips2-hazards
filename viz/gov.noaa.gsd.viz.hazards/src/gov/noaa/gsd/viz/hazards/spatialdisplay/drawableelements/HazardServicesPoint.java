@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
+import gov.noaa.gsd.viz.hazards.spatialdisplay.VisualFeatureSpatialIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 
 import java.util.List;
@@ -24,7 +25,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * MMM DD, YYYY            Chris.Golden      Initial creation
- * 
+ * Jun 23, 2016 19537      Chris.Golden      Changed to use better identifiers.
  * </pre>
  * 
  * @author Chris.Golden
@@ -50,8 +51,8 @@ public class HazardServicesPoint extends HazardServicesSymbol {
      *            The points in this symbol
      * @param activeLayer
      *            The PGEN layer this symbol will be drawn to.
-     * @param id
-     *            The ID of this symbol.
+     * @param identifier
+     *            The identifier of this symbol.
      * @param isOuter
      *            Flag indicating whether or not this is the outer portion of
      *            the point.
@@ -59,9 +60,10 @@ public class HazardServicesPoint extends HazardServicesSymbol {
     public HazardServicesPoint(
             HazardServicesDrawingAttributes drawingAttributes,
             String pgenCategory, String pgenType, List<Coordinate> points,
-            Layer activeLayer, String id, boolean isOuter) {
+            Layer activeLayer, VisualFeatureSpatialIdentifier identifier,
+            boolean isOuter) {
         super(drawingAttributes, pgenCategory, pgenType, points, activeLayer,
-                id);
+                identifier);
         this.isOuter = isOuter;
     }
 

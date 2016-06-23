@@ -46,6 +46,10 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      replaced by visibility constraints
  *                                      based upon selection state to individual
  *                                      visual features.
+ * Jun 23, 2016   19537    Chris.Golden Added support for using "as event" as a
+ *                                      value for label text in visual features,
+ *                                      as well as support for new topmost and
+ *                                      symbol shape properties of visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -103,6 +107,11 @@ public class VisualFeaturesListJsonConverter {
     public static final String KEY_DIAMETER = "diameter";
 
     /**
+     * Key for the symbol shape in a JSON object representing a visual feature.
+     */
+    public static final String KEY_SYMBOL_SHAPE = "symbolShape";
+
+    /**
      * Key for the label in a JSON object representing a visual feature.
      */
     public static final String KEY_LABEL = "label";
@@ -146,6 +155,11 @@ public class VisualFeaturesListJsonConverter {
      * feature.
      */
     public static final String KEY_SCALEABLE = "scaleable";
+
+    /**
+     * Key for the topmost flag in a JSON object representing a visual feature.
+     */
+    public static final String KEY_TOPMOST = "topmost";
 
     /**
      * Key for the temporally variant property default value.
@@ -212,6 +226,12 @@ public class VisualFeaturesListJsonConverter {
             .of(BorderStyle.class);
 
     /**
+     * Type of a symbol shape.
+     */
+    static final TypeToken<?> TYPE_SYMBOL_SHAPE = TypeToken
+            .of(SymbolShape.class);
+
+    /**
      * Type of a drag capability.
      */
     static final TypeToken<?> TYPE_DRAGGABILITY = TypeToken
@@ -228,13 +248,15 @@ public class VisualFeaturesListJsonConverter {
             .put(KEY_FILL_COLOR, TYPE_COLOR)
             .put(KEY_BORDER_THICKNESS, TYPE_DOUBLE)
             .put(KEY_BORDER_STYLE, TYPE_BORDER_STYLE)
-            .put(KEY_DIAMETER, TYPE_DOUBLE).put(KEY_LABEL, TYPE_STRING)
+            .put(KEY_DIAMETER, TYPE_DOUBLE)
+            .put(KEY_SYMBOL_SHAPE, TYPE_SYMBOL_SHAPE)
+            .put(KEY_LABEL, TYPE_STRING)
             .put(KEY_TEXT_OFFSET_LENGTH, TYPE_DOUBLE)
             .put(KEY_TEXT_OFFSET_DIR, TYPE_DOUBLE)
             .put(KEY_TEXT_SIZE, TYPE_INTEGER).put(KEY_TEXT_COLOR, TYPE_COLOR)
             .put(KEY_DRAGGABILITY, TYPE_DRAGGABILITY)
             .put(KEY_ROTATABLE, TYPE_BOOLEAN).put(KEY_SCALEABLE, TYPE_BOOLEAN)
-            .build();
+            .put(KEY_TOPMOST, TYPE_BOOLEAN).build();
 
     /**
      * Object mapper used to convert visual feature lists to and from JSON.

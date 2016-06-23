@@ -44,6 +44,11 @@
 #                                                 replaced by visibility constraints
 #                                                 based upon selection state to individual
 #                                                 visual features.
+#    06/23/16       19537          Chris.Golden   Changed to use new TimeUtils methods, and
+#                                                 to use UTC when converting from an epoch
+#                                                 time to a datetime. Also added ability to
+#                                                 set product geometry, to mirror earlier
+#                                                 change in IHazardEvent.java.
 # 
 #
 
@@ -52,6 +57,7 @@ from shapely import wkt
 
 from Event import Event
 
+import TimeUtils
 from VisualFeatures import VisualFeatures
 from VisualFeaturesHandler import pyVisualFeaturesToJavaVisualFeatures, javaVisualFeaturesToPyVisualFeatures
 
@@ -134,27 +140,27 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         return self.jobj.getHazardType()
         
     def getCreationTime(self):
-        return datetime.datetime.fromtimestamp(self.jobj.getCreationTime().getTime() / 1000.0)
+        return datetime.datetime.utcfromtimestamp(self.jobj.getCreationTime().getTime() / 1000.0)
     
     def setCreationTime(self, creationTime):
-        dt = Date(long(self._getMillis(creationTime)))
+        dt = Date(long(TimeUtils.datetimeToEpochTimeMillis(creationTime)))
         self.jobj.setCreationTime(dt)
       
     def getEndTime(self):
         if self.jobj.getEndTime() is not None :
-            return datetime.datetime.fromtimestamp(self.jobj.getEndTime().getTime() / 1000.0)
+            return datetime.datetime.utcfromtimestamp(self.jobj.getEndTime().getTime() / 1000.0)
         else :
             return None
           
     def setEndTime(self, endTime):
-        dt = Date(long(self._getMillis(endTime)))
+        dt = Date(long(TimeUtils.datetimeToEpochTimeMillis(endTime)))
         self.jobj.setEndTime(dt)
     
     def getStartTime(self):
-        return datetime.datetime.fromtimestamp(self.jobj.getStartTime().getTime() / 1000.0)
+        return datetime.datetime.utcfromtimestamp(self.jobj.getStartTime().getTime() / 1000.0)
     
     def setStartTime(self, startTime):
-        dt = Date(long(self._getMillis(startTime)))
+        dt = Date(long(TimeUtils.datetimeToEpochTimeMillis(startTime)))
         self.jobj.setStartTime(dt)
 
     def getUserName(self):
@@ -178,6 +184,10 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def setGeometry(self, geometry):
         if geometry is not None :
             self.jobj.setGeometry(JUtil.pyValToJavaObj(geometry))
+    
+    def setProductGeometry(self, geometry):
+        if geometry is not None :
+            self.jobj.setProductGeometry(JUtil.pyValToJavaObj(geometry))
 
     def getVisualFeatures(self):
         
@@ -251,11 +261,6 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         else:
             currentVal = [value]
         self.jobj.addHazardAttribute(key, JUtil.pyValToJavaObj(currentVal))
-               
-    def _getMillis(self, date):
-        epoch = datetime.datetime.utcfromtimestamp(0)
-        delta = date - epoch
-        return delta.total_seconds() * 1000.0
     
     def toPythonObj(self, javaClass):
         '''
@@ -272,15 +277,15 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         self.setUserName(javaClass.getUserName())
         self.setWorkStation(javaClass.getWorkStation())
         if javaClass.getCreationTime() is not None:
-            self.setCreationTime(datetime.datetime.fromtimestamp(javaClass.getCreationTime().getTime() / 1000.0))
+            self.setCreationTime(datetime.datetime.utcfromtimestamp(javaClass.getCreationTime().getTime() / 1000.0))
         else :
             self.setCreationTime(datetime.datetime.now())
         if javaClass.getStartTime() is not None:
-            self.setStartTime(datetime.datetime.fromtimestamp(javaClass.getStartTime().getTime() / 1000.0))
+            self.setStartTime(datetime.datetime.utcfromtimestamp(javaClass.getStartTime().getTime() / 1000.0))
         else:
             self.setStartTime(datetime.datetime.now())
         if javaClass.getEndTime() is not None:
-            self.setEndTime(datetime.datetime.fromtimestamp(javaClass.getEndTime().getTime() / 1000.0))
+            self.setEndTime(datetime.datetime.utcfromtimestamp(javaClass.getEndTime().getTime() / 1000.0))
         else:
             self.setEndTime(datetime.datetime.now())
         if javaClass.getHazardMode() is not None:
@@ -291,6 +296,10 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             self.setGeometry(wkt.loads(javaClass.getGeometry().toText()))
         else :
             self.setGeometry(None)
+        if javaClass.getProductGeometry() is not None :
+            self.setProductGeometry(wkt.loads(javaClass.getProductGeometry().toText()))
+        else :
+            self.setProductGeometry(None)
         self.setHazardAttributes(JUtil.javaObjToPyVal(javaClass.getHazardAttributes()))
     
     def __getitem__(self, key):

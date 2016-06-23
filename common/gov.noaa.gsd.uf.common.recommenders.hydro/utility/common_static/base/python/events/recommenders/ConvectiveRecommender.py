@@ -29,6 +29,7 @@ import pprint
 from collections import defaultdict
 from shapely.wkt import loads
 
+import TimeUtils
 from PHI_GridRecommender import Recommender as PHIGridRecommender
 #from MapsDatabaseAccessor import MapsDatabaseAccessor
 from ProbUtils import ProbUtils
@@ -82,18 +83,6 @@ class Recommender(RecommenderTemplate.Recommender):
             Column11: mean motion south, in m/s (float)
         """
         self._probUtils = ProbUtils()
-    #===========================================================================
-    # def defineSpatialInfo(self):
-    #     '''
-    #     @summary: Determines spatial information needed by the recommender.
-    #     @return: Unknown
-    #     @todo: fix comments, further figure out spatial info
-    #     '''
-    #     resultDict = {"outputType":"spatialInfo",
-    #                   "label":"Drag To Hazard Location", "returnType":"Point"}
-    #     return resultDict
-    #===========================================================================
-
     
     def defineScriptMetadata(self):
         """
@@ -133,7 +122,7 @@ class Recommender(RecommenderTemplate.Recommender):
 #===============================================================================
         return None
 
-    def execute(self, eventSet, dialogInputMap, spatialInputMap):
+    def execute(self, eventSet, dialogInputMap, visualFeatures):
         """
         Runs the River Flood Recommender tool
         
@@ -141,9 +130,9 @@ class Recommender(RecommenderTemplate.Recommender):
                          attributes
         @param dialogInputMap: A map of information retrieved from
                                a user's interaction with a dialog.
-        @param spatialInputMap:   A map of information retrieved
-                                  from the user's interaction with the
-                                  spatial display.
+        @param visualFeatures:   A list of visual features provided
+                                 by the defineSpatialInput() method;
+                                 ignored for this recommender.
         
         @return: A list of potential events. 
         """
@@ -159,10 +148,8 @@ class Recommender(RecommenderTemplate.Recommender):
         sessionAttributes = eventSet.getAttributes()
         if sessionAttributes:
             sessionMap = JUtil.pyDictToJavaMap(sessionAttributes)
-        if spatialInputMap:
-            spatialMap = JUtil.pyDictToJavaMap(spatialInputMap)
             
-        currentTime = datetime.datetime.fromtimestamp(long(sessionAttributes["currentTime"])/1000)
+        currentTime = datetime.datetime.utcfromtimestamp(long(sessionAttributes["currentTime"])/1000)
         latestCurrentEventTime = self.getLatestTimestampOfCurrentEvents(eventSet)
         
         currentEvents = self.getCurrentEvents(eventSet)        
@@ -288,7 +275,7 @@ class Recommender(RecommenderTemplate.Recommender):
             
             ### Use file's modification time to make datetime
             returnFileList = [x for x in fileList if 
-                              datetime.datetime.fromtimestamp(os.path.getmtime(x))
+                              datetime.datetime.utcfromtimestamp(os.path.getmtime(x))
                               > latestDatetime
                               ]
             
@@ -355,24 +342,24 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def setEventTimes(self, event, values):
         psStartTime = values.pop('startTime')
-        event.set('probSevereStartTime', self._probUtils._getMillis(psStartTime))
+        event.set('probSevereStartTime', TimeUtils.datetimeToEpochTimeMillis(psStartTime))
         psEndTime = psStartTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
-        event.set('probSevereEndTime', self._probUtils._getMillis(psEndTime)) 
+        event.set('probSevereEndTime', TimeUtils.datetimeToEpochTimeMillis(psEndTime)) 
         
         #  Set the start / end times of the new event
         #     (Kind of klunky due to the methods we have for rounding)
         #  We set the event start time to the probSevereStartTime and then round it
         #  Similarly for the end time. 
         event.setStartTime(psStartTime)
-        startTime = self._probUtils._roundTime(event.getStartTime()) 
+        startTime = TimeUtils.roundDatetime(event.getStartTime()) 
         event.setStartTime(startTime)
         
         endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
         event.setEndTime(endTime)
-        endTime = self._probUtils._roundTime(event.getEndTime())                
+        endTime = TimeUtils.roundDatetime(event.getEndTime())                
         event.setEndTime(endTime)
         
-#         startTime = self._probUtils._roundTime(currentTime) 
+#         startTime = TimeUtils.roundDatetime(currentTime) 
 #         endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
 #         event.setStartTime(startTime)
 #         event.setEndTime(endTime)

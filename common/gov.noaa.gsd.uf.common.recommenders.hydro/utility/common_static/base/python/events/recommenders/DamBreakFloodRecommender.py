@@ -89,13 +89,13 @@ Please click CANCEL and manually draw an inundation area.
         
         return dialogDict
     
-    def execute(self, eventSet, dialogInputMap, spatialInputMap):
+    def execute(self, eventSet, dialogInputMap, visualFeatures):
         """
         @eventSet: List of objects that was converted from Java IEvent objects
         @param dialogInputMap: A map containing user selections from the dialog
         created by the defineDialog() routine
-        @param spatialInputMap: A map containing spatial input as created by the 
-        definedSpatialInfo() routine
+        @param visualFeatures: Visual features as defined by the defineSpatialInfo()
+        method and modified by the user to provide spatial input; ignored.
         @return: List of objects that will be later converted to Java IEvent
         objects
         """
@@ -110,14 +110,14 @@ Please click CANCEL and manually draw an inundation area.
         hazardEvent = EventFactory.createEvent()
 
         hazardEvent = self.updateEventAttributes(hazardEvent, eventSet.getAttributes(), \
-                                      dialogInputMap, spatialInputMap)
+                                      dialogInputMap, visualFeatures)
 
         return EventSetFactory.createEventSet(hazardEvent)
 
     def toString(self):
         return "DamBreakFloodRecommender"
     
-    def updateEventAttributes(self, hazardEvent, sessionDict, dialogDict, spatialDict):
+    def updateEventAttributes(self, hazardEvent, sessionDict, dialogDict):
         """
         Creates the hazard event, based on user dialog input and session dict information. 
         
@@ -126,7 +126,6 @@ Please click CANCEL and manually draw an inundation area.
                             can be used.
         @param sessionDict: A dict of Hazard Services session information
         @param dialogDict: A dict of Hazard Services dialog information  
-        @param spatialDict: A dict of Hazard Services spatial input information
         
         @return: A hazard event representing a dam break flash flood watch or warning 
         """
@@ -163,11 +162,11 @@ Please click CANCEL and manually draw an inundation area.
 
         # New recommender framework requires some datetime objects, which must
         # be in units of seconds.
-        hazardEvent.setCreationTime(datetime.datetime.fromtimestamp(\
+        hazardEvent.setCreationTime(datetime.datetime.utcfromtimestamp(\
                                    currentTime / MILLIS_PER_SECOND))
-        hazardEvent.setStartTime(datetime.datetime.fromtimestamp(\
+        hazardEvent.setStartTime(datetime.datetime.utcfromtimestamp(\
                                    startTime / MILLIS_PER_SECOND))
-        hazardEvent.setEndTime(datetime.datetime.fromtimestamp(\
+        hazardEvent.setEndTime(datetime.datetime.utcfromtimestamp(\
                                    endTime / MILLIS_PER_SECOND))
         hazardEvent.setGeometry(GeometryFactory.createCollection([hazardGeometry]))
 

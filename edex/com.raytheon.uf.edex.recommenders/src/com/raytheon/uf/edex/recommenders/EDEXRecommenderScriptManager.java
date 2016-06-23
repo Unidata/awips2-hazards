@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.recommenders;
 
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+
 import java.io.Serializable;
 import java.util.Map;
 
@@ -47,6 +49,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  *                                     Strings.
  * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
  *                                      info.
+ * Jun 23, 2016 19537      Chris.Golden Changed to use visual features for
+ *                                      spatial info gathering.
  * </pre>
  * 
  * @author mnash
@@ -92,11 +96,11 @@ public class EDEXRecommenderScriptManager extends
                 }
                 // do nothing with these for now, may read from config file
                 Map<String, Serializable> dialogValues = null;
-                Map<String, Serializable> spatialValues = null;
+                VisualFeaturesList visualFeatures = null;
                 // using a new EventSet<IEvent> for now, but will need something
                 // different for future
                 return executeRecommender(recommenderName, eventSet,
-                        dialogValues, spatialValues);
+                        dialogValues, visualFeatures);
             } catch (JepException e) {
                 statusHandler.handle(Priority.ERROR,
                         "Unable to execute recommender", e);

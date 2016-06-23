@@ -10,31 +10,22 @@
 package gov.noaa.gsd.viz.hazards.display.test;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SHAPE_TYPE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SHAPE_TYPE_DOT;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.MODIFY_STORM_TRACK_TOOL;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.POINTID;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SYMBOL_NEW_LAT_LON;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.TRACK_POINTS;
+import gov.noaa.gsd.common.visuals.VisualFeature;
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+import gov.noaa.gsd.common.visuals.VisualFeaturesListJsonConverter;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
-import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.Date;
 
 import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
@@ -43,6 +34,10 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.GeometryFactory;
 
 /**
  * Description: {@link FunctionalTest} of storm track tool.
@@ -101,27 +96,21 @@ public class StormTrackFunctionalTest extends
             Dict consoleEvent = mockConsoleView.getHazardEvents().get(0);
             eventID = consoleEvent
                     .getDynamicallyTypedValue(HAZARD_EVENT_IDENTIFIER);
-            IHazardEvent event = eventManager.getEventById(eventID);
-            @SuppressWarnings("unchecked")
-            List<Map<String, Serializable>> trackPoints = (List<Map<String, Serializable>>) event
-                    .getHazardAttribute(TRACK_POINTS);
-            Map<String, Serializable> lastPoint = trackPoints.get(trackPoints
-                    .size() - 1);
-            Long pointID = (Long) lastPoint.get(POINTID);
-            Map<String, Serializable> toolParameters = new HashMap<>();
-            toolParameters.put(POINTID, pointID);
-            toolParameters.put(HAZARD_EVENT_IDENTIFIER, eventID);
-            toolParameters.put(HAZARD_EVENT_SHAPE_TYPE,
-                    HAZARD_EVENT_SHAPE_TYPE_DOT);
-            ArrayList<Double> point = Lists.newArrayList(-98.76, 40.29);
-            toolParameters.put(SYMBOL_NEW_LAT_LON, point);
-
-            SpatialDisplayAction modifyAction = new SpatialDisplayAction(
-                    SpatialDisplayAction.ActionType.RUN_TOOL,
-                    MODIFY_STORM_TRACK_TOOL, toolParameters);
+            ObservedHazardEvent event = eventManager.getEventById(eventID);
+            VisualFeaturesList visualFeatures = event.getVisualFeatures();
+            VisualFeature lastPoint = null;
+            for (int j = visualFeatures.size() - 1; j >= 0; j--) {
+                if (visualFeatures.get(j).getIdentifier().matches("^[-0-9.]+$")) {
+                    lastPoint = visualFeatures.get(j);
+                    break;
+                }
+            }
+            lastPoint.setGeometry(new Date(sessionManager.getTimeManager()
+                    .getSelectedTime().getLowerBound()), new GeometryFactory()
+                    .createPoint(new Coordinate(-98.76, 40.29)));
+            event.setVisualFeature(lastPoint, UIOriginator.SPATIAL_DISPLAY);
             stepCompleted();
             step = Steps.MODIFY_TOOL;
-            eventBus.publishAsync(modifyAction);
         }
     }
 
@@ -172,14 +161,15 @@ public class StormTrackFunctionalTest extends
                  * test that the dot appears. We'll start after the dot has been
                  * dragged.
                  */
-                Map<String, Serializable> toolParameters = Utilities
-                        .buildStormStrackToolDraggedPointParameters(41.22,
-                                -97.10, 1297137600.0);
-
-                SpatialDisplayAction action = new SpatialDisplayAction(
-                        SpatialDisplayAction.ActionType.RUN_TOOL,
-                        STORM_TRACK_TOOL, toolParameters);
-                eventBus.publishAsync(action);
+                VisualFeaturesList visualFeatures = VisualFeaturesListJsonConverter
+                        .fromJson(" [ { "
+                                + "\"identifier\": \"stormTrackDot\", "
+                                + "\"geometry\": \"POINT(-97.10, 41.22)\""
+                                + " } ]");
+                sessionManager.getRecommenderManager().runRecommender(
+                        STORM_TRACK_TOOL,
+                        RecommenderExecutionContext.getEmptyContext(),
+                        visualFeatures, null);
                 break;
 
             case MODIFY_TOOL:

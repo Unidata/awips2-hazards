@@ -63,9 +63,9 @@ class RecommenderInterface(PythonOverriderInterface.PythonOverriderInterface):
         javaDialogInput = kwargs['dialogInputMap']
         if javaDialogInput is not None :
             kwargs['dialogInputMap'] = JUtil.javaObjToPyVal(javaDialogInput)
-        javaSpatialInput = kwargs['spatialInputMap']
+        javaSpatialInput = kwargs['visualFeatures']
         if javaSpatialInput is not None :
-            kwargs['spatialInputMap'] = JUtil.javaObjToPyVal(javaSpatialInput)
+            kwargs['visualFeatures'] = JUtil.javaObjToPyVal(javaSpatialInput)
 
         kwargs['eventSet'] = EventSet(kwargs['eventSet'])
         

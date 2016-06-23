@@ -1061,7 +1061,7 @@ class Product(ProductTemplate.Product):
         return addtlRainString
 
     def floodTimeStr(self, creationTime, hashTag, flood_time_ms):
-        floodTime = datetime.datetime.fromtimestamp(flood_time_ms/1000)
+        floodTime = datetime.datetime.utcfromtimestamp(flood_time_ms/1000)
         tdelta = floodTime - creationTime
         if (tdelta.days == 6 and floodTime.date().weekday() == creationTime.date().weekday()) or \
             tdelta.days > 6:
@@ -1195,7 +1195,7 @@ class Product(ProductTemplate.Product):
 
     def correctProduct(self, dataList, keyInfo, correctAllSegments):
         millis = SimulatedTime.getSystemTime().getMillis()
-        dt = datetime.datetime.fromtimestamp(millis / 1000)
+        dt = datetime.datetime.utcfromtimestamp(millis / 1000)
         currentTime = dt.strftime('%d%H%m')
         for i in range(0, len(dataList)):
             data = dataList[i]

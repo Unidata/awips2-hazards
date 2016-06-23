@@ -4,6 +4,7 @@ Swath recommender for probabilistic hazard types.
 import datetime, math
 import EventFactory, EventSetFactory, GeometryFactory
 import RecommenderTemplate
+import TimeUtils
 from VisualFeatures import VisualFeatures
 from ProbUtils import ProbUtils
 import logging, UFStatusHandler
@@ -168,7 +169,7 @@ class Recommender(RecommenderTemplate.Recommender):
         '''   
         return None
             
-    def execute(self, eventSet, dialogInputMap, spatialInputMap):
+    def execute(self, eventSet, dialogInputMap, visualFeatures):
         '''
         
         Please see this Google Doc for the SwathRecommender Design:
@@ -180,9 +181,10 @@ class Recommender(RecommenderTemplate.Recommender):
                          attributes
         @param dialogInputMap: A map of information retrieved from
                                a user's interaction with a dialog.
-        @param spatialInputMap:   A map of information retrieved
-                                  from the user's interaction with the
-                                  spatial display.
+        @param visualFeatures: Visual features as defined by the
+                               defineSpatialInfo() method and
+                               modified by the user to provide
+                               spatial input; ignored.
         
         @return: A list of potential probabilistic hazard events. 
         '''                
@@ -194,7 +196,7 @@ class Recommender(RecommenderTemplate.Recommender):
         trigger = eventSetAttrs.get('trigger')
         self._currentTime = long(eventSetAttrs.get("currentTime"))
         
-        self._latestDataLayerTime = self._probUtils._roundTime_ms(
+        self._latestDataLayerTime = TimeUtils.roundEpochTimeMilliseconds(
                     eventSetAttrs.get("latestDataLayerTime", self._currentTime))
         print 'latestDataLayerTime', self._probUtils._displayMsTime(self._latestDataLayerTime)
         print 'currentTime', self._probUtils._displayMsTime(self._currentTime)
@@ -214,7 +216,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 if eventIdentifier and eventIdentifier != event.getEventID():
                     continue                
             # Check for end time < current time and end the event
-            eventEndTime_ms = long(self._probUtils._datetimeToMs(event.getEndTime()))
+            eventEndTime_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()))
             if eventEndTime_ms < self._currentTime:
                 event.setStatus('ENDED')
             print "SR Event status", event.getStatus()
@@ -315,15 +317,15 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def _moveStartTime(self, event, startMS, moveEndTime=True):
         durationSecs = self._probUtils._getDurationSecs(event)
-        event.setStartTime(datetime.datetime.fromtimestamp(startMS/1000))
+        event.setStartTime(datetime.datetime.utcfromtimestamp(startMS/1000))
         ### Note, these are the specific events that we want to trigger on:
         ### self._pendingHazard or self._selectedHazard:  # move end time with start time changes
         ### So we might someday want to filter.  Commenting out the following if call for now
         if moveEndTime or self._pendingHazard: 
             endMS = startMS+(durationSecs*1000)
-            event.setEndTime(datetime.datetime.fromtimestamp(endMS/1000))            
+            event.setEndTime(datetime.datetime.utcfromtimestamp(endMS/1000))            
         self._probUtils._roundEventTimes(event)
-        self._eventSt_ms = long(self._probUtils._datetimeToMs(event.getStartTime()))
+        self._eventSt_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
                 
     ##############################################
     # Downstream and current polygon bookkeeping #
@@ -342,7 +344,7 @@ class Recommender(RecommenderTemplate.Recommender):
             event.set('motionVectorTimes', mvTimes)
         else:
             self._probUtils._roundEventTimes(event)
-            self._eventSt_ms = long(self._probUtils._datetimeToMs(event.getStartTime()))
+            self._eventSt_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
         #print "SR event start, current", self._eventSt_ms, self._currentTime
         self.flush()
                         
@@ -948,8 +950,8 @@ class Recommender(RecommenderTemplate.Recommender):
                     #if not self._pendingHazard:
                         durationSecs = event.get("durationSecsAtIssuance")
                         if durationSecs is not None:
-                            endTimeMS = self._probUtils._roundTime_ms(self._eventSt_ms + durationSecs *1000)
-                            event.setEndTime(datetime.datetime.fromtimestamp(endTimeMS/1000))
+                            endTimeMS = TimeUtils.roundEpochTimeMilliseconds(self._eventSt_ms + durationSecs *1000)
+                            event.setEndTime(datetime.datetime.utcfromtimestamp(endTimeMS/1000))
                             #graphProbs = self._probUtils._getGraphProbsBasedOnDuration(event)
                             graphProbs = event.get("graphProbsAtIssuance")
                             event.set('convectiveProbTrendGraph', graphProbs)
@@ -1016,7 +1018,7 @@ class Recommender(RecommenderTemplate.Recommender):
         baseVisualFeatures = []
         selectedVisualFeatures = []
         upstreamSt_ms = self._eventSt_ms - (self._probUtils._timeStep() * 1000 * self._upstreamTimeSteps())
-        upstreamSt_ms = self._probUtils._roundTime_ms(upstreamSt_ms)
+        upstreamSt_ms = TimeUtils.roundEpochTimeMilliseconds(upstreamSt_ms)
         
         # Down Stream Features -- polygons, track points, relocated last motionVector
         dsBaseVisualFeatures, dsSelectedVisualFeatures = self._downstreamVisualFeatures(
@@ -1117,7 +1119,7 @@ class Recommender(RecommenderTemplate.Recommender):
               "diameter": 5,
               "geometry": {
                   (upstreamSt_ms,
-                   VisualFeatures.datetimeToEpochTimeMillis(event.getEndTime())):
+                   TimeUtils.datetimeToEpochTimeMillis(event.getEndTime())):
                    centroid
                }
             }
@@ -1163,7 +1165,7 @@ class Recommender(RecommenderTemplate.Recommender):
               "borderStyle": "dotted",
               "geometry": {
                   (upstreamSt_ms,
-                   VisualFeatures.datetimeToEpochTimeMillis(event.getEndTime())):
+                   TimeUtils.datetimeToEpochTimeMillis(event.getEndTime())):
                    envelope
                }
               }
@@ -1187,7 +1189,7 @@ class Recommender(RecommenderTemplate.Recommender):
               "geometry": {
                   #(st, et): centroid
                   (upstreamSt_ms,
-                   VisualFeatures.datetimeToEpochTimeMillis(event.getEndTime())):
+                   TimeUtils.datetimeToEpochTimeMillis(event.getEndTime())):
                    centroid
                }
             }
@@ -1229,8 +1231,8 @@ class Recommender(RecommenderTemplate.Recommender):
                     "fillColor": colorFill[key],
                     "geometry": {
                         (upstreamSt_ms,
-                        #(VisualFeatures.datetimeToEpochTimeMillis(event.getStartTime()), 
-                         VisualFeatures.datetimeToEpochTimeMillis(event.getEndTime())): poly
+                        #(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()), 
+                         TimeUtils.datetimeToEpochTimeMillis(event.getEndTime())): poly
                     }
                 }
                 gridFeatures.append(gridPreviewPoly)
@@ -1305,7 +1307,7 @@ class Recommender(RecommenderTemplate.Recommender):
         for i in range(timeSteps):
             # Work backwards from current time
             polySt_ms = self._eventSt_ms - (i+1)*self._probUtils._timeStep()*1000
-            polySt_ms = self._probUtils._roundTime_ms(polySt_ms)
+            polySt_ms = TimeUtils.roundEpochTimeMilliseconds(polySt_ms)
             poly = self._findPreviousPoly(polySt_ms,
                                           motionVectorPolys, motionVectorTimes, 
                                           historyPolys, historyTimes)
@@ -1362,7 +1364,7 @@ class Recommender(RecommenderTemplate.Recommender):
         # Return millis given the event start time and secs offset
         # Round to minutes
         millis = long(self._eventSt_ms + secs * 1000 )
-        return self._probUtils._roundTime_ms(millis)
+        return TimeUtils.roundEpochTimeMilliseconds(millis)
     
     def _sortPolys(self, p1, p2):
         # Sort polygon tuples by start time

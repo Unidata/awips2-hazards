@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.recommenders;
 
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+
 import java.io.Serializable;
 import java.util.Map;
 
@@ -26,6 +28,7 @@ import jep.JepException;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -48,6 +51,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  *                                     Strings.
  * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
  *                                      info.
+ * Jun 23, 2016 19537      Chris.Golden Changed to use visual features for spatial
+ *                                      info collection.
  * </pre>
  * 
  * @author mnash
@@ -93,12 +98,13 @@ public class CAVERecommenderScriptManager extends
                     instantiatePythonScript(recName);
                 }
                 Map<String, Serializable> dialogValues = getInfo(recName,
-                        "getDialogInfo", eventSet);
+                        HazardConstants.RECOMMENDER_GET_DIALOG_INFO_METHOD,
+                        eventSet);
                 showDialog(dialogValues);
-                Map<String, Serializable> spatialValues = getInfo(recName,
-                        "getSpatialInfo", eventSet);
+                VisualFeaturesList visualFeatures = getVisualFeatures(recName,
+                        eventSet);
                 return executeRecommender(recommenderName, eventSet,
-                        dialogValues, spatialValues);
+                        dialogValues, visualFeatures);
             } catch (JepException e) {
                 statusHandler.handle(Priority.ERROR,
                         "Unable to execute recommender", e);

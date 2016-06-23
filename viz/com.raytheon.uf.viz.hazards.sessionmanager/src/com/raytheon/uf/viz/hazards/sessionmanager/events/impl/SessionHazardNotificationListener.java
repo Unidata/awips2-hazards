@@ -54,6 +54,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      originator for any hazard event
  *                                      additions or merges resulting from
  *                                      the database.
+ * Jun 23, 2016 19537      Chris.Golden Changed to use new parameter for
+ *                                      merging hazard events.
  * </pre>
  * 
  * @author bsteffen
@@ -121,7 +123,7 @@ public class SessionHazardNotificationListener implements INotificationObserver 
         case STORE:
             if (oldEvent != null) {
                 SessionEventUtilities.mergeHazardEvents(manager, newEvent,
-                        oldEvent, true, Originator.DATABASE);
+                        oldEvent, true, true, Originator.DATABASE);
                 return;
             }
             manager.addEvent(newEvent, Originator.DATABASE);

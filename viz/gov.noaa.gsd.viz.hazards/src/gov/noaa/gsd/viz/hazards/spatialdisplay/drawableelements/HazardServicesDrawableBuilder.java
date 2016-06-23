@@ -12,6 +12,8 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.V
 import gov.noaa.gsd.common.visuals.BorderStyle;
 import gov.noaa.gsd.common.visuals.DragCapability;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
+import gov.noaa.gsd.common.visuals.SymbolShape;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardVisualFeatureSpatialIdentifier;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.VisualFeatureSpatialIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.display.FillPatternList.FillPattern;
@@ -20,21 +22,20 @@ import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 
 import java.awt.Color;
-import java.io.Serializable;
-import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -96,6 +97,10 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      spatial entity drawables, and added ability to
  *                                      have spatial entities be moved and edited by the
  *                                      user.
+ * Jun 23, 2016 19537      Chris.Golden Removed storm-track-specific code. Also added
+ *                                      hatching for hazard events that have visual
+ *                                      features, and added ability to use visual
+ *                                      features to request spatial info for recommenders.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -111,6 +116,8 @@ public class HazardServicesDrawableBuilder {
 
     private static final String DOT = "DOT";
 
+    private static final String STAR = "STAR";
+
     private static final String FILLED_STAR = "FILLED_STAR";
 
     private static final String TEXT = "TEXT";
@@ -118,6 +125,49 @@ public class HazardServicesDrawableBuilder {
     private static final double SIMPLIFICATION_LEVEL = 0.0005;
 
     private static final double BUFFER_LEVEL = SIMPLIFICATION_LEVEL / 4;
+
+    /**
+     * Map of visual feature symbol shapes to PGEN symbol shape names to be used
+     * for the outer shape, that is, the shape that is used to provide the
+     * border.
+     */
+    private static final Map<SymbolShape, String> PGEN_OUTER_SYMBOLS_FOR_VISUAL_FEATURE_SYMBOLS;
+    static {
+        Map<SymbolShape, String> map = new HashMap<>(2, 1.0f);
+        map.put(SymbolShape.CIRCLE, DOT);
+        map.put(SymbolShape.STAR, STAR);
+        PGEN_OUTER_SYMBOLS_FOR_VISUAL_FEATURE_SYMBOLS = ImmutableMap
+                .copyOf(map);
+    }
+
+    /**
+     * Map of visual feature symbol shapes to PGEN symbol shape names to be used
+     * for the inner shape, that is, the shape that is used to provide the fill.
+     * If no entry is found for a key that does have an entry in the
+     * {@link #PGEN_OUTER_SYMBOLS_FOR_VISUAL_FEATURE_SYMBOLS} map, then the same
+     * PGEN symbol shape name is used, but with a reduced size scale.
+     */
+    private static final Map<SymbolShape, String> PGEN_INNER_SYMBOLS_FOR_VISUAL_FEATURE_SYMBOLS;
+    static {
+        Map<SymbolShape, String> map = new HashMap<>(1, 1.0f);
+        map.put(SymbolShape.STAR, FILLED_STAR);
+        PGEN_INNER_SYMBOLS_FOR_VISUAL_FEATURE_SYMBOLS = ImmutableMap
+                .copyOf(map);
+    }
+
+    /**
+     * Map of visual feature symbol shapes to baseline PGEN symbol shape size
+     * multipliers, meant to normalize all symbol shapes so that when drawn with
+     * the same scale, they end up about the same size.
+     */
+    private static final Map<SymbolShape, Double> PGEN_SIZE_MULTIPLIERS_FOR_VISUAL_FEATURE_SYMBOLS;
+    static {
+        Map<SymbolShape, Double> map = new HashMap<>(2, 1.0f);
+        map.put(SymbolShape.CIRCLE, 1.0);
+        map.put(SymbolShape.STAR, 0.3);
+        PGEN_SIZE_MULTIPLIERS_FOR_VISUAL_FEATURE_SYMBOLS = ImmutableMap
+                .copyOf(map);
+    }
 
     /**
      * Logging mechanism.
@@ -140,69 +190,125 @@ public class HazardServicesDrawableBuilder {
                 sessionManager.getConfigurationManager());
     }
 
+    private TextPositioner getTextPositionForSpatialEntity(
+            SpatialEntity<VisualFeatureSpatialIdentifier> spatialEntity) {
+        return (spatialEntity.getTextOffsetLength() == 0.0 ? TextPositioner.CENTERED
+                : TextPositioner.getInstance(
+                        spatialEntity.getTextOffsetDirection(),
+                        spatialEntity.getTextOffsetLength()));
+    }
+
     public AbstractDrawableComponent buildPoint(
             SpatialEntity<VisualFeatureSpatialIdentifier> spatialEntity,
-            Layer activeLayer, String symbol) {
+            Layer activeLayer) {
         DECollection collectionComponent = new DECollection();
-        try {
-            PointDrawingAttributes drawingAttributes = new PointDrawingAttributes(
-                    sessionManager, PointDrawingAttributes.Element.OUTER);
-            this.drawingAttributes = drawingAttributes;
-            drawingAttributes.setSolidLineStyle();
-            drawingAttributes.setLineWidth((float) spatialEntity
-                    .getBorderThickness());
-            Color color = new Color((int) (spatialEntity.getBorderColor()
-                    .getRed() * 255.0), (int) (spatialEntity.getBorderColor()
-                    .getGreen() * 255.0), (int) (spatialEntity.getBorderColor()
-                    .getBlue() * 255.0), (int) (spatialEntity.getBorderColor()
-                    .getAlpha() * 255.0));
-            drawingAttributes.setColors(new Color[] { color, color });
-            if (spatialEntity.getLabel() != null) {
-                drawingAttributes.setString(new String[] { spatialEntity
-                        .getLabel() });
+
+        /*
+         * Get the symbol names to be used for the outer (border) and inner
+         * (fill) portions of the symbol.
+         */
+        String outerSymbol = PGEN_OUTER_SYMBOLS_FOR_VISUAL_FEATURE_SYMBOLS
+                .get(spatialEntity.getSymbolShape());
+        String innerSymbol = PGEN_INNER_SYMBOLS_FOR_VISUAL_FEATURE_SYMBOLS
+                .get(spatialEntity.getSymbolShape());
+        double outerDiameter = spatialEntity.getDiameter()
+                * PGEN_SIZE_MULTIPLIERS_FOR_VISUAL_FEATURE_SYMBOLS
+                        .get(spatialEntity.getSymbolShape());
+        double innerDiameter = outerDiameter;
+        List<Coordinate> points = Lists.newArrayList(spatialEntity
+                .getGeometry().getCoordinate());
+        Color borderColor = new Color((int) (spatialEntity.getBorderColor()
+                .getRed() * 255.0), (int) (spatialEntity.getBorderColor()
+                .getGreen() * 255.0), (int) (spatialEntity.getBorderColor()
+                .getBlue() * 255.0), (int) (spatialEntity.getBorderColor()
+                .getAlpha() * 255.0));
+        Color fillColor = (spatialEntity.getFillColor().getAlpha() == 0.0f ? Color.BLACK
+                : new Color(
+                        (int) (spatialEntity.getFillColor().getRed() * 255.0),
+                        (int) (spatialEntity.getFillColor().getGreen() * 255.0),
+                        (int) (spatialEntity.getFillColor().getBlue() * 255.0),
+                        (int) (spatialEntity.getFillColor().getAlpha() * 255.0)));
+
+        /*
+         * If the inner symbol is the same as the outer one, then use a reduced
+         * diameter for the inner one, and paint the inner one last, as both of
+         * them will be filled, with the inner one simply overlaying the outer
+         * one. Otherwise, paint the inner one first, as the outer one will be
+         * an unfilled border around the inner one.
+         */
+        if (innerSymbol == null) {
+            innerDiameter -= spatialEntity.getBorderThickness() * 2.0;
+            try {
+                buildOuterPoint(spatialEntity, activeLayer, outerSymbol,
+                        borderColor, points, outerDiameter, collectionComponent);
+                buildInnerPoint(spatialEntity, activeLayer, outerSymbol,
+                        fillColor, points, innerDiameter, collectionComponent);
+            } catch (VizException e) {
+                statusHandler.error(
+                        "HazardServicesDrawableBuilder.buildPoint(): build "
+                                + "of shape failed.", e);
             }
-            drawingAttributes.setSizeScale(spatialEntity.getDiameter());
-            drawingAttributes.setTextPosition(TextPositioner.TOP);
-            List<Coordinate> points = Lists.newArrayList(spatialEntity
-                    .getGeometry().getCoordinate());
+        } else {
+            try {
+                buildInnerPoint(spatialEntity, activeLayer, innerSymbol,
+                        fillColor, points, innerDiameter, collectionComponent);
+                buildOuterPoint(spatialEntity, activeLayer, outerSymbol,
+                        borderColor, points, outerDiameter, collectionComponent);
+            } catch (VizException e) {
+                statusHandler.error(
+                        "HazardServicesDrawableBuilder.buildPoint(): build "
+                                + "of shape failed.", e);
+            }
+        }
+        return collectionComponent;
+    }
 
-            HazardServicesPoint outerPoint = new HazardServicesPoint(
-                    drawingAttributes, symbol, symbol, points, activeLayer,
-                    spatialEntity.getIdentifier().getHazardEventIdentifier(),
-                    true);
-            outerPoint.setVisualFeatureIdentifier(spatialEntity.getIdentifier()
-                    .getVisualFeatureIdentifier());
-            outerPoint
-                    .setMovable(spatialEntity.getDragCapability() != DragCapability.NONE);
-            collectionComponent.add(outerPoint);
+    private void buildOuterPoint(
+            SpatialEntity<VisualFeatureSpatialIdentifier> spatialEntity,
+            Layer activeLayer, String symbol, Color color,
+            List<Coordinate> points, double diameter,
+            DECollection collectionComponent) throws VizException {
+        PointDrawingAttributes drawingAttributes = new PointDrawingAttributes(
+                sessionManager, PointDrawingAttributes.Element.OUTER);
+        this.drawingAttributes = drawingAttributes;
+        drawingAttributes.setSolidLineStyle();
+        drawingAttributes.setLineWidth((float) spatialEntity
+                .getBorderThickness());
+        drawingAttributes.setColors(new Color[] { color, color });
+        if (spatialEntity.getLabel() != null) {
+            drawingAttributes
+                    .setString(new String[] { spatialEntity.getLabel() });
+        }
+        drawingAttributes.setSizeScale(diameter);
+        drawingAttributes
+                .setTextPosition(getTextPositionForSpatialEntity(spatialEntity));
+        HazardServicesPoint outerPoint = new HazardServicesPoint(
+                drawingAttributes, symbol, symbol, points, activeLayer,
+                spatialEntity.getIdentifier(), true);
+        outerPoint
+                .setMovable(spatialEntity.getDragCapability() != DragCapability.NONE);
+        collectionComponent.add(outerPoint);
+    }
 
+    private void buildInnerPoint(
+            SpatialEntity<VisualFeatureSpatialIdentifier> spatialEntity,
+            Layer activeLayer, String symbol, Color color,
+            List<Coordinate> points, double diameter,
+            DECollection collectionComponent) throws VizException {
+        if (diameter > 0.0) {
+            PointDrawingAttributes drawingAttributes = new PointDrawingAttributes(
+                    sessionManager, PointDrawingAttributes.Element.INNER);
+            drawingAttributes.setSolidLineStyle();
             drawingAttributes.setLineWidth(0.0f);
-            color = new Color(
-                    (int) (spatialEntity.getFillColor().getRed() * 255.0),
-                    (int) (spatialEntity.getFillColor().getGreen() * 255.0),
-                    (int) (spatialEntity.getFillColor().getBlue() * 255.0),
-                    (int) (spatialEntity.getFillColor().getAlpha() * 255.0));
             drawingAttributes.setColors(new Color[] { color, color });
             drawingAttributes.setString(null);
-            drawingAttributes.setSizeScale(spatialEntity.getDiameter()
-                    - (spatialEntity.getBorderThickness() * 2.0));
-
+            drawingAttributes.setSizeScale(diameter);
             HazardServicesPoint innerPoint = new HazardServicesPoint(
                     drawingAttributes, symbol, symbol, points, activeLayer,
-                    spatialEntity.getIdentifier().getHazardEventIdentifier(),
-                    false);
-            innerPoint.setVisualFeatureIdentifier(spatialEntity.getIdentifier()
-                    .getVisualFeatureIdentifier());
+                    spatialEntity.getIdentifier(), false);
             innerPoint.setMovable(false);
             collectionComponent.add(innerPoint);
-
-        } catch (VizException e) {
-            statusHandler.error(
-                    "HazardServicesDrawableBuilder.buildPoint(): build "
-                            + "of shape failed.", e);
         }
-
-        return collectionComponent;
     }
 
     public AbstractDrawableComponent buildPoint(IHazardEvent hazardEvent,
@@ -212,13 +318,14 @@ public class HazardServicesDrawableBuilder {
             drawingAttributes = new PointDrawingAttributes(sessionManager,
                     PointDrawingAttributes.Element.OUTER);
             drawingAttributes.setAttributes(shapeNum, hazardEvent);
-            drawingAttributes.setTextPosition(TextPositioner.TOP);
+            drawingAttributes.setTextPosition(TextPositioner.ABOVE);
             List<Coordinate> points = buildPointCoordinates(shapeNum,
                     hazardEvent);
 
             HazardServicesPoint outerPoint = new HazardServicesPoint(
                     drawingAttributes, symbol, symbol, points, activeLayer,
-                    hazardEvent.getEventID(), true);
+                    new HazardVisualFeatureSpatialIdentifier(
+                            hazardEvent.getEventID(), null), true);
             outerPoint.setMovable(movable);
             collectionComponent.add(outerPoint);
 
@@ -228,7 +335,8 @@ public class HazardServicesDrawableBuilder {
 
             HazardServicesPoint innerPoint = new HazardServicesPoint(
                     drawingAttributes, symbol, symbol, points, activeLayer,
-                    hazardEvent.getEventID(), false);
+                    new HazardVisualFeatureSpatialIdentifier(
+                            hazardEvent.getEventID(), null), false);
             innerPoint.setMovable(false);
             collectionComponent.add(innerPoint);
 
@@ -274,16 +382,14 @@ public class HazardServicesDrawableBuilder {
                 drawingAttributes.setString(new String[] { spatialEntity
                         .getLabel() });
             }
-            drawingAttributes.setTextPosition(TextPositioner.TOP);
+            drawingAttributes
+                    .setTextPosition(getTextPositionForSpatialEntity(spatialEntity));
             List<Coordinate> points = Lists.newArrayList(spatialEntity
                     .getGeometry().getCoordinates());
 
             drawableComponent = new HazardServicesLine(drawingAttributes, LINE,
                     drawingAttributes.getLineStyle().toString(), points,
-                    activeLayer, spatialEntity.getIdentifier()
-                            .getHazardEventIdentifier());
-            drawableComponent.setVisualFeatureIdentifier(spatialEntity
-                    .getIdentifier().getVisualFeatureIdentifier());
+                    activeLayer, spatialEntity.getIdentifier());
             DragCapability dragCapability = spatialEntity.getDragCapability();
             drawableComponent
                     .setEditable((dragCapability == DragCapability.PART)
@@ -315,46 +421,12 @@ public class HazardServicesDrawableBuilder {
 
             drawableComponent = new HazardServicesLine(drawingAttributes, LINE,
                     drawingAttributes.getLineStyle().toString(), points,
-                    activeLayer, hazardEvent.getEventID());
+                    activeLayer, new HazardVisualFeatureSpatialIdentifier(
+                            hazardEvent.getEventID(), null));
 
         } catch (VizException e) {
             statusHandler.error(
                     "HazardServicesDrawableBuilder.buildLine(): build "
-                            + "of shape failed.", e);
-        }
-
-        return drawableComponent;
-    }
-
-    /**
-     * Builds a PGEN drawable representing the track line associated with a
-     * storm track.
-     * 
-     * @param hazardEvent
-     *            The hazard event containing track information.
-     * @param points
-     *            The coordinates (lat/lon) representing the track line.
-     * @param activeLayer
-     *            The layer the PGEN drawables are displayed on.
-     * @return A line representing a storm track.
-     * 
-     */
-    public AbstractDrawableComponent buildTrackLine(IHazardEvent hazardEvent,
-            List<Coordinate> points, Layer activeLayer) {
-        AbstractDrawableComponent drawableComponent = null;
-
-        try {
-            drawingAttributes = new LineDrawingAttributes(sessionManager);
-
-            drawingAttributes.setAttributes(0, hazardEvent);
-
-            drawableComponent = new HazardServicesLine(drawingAttributes, LINE,
-                    drawingAttributes.getLineStyle().toString(), points,
-                    activeLayer, hazardEvent.getEventID());
-
-        } catch (VizException e) {
-            statusHandler.error(
-                    "HazardServicesDrawableBuilder.buildTrackLine(): build "
                             + "of shape failed.", e);
         }
 
@@ -400,14 +472,12 @@ public class HazardServicesDrawableBuilder {
                 drawingAttributes.setString(new String[] { spatialEntity
                         .getLabel() });
             }
-            drawingAttributes.setTextPosition(TextPositioner.CENTER);
+            drawingAttributes
+                    .setTextPosition(getTextPositionForSpatialEntity(spatialEntity));
             drawableComponent = new HazardServicesPolygon(drawingAttributes,
                     LINE, drawingAttributes.getLineStyle().toString(),
                     (Geometry) spatialEntity.getGeometry().clone(),
-                    activeLayer, spatialEntity.getIdentifier()
-                            .getHazardEventIdentifier());
-            drawableComponent.setVisualFeatureIdentifier(spatialEntity
-                    .getIdentifier().getVisualFeatureIdentifier());
+                    activeLayer, spatialEntity.getIdentifier());
             DragCapability dragCapability = spatialEntity.getDragCapability();
             drawableComponent
                     .setEditable((dragCapability == DragCapability.PART)
@@ -456,7 +526,8 @@ public class HazardServicesDrawableBuilder {
                 drawableComponent = new HazardServicesPolygon(
                         drawingAttributes, LINE, drawingAttributes
                                 .getLineStyle().toString(), tmpGeom,
-                        activeLayer, hazardEvent.getEventID());
+                        activeLayer, new HazardVisualFeatureSpatialIdentifier(
+                                hazardEvent.getEventID(), null));
             } else {
 
                 coordinates = ((Polygon) geometry).getExteriorRing()
@@ -468,7 +539,8 @@ public class HazardServicesDrawableBuilder {
                 drawableComponent = new HazardServicesPolygon(
                         drawingAttributes, LINE, drawingAttributes
                                 .getLineStyle().toString(), polygon,
-                        activeLayer, hazardEvent.getEventID());
+                        activeLayer, new HazardVisualFeatureSpatialIdentifier(
+                                hazardEvent.getEventID(), null));
             }
         } catch (VizException e) {
             statusHandler.error(
@@ -498,7 +570,8 @@ public class HazardServicesDrawableBuilder {
 
             drawableComponent = new HazardServicesPolygon(drawingAttributes,
                     LINE, "LINE_DASHED_2", hazardHatchArea, activeLayer,
-                    hazardEvent.getEventID());
+                    new HazardVisualFeatureSpatialIdentifier(
+                            hazardEvent.getEventID(), null));
 
         } catch (VizException e) {
             statusHandler.error(
@@ -509,28 +582,8 @@ public class HazardServicesDrawableBuilder {
         return drawableComponent;
     }
 
-    public AbstractDrawableComponent buildStormTrackDotComponent(
-            Layer activeLayer, String eventType) {
-        AbstractDrawableComponent result = null;
-        try {
-            StormTrackDotDrawingAttributes drawingAttributes = new StormTrackDotDrawingAttributes(
-                    sessionManager, eventType);
-            this.drawingAttributes = drawingAttributes;
-            drawingAttributes.setTextPosition(TextPositioner.TOP);
-            List<Coordinate> points = drawingAttributes.buildCoordinates();
-            drawingAttributes.setAttributes();
-
-            result = new HazardServicesSymbol(drawingAttributes, DOT, DOT,
-                    points, activeLayer, HazardConstants.DRAG_DROP_DOT);
-            return result;
-        } catch (VizException e) {
-            statusHandler.error("Could not build storm track dot", e);
-        }
-        return result;
-    }
-
     public AbstractDrawableComponent buildText(SpatialEntity<?> spatialEntity,
-            String id, Layer activeLayer) {
+            VisualFeatureSpatialIdentifier identifier, Layer activeLayer) {
         Point centerPoint;
 
         centerPoint = spatialEntity.getGeometry().getCentroid();
@@ -543,7 +596,7 @@ public class HazardServicesDrawableBuilder {
                         (int) (spatialEntity.getTextColor().getGreen() * 255.0),
                         (int) (spatialEntity.getTextColor().getBlue() * 255.0),
                         (int) (spatialEntity.getTextColor().getAlpha() * 255.0)),
-                centerPoint.getCoordinate(), activeLayer, id);
+                centerPoint.getCoordinate(), activeLayer, identifier);
 
         return drawableComponent;
     }
@@ -555,67 +608,58 @@ public class HazardServicesDrawableBuilder {
         centerPoint = geometry.getCentroid();
         AbstractDrawableComponent drawableComponent = new HazardServicesText(
                 drawingAttributes, drawingAttributes.getString()[0], TEXT,
-                centerPoint, activeLayer, id);
+                centerPoint, activeLayer,
+                new HazardVisualFeatureSpatialIdentifier(id, null));
 
         return drawableComponent;
     }
 
     public List<AbstractDrawableComponent> buildDrawableComponents(
             SpatialDisplay spatialDisplay, IHazardEvent hazardEvent,
-            boolean eventOverlapSelectedTime, Layer activeLayer,
-            boolean forModifyingStormTrack, boolean isEventEditable,
-            boolean drawHazardHatchArea) {
+            Layer activeLayer, boolean isEventEditable) {
 
         List<AbstractDrawableComponent> result = Lists.newArrayList();
 
-        if (forModifyingStormTrack) {
-            addComponentsForStormTrackModification(hazardEvent,
-                    eventOverlapSelectedTime, result, spatialDisplay,
-                    activeLayer);
-        } else {
+        for (int shapeNum = 0; shapeNum < visibleGeometry(hazardEvent)
+                .getNumGeometries(); shapeNum++) {
 
-            for (int shapeNum = 0; shapeNum < visibleGeometry(hazardEvent)
-                    .getNumGeometries(); shapeNum++) {
+            AbstractDrawableComponent drawableComponent = addShapeComponent(
+                    spatialDisplay, hazardEvent, activeLayer, result, shapeNum);
 
-                AbstractDrawableComponent drawableComponent = addShapeComponent(
-                        spatialDisplay, hazardEvent, activeLayer, result,
-                        drawHazardHatchArea, shapeNum);
+            if (drawableComponent instanceof DECollection) {
 
-                if (drawableComponent instanceof DECollection) {
+                DECollection deCollection = (DECollection) drawableComponent;
 
-                    DECollection deCollection = (DECollection) drawableComponent;
-
-                    for (int i = 0; i < deCollection.size(); ++i) {
-                        IHazardServicesShape drawable = (IHazardServicesShape) deCollection
-                                .getItemAt(i);
-                        if (!(drawable instanceof HazardServicesSymbol)) {
-                            drawable.setEditable(isEventEditable);
-                        }
-
-                        if ((drawable instanceof HazardServicesSymbol == false)
-                                || (deCollection.size() == 1)) {
-                            drawable.setMovable(isEventEditable);
-                        }
-
-                    }
-
-                } else {
-
-                    IHazardServicesShape drawable = (IHazardServicesShape) drawableComponent;
-
-                    if (!(drawableComponent instanceof HazardServicesSymbol)) {
+                for (int i = 0; i < deCollection.size(); ++i) {
+                    IHazardServicesShape drawable = (IHazardServicesShape) deCollection
+                            .getItemAt(i);
+                    if (!(drawable instanceof HazardServicesSymbol)) {
                         drawable.setEditable(isEventEditable);
                     }
 
-                    drawable.setMovable(isEventEditable);
+                    if ((drawable instanceof HazardServicesSymbol == false)
+                            || (deCollection.size() == 1)) {
+                        drawable.setMovable(isEventEditable);
+                    }
 
                 }
+
+            } else {
+
+                IHazardServicesShape drawable = (IHazardServicesShape) drawableComponent;
+
+                if (!(drawableComponent instanceof HazardServicesSymbol)) {
+                    drawable.setEditable(isEventEditable);
+                }
+
+                drawable.setMovable(isEventEditable);
+
             }
-
-            addTextComponentAtGeometryCenterPoint(spatialDisplay, result,
-                    hazardEvent);
-
         }
+
+        addTextComponentAtGeometryCenterPoint(spatialDisplay, result,
+                hazardEvent);
+
         return result;
     }
 
@@ -642,7 +686,7 @@ public class HazardServicesDrawableBuilder {
 
         AbstractDrawableComponent drawableComponent = null;
         if (geometryClass.equals(Point.class)) {
-            drawableComponent = buildPoint(spatialEntity, activeLayer, DOT);
+            drawableComponent = buildPoint(spatialEntity, activeLayer);
         } else if (geometryClass.equals(LineString.class)) {
             drawableComponent = buildLine(spatialEntity, activeLayer);
         } else {
@@ -711,181 +755,16 @@ public class HazardServicesDrawableBuilder {
         return result;
     }
 
-    @SuppressWarnings("unchecked")
-    private void addComponentsForStormTrackModification(
-            IHazardEvent hazardEvent, boolean eventOverlapSelectedTime,
-            List<AbstractDrawableComponent> result,
-            SpatialDisplay spatialDisplay, Layer activeLayer) {
-
-        Boolean subduePolygon = false;
-
-        /*
-         * Build the line string based on the tracking points in the hazard. The
-         * track should not be a part of the hazard geometries, because they are
-         * not a part of the hazard area. Only the polygon is a part of the
-         * hazard area. The line and track points should not be displayed for an
-         * issued or proposed hazard.
-         */
-
-        /*
-         * Add the polygon first so that it is drawn beneath the track line and
-         * points.
-         */
-        AbstractDrawableComponent polygonDrawable = addShapeComponent(
-                spatialDisplay, hazardEvent, activeLayer, result, false, 0);
-
-        addTextComponent(spatialDisplay, hazardEvent.getEventID(), result,
-                polygonDrawable);
-
-        if (!HazardStatus.hasEverBeenIssued(hazardEvent.getStatus())
-                && hazardEvent.getStatus() != HazardStatus.PROPOSED) {
-            LineString trackLineString = (LineString) hazardEvent
-                    .getHazardAttribute(HazardConstants.STORM_TRACK_LINE);
-
-            List<Coordinate> coordinates = Lists.newArrayList(trackLineString
-                    .getCoordinates());
-            AbstractDrawableComponent component = buildTrackLine(hazardEvent,
-                    coordinates, activeLayer);
-            ((IHazardServicesShape) component).setEditable(false);
-            result.add(component);
-            spatialDisplay.addElement(component, true);
-            List<Integer> pivotIndices = (List<Integer>) hazardEvent
-                    .getHazardAttribute(HazardConstants.PIVOTS);
-            List<Map<String, Serializable>> shapes = (List<Map<String, Serializable>>) hazardEvent
-                    .getHazardAttribute(HazardConstants.TRACK_POINTS);
-
-            DataTime currentFrame = sessionManager.getFrameContextProvider()
-                    .getFramesInfo().getCurrentFrame();
-
-            /*
-             * Artifically loop one past the natural end of the loop to force
-             * the current frame /* to paint last, therefore putting it on top.
-             */
-            int currentFrameIndex = -1;
-            for (int workIdx = 0; workIdx <= trackLineString.getNumPoints(); workIdx++) {
-                boolean currentFrameNow = workIdx == trackLineString
-                        .getNumPoints();
-                int timeIndex = currentFrameNow ? currentFrameIndex : workIdx;
-                if (timeIndex < 0) {
-                    break;
-                }
-                Coordinate centerPoint = trackLineString
-                        .getCoordinateN(timeIndex);
-                Map<String, Serializable> shape = shapes.get(timeIndex);
-                Long pointID = (Long) shape.get(HazardConstants.POINTID);
-                Date pointDate = new Date(pointID);
-                Color[] colors;
-                if (currentFrameNow) {
-                    colors = new Color[] { Color.WHITE, Color.WHITE };
-                } else if (currentFrame != null
-                        && pointDate.equals(currentFrame.getRefTime())) {
-                    currentFrameIndex = workIdx;
-                    continue;
-                } else {
-                    colors = new Color[] { Color.GRAY, Color.GRAY };
-                }
-                if (pivotIndices.contains(timeIndex)) {
-
-                    component = buildStar(centerPoint, pointID, 0, hazardEvent,
-                            activeLayer, colors);
-                } else {
-                    component = buildDot(centerPoint, pointID, 0, hazardEvent,
-                            activeLayer, colors);
-                }
-                if (!currentFrameNow) {
-                    ((HazardServicesSymbol) component).setMovable(false);
-                }
-                result.add(component);
-                spatialDisplay.addElement(component, true);
-            }
-
-            if (!eventOverlapSelectedTime) {
-                subduePolygon = true;
-            }
-
-        }
-
-        if (subduePolygon) {
-            polygonDrawable.setColors(new Color[] { Color.GRAY, Color.BLACK });
-        }
-    }
-
-    /**
-     * Builds a PGEN drawable representing a star
-     * 
-     * @param shapeNum
-     * @param colors
-     */
-    public AbstractDrawableComponent buildStar(Coordinate centerPoint,
-            Long pointID, int shapeNum, IHazardEvent hazardEvent,
-            Layer activeLayer, Color[] colors) {
-        AbstractDrawableComponent drawableComponent = null;
-
-        try {
-            StarDrawingAttributes drawingAttributes = new StarDrawingAttributes(
-                    sessionManager);
-            drawingAttributes.setTextPosition(TextPositioner.TOP);
-            List<Coordinate> points = drawingAttributes.buildCircleCoordinates(
-                    1.0, centerPoint);
-            drawingAttributes.setPointID(pointID);
-            drawingAttributes.setColors(colors);
-
-            drawableComponent = new HazardServicesSymbol(drawingAttributes,
-                    FILLED_STAR, FILLED_STAR, points, activeLayer,
-                    hazardEvent.getEventID());
-
-        } catch (VizException e) {
-            statusHandler.error(
-                    "HazardServicesDrawableBuilder.buildStar(): build "
-                            + "of shape failed.", e);
-        }
-
-        return drawableComponent;
-    }
-
-    /**
-     * Builds a PGEN drawable representing a DOT
-     * 
-     * @param shapeNum
-     * @param colors
-     */
-    public AbstractDrawableComponent buildDot(Coordinate centerPoint,
-            Long pointID, int shapeNum, IHazardEvent hazardEvent,
-            Layer activeLayer, Color[] colors) {
-        AbstractDrawableComponent drawableComponent = null;
-
-        try {
-            DotDrawingAttributes drawingAttributes = new DotDrawingAttributes(
-                    sessionManager);
-            drawingAttributes.setTextPosition(TextPositioner.TOP);
-            List<Coordinate> points = drawingAttributes.buildCircleCoordinates(
-                    1.0, centerPoint);
-            drawingAttributes.setPointID(pointID);
-            drawingAttributes.setColors(colors);
-
-            drawableComponent = new HazardServicesSymbol(drawingAttributes,
-                    DOT, DOT, points, activeLayer, hazardEvent.getEventID());
-
-        } catch (VizException e) {
-            statusHandler.error(
-                    "HazardServicesDrawableBuilder.buildDot(): build "
-                            + "of shape failed.", e);
-        }
-
-        return drawableComponent;
-    }
-
     private AbstractDrawableComponent addShapeComponent(
             SpatialDisplay spatialDisplay, IHazardEvent hazardEvent,
             Layer activeLayer,
-            List<AbstractDrawableComponent> drawableComponents,
-            boolean drawHazardArea, int shapeNum) {
+            List<AbstractDrawableComponent> drawableComponents, int shapeNum) {
         AbstractDrawableComponent drawableComponent;
 
         Geometry geometry = visibleGeometry(hazardEvent).getGeometryN(shapeNum);
 
         drawableComponent = addComponentForGeometry(hazardEvent, activeLayer,
-                shapeNum, drawHazardArea, geometry);
+                shapeNum, geometry);
 
         spatialDisplay
                 .addElement(
@@ -928,7 +807,7 @@ public class HazardServicesDrawableBuilder {
 
             String mapLabelParameter = hazardTypeEntry.getUgcLabel();
 
-            boolean isWarngenHatching = hazardTypeEntry.isWarngenHatching();
+            boolean isWarngenHatching = (hazardTypeEntry.getHatchingStyle() == HatchingStyle.WARNGEN);
 
             String cwa = hazardEvent.getSiteID();
 
@@ -980,7 +859,9 @@ public class HazardServicesDrawableBuilder {
 
                         AbstractDrawableComponent textComponent = new HazardServicesText(
                                 drawingAttributes, significance, TEXT,
-                                centroid, activeLayer, significance);
+                                centroid, activeLayer,
+                                new HazardVisualFeatureSpatialIdentifier(
+                                        significance, null));
                         hatchedAreaAnnotations.add(textComponent);
                     }
                 }
@@ -991,7 +872,7 @@ public class HazardServicesDrawableBuilder {
 
     private AbstractDrawableComponent addComponentForGeometry(
             IHazardEvent hazardEvent, Layer activeLayer, int shapeNum,
-            boolean drawHazardHatchArea, Geometry geometry) {
+            Geometry geometry) {
         AbstractDrawableComponent result;
         Class<?> geometryClass = geometry.getClass();
 
@@ -1029,11 +910,9 @@ public class HazardServicesDrawableBuilder {
         if (spatialEntity.getLabel() != null
                 && spatialEntity.getLabel().isEmpty() == false) {
 
-            AbstractDrawableComponent text = buildText(spatialEntity, null,
+            AbstractDrawableComponent text = buildText(spatialEntity,
+                    spatialEntity.getIdentifier(),
                     spatialDisplay.getActiveLayer());
-            ((HazardServicesText) text)
-                    .setVisualFeatureIdentifier(spatialEntity.getIdentifier()
-                            .getVisualFeatureIdentifier());
             spatialDisplay.addElement(text, false);
         }
     }
@@ -1062,20 +941,6 @@ public class HazardServicesDrawableBuilder {
 
             AbstractDrawableComponent text = buildText(
                     visibleGeometry(hazardEvent), hazardEvent.getEventID(),
-                    spatialDisplay.getActiveLayer());
-            spatialDisplay.addElement(text, false);
-            drawableComponents.add(text);
-        }
-    }
-
-    public void addTextComponent(SpatialDisplay spatialDisplay, String id,
-            List<AbstractDrawableComponent> drawableComponents,
-            AbstractDrawableComponent associatedShape) {
-        if (drawingAttributes.getString() != null
-                && drawingAttributes.getString().length > 0) {
-            IHazardServicesShape shape = (IHazardServicesShape) (associatedShape instanceof DECollection ? ((DECollection) associatedShape)
-                    .getPrimaryDE() : associatedShape);
-            AbstractDrawableComponent text = buildText(shape.getGeometry(), id,
                     spatialDisplay.getActiveLayer());
             spatialDisplay.addElement(text, false);
             drawableComponents.add(text);

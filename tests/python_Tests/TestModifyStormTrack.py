@@ -20,7 +20,7 @@ class TestModifyStormTrack(UnitTestFramework):
         sessionAttributes = inputTestData["sessionAttributes"]
         eventAttributes = inputTestData["eventAttributes"]
         dialogInputMap = {}
-        spatialInputMap = inputTestData["spatialInputMap"]
+        visualFeatures = inputTestData["visualFeatures"]
         if os.environ.get("LOCALIZATION_DATA_SOURCE")=="EDEX" :
             from LocalizationInterface import LocalizationInterface
             myLI = LocalizationInterface("")
@@ -31,7 +31,7 @@ class TestModifyStormTrack(UnitTestFramework):
         from ModifyStormTrackTool import Recommender
         recommenderObject = Recommender()
         result = recommenderObject.updateEventAttributes( sessionAttributes, \
-                 eventAttributes, dialogInputMap, spatialInputMap)
+                 eventAttributes, dialogInputMap, visualFeatures)
 
         self.reportTestCaseOutcome(result, expectedResult)
 

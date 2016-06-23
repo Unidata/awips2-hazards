@@ -18,6 +18,7 @@
     Jun 25, 2015    8313    Benjamin.Phillippe Fixed issued event loading when time is changed
     Jul 23, 2015    9643   Robert.Blum  All rounding is now done in one common place so that it can 
                                         be easily overridden by sites.
+    Jun 23, 2016   19537    Chris.Golden Changed to use UTC when converting epoch time to datetime.
 '''
 from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
 from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
@@ -57,7 +58,7 @@ class Product(Legacy_Base_Generator.Product):
         '''
         
         millis = SimulatedTime.getSystemTime().getMillis()
-        currentTime = datetime.datetime.fromtimestamp(millis / 1000)
+        currentTime = datetime.datetime.utcfromtimestamp(millis / 1000)
         if self._riverForecastUtils is None:
             self._riverForecastUtils = RiverForecastUtils()
         if self._riverForecastManager is None:

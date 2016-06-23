@@ -15,7 +15,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.hydro.HazardSettings;
 import com.raytheon.uf.common.hazards.hydro.IFloodDAO;
-import com.raytheon.uf.common.hazards.hydro.RiverProDataManager;
 
 /**
  * Description: Tests the recommended hazard for a hydrograph which rises above
@@ -229,9 +228,7 @@ public class RiverFloodRecommenderNEBN1Test {
                 riverProDataManager);
         Map<String, Object> sessionAttributeMap = new HashMap<String, Object>();
         Map<String, Object> dialogInputMap = new HashMap<String, Object>();
-        Map<String, Object> spatialInputMap = new HashMap<String, Object>();
-        recommender.getRecommendation(sessionAttributeMap, dialogInputMap,
-                spatialInputMap);
+        recommender.getRecommendation(sessionAttributeMap, dialogInputMap);
 
         EventSet<IHazardEvent> results = recommender.getPotentialRiverHazards(
                 false, dialogInputMap);

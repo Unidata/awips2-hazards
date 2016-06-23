@@ -48,6 +48,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                           existing kludges.
  * Mar 24, 2016 15676      Chris.Golden      Changed method that draws spatial entities
  *                                           to take another parameter.
+ * Jun 23, 2016 19537      Chris.Golden      Removed storm-track-specific code.
  * </pre>
  * 
  * @author Chris.Golden
@@ -82,10 +83,8 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
      * @param events
      */
     public void drawEvents(Collection<ObservedHazardEvent> events,
-            Map<String, Boolean> eventOverlapSelectedTime,
-            Map<String, Boolean> forModifyingStormTrack,
             Map<String, Boolean> eventEditability,
-            boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed);
+            Set<String> hatchedEventIdentifiers);
 
     /**
      * Draw spatial entities on the view.
@@ -98,6 +97,10 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
     public void drawSpatialEntities(
             List<SpatialEntity<VisualFeatureSpatialIdentifier>> spatialEntities,
             Set<String> selectedEventIdentifiers);
+
+    /**
+     * Set the spatial entities
+     */
 
     /**
      * Force time matching to be recalculated.

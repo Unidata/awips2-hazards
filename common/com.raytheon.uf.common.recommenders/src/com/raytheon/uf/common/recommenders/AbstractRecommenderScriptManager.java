@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.recommenders;
 
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+
 import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -33,6 +35,7 @@ import jep.JepException;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.utilities.PythonBuildPaths;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
 import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
@@ -89,6 +92,7 @@ import com.raytheon.uf.common.util.FileUtil;
  *                                      info.
  * Feb 16, 2015 5071       Robert.Blum  Changes to reload Recommenders without restarting Cave.
  * Feb 26, 2015 6306       mduff        Pass site id in to build paths for provided site.
+ * Jun 23, 2016 19537      Chris.Golden Changed to use visual features for spatial info.
  * </pre>
  * 
  * @author mnash
@@ -312,13 +316,18 @@ public abstract class AbstractRecommenderScriptManager extends
      * should not be called by clients.
      * 
      * @param recommenderName
+     *            Name of the recommender to be run.
      * @param dialogValues
-     * @param spatialValues
+     *            Map pairing dialog parameter names with their values as
+     *            specified by the user; may be empty.
+     * @param visualFeatures
+     *            Visual features, the geometries of which provide any spatial
+     *            input needed from the user; may be empty.
      * @return
      */
     public EventSet<IEvent> executeRecommender(String recommenderName,
             EventSet<IEvent> eventSet, Map<String, Serializable> dialogValues,
-            Map<String, Serializable> spatialValues) {
+            VisualFeaturesList visualFeatures) {
         /*
          * This function call may only be needed in this location for the
          * automated tests and not in a typical usage scenario?
@@ -330,7 +339,7 @@ public abstract class AbstractRecommenderScriptManager extends
         final Map<String, Object> args = getStarterMap(recommenderName);
         args.put("eventSet", eventSet);
         args.put("dialogInputMap", dialogValues);
-        args.put("spatialInputMap", spatialValues);
+        args.put("visualFeatures", visualFeatures);
         Object retVal = null;
         try {
             retVal = execute("execute", INTERFACE, args);
@@ -372,18 +381,21 @@ public abstract class AbstractRecommenderScriptManager extends
     }
 
     /**
-     * Method to take in and retrieve information from either spatial info or
-     * dialog info.
+     * Method to retrieve information either a dialog description for a dialog
+     * to be shown to the user to gather parameter values, or to retrieve
+     * metadata about the recommender.
      * 
      * @param recName
+     *            Recommender name.
      * @param methodName
+     *            Name of the Python method to be executed.
      * @param eventSet
-     * @return
+     *            Event set providing context.
+     * @return Map pairing parameter names with their values.
      */
     @SuppressWarnings("unchecked")
     public <T> Map<String, T> getInfo(String recName, String methodName,
             EventSet<IEvent> eventSet) {
-        // determine if the recommender has been loaded & initialized yet.
         if (this.verifyRecommenderIsLoaded(recName) == false) {
             return new HashMap<String, T>();
         }
@@ -402,6 +414,37 @@ public abstract class AbstractRecommenderScriptManager extends
             retVal = new HashMap<String, T>();
         }
         return (Map<String, T>) retVal;
+    }
+
+    /**
+     * Method to retrieve the list of visual features, if any, that the
+     * recommender is to use to gather spatial input from the user.
+     * 
+     * @param recName
+     *            Recommender name.
+     * @param eventSet
+     *            Event set providing context.
+     * @return List of visual features.
+     */
+    public VisualFeaturesList getVisualFeatures(String recName,
+            EventSet<IEvent> eventSet) {
+        if (this.verifyRecommenderIsLoaded(recName) == false) {
+            return new VisualFeaturesList();
+        }
+        try {
+            final Map<String, Object> args = getStarterMap(recName);
+            if (eventSet != null) {
+                args.put("eventSet", eventSet);
+            }
+            return (VisualFeaturesList) execute(
+                    HazardConstants.RECOMMENDER_GET_SPATIAL_INFO_METHOD,
+                    INTERFACE, args);
+        } catch (JepException e) {
+            statusHandler.handle(Priority.ERROR, "Unable to get info from "
+                    + HazardConstants.RECOMMENDER_GET_SPATIAL_INFO_METHOD
+                    + " for recommender " + recName, e);
+            return new VisualFeaturesList();
+        }
     }
 
     private LocalizationFile lookupRecommenderLocalization(final String recName) {

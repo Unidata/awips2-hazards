@@ -68,12 +68,12 @@ class Recommender(object):
         return
 
     @abc.abstractmethod
-    def execute(self, eventSet, dialogInputMap, spatialInputMap):
+    def execute(self, eventSet, dialogInputMap, visualFeatures):
         '''
         @param dialogInputMap: A map containing user selections from the dialog created
         by the defineDialog() routine
-        @param spatialInputMap: A map containing spatial input as created by the 
-        definedSpatialInfo() routine
+        @param visualFeatures: Visual features as defined by the defineSpatialInfo()
+        method and modified by the user to provide spatial input.
         @return: List of objects that will be later converted to Java IEvent objects
         '''
         return

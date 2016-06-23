@@ -10,7 +10,6 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.SelectionRectangleDrawingAttributes;
-import gov.noaa.nws.ncep.ui.pgen.attrdialog.TrackExtrapPointInfoDlg;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableType;
@@ -58,6 +57,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                            config manager.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
+ * Jun 23, 2016 19537      Chris.Golden        Removed obsolete member data.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -133,11 +133,6 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
          * needed.
          */
         private final GeometryFactory geometryFactory = new GeometryFactory();
-
-        /**
-         * Attribute dialog for displaying track points info
-         */
-        TrackExtrapPointInfoDlg trackExtrapPointInfoDlg = null;
 
         /**
          * instance variable to store the pgenType of the selected

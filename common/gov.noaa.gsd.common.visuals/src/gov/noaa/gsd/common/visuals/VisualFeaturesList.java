@@ -22,6 +22,8 @@ import java.util.ArrayList;
  * ------------ ---------- ------------ --------------------------
  * Feb 16, 2016   15676    Chris.Golden Initial creation.
  * Mar 26, 2016   15676    Chris.Golden Added convenience lookup methods.
+ * Jun 10, 2016   19537    Chris.Golden Changed convenience method to just
+ *                                      do a replace instead of a lookup.
  * </pre>
  * 
  * @author Chris.Golden
@@ -56,19 +58,21 @@ public class VisualFeaturesList extends ArrayList<VisualFeature> {
     }
 
     /**
-     * Get the index of the the visual feature with the specified identifier.
+     * Replace the visual feature in the list with an identifier matching the
+     * specified visual feature's identifier with the latter.
      * 
-     * @param identifier
-     *            Identifier of the desired visual feature.
-     * @return Index of the visual feature, or <code>-1</code> if none is found
-     *         with the specified identifier.
+     * @param visualFeature
+     *            Visual feature to be used as a replacement.
+     * @return True if a visual feature was found to be replaced, false
+     *         otherwise.
      */
-    public int indexOfByIdentifier(String identifier) {
+    public boolean replace(VisualFeature visualFeature) {
         for (int j = 0; j < size(); j++) {
-            if (get(j).getIdentifier().equals(identifier)) {
-                return j;
+            if (get(j).getIdentifier().equals(visualFeature.getIdentifier())) {
+                set(j, visualFeature);
+                return true;
             }
         }
-        return -1;
+        return false;
     }
 }

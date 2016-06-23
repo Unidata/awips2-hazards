@@ -7,6 +7,11 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -22,73 +27,246 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Feb 03, 2015    3865    Chris.Cody        Check for valid Active Editor class
  * Feb 12, 2015 4959       Dan Schaffer      Modify MB3 add/remove UGCs to match Warngen
  * Mar 16, 2016 15676      Chris.Golden      Moved to more appropriate location.
+ * Jun 23, 2016 19537      Chris.Golden      Revamped completely to allow flexible text
+ *                                           positioning (arbitrary angle and offset).
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
-public enum TextPositioner {
-    CENTER(0, 0), TOP(0, -10), BOTTOM(0, 10), LEFT(-10, 0), RIGHT(10, 0);
+public class TextPositioner {
 
+    // Public Static Constants
+
+    /**
+     * Centered text.
+     */
+    public static final TextPositioner CENTERED = new TextPositioner();
+
+    /**
+     * Text above the centroid of the entity being labeled.
+     */
+    public static final TextPositioner ABOVE = new TextPositioner(90.0, 10);
+
+    // Private Static Variables
+
+    /**
+     * Maximum number of instances of this class allowed to exist simultaneously
+     * in the cache.
+     */
+    private static final int MAXIMUM_CACHE_SIZE = 16;
+
+    // Private Static Variables
+
+    /**
+     * <p>
+     * Map of recommender execution context identifiers to lists of recommenders
+     * that are to be run sequentially in the order they are specified in the
+     * list, with each one waiting for the previous one to complete before
+     * running. Note that only execution contexts that are to be used for two or
+     * more recommenders specified via
+     * {@link #runRecommenders(List, RecommenderExecutionContext)} have entries
+     * in this map; no entries are created for execution contexts associated
+     * with the running of just one recommender.
+     * </p>
+     * <p>
+     * It is impossible to guarantee that an entry in this map will be deleted
+     * when its recommenders have been run, since any interruption in running
+     * any of the recommenders (e.g. canceling an input dialog for a recommender
+     * in the list) will cause the corresponding entry in the map to never get
+     * deleted, since no notification of the failure to complete the sequential
+     * running will be provided to this manager. Thus, this is implemented as a
+     * map with a set maximum size, which deletes the oldest entry whenever it
+     * reaches that size and needs to store a new entry. The number of entries
+     * that may be stored simultaneously is
+     * {@link #MAXIMUM_SEQUENTIAL_RECOMMENDERS_MAP_SIZE}.
+     * </p>
+     */
+    private static final Map<CacheKey, TextPositioner> textPositionersForAnglesAndOffsets = new LinkedHashMap<CacheKey, TextPositioner>(
+            MAXIMUM_CACHE_SIZE + 1, 1.0f, true) {
+
+        // Private Static Constants
+
+        /**
+         * Serial version UID.
+         */
+        private static final long serialVersionUID = 1L;
+
+        // Protected Methods
+
+        @Override
+        protected final boolean removeEldestEntry(
+                Map.Entry<CacheKey, TextPositioner> eldest) {
+            return (size() > MAXIMUM_CACHE_SIZE);
+        }
+    };
+
+    // Private Static Classes
+
+    /**
+     * Key for the cache, encapsulating offset and direction.
+     */
+    private static class CacheKey {
+
+        // Private Variables
+
+        /**
+         * Angle
+         */
+        private final double angle;
+
+        /**
+         * Offset.
+         */
+        private final double offset;
+
+        /**
+         * Hash code.
+         */
+        private final int hashCode;
+
+        // Public Methods
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param angle
+         *            Angle.
+         * @apram offset Offset.
+         */
+        public CacheKey(double angle, double offset) {
+            this.angle = angle;
+            this.offset = offset;
+            this.hashCode = Double.valueOf(angle).hashCode()
+                    + Double.valueOf(offset).hashCode();
+        }
+
+        // Public Methods
+
+        /**
+         * Determine whether or not this instance equals the specified one.
+         * 
+         * @param other
+         *            Other instance against which to check equality.
+         * @return True if the other instance is equivalent to this one, false
+         *         otherwise.
+         */
+        @Override
+        public boolean equals(Object other) {
+            if (other instanceof CacheKey == false) {
+                return false;
+            }
+            CacheKey otherKey = (CacheKey) other;
+            return ((angle == otherKey.angle) && (offset == otherKey.offset));
+        }
+
+        /**
+         * Get the hash code.
+         * 
+         * @return Hash code.
+         */
+        @Override
+        public int hashCode() {
+            return hashCode;
+        }
+    }
+
+    // Private Variables
+
+    /**
+     * X offset of the label.
+     */
     private final int xOffset;
 
+    /**
+     * Y offset of the label.
+     */
     private final int yOffset;
 
-    TextPositioner(int xOffset, int yOffset) {
-        this.xOffset = xOffset;
-        this.yOffset = yOffset;
-    }
+    // Public Static Methods
 
     /**
-     * Returns the x-position of the text label point
+     * Get an instance with the specified parameters.
      * 
-     * @param x
-     * @return
+     * @param angle
+     *            Angle in degrees, with 0 being to the right, 90 being above,
+     *            180 being to the left, and 270 being below.
+     * @param offset
+     *            Offset in pixels.
+     * @return Text positioner.
      */
-    public double computeXpos(double x) {
+    public static TextPositioner getInstance(double angle, double offset) {
+        CacheKey key = new CacheKey(angle, offset);
+        TextPositioner textPositioner = textPositionersForAnglesAndOffsets
+                .get(key);
+        if (textPositioner == null) {
+            textPositioner = new TextPositioner(angle, offset);
+            textPositionersForAnglesAndOffsets.put(key, textPositioner);
+        }
+        return textPositioner;
+    }
 
-        return x + xOffset;
+    // Private Constructors
+
+    /**
+     * Construct an instance that centers the text.
+     */
+    private TextPositioner() {
+        this.xOffset = this.yOffset = 0;
     }
 
     /**
-     * Returns the y-position of the text label point
+     * Construct a standard instance.
      * 
-     * @param y
-     * @return
+     * @param angle
+     *            Angle in degrees, with 0 being to the right, 90 being above,
+     *            180 being to the left, and 270 being below.
+     * @param offset
+     *            Offset in pixels.
      */
-    public double computeYpos(double y) {
-        return y + yOffset;
+    private TextPositioner(double angle, double offset) {
+        angle = Math.toRadians(angle);
+        xOffset = (int) ((offset * Math.cos(angle)) + 0.5);
+        yOffset = (int) -((offset * Math.sin(angle)) + 0.5);
     }
 
+    // Public Methods
+
     /**
-     * Builds a label's position relative to a point on the display.
+     * Get a label's position relative to a point on the display.
      * 
      * @param centerPoint
-     * @return The coordinate to place the text at. PGEN text objects are
-     *         centered on this point.
+     *            Center point of the geometry being labeled.
+     * @return The coordinate at which to place the text.
      */
     public Coordinate getLabelPosition(final Coordinate centerPoint) {
-
         Coordinate centerCoord = null;
         AbstractEditor editor = EditorUtil
                 .getActiveEditorAs(AbstractEditor.class);
-
-        if (editor != null && centerPoint != null) {
+        if ((editor != null) && (centerPoint != null)) {
             double[] centerXY = editor.translateInverseClick(centerPoint);
-            centerXY[0] = computeXpos(centerXY[0]);
-            centerXY[1] = computeYpos(centerXY[1]);
+            centerXY[0] += xOffset;
+            centerXY[1] += yOffset;
             centerCoord = editor.translateClick(centerXY[0], centerXY[1]);
         }
 
         /*
          * It is possible that this text position will not be in the view area.
          * This seems to be a problem when switching from the D2D to GFE
-         * perspectives. Also when handling multi-polygons.
+         * perspectives, and when handling multi-polygons.
          */
         if (centerCoord != null) {
             return centerCoord;
-        } else {
-            return centerPoint;
         }
+        return centerPoint;
+    }
 
+    /**
+     * Get a string representation.
+     * 
+     * @return String representation.
+     */
+    @Override
+    public String toString() {
+        return "[" + xOffset + ", " + yOffset + "]";
     }
 }

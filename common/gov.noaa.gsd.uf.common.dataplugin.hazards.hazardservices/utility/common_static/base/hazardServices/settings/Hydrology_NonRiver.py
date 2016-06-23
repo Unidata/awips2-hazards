@@ -210,11 +210,6 @@ Hydrology_NonRiver = {
             "toolType": "RECOMMENDER",
             "visible":True,
         },
-        {
-            "toolName": "ModifyStormTrackTool", 
-            "toolType": "RECOMMENDER",
-            "visible":False,
-        },
 #         {
 #             "toolName": "RVS_ProductGenerator", 
 #             "displayName": "Generate RVS",

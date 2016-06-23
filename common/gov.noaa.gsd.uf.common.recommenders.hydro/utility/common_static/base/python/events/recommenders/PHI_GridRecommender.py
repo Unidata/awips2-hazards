@@ -74,7 +74,7 @@ class Recommender(RecommenderTemplate.Recommender):
         '''   
         return None
         
-    def execute(self, eventSet, dialogInputMap, spatialInputMap):
+    def execute(self, eventSet, dialogInputMap, visualFeatures):
         '''
         Runs the Swath Recommender tool
         
@@ -82,10 +82,12 @@ class Recommender(RecommenderTemplate.Recommender):
                          attributes
         @param dialogInputMap: A map of information retrieved from
                                a user's interaction with a dialog.
-        @param spatialInputMap:   A map of information retrieved
-                                  from the user's interaction with the
-                                  spatial display.
         
+        @param visualFeatures: Visual features as defined by the
+                               defineSpatialInfo() method and
+                               modified by the user to provide
+                               spatial input; ignored.
+
         @return: A list of potential probabilistic hazard events. 
         '''
         
@@ -116,7 +118,7 @@ class Recommender(RecommenderTemplate.Recommender):
 #               filteredDBEvents.append(evt)  
 # 
 #         eventSet.addAll(filteredDBEvents)
-#         eventSet.addAttribute('issueTime', datetime.datetime.fromtimestamp(self._issueTime/1000))
+#         eventSet.addAttribute('issueTime', datetime.datetime.utcfromtimestamp(self._issueTime/1000))
 # 
 # 
 #         pu = ProbUtils()

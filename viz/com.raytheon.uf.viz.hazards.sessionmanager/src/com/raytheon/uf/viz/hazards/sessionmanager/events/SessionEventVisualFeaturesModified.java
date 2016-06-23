@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Mar 01, 2016   15676    Chris.Golden Initial creation.
+ * Jun 23, 2016   19537    Chris.Golden Changed to use single list of visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -37,29 +38,19 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 public class SessionEventVisualFeaturesModified extends SessionEventModified
         implements ISessionNotification {
 
-    private final Set<String> baseVisualFeatureIdentifiers;
-
-    private final Set<String> selectedVisualFeatureIdentifiers;
+    private final Set<String> visualFeatureIdentifiers;
 
     public SessionEventVisualFeaturesModified(
             ISessionEventManager<ObservedHazardEvent> eventManager,
-            ObservedHazardEvent event,
-            Set<String> baseVisualFeatureIdentifiers,
-            Set<String> selectedVisualFeatureIdentifiers, IOriginator originator) {
+            ObservedHazardEvent event, Set<String> visualFeatureIdentifiers,
+            IOriginator originator) {
         super(eventManager, event, originator);
-        this.baseVisualFeatureIdentifiers = (baseVisualFeatureIdentifiers == null ? Collections
+        this.visualFeatureIdentifiers = (visualFeatureIdentifiers == null ? Collections
                 .<String> emptySet() : Collections
-                .unmodifiableSet(baseVisualFeatureIdentifiers));
-        this.selectedVisualFeatureIdentifiers = (selectedVisualFeatureIdentifiers == null ? Collections
-                .<String> emptySet() : Collections
-                .unmodifiableSet(selectedVisualFeatureIdentifiers));
+                .unmodifiableSet(visualFeatureIdentifiers));
     }
 
-    public Set<String> getBaseVisualFeatureIdentifiers() {
-        return baseVisualFeatureIdentifiers;
-    }
-
-    public Set<String> getSelectedVisualFeatureIdentifiers() {
-        return selectedVisualFeatureIdentifiers;
+    public Set<String> getVisualFeatureIdentifiers() {
+        return visualFeatureIdentifiers;
     }
 }

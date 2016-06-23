@@ -22,7 +22,6 @@ import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardServicesCloseAction;
-import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
@@ -82,7 +81,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerationConfi
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingRequired;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
@@ -224,6 +222,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            run at regular intervals.
  * Jun 06, 2016 19432      Chris.Golden       Added ability to initiate drawing of lines and
  *                                            points.
+ * Jun 23, 2016 19537      Chris.Golden       Removed storm-track-specific code.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -374,24 +373,6 @@ public final class HazardServicesMessageHandler {
         if (continueIfThereAreHazardConflicts()) {
             sessionManager.generate(true);
         }
-    }
-
-    /**
-     * This method is called when a storm track point is moved on the Spatial
-     * Display
-     * 
-     * Appropriate adjustments are made to the event and then the Spatial
-     * Display is re-drawn
-     * 
-     * @param action
-     */
-
-    @Handler
-    public void handleStormTrackModification(ModifyStormTrackAction action) {
-        sessionRecommenderManager.runRecommender(
-                HazardConstants.MODIFY_STORM_TRACK_TOOL,
-                RecommenderExecutionContext.getEmptyContext(),
-                action.getParameters(), null);
     }
 
     /**
@@ -1037,13 +1018,6 @@ public final class HazardServicesMessageHandler {
 
         case FRAME_CHANGED:
             appBuilder.sendFrameInformationToSessionManager();
-            break;
-
-        case RUN_TOOL:
-            sessionRecommenderManager.runRecommender(
-                    spatialDisplayAction.getToolName(),
-                    RecommenderExecutionContext.getEmptyContext(),
-                    spatialDisplayAction.getToolParameters(), null);
             break;
 
         case UPDATE_EVENT_METADATA:

@@ -223,6 +223,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance between H.S. sessions in
  *                                      the same CAVE session, since stopping and starting the Jep
  *                                      instances when the latter use numpy is dangerous.
+ * Jun 23, 2016 19537      Chris.Golden Changed to use new parameter for merging hazard events.
  * </pre>
  * 
  * @author bsteffen
@@ -822,9 +823,9 @@ public class SessionProductManager implements ISessionProductManager {
                                 updatedEvent,
                                 (SessionEventManager) eventManager);
 
-                        SessionEventUtilities
-                                .mergeHazardEvents(eventManager, newEvent,
-                                        sessionEvent, false, Originator.OTHER);
+                        SessionEventUtilities.mergeHazardEvents(eventManager,
+                                newEvent, sessionEvent, false, false,
+                                Originator.OTHER);
 
                         /*
                          * This ensures that the "replaces" string is removed

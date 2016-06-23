@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
+import gov.noaa.gsd.viz.hazards.spatialdisplay.VisualFeatureSpatialIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 import gov.noaa.nws.ncep.ui.pgen.elements.Text;
 
@@ -33,6 +34,7 @@ import com.vividsolutions.jts.geom.Point;
  * Mar 24, 2016 15676      Chris.Golden        Added ability to change font size and
  *                                             specify color directly.
  * Mar 26, 2016 15676      Chris.Golden        Added visual feature identifier.
+ * Jun 23, 2016 19537      Chris.Golden        Changed to use better identifiers.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -43,20 +45,18 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
 
     private final HazardServicesDrawingAttributes drawingAttributes;
 
-    private String id;
+    private final VisualFeatureSpatialIdentifier identifier;
 
     /*
      * The center point of the drawable that the text is annotating.
      */
     private final Coordinate textCoordinate;
 
-    private String visualFeatureIdentifier;
-
     public HazardServicesText(
             HazardServicesDrawingAttributes drawingAttributes, String text,
             float pointSize, Color color, Coordinate coordinate,
-            Layer activeLayer, String id) {
-        this.id = id;
+            Layer activeLayer, VisualFeatureSpatialIdentifier identifier) {
+        this.identifier = identifier;
         this.drawingAttributes = drawingAttributes;
         this.textCoordinate = coordinate;
         setPgenCategory(text);
@@ -90,14 +90,14 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
      *            The list points defining this drawable.
      * @param activeLayer
      *            The PGEN layer this will be drawn to.
-     * @param id
-     *            The id associated with this drawable.
+     * @param identifier
+     *            The identifier associated with this drawable.
      */
     public HazardServicesText(
             HazardServicesDrawingAttributes drawingAttributes,
             String pgenCategory, String pgenType, Coordinate textCoord,
-            Layer activeLayer, String id) {
-        this.id = id;
+            Layer activeLayer, VisualFeatureSpatialIdentifier identifier) {
+        this.identifier = identifier;
         this.drawingAttributes = drawingAttributes;
         this.textCoordinate = textCoord;
         update(drawingAttributes);
@@ -130,15 +130,15 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
      *            The list points defining this drawable.
      * @param activeLayer
      *            The PGEN layer this will be drawn to.
-     * @param id
-     *            The id associated with this drawable.
+     * @param identifier
+     *            The identifier associated with this drawable.
      */
     public HazardServicesText(
             HazardServicesDrawingAttributes drawingAttributes,
             String pgenCategory, String pgenType, ArrayList<Coordinate> points,
-            Layer activeLayer, String id) {
+            Layer activeLayer, VisualFeatureSpatialIdentifier identifier) {
         this(drawingAttributes, pgenCategory, pgenType, points.get(0),
-                activeLayer, id);
+                activeLayer, identifier);
     }
 
     /**
@@ -157,25 +157,20 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
      *            The list points defining this drawable.
      * @param activeLayer
      *            The PGEN layer this will be drawn to.
-     * @param id
-     *            The id associated with this drawable.
+     * @param identifier
+     *            The identifier associated with this drawable.
      */
     public HazardServicesText(
             HazardServicesDrawingAttributes drawingAttributes,
             String pgenCategory, String pgenType, Point locationPoint,
-            Layer activeLayer, String id) {
+            Layer activeLayer, VisualFeatureSpatialIdentifier identifier) {
         this(drawingAttributes, pgenCategory, pgenType, locationPoint
-                .getCoordinate(), activeLayer, id);
+                .getCoordinate(), activeLayer, identifier);
     }
 
     @Override
     public HazardServicesDrawingAttributes getDrawingAttributes() {
         return drawingAttributes;
-    }
-
-    @Override
-    public String getID() {
-        return id;
     }
 
     @Override
@@ -195,22 +190,12 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
 
     @Override
     public boolean isVisualFeature() {
-        return (visualFeatureIdentifier != null);
+        return (identifier.getVisualFeatureIdentifier() != null);
     }
 
     @Override
-    public String getVisualFeatureIdentifier() {
-        return visualFeatureIdentifier;
-    }
-
-    @Override
-    public void setVisualFeatureIdentifier(String visualFeatureIdentifier) {
-        this.visualFeatureIdentifier = visualFeatureIdentifier;
-    }
-
-    @Override
-    public void setID(String id) {
-        this.id = id;
+    public VisualFeatureSpatialIdentifier getIdentifier() {
+        return identifier;
     }
 
     @Override

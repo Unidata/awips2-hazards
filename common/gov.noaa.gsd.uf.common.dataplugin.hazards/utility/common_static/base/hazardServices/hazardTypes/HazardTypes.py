@@ -1,4 +1,4 @@
-# Notes:  booleans should not be prefixed with "is", i.e. iswarngenHatching.  
+# Note:   Booleans should not be prefixed with "is", i.e. isAllowAnyStartTime.  
 #         Otherwise the deserialization will fail.
 #
 #         expirationTime is a tuple (beforeMinutes, afterMinutes).  
@@ -62,10 +62,12 @@
 #                           If entry is absent, then allowUntilFurtherNotice is False.
 #                           Currently by policy only hazards in the FLW_FLS products use
 #                           "Until Further Notice"
-#         warngenHatching-- True for warngen hazards.  This is characterized by the following:
-#                           . When you add/remove UGCs the hatching changes but the polygon 
-#                             remains unchanged until you preview.
-#                           . You will see W and Y symbols marking the area under threat.
+#         hatchingStyle     Either "NONE", "INTERSECTED_AREAS", or "WARNGEN". The latter
+#                           is characterized by the following:
+#                           *  When you add/remove UGCs the hatching changes but the polygon 
+#                              remains unchanged until you preview.
+#                           *  You will see W and Y symbols marking the area under threat.
+#                           Defaults to INTERSECTED_AREAS.
 #         hazardTypeFirstRecommender  Set the name of the recommender you want launched if the 
 #                                     forecaster opts for the Hazard Type First workflow 
 #         modifyRecommenders Optional parameter. If specified, it provides a mapping of
@@ -93,7 +95,8 @@
 #                          pulled left (made sooner than what it was). Default is True.
 #         requirePointId:  Indicates whether or not must have a "pointID" attribute value.
 #                          Default is False.
-#
+#         pointBased:      Indicates whether or not the hazard type is point-based. Default is
+#                          False.
 #         allowTimeChange: Ignored by the GUI; used in VTEC processing
 #         allowAreaChange: Ignored by the GUI; used in VTEC processing
 #         combinableSegments:  
@@ -438,7 +441,7 @@ HazardTypes = {
               'allowTimeChange': True,
               'expirationTime': (-30, 30),
               'hazardConflictList': ['FF.A'],
-              'warngenHatching': False,
+              'hatchingStyle': "INTERSECTED_AREAS",
               'ugcType': 'zone',
               'ugcLabel': 'name',
               'hazardClipArea' : 'cwa',
@@ -457,7 +460,7 @@ HazardTypes = {
               'allowTimeChange': True,
               'expirationTime': (-10, 10),
               'hazardConflictList': [],
-              'warngenHatching': True,
+              'hatchingStyle': "WARNGEN",
               'ugcType': 'county',
               'ugcLabel': '',
               'hazardClipArea' : 'cwa',
@@ -480,7 +483,7 @@ HazardTypes = {
               'allowAreaChange': False,
               'allowTimeChange': True,
               'expirationTime': (-10, 10),
-              'warngenHatching': True,
+              'hatchingStyle': "WARNGEN",
               'ugcType': 'county',
               'ugcLabel': '',
               'hazardClipArea' : 'cwa',
@@ -510,7 +513,7 @@ HazardTypes = {
               'allowTimeChange': True,
               'expirationTime': (-30, 30),
               'hazardConflictList': ['FA.A'],
-              'warngenHatching': False,
+              'hatchingStyle': "INTERSECTED_AREAS",
               'ugcType': 'zone',
               'ugcLabel': 'name',
               'hazardClipArea' : 'cwa',
@@ -531,7 +534,7 @@ HazardTypes = {
               'allowTimeChange': True,
               'expirationTime': (-10, 10),
               'hazardConflictList': [],
-              'warngenHatching': True,
+              'hatchingStyle': "WARNGEN",
               'ugcType': 'county',
               'ugcLabel': '',
               'hazardClipArea' : 'cwa',
@@ -556,7 +559,7 @@ HazardTypes = {
               'allowTimeChange': True,
               'expirationTime': (-10, 10),
               'hazardConflictList': [],
-              'warngenHatching': True,
+              'hatchingStyle': "WARNGEN",
               'ugcType': 'county',
               'ugcLabel': '',
               'hazardClipArea' : 'cwa',
@@ -572,6 +575,9 @@ HazardTypes = {
               'startTimeIsCurrentTime': True,
               'allowTimeExpand': True,
               'allowTimeShrink': False,
+              'modifyRecommenders': {
+                                     'StormTrackTool': [ "geometry", "status", "timeRange", "visualFeature" ]
+                                     },
               },
     'FF.W.NonConvective' : {
               'headline': 'FLASH FLOOD WARNING',
@@ -581,7 +587,7 @@ HazardTypes = {
               'allowTimeChange': True,
               'expirationTime': (-10, 10),
               'hazardConflictList': [],
-              'warngenHatching': True,
+              'hatchingStyle': "WARNGEN",
               'ugcType': 'county',
               'ugcLabel': '',
               'hazardClipArea' : 'cwa',
@@ -621,7 +627,7 @@ HazardTypes = {
               'allowTimeChange': True,
               'expirationTime': (-30, 30),
               'hazardConflictList': [],
-              'warngenHatching': False,
+              'hatchingStyle': "INTERSECTED_AREAS",
               'pointBased': True,
               'ugcType': 'zone',
               'ugcLabel': 'name',
@@ -643,7 +649,7 @@ HazardTypes = {
               'allowTimeChange': True,
               'expirationTime': (-30, 30),
               'hazardConflictList': [],
-              'warngenHatching': False,
+              'hatchingStyle': "INTERSECTED_AREAS",
               'pointBased': True,
               'ugcType': 'county',
               'ugcLabel': '',
@@ -665,7 +671,7 @@ HazardTypes = {
               'allowTimeChange': True,
               'expirationTime': (-30, 30),
               'hazardConflictList': [],
-              'warngenHatching': False,
+              'hatchingStyle': "INTERSECTED_AREAS",
               'pointBased': True,
               'ugcType': 'county',
               'ugcLabel': '',
@@ -1967,8 +1973,8 @@ HazardTypes = {
               'defaultDuration': 45 * MINUTES,
               #'durationIncrement': 15,
               'durationIncrement': 1,
+              'hatchingStyle': "NONE",
               'hazardConflictList': [],
-              'warngenHatching': False,
               'pointBased': False,
               'ugcType': 'county',
               'ugcLabel': '',
@@ -1996,9 +2002,8 @@ HazardTypes = {
               'defaultDuration': 45 * MINUTES,
               #'durationIncrement': 15,
               'durationIncrement': 1,
-
+              'hatchingStyle': "NONE",
               'hazardConflictList': [],
-              'warngenHatching': False,
               'pointBased': False,
               'ugcType': 'county',
               'ugcLabel': '',

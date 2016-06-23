@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
+import gov.noaa.gsd.viz.hazards.spatialdisplay.VisualFeatureSpatialIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.display.SymbolImageUtil;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
@@ -40,6 +41,7 @@ import com.vividsolutions.jts.geom.Point;
  * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * Mar 16, 2016 15676      Chris.Golden        Added code to support visual features.
  * Mar 26, 2016 15676      Chris.Golden        Added visual feature identifier.
+ * Jun 23, 2016 19537      Chris.Golden        Changed to use better identifiers.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -47,28 +49,10 @@ import com.vividsolutions.jts.geom.Point;
 public class HazardServicesSymbol extends Symbol implements
         IHazardServicesShape {
 
-    /**
-     * Drawable attributes.
-     */
     private final HazardServicesDrawingAttributes drawingAttributes;
 
-    /**
-     * Identifier of the hazard event that this symbol is part of. All drawable
-     * components of the hazard share this ID.
-     */
-    private String id;
+    private final VisualFeatureSpatialIdentifier identifier;
 
-    /**
-     * unique identifier for this symbol. Helps to distinguish it from other
-     * shapes in the hazard.
-     */
-    private final long pointID;
-
-    private String visualFeatureIdentifier;
-
-    /**
-     * Flag indicating whether or not this symbol is movable.
-     */
     private boolean movable = true;
 
     private Geometry geometry = null;
@@ -86,14 +70,14 @@ public class HazardServicesSymbol extends Symbol implements
      *            The points in this symbol
      * @param activeLayer
      *            The PGEN layer this symbol will be drawn to.
-     * @param id
-     *            The ID of this symbol.
+     * @param identifier
+     *            The identifier of this symbol.
      */
     public HazardServicesSymbol(
             HazardServicesDrawingAttributes drawingAttributes,
             String pgenCategory, String pgenType, List<Coordinate> points,
-            Layer activeLayer, String id) {
-        this.id = id;
+            Layer activeLayer, VisualFeatureSpatialIdentifier identifier) {
+        this.identifier = identifier;
         this.drawingAttributes = drawingAttributes;
         setLocation(points.get(0));
         update(drawingAttributes);
@@ -103,7 +87,6 @@ public class HazardServicesSymbol extends Symbol implements
         setColors(drawingAttributes.getColors());
         setLineWidth(drawingAttributes.getLineWidth());
         setSizeScale(drawingAttributes.getSizeScale());
-        pointID = drawingAttributes.getPointID();
         updateEnclosingGeometry();
     }
 
@@ -113,13 +96,8 @@ public class HazardServicesSymbol extends Symbol implements
     }
 
     @Override
-    public void setID(String id) {
-        this.id = id;
-    }
-
-    @Override
-    public String getID() {
-        return id;
+    public VisualFeatureSpatialIdentifier getIdentifier() {
+        return identifier;
     }
 
     public Point getPoint() {
@@ -205,25 +183,7 @@ public class HazardServicesSymbol extends Symbol implements
 
     @Override
     public boolean isVisualFeature() {
-        return (visualFeatureIdentifier != null);
-    }
-
-    @Override
-    public String getVisualFeatureIdentifier() {
-        return visualFeatureIdentifier;
-    }
-
-    @Override
-    public void setVisualFeatureIdentifier(String visualFeatureIdentifier) {
-        this.visualFeatureIdentifier = visualFeatureIdentifier;
-    }
-
-    /**
-     * @return the pointID associated with this Symbol. The pointID is used in
-     *         operations such as tracking.
-     */
-    public long getPointID() {
-        return pointID;
+        return (identifier.getVisualFeatureIdentifier() != null);
     }
 
     @Override

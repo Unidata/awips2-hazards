@@ -30,6 +30,7 @@ import com.raytheon.uf.viz.core.rsc.IInputHandler;
  *                                             are no longer singletons.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
+ * Jun 23, 2016 19537      Chris.Golden        Removed storm-track-specific code.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -106,9 +107,6 @@ public class MouseHandlerFactory {
                 handler = new FreeHandHazardDrawingAction(
                         presenter.getSessionManager());
                 break;
-            case STORM_TOOL_DRAG_DOT_DRAWING:
-                handler = new DragDropAction();
-                break;
             case DRAW_BY_AREA:
                 handler = new SelectByAreaDrawingActionGeometryResource();
                 break;
@@ -126,9 +124,6 @@ public class MouseHandlerFactory {
         switch (mouseHandler) {
         case VERTEX_DRAWING:
             ((VertexHazardDrawingAction) handler).setShapeType(args[0]);
-            break;
-        case STORM_TOOL_DRAG_DOT_DRAWING:
-            ((DragDropAction) handler).setToolName(args[0]);
             break;
         case DRAW_BY_AREA:
             if (args.length == 3) {

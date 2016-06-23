@@ -230,11 +230,6 @@ Hydrology_WarningAdvisory = {
             "visible":True,
         },
         {
-            "toolName": "ModifyStormTrackTool", 
-            "toolType": "RECOMMENDER",
-            "visible":False,
-        },
-        {
             "toolName": "RVS_ProductGenerator", 
             "displayName": "Generate RVS",
             "toolType": "NON_HAZARD_PRODUCT_GENERATOR",

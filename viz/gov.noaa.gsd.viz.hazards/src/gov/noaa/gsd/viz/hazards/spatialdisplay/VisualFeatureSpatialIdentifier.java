@@ -13,8 +13,8 @@ import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.common.visuals.VisualFeature;
 
 /**
- * Description: Encapsulation of an identifier for a {@link SpatialEntity}
- * generated from a {@link VisualFeature}.
+ * Description: Base class for encapsulations of identifiers for
+ * {@link SpatialEntity} instances generated from {@link VisualFeature} objects.
  * 
  * <pre>
  * 
@@ -28,19 +28,15 @@ import gov.noaa.gsd.common.visuals.VisualFeature;
  *                                      replaced by visibility constraints
  *                                      based upon selection state to individual
  *                                      visual features.
+ * Jun 15, 2016   19537    Chris.Golden Turned into abstract base class.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class VisualFeatureSpatialIdentifier {
+public abstract class VisualFeatureSpatialIdentifier {
 
     // Private Variables
-
-    /**
-     * Hazard event identifier.
-     */
-    private final String hazardEventIdentifier;
 
     /**
      * Visual feature identifier.
@@ -52,27 +48,14 @@ public class VisualFeatureSpatialIdentifier {
     /**
      * Construct a standard instance.
      * 
-     * @param hazardEventIdentifier
-     *            Hazard event identifier.
      * @param visualFeatureIdentifier
      *            Visual feature identifier.
      */
-    public VisualFeatureSpatialIdentifier(String hazardEventIdentifier,
-            String visualFeatureIdentifier) {
-        this.hazardEventIdentifier = hazardEventIdentifier;
+    public VisualFeatureSpatialIdentifier(String visualFeatureIdentifier) {
         this.visualFeatureIdentifier = visualFeatureIdentifier;
     }
 
     // Public Methods
-
-    /**
-     * Get the hazard event identifier.
-     * 
-     * @return Hazard event identifier.
-     */
-    public String getHazardEventIdentifier() {
-        return hazardEventIdentifier;
-    }
 
     /**
      * Get the visual feature identifier.
@@ -89,15 +72,13 @@ public class VisualFeatureSpatialIdentifier {
             return false;
         }
         VisualFeatureSpatialIdentifier otherIdentifier = (VisualFeatureSpatialIdentifier) other;
-        return (((hazardEventIdentifier == otherIdentifier.hazardEventIdentifier) || ((hazardEventIdentifier != null) && hazardEventIdentifier
-                .equals(otherIdentifier.hazardEventIdentifier))) && ((visualFeatureIdentifier == otherIdentifier.visualFeatureIdentifier) || ((visualFeatureIdentifier != null) && visualFeatureIdentifier
-                .equals(otherIdentifier.visualFeatureIdentifier))));
+        return ((visualFeatureIdentifier == otherIdentifier.visualFeatureIdentifier) || ((visualFeatureIdentifier != null) && visualFeatureIdentifier
+                .equals(otherIdentifier.visualFeatureIdentifier)));
     }
 
     @Override
     public int hashCode() {
-        return (int) (((hazardEventIdentifier == null ? 0L
-                : (long) hazardEventIdentifier.hashCode()) + (visualFeatureIdentifier == null ? 0L
-                : (long) visualFeatureIdentifier.hashCode())) % Integer.MAX_VALUE);
+        return (int) ((visualFeatureIdentifier == null ? 0L
+                : (long) visualFeatureIdentifier.hashCode()) % Integer.MAX_VALUE);
     }
 }

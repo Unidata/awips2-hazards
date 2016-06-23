@@ -11,6 +11,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.recommenders.impl;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -50,6 +51,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommend
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.recommenders.CAVERecommenderEngine;
 import com.raytheon.viz.core.mode.CAVEMode;
+import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Description: Manager of recommenders and their execution.
@@ -79,6 +81,12 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      session, since stopping and starting the
  *                                      Jep instances when the latter use numpy is
  *                                      dangerous.
+ * Jun 23, 2016   19537    Chris.Golden Changed to use visual features for spatial
+ *                                      info collection. Also changed to not notify
+ *                                      the user of a recommender not producing any
+ *                                      recommendations if the recommender is run
+ *                                      automatically in response to an event
+ *                                      changing, etc.
  * </pre>
  * 
  * @author Chris.Golden
@@ -222,35 +230,34 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          */
         EventSet<IEvent> eventSet = new EventSet<>();
         addContextAsEventSetAttributes(context, eventSet);
-
+        eventSet.addAttribute(HazardConstants.CENTER_POINT_LAT_LON,
+                getCenterPointAsDictionary());
         /*
          * Determine whether or not any spatial or dialog input is required; if
-         * either or both are, request the appropriate input. Otherwise, just
-         * run the recommender.
+         * either or both are, request the appropriate input. Spatial input is
+         * taken by displaying one or more visual features for the user, and
+         * waiting for one of them to be manipulated in some way; dialog input
+         * is taken by putting up a dialog and waiting for the user to proceed.
+         * Otherwise, just run the recommender.
          */
-        Map<String, Serializable> spatialInput = recommenderEngine
-                .getSpatialInfo(recommenderIdentifier);
-        Map<String, Serializable> dialogInput = recommenderEngine
+        VisualFeaturesList visualFeatures = recommenderEngine.getSpatialInfo(
+                recommenderIdentifier, eventSet);
+        Map<String, Serializable> dialogDescription = recommenderEngine
                 .getDialogInfo(recommenderIdentifier, eventSet);
-        if (!spatialInput.isEmpty() || !dialogInput.isEmpty()) {
-            if (!spatialInput.isEmpty()) {
-                spatialInput.put(HazardConstants.RECOMMENDER_EVENT_TYPE,
-                        context.getEventType());
-                messenger.getToolParameterGatherer().requestToolSpatialInput(
+        if (((visualFeatures != null) && (visualFeatures.isEmpty() == false))
+                || ((dialogDescription != null) && (dialogDescription.isEmpty() == false))) {
+            if (visualFeatures.isEmpty() == false) {
+                messenger.getToolParameterGatherer().getToolSpatialInput(
                         recommenderIdentifier, ToolType.RECOMMENDER, context,
-                        spatialInput);
+                        visualFeatures);
             }
-            if (!dialogInput.isEmpty()) {
-                if (!dialogInput.isEmpty()) {
-                    dialogInput.put(
-                            HazardConstants.FILE_PATH_KEY,
-                            recommenderEngine
-                                    .getInventory(recommenderIdentifier)
-                                    .getFile().getFile().getPath());
-                    messenger.getToolParameterGatherer().getToolParameters(
-                            recommenderIdentifier, ToolType.RECOMMENDER,
-                            context, dialogInput);
-                }
+            if (dialogDescription.isEmpty() == false) {
+                dialogDescription.put(HazardConstants.FILE_PATH_KEY,
+                        recommenderEngine.getInventory(recommenderIdentifier)
+                                .getFile().getFile().getPath());
+                messenger.getToolParameterGatherer().getToolParameters(
+                        recommenderIdentifier, ToolType.RECOMMENDER, context,
+                        dialogDescription);
             }
         } else {
             runRecommender(recommenderIdentifier, context, null, null);
@@ -267,15 +274,11 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         runRecommender(recommenderIdentifiers.get(0), context);
     }
 
-    /*
-     * This method should be private, and thus is marked deprecated; see
-     * interface for details.
-     */
     @SuppressWarnings("unchecked")
     @Override
     public void runRecommender(final String recommenderIdentifier,
             final RecommenderExecutionContext context,
-            Map<String, Serializable> spatialInfo,
+            VisualFeaturesList visualFeatures,
             Map<String, Serializable> dialogInfo) {
 
         /*
@@ -380,9 +383,10 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          */
         Boolean background = (Boolean) metadata
                 .get(HazardConstants.RECOMMENDER_METADATA_BACKGROUND);
-        final boolean notify = (Boolean.TRUE.equals(background) == false);
+        final boolean notify = ((Boolean.TRUE.equals(background) == false) && ((context
+                .getTrigger() == Trigger.NONE) || (context.getTrigger() == Trigger.HAZARD_TYPE_FIRST)));
         recommenderEngine.runExecuteRecommender(recommenderIdentifier,
-                eventSet, spatialInfo, dialogInfo,
+                eventSet, visualFeatures, dialogInfo,
                 new IPythonJobListener<EventSet<IEvent>>() {
 
                     @Override
@@ -486,6 +490,25 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 context.getAttributeIdentifiers());
         eventSet.addAttribute(HazardConstants.RECOMMENDER_TRIGGER_ORIGIN,
                 context.getOrigin().toString());
+    }
+
+    /**
+     * Get the center point in lat-lon coordinates as parameters in a
+     * dictionary, in order to allow it to be passed to a recommender during
+     * execution.
+     * 
+     * @return Dictionary holding the lat-lon coordinates. This is specified as
+     *         a {@link HashMap} in order to ensure it is {@link Serializable}.
+     */
+    private HashMap<String, Serializable> getCenterPointAsDictionary() {
+        HashMap<String, Serializable> dictionary = new HashMap<>(2, 1.0f);
+        Coordinate centerPoint = sessionManager.getSpatialContextProvider()
+                .getLatLonCenterPoint();
+        if (centerPoint != null) {
+            dictionary.put(HazardConstants.COORDINATE_LAT, centerPoint.y);
+            dictionary.put(HazardConstants.COORDINATE_LON, centerPoint.x);
+        }
+        return dictionary;
     }
 
     /**

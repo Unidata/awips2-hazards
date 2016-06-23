@@ -65,6 +65,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  *                                      changes.
  * Apr 28, 2016 18267      Chris.Golden Added flag indicating whether
  *                                      or not start time is unrestricted.
+ * Jun 23, 2016 19537      Chris.Golden Made hatching style an enum.
  * </pre>
  * 
  * @author bsteffen
@@ -96,7 +97,7 @@ public class HazardTypeEntry {
 
     private String[] hazardConflictList;
 
-    private boolean warngenHatching;
+    private HatchingStyle hatchingStyle = HatchingStyle.INTERSECTED_AREAS;
 
     private boolean pointBased;
 
@@ -418,18 +419,18 @@ public class HazardTypeEntry {
     }
 
     /**
-     * @return the warngenHatching
+     * @return Hatching style.
      */
-    public boolean isWarngenHatching() {
-        return warngenHatching;
+    public HatchingStyle getHatchingStyle() {
+        return hatchingStyle;
     }
 
     /**
      * @param warngenHatching
      *            the warngenHatching to set
      */
-    public void setWarngenHatching(boolean warngenHatching) {
-        this.warngenHatching = warngenHatching;
+    public void setHatchingStyle(HatchingStyle hatchingStyle) {
+        this.hatchingStyle = hatchingStyle;
     }
 
     /**

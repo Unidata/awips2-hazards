@@ -13,14 +13,12 @@ import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDrawableBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPolygon;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesText;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionAction;
@@ -140,7 +138,6 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.geom.Polygonal;
 import com.vividsolutions.jts.operation.valid.IsValidOp;
 
 /**
@@ -227,6 +224,9 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  *                                      when looking for a point in a polygon, so that if the point
  *                                      lies slightly outside of the polygon, it still "contains" it.
  *                                      This makes editing polygons much easier.
+ * Jun 23, 2016 19537      Chris.Golden Removed storm-track-specific code. Also added hatching for
+ *                                      hazard events that have visual features, and added ability to
+ *                                      use visual features to request spatial info for recommenders.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -606,14 +606,6 @@ public class SpatialDisplay extends
      */
     private final List<double[]> handleBarPoints = new ArrayList<>();
 
-    /**
-     * Contains a map in which each entry contains a unique identifier and a
-     * list of shapes. These are not events, and they are persisted across zoom,
-     * pan and time change operations. It is up to the client to remove them
-     * when they should not be displayed anymore.
-     */
-    private final Map<String, List<AbstractDrawableComponent>> persistentShapeMap;
-
     /*
      * A list of drawables representing the hatched areas associated with hazard
      * events.
@@ -706,7 +698,6 @@ public class SpatialDisplay extends
         geometryFactory = new GeometryFactory();
 
         pgenLayerManager = new PgenLayerManager();
-        persistentShapeMap = new HashMap<>();
         hatchedAreas = new ArrayList<>();
         hatchedAreaAnnotations = new ArrayList<>();
 
@@ -843,11 +834,6 @@ public class SpatialDisplay extends
         }
         menuManager.add(new RiverGageFloodAction());
         menuManager.add(new Separator());
-
-    }
-
-    @Override
-    public void toolChanged() {
 
     }
 
@@ -1080,10 +1066,8 @@ public class SpatialDisplay extends
      * 
      */
     public void drawEvents(Collection<ObservedHazardEvent> events,
-            Map<String, Boolean> eventOverlapSelectedTime,
-            Map<String, Boolean> forModifyingStormTrack,
             Map<String, Boolean> eventEditability,
-            boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed) {
+            Set<String> hatchedEventIdentifiers) {
         clearDrawables();
         selectedElements.clear();
         setHoverElement(null);
@@ -1101,12 +1085,17 @@ public class SpatialDisplay extends
             Boolean isSelected = (Boolean) hazardEvent
                     .getHazardAttribute(HAZARD_EVENT_SELECTED);
 
-            drawableBuilder.buildDrawableComponents(this, hazardEvent,
-                    eventOverlapSelectedTime.get(eventID), activeLayer,
-                    forModifyingStormTrack.get(eventID),
-                    eventEditability.get(eventID), areHatchedAreasDisplayed);
+            /*
+             * Only hazard events that do not have visual features have their
+             * basic geometries drawn.
+             */
+            if ((hazardEvent.getVisualFeatures() == null)
+                    || hazardEvent.getVisualFeatures().isEmpty()) {
+                drawableBuilder.buildDrawableComponents(this, hazardEvent,
+                        activeLayer, eventEditability.get(eventID));
+            }
 
-            if (areHatchedAreasDisplayed && isSelected) {
+            if (hatchedEventIdentifiers.contains(eventID) && isSelected) {
                 redrawHatchedAreas = true;
                 drawableBuilder.buildhazardAreas(this, hazardEvent,
                         getActiveLayer(), hatchedAreas, hatchedAreaAnnotations);
@@ -1140,21 +1129,19 @@ public class SpatialDisplay extends
      * Handle user modification of the geometry of the specified hazard event's
      * specified visual feature.
      * 
-     * @param eventIdentifier
-     *            Identifier of the hazard event with which the visual feature
-     *            is associated.
-     * @param featureIdentifier
-     *            Visual feature identifier.
+     * @param identifier
+     *            Identifier of the visual feature.
      * @param selectedTime
      *            Selected time for which the geometry is to be changed.
      * @param newGeometry
      *            New geometry to be used by the visual feature.
      */
-    public void handleUserModificationOfVisualFeature(String eventIdentifier,
-            String featureIdentifier, Date selectedTime, Geometry newGeometry) {
+    public void handleUserModificationOfVisualFeature(
+            VisualFeatureSpatialIdentifier identifier, Date selectedTime,
+            Geometry newGeometry) {
         getAppBuilder().getSpatialPresenter()
-                .handleUserModificationOfVisualFeature(eventIdentifier,
-                        featureIdentifier, selectedTime, newGeometry);
+                .handleUserModificationOfVisualFeature(identifier,
+                        selectedTime, newGeometry);
     }
 
     /**
@@ -1180,10 +1167,15 @@ public class SpatialDisplay extends
 
         Layer activeLayer = getActiveLayer();
         for (SpatialEntity<VisualFeatureSpatialIdentifier> spatialEntity : spatialEntities) {
-            drawableBuilder.buildDrawableComponents(this, spatialEntity,
-                    activeLayer, selectedEventIdentifiers
-                            .contains(spatialEntity.getIdentifier()
-                                    .getHazardEventIdentifier()));
+            drawableBuilder
+                    .buildDrawableComponents(
+                            this,
+                            spatialEntity,
+                            activeLayer,
+                            ((spatialEntity.getIdentifier() instanceof HazardVisualFeatureSpatialIdentifier) && selectedEventIdentifiers
+                                    .contains(((HazardVisualFeatureSpatialIdentifier) spatialEntity
+                                            .getIdentifier())
+                                            .getEventIdentifier())));
         }
 
         List<AbstractDrawableComponent> drawables = new ArrayList<>(
@@ -1290,22 +1282,6 @@ public class SpatialDisplay extends
         }
     }
 
-    public void drawStormTrackDot(String eventType) {
-
-        AbstractDrawableComponent shapeComponent = drawableBuilder
-                .buildStormTrackDotComponent(getActiveLayer(), eventType);
-        List<AbstractDrawableComponent> drawableComponents = Lists
-                .newArrayList(shapeComponent);
-        addElement(shapeComponent, true);
-        drawableComponents.add(shapeComponent);
-        drawableBuilder.addTextComponent(this, HazardConstants.DRAG_DROP_DOT,
-                drawableComponents, shapeComponent);
-
-        trackPersistentShapes(HazardConstants.DRAG_DROP_DOT, drawableComponents);
-        setObjects(pgenLayerManager.getActiveLayer().getDrawables());
-        issueRefresh();
-    }
-
     /**
      * Removes the ghost line from the PGEN drawing layer.
      */
@@ -1372,38 +1348,6 @@ public class SpatialDisplay extends
     }
 
     /**
-     * Removes an event from the list of events contained in the spatial
-     * display.
-     * 
-     * @param eventID
-     *            The identifier of the event.
-     */
-    public void removeEvent(String eventID) {
-        List<AbstractDrawableComponent> deList = pgenLayerManager
-                .getActiveLayer().getDrawables();
-
-        AbstractDrawableComponent[] deArray = deList
-                .toArray(new AbstractDrawableComponent[10]);
-
-        for (AbstractDrawableComponent de : deArray) {
-
-            if (de == null) {
-                break;
-            }
-
-            if (de instanceof IHazardServicesShape) {
-                if (((IHazardServicesShape) de).getID().equals(eventID)) {
-                    removeElement(de);
-                }
-            }
-
-        }
-
-        issueRefresh();
-
-    }
-
-    /**
      * Returns the event identifier for a selected drawable element on the
      * spatial display.
      * 
@@ -1421,37 +1365,15 @@ public class SpatialDisplay extends
         }
 
         if (element instanceof IHazardServicesShape) {
+            VisualFeatureSpatialIdentifier identifier = ((IHazardServicesShape) element)
+                    .getIdentifier();
+            String eventId = (identifier instanceof HazardVisualFeatureSpatialIdentifier ? ((HazardVisualFeatureSpatialIdentifier) identifier)
+                    .getEventIdentifier() : null);
 
-            String clickedEventId = ((IHazardServicesShape) element).getID();
-            getAppBuilder().getSpatialPresenter().handleSelection(
-                    clickedEventId, multipleSelection);
+            getAppBuilder().getSpatialPresenter().handleSelection(eventId,
+                    multipleSelection);
         }
 
-    }
-
-    /**
-     * Returns the event identifier for a selected drawable element on the
-     * spatial display.
-     * 
-     * @param element
-     *            The element for which to retrieve the id.
-     * @return The event ID or null if it is not an event
-     */
-    public String eventIDForElement(AbstractDrawableComponent element) {
-
-        if (element instanceof DECollection) {
-            element = ((DECollection) element).getItemAt(0);
-        }
-
-        if (element instanceof IHazardServicesShape) {
-
-            String clickedEventId = ((IHazardServicesShape) element).getID();
-
-            return clickedEventId;
-
-        }
-
-        return null;
     }
 
     /**
@@ -1463,38 +1385,6 @@ public class SpatialDisplay extends
      */
     public void multipleElementsClicked(Set<String> eventIDs) {
         getAppBuilder().getSpatialPresenter().updateSelectedEventIds(eventIDs);
-    }
-
-    /**
-     * Removes the label associated with a drawable element.
-     * 
-     * @param element
-     *            The element to remove the label from.
-     */
-    public void removeElementLabel(AbstractDrawableComponent element) {
-        String eventID = eventIDForElement(element);
-
-        if (eventID != null) {
-
-            List<AbstractDrawableComponent> deList = pgenLayerManager
-                    .getActiveLayer().getDrawables();
-
-            AbstractDrawableComponent[] deArray = deList
-                    .toArray(new AbstractDrawableComponent[10]);
-
-            for (AbstractDrawableComponent de : deArray) {
-                if (de == null) {
-                    break;
-                }
-
-                if (de instanceof Text) {
-                    if (((IHazardServicesShape) de).getID().equals(eventID)) {
-                        removeElement(de);
-                    }
-                }
-
-            }
-        }
     }
 
     /**
@@ -1581,57 +1471,6 @@ public class SpatialDisplay extends
     }
 
     /**
-     * Given a point, finds the containing drawable component.
-     * 
-     * @param point
-     *            Point in geographic space to test against.
-     * @param x
-     *            X coordinate of point in pixel space.
-     * @param y
-     *            Y coordinate of point in pixel space.
-     * @return The drawable component which contains this point.
-     */
-    public AbstractDrawableComponent getContainingComponent(Coordinate point,
-            int x, int y) {
-        Iterator<AbstractDrawableComponent> iterator = pgenLayerManager
-                .getActiveLayer().getComponentIterator();
-
-        /**
-         * 
-         * Check each of the hazard polygons. Normally, there will not be too
-         * many of these. However, we can make this more efficient by A using a
-         * tree and storing/resusing the Geometries.
-         * 
-         */
-        Point clickPoint = geometryFactory.createPoint(point);
-        Geometry clickPointWithSlop = clickPoint
-                .buffer(getTranslatedHitTestSlopDistance(point, x, y));
-
-        AbstractDrawableComponent selectedSymbol = null;
-
-        while (iterator.hasNext()) {
-            AbstractDrawableComponent comp = iterator.next();
-
-            if (comp instanceof IHazardServicesShape) {
-                Geometry p = ((IHazardServicesShape) comp).getGeometry();
-                if (p != null) {
-                    boolean contains = (p instanceof Polygonal ? clickPoint
-                            .within(p) : clickPointWithSlop.intersects(p));
-                    if (contains) {
-                        if (comp instanceof HazardServicesSymbol) {
-                            selectedSymbol = comp;
-                        } else {
-                            return comp;
-                        }
-                    }
-                }
-            }
-        }
-
-        return selectedSymbol;
-    }
-
-    /**
      * Given point, find all drawables which contain it.
      * 
      * @param point
@@ -1712,15 +1551,6 @@ public class SpatialDisplay extends
          * easier for applications to find the top-most containing element.
          */
         return Lists.reverse(containingSymbolsList);
-    }
-
-    /**
-     * TODO This needs to me moved elsewhere - nothing to do with drawing.
-     */
-    public void notifyModifiedStormTrack(Map<String, Serializable> parameters) {
-        ModifyStormTrackAction action = new ModifyStormTrackAction();
-        action.setParameters(parameters);
-        eventBus.publish(action);
     }
 
     /**
@@ -2070,7 +1900,6 @@ public class SpatialDisplay extends
             }
             displayMap.put(el, container);
         }
-
         container.draw(target, paintProps, dprops);
     }
 
@@ -2120,8 +1949,7 @@ public class SpatialDisplay extends
 
     /**
      * Clear all drawables for base geometries and visual features from the
-     * spatial display. Takes into account events that need to be persisted such
-     * as a storm track dot.
+     * spatial display.
      */
     private void clearDrawables() {
         List<AbstractDrawableComponent> deList = pgenLayerManager
@@ -2135,37 +1963,10 @@ public class SpatialDisplay extends
             if (de == null) {
                 continue;
             }
-
-            IHazardServicesShape shape = (IHazardServicesShape) de;
-            String eventId = shape.getID();
-            List<AbstractDrawableComponent> persistentDrawables = persistentShapeMap
-                    .get(eventId);
-
-            if (persistentDrawables == null
-                    || !persistentDrawables.contains(de)) {
-
-                removeElement(de);
-            }
+            removeElement(de);
         }
 
         issueRefresh();
-    }
-
-    private void trackPersistentShapes(String id,
-            List<AbstractDrawableComponent> drawables) {
-        /*
-         * This ensures that a persistent shape with the same id as one that
-         * already exists will override it.
-         */
-
-        if (persistentShapeMap.containsKey(id)) {
-            persistentShapeMap.remove(id);
-        }
-
-        if (!drawables.isEmpty()) {
-            persistentShapeMap.put(id, drawables);
-        }
-
     }
 
     /**
@@ -2235,46 +2036,6 @@ public class SpatialDisplay extends
                             PointStyle.DISC, HANDLEBAR_MAGNIFICATION);
                 }
             }
-        }
-    }
-
-    /*
-     * TODO: This method seems expensive; why not only rebuild them when
-     * handleBarPoints is null, and set the latter to null whenever the selected
-     * element changes?
-     */
-    public void rebuildHandleBarPoints(AbstractDrawableComponent comp) {
-        if (comp == null) {
-            return;
-        }
-
-        List<double[]> newHandleBarPoints = new ArrayList<>();
-        for (Coordinate point : comp.getPoints()) {
-            double[] pixelPoint = descriptor.worldToPixel(new double[] {
-                    point.x, point.y });
-            newHandleBarPoints.add(pixelPoint);
-        }
-        boolean isDifferent = false;
-        int existingHandleBarPointsSize = handleBarPoints.size();
-        int newHandleBarPointsSize = newHandleBarPoints.size();
-        if (existingHandleBarPointsSize == newHandleBarPointsSize) {
-            for (int i = 0; ((isDifferent == false) && (i < existingHandleBarPointsSize)); i++) {
-                double[] existingHandleBarPointAry = handleBarPoints.get(i);
-                double[] newHandleBarPointAry = newHandleBarPoints.get(i);
-                int lenPointAry = newHandleBarPointAry.length;
-                for (int j = 0; ((isDifferent == false) && (j < lenPointAry)); j++) {
-                    if (existingHandleBarPointAry[j] != newHandleBarPointAry[j]) {
-                        isDifferent = true;
-                    }
-                }
-            }
-        } else {
-            isDifferent = true;
-        }
-
-        if (isDifferent == true) {
-            handleBarPoints.clear();
-            handleBarPoints.addAll(newHandleBarPoints);
         }
     }
 
@@ -2369,6 +2130,34 @@ public class SpatialDisplay extends
     }
 
     /**
+     * Returns the event identifier for a selected drawable element on the
+     * spatial display.
+     * 
+     * @param element
+     *            The element for which to retrieve the id.
+     * @return The event ID or null if it is not an event
+     */
+    public String eventIDForElement(AbstractDrawableComponent element) {
+
+        if (element instanceof DECollection) {
+            element = ((DECollection) element).getItemAt(0);
+        }
+
+        if (element instanceof IHazardServicesShape) {
+
+            VisualFeatureSpatialIdentifier identifier = ((IHazardServicesShape) element)
+                    .getIdentifier();
+            if (identifier instanceof HazardVisualFeatureSpatialIdentifier) {
+                return ((HazardVisualFeatureSpatialIdentifier) identifier)
+                        .getEventIdentifier();
+            }
+            return null;
+        }
+
+        return null;
+    }
+
+    /**
      * @param components
      *            over which the user has clicked.
      */
@@ -2384,8 +2173,13 @@ public class SpatialDisplay extends
                  * TODO Ugly, yes but no uglier than the overall approach. This
                  * is why we need refactoring of the spatial display.
                  */
-                eventManager.setCurrentEvent(((IHazardServicesShape) component)
-                        .getID());
+                VisualFeatureSpatialIdentifier identifier = ((IHazardServicesShape) component)
+                        .getIdentifier();
+                if (identifier instanceof HazardVisualFeatureSpatialIdentifier) {
+                    eventManager
+                            .setCurrentEvent(((HazardVisualFeatureSpatialIdentifier) identifier)
+                                    .getEventIdentifier());
+                }
             }
         }
     }
@@ -2591,5 +2385,10 @@ public class SpatialDisplay extends
             }
             this.redrawHatchedAreas = true;
         }
+    }
+
+    @Override
+    public void toolChanged() {
+        throw new UnsupportedOperationException();
     }
 }

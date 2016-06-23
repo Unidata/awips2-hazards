@@ -55,8 +55,9 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Apr 09, 2015 7271       Kevin.Manross     Ensured generated FL.Y hazard events
  *                                           have riseAbove/crest/fallBelow values.
  * May 08, 2015 6562       Chris.Cody        Restructure River Forecast Points/Recommender
- * Aug 20, 2015 9387       Robert.Blum       Fixed UFN where the endTime would get incorrectly set after
- *                                           it was correctly set.
+ * Aug 20, 2015 9387       Robert.Blum       Fixed UFN where the endTime would get
+ *                                           incorrectly set after it was correctly set.
+ * Jun 23, 2016 19537      Chris.Golden      Removed spatial info parameter from method.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -99,14 +100,11 @@ public class RiverProFloodRecommender {
      *            A map of session information
      * @param dialogInputMap
      *            A map of user-input dialog information
-     * @param spatialInputMap
-     *            A map of user-input spatial information
      * @return A list of hazard events representing river flood recommendations
      */
     public EventSet<IHazardEvent> getRecommendation(
             Map<String, Object> sessionAttributeMap,
-            Map<String, Object> dialogInputMap,
-            Map<String, Object> spatialInputMap) {
+            Map<String, Object> dialogInputMap) {
 
         return createHazards(dialogInputMap);
 

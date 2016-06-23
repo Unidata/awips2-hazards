@@ -46,6 +46,7 @@ import com.vividsolutions.jts.geom.Point;
  *                                            are not being used, replacing them
  *                                            with unsupported operation exception
  *                                            generation.
+ * Jun 23, 2016    19537   Chris.Golden       Removed storm-track-specific code.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -134,50 +135,9 @@ public class NonDrawingAction extends AbstractMouseHandler {
         protected Coordinate prevLoc = null;
 
         /*
-         * (non-Javadoc)
+         * CALLED BY DragDropAction to move the element that is selected. Same
+         * with SelectionAction. So basically, it is for dragging an element.
          * 
-         * @see com.raytheon.viz.ui.input.IInputHandler#handleMouseDown(int,
-         * int, int)
-         */
-        @Override
-        public boolean handleMouseDown(int anX, int aY, int button) {
-
-            // Check if mouse is in geographic extent
-            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor());
-            Coordinate loc = editor.translateClick(anX, aY);
-            if (loc == null) {
-                return false;
-            }
-
-            // If mouse button = 1, select the event, but do not
-            // at this time send a message to the IHIS Layer.
-            if (button == 1) {
-
-                if (getSpatialDisplay().getElementBeingEdited() == null) {
-                    /*
-                     * Get the nearest element and set it as the selected
-                     * element. Note: for Contours, we should select the nearest
-                     * ContourLine, ContourMinmax or ContourCircle.
-                     */
-                    AbstractDrawableComponent nadc = getSpatialDisplay()
-                            .getContainingComponent(loc, anX, aY);
-                    getSpatialDisplay().setElementBeingEdited(nadc);
-
-                    // Remove the label associated with the element.
-                    getSpatialDisplay().removeElementLabel(nadc);
-
-                    getSpatialDisplay().issueRefresh();
-                }
-
-                return true;
-
-            } else {
-                return true;
-            }
-        }
-
-        /*
          * (non-Javadoc)
          * 
          * @see com.raytheon.viz.ui.input.IInputHandler#handleMouseDownMove(int,
@@ -298,72 +258,6 @@ public class NonDrawingAction extends AbstractMouseHandler {
 
             return true;
         }
-
-        /*
-         * (non-Javadoc)
-         * 
-         * @see com.raytheon.viz.ui.input.IInputHandler#handleMouseUp(int, int,
-         * int)
-         */
-        @Override
-        public boolean handleMouseUp(int x, int y, int button) {
-
-            throw new UnsupportedOperationException();
-            // if (ghostEl != null) {
-            //
-            // // reset color for the el and add it to PGEN resource
-            //
-            // Iterator<DrawableElement> iterator1 = ghostEl
-            // .createDEIterator();
-            // Iterator<DrawableElement> iterator2 = getSpatialDisplay()
-            // .getElementBeingEdited().createDEIterator();
-            //
-            // while (iterator1.hasNext() && iterator2.hasNext()) {
-            // iterator1.next().setColors(iterator2.next().getColors());
-            // }
-            //
-            // getSpatialDisplay().addElement(ghostEl, true);
-            //
-            // getSpatialDisplay().removeGhostOfElementBeingEdited();
-            // ghostEl = null;
-            // getSpatialDisplay().setElementBeingEdited(null);
-            // getSpatialDisplay().issueRefresh();
-            //
-            // }
-            //
-            // return true;
-
-        }
-
-        @Override
-        public boolean handleMouseMove(int x, int y) {
-            throw new UnsupportedOperationException();
-            // AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-            // .getInstance().getActiveEditor());
-            // Coordinate loc = editor.translateClick(x, y);
-            //
-            // if (loc != null) {
-            // AbstractDrawableComponent nadc = getSpatialDisplay()
-            // .getContainingComponent(loc, x, y);
-            //
-            // // There is a selected element. Is the
-            // // mouse over it?
-            // if (nadc != null) {
-            // // Set the mouse cursor to a move symbol
-            // getSpatialPresenter().getView().setCursor(
-            // SpatialViewCursorTypes.MOVE_SHAPE_CURSOR);
-            //
-            // } else {
-            // // Set the mouse cursor to an arrow
-            // getSpatialPresenter().getView().setCursor(
-            // SpatialViewCursorTypes.ARROW_CURSOR);
-            // }
-            //
-            // }
-            //
-            // return false;
-        }
-
     }
 
 }

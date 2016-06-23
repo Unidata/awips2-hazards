@@ -9,6 +9,8 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.recommenders;
 
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +31,8 @@ import com.raytheon.uf.common.recommenders.EventRecommender;
  * Mar 04, 2016   15933    Chris.Golden Added ability to run multiple recommenders in
  *                                      sequence in response to a time interval trigger,
  *                                      instead of just one recommender.
+ * Jun 23, 2016   19537    Chris.Golden Changed to use visual features for spatial
+ *                                      info collection.
  * </pre>
  * 
  * @author Chris.Golden
@@ -83,14 +87,15 @@ public interface ISessionRecommenderManager {
      *            The identifier of the recommender to be run.
      * @param context
      *            Execution context in which to run the recommender.
-     * @param spatialInfo
-     *            Map of spatial parameters, if any.
+     * @param visualFeatures
+     *            List of visual features provided by the recommender earlier to
+     *            allow the user to input spatial info, if any.
      * @param dialogInfo
      *            Map of dialog parameters, if any.
      */
     public void runRecommender(String recommenderIdentifier,
             RecommenderExecutionContext context,
-            Map<String, Serializable> spatialInfo,
+            VisualFeaturesList visualFeatures,
             Map<String, Serializable> dialogInfo);
 
     /**

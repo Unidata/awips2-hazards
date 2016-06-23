@@ -11,7 +11,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorType
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.SelectionRectangleDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
-import gov.noaa.nws.ncep.ui.pgen.attrdialog.TrackExtrapPointInfoDlg;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
@@ -61,6 +60,7 @@ import com.vividsolutions.jts.geom.LinearRing;
  *                                            config manager.
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Jan 09, 2015  4209       Daniel.S.Schaffer Lasso selects hazards intersected instead of contained
+ * Jun 23, 2016 19537       Chris.Golden      Removed obsolete member data, changed inner class name.
  * </pre>
  * 
  * @author Xiangbao jing
@@ -83,7 +83,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
     public IInputHandler getMouseHandler() {
         IInputHandler handler = super.getMouseHandler();
         try {
-            ((SelectionHandler) handler).drawingAttributes = new SelectionRectangleDrawingAttributes(
+            ((FreeHandMultiSelectionHandler) handler).drawingAttributes = new SelectionRectangleDrawingAttributes(
                     sessionManager);
         } catch (VizException e) {
             statusHandler.error("MultiSelectionAction.getMouseHandler(): ", e);
@@ -93,10 +93,11 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
 
     @Override
     public IInputHandler createMouseHandler() {
-        return new SelectionHandler();
+        return new FreeHandMultiSelectionHandler();
     }
 
-    public class SelectionHandler extends NonDrawingAction.NonDrawingHandler {
+    public class FreeHandMultiSelectionHandler extends
+            NonDrawingAction.NonDrawingHandler {
         // Minimum screen distance for identify started a selection by area.
         private final int MIN_DISTANCE = 10;
 
@@ -112,11 +113,6 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
          * Drawing attributes for the lasso line.
          */
         private SelectionRectangleDrawingAttributes drawingAttributes = null;
-
-        /**
-         * Attribute dialog for displaying track points info
-         */
-        TrackExtrapPointInfoDlg trackExtrapPointInfoDlg = null;
 
         /**
          * instance variable to store the pgenType of the selected

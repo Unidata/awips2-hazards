@@ -15,6 +15,7 @@ import gov.noaa.gsd.common.visuals.VisualFeature;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesText;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.PointDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
@@ -43,8 +44,11 @@ import org.apache.commons.lang.time.DateUtils;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -53,6 +57,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
@@ -68,6 +73,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionHatchingToggled;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -141,6 +147,12 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Jun 10, 2016 19537      Chris.Golden      Combined base and selected visual feature lists for each
  *                                           hazard event into one, replaced by visibility constraints
  *                                           based upon selection state to individual visual features.
+ * Jun 23, 2016 19537      Chris.Golden      Removed storm-track-specific code. Also added hatching for
+ *                                           hazard events that have visual features, and added ability
+ *                                           to use visual features to request spatial info for
+ *                                           recommenders. Also added use of new visual feature
+ *                                           properties (topmost and symbol shape), and ability to use
+ *                                           "as event" labeling with visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -148,6 +160,8 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  */
 public class SpatialPresenter extends
         HazardServicesPresenter<ISpatialView<?, ?>> implements IOriginator {
+
+    // Public Enumerated Types
 
     /**
      * Position of a point within the sequence of one or more points that are in
@@ -157,10 +171,17 @@ public class SpatialPresenter extends
         FIRST, INTERIOR, LAST
     };
 
-    /** for logging */
+    private static final VisualFeaturesList EMPTY_VISUAL_FEATURES = new VisualFeaturesList();
+
+    /**
+     * Status handler for logging.
+     */
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(getClass());
 
+    /**
+     * Geometry factory.
+     */
     private final GeometryFactory geometryFactory = new GeometryFactory();
 
     /**
@@ -173,9 +194,20 @@ public class SpatialPresenter extends
      */
     private final Set<String> selectedEventIDs = new HashSet<>();
 
+    /**
+     * Hazard event builder.
+     */
     private final HazardEventBuilder hazardEventBuilder;
 
-    private boolean isEditInProgress = false;
+    private boolean editInProgress = false;
+
+    private ToolType spatialInfoCollectingToolType;
+
+    private String spatialInfoCollectingToolIdentifier;
+
+    private RecommenderExecutionContext spatialInfoCollectingToolContext;
+
+    private VisualFeaturesList toolVisualFeatures = EMPTY_VISUAL_FEATURES;
 
     /**
      * Construct a standard instance.
@@ -306,57 +338,104 @@ public class SpatialPresenter extends
         updateAllVisualFeatureDisplayables();
     }
 
+    public void setToolVisualFeatures(ToolType toolType, String toolIdentifier,
+            RecommenderExecutionContext context,
+            VisualFeaturesList visualFeatures) {
+        spatialInfoCollectingToolType = toolType;
+        spatialInfoCollectingToolIdentifier = toolIdentifier;
+        spatialInfoCollectingToolContext = context;
+        visualFeatures = (visualFeatures == null ? EMPTY_VISUAL_FEATURES
+                : visualFeatures);
+        if (toolVisualFeatures.equals(visualFeatures) == false) {
+            toolVisualFeatures = visualFeatures;
+            updateDisplayables();
+        }
+    }
+
     /**
      * Handle user modification of the geometry of the specified hazard event's
      * specified visual feature.
      * 
-     * @param eventIdentifier
-     *            Identifier of the hazard event with which the visual feature
-     *            is associated.
-     * @param featureIdentifier
-     *            Visual feature identifier.
+     * @param identifier
+     *            Identifier of the visual feature.
      * @param selectedTime
      *            Selected time for which the geometry is to be changed.
      * @param newGeometry
      *            New geometry to be used by the visual feature.
      */
-    public void handleUserModificationOfVisualFeature(String eventIdentifier,
-            String featureIdentifier, Date selectedTime, Geometry newGeometry) {
+    public void handleUserModificationOfVisualFeature(
+            VisualFeatureSpatialIdentifier identifier, Date selectedTime,
+            Geometry newGeometry) {
 
         /*
-         * Find the event that goes with the visual feature.
+         * Modify the visual feature that has had its geometry changed. If the
+         * visual feature that was modified was created by a tool to collect
+         * spatial information, run the tool with the modified visual feature.
+         * Otherwise, find the event that goes with the visual feature and give
+         * it the new version.
          */
-        ISessionEventManager<ObservedHazardEvent> eventManager = getModel()
-                .getEventManager();
-        ObservedHazardEvent event = eventManager.getEventById(eventIdentifier);
-        if (event != null) {
+        if (identifier instanceof ToolVisualFeatureSpatialIdentifier) {
 
             /*
-             * Find the visual feature itself.
+             * Ensure the visual feature's associated tool is the same as the
+             * one that the current tool visual features are for.
              */
-            VisualFeature feature = getVisualFeature(event.getVisualFeatures(),
-                    featureIdentifier);
+            ToolVisualFeatureSpatialIdentifier toolIdentifier = (ToolVisualFeatureSpatialIdentifier) identifier;
+            if (toolIdentifier.getToolIdentifier().equals(
+                    spatialInfoCollectingToolIdentifier)) {
+
+                /*
+                 * Find and modify the visual feature, then run the recommender
+                 * with the modified visual feature list.
+                 */
+                VisualFeature feature = toolVisualFeatures
+                        .getByIdentifier(identifier
+                                .getVisualFeatureIdentifier());
+                if (feature != null) {
+                    feature.setGeometry(
+                            DateUtils.truncate(selectedTime, Calendar.MINUTE),
+                            newGeometry);
+                    toolVisualFeatures.replace(feature);
+                    getModel().getRecommenderManager().runRecommender(
+                            spatialInfoCollectingToolIdentifier,
+                            spatialInfoCollectingToolContext,
+                            toolVisualFeatures, null);
+                }
+            }
 
             /*
-             * If a visual feature is found, set its geometry to that specified.
-             * Round the selected time down to the nearest minute, since it
-             * could be anything (i.e. not necessarily on a minute boundary).
+             * Remove the visual features from the display.
              */
-            if (feature != null) {
-                feature.setGeometry(
-                        DateUtils.truncate(selectedTime, Calendar.MINUTE),
-                        newGeometry);
-                event.setVisualFeature(feature, UIOriginator.SPATIAL_DISPLAY);
+            setToolVisualFeatures(null, null, null, null);
+        } else {
+
+            /*
+             * Find the event that goes with the visual feature.
+             */
+            HazardVisualFeatureSpatialIdentifier hazardIdentifier = (HazardVisualFeatureSpatialIdentifier) identifier;
+            ISessionEventManager<ObservedHazardEvent> eventManager = getModel()
+                    .getEventManager();
+            ObservedHazardEvent event = eventManager
+                    .getEventById(hazardIdentifier.getEventIdentifier());
+            if (event != null) {
+
+                /*
+                 * If a visual feature is found, set its geometry to that
+                 * specified. Round the selected time down to the nearest
+                 * minute, since it could be anything (i.e. not necessarily on a
+                 * minute boundary).
+                 */
+                VisualFeature feature = event.getVisualFeature(hazardIdentifier
+                        .getVisualFeatureIdentifier());
+                if (feature != null) {
+                    feature.setGeometry(
+                            DateUtils.truncate(selectedTime, Calendar.MINUTE),
+                            newGeometry);
+                    event.setVisualFeature(feature,
+                            UIOriginator.SPATIAL_DISPLAY);
+                }
             }
         }
-    }
-
-    private VisualFeature getVisualFeature(VisualFeaturesList list,
-            String identifier) {
-        if (list == null) {
-            return null;
-        }
-        return list.getByIdentifier(identifier);
     }
 
     /**
@@ -395,31 +474,35 @@ public class SpatialPresenter extends
 
         SelectedTime selectedTime = timeManager.getSelectedTime();
         filterEventsForTime(events, selectedTime);
-        filterEventsForVisualFeatures(events);
 
-        Map<String, Boolean> eventOverlapSelectedTime = new HashMap<>();
-        Map<String, Boolean> forModifyingStormTrack = new HashMap<>();
         Map<String, Boolean> eventEditability = new HashMap<>();
+        Set<String> hatchedEventIdentifiers = new HashSet<>();
+        boolean hatching = sessionManager.areHatchedAreasDisplayed();
+        HazardTypes hazardTypes = sessionManager.getConfigurationManager()
+                .getHazardTypes();
 
         for (ObservedHazardEvent event : events) {
             String eventID = event.getEventID();
-            eventOverlapSelectedTime.put(eventID,
-                    doesEventOverlapSelectedTime(event, selectedTime));
-            forModifyingStormTrack
-                    .put(event.getEventID(),
-                            event.getHazardAttribute(HazardConstants.TRACK_POINTS) != null);
             eventEditability.put(event.getEventID(),
                     eventManager.canEventAreaBeChanged(event));
+            if (hatching) {
+                String hazardType = HazardEventUtilities.getHazardType(event);
+                if (hazardType != null) {
+                    HazardTypeEntry hazardTypeEntry = hazardTypes
+                            .get(hazardType);
+                    if (hazardTypeEntry.getHatchingStyle() != HatchingStyle.NONE) {
+                        hatchedEventIdentifiers.add(eventID);
+                    }
+                }
+            }
         }
 
         /*
          * TODO It might be possible to optimize here by checking if the events
          * have changed before displaying.
          */
-        spatialView.drawEvents(events, eventOverlapSelectedTime,
-                forModifyingStormTrack, eventEditability,
-                sessionManager.isAutoHazardCheckingOn(),
-                sessionManager.areHatchedAreasDisplayed());
+        spatialView.drawEvents(events, eventEditability,
+                hatchedEventIdentifiers);
 
     }
 
@@ -459,6 +542,11 @@ public class SpatialPresenter extends
                 .getSelectedTime().getLowerBound());
         ISessionConfigurationManager<ObservedSettings> configManager = sessionManager
                 .getConfigurationManager();
+        double hazardSinglePointTextOffsetLength = 10.0;
+        double hazardSinglePointTextOffsetDirection = 90.0;
+        double hazardMultiPointTextOffsetLength = 0.0;
+        double hazardMultiPointTextOffsetDirection = 0.0;
+        int hazardTextPointSize = HazardServicesText.FONT_SIZE;
         for (ObservedHazardEvent event : sessionManager.getEventManager()
                 .getCheckedEvents()) {
 
@@ -470,11 +558,11 @@ public class SpatialPresenter extends
              * through the visual features, compiling lists of their spatial
              * entities as appropriate to the selected time.
              */
-            final String eventId = event.getEventID();
-            boolean selected = selectedEventIDs.contains(eventId);
             VisualFeaturesList visualFeaturesList = event.getVisualFeatures();
             if ((visualFeaturesList != null)
                     && (visualFeaturesList.isEmpty() == false)) {
+                final String eventId = event.getEventID();
+                boolean selected = selectedEventIDs.contains(eventId);
                 Color hazardColor = configManager.getColor(event);
                 double hazardBorderWidth = configManager.getBorderWidth(event,
                         selected);
@@ -484,7 +572,8 @@ public class SpatialPresenter extends
                                 : BorderStyle.SOLID));
                 double hazardPointDiameter = (selected ? PointDrawingAttributes.OUTER_SELECTED_DIAMETER
                         : PointDrawingAttributes.OUTER_DIAMETER);
-                int hazardTextPointSize = HazardServicesText.FONT_SIZE;
+                String hazardLabel = HazardServicesDrawingAttributes
+                        .getHazardLabel(event);
 
                 /*
                  * Iterate through the visual features, creating spatial
@@ -498,9 +587,25 @@ public class SpatialPresenter extends
                         (selected ? selectedSpatialEntities
                                 : unselectedSpatialEntities), eventId,
                         selected, selectedTime, hazardColor, hazardBorderWidth,
-                        hazardBorderStyle, hazardPointDiameter,
+                        hazardBorderStyle, hazardPointDiameter, hazardLabel,
+                        hazardSinglePointTextOffsetLength,
+                        hazardSinglePointTextOffsetDirection,
+                        hazardMultiPointTextOffsetLength,
+                        hazardMultiPointTextOffsetDirection,
                         hazardTextPointSize);
             }
+        }
+
+        /*
+         * If any spatial-information-collecting visual features are currently
+         * in existence for a tool, iterate through them, creating spatial
+         * entities for any that are visible at the selected time, and add them
+         * to the list of selected spatial entities.
+         */
+        if (toolVisualFeatures.isEmpty() == false) {
+            addSpatialEntitiesForVisualFeatures(toolVisualFeatures,
+                    selectedSpatialEntities, spatialInfoCollectingToolType,
+                    spatialInfoCollectingToolIdentifier, selectedTime);
         }
 
         /*
@@ -525,7 +630,10 @@ public class SpatialPresenter extends
             final String eventId, boolean selected, Date selectedTime,
             Color hazardColor, double hazardBorderWidth,
             BorderStyle hazardBorderStyle, double hazardPointDiameter,
-            int hazardTextPointSize) {
+            String hazardLabel, double hazardSinglePointTextOffsetLength,
+            double hazardSinglePointTextOffsetDirection,
+            double hazardMultiPointTextOffsetLength,
+            double hazardMultiPointTextOffsetDirection, int hazardTextPointSize) {
 
         /*
          * Round the selected time down to the nearest minute.
@@ -547,24 +655,111 @@ public class SpatialPresenter extends
 
                 @Override
                 public VisualFeatureSpatialIdentifier generate(String base) {
-                    return new VisualFeatureSpatialIdentifier(eventId, base);
+                    return new HazardVisualFeatureSpatialIdentifier(eventId,
+                            base);
                 }
             };
 
             /*
              * Iterate through the visual features, adding spatial entities
-             * generated for each in turn to the provided list.
+             * generated for each in turn to the provided list. Any spatial
+             * entities that are marked as "topmost" in the z-ordering are added
+             * to another list.
              */
+            List<SpatialEntity<VisualFeatureSpatialIdentifier>> topmostSpatialEntities = null;
             for (VisualFeature visualFeature : visualFeaturesList) {
                 SpatialEntity<VisualFeatureSpatialIdentifier> entity = visualFeature
                         .getStateAtTime(null, identifierGenerator, selected,
                                 selectedTime, hazardColor, hazardBorderWidth,
-                                hazardBorderStyle, hazardPointDiameter, 0, 0,
+                                hazardBorderStyle, hazardPointDiameter,
+                                hazardLabel, hazardSinglePointTextOffsetLength,
+                                hazardSinglePointTextOffsetDirection,
+                                hazardMultiPointTextOffsetLength,
+                                hazardMultiPointTextOffsetDirection,
                                 hazardTextPointSize);
-
                 if (entity != null) {
-                    spatialEntities.add(entity);
+                    if (entity.isTopmost()) {
+                        if (topmostSpatialEntities == null) {
+                            topmostSpatialEntities = new ArrayList<>();
+                        }
+                        topmostSpatialEntities.add(entity);
+                    } else {
+                        spatialEntities.add(entity);
+                    }
                 }
+            }
+
+            /*
+             * If at least one topmost spatial entity was generated, append all
+             * topmost ones to the main list so that the former end up drawn
+             * last, and thus staying on the top of the z-order.
+             */
+            if (topmostSpatialEntities != null) {
+                spatialEntities.addAll(topmostSpatialEntities);
+            }
+        }
+    }
+
+    private void addSpatialEntitiesForVisualFeatures(
+            VisualFeaturesList visualFeaturesList,
+            List<SpatialEntity<VisualFeatureSpatialIdentifier>> spatialEntities,
+            final ToolType toolType, final String toolIdentifier,
+            Date selectedTime) {
+
+        /*
+         * Round the selected time down to the nearest minute.
+         */
+        selectedTime = DateUtils.truncate(selectedTime, Calendar.MINUTE);
+
+        /*
+         * If there are visual features in the list, iterate through them,
+         * creating spatial entities for any that are visible at the selected
+         * time.
+         */
+        if (visualFeaturesList != null) {
+
+            /*
+             * Put together the identifier generator for the spatial entities
+             * that may be created.
+             */
+            IIdentifierGenerator<VisualFeatureSpatialIdentifier> identifierGenerator = new IIdentifierGenerator<VisualFeatureSpatialIdentifier>() {
+
+                @Override
+                public VisualFeatureSpatialIdentifier generate(String base) {
+                    return new ToolVisualFeatureSpatialIdentifier(toolType,
+                            toolIdentifier, base);
+                }
+            };
+
+            /*
+             * Iterate through the visual features, adding spatial entities
+             * generated for each in turn to the provided list. Any spatial
+             * entities that are marked as "topmost" in the z-ordering are added
+             * to another list.
+             */
+            List<SpatialEntity<VisualFeatureSpatialIdentifier>> topmostSpatialEntities = null;
+            for (VisualFeature visualFeature : visualFeaturesList) {
+                SpatialEntity<VisualFeatureSpatialIdentifier> entity = visualFeature
+                        .getStateAtTime(null, identifierGenerator, selectedTime);
+                if (entity != null) {
+                    if (entity.isTopmost()) {
+                        if (topmostSpatialEntities == null) {
+                            topmostSpatialEntities = new ArrayList<>();
+                        }
+                        topmostSpatialEntities.add(entity);
+                    } else {
+                        spatialEntities.add(entity);
+                    }
+                }
+            }
+
+            /*
+             * If at least one topmost spatial entity was generated, append all
+             * topmost ones to the main list so that the former end up drawn
+             * last, and thus staying on the top of the z-order.
+             */
+            if (topmostSpatialEntities != null) {
+                spatialEntities.addAll(topmostSpatialEntities);
             }
         }
     }
@@ -612,7 +807,7 @@ public class SpatialPresenter extends
      * 
      * @return Selected time.
      */
-    public Date getSelectedTime() {
+    private Date getSelectedTime() {
         return new Date(getModel().getTimeManager().getSelectedTime()
                 .getLowerBound());
     }
@@ -642,7 +837,7 @@ public class SpatialPresenter extends
      * @param
      * @return true if overlap
      */
-    private Boolean doesEventOverlapSelectedTime(IHazardEvent event,
+    private boolean doesEventOverlapSelectedTime(IHazardEvent event,
             SelectedTime selectedRange) {
         return selectedRange.intersects(event.getStartTime().getTime(), event
                 .getEndTime().getTime());
@@ -707,9 +902,9 @@ public class SpatialPresenter extends
     public void drawingActionComplete(GeometryType shapeType,
             List<Coordinate> points) {
         getView().drawingActionComplete();
-        if (isEditInProgress) {
+        if (editInProgress) {
             updateHazardEventFromCollectedPoints(points);
-            isEditInProgress = false;
+            editInProgress = false;
         } else if (points != null) {
             buildHazardEventFromCollectedPoints(shapeType, points);
         }
@@ -877,48 +1072,21 @@ public class SpatialPresenter extends
         Iterator<ObservedHazardEvent> it = events.iterator();
         while (it.hasNext()) {
             IHazardEvent event = it.next();
-
-            /*
-             * Unissued storm track operations should not be filtered by the
-             * selected time, but everything else should be.
-             */
-            if ((event.getHazardAttribute(HazardConstants.TRACK_POINTS) == null)
-                    || HazardStatus.hasEverBeenIssued(event.getStatus())) {
-                if (doesEventOverlapSelectedTime(event, selectedTime) == false) {
-                    it.remove();
-                }
-            }
-        }
-    }
-
-    /**
-     * Remove any events with visual features from the specified collection.
-     */
-    private void filterEventsForVisualFeatures(
-            Collection<ObservedHazardEvent> events) {
-        Iterator<ObservedHazardEvent> it = events.iterator();
-        while (it.hasNext()) {
-            IHazardEvent event = it.next();
-            if ((event.getVisualFeatures() != null)
-                    && (event.getVisualFeatures().isEmpty() == false)) {
+            if (doesEventOverlapSelectedTime(event, selectedTime) == false) {
                 it.remove();
             }
         }
     }
 
     /**
-     * @return the isEditInProgress
+     * Set the flag indicating whether or not an edit of a shape is currently in
+     * progress.
+     * 
+     * @param editInProgress
+     *            New value of the flag.
      */
-    public boolean isEditInProgress() {
-        return isEditInProgress;
-    }
-
-    /**
-     * @param isEditInProgress
-     *            the isEditInProgress to set
-     */
-    public void setEditInProgress(boolean isEditInProgress) {
-        this.isEditInProgress = isEditInProgress;
+    public void setEditInProgress(boolean editInProgress) {
+        this.editInProgress = editInProgress;
     }
 
 }

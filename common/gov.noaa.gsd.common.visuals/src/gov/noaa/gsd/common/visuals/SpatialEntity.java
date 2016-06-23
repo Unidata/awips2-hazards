@@ -26,6 +26,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Mar 10, 2016   15676    Chris.Golden Initial creation.
+ * Jun 23, 2016   19537    Chris.Golden Added topmost and symbol shape properties.
  * </pre>
  * 
  * @author Chris.Golden
@@ -71,6 +72,11 @@ public class SpatialEntity<I> {
     private double diameter;
 
     /**
+     * Symbol shape.
+     */
+    private SymbolShape symbolShape;
+
+    /**
      * Text label.
      */
     private String label;
@@ -112,6 +118,11 @@ public class SpatialEntity<I> {
     private boolean scaleable;
 
     /**
+     * Flag indicating whether or not the entity is topmost.
+     */
+    private boolean topmost;
+
+    /**
      * Flag indicating whether or not the entity has been modified since the
      * last call to {@link #checkAndResetModified()}.
      */
@@ -144,13 +155,15 @@ public class SpatialEntity<I> {
                 && (borderThickness == otherEntity.borderThickness)
                 && compare(borderStyle, otherEntity.borderStyle)
                 && (diameter == otherEntity.diameter)
+                && compare(symbolShape, otherEntity.symbolShape)
                 && compare(label, otherEntity.label)
                 && (textOffsetLength == otherEntity.textOffsetLength)
                 && (textOffsetDirection == otherEntity.textOffsetDirection)
                 && (textSize == otherEntity.textSize)
                 && compare(textColor, otherEntity.textColor)
                 && compare(dragCapability, otherEntity.dragCapability)
-                && (rotatable == otherEntity.rotatable) && (scaleable == otherEntity.scaleable));
+                && (rotatable == otherEntity.rotatable)
+                && (scaleable == otherEntity.scaleable) && (topmost == otherEntity.topmost));
     }
 
     @Override
@@ -158,10 +171,11 @@ public class SpatialEntity<I> {
         return (int) ((getHashCode(identifier) + getHashCode(geometry)
                 + getHashCode(borderColor) + getHashCode(fillColor)
                 + ((long) borderThickness) + getHashCode(borderStyle)
-                + ((long) diameter) + getHashCode(label)
-                + ((long) textOffsetLength) + ((long) textOffsetDirection)
-                + (textSize) + getHashCode(textColor)
-                + getHashCode(dragCapability) + (rotatable ? 1L : 0L) + (scaleable ? 1L
+                + ((long) diameter) + getHashCode(symbolShape)
+                + getHashCode(label) + ((long) textOffsetLength)
+                + ((long) textOffsetDirection) + (textSize)
+                + getHashCode(textColor) + getHashCode(dragCapability)
+                + (rotatable ? 1L : 0L) + (scaleable ? 1L : 0L) + (topmost ? 1L
                     : 0L)) % Integer.MAX_VALUE);
     }
 
@@ -226,6 +240,15 @@ public class SpatialEntity<I> {
      */
     public double getDiameter() {
         return diameter;
+    }
+
+    /**
+     * Get the symbol shape.
+     * 
+     * @return Symbol shape.
+     */
+    public SymbolShape getSymbolShape() {
+        return symbolShape;
     }
 
     /**
@@ -299,6 +322,15 @@ public class SpatialEntity<I> {
      */
     public boolean isScaleable() {
         return scaleable;
+    }
+
+    /**
+     * Determine whether the entity is topmost.
+     * 
+     * @return True if the entity is topmost, otherwise false.
+     */
+    public boolean isTopmost() {
+        return topmost;
     }
 
     /**
@@ -389,6 +421,19 @@ public class SpatialEntity<I> {
     public void setDiameter(double diameter) {
         if (this.diameter != diameter) {
             this.diameter = diameter;
+            modified = true;
+        }
+    }
+
+    /**
+     * Set the symbol shape.
+     * 
+     * @param symbolShape
+     *            New value.
+     */
+    public void setSymbolShape(SymbolShape symbolShape) {
+        if (compare(this.symbolShape, symbolShape) == false) {
+            this.symbolShape = symbolShape;
             modified = true;
         }
     }
@@ -494,6 +539,19 @@ public class SpatialEntity<I> {
     public void setScaleable(boolean scaleable) {
         if (this.scaleable != scaleable) {
             this.scaleable = scaleable;
+            modified = true;
+        }
+    }
+
+    /**
+     * Set the flag indicating whether or not the feature is topmost.
+     * 
+     * @param topmost
+     *            New value.
+     */
+    public void setTopmost(boolean topmost) {
+        if (this.topmost != topmost) {
+            this.topmost = topmost;
             modified = true;
         }
     }

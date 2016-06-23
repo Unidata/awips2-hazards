@@ -7,6 +7,8 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
+import gov.noaa.gsd.viz.hazards.spatialdisplay.VisualFeatureSpatialIdentifier;
+
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -24,6 +26,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
  * Mar 16, 2016 15676      Chris.Golden        Added code to support visual features.
  * Mar 26, 2016 15676      Chris.Golden        Added visual feature identifier.
+ * Jun 23, 2016 19537      Chris.Golden        Changed to use better identifiers.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -39,21 +42,11 @@ public interface IHazardServicesShape {
     public HazardServicesDrawingAttributes getDrawingAttributes();
 
     /**
-     * Sets the eventID associated with this hazard geometry.
+     * Get the identifier.
      * 
-     * @param id
-     *            - the id to associate with this hazard.
-     * @return
+     * @return Identifier.
      */
-    public void setID(String id);
-
-    /**
-     * 
-     * Retrieves the id associated with this hazard geometry.
-     * 
-     * @return the ID associated with this hazard.
-     */
-    public String getID();
+    public VisualFeatureSpatialIdentifier getIdentifier();
 
     /**
      * Returns the JTS geometry version of this shape. All Hazard Services
@@ -65,29 +58,16 @@ public interface IHazardServicesShape {
     public Geometry getGeometry();
 
     /**
-     * Get the visual feature identifier, if any.
-     * 
-     * @return Visual feature identifier, or <code>null</code> if not a visual
-     *         feature.
-     */
-    public String getVisualFeatureIdentifier();
-
-    /**
      * Determine whether or not this is a visual feature. This determination is
      * made by checking to see if a visual feature identifier has been set to
      * something other than <code>null</code> with the
      * {@link #setVisualFeatureIdentifier(String)} method.
-     */
-    public boolean isVisualFeature();
-
-    /**
-     * Set the visual feature identifier.
      * 
-     * @param visualFeatureIdentifier
-     *            Visual feature identifier, or <code>null</code> if not a
-     *            visual feature.
+     * This method is deprecated as it will disappear once all shapes are visual
+     * features.
      */
-    public void setVisualFeatureIdentifier(String visualFeatureIdentifier);
+    @Deprecated
+    public boolean isVisualFeature();
 
     /**
      * @return True if the user can edit this shape.

@@ -60,6 +60,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.core.requests.ThriftClient;
 import com.raytheon.uf.viz.hazards.sessionmanager.IFrameContextProvider;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISpatialContextProvider;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.AllHazardsFilterStrategy;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardEventExpirationAlertStrategy;
@@ -132,6 +133,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Apr 27, 2016 18266      Chris.Golden Added the setting of the selected time to that specified
  *                                      by the result of a recommender's execution, if the result
  *                                      includes a new selected time.
+ * Jun 23, 2016 19537      Chris.Golden Added use of spatial context provider.
  * </pre>
  * 
  * @author bsteffen
@@ -178,6 +180,8 @@ public class SessionManager implements
 
     private final IHazardEventManager hazardManager;
 
+    private final ISpatialContextProvider spatialContextProvider;
+
     private final IFrameContextProvider frameContextProvider;
 
     /*
@@ -206,7 +210,8 @@ public class SessionManager implements
 
     public SessionManager(IPathManager pathManager,
             IHazardEventManager hazardEventManager,
-            IFrameContextProvider contextProvider, IMessenger messenger,
+            ISpatialContextProvider spatialContextProvider,
+            IFrameContextProvider frameContextProvider, IMessenger messenger,
             BoundedReceptionEventBus<Object> eventBus) {
         // TODO switch the bus to async
         // bus = new AsyncEventBus(Executors.newSingleThreadExecutor());
@@ -227,12 +232,13 @@ public class SessionManager implements
                         timeManager, configManager, hazardEventManager,
                         new AllHazardsFilterStrategy()));
         hazardManager = hazardEventManager;
-        frameContextProvider = contextProvider;
+        this.spatialContextProvider = spatialContextProvider;
+        this.frameContextProvider = frameContextProvider;
 
         try {
             setupEventIdDisplay();
-        } catch (HazardEventServiceException hese) {
-            statusHandler.error(hese.getMessage(), hese);
+        } catch (HazardEventServiceException e) {
+            statusHandler.error(e.getMessage(), e);
         }
 
         /**
@@ -277,6 +283,11 @@ public class SessionManager implements
     @Override
     public IHazardSessionAlertsManager getAlertsManager() {
         return alertsManager;
+    }
+
+    @Override
+    public ISpatialContextProvider getSpatialContextProvider() {
+        return spatialContextProvider;
     }
 
     @Override

@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.recommenders;
 
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+
 import java.io.Serializable;
 import java.util.Map;
 
@@ -45,6 +47,8 @@ import com.raytheon.uf.viz.python.VizPythonJob;
  *                                      between H.S. sessions in the same CAVE session,
  *                                      since stopping and starting the Jep instances
  *                                      when the latter use numpy is dangerous.
+ * Jun 23, 2016 19537      Chris.Golden Changed to use visual features for spatial
+ *                                      info collection.
  * </pre>
  * 
  * @author mnash
@@ -96,12 +100,12 @@ public final class CAVERecommenderEngine extends
 
     @Override
     public void runExecuteRecommender(String recommenderName,
-            EventSet<IEvent> eventSet, Map<String, Serializable> spatialInfo,
+            EventSet<IEvent> eventSet, VisualFeaturesList visualFeatures,
             Map<String, Serializable> dialogInfo,
             IPythonJobListener<EventSet<IEvent>> listener) {
         VizPythonJob<EventSet<IEvent>> job = new VizPythonJob<>(
                 recommenderName, listener);
-        super.runExecuteRecommender(recommenderName, eventSet, spatialInfo,
+        super.runExecuteRecommender(recommenderName, eventSet, visualFeatures,
                 dialogInfo, job);
     }
 

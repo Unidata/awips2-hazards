@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
+import gov.noaa.gsd.viz.hazards.spatialdisplay.VisualFeatureSpatialIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 
@@ -36,9 +37,7 @@ import com.vividsolutions.jts.geom.Geometry;
 public abstract class HazardServicesShape extends Line implements
         IHazardServicesShape {
 
-    private String id;
-
-    private String visualFeatureIdentifier;
+    private final VisualFeatureSpatialIdentifier identifier;
 
     private boolean editable = true;
 
@@ -46,25 +45,20 @@ public abstract class HazardServicesShape extends Line implements
 
     private final HazardServicesDrawingAttributes drawingAttributes;
 
-    @Override
-    public HazardServicesDrawingAttributes getDrawingAttributes() {
-        return drawingAttributes;
-    }
-
-    public HazardServicesShape(String id,
+    public HazardServicesShape(VisualFeatureSpatialIdentifier identifier,
             HazardServicesDrawingAttributes drawingAttributes) {
-        this.id = id;
+        this.identifier = identifier;
         this.drawingAttributes = drawingAttributes;
     }
 
     @Override
-    public void setID(String id) {
-        this.id = id;
+    public VisualFeatureSpatialIdentifier getIdentifier() {
+        return identifier;
     }
 
     @Override
-    public String getID() {
-        return id;
+    public HazardServicesDrawingAttributes getDrawingAttributes() {
+        return drawingAttributes;
     }
 
     @Override
@@ -72,17 +66,7 @@ public abstract class HazardServicesShape extends Line implements
 
     @Override
     public boolean isVisualFeature() {
-        return (visualFeatureIdentifier != null);
-    }
-
-    @Override
-    public String getVisualFeatureIdentifier() {
-        return visualFeatureIdentifier;
-    }
-
-    @Override
-    public void setVisualFeatureIdentifier(String visualFeatureIdentifier) {
-        this.visualFeatureIdentifier = visualFeatureIdentifier;
+        return (identifier.getVisualFeatureIdentifier() != null);
     }
 
     @Override

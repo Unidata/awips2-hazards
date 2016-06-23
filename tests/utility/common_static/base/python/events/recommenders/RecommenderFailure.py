@@ -50,6 +50,6 @@ class Recommender(RecommenderTemplate.Recommender):
         print "Spatial info is not necessary for this recommender."
         return
     
-    def execute(self, eventSet, dialogInputMap, spatialInputMap):
+    def execute(self, eventSet, dialogInputMap, visualFeatures):
         return 0
         

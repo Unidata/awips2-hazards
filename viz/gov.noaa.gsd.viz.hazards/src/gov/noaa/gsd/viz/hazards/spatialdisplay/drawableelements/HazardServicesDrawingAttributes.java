@@ -10,18 +10,14 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SHAPES;
 import gov.noaa.nws.ncep.ui.pgen.display.FillPatternList.FillPattern;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
 import gov.noaa.nws.ncep.ui.pgen.display.ILine;
 
 import java.awt.Color;
-import java.io.Serializable;
 import java.util.List;
-import java.util.Map;
 
 import com.google.common.collect.Lists;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
@@ -54,6 +50,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Mar 16, 2016 15676      Chris.Golden        Changed to not be a subclass of a PGEN class,
  *                                             and modified to work with spatial entities.
  * Mar 24, 2016 15676      Chris.Golden        Added dotted line style and varying fill patterns.
+ * Jun 23, 2016 19537      Chris.Golden        Removed storm-track-specific code, and added
+ *                                             more flexible text label positioning.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -72,7 +70,7 @@ public abstract class HazardServicesDrawingAttributes implements IAttribute,
 
     private long pointID = Long.MIN_VALUE;
 
-    private TextPositioner textPosition = TextPositioner.CENTER;
+    private TextPositioner textPosition = TextPositioner.CENTERED;
 
     protected ISessionConfigurationManager<ObservedSettings> configurationManager;
 
@@ -207,16 +205,19 @@ public abstract class HazardServicesDrawingAttributes implements IAttribute,
     public abstract double getSizeScale();
 
     protected void setLabel(IHazardEvent hazardEvent) {
-        String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
+        setString(new String[] { getHazardLabel(hazardEvent) });
 
+    }
+
+    public static String getHazardLabel(IHazardEvent hazardEvent) {
         StringBuilder sb = new StringBuilder();
         sb.append(hazardEvent.getDisplayEventID());
-
+        String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
         if (hazardType != null) {
-            sb.append(" " + hazardType);
+            sb.append(" ");
+            sb.append(hazardType);
         }
-        setString(new String[] { sb.toString() });
-
+        return sb.toString();
     }
 
     protected void setLineStyle(IHazardEvent hazardEvent,
@@ -287,17 +288,6 @@ public abstract class HazardServicesDrawingAttributes implements IAttribute,
         Coordinate result = new Coordinate(worldAsArray[0], worldAsArray[1],
                 worldAsArray[2]);
         return result;
-    }
-
-    protected void setPointTime(int shapeNum, IHazardEvent hazardEvent) {
-        @SuppressWarnings("unchecked")
-        List<Map<String, Serializable>> shapesList = (List<Map<String, Serializable>>) hazardEvent
-                .getHazardAttribute(HAZARD_EVENT_SHAPES);
-        Map<String, Serializable> shape = shapesList.get(shapeNum);
-
-        Long pointTime = (Long) shape.get(HazardConstants.POINT_TIME);
-
-        setPointID(pointTime);
     }
 
     @Override

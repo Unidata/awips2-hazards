@@ -132,6 +132,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      replaced by visibility constraints
  *                                      based upon selection state to individual
  *                                      visual features.
+ * Jun 23, 2016 19537      Chris.Golden Changed to use new constructor for visual
+ *                                      feature change notification.
  * </pre>
  * 
  * @author bsteffen
@@ -749,8 +751,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
                         .hazardEventModified(new SessionEventVisualFeaturesModified(
                                 eventManager, this, Sets
                                         .newHashSet(visualFeature
-                                                .getIdentifier()), Collections
-                                        .<String> emptySet(), originator));
+                                                .getIdentifier()), originator));
             }
             return result;
         }
@@ -781,7 +782,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
                 eventManager
                         .hazardEventModified(new SessionEventVisualFeaturesModified(
                                 eventManager, this, changedIdentifiers,
-                                Collections.<String> emptySet(), originator));
+                                originator));
             }
             return changedIdentifiers;
         }

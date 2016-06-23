@@ -382,6 +382,8 @@ import com.vividsolutions.jts.geom.TopologyException;
  * Jun 10, 2016   19537    Chris.Golden Combined base and selected visual feature lists for each hazard
  *                                      event into one, replaced by visibility constraints based upon
  *                                      selection state to individual visual features.
+ * Jun 23, 2016   19537    Chris.Golden More combining of base and selected visual feature lists. Also
+ *                                      added support for no-hatching type hazard events.
  * </pre>
  * 
  * @author bsteffen
@@ -1907,9 +1909,7 @@ public class SessionEventManager implements
                             RecommenderExecutionContext
                                     .getHazardEventVisualFeatureChangeContext(
                                             change.getEvent().getEventID(),
-                                            Sets.union(
-                                                    change.getBaseVisualFeatureIdentifiers(),
-                                                    change.getSelectedVisualFeatureIdentifiers()),
+                                            change.getVisualFeatureIdentifiers(),
                                             ((originator instanceof RecommenderOriginator)
                                                     || originator
                                                             .equals(Originator.OTHER) ? RecommenderTriggerOrigin.OTHER
@@ -2226,8 +2226,7 @@ public class SessionEventManager implements
         /*
          * Need to account for the case where the event being added already
          * exists in the event manager. This can happen with recommender
-         * callbacks. For example, the ModifyStormTrackTool will modify
-         * information corresponding to an existing event.
+         * callbacks.
          */
         String eventID = oevent.getEventID();
 
@@ -2235,7 +2234,7 @@ public class SessionEventManager implements
             ObservedHazardEvent existingEvent = getEventById(eventID);
             if (existingEvent != null) {
                 SessionEventUtilities.mergeHazardEvents(this, oevent,
-                        existingEvent, false, originator);
+                        existingEvent, false, false, originator);
                 return existingEvent;
             }
         } else {
@@ -2416,8 +2415,7 @@ public class SessionEventManager implements
          */
         if (originator == Originator.DATABASE) {
             this.hazardVisualFeatureChanged(new SessionEventVisualFeaturesModified(
-                    this, oevent, Collections.<String> emptySet(), Collections
-                            .<String> emptySet(), originator));
+                    this, oevent, Collections.<String> emptySet(), originator));
         }
         return oevent;
     }
@@ -3719,6 +3717,11 @@ public class SessionEventManager implements
 
         Map<IHazardEvent, Collection<String>> conflictingHazardsMap = new HashMap<>();
 
+        if (geoMapUtilities.isNonHatching(firstEvent)
+                || geoMapUtilities.isNonHatching(secondEvent)) {
+            return conflictingHazardsMap;
+        }
+
         Set<String> forecastZoneSet = new HashSet<>();
 
         if (!geoMapUtilities.isWarngenHatching(firstEvent)
@@ -4026,6 +4029,9 @@ public class SessionEventManager implements
      */
     @Override
     public Map<String, String> buildInitialHazardAreas(IHazardEvent hazardEvent) {
+        if (geoMapUtilities.isNonHatching(hazardEvent)) {
+            return Collections.emptyMap();
+        }
         List<String> ugcs = buildUGCs(hazardEvent);
         String hazardArea;
         if (geoMapUtilities.isWarngenHatching(hazardEvent)) {
@@ -4186,8 +4192,9 @@ public class SessionEventManager implements
         Geometry result = selectedEvent.getGeometry();
 
         if (isLowResComputationNeeded(selectedEvent, hazardType)) {
-            // No clipping for National
-            if (configManager.getSiteID().equals("National")) {
+            // No clipping for National and for non-hatching
+            if (configManager.getSiteID().equals("National")
+                    || geoMapUtilities.isNonHatching(selectedEvent)) {
                 result = selectedEvent.getGeometry();
             } else {
                 if (geoMapUtilities.isWarngenHatching(selectedEvent)) {

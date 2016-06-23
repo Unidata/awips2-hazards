@@ -45,6 +45,7 @@
     Aug 25, 2015    9627    Robert.Blum Removed canceling wording from replacements.
     Sep 02, 2015    9637    Robert.Blum Removed gage point from polygonText and also duplicates.
     Sep 15, 2015    8687    Robert.Blum Changes to use DamMetaData.py.
+    Jun 23, 2016   19537    Chris.Golden Changed to use UTC when converting epoch time to datetime.
 '''
 
 import FormatTemplate
@@ -669,7 +670,7 @@ class Format(FormatTemplate.Formatter):
         expireTime = self._tpc.round(endTime, roundMinutes)
 
         # Determine how far into the future the expire time is.
-        issueTime = datetime.datetime.fromtimestamp(float(self._issueTime)/1000)
+        issueTime = datetime.datetime.utcfromtimestamp(float(self._issueTime)/1000)
         tdelta = endTime - issueTime
 
         if (tdelta.days == 6 and endTime.date().weekday() == issueTime.date().weekday()) or \

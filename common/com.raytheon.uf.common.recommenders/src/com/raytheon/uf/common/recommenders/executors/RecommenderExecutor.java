@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.recommenders.executors;
 
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+
 import java.io.Serializable;
 import java.util.Map;
 
@@ -40,7 +42,8 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  * Jul 12, 2013 1257       bsteffen    Convert recommender dialog info to use
  *                                     Serializeables for values instead of
  *                                     Strings.
- * 
+ * Jun 23, 2016 19537      Chris.Golden Changed to use visual features for
+ *                                      spatial info.
  * </pre>
  * 
  * @author mnash
@@ -50,29 +53,29 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 public class RecommenderExecutor<P extends AbstractRecommenderScriptManager>
         extends AbstractRecommenderExecutor<P, EventSet<IEvent>> {
 
-    private Map<String, Serializable> spatialInfo;
+    private final VisualFeaturesList visualFeatures;
 
-    private Map<String, Serializable> dialogInfo;
+    private final Map<String, Serializable> dialogInfo;
 
-    private EventSet<IEvent> eventSet;
+    private final EventSet<IEvent> eventSet;
 
     /**
      * Pass in the dialog info and spatial info values. We will not need to get
      * them when running.
      */
     public RecommenderExecutor(String recommenderName,
-            EventSet<IEvent> eventSet, Map<String, Serializable> spatialInfo,
+            EventSet<IEvent> eventSet, VisualFeaturesList visualFeatures,
             Map<String, Serializable> dialogInfo) {
         super(recommenderName);
         this.eventSet = eventSet;
-        this.spatialInfo = spatialInfo;
+        this.visualFeatures = visualFeatures;
         this.dialogInfo = dialogInfo;
     }
 
     @Override
     public EventSet<IEvent> execute(P script) {
         EventSet<IEvent> events = script.executeRecommender(recommenderName,
-                eventSet, dialogInfo, spatialInfo);
+                eventSet, dialogInfo, visualFeatures);
         return events;
     }
 }

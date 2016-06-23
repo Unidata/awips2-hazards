@@ -64,6 +64,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * Mar 04, 2016 15933      Chris.Golden Added ability to run multiple recommenders in
  *                                      sequence in response to a time interval trigger,
  *                                      instead of just one recommender.
+ * Jun 23, 2016 19537      Chris.Golden Added use of spatial context provider.
  * </pre>
  * 
  * @author bsteffen
@@ -114,6 +115,13 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
      * @return
      */
     public ISessionRecommenderManager getRecommenderManager();
+
+    /**
+     * Get the spatial context provider.
+     * 
+     * @return Spatial context provider.
+     */
+    public ISpatialContextProvider getSpatialContextProvider();
 
     /**
      * Get the temporal frame context provider.

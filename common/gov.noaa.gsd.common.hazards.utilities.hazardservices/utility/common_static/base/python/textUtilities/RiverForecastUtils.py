@@ -32,6 +32,7 @@
  Jun 25, 2015  8313      Benjamin.Phillippe Fixed situation with missing stage date 
  Jul 09, 2015  9359      Chris.Cody  Correct problem with currentDate being unset
  Jul 14, 2015  9425      Chris.Cody  Correct python issue with objects in Java List
+ Jun 23, 2016 19537      Chris.Golden Changed to use UTC when converting from epoch time to datetime.
 '''
 
 from com.raytheon.uf.common.time import SimulatedTime
@@ -60,7 +61,7 @@ MINOR = 'MINOR'
 MODERATE = 'MODERATE'
 RECORD = 'RECORD'
 
-MISSING_STAGE_DATE = MISSING_VALUE, datetime.datetime.fromtimestamp(0)
+MISSING_STAGE_DATE = MISSING_VALUE, datetime.datetime.utcfromtimestamp(0)
 MISSING_SHEF_QUALITY_CODE = RiverHydroConstants.MISSING_SHEF_QUALITY_CODE
 PE_H = 'H'
 PE_Q = 'Q'
@@ -265,7 +266,7 @@ class RiverForecastUtils(object):
         ### curDateDate through minDateDate used with Crests only
         minDateDate = None
         if impactsOrCrests == 'Crests':
-            curDateDate = datetime.datetime.fromtimestamp(currentDate / 1000)
+            curDateDate = datetime.datetime.utcfromtimestamp(currentDate / 1000)
             minYear = curDateDate.year+yearLookBack
             if searchType.find("Year Window")<0 or minYear<datetime.MINYEAR :
                 minYear = datetime.MINYEAR

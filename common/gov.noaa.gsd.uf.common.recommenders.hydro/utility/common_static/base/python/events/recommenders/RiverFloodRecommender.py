@@ -30,7 +30,8 @@ recommender framework
                                                  data when computing Warning/Watch/Advisory.
     Sep 10, 2015   10195     Chris.Cody          Modify getFloodPolygonForRiverPointHazard to take a string
                                                  representation of a list or a list of strings of point coords
-
+    Jun 23, 2016   19537     Chris.Golden        Removed spatial info, since it was unused.
+    
 @since: November 2012
 @author: GSD Hazard Services Team
 '''
@@ -122,7 +123,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
         return dialogDict
 
-    def execute(self, eventSet, dialogInputMap, spatialInputMap):
+    def execute(self, eventSet, dialogInputMap, visualFeatures):
         """
         Runs the River Flood Recommender tool
         
@@ -130,9 +131,10 @@ class Recommender(RecommenderTemplate.Recommender):
                          attributes
         @param dialogInputMap: A map of information retrieved from
                                a user's interaction with a dialog.
-        @param spatialInputMap:   A map of information retrieved
-                                  from the user's interaction with the
-                                  spatial display.
+        @param visualFeatures: Visual features as defined by the
+                               defineSpatialInfo() method and
+                               modified by the user to provide
+                               spatial input; ignored.
         
         @return: A list of potential events. 
         """
@@ -155,11 +157,9 @@ class Recommender(RecommenderTemplate.Recommender):
             
         if selectedPointID is not None:
               inputMap.put(SELECTED_POINT_ID, selectedPointID)
-                    
-        spatialMap = JUtil.pyDictToJavaMap(spatialInputMap)
         
         javaEventList = self._riverProFloodRecommender.getRecommendation(
-                        sessionMap, inputMap, spatialMap)
+                        sessionMap, inputMap)
 
         recommendedEventSet = EventSet(javaEventList)  
         currentEvents = self.getCurrentEvents(eventSet, sessionAttributes)        

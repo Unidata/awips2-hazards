@@ -52,6 +52,10 @@ import com.vividsolutions.jts.io.WKTWriter;
  *                                      replaced by visibility constraints
  *                                      based upon selection state to individual
  *                                      visual features.
+ * Jun 23, 2016   19537    Chris.Golden Added support for using "as event" as a
+ *                                      value for label text in visual features,
+ *                                      as well as support for new topmost and
+ *                                      symbol shape properties of visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -212,6 +216,20 @@ class VisualFeaturesListJsonSerializer {
                                     VisualFeaturesListJsonConverter.KEY_DIAMETER);
                         }
                     })
+            .put(VisualFeaturesListJsonConverter.KEY_SYMBOL_SHAPE,
+                    new IPropertySerializer<SymbolShape>() {
+
+                        @Override
+                        public void serializeProperty(SymbolShape value,
+                                JsonGenerator generator, String identifier)
+                                throws JsonGenerationException {
+                            serializeSymbolShape(
+                                    value,
+                                    generator,
+                                    identifier,
+                                    VisualFeaturesListJsonConverter.KEY_SYMBOL_SHAPE);
+                        }
+                    })
             .put(VisualFeaturesListJsonConverter.KEY_LABEL,
                     new IPropertySerializer<String>() {
 
@@ -320,6 +338,17 @@ class VisualFeaturesListJsonSerializer {
                                     identifier,
                                     VisualFeaturesListJsonConverter.KEY_SCALEABLE);
                         }
+                    })
+            .put(VisualFeaturesListJsonConverter.KEY_TOPMOST,
+                    new IPropertySerializer<Boolean>() {
+
+                        @Override
+                        public void serializeProperty(Boolean value,
+                                JsonGenerator generator, String identifier)
+                                throws JsonGenerationException {
+                            serializeBoolean(value, generator, identifier,
+                                    VisualFeaturesListJsonConverter.KEY_TOPMOST);
+                        }
                     }).build();
 
     /**
@@ -406,6 +435,15 @@ class VisualFeaturesListJsonSerializer {
                             return visualFeature.getDiameter();
                         }
                     })
+            .put(VisualFeaturesListJsonConverter.KEY_SYMBOL_SHAPE,
+                    new IPropertyFetcher<SymbolShape>() {
+
+                        @Override
+                        public TemporallyVariantProperty<SymbolShape> fetchPropertyValue(
+                                VisualFeature visualFeature) {
+                            return visualFeature.getSymbolShape();
+                        }
+                    })
             .put(VisualFeaturesListJsonConverter.KEY_LABEL,
                     new IPropertyFetcher<String>() {
 
@@ -476,6 +514,15 @@ class VisualFeaturesListJsonSerializer {
                         public TemporallyVariantProperty<Boolean> fetchPropertyValue(
                                 VisualFeature visualFeature) {
                             return visualFeature.getScaleable();
+                        }
+                    })
+            .put(VisualFeaturesListJsonConverter.KEY_TOPMOST,
+                    new IPropertyFetcher<Boolean>() {
+
+                        @Override
+                        public TemporallyVariantProperty<Boolean> fetchPropertyValue(
+                                VisualFeature visualFeature) {
+                            return visualFeature.getTopmost();
                         }
                     }).build();
 
@@ -599,6 +646,11 @@ class VisualFeaturesListJsonSerializer {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
                         (IPropertyFetcher<BorderStyle>) fetcher,
                         (IPropertySerializer<BorderStyle>) serializer);
+            } else if (type
+                    .equals(VisualFeaturesListJsonConverter.TYPE_SYMBOL_SHAPE)) {
+                fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
+                        (IPropertyFetcher<SymbolShape>) fetcher,
+                        (IPropertySerializer<SymbolShape>) serializer);
             } else if (type
                     .equals(VisualFeaturesListJsonConverter.TYPE_DRAGGABILITY)) {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
@@ -856,7 +908,12 @@ class VisualFeaturesListJsonSerializer {
             String identifier, String propertyName)
             throws JsonGenerationException {
         try {
-            generator.writeString(value);
+            if (value.equals(VisualFeature.STRING_OF_EVENT_TYPE)) {
+                generator
+                        .writeString(VisualFeaturesListJsonConverter.PROPERTY_VALUE_EVENT_TYPE);
+            } else {
+                generator.writeString(value);
+            }
         } catch (IOException e) {
             throw createValueSerializationException(value, identifier,
                     propertyName, e);
@@ -962,6 +1019,31 @@ class VisualFeaturesListJsonSerializer {
      *             If an error occurs during serialization.
      */
     private static void serializeBorderStyle(BorderStyle value,
+            JsonGenerator generator, String identifier, String propertyName)
+            throws JsonGenerationException {
+        try {
+            generator.writeString(value.getDescription());
+        } catch (IOException e) {
+            throw createValueSerializationException(value, identifier,
+                    propertyName, e);
+        }
+    }
+
+    /**
+     * Serialize the specified symbol shape.
+     * 
+     * @param value
+     *            Item to be serialized.
+     * @param generator
+     *            JSON generator to be used for serialization.
+     * @param identifier
+     *            Identifier of the visual feature that is being serialized.
+     * @param propertyName
+     *            Name of the property for which a value is being serialized.
+     * @throws JsonGenerationException
+     *             If an error occurs during serialization.
+     */
+    private static void serializeSymbolShape(SymbolShape value,
             JsonGenerator generator, String identifier, String propertyName)
             throws JsonGenerationException {
         try {

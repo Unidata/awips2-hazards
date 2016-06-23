@@ -24,6 +24,7 @@ import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 
 /**
@@ -42,7 +43,7 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  *                                     Strings.
  * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting
  *                                      dialog info.
- * 
+ * Jun 23, 2016 19537      Chris.Golden Changed to use constants.
  * </pre>
  * 
  * @author mnash
@@ -62,6 +63,7 @@ public class RecommenderDialogInfoExecutor<P extends AbstractRecommenderScriptMa
 
     @Override
     public Map<String, Serializable> execute(P script) {
-        return script.getInfo(recommenderName, "getDialogInfo", eventSet);
+        return script.getInfo(recommenderName,
+                HazardConstants.RECOMMENDER_GET_DIALOG_INFO_METHOD, eventSet);
     }
 }

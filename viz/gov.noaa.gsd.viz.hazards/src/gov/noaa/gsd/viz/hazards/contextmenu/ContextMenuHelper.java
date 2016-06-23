@@ -19,7 +19,12 @@
  **/
 package gov.noaa.gsd.viz.hazards.contextmenu;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.LOW_RESOLUTION_GEOMETRY_IS_VISIBLE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 
@@ -39,8 +44,11 @@ import org.eclipse.swt.widgets.Menu;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -69,6 +77,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * May 21, 2015 7730       Chris.Cody   Move Add/Delete Vertex to top of Context Menu
  * Sep 15, 2015 7629       Robert.Blum  Added new context menus for saving pending hazards.
+ * Jun 23, 2016 19537      Chris.Golden Removed option of adding/removing areas if a
+ *                                      hazard event is of a non-hatching type.
  * </pre>
  * 
  * @author mnash
@@ -136,6 +146,8 @@ public class ContextMenuHelper {
 
     private final ISessionEventManager<ObservedHazardEvent> eventManager;
 
+    private final ISessionConfigurationManager<ObservedSettings> configManager;
+
     /**
      * 
      */
@@ -144,6 +156,7 @@ public class ContextMenuHelper {
             ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager) {
         this.presenter = presenter;
         this.eventManager = sessionManager.getEventManager();
+        this.configManager = sessionManager.getConfigurationManager();
     }
 
     /**
@@ -172,7 +185,7 @@ public class ContextMenuHelper {
                     }
                     addContributionItem(items,
                             ContextMenuSelections.SAVE_THIS_HAZARD.getValue());
-		    Collection<ObservedHazardEvent> pendingEvents = eventManager
+                    Collection<ObservedHazardEvent> pendingEvents = eventManager
                             .getEventsByStatus(HazardStatus.PENDING);
                     if (pendingEvents.size() > 1) {
                         addContributionItem(items,
@@ -327,7 +340,13 @@ public class ContextMenuHelper {
                         if (eventManager.canEventAreaBeChanged(event) == false) {
                             continue;
                         }
-
+                        String hazardType = HazardEventUtilities
+                                .getHazardType(event);
+                        if ((hazardType != null)
+                                && (configManager.getHazardTypes()
+                                        .get(hazardType).getHatchingStyle() == HatchingStyle.NONE)) {
+                            continue;
+                        }
                         addItemIfNotAlreadyIncluded(itemNames,
                                 HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
                         break;

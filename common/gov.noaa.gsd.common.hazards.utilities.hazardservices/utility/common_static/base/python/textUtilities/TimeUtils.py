@@ -1,0 +1,36 @@
+'''
+Time-related utilities.
+'''
+import datetime
+
+# Round the specified datetime object (or the current time if none is given)
+# to the nearest time increment given by delta (or if the latter is not given,
+# to the nearest minute).
+def roundDatetime(timestamp=None, delta=datetime.timedelta(minutes=1)):
+    """
+    Author: Thierry Husson 2012 - Use it as you want but don't blame me.
+            Stijn Nevens 2014 - Changed to use only datetime objects as variables
+    """
+    roundTo = delta.total_seconds()    
+    if timestamp is None:
+        timestamp = datetime.datetime.now()
+    seconds = (timestamp - timestamp.min).seconds
+    # // is a floor division, not a comment on following line:
+    rounding = ((seconds + roundTo / 2) // roundTo) * roundTo
+    return timestamp + datetime.timedelta(0, rounding - seconds, -timestamp.microsecond)
+
+# Round the specified epoch time in milliseconds to the nearest time increment
+# given by delta (or if the latter is not given, to the nearest minute).
+def roundEpochTimeMilliseconds(milliseconds, delta=datetime.timedelta(minutes=1)):
+    timestamp = epochTimeMillisToDatetime(milliseconds)
+    timestamp = roundDatetime(timestamp, delta)
+    return datetimeToEpochTimeMillis(timestamp)
+
+# Convert the specified datetime object into an epoch time in milliseconds.
+def datetimeToEpochTimeMillis(timestamp):
+    return int(((timestamp - datetime.datetime.utcfromtimestamp(0)).total_seconds()) * 1000.0)
+
+# Convert the specified epoch time in milliseconds to a datetime object.
+def epochTimeMillisToDatetime(milliseconds):
+    return datetime.datetime.utcfromtimestamp(milliseconds / 1000.0)
+

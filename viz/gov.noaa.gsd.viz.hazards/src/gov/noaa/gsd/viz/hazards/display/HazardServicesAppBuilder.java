@@ -33,6 +33,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.P
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_UTILITIES_DIR;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.alerts.AlertVizPresenter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigPresenter;
@@ -119,6 +120,7 @@ import com.raytheon.uf.viz.core.globals.VizGlobalsManager;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.hazards.sessionmanager.IFrameContextProvider;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISpatialContextProvider;
 import com.raytheon.uf.viz.hazards.sessionmanager.SessionManagerFactory;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
@@ -135,6 +137,7 @@ import com.raytheon.uf.viz.productgen.dialog.ProductViewer;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
+import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Description: Builder of the Hazard Services application and its components
@@ -228,6 +231,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Mar 15, 2016 15676      Chris.Golden        Updated to use new method names.
  * Apr 01, 2016 16225      Chris.Golden        Added ability to cancel tasks that are scheduled to run
  *                                             at regular intervals.
+ * Jun 23, 2016 19537      Chris.Golden        Added use of a spatial context provider.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -244,8 +248,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * Hard-coded canned case time. For use in Operation Mode for now.
      */
     // public final static String CANNED_TIME = "1297137600000"; // 4Z
-    //public final static String CANNED_TIME = "1447266960000"; // 2015-11-11
-    //                                                          // 1836z
+    // public final static String CANNED_TIME = "1447266960000"; // 2015-11-11
+    // // 1836z
     public final static String CANNED_TIME = "1430067600000"; // 2015-04-26
                                                               // 1700z
 
@@ -310,11 +314,31 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         @Override
         public FramesInfo getFramesInfo() {
-            FramesInfo framesInfo = null;
             AbstractEditor editor = EditorUtil
                     .getActiveEditorAs(AbstractEditor.class);
             return (editor != null ? editor.getActiveDisplayPane()
                     .getDescriptor().getFramesInfo() : null);
+        }
+    };
+
+    /**
+     * Implementation of a spatial context provider.
+     */
+    private final ISpatialContextProvider spatialContextProvider = new ISpatialContextProvider() {
+
+        @Override
+        public Coordinate getLatLonCenterPoint() {
+            AbstractEditor editor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
+            if (editor != null) {
+                double[] coordInPixels = editor.getActiveDisplayPane()
+                        .getRenderableDisplay().getExtent().getCenter();
+                double[] coordInLatLon = editor.getActiveDisplayPane()
+                        .getDescriptor().pixelToWorld(coordInPixels);
+                return new Coordinate(coordInLatLon[0], coordInLatLon[1],
+                        coordInLatLon[2]);
+            }
+            return null;
         }
     };
 
@@ -568,7 +592,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          */
         currentTime = SimulatedTime.getSystemTime().getTime();
         this.sessionManager = SessionManagerFactory.getSessionManager(this,
-                frameContextProvider, eventBus);
+                spatialContextProvider, frameContextProvider, eventBus);
         messageHandler = new HazardServicesMessageHandler(this, currentTime);
 
         /**
@@ -671,33 +695,11 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             }
 
             @Override
-            @Deprecated
-            public void requestToolSpatialInput(String tool, ToolType type,
+            public void getToolSpatialInput(String tool, ToolType type,
                     RecommenderExecutionContext context,
-                    Map<String, Serializable> spatialInput) {
-
-                /*
-                 * Do nothing unless the return type is a point.
-                 */
-                if (spatialInput.get(
-                        HazardConstants.SPATIAL_PARAMETERS_RETURN_TYPE).equals(
-                        HazardConstants.SPATIAL_PARAMETERS_RETURN_TYPE_POINT)) {
-
-                    /*
-                     * Activate the storm tracking mouse handler
-                     */
-                    String label = (String) spatialInput
-                            .get(HazardConstants.SPATIAL_PARAMETERS_HAZARD_LABEL);
-                    String eventType = null;
-                    if (spatialInput
-                            .containsKey(HazardConstants.HAZARD_EVENT_TYPE) == true) {
-                        eventType = (String) spatialInput
-                                .get(HazardConstants.HAZARD_EVENT_TYPE);
-                    }
-                    requestMouseHandler(
-                            HazardServicesMouseHandlers.STORM_TOOL_DRAG_DOT_DRAWING,
-                            tool, label, eventType);
-                }
+                    VisualFeaturesList visualFeatures) {
+                spatialPresenter.setToolVisualFeatures(type, tool, context,
+                        visualFeatures);
             }
         };
     }

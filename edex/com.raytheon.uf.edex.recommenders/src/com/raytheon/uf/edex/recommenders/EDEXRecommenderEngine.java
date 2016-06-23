@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.recommenders;
 
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+
 import java.io.Serializable;
 import java.util.Map;
 
@@ -39,10 +41,11 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 23, 2013            mnash     Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * May 23, 2013            mnash        Initial creation.
+ * Jun 23, 2016   19537    Chris.Golden Changed to use visual features for
+ *                                      spatial info gathering.
  * </pre>
  * 
  * @author mnash
@@ -76,10 +79,10 @@ public class EDEXRecommenderEngine extends
     }
 
     public EventSet<IEvent> runRecommender(String recommenderName,
-            EventSet<IEvent> eventSet, Map<String, Serializable> spatialInfo,
+            EventSet<IEvent> eventSet, VisualFeaturesList visualFeatures,
             Map<String, Serializable> dialogInfo) {
         IPythonExecutor<EDEXRecommenderScriptManager, EventSet<IEvent>> executor = new RecommenderExecutor<EDEXRecommenderScriptManager>(
-                recommenderName, eventSet, spatialInfo, dialogInfo);
+                recommenderName, eventSet, visualFeatures, dialogInfo);
         try {
             return getCoordinator(recommenderName).submitSyncJob(executor);
         } catch (Exception e) {

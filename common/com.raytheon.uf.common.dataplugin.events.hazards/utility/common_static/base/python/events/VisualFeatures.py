@@ -22,17 +22,13 @@ import datetime
 #    
 #    Date            Ticket#       Engineer        Description
 #    ------------    ----------    ------------    --------------------------
-#    Mar 01, 2016      15676       Chris.Golden    Initial Creation.
+#    Mar 01, 2016      15676       Chris.Golden    Initial creation.
+#    Jun 23, 2016      19537       Chris.Golden    Moved time-related method
+#                                                  to new TimeUtils.
 #
 class VisualFeatures(list):
     
     def __init__(self, visualFeatures):
         list.__init__(self, visualFeatures)
 
-    # Utility method for converting the specified datetime object into an epoch
-    # time in milliseconds, suitable for specifying the bounds of time range
-    # tuples in visual feature properties.
-    @staticmethod
-    def datetimeToEpochTimeMillis(timestamp):
-        return int(((timestamp - datetime.datetime(1970,1,1)).total_seconds()) * 1000.0)
 

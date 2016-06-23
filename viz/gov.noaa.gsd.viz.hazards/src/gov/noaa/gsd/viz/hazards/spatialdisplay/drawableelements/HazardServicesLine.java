@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
+import gov.noaa.gsd.viz.hazards.spatialdisplay.VisualFeatureSpatialIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 
 import java.util.List;
@@ -28,6 +29,7 @@ import com.vividsolutions.jts.geom.LineString;
  * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
  *                                             points.
  * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
+ * Jun 23, 2016 19537      Chris.Golden        Changed to use better identifiers.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -50,14 +52,14 @@ public class HazardServicesLine extends HazardServicesShape {
      *            The list points defining this drawable.
      * @param activeLayer
      *            The PGEN layer this will be drawn to.
-     * @param id
-     *            The id associated with this drawable.
+     * @param identifier
+     *            The identifier associated with this drawable.
      */
     public HazardServicesLine(
             HazardServicesDrawingAttributes drawingAttributes,
             String pgenCategory, String pgenType, List<Coordinate> points,
-            Layer activeLayer, String id) {
-        super(id, drawingAttributes);
+            Layer activeLayer, VisualFeatureSpatialIdentifier identifier) {
+        super(identifier, drawingAttributes);
         setLinePoints(points);
         update(drawingAttributes);
         setPgenCategory(pgenCategory);

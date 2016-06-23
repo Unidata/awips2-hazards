@@ -22,6 +22,7 @@ package com.raytheon.uf.common.recommenders.executors;
 import java.io.Serializable;
 import java.util.Map;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 
 /**
@@ -36,6 +37,7 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  * Mar 06, 2013            mnash        Initial creation
  * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
  *                                      info.
+ * Jun 23, 2016 19537      Chris.Golden Changed to use constants.
  * </pre>
  * 
  * @author mnash
@@ -54,6 +56,7 @@ public class RecommenderMetadataExecutor<P extends AbstractRecommenderScriptMana
 
     @Override
     public Map<String, Serializable> execute(P script) {
-        return script.getInfo(recommenderName, "getScriptMetadata", null);
+        return script.getInfo(recommenderName,
+                HazardConstants.RECOMMENDER_GET_METADATA_METHOD, null);
     }
 }

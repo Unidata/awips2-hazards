@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableMap;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 
 /**
  * Contants to be used by both Java and Python code, Python will have a class
@@ -91,6 +90,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Jun 10, 2016 19537     Chris.Golden  Combined base and selected visual feature lists for each
  *                                      hazard event into one, replaced by visibility constraints
  *                                      based upon selection state to individual visual features.
+ * Jun 23, 2016 19537     Chris.Golden  Added recommender-related constants, and removed storm-
+ *                                      track-specific constants.
  * </pre>
  * 
  * @author mnash
@@ -146,6 +147,14 @@ public final class HazardConstants {
     public static final String RECOMMENDER_METADATA_INCLUDE_EVENT_TYPES = "includeEventTypes";
 
     public static final String RECOMMENDER_METADATA_INCLUDE_LATEST_DATA_LAYER_TIME = "includeLatestDataLayerTime";
+
+    // Recommender method names
+
+    public static final String RECOMMENDER_GET_DIALOG_INFO_METHOD = "getDialogInfo";
+
+    public static final String RECOMMENDER_GET_METADATA_METHOD = "getScriptMetadata";
+
+    public static final String RECOMMENDER_GET_SPATIAL_INFO_METHOD = "getSpatialInfo";
 
     /**
      * Types of changes or events that may trigger a recommender execution.
@@ -759,6 +768,12 @@ public final class HazardConstants {
 
     public static final String CURRENT_TIME = "currentTime";
 
+    public static final String CENTER_POINT_LAT_LON = "centerPointLatLon";
+
+    public static final String COORDINATE_LAT = "lat";
+
+    public static final String COORDINATE_LON = "lon";
+
     public static final String SELECTED_TIME = "selectedTime";
 
     public static final String BACKUP_SITEID = "backupSiteID";
@@ -1042,22 +1057,7 @@ public final class HazardConstants {
 
     public static final String BACKUP_HAZARD_SITES = "backupSites";
 
-    /*
-     * TODO The following need to be moved to something specific to storm track
-     */
     public static final String POINTID = "pointID";
-
-    public static final String PIVOTS = "pivots";
-
-    public static final String TRACK_POINTS = "trackPoints";
-
-    public static final String STORM_TRACK_LINE = "stormTrackLine";
-
-    public static final String MODIFY_STORM_TRACK_TOOL = "ModifyStormTrackTool";
-
-    public static final String STATIC_SETTINGS = "staticSettings";
-
-    public static final String SPATIAL_INFO = "spatialInfo";
 
     public static final String MAP_CENTER = "mapCenter";
 
@@ -1214,12 +1214,6 @@ public final class HazardConstants {
      * General megawidgets key in hazard information dialog dictionary.
      */
     public static final String HAZARD_INFO_GENERAL_CONFIG_WIDGETS = "hazardCategories";
-
-    /**
-     * Key into {@link IHazardEvent} attributes for the time associated with a
-     * point in storm track, for example.
-     */
-    public static final String POINT_TIME = "pointTime";
 
     /**
      * Maximum time as an epoch time in milliseconds. This is arbitrarily large,

@@ -73,6 +73,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                      for each hazard event into one, replaced by
  *                                      visibility constraints based upon selection state
  *                                      to individual visual features.
+ * Jun 23, 2016 19537      Chris.Golden Added option when merging hazard events to keep
+ *                                      old visual featuers list if new event's list is
+ *                                      empty (previously, this was mandatory).
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -100,13 +103,19 @@ public class SessionEventUtilities {
      *            new event will not be checked for correctness before being
      *            merged into the old event. If <code>false</code>, such checks
      *            will occur.
+     * @param keepVisualFeatures
+     *            If <code>true</code>, then if the new event has no visual
+     *            features, the old event's visual features will be kept. If
+     *            <code>false</code>, the new event's visual features list will
+     *            always be used in place of the old one's.
      * @param originator
      *            Originator of this action.
      */
     public static void mergeHazardEvents(
             ISessionEventManager<ObservedHazardEvent> eventManager,
             IHazardEvent newEvent, ObservedHazardEvent oldEvent,
-            boolean forceMerge, IOriginator originator) {
+            boolean forceMerge, boolean keepVisualFeatures,
+            IOriginator originator) {
         oldEvent.setSiteID(newEvent.getSiteID(), originator);
         if (forceMerge) {
             oldEvent.setTimeRange(newEvent.getStartTime(),
@@ -119,11 +128,14 @@ public class SessionEventUtilities {
         oldEvent.setGeometry(newEvent.getGeometry(), originator);
 
         /*
-         * Only use the visual features of the new event if there is at least
-         * one; otherwise, let the old event keep its visual features.
+         * If the keep visual features flag is set, only use the visual features
+         * of the new event if there is at least one, retaining the old event's
+         * features if the new one has none. If the flag is not set, always use
+         * the new event's visual feature list.
          */
-        if ((newEvent.getVisualFeatures() != null)
-                && (newEvent.getVisualFeatures().isEmpty() == false)) {
+        if ((keepVisualFeatures == false)
+                || ((newEvent.getVisualFeatures() != null) && (newEvent
+                        .getVisualFeatures().isEmpty() == false))) {
             oldEvent.setVisualFeatures(newEvent.getVisualFeatures(), originator);
         }
 

@@ -14,6 +14,7 @@ from scipy.io import netcdf
 from collections import defaultdict
 from shutil import copy2
 import HazardDataAccess
+import TimeUtils
 from VisualFeatures import VisualFeatures
 
 class ProbUtils(object):
@@ -37,14 +38,14 @@ class ProbUtils(object):
         ### Note: this is one way to round down minutes... 
         #timeStamp = eventSet.getAttributes().get("issueTime").replace(second=0)
         timestamp = (long(eventSet.getAttributes().get("currentTime"))/1000)
-        timestamp = datetime.datetime.fromtimestamp(timestamp)
+        timestamp = datetime.datetime.utcfromtimestamp(timestamp)
         timeStamp = timestamp.replace(second=0)
 
         
         for event in eventSet:
             
             ### Kludgey fix for HWT Week 3
-            #if event.getEndTime() <= datetime.datetime.fromtimestamp(eventSet.getAttributes().get("currentTime")/1000):
+            #if event.getEndTime() <= datetime.datetime.utcfromtimestamp(eventSet.getAttributes().get("currentTime")/1000):
             if event.getEndTime() <= timestamp:
                 continue
             
@@ -246,8 +247,8 @@ class ProbUtils(object):
         '''
         Creates an output netCDF file in OUTPUTDIR (set near top)
         '''
-        epoch = (timeStamp-datetime.datetime.fromtimestamp(0)).total_seconds()
-        nowTime = datetime.datetime.fromtimestamp(time.time())
+        epoch = (timeStamp-datetime.datetime.utcfromtimestamp(0)).total_seconds()
+        nowTime = datetime.datetime.utcfromtimestamp(time.time())
         
         
         #outDir = os.path.join(self._OUTPUTDIR, nowTime.strftime("%Y%m%d_%H"), eventType)
@@ -335,8 +336,8 @@ class ProbUtils(object):
                 
     def _roundEventTimes(self, event):
         # Current time rounded to nearest minute
-        startTime = self._roundTime(event.getStartTime()) 
-        endTime = self._roundTime(event.getEndTime())        
+        startTime = TimeUtils.roundDatetime(event.getStartTime()) 
+        endTime = TimeUtils.roundDatetime(event.getEndTime())        
         event.setStartTime(startTime)
         event.setEndTime(endTime)
         
@@ -345,8 +346,8 @@ class ProbUtils(object):
 
     def _getDurationMinutes(self, event, truncateAtZero=False):
         # This will round down to the nearest minute
-        startTime = self._roundTime(event.getStartTime())
-        endTime = self._roundTime(event.getEndTime())
+        startTime = TimeUtils.roundDatetime(event.getStartTime())
+        endTime = TimeUtils.roundDatetime(event.getEndTime())
         
         if truncateAtZero:
             endTime = self._getZeroProbTime_minutes(event, startTime, endTime)
@@ -358,9 +359,9 @@ class ProbUtils(object):
         # Return the time of the zero probability OR 
         #   the event end time if there is no zero prob found
         if not startTime_minutes:
-            startTime_minutes = self._roundTime(event.getStartTime())
+            startTime_minutes = TimeUtils.roundDatetime(event.getStartTime())
         if not endTime_minutes:
-            endTime_minutes = self._roundTime(event.getEndTime())
+            endTime_minutes = TimeUtils.roundDatetime(event.getEndTime())
             
         # Check for zero value prior to endTime
         graphVals = event.get("convectiveProbTrendGraph")
@@ -372,11 +373,8 @@ class ProbUtils(object):
                     endIndex = i
                     break
             if zeroIndex and zeroIndex != len(graphVals)-1:
-                endTime_minutes = self._roundTime(startTime_minutes + zeroIndex * self._timeStep()/60)
+                endTime_minutes = TimeUtils.roundDatetime(startTime_minutes + zeroIndex * self._timeStep()/60)
         return endTime_minutes
-
-    def _datetimeToMs(self, datetime):
-        return float(time.mktime(datetime.timetuple())) * 1000
     
     def _convertMsToSecsOffset(self, time_ms, baseTime_ms=0):
         result = time_ms - baseTime_ms
@@ -404,7 +402,7 @@ class ProbUtils(object):
         previousDataLaterTime = event.get("previousDataLayerTime")
         issueStart = event.get("eventStartTimeAtIssuance")
         graphVals = event.get("convectiveProbTrendGraph")
-        currentStart = long(self._datetimeToMs(event.getStartTime()))
+        currentStart = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
         
         print '==='
         print event.getEventID()
@@ -428,12 +426,12 @@ class ProbUtils(object):
         if latestDataLayerTime is not None and previousDataLaterTime is not None:
             #print '+++ Using latestDataLayerTime-previousDataLaterTime'
             #self.flush()
-            previous = datetime.datetime.fromtimestamp(previousDataLaterTime/1000)
-            latest = datetime.datetime.fromtimestamp(latestDataLayerTime/1000)
+            previous = datetime.datetime.utcfromtimestamp(previousDataLaterTime/1000)
+            latest = datetime.datetime.utcfromtimestamp(latestDataLayerTime/1000)
         else:
             #print '--- Using currentStart-issueStart'
-            previous = datetime.datetime.fromtimestamp(issueStart/1000)
-            latest = datetime.datetime.fromtimestamp(currentStart/1000)
+            previous = datetime.datetime.utcfromtimestamp(issueStart/1000)
+            latest = datetime.datetime.utcfromtimestamp(currentStart/1000)
 
         latestDataLayerTime = latestDataLayerTime if latestDataLayerTime is not None else issueStart
         #print 'Setting previousDataLayerTime', latestDataLayerTime
@@ -512,38 +510,10 @@ class ProbUtils(object):
             #editable = 1 if y != 0 else 0
             probVals.append({"x":i, "y":y, "editable": editable})
         return probVals
-    
-    def _roundTime(self, dt=None, dateDelta=datetime.timedelta(minutes=1)):
-        """Round a datetime object to a multiple of a timedelta
-        dt : datetime.datetime object, default now.
-        dateDelta : timedelta object, we round to a multiple of this, default 1 minute.
-        Author: Thierry Husson 2012 - Use it as you want but don't blame me.
-                Stijn Nevens 2014 - Changed to use only datetime objects as variables
-        """
-        roundTo = dateDelta.total_seconds()    
-        if dt is None : dt = datetime.datetime.now()
-        seconds = (dt - dt.min).seconds
-        # // is a floor division, not a comment on following line:
-        rounding = ((seconds+roundTo/2) // roundTo) * roundTo
-        return dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)
-    
-    def _roundTime_ms(self, ms):
-        dt = datetime.datetime.fromtimestamp(ms/1000.0)
-        #print "ProbUtils before dt", dt
-        #self.flush()
-        dt = self._roundTime(dt)
-        #print "ProbUtils after dt", dt
-        #self.flush()
-        return VisualFeatures.datetimeToEpochTimeMillis(dt)
 
     def _timeDelta_ms(self):
         # A tolerance for comparing millisecond times
         return 40*1000
-    
-    def _getMillis(self, dt):
-        epoch = datetime.datetime.utcfromtimestamp(0)
-        delta = dt - epoch
-        return delta.total_seconds() * 1000.0
     
     def _displayMsTime(self, time_ms):
         return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time_ms/1000))

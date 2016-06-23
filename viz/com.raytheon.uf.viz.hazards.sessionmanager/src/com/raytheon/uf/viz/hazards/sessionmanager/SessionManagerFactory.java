@@ -49,6 +49,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Dec 05, 2014 4124       Chris.Golden Changed to work with parameterized config manager.
  * Nov 10, 2015 12762      Chris.Golden Added code to implement and use new recommender
  *                                      manager.
+ * Jun 23, 2016 19537      Chris.Golden Added use of spatial context provider.
  * </pre>
  * 
  * @author bsteffen
@@ -58,12 +59,14 @@ import com.raytheon.viz.core.mode.CAVEMode;
 public class SessionManagerFactory {
 
     public static ISessionManager<ObservedHazardEvent, ObservedSettings> getSessionManager(
-            IMessenger messenger, IFrameContextProvider frameContextProvider,
+            IMessenger messenger,
+            ISpatialContextProvider spatialContextProvider,
+            IFrameContextProvider frameContextProvider,
             BoundedReceptionEventBus<Object> eventBus) {
         Mode mode = CAVEMode.getMode() == CAVEMode.PRACTICE ? Mode.PRACTICE
                 : Mode.OPERATIONAL;
         return new SessionManager(PathManagerFactory.getPathManager(),
-                new HazardEventManager(mode), frameContextProvider, messenger,
-                eventBus);
+                new HazardEventManager(mode), spatialContextProvider,
+                frameContextProvider, messenger, eventBus);
     }
 }
