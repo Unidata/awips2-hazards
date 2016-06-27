@@ -12,6 +12,8 @@ package gov.noaa.gsd.viz.megawidgets;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.raytheon.uf.common.colormap.Color;
+
 /**
  * Description: Conversion utilities, used to convert arbitrary objects into
  * specific types.
@@ -420,6 +422,12 @@ public class ConversionUtilities {
      * holding values between <code>0.0</code> and <code>1.0</code> for
      * {@link #COLOR_AS_MAP_RED}, {@link #COLOR_AS_MAP_GREEN}, and
      * {@link #COLOR_AS_MAP_BLUE} entries.
+     * <p>
+     * Note that this method has been deprecated; megawidgets should use
+     * {@link Color} objects instead, as returned by
+     * {@link #getSpecifierColorFromObject(String, String, Object, String, Color)}
+     * .
+     * </p>
      * 
      * @param identifier
      *            Identifier of the megawidget.
@@ -439,12 +447,49 @@ public class ConversionUtilities {
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameter is invalid.
      */
+    @Deprecated
     public static final Map<String, Double> getSpecifierColorAsMapFromObject(
             String identifier, String type, Object object, String paramName,
             Map<String, Double> defValue)
             throws MegawidgetSpecificationException {
         try {
             return getColorAsMapFromObject(identifier, type, object, defValue);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetSpecificationException(paramName, e);
+        }
+    }
+
+    /**
+     * Get a color object from the specified object as a specifier parameter.
+     * The object must either be <code>null</code> (only allowed if
+     * <code>defValue</code> is not <code>null</code>), or be a map holding
+     * values between <code>0.0</code> and <code>1.0</code> for
+     * {@link #COLOR_AS_MAP_RED}, {@link #COLOR_AS_MAP_GREEN}, and
+     * {@link #COLOR_AS_MAP_BLUE} entries.
+     * 
+     * @param identifier
+     *            Identifier of the megawidget.
+     * @param type
+     *            Type of the megawidget.
+     * @param object
+     *            Object holding the color value.
+     * @param paramName
+     *            Name of the parameter for which <code>object</code> is the
+     *            value.
+     * @param defValue
+     *            If present, this is the default value to be returned if <code>
+     *            object</code> is <code>null</code>; if this parameter is
+     *            <code>null</code>, then finding no value for <code>object
+     *            </code> causes an exception.
+     * @return Color object.
+     * @throws MegawidgetSpecificationException
+     *             If the megawidget specifier parameter is invalid.
+     */
+    public static final Color getSpecifierColorFromObject(String identifier,
+            String type, Object object, String paramName, Color defValue)
+            throws MegawidgetSpecificationException {
+        try {
+            return getColorFromObject(identifier, type, object, defValue);
         } catch (MegawidgetException e) {
             throw new MegawidgetSpecificationException(paramName, e);
         }
@@ -849,6 +894,12 @@ public class ConversionUtilities {
      * map holding values between <code>0.0</code> and <code>1.0</code> for
      * {@link #COLOR_AS_MAP_RED}, {@link #COLOR_AS_MAP_GREEN}, and
      * {@link #COLOR_AS_MAP_BLUE} entries.
+     * <p>
+     * Note that this method has been deprecated; megawidgets should use
+     * {@link Color} objects instead, as returned by
+     * {@link #getPropertyColorFromObject(String, String, Object, String, Color)}
+     * .
+     * </p>
      * 
      * @param identifier
      *            Identifier of the megawidget.
@@ -867,11 +918,47 @@ public class ConversionUtilities {
      * @throws MegawidgetPropertyException
      *             If the property value is invalid.
      */
+    @Deprecated
     public static final Map<String, Double> getPropertyColorAsMapFromObject(
             String identifier, String type, Object object, String name,
             Map<String, Double> defValue) throws MegawidgetPropertyException {
         try {
             return getColorAsMapFromObject(identifier, type, object, defValue);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetPropertyException(name, e);
+        }
+    }
+
+    /**
+     * Get a color object from the specified object as a specified property
+     * name. The object must either be <code>null</code> (only allowed if
+     * <code>defValue</code> is not <code>null</code>), or be a map holding
+     * values between <code>0.0</code> and <code>1.0</code> for
+     * {@link #COLOR_AS_MAP_RED}, {@link #COLOR_AS_MAP_GREEN}, and
+     * {@link #COLOR_AS_MAP_BLUE} entries.
+     * 
+     * @param identifier
+     *            Identifier of the megawidget.
+     * @param type
+     *            Type of the megawidget.
+     * @param object
+     *            Object holding the color value.
+     * @param name
+     *            Property name for which this object could be the value.
+     * @param defValue
+     *            If present, this is the default value to be returned if <code>
+     *            object</code> is <code>null</code>; if this parameter is
+     *            <code>null</code>, then finding no value for <code>object
+     *            </code> causes an exception.
+     * @return Color object.
+     * @throws MegawidgetPropertyException
+     *             If the property value is invalid.
+     */
+    public static final Color getPropertyColorFromObject(String identifier,
+            String type, Object object, String name, Color defValue)
+            throws MegawidgetPropertyException {
+        try {
+            return getColorFromObject(identifier, type, object, defValue);
         } catch (MegawidgetException e) {
             throw new MegawidgetPropertyException(name, e);
         }
@@ -1189,6 +1276,11 @@ public class ConversionUtilities {
      * <code>null</code>), or be a map holding values between <code>0.0</code>
      * and <code>1.0</code> for {@link #COLOR_AS_MAP_RED},
      * {@link #COLOR_AS_MAP_GREEN}, and {@link #COLOR_AS_MAP_BLUE} entries.
+     * <p>
+     * Note that this method has been deprecated; megawidgets should use
+     * {@link Color} objects instead, as returned by
+     * {@link #getStateColorFromObject(String, String, Object, Color)}.
+     * </p>
      * 
      * @param identifier
      *            State identifier for which this object could be state.
@@ -1205,11 +1297,45 @@ public class ConversionUtilities {
      * @throws MegawidgetStateException
      *             If the state value is invalid.
      */
+    @Deprecated
     public static final Map<String, Double> getStateColorAsMapFromObject(
             String identifier, String type, Object object,
             Map<String, Double> defValue) throws MegawidgetStateException {
         try {
             return getColorAsMapFromObject(identifier, type, object, defValue);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetStateException(e);
+        }
+    }
+
+    /**
+     * Get a color object from the specified object as a value for the specified
+     * state identifier. The object must either be <code>null</code> (only
+     * allowed if <code>defValue</code> is not <code>null</code>), or be a map
+     * holding values between <code>0.0</code> and <code>1.0</code> for
+     * {@link #COLOR_AS_MAP_RED}, {@link #COLOR_AS_MAP_GREEN}, and
+     * {@link #COLOR_AS_MAP_BLUE} entries.
+     * 
+     * @param identifier
+     *            State identifier for which this object could be state.
+     * @param type
+     *            Type of the megawidget.
+     * @param object
+     *            Object holding the color value.
+     * @param defValue
+     *            If present, this is the default value to be returned if <code>
+     *            object</code> is <code>null</code>; if this parameter is
+     *            <code>null</code>, then finding no value for <code>object
+     *            </code> causes an exception.
+     * @return Color object.
+     * @throws MegawidgetStateException
+     *             If the state value is invalid.
+     */
+    public static final Color getStateColorFromObject(String identifier,
+            String type, Object object, Color defValue)
+            throws MegawidgetStateException {
+        try {
+            return getColorFromObject(identifier, type, object, defValue);
         } catch (MegawidgetException e) {
             throw new MegawidgetStateException(e);
         }
@@ -1711,6 +1837,11 @@ public class ConversionUtilities {
      * values between <code>0.0</code> and <code>1.0</code> for
      * {@link #COLOR_AS_MAP_RED}, {@link #COLOR_AS_MAP_GREEN}, and
      * {@link #COLOR_AS_MAP_BLUE} entries.
+     * <p>
+     * Note that this method has been deprecated; once megawidgets move over to
+     * using the <code>getXXXXColorFromObject()</code> family of methods, this
+     * can be removed along with its callers.
+     * </p>
      * 
      * @param identifier
      *            Identifier of the megawidget.
@@ -1728,6 +1859,7 @@ public class ConversionUtilities {
      *             If a map object representing a color cannot be obtained from
      *             the object.
      */
+    @Deprecated
     private static Map<String, Double> getColorAsMapFromObject(
             String identifier, String type, Object object,
             Map<String, Double> defValue) throws MegawidgetException {
@@ -1768,6 +1900,68 @@ public class ConversionUtilities {
                 result.put(COLOR_AS_MAP_GREEN, green);
                 result.put(COLOR_AS_MAP_BLUE, blue);
                 return result;
+            }
+        }
+        throw new MegawidgetException(identifier, type, object,
+                "must be map holding values ranging from 0.0"
+                        + " to 1.0 for red, green, and blue entries");
+    }
+
+    /**
+     * Get a color object from the specified object. The latter must either be
+     * <code>null</code> (only allowed if <code>defValue</code> is not
+     * <code>null</code>), or be a map holding values between <code>0.0</code>
+     * and <code>1.0</code> for {@link #COLOR_AS_MAP_RED},
+     * {@link #COLOR_AS_MAP_GREEN}, and {@link #COLOR_AS_MAP_BLUE} entries.
+     * 
+     * @param identifier
+     *            Identifier of the megawidget.
+     * @param type
+     *            Type of the megawidget.
+     * @param object
+     *            Object holding the color value.
+     * @param defValue
+     *            If present, this is the default value to be returned if <code>
+     *            object</code> is <code>null</code>; if this parameter is
+     *            <code>null</code>, then finding no value for <code>object
+     *            </code> causes an exception.
+     * @return Color object.
+     * @throws MegawidgetException
+     *             If a map object representing a color cannot be obtained from
+     *             the object.
+     */
+    private static Color getColorFromObject(String identifier, String type,
+            Object object, Color defValue) throws MegawidgetException {
+        if (object == null) {
+            if (defValue == null) {
+                throw new MegawidgetException(identifier, type, null, null);
+            } else {
+                return new Color(defValue.getRed(), defValue.getGreen(),
+                        defValue.getBlue(), defValue.getAlpha());
+            }
+        } else if (object instanceof Map) {
+            Map<?, ?> map = (Map<?, ?>) object;
+            Float red = null, green = null, blue = null;
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                Object key = entry.getKey();
+                Object value = entry.getValue();
+                if (value instanceof Number == false) {
+                    break;
+                }
+                float floatValue = ((Number) value).floatValue();
+                if ((floatValue < 0.0) || (floatValue > 1.0)) {
+                    break;
+                }
+                if (COLOR_AS_MAP_RED.equals(key)) {
+                    red = floatValue;
+                } else if (COLOR_AS_MAP_GREEN.equals(key)) {
+                    green = floatValue;
+                } else if (COLOR_AS_MAP_BLUE.equals(key)) {
+                    blue = floatValue;
+                }
+            }
+            if ((red != null) && (green != null) && (blue != null)) {
+                return new Color(red, green, blue);
             }
         }
         throw new MegawidgetException(identifier, type, object,

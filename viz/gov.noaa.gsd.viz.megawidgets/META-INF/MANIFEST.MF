@@ -14,7 +14,8 @@ Require-Bundle: org.eclipse.swt,
  gov.noaa.gsd.common.utilities;bundle-version="1.0.0",
  net.sf.swtaddons,
  org.eclipse.jface;bundle-version="3.8.0",
- org.apache.commons.lang;bundle-version="2.3.0"
+ org.apache.commons.lang;bundle-version="2.3.0",
+ com.raytheon.uf.common.colormap;bundle-version="1.15.0"
 Export-Package: gov.noaa.gsd.viz.megawidgets;
   uses:="com.google.common.collect,
    org.eclipse.swt.events,

@@ -9,8 +9,9 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.Collections;
 import java.util.Map;
+
+import com.raytheon.uf.common.colormap.Color;
 
 /**
  * Label megawidget specifier.
@@ -92,6 +93,13 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
      */
     public static final String LABEL_COLOR = "color";
 
+    // Private Static Constants
+
+    /**
+     * Color object used as a placeholder for the default color.
+     */
+    private static final Color DEFAULT_COLOR = new Color();
+
     // Private Variables
 
     /**
@@ -116,11 +124,10 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
     private final boolean italic;
 
     /**
-     * Color of the label as a map holding values under the "red", "green", and
-     * "blue" keys between <code>0.0</code> and <code>1.0</code> inclusive, or
-     * an empty map if the default color is to be used.
+     * Color of the label holding values, or <code>null</code> if an empty map
+     * if the default color is to be used.
      */
-    private final Map<String, Double> color;
+    private final Color color;
 
     /**
      * Control options manager.
@@ -178,9 +185,10 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
         /*
          * Ensure that the color, if present, is acceptable.
          */
-        color = ConversionUtilities.getSpecifierColorAsMapFromObject(
+        Color color = ConversionUtilities.getSpecifierColorFromObject(
                 getIdentifier(), getType(), parameters.get(LABEL_COLOR),
-                LABEL_COLOR, Collections.<String, Double> emptyMap());
+                LABEL_COLOR, DEFAULT_COLOR);
+        this.color = (color == DEFAULT_COLOR ? null : color);
     }
 
     // Public Methods
@@ -224,14 +232,12 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
     }
 
     /**
-     * Get the color of the label as a map holding "red", "green", and "blue"
-     * values between <code>0.0</code> and <code>1.0</code> inclusive, or an
-     * empty map if the default color is to be used.
+     * Get the color of the label, or <code>null</code> if the default color is
+     * to be used.
      * 
-     * @return Color in map form, or an empty map if the default color is to be
-     *         used.
+     * @return Color or <code>null</code> if the default color is to be used.
      */
-    public Map<String, Double> getColor() {
+    public Color getColor() {
         return color;
     }
 

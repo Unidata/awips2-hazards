@@ -122,13 +122,12 @@ public class LabelMegawidget extends Megawidget implements IControl {
         } else {
             font = null;
         }
-        Map<String, Double> colorMap = specifier.getColor();
-        if (colorMap.isEmpty() == false) {
-            color = new Color(Display.getDefault(), getColorComponent(colorMap,
-                    ConversionUtilities.COLOR_AS_MAP_RED), getColorComponent(
-                    colorMap, ConversionUtilities.COLOR_AS_MAP_GREEN),
-                    getColorComponent(colorMap,
-                            ConversionUtilities.COLOR_AS_MAP_BLUE));
+        com.raytheon.uf.common.colormap.Color colorObj = specifier.getColor();
+        if (colorObj != null) {
+            color = new Color(Display.getDefault(),
+                    getColorComponent(colorObj.getRed()),
+                    getColorComponent(colorObj.getGreen()),
+                    getColorComponent(colorObj.getBlue()));
             label.setForeground(color);
         } else {
             color = null;
@@ -256,17 +255,15 @@ public class LabelMegawidget extends Megawidget implements IControl {
     }
 
     /**
-     * Get the floating-point value (which must be between 0.0 and 1.0
-     * inclusive), in the specified map at the specified key, and convert it to
-     * a color component between 0 and 255 inclusive.
+     * Take the specified floating-point value (which must be between 0.0 and
+     * 1.0 inclusive) and convert it to a color component between 0 and 255
+     * inclusive.
      * 
-     * @param map
-     *            Map holding the color component.
-     * @param key
-     *            Key under which the value is to be found in the map.
+     * @param value
+     *            Floating-point value, between 0.0 and 1.0 inclusive.
      * @return Color component value, between 0 and 255 inclusive.
      */
-    private int getColorComponent(Map<String, Double> map, String key) {
-        return (int) ((map.get(key) * 255.0) + 0.5);
+    private int getColorComponent(float value) {
+        return (int) ((value * 255.0f) + 0.5f);
     }
 }
