@@ -367,7 +367,7 @@ public final class HazardConstants {
 
     public static enum Significance {
         WARNING("W"), WATCH("A"), ADVISORY("Y"), OUTLOOK("O"), STATEMENT("S"), FORECAST(
-                "F"), SYNOPSIS("N");
+                "F"), SYNOPSIS("N"), CONVECTIVE("Convective");
         private final String abbreviation;
 
         private Significance(String value) {

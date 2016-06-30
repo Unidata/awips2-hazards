@@ -1,6 +1,9 @@
 import FormatTemplate
+from xml.etree.ElementTree import Element, SubElement, tostring
+import os, collections, datetime, dateutil.parser
+from TextProductCommon import TextProductCommon
 
-import types, re, sys, collections, os
+import types, re, sys
 from KeyInfo import KeyInfo
 from com.raytheon.uf.common.hazards.productgen import ProductUtils
 import Legacy_Hydro_Formatter
@@ -42,7 +45,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             self.flush()
             
         productDict = self._outputFormatter(events, self._fcstList)
-        self._outputText(productDict)
+        self._outputXML(productDict)
         
         legacyText = productDict.get('text')
 
@@ -181,9 +184,9 @@ class Format(Legacy_Hydro_Formatter.Format):
                   
         return headerDict    
     
-    def _outputText(self, productDict):              
+    def _outputXML(self, productDict):              
         outDirAll = os.path.join(OUTPUTDIR, self._startDate)
-        outAllAdvisories = 'convectiveSIGMET_' + self._startDate + '.txt'
+        outAllAdvisories = 'convectiveSIGMET_' + self._startDate + '.xml'
         pathAllFile = os.path.join(outDirAll, outAllAdvisories)
         
         if not os.path.exists(outDirAll):

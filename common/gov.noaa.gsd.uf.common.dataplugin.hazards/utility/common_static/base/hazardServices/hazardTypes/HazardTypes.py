@@ -2052,5 +2052,8 @@ HazardTypes = {
               'inclusionFraction': 0.1,
               'defaultDuration': 2 * HOURS, #6 hours
               'durationIncrement': 60,
+              'modifyRecommenders': {
+                                     'LineAndPointTool': [ 'geometry', 'visualFeature' ]
+                                     },              
               },                  
     }

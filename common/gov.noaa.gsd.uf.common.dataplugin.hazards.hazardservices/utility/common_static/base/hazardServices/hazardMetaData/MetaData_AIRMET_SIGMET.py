@@ -331,15 +331,25 @@ class MetaData(CommonMetaData.MetaData):
         return aType
     
     ###CONVECTIVE SIGMET MEGAWIDGET OPTIONS###
-    def getConvectiveSigmetInputs(self, domain, modifiers):
-
+    def getConvectiveSigmetInputs(self, geomType, domain, modifiers):
+        if geomType is not 'Polygon':
+            width = self.getWidth(geomType)
+        correction = self.getConvectiveSigmetCorrection()
         specialIssuance = self.getConvectiveSigmetSpecialIssuance()
         domain = self.getConvectiveSigmetDomain(domain)
-        mode = self.getConvectiveSigmetMode()
+        #mode = self.getConvectiveSigmetMode()
+        embeddedSvr = self.getConvectiveSigmetEmbeddedSevere()
         modifier = self.getConvectiveSigmetModifier(modifiers)
         motion = self.getConvectiveSigmetMotion()
         tops = self.getConvectiveSigmetTops()
         additionalHazards = self.getConvectiveSigmetAdditionalHazards()            
+        
+        if geomType is not 'Polygon':
+            fields = [width, correction, specialIssuance, domain, embeddedSvr,
+                      modifier, motion, tops, additionalHazards,]
+        else:
+            fields = [correction, specialIssuance, domain,
+                      embeddedSvr, modifier, motion, tops, additionalHazards,]
         
         grp = {
             "fieldType": "Group",
@@ -348,18 +358,61 @@ class MetaData(CommonMetaData.MetaData):
             "expandHorizontally": True,
             "expandVertically": True,
             "numColumns":1,
-            "fields": [
-                       specialIssuance,
-                       domain,
-                       mode,
-                       modifier,
-                       motion,
-                       tops,
-                       additionalHazards,                                            
-                       ]
+            "fields": fields
             }
                                
         return grp
+    
+    def getWidth(self, geomType):
+        
+        if geomType == 'LineString':
+            label = "Line Half Width (nm)"
+            enable = True
+        elif geomType == 'Point':
+            label = "Cell Diameter (nm)"
+            enable = True
+        
+        width = {
+            "fieldType": "Group",
+            "fieldName": "convectiveSigmetWidthGroup",
+            "label": "",
+            "numColumns": 3,
+            "enable": enable,
+            "fields": [
+                       {
+                        "fieldType": "IntegerSpinner",
+                        "fieldName": "convectiveSigmetWidth",
+                        "sendEveryChange": False,
+                        "label": label,
+                        "minValue": 10,
+                        "maxValue": 500,
+                        "values": 10,
+                        "incrementDelta": 10,
+                        "modifyRecommender": "LineAndPointTool"                             
+                        },
+                ]
+        }
+
+        return width
+    
+    def getConvectiveSigmetCorrection(self):
+        correction = {
+            "fieldType": "Group",
+            "fieldName": "convectiveSigmetCorrectionGroup",
+            "label": "",
+            "numColumns": 3,
+            "fields": [
+                       {
+                        "fieldType": "CheckBox",
+                        "fieldName": "convectiveSigmetCorrection",
+                        "label": "Correction?",
+                        "values": False,
+                        "enable": False
+                        }
+            ]
+        }
+        
+        return correction        
     
     def getConvectiveSigmetSpecialIssuance(self):
         specialIssuance = {
@@ -399,19 +452,15 @@ class MetaData(CommonMetaData.MetaData):
         
         return domain
     
-    def getConvectiveSigmetMode(self):
-        mode = {           
-            "fieldType": "DetailedComboBox",
-            "fieldName": "convectiveSigmetMode",
-            "label": "Convective Mode:",
+    def getConvectiveSigmetEmbeddedSevere(self):
+        embeddedSvr = {
+            "fieldType": "Group",
+            "fieldName": "convectiveSigmetEmbeddedSvrGroup",
+            "label": "",
             "numColumns": 3,
-            "choices": [
+            "fields": [
                         {
-                        "identifier": "area",
-                        "displayString": "Area",
-                        "detailFields": [
-                           {
-                           "fieldName": "convectiveSigmetEmbeddedArea",
+                           "fieldName": "convectiveSigmetEmbeddedSvr",
                            "fieldType": "CheckBoxes",
                            "label": "Qualifier:",
                            "choices": [
@@ -423,73 +472,13 @@ class MetaData(CommonMetaData.MetaData):
                                        "identifier": "Embedded",
                                        "displayString": "Embedded"
                                        },
-                                ]                                                
-                           },                                         
-                         ]
-                        },  
-                        {
-                        "identifier": "line",
-                        "displayString": "Line",
-                        "detailFields": [
-                            {
-                             "fieldType": "IntegerSpinner",
-                             "fieldName": "convectiveSigmetLineWidth",
-                             "label": "Line Half Width (nm)",
-                             "minValue": 10,
-                             "maxValue": 500,
-                             "values": 10,
-                             "incrementDelta": 10,
-                             },
-                             {
-                             "fieldName": "convectiveSigmetEmbeddedLine",
-                             "fieldType": "CheckBoxes",
-                             "label": "Qualifier:",
-                             "choices": [
-                                         {
-                                         "identifier": "Severe",
-                                         "displayString": "Severe"
-                                         },
-                                         {
-                                         "identifier": "Embedded",
-                                         "displayString": "Embedded"
-                                         },
-                                  ]                                                
-                             },                                                                                 
-                            ] 
-                         },
-                         {
-                          "identifier": "isolated",
-                          "displayString": "Isolated",
-                          "detailFields": [
-                            {
-                             "fieldType": "IntegerSpinner",
-                             "fieldName": "convectiveSigmetCellDiameter",
-                             "label": "Cell Diameter (nm)",
-                             "minValue": 10,
-                             "maxValue": 500,
-                             "values": 10,
-                             "incrementDelta": 10,                             
-                            },
-                            {
-                             "fieldName": "convectiveSigmetEmbeddedIsolated",
-                             "fieldType": "CheckBoxes",
-                             "label": "Qualifier:",
-                             "choices": [
-                                         {
-                                         "identifier": "Severe",
-                                         "displayString": "Severe"
-                                         },
-                                         {
-                                         "identifier": "Embedded",
-                                         "displayString": "Embedded"
-                                         },                                         
-                                  ]                                                
-                             },                                                                                   
-                         ]                              
-                        },
-                    ]
-                }
-        return mode
+                                ]                                             
+                        }                       
+                       ],
+            "values": "None of the Above",
+                  }                       
+        
+        return embeddedSvr
     
     def getConvectiveSigmetModifier(self, modifiers):
         modifier = {

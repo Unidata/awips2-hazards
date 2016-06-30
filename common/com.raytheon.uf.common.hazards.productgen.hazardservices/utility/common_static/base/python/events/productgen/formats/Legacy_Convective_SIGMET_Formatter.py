@@ -135,9 +135,6 @@ class Format(Legacy_Hydro_Formatter.Format):
     def _createFcst(self, fcstDict, headerDict):
         fcst = ''
         
-        print "fcstDict in _createFcst: ", fcstDict
-        print "headerDict in _createFcst: ", headerDict
-        
         for key in fcstDict:
             fcst = fcst + headerDict[key] + '\n'
             if len(fcstDict[key]['special'].keys()):

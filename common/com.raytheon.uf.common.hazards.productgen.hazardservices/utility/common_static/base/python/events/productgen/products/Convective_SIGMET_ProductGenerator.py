@@ -4,7 +4,6 @@
 import os, types, sys, collections, re
 from HydroProductParts import HydroProductParts 
 import GeometryFactory
-from VisualFeatures import VisualFeatures
 import HydroGenerator
 from KeyInfo import KeyInfo
 import shapely, time, datetime
@@ -19,20 +18,6 @@ class Product(HydroGenerator.Product):
         super(Product, self).__init__()  
         # Used by the VTECEngineWrapper to access the productGeneratorTable
         self._productGeneratorName = 'Convective_SIGMET_ProductGenerator'
-        
-        self._productLoc = 'MKC'  # product name 
-        self._fullStationID = 'KKCI'  # full station identifier (4letter)
-        self._wmoHeaderDict = {'E': 'WSUS31', 'C': 'WSUS32', 'W': 'WSUS33'}  # WMO header based on region
-        self._productIdentifier = 'WST'
-        self._pilDict = {'E': 'SIGE', 'C': 'SIGC', 'W': 'SIGW'}  # Product pil
-        self._areaName = 'NONE'  # Name of state, such as 'GEORGIA' -- optional
-        self._wfoCityState = 'NONE'  # Location of WFO - city state
-        self._zczc = 'ZCZC'
-        self._all = 'ALL'
-        self._textdbPil = 'ANCFASIGAK1'  # Product ID for storing to AWIPS text database.
-        self._awipsWANPil = 'PANCSIGAK1'  # Product ID for transmitting to AWIPS WAN.
-        self._lineLength = 68  # line length
-
 
 ###################################################
         
@@ -102,6 +87,7 @@ class Product(HydroGenerator.Product):
         eventDicts = [] 
           
         for event in self._inputHazardEvents:
+            self._geomType = self._getGeometryType(event)
             self._convectiveSigmetSpecialIssuance = event.getHazardAttributes().get('convectiveSigmetSpecialIssuance')
             self._convectiveSigmetDomain = event.getHazardAttributes().get('convectiveSigmetDomain')
             
@@ -124,6 +110,12 @@ class Product(HydroGenerator.Product):
         productDict['productName'] = 'CONVECTIVE SIGMET'         
 
         return [productDict], self._inputHazardEvents
+    
+    def _getGeometryType(self, hazardEvent):        
+        for g in hazardEvent.getGeometry():
+            geomType = g.geom_type
+        
+        return geomType
     
     def _currentTime(self, hazardEvent):
         currentTime = time.mktime(hazardEvent.getCreationTime().timetuple())
@@ -317,9 +309,8 @@ class Product(HydroGenerator.Product):
         return domainStr
     
     def _mode(self, hazardEvent):
-        self._convectiveSigmetMode = hazardEvent.getHazardAttributes().get('convectiveSigmetMode')
-        convectiveSigmetModeDict = {'area': 'AREA', 'isolated': 'ISOL', 'line': 'LINE'}
-        modeStr = convectiveSigmetModeDict[self._convectiveSigmetMode]
+        convectiveSigmetModeDict = {'Polygon': 'AREA', 'LineString': 'LINE', 'Point': 'ISOL'}
+        modeStr = convectiveSigmetModeDict[self._geomType]
         modeStr += ' TS'
                 
         return modeStr
@@ -332,26 +323,23 @@ class Product(HydroGenerator.Product):
         return modifierStr
     
     def _embedded(self, hazardEvent):
-        self._convectiveSigmetEmbeddedLine = hazardEvent.getHazardAttributes().get('convectiveSigmetEmbeddedLine')
-        self._convectiveSigmetEmbeddedArea = hazardEvent.getHazardAttributes().get('convectiveSigmetEmbeddedArea')
-        self._convectiveSigmetEmbeddedIsolated = hazardEvent.getHazardAttributes().get('convectiveSigmetEmbeddedIsolated')
-        self._convectiveSigmetLineWidth = str(hazardEvent.getHazardAttributes().get('convectiveSigmetLineWidth'))
-        self._convectiveSigmetCellDiameter = str(hazardEvent.getHazardAttributes().get('convectiveSigmetCellDiameter'))
+        self._convectiveSigmetWidth = str(hazardEvent.getHazardAttributes().get('convectiveSigmetWidth'))
+        self._convectiveSigmetEmbeddedSvr = hazardEvent.getHazardAttributes().get('convectiveSigmetEmbeddedSvr')
         
         hazardEmbeddedDict = {'Severe': 'SEV', 'Embedded': ' EMBD'}
         embeddedStr = ""
         
-        if self._convectiveSigmetMode == "line":
-            for selection in self._convectiveSigmetEmbeddedLine:
+        if self._geomType == "LineString":
+            for selection in self._convectiveSigmetEmbeddedSvr:
                 embeddedStr += hazardEmbeddedDict[selection]               
-            embeddedStr = self._hazardEmbeddedStr + ' ' + self._convectiveSigmetLineWidth + ' NM WIDE'
-        elif self._convectiveSigmetMode == "area":
-            for selection in self._convectiveSigmetEmbeddedArea:
+            embeddedStr = embeddedStr + ' ' + self._convectiveSigmetWidth + ' NM WIDE '
+        elif self._geomType == "Polygon":
+            for selection in self._convectiveSigmetEmbeddedSvr:
                 embeddedStr += hazardEmbeddedDict[selection]
-        elif self._convectiveSigmetMode == "isolated":
-            for selection in self._convectiveSigmetEmbeddedIsolated:
+        elif self._geomType == "Point":
+            for selection in self._convectiveSigmetEmbeddedSvr:
                 embeddedStr += hazardEmbeddedDict[selection]
-            embeddedStr = self._hazardEmbeddedStr + ' ' + self._convectiveSigmetCellDiameter + ' NM WIDE'
+            embeddedStr = embeddedStr + ' ' + self._convectiveSigmetWidth + ' NM WIDE '
                     
         return embeddedStr
     
