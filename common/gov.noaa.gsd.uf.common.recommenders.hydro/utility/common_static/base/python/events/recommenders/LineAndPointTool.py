@@ -223,7 +223,7 @@ class Recommender(RecommenderTemplate.Recommender):
         buffer = []
         if len(vertices) == 1:
             width = width/2
-            for bearing in range(0,345,15):
+            for bearing in range(0,360,15):
                 loc = self.gc_destination(vertices[0],width,bearing)
                 buffer.append((round(loc[0],2),round(loc[1],3)))
             poly = buffer
