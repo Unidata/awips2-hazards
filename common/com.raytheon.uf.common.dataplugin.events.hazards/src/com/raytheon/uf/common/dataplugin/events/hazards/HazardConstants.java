@@ -94,6 +94,7 @@ import com.google.common.collect.ImmutableMap;
  *                                      track-specific constants.
  * Jul 25, 2016 19537     Chris.Golden  Changed as part of partial MVP refactor for spatial
  *                                      display.
+ * Jul 26, 2016 20755     Chris.Golden  Added constant for recommender result event set attribute.
  * </pre>
  * 
  * @author mnash
@@ -157,6 +158,10 @@ public final class HazardConstants {
     public static final String RECOMMENDER_GET_METADATA_METHOD = "getScriptMetadata";
 
     public static final String RECOMMENDER_GET_SPATIAL_INFO_METHOD = "getSpatialInfo";
+
+    // Recommender result attribute names
+
+    public static final String RECOMMENDER_RESULT_SAVE_TO_DATABASE = "saveToDatabase";
 
     /**
      * Types of changes or events that may trigger a recommender execution.

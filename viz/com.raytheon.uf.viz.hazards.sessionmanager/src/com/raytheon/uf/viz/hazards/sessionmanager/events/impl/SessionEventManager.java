@@ -84,7 +84,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Recommen
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Significance;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -390,6 +389,10 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  *                                      the unordered nature of the collections was inappropriate. Added
  *                                      originator parameters for methods for setting high- and low-res
  *                                      geometries for hazard events. Removed obsolete set-geometry method.
+ * Jul 26, 2016   20755    Chris.Golden Fixed bug with saving events to database; the saving did not strip
+ *                                      out visual features, unlike the storing of events when issued.
+ *                                      Also added ability to avoid saving any events with "potential"
+ *                                      status.
  * </pre>
  * 
  * @author bsteffen
@@ -4499,17 +4502,43 @@ public class SessionEventManager implements
 
     @Override
     public void saveEvents(List<IHazardEvent> events) {
+
+        /*
+         * Get copies of the events to be saved that are database-friendly.
+         */
         List<IHazardEvent> dbEvents = new ArrayList<IHazardEvent>(events.size());
         for (IHazardEvent event : events) {
-            // Verify all events are of type HazardEvent
-            if (event instanceof HazardEvent == false) {
-                IHazardEvent dbEvent = dbManager.createEvent(event);
-                dbEvents.add(dbEvent);
-            } else {
-                dbEvents.add(event);
+
+            /*
+             * If the event has a status of "potential", log an error and skip
+             * it.
+             */
+            if (HazardStatus.POTENTIAL.equals(event.getStatus())) {
+                statusHandler.warn("Attempted to save hazard event "
+                        + event.getEventID() + " to database, but "
+                        + "cannot due to its status of \"potential\".");
+                continue;
             }
+
+            /*
+             * Make a copy of the event of the right type, and strip out
+             * whatever cannot or should not be saved.
+             */
+            IHazardEvent dbEvent = dbManager.createEvent(event);
+            dbEvent.setVisualFeatures(null);
+            dbEvent.removeHazardAttribute(ATTR_ISSUED);
+            dbEvent.removeHazardAttribute(HAZARD_EVENT_SELECTED);
+            dbEvent.removeHazardAttribute(HAZARD_EVENT_CHECKED);
+            dbEvent.removeHazardAttribute(ATTR_HAZARD_CATEGORY);
+            dbEvents.add(dbEvent);
         }
-        dbManager.storeEvents(dbEvents);
+
+        /*
+         * Save the events to the database.
+         */
+        if (dbEvents.isEmpty() == false) {
+            dbManager.storeEvents(dbEvents);
+        }
     }
 
     @Override

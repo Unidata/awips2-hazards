@@ -23,8 +23,8 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -134,6 +134,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      by the result of a recommender's execution, if the result
  *                                      includes a new selected time.
  * Jun 23, 2016 19537      Chris.Golden Added use of spatial context provider.
+ * Jul 26, 2016 20755      Chris.Golden Added ability to save recommender-created/modified hazard
+ *                                      events to the database if the recommender requests it.
  * </pre>
  * 
  * @author bsteffen
@@ -471,31 +473,51 @@ public class SessionManager implements
     @Override
     public void handleRecommenderResult(String recommenderIdentifier,
             EventSet<IEvent> events) {
-        IOriginator originator = new RecommenderOriginator(
-                recommenderIdentifier);
+
+        /*
+         * If an event set was returned by the recommender as a result, ingest
+         * the events and respond to any attributes included within the set.
+         */
         if (events != null) {
-            String eventID = null;
-            Set<String> eventIdSet = new HashSet<>(events.size());
+
+            /*
+             * Iterate through the hazard events provided as the result, adding
+             * hazard warning areas for each, setting their user name and
+             * workstation, and then telling the event manager to add them. If
+             * the recommender has asked that the results be saved to the
+             * database, track the events that are added or modified.
+             */
+            IOriginator originator = new RecommenderOriginator(
+                    recommenderIdentifier);
+            List<IHazardEvent> addedEvents = (Boolean.TRUE
+                    .equals(events
+                            .getAttribute(HazardConstants.RECOMMENDER_RESULT_SAVE_TO_DATABASE)) ? new ArrayList<IHazardEvent>(
+                    events.size()) : null);
             for (IEvent event : events) {
                 if (event instanceof IHazardEvent) {
-                    IHazardEvent hevent = (IHazardEvent) event;
-                    eventID = hevent.getEventID();
-                    if ((eventID != null) && (eventID.isEmpty() == false)) {
-                        IHazardEvent existingEvent = eventManager
-                                .getEventById(eventID);
-                        if (existingEvent != null) {
-                            eventIdSet.add(eventID);
-                        }
-                    }
+                    IHazardEvent hazardEvent = (IHazardEvent) event;
                     Map<String, String> ugcHatchingAlgorithms = eventManager
-                            .buildInitialHazardAreas(hevent);
-                    hevent.addHazardAttribute(HAZARD_AREA,
+                            .buildInitialHazardAreas(hazardEvent);
+                    hazardEvent.addHazardAttribute(HAZARD_AREA,
                             (Serializable) ugcHatchingAlgorithms);
-                    hevent.setUserName(LocalizationManager.getInstance()
+                    hazardEvent.setUserName(LocalizationManager.getInstance()
                             .getCurrentUser());
-                    hevent.setWorkStation(VizApp.getHostName());
-                    eventManager.addEvent(hevent, originator);
+                    hazardEvent.setWorkStation(VizApp.getHostName());
+                    ObservedHazardEvent addedEvent = eventManager.addEvent(
+                            hazardEvent, originator);
+                    if (addedEvents != null) {
+                        addedEvents.add(addedEvent);
+                    }
                 }
+            }
+
+            /*
+             * If the recommender wants the results saved to the database and
+             * there is indeed at least one hazard event that was added or
+             * modified, save now.
+             */
+            if ((addedEvents != null) && (addedEvents.isEmpty() == false)) {
+                eventManager.saveEvents(addedEvents);
             }
 
             /*

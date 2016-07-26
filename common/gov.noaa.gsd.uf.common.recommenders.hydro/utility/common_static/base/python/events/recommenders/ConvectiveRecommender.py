@@ -53,7 +53,7 @@ MILLIS_PER_SECOND = 1000
 ### FIXME
 DEFAULT_DURATION_IN_SECS = 2700 # 45 minutes
 #DEFAULT_DURATION_IN_SECS = 120
-PROBABILITY_FILTER = 60 # filter our any objects less than this.
+PROBABILITY_FILTER = 20 # filter our any objects less than this.
 SOURCEPATH_ARCHIVE = '/awips2/edex/data/hdf5/convectprob'
 SOURCEPATH_REALTIME = '/realtime-a2/hdf5/probsevere'
     
@@ -94,7 +94,7 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict["author"] = "GSD"
         metaDict["version"] = "1.0"
         metaDict["description"] = "Ingests convective cell identification and attributes from automated source"
-        metaDict["eventState"] = "Potential"
+        metaDict["eventState"] = "Pending"
         metaDict['includeEventTypes'] = [ "Prob_Severe", "Prob_Tornado" ]
         metaDict['background'] = True
         return metaDict
@@ -326,7 +326,7 @@ class Recommender(RecommenderTemplate.Recommender):
         hazardEvent.setCreationTime(currentTime)
         self.setEventTimes(hazardEvent, values)
         
-        hazardEvent.setHazardStatus("potential")
+        hazardEvent.setHazardStatus("pending")
         hazardEvent.setHazardMode("O")        
         
         hazardEvent.setPhenomenon("Prob_Severe")
@@ -371,6 +371,10 @@ class Recommender(RecommenderTemplate.Recommender):
             return [] # We only want to return events we have changed
         
         mergedEvents = EventSet(None)
+        
+        # Ensure that any resulting events are saved to the database.
+        mergedEvents.addAttribute("saveToDatabase", True)
+        
         ### recommended events but no current events
         if len(currentEventsList) == 0:
             #print '[2] No CURRENT records, making and returning NEW events...'
